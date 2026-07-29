@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Flame, Building2, LogOut, Flower2, ArrowLeft } from 'lucide-react';
+import { Flame, Building2, LogOut, Flower2, ArrowLeft, FileText } from 'lucide-react';
 import './ReceptionPortal.css';
 
 const ReceptionPortal = () => {
@@ -19,25 +19,25 @@ const ReceptionPortal = () => {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      
+
       // Time format: 10:42 AM
       let hours = now.getHours();
       const minutes = now.getMinutes().toString().padStart(2, '0');
       const ampm = hours >= 12 ? 'PM' : 'AM';
       hours = hours % 12;
-      hours = hours ? hours : 12; 
+      hours = hours ? hours : 12;
       const timeString = `${hours}:${minutes} ${ampm}`;
-      
+
       setCurrentTime(timeString);
 
       // Date format: Monday, October 23
       const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-      
+
       const dayName = days[now.getDay()];
       const monthName = months[now.getMonth()];
       const dateNum = now.getDate();
-      
+
       setCurrentDate(`${dayName}, ${monthName} ${dateNum}`);
     };
 
@@ -71,7 +71,7 @@ const ReceptionPortal = () => {
       if (serviceName === 'Body Admission') redirectPath = `/tenant/${tenantSlug}/deceased/register`;
       else if (serviceName === 'Body Release') redirectPath = `/tenant/${tenantSlug}/release-form`;
       else if (serviceName === 'Flower Bookings') redirectPath = `/tenant/${tenantSlug}/flowers/new`;
-      
+
       console.log('Final redirect path:', redirectPath);
       // Use replace to avoid back button issues
       navigate(redirectPath, { replace: true });
@@ -116,11 +116,11 @@ const ReceptionPortal = () => {
 
       {/* Controls Grid */}
       <div className="controls-title">Select a Service</div>
-      
+
       <div className="controls-grid">
         {/* Card 1: Body Admission */}
-        <div 
-          className="service-card card-admission" 
+        <div
+          className="service-card card-admission"
           onClick={() => handleServiceClick('Body Admission')}
           style={{ cursor: 'pointer' }}
         >
@@ -134,8 +134,8 @@ const ReceptionPortal = () => {
         </div>
 
         {/* Card 2: Body Release */}
-        <div 
-          className="service-card card-release" 
+        <div
+          className="service-card card-release"
           onClick={() => handleServiceClick('Body Release')}
           style={{ cursor: 'pointer' }}
         >
@@ -149,8 +149,8 @@ const ReceptionPortal = () => {
         </div>
 
         {/* Card 3: Flower Bookings */}
-        <div 
-          className="service-card card-flowers" 
+        <div
+          className="service-card card-flowers"
           onClick={() => handleServiceClick('Flower Bookings')}
           style={{ cursor: 'pointer' }}
         >
@@ -160,6 +160,21 @@ const ReceptionPortal = () => {
           <div className="card-content">
             <div className="card-title">Flower Bookings</div>
             <div className="card-sub">Arrange floral tributes & wreaths</div>
+          </div>
+        </div>
+
+        {/* Card 4: Postmortem Results */}
+        <div
+          className="service-card card-postmortem"
+          onClick={() => navigate(`/tenant/${tenantSlug}/postmortem-results`, { replace: true })}
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="card-icon">
+            <FileText size={24} strokeWidth={1.5} />
+          </div>
+          <div className="card-content">
+            <div className="card-title">Postmortem Results</div>
+            <div className="card-sub">View & share autopsy reports</div>
           </div>
         </div>
       </div>

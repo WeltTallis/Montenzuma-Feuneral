@@ -101,7 +101,7 @@ export class AuthController {
 
       try {
         const [users] = await conn.query(
-          'SELECT * FROM users WHERE (email = ? OR full_name = ?) AND is_active = TRUE', [identifier, identifier]
+          'SELECT * FROM users WHERE (email = ? OR username = ? OR full_name = ?) AND is_active = TRUE', [identifier, identifier, identifier]
         );
         const userList = users as any[];
         if (userList.length === 0) {

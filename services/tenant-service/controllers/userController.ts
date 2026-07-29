@@ -11,11 +11,11 @@ export class UserController {
      */
     async registerUser(req: Request, res: Response): Promise<void> {
         try {
-            const { email, password, full_name, phone, role, branch_id } = req.body;
+            const { email, password, full_name, username, phone, role, branch_id } = req.body;
             const user = (req as any).user;
 
-            if (!email || !password || !full_name || !role) {
-                res.status(400).json({ success: false, message: 'Missing required fields: email, password, full_name, role' });
+            if (!email || !password || !full_name || !username || !role) {
+                res.status(400).json({ success: false, message: 'Missing required fields: email, password, full_name, username, role' });
                 return;
             }
 
@@ -74,6 +74,16 @@ export class UserController {
                     return;
                 }
 
+                // Check if username already exists
+                const [existingUsername] = await conn.query(
+                    'SELECT user_id FROM users WHERE username = ? AND is_active = TRUE',
+                    [username]
+                );
+                if ((existingUsername as any[]).length > 0) {
+                    res.status(409).json({ success: false, message: 'User with this username already exists' });
+                    return;
+                }
+
                 // Validate branch_id if provided
                 let finalBranchId = null;
                 if (branch_id) {
@@ -96,9 +106,9 @@ export class UserController {
 
                 // Create user
                 const [result] = await conn.query(
-                    `INSERT INTO users (email, password_hash, full_name, phone, role, branch_id, is_verified, is_active)
-           VALUES (?, ?, ?, ?, ?, ?, 1, 1)`,
-                    [email, password_hash, full_name, phone || null, role, finalBranchId]
+                    `INSERT INTO users (email, password_hash, full_name, username, phone, role, branch_id, is_verified, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)`,
+                    [email, password_hash, full_name, username, phone || null, role, finalBranchId]
                 );
 
                 const userId = (result as any).insertId;
@@ -107,7 +117,7 @@ export class UserController {
                 try {
                     await conn.query(
                         'INSERT INTO activity_logs (user_id, action, details) VALUES (?, ?, ?)',
-                        [user.userId || 1, 'USER_CREATED', `User ${email} created with role ${role}${finalBranchId ? ` for branch ${finalBranchId}` : ''}`]
+                        [user.userId || 1, 'USER_CREATED', `User ${username} (${email}) created with role ${role}${finalBranchId ? ` for branch ${finalBranchId}` : ''}`]
                     );
                 } catch (logError) {
                     // Ignore activity log errors
@@ -121,6 +131,7 @@ export class UserController {
                         user_id: userId,
                         email,
                         full_name,
+                        username,
                         role,
                         branch_id: finalBranchId
                     }
@@ -169,6 +180,7 @@ export class UserController {
             u.user_id,
             u.email,
             u.full_name,
+            u.username,
             u.phone,
             u.role,
             u.branch_id,

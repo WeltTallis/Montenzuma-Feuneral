@@ -13,10 +13,10 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-// System Admin Configuration
+// System Admin Configuration - Use environment variables for credentials
 const SYSTEM_ADMIN = {
-    email: 'infowelttallis@gmail.com',
-    password: '40045355@Peter',
+    email: process.env.DEFAULT_ADMIN_EMAIL || 'infowelttallis@gmail.com',
+    password: process.env.DEFAULT_ADMIN_PASSWORD || 'Admin@RestPoint2024',
     fullName: 'System Administrator',
     phone: '+254700000000',
     role: 'systemadmin',

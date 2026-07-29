@@ -80,19 +80,19 @@ async function checkServiceHealth(serviceName, url) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
-    
+
     // Append /health to the URL
     const healthUrl = url.endsWith('/') ? `${url}health` : `${url}/health`;
-    
+
     const response = await fetch(healthUrl, {
       method: 'GET',
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
     const isHealthy = response.ok;
     serviceHealth[serviceName].lastCheck = Date.now();
-    
+
     if (isHealthy) {
       serviceHealth[serviceName].failures = 0;
       serviceHealth[serviceName].isHealthy = true;
@@ -110,7 +110,7 @@ async function checkServiceHealth(serviceName, url) {
 function handleServiceFailure(serviceName) {
   serviceHealth[serviceName].failures++;
   serviceHealth[serviceName].lastFailure = Date.now();
-  
+
   if (serviceHealth[serviceName].failures >= FAILURE_THRESHOLD && serviceHealth[serviceName].isHealthy) {
     serviceHealth[serviceName].isHealthy = false;
     Logger.warn(`[CIRCUIT BREAKER] ${serviceName} marked as DOWN`);
@@ -123,7 +123,7 @@ async function performHealthChecks() {
     const baseUrl = url.split('/')[0] + '//' + url.split('/')[2];
     return checkServiceHealth(serviceName, baseUrl);
   });
-  
+
   await Promise.allSettled(checks);
 }
 
@@ -185,18 +185,22 @@ function checkServiceAvailability(req, res, next) {
   }
 
   const health = serviceHealth[serviceName];
-  
+
   // Check if service is marked as unhealthy
   if (health && !health.isHealthy) {
     const timeSinceFailure = Date.now() - health.lastFailure;
-    
+
     // If within recovery timeout, immediately return 503 (no logging to reduce spam)
     if (timeSinceFailure < RECOVERY_TIMEOUT) {
       return res.status(503).json({
         success: false,
-        message: `${serviceName.charAt(0).toUpperCase() + serviceName.slice(1)} service is temporarily unavailable. Please try again later.`,
+        message: 'Now API Gateway is Down',
+        description: 'Unable to connect to the API Gateway.',
+        details: 'No services can be reached at the moment.',
+        action: 'Please contact the System Administrator.',
         service: serviceName,
-        error: 'SERVICE_DOWN'
+        error: 'SERVICE_DOWN',
+        timestamp: new Date().toISOString()
       });
     } else {
       // Recovery timeout reached, allow request and reset status
@@ -211,11 +215,6 @@ function checkServiceAvailability(req, res, next) {
 
 // SERVICE ROUTING TABLE
 
-// Example flow:
-//   Frontend: GET /api/v1/restpoint/hearses/available
-//   Express strips /api/v1/restpoint → req.url = /hearses/available
-//   We extract "hearses" → proxy to hearse service at /hearses/available
-//   Hearse route: router.get('/hearses/available') → MATCH
 
 
 const SERVICE_ROUTES = {
@@ -354,7 +353,7 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
         if (!res.headersSent) {
           const firstSegment = (req.originalUrl || req.url || '').split('/').filter(Boolean)[2] || 'unknown';
           const friendlyName = firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1);
-          
+
           // Track failure in circuit breaker
           const serviceName = Object.keys(SERVICE_ROUTES).find(
             route => firstSegment === route || firstSegment.startsWith(route + '-')
@@ -362,13 +361,18 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
           if (serviceName) {
             handleServiceFailure(serviceName);
           }
-          
+
           res.status(503).json({
             success: false,
-            message: `${friendlyName} service is temporarily unavailable. Please try again later.`,
+            message: 'Now API Gateway is Down',
+            description: 'Unable to connect to the API Gateway.',
+            details: 'No services can be reached at the moment.',
+            action: 'Please contact the System Administrator.',
             service: firstSegment,
+            serviceName: friendlyName,
             error: err.code,
-            target: targetUrl
+            target: targetUrl,
+            timestamp: new Date().toISOString()
           });
         }
       }
@@ -401,14 +405,58 @@ app.use('/api/v1/restpoint', checkServiceAvailability, (req, res, next) => {
     });
   }
 
-  Logger.debug(`[ROUTE] ${req.method} ${req.originalUrl} → ${targetUrl}${req.url}`);
+  // Rewrite the path for auth service routes
+  // Auth routes need /auth prefix (e.g., /refresh → /auth/refresh)
+  let rewrittenUrl = req.url;
+  if (firstSegment === 'auth' || firstSegment === 'login' ||
+    firstSegment === 'register' || firstSegment === 'logout' ||
+    firstSegment === 'refresh' || firstSegment === 'users' ||
+    firstSegment === 'change-password' || firstSegment === 'me') {
+    // Add /auth prefix if not already present
+    if (!pathParts[0]?.startsWith('auth/') && pathParts[0] !== 'auth') {
+      rewrittenUrl = '/auth' + req.url;
+    }
+  }
+
+  Logger.debug(`[ROUTE] ${req.method} ${req.originalUrl} → ${targetUrl}${rewrittenUrl}`);
+
+  // Temporarily replace req.url for the proxy
+  const originalUrl = req.url;
+  req.url = rewrittenUrl;
 
   // Forward to the correct proxy
   const proxy = proxyCache[targetUrl];
   if (proxy) {
-    return proxy(req, res, next);
+    const proxyErr = (err, req, res) => {
+      // Restore original URL on error
+      req.url = originalUrl;
+      next(err);
+    };
+
+    proxy(req, res, (err) => {
+      // Restore original URL after proxy completes
+      req.url = originalUrl;
+      if (err) {
+        Logger.error(`[PROXY ERROR] ${req.method} ${req.originalUrl}: ${err.message}`);
+        if (!res.headersSent) {
+          res.status(503).json({
+            success: false,
+            message: 'Now API Gateway is Down',
+            description: 'Unable to connect to the API Gateway.',
+            details: 'No services can be reached at the moment.',
+            action: 'Please contact the System Administrator.',
+            service: firstSegment,
+            error: err.code,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    });
+    return;
   }
 
+  // Restore original URL if no proxy
+  req.url = originalUrl;
   return res.status(500).json({ success: false, message: 'Proxy not available' });
 });
 
@@ -422,7 +470,12 @@ app.use((req, res) => {
   Logger.warn(`[404] ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     success: false,
-    message: `Route ${req.method} ${req.originalUrl} not found`,
+    message: 'Now API Gateway is Down',
+    description: 'Unable to connect to the API Gateway.',
+    details: 'No services can be reached at the moment.',
+    action: 'Please contact the System Administrator.',
+    path: req.originalUrl,
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -433,8 +486,12 @@ app.use((err, req, res, next) => {
   Logger.error(`Server Error: ${err.message}`);
   res.status(500).json({
     success: false,
-    message: 'Internal Server Error',
-    error: isProd ? undefined : err.message
+    message: 'Now API Gateway is Down',
+    description: 'Unable to connect to the API Gateway.',
+    details: 'No services can be reached at the moment.',
+    action: 'Please contact the System Administrator.',
+    error: isProd ? undefined : err.message,
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -454,7 +511,7 @@ app.get('/health', (req, res) => {
   });
 
   const allHealthy = Object.values(serviceHealth).every(h => h.isHealthy);
-  
+
   res.json({
     success: true,
     status: allHealthy ? 'ok' : 'degraded',
@@ -469,7 +526,7 @@ app.get('/health', (req, res) => {
 app.get('/health/:service', async (req, res) => {
   const serviceName = req.params.service;
   const url = SERVICE_URLS[serviceName];
-  
+
   if (!url) {
     return res.status(404).json({
       success: false,
@@ -480,7 +537,7 @@ app.get('/health/:service', async (req, res) => {
   // Trigger immediate health check
   const baseUrl = url.split('/')[0] + '//' + url.split('/')[2];
   await checkServiceHealth(serviceName, baseUrl);
-  
+
   const health = serviceHealth[serviceName];
   res.json({
     success: true,
@@ -506,6 +563,7 @@ process.on('SIGTERM', () => {
   server.close(() => process.exit(0));
 });
 
+
 // START SERVER
 
 const server = app.listen(PORT, HOST, async () => {
@@ -514,7 +572,7 @@ const server = app.listen(PORT, HOST, async () => {
   Logger.info(' Available Endpoints:');
   Logger.info(`   GET  http://localhost:${PORT}/health`);
   Logger.info(`   GET  http://localhost:${PORT}/health/:service`);
-  
+
   // Perform initial health check on startup
   Logger.info(' Performing initial health checks...');
   await performHealthChecks();

@@ -182,24 +182,506 @@ const DashboardTab = () => {
   const lowStock = materials.filter(m => m.quantity <= m.minLevel).length;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-      <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
-        <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Total Orders</div>
-        <div style={{ fontSize: 32, fontWeight: 700, color: T.t1 }}>{totalOrders}</div>
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
+          <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Total Orders</div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: T.t1 }}>{totalOrders}</div>
+        </div>
+        <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
+          <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Active Orders</div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: T.accent }}>{activeOrders}</div>
+        </div>
+        <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
+          <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Completed Today</div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: T.ok }}>{completedToday}</div>
+        </div>
+        <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
+          <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Low Stock Items</div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: lowStock > 0 ? T.err : T.t3 }}>{lowStock}</div>
+        </div>
       </div>
-      <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
-        <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Active Orders</div>
-        <div style={{ fontSize: 32, fontWeight: 700, color: T.accent }}>{activeOrders}</div>
+
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        <button onClick={() => openModal('createOrder')} style={{ padding: '12px 24px', borderRadius: 10, background: T.accent, color: '#fff', border: 'none', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <i className="fas fa-plus" style={{ fontSize: 12 }} />
+          Create Order
+        </button>
+        <button onClick={() => openModal('addMaterial')} style={{ padding: '12px 24px', borderRadius: 10, background: T.ok, color: '#fff', border: 'none', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <i className="fas fa-box" style={{ fontSize: 12 }} />
+          Add Material
+        </button>
       </div>
-      <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
-        <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Completed Today</div>
-        <div style={{ fontSize: 32, fontWeight: 700, color: T.ok }}>{completedToday}</div>
-      </div>
-      <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
-        <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Low Stock Items</div>
-        <div style={{ fontSize: 32, fontWeight: 700, color: lowStock > 0 ? T.err : T.t3 }}>{lowStock}</div>
+
+      <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
+        <h3 style={{ fontSize: 18, fontWeight: 600, color: T.t1, marginBottom: 16 }}>Recent Activity</h3>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {activity.slice(0, 5).map((act, i) => (
+            <div key={i} style={{ padding: 12, background: T.bg, borderRadius: 8, fontSize: 14, color: T.t2 }}>
+              <span style={{ fontWeight: 600, color: T.t1 }}>{act.worker?.name}</span> {act.action} <span style={{ color: T.accent }}>{act.coffin?.orderNumber}</span>
+              <span style={{ float: 'right', color: T.t3, fontSize: 12 }}>{timeAgo(act.time)}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+//  PRODUCTION TAB
+// ═══════════════════════════════════════════════════════════
+const ProductionTab = () => {
+  const ctx = useContext(Ctx);
+  if (!ctx) return null;
+  const { orders } = ctx;
+
+  return (
+    <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
+      <h2 style={{ fontSize: 24, fontWeight: 700, color: T.t1, marginBottom: 16 }}>Production Pipeline</h2>
+      <p style={{ color: T.t3, marginBottom: 24 }}>Track orders through production stages</p>
+      <div style={{ display: 'grid', gap: 12 }}>
+        {orders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem', color: T.t3 }}>No orders in production</div>
+        ) : (
+          orders.filter(o => o.currentStage !== 'completed').map(order => (
+            <div key={order.id} style={{ padding: 16, background: T.bg, borderRadius: 12, border: `1px solid ${T.bdr}` }}>
+              <div style={{ fontWeight: 600, color: T.t1 }}>{order.orderNumber}</div>
+              <div style={{ fontSize: 14, color: T.t3, marginTop: 4 }}>{order.customerName} — {order.deceasedName}</div>
+              <div style={{ fontSize: 12, color: T.accent, marginTop: 8, textTransform: 'capitalize' }}>
+                Current Stage: {order.currentStage.replace(/_/g, ' ')}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+//  LEADERBOARD TAB
+// ═══════════════════════════════════════════════════════════
+const LeaderboardTab = () => {
+  const ctx = useContext(Ctx);
+  if (!ctx) return null;
+  const { workers } = ctx;
+
+  return (
+    <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
+      <h2 style={{ fontSize: 24, fontWeight: 700, color: T.t1, marginBottom: 16 }}>Worker Leaderboard</h2>
+      <p style={{ color: T.t3, marginBottom: 24 }}>Top performing workers this month</p>
+      <div style={{ display: 'grid', gap: 12 }}>
+        {workers.sort((a, b) => b.monthCount - a.monthCount).slice(0, 10).map((worker, idx) => (
+          <div key={worker.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, background: T.bg, borderRadius: 12, border: `1px solid ${T.bdr}` }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: idx < 3 ? T.accent : T.bdrS, color: idx < 3 ? '#fff' : T.t1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 }}>
+              {idx + 1}
+            </div>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', background: worker.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14 }}>
+              {worker.initials}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, color: T.t1 }}>{worker.name}</div>
+              <div style={{ fontSize: 13, color: T.t3 }}>{worker.role}</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontWeight: 700, color: T.accent, fontSize: 18 }}>{worker.monthCount}</div>
+              <div style={{ fontSize: 12, color: T.t3 }}>orders</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+//  INSIGHTS TAB
+// ═══════════════════════════════════════════════════════════
+const InsightsTab = () => {
+  const ctx = useContext(Ctx);
+  if (!ctx) return null;
+  const { orders, activity } = ctx;
+
+  const completedOrders = orders.filter(o => o.currentStage === 'completed').length;
+  const completionRate = orders.length > 0 ? Math.round((completedOrders / orders.length) * 100) : 0;
+
+  return (
+    <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
+      <h2 style={{ fontSize: 24, fontWeight: 700, color: T.t1, marginBottom: 16 }}>Production Insights</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <div style={{ padding: 20, background: T.accentBg, borderRadius: 12, border: `1px solid ${T.accent}20` }}>
+          <div style={{ fontSize: 12, color: T.accent, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>Completion Rate</div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: T.accent }}>{completionRate}%</div>
+        </div>
+        <div style={{ padding: 20, background: T.okBg, borderRadius: 12, border: `1px solid ${T.ok}20` }}>
+          <div style={{ fontSize: 12, color: T.ok, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>Completed Orders</div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: T.ok }}>{completedOrders}</div>
+        </div>
+        <div style={{ padding: 20, background: T.warnBg, borderRadius: 12, border: `1px solid ${T.warn}20` }}>
+          <div style={{ fontSize: 12, color: T.warn, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>Active Orders</div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: T.warn }}>{orders.filter(o => o.currentStage !== 'completed').length}</div>
+        </div>
+      </div>
+      <h3 style={{ fontSize: 18, fontWeight: 600, color: T.t1, marginBottom: 12 }}>Recent Activity</h3>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {activity.slice(0, 5).map((act, i) => (
+          <div key={i} style={{ padding: 12, background: T.bg, borderRadius: 8, fontSize: 14, color: T.t2 }}>
+            <span style={{ fontWeight: 600, color: T.t1 }}>{act.worker?.name}</span> {act.action} <span style={{ color: T.accent }}>{act.coffin?.orderNumber}</span>
+            <span style={{ float: 'right', color: T.t3, fontSize: 12 }}>{timeAgo(act.time)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+//  ANALYTICS TAB
+// ═══════════════════════════════════════════════════════════
+const AnalyticsTab = () => {
+  const ctx = useContext(Ctx);
+  if (!ctx) return null;
+  const { orders, materials } = ctx;
+
+  const typeCount = orders.reduce((acc, o) => { acc[o.coffinType] = (acc[o.coffinType] || 0) + 1; return acc; }, {});
+  const totalRevenue = orders.reduce((sum, o) => sum + (o.price || 0), 0);
+
+  return (
+    <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
+      <h2 style={{ fontSize: 24, fontWeight: 700, color: T.t1, marginBottom: 16 }}>Analytics</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <div style={{ padding: 20, background: T.purpleBg, borderRadius: 12, border: `1px solid ${T.purple}20` }}>
+          <div style={{ fontSize: 12, color: T.purple, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>Total Revenue</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: T.purple }}>KES {totalRevenue.toLocaleString()}</div>
+        </div>
+        <div style={{ padding: 20, background: T.cyanBg, borderRadius: 12, border: `1px solid ${T.cyan}20` }}>
+          <div style={{ fontSize: 12, color: T.cyan, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>Total Orders</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: T.cyan }}>{orders.length}</div>
+        </div>
+      </div>
+      <h3 style={{ fontSize: 18, fontWeight: 600, color: T.t1, marginBottom: 12 }}>Orders by Type</h3>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {Object.entries(typeCount).map(([type, count]) => (
+          <div key={type} style={{ display: 'flex', justifyContent: 'space-between', padding: 12, background: T.bg, borderRadius: 8 }}>
+            <span style={{ color: T.t2 }}>{type}</span>
+            <span style={{ fontWeight: 600, color: T.t1 }}>{count}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+//  WORKERS TAB
+// ═══════════════════════════════════════════════════════════
+const WorkersTab = () => {
+  const ctx = useContext(Ctx);
+  if (!ctx) return null;
+  const { workers } = ctx;
+
+  return (
+    <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
+      <h2 style={{ fontSize: 24, fontWeight: 700, color: T.t1, marginBottom: 16 }}>Workers Management</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+        {workers.map(worker => (
+          <div key={worker.id} style={{ padding: 20, background: T.bg, borderRadius: 12, border: `1px solid ${T.bdr}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{ width: 48, height: 48, borderRadius: '50%', background: worker.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 16 }}>
+                {worker.initials}
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, color: T.t1 }}>{worker.name}</div>
+                <div style={{ fontSize: 13, color: T.t3 }}>{worker.role}</div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, textAlign: 'center' }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: T.accent }}>{worker.todayCount}</div>
+                <div style={{ fontSize: 11, color: T.t3 }}>Today</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: T.ok }}>{worker.weekCount}</div>
+                <div style={{ fontSize: 11, color: T.t3 }}>Week</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: T.purple }}>{worker.monthCount}</div>
+                <div style={{ fontSize: 11, color: T.t3 }}>Month</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+//  MATERIALS TAB
+// ═══════════════════════════════════════════════════════════
+const MaterialsTab = () => {
+  const ctx = useContext(Ctx);
+  if (!ctx) return null;
+  const { materials, restockMat } = ctx;
+
+  return (
+    <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
+      <h2 style={{ fontSize: 24, fontWeight: 700, color: T.t1, marginBottom: 16 }}>Materials Inventory</h2>
+      <div style={{ display: 'grid', gap: 12 }}>
+        {materials.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem', color: T.t3 }}>No materials in inventory</div>
+        ) : (
+          materials.map(mat => (
+            <div key={mat.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: T.bg, borderRadius: 12, border: `1px solid ${T.bdr}` }}>
+              <div>
+                <div style={{ fontWeight: 600, color: T.t1 }}>{mat.name}</div>
+                <div style={{ fontSize: 13, color: T.t3, marginTop: 4 }}>{mat.category} • {mat.unit}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 700, color: mat.quantity <= mat.minLevel ? T.err : T.t1, fontSize: 18 }}>{mat.quantity}</div>
+                  <div style={{ fontSize: 11, color: T.t3 }}>in stock</div>
+                </div>
+                {mat.quantity <= mat.minLevel && (
+                  <button onClick={() => restockMat(mat.id)} style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${T.ok}`, background: T.okBg, color: T.ok, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                    Restock
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+//  TOASTS COMPONENT
+// ═══════════════════════════════════════════════════════════
+const Toasts = () => {
+  const ctx = useContext(Ctx);
+  if (!ctx) return null;
+  const { toasts } = ctx;
+
+  const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle', warning: 'fa-exclamation-triangle' };
+  const colors = { success: T.ok, error: T.err, info: T.info, warning: T.warn };
+  const bgs = { success: T.okBg, error: T.errBg, info: T.infoBg, warning: T.warnBg };
+
+  return (
+    <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 400 }}>
+      {toasts.map(t => (
+        <div key={t.id} style={{
+          padding: '14px 18px', borderRadius: 12, background: bgs[t.type] || T.surface,
+          border: `1px solid ${colors[t.type] || T.bdr}`, color: colors[t.type] || T.t1,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transform: t.out ? 'translateX(120%)' : 'translateX(0)',
+          transition: 'transform 0.3s ease', display: 'flex', alignItems: 'center', gap: 12
+        }}>
+          <i className={`fas ${icons[t.type] || 'fa-info-circle'}`} style={{ fontSize: 18 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{t.title}</div>
+            <div style={{ fontSize: 13, opacity: 0.9, marginTop: 2 }}>{t.msg}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+//  TOP NAVIGATION
+// ═══════════════════════════════════════════════════════════
+const TopNav = ({ tab, setTab }) => {
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-pie' },
+    { id: 'production', label: 'Production', icon: 'fa-industry' },
+    { id: 'leaderboard', label: 'Leaderboard', icon: 'fa-trophy' },
+    { id: 'insights', label: 'Insights', icon: 'fa-lightbulb' },
+    { id: 'analytics', label: 'Analytics', icon: 'fa-chart-line' },
+    { id: 'workers', label: 'Workers', icon: 'fa-users' },
+    { id: 'materials', label: 'Materials', icon: 'fa-boxes-stacked' },
+  ];
+
+  return (
+    <div style={{
+      background: T.surface, borderBottom: `1px solid ${T.bdr}`, padding: '0 1.5rem',
+      display: 'flex', alignItems: 'center', gap: 4, overflowX: 'auto', position: 'sticky', top: 0, zIndex: 100
+    }}>
+      {tabs.map(t => (
+        <button key={t.id} onClick={() => setTab(t.id)} style={{
+          padding: '14px 18px', background: 'transparent', border: 'none', borderBottom: tab === t.id ? `3px solid ${T.accent}` : '3px solid transparent',
+          color: tab === t.id ? T.accent : T.t3, fontWeight: tab === t.id ? 600 : 500, fontSize: 14, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', transition: 'all 0.2s'
+        }}>
+          <i className={`fas ${t.icon}`} style={{ fontSize: 14 }} />
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+//  MODAL ROUTER
+// ═══════════════════════════════════════════════════════════
+const ModalRouter = ({ type, data, close }) => {
+  if (!type) return null;
+
+  const ctx = useContext(Ctx);
+  if (!ctx) return null;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 20
+    }} onClick={close}>
+      <div style={{
+        background: T.surface, borderRadius: 16, maxWidth: 600, width: '100%', maxHeight: '90vh',
+        overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${T.bdr}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: 20, fontWeight: 700, color: T.t1, margin: 0 }}>{type === 'createOrder' ? 'Create New Order' : type === 'addMaterial' ? 'Add Material' : type}</h3>
+          <button onClick={close} style={{ background: 'none', border: 'none', fontSize: 24, color: T.t3, cursor: 'pointer', lineHeight: 1 }}>×</button>
+        </div>
+        <div style={{ padding: 24 }}>
+          {type === 'createOrder' && <CreateOrderModal close={close} />}
+          {type === 'addMaterial' && <AddMaterialModal close={close} />}
+          {!['createOrder', 'addMaterial'].includes(type) && <div style={{ color: T.t3 }}>Modal content coming soon</div>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+//  CREATE ORDER MODAL
+// ═══════════════════════════════════════════════════════════
+const CreateOrderModal = ({ close }) => {
+  const ctx = useContext(Ctx);
+  if (!ctx) return null;
+  const { createOrder } = ctx;
+
+  const [form, setForm] = useState({ cust: '', dec: '', type: 'Standard', pri: 'normal', col: 'Walnut', int: 'Satin Gold', due: '' });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    createOrder(form.cust, form.dec, form.type, form.pri, form.col, form.int, form.due);
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ display: 'grid', gap: 16 }}>
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Customer Name</label>
+          <input required value={form.cust} onChange={e => setForm({ ...form, cust: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Deceased Name</label>
+          <input required value={form.dec} onChange={e => setForm({ ...form, dec: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Coffin Type</label>
+            <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }}>
+              {CTYPES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Priority</label>
+            <select value={form.pri} onChange={e => setForm({ ...form, pri: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }}>
+              <option value="normal">Normal</option>
+              <option value="urgent">Urgent</option>
+              <option value="express">Express</option>
+            </select>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Color</label>
+            <select value={form.col} onChange={e => setForm({ ...form, col: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }}>
+              {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Interior</label>
+            <select value={form.int} onChange={e => setForm({ ...form, int: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }}>
+              {INTERIORS.map(i => <option key={i} value={i}>{i}</option>)}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Due Date</label>
+          <input type="date" value={form.due} onChange={e => setForm({ ...form, due: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
+        </div>
+        <button type="submit" style={{ padding: '12px 24px', borderRadius: 10, background: T.accent, color: '#fff', border: 'none', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>
+          Create Order
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+//  ADD MATERIAL MODAL
+// ═══════════════════════════════════════════════════════════
+const AddMaterialModal = ({ close }) => {
+  const ctx = useContext(Ctx);
+  if (!ctx) return null;
+  const { addMaterial } = ctx;
+
+  const [form, setForm] = useState({ name: '', cat: '', unit: 'pcs', qty: '', min: 10, cost: '', sup: '' });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    addMaterial(form);
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ display: 'grid', gap: 16 }}>
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Material Name</label>
+          <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Category</label>
+            <input required value={form.cat} onChange={e => setForm({ ...form, cat: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Unit</label>
+            <select value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }}>
+              <option value="pcs">Pieces</option>
+              <option value="kg">Kilograms</option>
+              <option value="liters">Liters</option>
+              <option value="meters">Meters</option>
+            </select>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Quantity</label>
+            <input type="number" required value={form.qty} onChange={e => setForm({ ...form, qty: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Min Stock Level</label>
+            <input type="number" value={form.min} onChange={e => setForm({ ...form, min: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
+          </div>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Cost per Unit (KES)</label>
+          <input type="number" required value={form.cost} onChange={e => setForm({ ...form, cost: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Supplier</label>
+          <input value={form.sup} onChange={e => setForm({ ...form, sup: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
+        </div>
+        <button type="submit" style={{ padding: '12px 24px', borderRadius: 10, background: T.accent, color: '#fff', border: 'none', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>
+          Add Material
+        </button>
+      </div>
+    </form>
   );
 };
 
@@ -217,7 +699,7 @@ const WorkshopDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [connected, setConnected] = useState(false);
-  
+
   const { socket, connected: socketConnected } = useSocket();
   const tid = useRef(0);
 
@@ -266,7 +748,7 @@ const WorkshopDashboard = () => {
       console.log('[Workshop] Stage update:', data);
       setOrders(prev => prev.map(o => {
         if (o.id !== data.orderId) return o;
-        const newStages = o.stages.map(s => 
+        const newStages = o.stages.map(s =>
           s.id === data.stageId ? { ...s, status: data.status, completedAt: data.completedAt ? new Date(data.completedAt) : null } : s
         );
         return { ...o, stages: newStages };
@@ -405,11 +887,11 @@ const WorkshopDashboard = () => {
 
       const nextStage = STAGES[currentIdx + 1];
       const res = await workshopService.completeStage(oid, nextStage.id);
-      
+
       if (res.success) {
         setOrders(p => p.map(o => {
           if (o.id !== oid) return o;
-          const newStages = o.stages.map(s => 
+          const newStages = o.stages.map(s =>
             s.id === o.currentStage ? { ...s, status: 'completed', completedAt: new Date() } : s
           );
           newStages.push({ ...nextStage, status: 'in_progress', startedAt: new Date(), completedAt: null });

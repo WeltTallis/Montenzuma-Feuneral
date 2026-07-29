@@ -39,7 +39,7 @@ const TENANT_SERVICE_MIGRATIONS: Migration[] = [
   },
   {
     name: '003_create_users_table',
-    sql: `CREATE TABLE IF NOT EXISTS users (user_id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, full_name VARCHAR(255) NOT NULL, phone VARCHAR(20), role VARCHAR(100) DEFAULT 'staff' NOT NULL, slug VARCHAR(255) NULL UNIQUE, branch_id INT NULL, is_active BOOLEAN DEFAULT TRUE, is_verified BOOLEAN DEFAULT FALSE, last_login_at TIMESTAMP NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_email (email), INDEX idx_role (role), INDEX idx_slug (slug), INDEX idx_branch_id (branch_id), FOREIGN KEY (branch_id) REFERENCES branches(branch_id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    sql: `CREATE TABLE IF NOT EXISTS users (user_id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, full_name VARCHAR(255) NOT NULL, username VARCHAR(255) NOT NULL UNIQUE, phone VARCHAR(20), role VARCHAR(100) DEFAULT 'staff' NOT NULL, slug VARCHAR(255) NULL UNIQUE, branch_id INT NULL, is_active BOOLEAN DEFAULT TRUE, is_verified BOOLEAN DEFAULT FALSE, last_login_at TIMESTAMP NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_email (email), INDEX idx_username (username), INDEX idx_role (role), INDEX idx_slug (slug), INDEX idx_branch_id (branch_id), FOREIGN KEY (branch_id) REFERENCES branches(branch_id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
   {
     name: '003_create_refresh_tokens_table',

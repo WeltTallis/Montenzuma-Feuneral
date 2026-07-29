@@ -750,10 +750,12 @@ export class TenantModel {
                 const branches = branchRows as any[];
                 const primaryBranchId = branches.length > 0 ? branches[0].branch_id : null;
 
+                const adminUsername = full_name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+
                 await tenantConnForUser.query(`
-                    INSERT INTO users (email, password_hash, full_name, phone, role, branch_id, is_verified, is_active)
-                    VALUES (?, ?, ?, ?, 'admin', ?, 1, 1)
-                `, [email, password_hash, full_name, phone || '', primaryBranchId]);
+                    INSERT INTO users (email, password_hash, full_name, username, phone, role, branch_id, is_verified, is_active)
+                    VALUES (?, ?, ?, ?, ?, 'admin', ?, 1, 1)
+                `, [email, password_hash, full_name, adminUsername, phone || '', primaryBranchId]);
                 console.log(`✅ Admin user created in tenant database for login control (branch_id: ${primaryBranchId})`);
             } finally {
                 await tenantConnForUser.end();

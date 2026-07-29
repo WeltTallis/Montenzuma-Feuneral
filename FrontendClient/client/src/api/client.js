@@ -53,12 +53,27 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+
+    // Don't attempt refresh for login/refresh endpoints to avoid loops
+    const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
+      originalRequest.url?.includes('/auth/refresh') ||
+      originalRequest.url?.includes('/auth/logout');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
       try {
         const refreshUrl = env.API_URL + ENDPOINTS.AUTH.REFRESH;
         // Include refreshToken in request body
         const refreshToken = localStorage.getItem('refreshToken');
+
+        if (!refreshToken) {
+          // No refresh token available, clear auth and reject
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+          return Promise.reject(error);
+        }
 
         const response = await axios.post(refreshUrl, { refreshToken }, { withCredentials: true });
 

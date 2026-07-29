@@ -5,7 +5,7 @@ import path from 'path';
 import zlib from 'zlib';
 import { safeTenantQuery } from '../../../shared/dbConfig';
 import Logger from '../../../packages/shared-logger/src/index';
-import { excelExportQueue } from '../queues/excelExportQueue';
+import { getExcelExportQueue } from '../queues/excelExportQueue';
 
 interface ExportJobData {
   tenantId: number;
@@ -17,215 +17,236 @@ interface ExportJobData {
   requestedBy?: string;
 }
 
-const worker = new Worker<ExportJobData>(
-  'excel-export',
-  async (job) => {
-    const { tenantId, tenantSlug, dbName, startDate, endDate, requestedBy } = job.data;
+/**
+ * Create and configure the Excel export worker
+ * This function should be called only when Redis is available
+ */
+export async function createExcelExportWorker(): Promise<Worker | null> {
+  try {
+    const queue = await getExcelExportQueue();
+    if (!queue) {
+      Logger.warn('[ExcelExportWorker] Cannot create worker - queue not available');
+      return null;
+    }
 
-    try {
-      Logger.info({ message: `Starting Excel export for tenant ${tenantSlug}` });
+    const worker = new Worker<ExportJobData>(
+      'excel-export',
+      async (job) => {
+        const { tenantId, tenantSlug, dbName, startDate, endDate, requestedBy } = job.data;
 
-      // Update job progress
-      await job.updateProgress(10);
+        try {
+          Logger.info({ message: `Starting Excel export for tenant ${tenantSlug}` });
 
-      // Build query with date filters
-      let whereClause = '';
-      const params: any[] = [];
+          // Update job progress
+          await job.updateProgress(10);
 
-      if (startDate && endDate) {
-        whereClause = 'WHERE created_at BETWEEN ? AND ?';
-        params.push(startDate, endDate);
-      }
+          // Build query with date filters
+          let whereClause = '';
+          const params: any[] = [];
 
-      // Fetch deceased records
-      const query = `
-        SELECT 
-          deceased_id,
-          full_name,
-          date_of_birth,
-          date_of_death,
-          next_of_kin,
-          service_type,
-          body_status,
-          release_date,
-          created_at
-        FROM deceased
-        ${whereClause}
-        ORDER BY created_at DESC
-      `;
+          if (startDate && endDate) {
+            whereClause = 'WHERE created_at BETWEEN ? AND ?';
+            params.push(startDate, endDate);
+          }
 
-      await job.updateProgress(30);
-      const records = await safeTenantQuery(dbName, query, params);
+          // Fetch deceased records
+          const query = `
+            SELECT 
+              deceased_id,
+              full_name,
+              date_of_birth,
+              date_of_death,
+              next_of_kin,
+              service_type,
+              body_status,
+              release_date,
+              created_at
+            FROM deceased
+            ${whereClause}
+            ORDER BY created_at DESC
+          `;
 
-      // Create workbook
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Deceased Records');
+          await job.updateProgress(30);
+          const records = await safeTenantQuery(dbName, query, params);
 
-      // Define columns
-      worksheet.columns = [
-        { header: 'File ID', key: 'fileId', width: 18 },
-        { header: 'Full Name', key: 'fullName', width: 22 },
-        { header: 'Date of Birth', key: 'dob', width: 16 },
-        { header: 'Date of Death', key: 'dod', width: 16 },
-        { header: 'Next of Kin', key: 'nextOfKin', width: 20 },
-        { header: 'Service', key: 'service', width: 14 },
-        { header: 'Status', key: 'status', width: 14 },
-        { header: 'Release Date', key: 'releaseDate', width: 16 },
-        { header: 'Admission Date', key: 'admissionDate', width: 16 }
-      ];
+          // Create workbook
+          const workbook = new ExcelJS.Workbook();
+          const worksheet = workbook.addWorksheet('Deceased Records');
 
-      await job.updateProgress(50);
+          // Define columns
+          worksheet.columns = [
+            { header: 'File ID', key: 'fileId', width: 18 },
+            { header: 'Full Name', key: 'fullName', width: 22 },
+            { header: 'Date of Birth', key: 'dob', width: 16 },
+            { header: 'Date of Death', key: 'dod', width: 16 },
+            { header: 'Next of Kin', key: 'nextOfKin', width: 20 },
+            { header: 'Service', key: 'service', width: 14 },
+            { header: 'Status', key: 'status', width: 14 },
+            { header: 'Release Date', key: 'releaseDate', width: 16 },
+            { header: 'Admission Date', key: 'admissionDate', width: 16 }
+          ];
 
-      // Add title row
-      worksheet.mergeCells('A1:I1');
-      const titleCell = worksheet.getCell('A1');
-      titleCell.value = 'Lee Funeral Home - Deceased Records Export';
-      titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
-      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
+          await job.updateProgress(50);
 
-      // Add subtitle row
-      worksheet.mergeCells('A2:I2');
-      const subtitleCell = worksheet.getCell('A2');
-      subtitleCell.value = `Generated: ${new Date().toLocaleString()} • Author: ${requestedBy || 'System Admin'}`;
-      subtitleCell.font = { italic: true, size: 11, color: { argb: 'FFFFFFFF' } };
-      subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475A43' } };
+          // Add title row
+          worksheet.mergeCells('A1:I1');
+          const titleCell = worksheet.getCell('A1');
+          titleCell.value = 'Lee Funeral Home - Deceased Records Export';
+          titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+          titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+          titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
 
-      // Style header row
-      const headerRow = worksheet.getRow(4);
-      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8B7355' } };
-      headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
-      headerRow.height = 28;
+          // Add subtitle row
+          worksheet.mergeCells('A2:I2');
+          const subtitleCell = worksheet.getCell('A2');
+          subtitleCell.value = `Generated: ${new Date().toLocaleString()} • Author: ${requestedBy || 'System Admin'}`;
+          subtitleCell.font = { italic: true, size: 11, color: { argb: 'FFFFFFFF' } };
+          subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+          subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475A43' } };
 
-      await job.updateProgress(70);
+          // Style header row
+          const headerRow = worksheet.getRow(4);
+          headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8B7355' } };
+          headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+          headerRow.height = 28;
 
-      // Add data rows
-      const dataRows = (records as any[]) || [];
-      dataRows.forEach((record, index) => {
-        const rowNumber = 5 + index;
-        const row = worksheet.getRow(rowNumber);
+          await job.updateProgress(70);
 
-        row.getCell('A').value = record.deceased_id;
-        row.getCell('B').value = record.full_name;
-        row.getCell('C').value = record.date_of_birth ? new Date(record.date_of_birth).toLocaleDateString() : '—';
-        row.getCell('D').value = record.date_of_death ? new Date(record.date_of_death).toLocaleDateString() : '—';
-        row.getCell('E').value = record.next_of_kin || '—';
-        row.getCell('F').value = record.service_type || '—';
-        row.getCell('G').value = record.body_status || '—';
-        row.getCell('H').value = record.release_date ? new Date(record.release_date).toLocaleDateString() : '—';
-        row.getCell('I').value = record.created_at ? new Date(record.created_at).toLocaleDateString() : '—';
+          // Add data rows
+          const dataRows = (records as any[]) || [];
+          dataRows.forEach((record, index) => {
+            const rowNumber = 5 + index;
+            const row = worksheet.getRow(rowNumber);
 
-        // Style status cells
-        const statusCell = row.getCell('G');
-        const status = (record.body_status || '').toLowerCase();
-        if (status === 'released' || status === 'transferred') {
-          statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD5E5D0' } };
-          statusCell.font = { bold: true, color: { argb: 'FF2C3E26' } };
-        } else if (status === 'admitted' || status === 'active') {
-          statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8E0D5' } };
-          statusCell.font = { bold: true, color: { argb: 'FF5A4A38' } };
-        } else {
-          statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8D7DA' } };
-          statusCell.font = { bold: true, color: { argb: 'FF721C24' } };
-        }
+            row.getCell('A').value = record.deceased_id;
+            row.getCell('B').value = record.full_name;
+            row.getCell('C').value = record.date_of_birth ? new Date(record.date_of_birth).toLocaleDateString() : '—';
+            row.getCell('D').value = record.date_of_death ? new Date(record.date_of_death).toLocaleDateString() : '—';
+            row.getCell('E').value = record.next_of_kin || '—';
+            row.getCell('F').value = record.service_type || '—';
+            row.getCell('G').value = record.body_status || '—';
+            row.getCell('H').value = record.release_date ? new Date(record.release_date).toLocaleDateString() : '—';
+            row.getCell('I').value = record.created_at ? new Date(record.created_at).toLocaleDateString() : '—';
 
-        // Style file ID
-        row.getCell('A').font = { bold: true, color: { argb: 'FF8B7355' } };
+            // Style status cells
+            const statusCell = row.getCell('G');
+            const status = (record.body_status || '').toLowerCase();
+            if (status === 'released' || status === 'transferred') {
+              statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD5E5D0' } };
+              statusCell.font = { bold: true, color: { argb: 'FF2C3E26' } };
+            } else if (status === 'admitted' || status === 'active') {
+              statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8E0D5' } };
+              statusCell.font = { bold: true, color: { argb: 'FF5A4A38' } };
+            } else {
+              statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8D7DA' } };
+              statusCell.font = { bold: true, color: { argb: 'FF721C24' } };
+            }
 
-        // Style dates
-        row.getCell('C').font = { color: { argb: 'FF555555' } };
-        row.getCell('D').font = { color: { argb: 'FF555555' } };
-        row.getCell('H').font = { color: { argb: 'FF555555' } };
-        row.getCell('I').font = { color: { argb: 'FF555555' } };
+            // Style file ID
+            row.getCell('A').font = { bold: true, color: { argb: 'FF8B7355' } };
 
-        // Row styling
-        row.height = 22;
-        row.alignment = { vertical: 'middle' };
+            // Style dates
+            row.getCell('C').font = { color: { argb: 'FF555555' } };
+            row.getCell('D').font = { color: { argb: 'FF555555' } };
+            row.getCell('H').font = { color: { argb: 'FF555555' } };
+            row.getCell('I').font = { color: { argb: 'FF555555' } };
 
-        // Alternate row colors
-        if (index % 2 === 0) {
-          row.eachCell((cell) => {
-            if (!cell.fill || cell.fill.type !== 'pattern') {
-              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F7F4' } };
+            // Row styling
+            row.height = 22;
+            row.alignment = { vertical: 'middle' };
+
+            // Alternate row colors
+            if (index % 2 === 0) {
+              row.eachCell((cell) => {
+                if (!cell.fill || cell.fill.type !== 'pattern') {
+                  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F7F4' } };
+                }
+              });
             }
           });
+
+          await job.updateProgress(90);
+
+          // Generate filename
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('.')[0];
+          const filename = `Deceased_Records_${tenantSlug}_${timestamp}.xlsx`;
+          const filepath = path.join('/tmp', filename);
+
+          // Save file
+          await workbook.xlsx.writeFile(filepath);
+
+          // Compress the file to save space
+          const compressedFilename = `Deceased_Records_${tenantSlug}_${timestamp}.zip`;
+          const compressedFilepath = path.join('/tmp', compressedFilename);
+
+          const gzip = zlib.createGzip();
+          const inputStream = fs.createReadStream(filepath);
+          const outputStream = fs.createWriteStream(compressedFilepath);
+
+          await new Promise((resolve, reject) => {
+            inputStream.pipe(gzip).pipe(outputStream);
+            outputStream.on('finish', resolve);
+            outputStream.on('error', reject);
+          });
+
+          // Get file sizes for logging
+          const originalSize = fs.statSync(filepath).size;
+          const compressedSize = fs.statSync(compressedFilepath).size;
+          const compressionRatio = ((1 - compressedSize / originalSize) * 100).toFixed(2);
+
+          Logger.info({
+            message: `Excel export completed and compressed`,
+            originalSize: `${(originalSize / 1024).toFixed(2)} KB`,
+            compressedSize: `${(compressedSize / 1024).toFixed(2)} KB`,
+            compressionRatio: `${compressionRatio}%`
+          });
+
+          await job.updateProgress(100);
+
+          return {
+            success: true,
+            filename: compressedFilename,
+            filepath: compressedFilepath,
+            originalFilename: filename,
+            originalFilepath: filepath,
+            recordCount: dataRows.length,
+            tenantSlug,
+            compressionRatio: `${compressionRatio}%`,
+            originalSize,
+            compressedSize,
+          };
+
+        } catch (error: any) {
+          Logger.error({ message: 'Excel export failed', error: error.message });
+          throw error;
         }
-      });
+      },
+      {
+        connection: (queue as any).connection,
+        concurrency: 2,
+      }
+    );
 
-      await job.updateProgress(90);
+    worker.on('completed', (job) => {
+      Logger.info({ message: `Excel export job ${job.id} completed successfully` });
+    });
 
-      // Generate filename
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('.')[0];
-      const filename = `Deceased_Records_${tenantSlug}_${timestamp}.xlsx`;
-      const filepath = path.join('/tmp', filename);
+    worker.on('failed', (job, err) => {
+      Logger.error({ message: `Excel export job ${job?.id} failed`, error: err.message });
+    });
 
-      // Save file
-      await workbook.xlsx.writeFile(filepath);
+    worker.on('progress', (job, progress) => {
+      Logger.info({ message: `Excel export job ${job.id} progress: ${progress}%` });
+    });
 
-      // Compress the file to save space
-      const compressedFilename = `Deceased_Records_${tenantSlug}_${timestamp}.zip`;
-      const compressedFilepath = path.join('/tmp', compressedFilename);
-      
-      const gzip = zlib.createGzip();
-      const inputStream = fs.createReadStream(filepath);
-      const outputStream = fs.createWriteStream(compressedFilepath);
-      
-      await new Promise((resolve, reject) => {
-        inputStream.pipe(gzip).pipe(outputStream);
-        outputStream.on('finish', resolve);
-        outputStream.on('error', reject);
-      });
-
-      // Get file sizes for logging
-      const originalSize = fs.statSync(filepath).size;
-      const compressedSize = fs.statSync(compressedFilepath).size;
-      const compressionRatio = ((1 - compressedSize / originalSize) * 100).toFixed(2);
-
-      Logger.info({ 
-        message: `Excel export completed and compressed`,
-        originalSize: `${(originalSize / 1024).toFixed(2)} KB`,
-        compressedSize: `${(compressedSize / 1024).toFixed(2)} KB`,
-        compressionRatio: `${compressionRatio}%`
-      });
-
-      await job.updateProgress(100);
-
-      return {
-        success: true,
-        filename: compressedFilename,
-        filepath: compressedFilepath,
-        originalFilename: filename,
-        originalFilepath: filepath,
-        recordCount: dataRows.length,
-        tenantSlug,
-        compressionRatio: `${compressionRatio}%`,
-        originalSize,
-        compressedSize,
-      };
-
-    } catch (error: any) {
-      Logger.error({ message: 'Excel export failed', error: error.message });
-      throw error;
-    }
-  },
-  {
-    connection: (excelExportQueue as any).connection,
-    concurrency: 2,
+    Logger.info('[ExcelExportWorker] Worker created successfully');
+    return worker;
+  } catch (error: any) {
+    Logger.warn(`[ExcelExportWorker] Failed to create worker: ${error.message}`);
+    return null;
   }
-);
+}
 
-worker.on('completed', (job) => {
-  Logger.info({ message: `Excel export job ${job.id} completed successfully` });
-});
-
-worker.on('failed', (job, err) => {
-  Logger.error({ message: `Excel export job ${job?.id} failed`, error: err.message });
-});
-
-worker.on('progress', (job, progress) => {
-  Logger.info({ message: `Excel export job ${job.id} progress: ${progress}%` });
-});
-
-export default worker;
+// Legacy export for backward compatibility - but prefer using createExcelExportWorker()
+export { createExcelExportWorker as default };

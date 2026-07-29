@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { excelExportQueue } from '../queues/excelExportQueue';
+import { getExcelExportQueue, isExcelExportQueueAvailable } from '../queues/excelExportQueue';
 import Logger from '../../../packages/shared-logger/src/index';
 import { getKenyaTimeISO } from '../../../packages/shared-utils/dist/timestamps';
 
@@ -23,7 +23,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     const tenant = req.tenant;
     const tenantSlug = req.tenantSlug || 'unknown';
     const user = req.user;
-    
+
     if (!tenant?.db_name) {
       return res.status(400).json({
         success: false,
@@ -33,8 +33,17 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
 
     const { startDate, endDate } = req.body;
 
+    // Get queue (may be null if Redis is not available)
+    const queue = await getExcelExportQueue();
+    if (!queue) {
+      return res.status(503).json({
+        success: false,
+        message: 'Export service temporarily unavailable - Redis connection required for background processing'
+      });
+    }
+
     // Add job to queue
-    const job = await excelExportQueue.add(
+    const job = await queue.add(
       'export-excel',
       {
         tenantId: tenant.id || tenant.tenant_id,
@@ -82,7 +91,15 @@ export const checkExportStatus = async (req: ExportRequest, res: Response): Prom
     const { jobId } = req.params;
     const jobIdStr = Array.isArray(jobId) ? jobId[0] : jobId;
 
-    const job = await excelExportQueue.getJob(jobIdStr);
+    const queue = await getExcelExportQueue();
+    if (!queue) {
+      return res.status(503).json({
+        success: false,
+        message: 'Export service temporarily unavailable - Redis connection required'
+      });
+    }
+
+    const job = await queue.getJob(jobIdStr);
 
     if (!job) {
       return res.status(404).json({
@@ -96,14 +113,14 @@ export const checkExportStatus = async (req: ExportRequest, res: Response): Prom
 
     if (state === 'completed') {
       const result = job.returnvalue;
-      
+
       // Read the compressed file and send it
       const fs = require('fs');
       const filepath = result?.filepath;
-      
+
       if (filepath && fs.existsSync(filepath)) {
         const fileBuffer = fs.readFileSync(filepath);
-        
+
         // Clean up both compressed and original files after sending
         try {
           fs.unlinkSync(filepath);
@@ -116,7 +133,7 @@ export const checkExportStatus = async (req: ExportRequest, res: Response): Prom
 
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename=${result?.filename || 'export.zip'}`);
-        
+
         return res.send(fileBuffer);
       }
 
@@ -158,10 +175,18 @@ export const checkExportStatus = async (req: ExportRequest, res: Response): Prom
 export const getExportHistory = async (req: ExportRequest, res: Response): Promise<Response> => {
   try {
     const tenantSlug = req.tenantSlug || 'unknown';
-    
+
     // Get recent jobs from the queue
-    const jobs = await excelExportQueue.getJobs(['completed', 'failed'], 0, 19);
-    
+    const queue = await getExcelExportQueue();
+    if (!queue) {
+      return res.status(503).json({
+        success: false,
+        message: 'Export service temporarily unavailable - Redis connection required'
+      });
+    }
+
+    const jobs = await queue.getJobs(['completed', 'failed'], 0, 19);
+
     const history = jobs
       .filter(job => {
         const data = job.data;

@@ -1,23 +1,23 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Truck, MapPin, Phone, User, Clock, X, ArrowLeft, Calendar, Plus } from '../../utils/icons/icons';
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const WEEKDAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const STATUS_CONFIG = {
-  pending:    { label:'Pending',    color:'#F59E0B', bg:'rgba(245,158,11,.12)', strong:'#b45309' },
-  booked:     { label:'Booked',     color:'#2563EB', bg:'rgba(37,99,235,.12)', strong:'#1d4ed8' },
-  in_transit: { label:'In Transit', color:'#D32F2F', bg:'rgba(211,47,47,.12)', strong:'#b71c1c' },
-  completed:  { label:'Completed',  color:'#2E7D32', bg:'rgba(46,125,50,.12)', strong:'#1b5e20' },
-  cancelled:  { label:'Cancelled',  color:'#64748b', bg:'rgba(100,116,139,.12)', strong:'#475569' },
+  pending: { label: 'Pending', color: '#F59E0B', bg: 'rgba(245,158,11,.12)', strong: '#b45309' },
+  booked: { label: 'Booked', color: '#2563EB', bg: 'rgba(37,99,235,.12)', strong: '#1d4ed8' },
+  in_transit: { label: 'In Transit', color: '#D32F2F', bg: 'rgba(211,47,47,.12)', strong: '#b71c1c' },
+  completed: { label: 'Completed', color: '#2E7D32', bg: 'rgba(46,125,50,.12)', strong: '#1b5e20' },
+  cancelled: { label: 'Cancelled', color: '#64748b', bg: 'rgba(100,116,139,.12)', strong: '#475569' },
 };
 
-const pad = n => String(n).padStart(2,'0');
-const fmtDateStr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const pad = n => String(n).padStart(2, '0');
+const fmtDateStr = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const parseDate = s => { const d = new Date(s); return isNaN(d) ? null : d; };
-const addDays = (d,n) => { const x = new Date(d.getTime()); x.setDate(x.getDate()+n); return x; };
-const fmtTime = s => s ? new Date(s).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true}) : '';
-const fmtDateTime = s => s ? new Date(s).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : 'N/A';
+const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
+const fmtTime = s => s ? new Date(s).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+const fmtDateTime = s => s ? new Date(s).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
 
 const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onDateSelect, onCreateBooking }) => {
   const [calView, setCalView] = useState('month');
@@ -33,7 +33,7 @@ const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onD
       const start = b.start_date || fmtDateStr(new Date(b.booking_date || b.estimated_departure_time));
       const end = b.end_date || start;
       return dateStr >= start && dateStr <= end;
-    }).sort((a,b) => new Date(a.booking_date) - new Date(b.booking_date));
+    }).sort((a, b) => new Date(a.booking_date) - new Date(b.booking_date));
   }, [bookings]);
 
   const formatDateStr = useCallback((d) => {
@@ -120,11 +120,11 @@ const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onD
         <div style={styles.nav}>
           <div style={styles.title}>
             <button style={styles.arrowBtn} onClick={() => calNav(-1)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
             </button>
             {MONTHS[d.getMonth()]} {d.getFullYear()}
             <button style={styles.arrowBtn} onClick={() => calNav(1)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
             </button>
           </div>
           <button style={styles.todayBtn} onClick={calToday}>Today</button>
@@ -517,8 +517,8 @@ const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onD
 
           <div style={styles.modalFooter}>
             <button style={styles.cancelBtn} onClick={cancelDateSelection}>Cancel</button>
-            <button 
-              style={styles.confirmBtn} 
+            <button
+              style={styles.confirmBtn}
               onClick={confirmDateSelection}
               disabled={tempSelectedDates.length === 0}
             >
@@ -536,7 +536,7 @@ const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onD
       {renderToolbar()}
       <div style={{ background: '#f8fafc', position: 'relative' }}>
         {calView === 'month' ? renderMonthGrid() : renderWeekGrid()}
-        
+
         {/* Floating Add Button */}
         <button style={styles.fab} onClick={openDatePicker} title="Add new booking">
           <Plus size={24} />

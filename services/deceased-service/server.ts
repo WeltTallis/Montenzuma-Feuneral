@@ -215,8 +215,38 @@ const io = new SocketIOServer(server, {
 // Make io available globally for controllers
 (global as any).io = io;
 
-// Initialize BullMQ Worker for Excel Export
-import './workers/excelExportWorker';
+// Initialize BullMQ Worker for Excel Export (with graceful Redis fallback)
+import { getExcelExportQueue } from './queues/excelExportQueue';
+import { startPDFWorker } from './queues/pdfQueue';
+
+// Initialize queues asynchronously - don't block server startup
+async function initializeQueues() {
+    try {
+        const excelQueue = await getExcelExportQueue();
+        if (excelQueue) {
+            // Only import and start worker if queue is available
+            const { createExcelExportWorker } = await import('./workers/excelExportWorker.js');
+            const worker = await createExcelExportWorker();
+            if (worker) {
+                console.log('[SERVER] Excel export worker initialized');
+            } else {
+                console.log('[SERVER] Excel export worker not initialized - Redis not available');
+            }
+        } else {
+            console.log('[SERVER] Excel export worker not initialized - Redis not available');
+        }
+
+        // Initialize PDF worker
+        startPDFWorker();
+    } catch (error: any) {
+        console.warn(`[SERVER] Queue initialization failed: ${error.message}`);
+    }
+}
+
+// Start queue initialization in background
+initializeQueues().catch(err => {
+    console.warn('[SERVER] Background queue initialization error:', err.message);
+});
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {

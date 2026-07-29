@@ -32,7 +32,7 @@ const AlertMessage = ({ type, text }) => {
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login: authLogin } = useAuth();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -51,19 +51,13 @@ export default function LoginPage() {
     }
   }, [navigate]);
 
-  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const isFormValid = validateEmail(email) && password.length >= 6;
+  const isFormValid = identifier.trim().length > 0 && password.length >= 6;
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
 
-    if (!email.trim() || !password.trim()) {
-      setMessage({ type: 'error', text: 'Please enter both email and password.' });
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      setMessage({ type: 'error', text: 'Please enter a valid email address.' });
+    if (!identifier.trim() || !password.trim()) {
+      setMessage({ type: 'error', text: 'Please enter your username/email and password.' });
       return;
     }
 
@@ -72,7 +66,7 @@ export default function LoginPage() {
 
     try {
       const result = await authLogin({
-        identifier: email.trim(),
+        identifier: identifier.trim(),
         password: password.trim(),
       });
 
@@ -87,7 +81,7 @@ export default function LoginPage() {
           progress: undefined,
           theme: "light",
         });
-        
+
         const data = result;
         const tenantSlug = data.tenant?.tenantSlug || data.user?.tenantSlug;
 
@@ -145,7 +139,7 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  }, [email, password, navigate, authLogin]);
+  }, [identifier, password, navigate, authLogin]);
 
   const hasError = message.type === 'error';
 
@@ -283,7 +277,7 @@ export default function LoginPage() {
         }
       `}</style>
 
-      <ToastContainer 
+      <ToastContainer
         position="top-right"
         autoClose={5000}
         hideProgressBar={false}
@@ -296,7 +290,7 @@ export default function LoginPage() {
         theme="light"
         limit={3}
       />
-      
+
       <div className="login-container">
         {/* Sidebar */}
         <div className="login-sidebar">
@@ -327,25 +321,25 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit}>
             <AlertMessage type={message.type} text={message.text} />
 
-            {/* Email */}
+            {/* Username or Email */}
             <div className="form-group">
-              <label className="form-label">Email</label>
-              <div className={`input-wrapper ${hasError && !email ? 'error' : ''}`}>
+              <label className="form-label">Username or Email</label>
+              <div className={`input-wrapper ${hasError && !identifier ? 'error' : ''}`}>
                 <input
-                  type="email"
-                  value={email}
+                  type="text"
+                  value={identifier}
                   onChange={(e) => {
-                    setEmail(e.target.value);
+                    setIdentifier(e.target.value);
                     if (message.text) setMessage({ type: '', text: '' });
                   }}
-                  placeholder="director@funeralhome.co.ke"
+                  placeholder="Enter your username or email"
                   disabled={loading}
                   autoFocus
-                  autoComplete="email"
+                  autoComplete="username"
                   className="form-input"
                 />
               </div>
-              {hasError && !email && <span className="form-error">Email is required.</span>}
+              {hasError && !identifier && <span className="form-error">Username or email is required.</span>}
             </div>
 
             {/* Password */}
