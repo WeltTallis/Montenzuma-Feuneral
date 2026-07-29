@@ -183,7 +183,7 @@ export async function getRedisClient(): Promise<RedisClient | null> {
 
     client.on('error', (err) => {
       if (isConnected) {
-        Logger.error('[Redis]  Error:', err.message);
+        Logger.error(`[Redis]  Error: ${err.message}`);
       }
       isConnected = false;
     });

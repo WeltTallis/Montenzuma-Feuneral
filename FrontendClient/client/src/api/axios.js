@@ -86,8 +86,12 @@ export const startTokenRefresh = () => {
         { withCredentials: true }
       );
       const newToken = response.data?.token || response.data?.accessToken;
+      const newRefreshToken = response.data?.refreshToken;
       if (newToken) {
         setToken(newToken);
+        if (newRefreshToken) {
+          setRefreshToken(newRefreshToken);
+        }
         console.log('[Auth] Token refreshed successfully');
       }
     } catch (error) {
@@ -108,10 +112,13 @@ export const startTokenRefresh = () => {
             );
             if (retry.data?.token || retry.data?.accessToken) {
               setToken(retry.data.token || retry.data.accessToken);
+              const retryRefreshToken = retry.data?.refreshToken;
+              if (retryRefreshToken) {
+                setRefreshToken(retryRefreshToken);
+              }
               return;
             }
           } catch {
-            // Force logout
             forceLogout();
           }
         }, 30000);
@@ -129,7 +136,7 @@ export const stopTokenRefresh = () => {
   }
 };
 
-const forceLogout = () => {
+const forceLogout = (message = 'Your session has expired. Please log in again.') => {
   setToken(null);
   sessionStorage.removeItem('authToken');
   localStorage.removeItem('tenantId');
@@ -142,14 +149,16 @@ const forceLogout = () => {
   localStorage.removeItem('user');
   sessionStorage.removeItem('refreshToken');
   sessionStorage.removeItem('user');
-  // Preserve tenantSlug so we don't redirect to 'default'
-  // window.location.href = '/login';
+  if (typeof window !== 'undefined') {
+    alert(message);
+    window.location.href = '/login';
+  }
 };
 
 // ─── Main Axios Instance ──────────────────────────────────────────────────
 const api = axios.create({
   baseURL: env.FULL_API_URL,
-  withCredentials: true, // CRITICAL: sends httpOnly refresh cookie
+  withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
   timeout: env.API_TIMEOUT,
 });
@@ -159,8 +168,6 @@ api.interceptors.request.use((config) => {
   const token = getToken();
   const slug = getSlug();
   const tenantId = localStorage.getItem('tenantId');
-
-  // Get user ID from globalAuth
   const userId = getUserId();
 
   if (token) config.headers['Authorization'] = `Bearer ${token}`;
@@ -177,24 +184,27 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
-    // Handle 503 Service Unavailable (service is down)
     if (error.response?.status === 503) {
       const serviceName = error.response?.data?.service || 'Service';
       const friendlyName = serviceName.charAt(0).toUpperCase() + serviceName.slice(1);
-      console.warn(`[API] ${friendlyName} is unavailable:`, error.response?.data?.message);
-      // Return a structured error so UI can show friendly message
       error.friendlyMessage = error.response?.data?.message || `${friendlyName} is temporarily unavailable. Please try again later.`;
       return Promise.reject(error);
     }
-    
-    // Handle Network Error (service not reachable at all)
-    if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED') {
+
+    if (error.response?.status === 504) {
       const url = originalRequest?.url || '';
-      // Extract service name from URL path
       const pathParts = url.split('/').filter(Boolean);
       const serviceHint = pathParts[2] || pathParts[0] || 'Service';
       const friendlyName = serviceHint.charAt(0).toUpperCase() + serviceHint.slice(1);
-      console.warn(`[API] ${friendlyName} is not reachable:`, url);
+      error.friendlyMessage = `${friendlyName} is temporarily unavailable. Please try again later.`;
+      return Promise.reject(error);
+    }
+    
+    if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED') {
+      const url = originalRequest?.url || '';
+      const pathParts = url.split('/').filter(Boolean);
+      const serviceHint = pathParts[2] || pathParts[0] || 'Service';
+      const friendlyName = serviceHint.charAt(0).toUpperCase() + serviceHint.slice(1);
       error.friendlyMessage = `${friendlyName} service is temporarily unavailable. Please try again later.`;
       return Promise.reject(error);
     }
@@ -210,20 +220,28 @@ api.interceptors.response.use(
           { withCredentials: true }
         );
         const newToken = response.data?.token || response.data?.accessToken;
+        const newRefreshToken = response.data?.refreshToken;
         if (newToken) {
           setToken(newToken);
+          if (newRefreshToken) {
+            setRefreshToken(newRefreshToken);
+          }
           originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
           return api(originalRequest);
         }
       } catch (refreshError) {
-        forceLogout();
+        forceLogout('Your session has expired. Please log in again.');
         return Promise.reject(refreshError);
       }
+    }
+    
+    // Handle 401 without retry (already retried or not eligible) - show friendly message
+    if (error.response?.status === 401) {
+      error.friendlyMessage = error.response?.data?.message || 'Your session has expired. Please log in again.';
     }
     return Promise.reject(error);
   }
 );
 
-// Export forceLogout for use in auth store
 export { forceLogout };
 export default api;

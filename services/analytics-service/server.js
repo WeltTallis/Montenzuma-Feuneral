@@ -50,6 +50,15 @@ const io = new Server(server, {
 // Make io accessible to routes
 app.set('io', io);
 
+// Initialize Socket.IO for background analytics service
+try {
+  const { setSocketInstance } = require('./services/backgroundAnalytics.service');
+  setSocketInstance(io);
+  console.log('Background analytics Socket.IO initialized');
+} catch (err) {
+  console.warn('Background analytics Socket.IO could not be initialized:', err.message);
+}
+
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -100,6 +109,42 @@ app.use('/', analyticsRoutes);
 
 // Enhanced analytics routes
 app.use('/enhanced', enhancedAnalyticsRoutes);
+
+// Deceased analytics routes (TypeScript)
+try {
+  const deceasedAnalyticsRoutes = require('./routes/deceasedAnalytics.routes');
+  app.use('/', deceasedAnalyticsRoutes);
+  console.log('Deceased analytics routes loaded');
+} catch (err) {
+  console.warn('Deceased analytics routes could not be loaded:', err.message);
+}
+
+// Hearse analytics routes (TypeScript)
+try {
+  const hearseAnalyticsRoutes = require('./routes/hearseAnalytics.routes');
+  app.use('/', hearseAnalyticsRoutes);
+  console.log('Hearse analytics routes loaded');
+} catch (err) {
+  console.warn('Hearse analytics routes could not be loaded:', err.message);
+}
+
+// Flower booking analytics routes (TypeScript)
+try {
+  const flowerBookingAnalyticsRoutes = require('./routes/flowerBookingAnalytics.routes');
+  app.use('/', flowerBookingAnalyticsRoutes);
+  console.log('Flower booking analytics routes loaded');
+} catch (err) {
+  console.warn('Flower booking analytics routes could not be loaded:', err.message);
+}
+
+// Workshop analytics routes (TypeScript)
+try {
+  const workshopAnalyticsRoutes = require('./routes/workshopAnalytics.routes');
+  app.use('/', workshopAnalyticsRoutes);
+  console.log('Workshop analytics routes loaded');
+} catch (err) {
+  console.warn('Workshop analytics routes could not be loaded:', err.message);
+}
 
 // Start analytics worker (BullMQ) so background jobs are processed
 try {

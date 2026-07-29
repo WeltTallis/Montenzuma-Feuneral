@@ -115,38 +115,18 @@ if (process.env.LOG_LEVEL !== 'silent') {
 }
 
 // ============================================
-// 3. HEALTH CHECKS
+// 3. HEALTH CHECK
 // ============================================
 
 app.get('/health', (_req: Request, res: Response) => {
+  
   res.json({
     status: 'OK',
     service: 'auth-service',
     version: '2.0.0-ts',
     timestamp: new Date().toISOString(),
   });
-});
 
-app.get('/health/db', async (_req: Request, res: Response) => {
-  try {
-    const { checkDBConnection } = await import('./scripts/dbHealth');
-    const result = await checkDBConnection();
-    if (result.ok) {
-      return res.status(200).json({ ok: true, message: 'Database reachable' });
-    }
-    const err: any = result.error || {};
-    const msg = process.env.NODE_ENV === 'development'
-      ? (err.message || String(err))
-      : 'Database unreachable';
-    return res.status(503).json({ ok: false, message: msg });
-  } catch (error: any) {
-    return res.status(503).json({
-      ok: false,
-      message: process.env.NODE_ENV === 'development'
-        ? (error.message || String(error))
-        : 'Database unreachable',
-    });
-  }
 });
 
 // ============================================
@@ -162,7 +142,7 @@ app.use('/auth', authRoutes);
 app.get('/auth/csrf-token', (req: Request, res: Response) => {
   // Generate and return a CSRF token stored in session
   const token = req.sessionID + '-' + Date.now();
-  req.session.csrfToken = token;
+  (req.session as any).csrfToken = token;
   res.json({ success: true, csrfToken: token });
 });
 

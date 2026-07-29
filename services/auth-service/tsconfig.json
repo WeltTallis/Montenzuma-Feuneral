@@ -9,18 +9,16 @@
     "composite": true,
     "allowJs": true,
     "typeRoots": [
+      "./src/types",
       "./types",
       "../../node_modules/@types"
     ],
-    "paths": {
-      "*": [
-        "./types/*"
-      ]
-    }
+    "types": ["node", "express", "express-session"]
   },
   "include": [
     "*.ts",
-    "types/**/*.d.ts",
+    "src/**/*.ts",
+    "src/types/**/*.d.ts",
     "controllers/**/*.ts",
     "middleware/**/*.ts",
     "routes/**/*.ts",

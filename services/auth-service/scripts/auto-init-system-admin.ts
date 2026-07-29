@@ -27,10 +27,10 @@ const SYSTEM_ADMIN = {
     country: 'Kenya'
 };
 
-async function autoInitSystemAdmin() {
+export async function autoInitSystemAdmin() {
     let connection;
     try {
-        console.log('🔧 Checking system admin initialization...');
+        console.log(' Checking system admin initialization...');
 
         // Retry logic for DB connection (useful when DB is still starting)
         const maxAttempts = parseInt(process.env.DB_INIT_RETRY_ATTEMPTS || '5', 10);
@@ -54,14 +54,15 @@ async function autoInitSystemAdmin() {
             } catch (connErr) {
                 // If access denied, do not attempt auto-provisioning during startup in production.
                 // Instead, instruct operator to run the bootstrap tool with admin credentials.
-                if (connErr && (connErr.code === 'ER_ACCESS_DENIED_ERROR' || (connErr.message && connErr.message.includes('Access denied')))) {
+                const error: any = connErr;
+                if (error && (error.code === 'ER_ACCESS_DENIED_ERROR' || (error.message && error.message.includes('Access denied')))) {
                     console.error('❌ Database access denied for configured DB user. Auto-provisioning is disabled at startup to avoid unexpected privilege escalations.');
                     console.error('To provision the database and user, run the provided bootstrap script with administrator credentials (DB_ADMIN_USER / DB_ADMIN_PASSWORD).');
                     console.error(`Configured DB_USER=${process.env.DB_USER}, DB_HOST=${process.env.DB_HOST}, DB_PORT=${process.env.DB_PORT}`);
-                    throw connErr; // bubble to outer catch and return appropriate failure
+                    throw error; // bubble to outer catch and return appropriate failure
                 }
 
-                console.warn(`DB connection attempt ${attempt} failed: ${connErr.message || connErr}. Retrying in ${baseDelayMs}ms...`);
+                console.warn(`DB connection attempt ${attempt} failed: ${error.message || connErr}. Retrying in ${baseDelayMs}ms...`);
                 if (attempt < maxAttempts) {
                     await new Promise(res => setTimeout(res, baseDelayMs));
                 }
@@ -220,7 +221,7 @@ async function autoInitSystemAdmin() {
             role: SYSTEM_ADMIN.role
         };
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ Error initializing system admin:', error.message);
         return {
             success: false,

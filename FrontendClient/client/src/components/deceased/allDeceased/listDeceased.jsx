@@ -6,7 +6,7 @@ import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
 
-const API_GATEWAY_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_GATEWAY_URL = import.meta.env.VITE_API_URL || '/api/v1/restpoint';
 const BASE_URL = `${API_GATEWAY_URL}/deceased`;
 
 // ─── Global Font Styles ─────────────────────────────────────────────
@@ -281,10 +281,19 @@ const DeceasedListPage = () => {
   const [showExport, setShowExport] = useState(false);
   const [exportStart, setExportStart] = useState('');
   const [exportEnd, setExportEnd] = useState('');
+  const [exportJobId, setExportJobId] = useState(null);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportStatus, setExportStatus] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [serviceUnavailable, setServiceUnavailable] = useState(false);
+  const [unavailableMessage, setUnavailableMessage] = useState('');
+  const exportCleanupRef = React.useRef(null);
 
   // ─── Fetch Deceased ──────────────────────────────────────────────
   const fetchDeceased = useCallback(async () => {
     setLoading(true);
+    setServiceUnavailable(false);
+    setUnavailableMessage('');
     try {
       const tenantSlug = getTenantSlug();
       const params = {};
@@ -302,6 +311,11 @@ const DeceasedListPage = () => {
     } catch (err) {
       console.error('Error fetching deceased:', err);
       setRecords([]);
+      // Show friendly message if service is unavailable
+      if (err.friendlyMessage) {
+        setServiceUnavailable(true);
+        setUnavailableMessage(err.friendlyMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -310,6 +324,20 @@ const DeceasedListPage = () => {
   useEffect(() => {
     fetchDeceased();
   }, [fetchDeceased]);
+
+  // Cleanup export state when component unmounts
+  useEffect(() => {
+    return () => {
+      if (exportCleanupRef.current) {
+        exportCleanupRef.current();
+      }
+      setExporting(false);
+      setShowExport(false);
+      setExportStatus('');
+      setExportProgress(0);
+      setExportJobId(null);
+    };
+  }, []);
 
   // ─── Filters ─────────────────────────────────────────────────────
   const filteredRecords = records.filter(r => {
@@ -358,11 +386,217 @@ const DeceasedListPage = () => {
     navigate(`/tenant/${tenantSlug}/deceased/${id}`);
   };
 
+  // ─── Export Functions ───────────────────────────────────────────
+  const handleExport = async () => {
+    // Cleanup any previous export polling
+    if (exportCleanupRef.current) {
+      exportCleanupRef.current();
+      exportCleanupRef.current = null;
+    }
+    
+    setExporting(true);
+    setExportProgress(0);
+    setExportStatus('Queuing export job...');
+    
+    try {
+      const tenantSlug = getTenantSlug();
+      const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
+      
+      const response = await axios.post(
+        `${BASE_URL}/export-excel`,
+        {
+          startDate: exportStart || undefined,
+          endDate: exportEnd || undefined,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'x-tenant-slug': tenantSlug,
+          },
+        }
+      );
+
+      if (response.data?.success && response.data?.jobId) {
+        setExportJobId(response.data.jobId);
+        setExportStatus('Processing export...');
+        pollExportStatus(response.data.jobId);
+      } else {
+        throw new Error('No job ID returned');
+      }
+    } catch (err) {
+      console.error('Export error:', err);
+      showToast('Failed to start export. Please try again.', 'error');
+      setExporting(false);
+      setExportStatus('');
+      setExportProgress(0);
+    }
+  };
+
+  const pollExportStatus = async (jobId) => {
+    const maxAttempts = 60; // 2 minutes max
+    const pollInterval = 2000; // 2 seconds
+    let attempts = 0;
+    let timeoutId;
+
+    const cleanup = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
+
+    const poll = async () => {
+      try {
+        const tenantSlug = getTenantSlug();
+        const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
+        
+        const response = await axios.get(
+          `${BASE_URL}/export-status/${jobId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'x-tenant-slug': tenantSlug,
+            },
+            responseType: 'blob', // Important for file download
+            timeout: 10000, // 10 second timeout for each request
+          }
+        );
+
+        // Check if we got a file (completed)
+        const contentType = response.headers['content-type'];
+        if (contentType && (contentType.includes('spreadsheetml') || contentType.includes('zip'))) {
+          cleanup();
+          
+          // Download the compressed file
+          const blob = new Blob([response.data], { type: 'application/zip' });
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `Deceased_Records_${new Date().toISOString().split('T')[0]}.zip`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          
+          showToast('Export completed successfully! (Compressed ZIP file)', 'success');
+          
+          // Close modal after short delay
+          setTimeout(() => {
+            setExporting(false);
+            setShowExport(false);
+            setExportStatus('');
+            setExportProgress(0);
+            setExportJobId(null);
+          }, 1500);
+          
+          return;
+        }
+
+        // Still processing
+        const data = response.data;
+        if (data?.success && data?.status) {
+          setExportProgress(data.progress || 0);
+          setExportStatus(data.message || 'Processing...');
+          
+          attempts++;
+          if (attempts < maxAttempts) {
+            timeoutId = setTimeout(poll, pollInterval);
+          } else {
+            cleanup();
+            throw new Error('Export timeout - please try again or contact support');
+          }
+        } else {
+          cleanup();
+          throw new Error(data?.message || 'Unknown status');
+        }
+      } catch (err) {
+        cleanup();
+        console.error('Poll error:', err);
+        
+        // Handle timeout errors
+        if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+          showToast('Request timeout - retrying...', 'warning');
+          attempts++;
+          if (attempts < maxAttempts) {
+            timeoutId = setTimeout(poll, pollInterval);
+          } else {
+            showToast('Export timed out. Please try again.', 'error');
+            setTimeout(() => {
+              setExporting(false);
+              setShowExport(false);
+              setExportStatus('');
+              setExportProgress(0);
+            }, 2000);
+          }
+          return;
+        }
+        
+        // Handle 202 (still processing)
+        if (err.response?.status === 202) {
+          attempts++;
+          if (attempts < maxAttempts) {
+            timeoutId = setTimeout(poll, pollInterval);
+          } else {
+            showToast('Export is taking longer than expected. Please try again.', 'error');
+            setTimeout(() => {
+              setExporting(false);
+              setShowExport(false);
+              setExportStatus('');
+              setExportProgress(0);
+            }, 2000);
+          }
+          return;
+        }
+        
+        // Other errors
+        showToast('Export failed. Please try again.', 'error');
+        setTimeout(() => {
+          setExporting(false);
+          setShowExport(false);
+          setExportStatus('');
+          setExportProgress(0);
+        }, 2000);
+      }
+    };
+
+    poll();
+    
+    // Store cleanup function in ref
+    exportCleanupRef.current = cleanup;
+    return cleanup;
+  };
+
   // ─── Export History ──────────────────────────────────────────────
-  const exportHistory = [
-    { date: 'Mar 15, 2025 10:00', range: 'Feb 2025 - Mar 2025', format: 'XLSX', status: 'Completed' },
-    { date: 'Feb 28, 2025 16:30', range: 'Jan 2025 - Feb 2025', format: 'CSV', status: 'Completed' },
-  ];
+  const [exportHistory, setExportHistory] = useState([]);
+
+  useEffect(() => {
+    const fetchExportHistory = async () => {
+      try {
+        const tenantSlug = getTenantSlug();
+        const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
+        
+        const response = await axios.get(
+          `${BASE_URL}/export-history`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'x-tenant-slug': tenantSlug,
+            },
+          }
+        );
+
+        if (response.data?.success && response.data?.data) {
+          setExportHistory(response.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch export history:', err);
+      }
+    };
+
+    if (showExport) {
+      fetchExportHistory();
+    }
+  }, [showExport]);
 
   return (
     <>
@@ -420,6 +654,49 @@ const DeceasedListPage = () => {
             </FormSelect>
           </FilterToolbar>
 
+          {/* Service Unavailable Message */}
+          {serviceUnavailable && (
+            <div style={{
+              padding: '40px 24px',
+              textAlign: 'center',
+              background: C.warningBg,
+              borderBottom: `1px solid #fde68a`
+            }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '16px 24px',
+                background: 'white',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  background: C.warningBg,
+                  color: C.warning,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '20px',
+                  fontWeight: '700'
+                }}>
+                  ⚠
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontWeight: 600, color: C.dark, marginBottom: '4px' }}>
+                    Service Temporarily Unavailable
+                  </div>
+                  <div style={{ fontSize: '13px', color: C.gray }}>
+                    {unavailableMessage}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Table */}
           <TableWrap>
             <StyledTable>
@@ -436,6 +713,8 @@ const DeceasedListPage = () => {
               <tbody>
                 {loading ? (
                   <tr><td colSpan={6}><LoadingState><div className="spinner" /> Loading records...</LoadingState></td></tr>
+                ) : serviceUnavailable ? (
+                  <tr><td colSpan={6}><EmptyRow>Unable to load records at this time. Please try again later.</EmptyRow></td></tr>
                 ) : filteredRecords.length === 0 ? (
                   <tr><td colSpan={6}><EmptyRow>No records found matching your filters.</EmptyRow></td></tr>
                 ) : filteredRecords.map(r => {
@@ -520,10 +799,63 @@ const DeceasedListPage = () => {
             </ModalBody>
             <ModalFooter>
               <Btn onClick={() => setShowExport(false)}>Cancel</Btn>
-              <Btn $export>Generate Export</Btn>
+              <Btn $export onClick={handleExport} disabled={exporting}>
+                {exporting ? 'Exporting...' : 'Generate Export'}
+              </Btn>
             </ModalFooter>
           </ModalContent>
         </ModalOverlay>
+
+        {/* Export Progress Toast */}
+        {exporting && (
+          <div style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            background: 'white',
+            padding: '16px 20px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            border: '1px solid #e0e0e0',
+            zIndex: 2000,
+            minWidth: '300px'
+          }}>
+            <div style={{ marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
+              Export Progress
+            </div>
+            <div style={{
+              width: '100%',
+              height: '8px',
+              background: '#f0f0f0',
+              borderRadius: '4px',
+              overflow: 'hidden',
+              marginBottom: '8px'
+            }}>
+              <div style={{
+                width: `${exportProgress}%`,
+                height: '100%',
+                background: exportStatus === 'Completed' ? '#059669' : '#0F3040',
+                transition: 'width 0.3s ease'
+              }} />
+            </div>
+            <div style={{ fontSize: '12px', color: '#777', marginBottom: '4px' }}>
+              {exportStatus}
+            </div>
+            <div style={{ fontSize: '11px', color: '#999' }}>
+              {exportProgress < 100 ? `Attempt ${Math.ceil(exportProgress / 10)} of 10` : 'Complete'}
+            </div>
+            {exportProgress >= 80 && exportProgress < 100 && (
+              <div style={{
+                fontSize: '11px',
+                color: '#d97706',
+                marginTop: '8px',
+                fontStyle: 'italic'
+              }}>
+                ⚠ Taking longer than expected...
+              </div>
+            )}
+          </div>
+        )}
       </AppContainer>
     </>
   );

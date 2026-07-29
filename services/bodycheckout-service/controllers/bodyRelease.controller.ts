@@ -163,6 +163,31 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
     await db.execute(query, params);
     Logger.info(`[RELEASE] Successfully created release: ${releaseId} in database: ${tenantSlug}`);
 
+    // Emit notification for body release
+    try {
+      const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+      await axios.post(`${socketioServiceUrl}/emit/body-released`, {
+        tenantSlug,
+        data: {
+          id: `body-release-${releaseId}-${Date.now()}`,
+          releaseId: releaseId,
+          admissionNumber: validatedData.admission_number || '',
+          nameOfDeceased: validatedData.name_of_deceased || '',
+          nextOfKin: validatedData.next_kin,
+          dateOfRemoval: validatedData.date_of_removal || '',
+          modeOfTransport: validatedData.mode_of_transport || '',
+          title: 'Body Released',
+          message: `Body released: ${validatedData.name_of_deceased || validatedData.admission_number}`,
+          type: 'release',
+          priority: 'high',
+          fullContent: `Release ID: ${releaseId}\nDeceased: ${validatedData.name_of_deceased || 'N/A'}\nNext of Kin: ${validatedData.next_kin}\nDate: ${validatedData.date_of_removal || 'N/A'}\nTransport: ${validatedData.mode_of_transport || 'N/A'}`,
+        }
+      }, { timeout: 5000 });
+      Logger.info(`[RELEASE] Emitted body-released notification for ${releaseId}`);
+    } catch (emitError: any) {
+      Logger.warn(`[RELEASE] Failed to emit body-released notification: ${emitError.message}`);
+    }
+
     // Update deceased status if admission number is provided
     if (validatedData.admission_number) {
       try {

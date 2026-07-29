@@ -18,10 +18,6 @@ async function initializeDatabaseUser() {
         DB_NAME = 'restpoint_main'
     } = process.env;
 
-    console.log('🔧 Checking database user initialization...');
-    console.log(`   DB_USER: ${DB_USER}`);
-    console.log(`   DB_HOST: ${DB_HOST}:${DB_PORT}`);
-
     let rootConnection;
     let retries = 5;
     let lastError;

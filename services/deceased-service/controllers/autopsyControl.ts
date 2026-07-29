@@ -363,7 +363,7 @@ const emitPostmortemUpdate = async (tenantSlug: string, deceasedId: string, data
                 }
             };
             
-            console.log('[POSTMORTEM] 📤 Notification payload:', JSON.stringify(notificationPayload, null, 2));
+            console.log('[POSTMORTEM]  Notification payload:', JSON.stringify(notificationPayload, null, 2));
             
             try {
                 const response = await axios.post(`${socketioServiceUrl}/emit/postmortem-completed`, notificationPayload, { 
@@ -371,12 +371,12 @@ const emitPostmortemUpdate = async (tenantSlug: string, deceasedId: string, data
                     headers: { 'Content-Type': 'application/json' }
                 });
                 
-                console.log('[POSTMORTEM] ✅ Successfully emitted postmortem-completed notification:', {
+                console.log('[POSTMORTEM]  Successfully emitted postmortem-completed notification:', {
                     status: response.status,
                     data: response.data
                 });
             } catch (error) {
-                console.error('[POSTMORTEM] ❌ Failed to emit postmortem-completed notification:', {
+                console.error('[POSTMORTEM]  Failed to emit postmortem-completed notification:', {
                     error: error.message,
                     code: error.code,
                     url: `${socketioServiceUrl}/emit/postmortem-completed`,
@@ -388,17 +388,17 @@ const emitPostmortemUpdate = async (tenantSlug: string, deceasedId: string, data
                 // Try localhost fallback if Docker DNS fails
                 if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
                     try {
-                        console.log('[POSTMORTEM] 🔁 Trying localhost fallback on port 5018...');
+                        console.log('[POSTMORTEM]  Trying localhost fallback on port 5018...');
                         const fallbackResponse = await axios.post(`http://localhost:5018/emit/postmortem-completed`, notificationPayload, { 
                             timeout: 5000,
                             headers: { 'Content-Type': 'application/json' }
                         });
-                        console.log('[POSTMORTEM] ✅ Successfully emitted via localhost fallback:', {
+                        console.log('[POSTMORTEM]  Successfully emitted via localhost fallback:', {
                             status: fallbackResponse.status,
                             data: fallbackResponse.data
                         });
                     } catch (fallbackError) {
-                        console.error('[POSTMORTEM] ❌ Localhost fallback also failed:', {
+                        console.error('[POSTMORTEM]  Localhost fallback also failed:', {
                             error: fallbackError.message,
                             code: fallbackError.code,
                             response: fallbackError.response?.data
@@ -408,7 +408,7 @@ const emitPostmortemUpdate = async (tenantSlug: string, deceasedId: string, data
             }
         }
     } catch (error) {
-        console.error('[POSTMORTEM] ❌ Socket emit error:', error);
+        console.error('[POSTMORTEM]  Socket emit error:', error);
     }
 };
 
@@ -473,7 +473,7 @@ export const getPostmortemByDeceasedId = async (req: TenantRequest, res: Respons
             data: postmortem
         });
     } catch (error: any) {
-        console.error('❌ Error in getPostmortemByDeceasedId:', error);
+        console.error(' Error in getPostmortemByDeceasedId:', error);
         return res.status(500).json({
             success: false,
             message: 'Internal Server Error'

@@ -67,14 +67,21 @@ const runMigrations = async () => {
             await migrationKnex.migrate.latest();
             console.log('[FLORIST] Knex migrations completed successfully');
         } else {
-            // Check if florist migrations have been run
-            const hasFlowerBookings = await migrationKnex.schema.hasTable('flower_bookings');
-            if (!hasFlowerBookings) {
+        // Check if florist migrations have been run
+        const hasFlowerBookings = await migrationKnex.schema.hasTable('flower_bookings');
+        if (!hasFlowerBookings) {
+            await migrationKnex.migrate.latest();
+            console.log('[FLORIST] Knex migrations completed successfully');
+        } else {
+            // Check if new columns exist (for existing installations)
+            const hasQuantity = await migrationKnex.schema.hasColumn('flower_bookings', 'quantity');
+            if (!hasQuantity) {
                 await migrationKnex.migrate.latest();
-                console.log('[FLORIST] Knex migrations completed successfully');
+                console.log('[FLORIST] Additional migrations completed');
             } else {
                 console.log('[FLORIST] Migrations already up to date');
             }
+        }
         }
         
         await migrationKnex.destroy();

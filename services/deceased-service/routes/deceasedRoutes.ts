@@ -1,14 +1,11 @@
-
 import { Router } from 'express';
 import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware';
 import {
-
     getAllDeceased,
     getDeceasedById,
+    getDeceasedByAdmissionNumber,
     updateDeceased,
     deleteDeceased,
-
-
 } from '../controllers/deceasedControl';
 
 import { registerNewDeceased } from '../controllers/registerDeceased'
@@ -22,6 +19,7 @@ import {
 } from '../controllers/autopsyControl';
 
 import { updateDeceasedStatus } from '../controllers/deceasedControl';
+import { exportExcelWithCharts, checkExportStatus, getExportHistory } from '../controllers/exportExcelController';
 
 const router = Router();
 
@@ -48,11 +46,20 @@ router.get('/deceased-all', getAllDeceased);
 router.get('/deceased/deceased-all', getAllDeceased);  // Support nested path
 router.get('/deceased/all', getAllDeceased);           // Support nested path
 
+// POST - Export Excel (must be BEFORE catch-all /:id route)
+router.post('/export-excel', exportExcelWithCharts);
+router.get('/export-status/:jobId', checkExportStatus);
+router.get('/export-history', getExportHistory);
+
 // GET - By ID - SUPPORT ALL PATTERN TYPES
 router.get('/deceased-id/:id', getDeceasedById);  // /deceased/deceased-id/:id
 router.get('/deceased/:id', getDeceasedById);     // /deceased/deceased/:id
 router.get('/:id', getDeceasedById);              // /deceased/:id (fallback)
 router.get('/id/:id', getDeceasedById);           // /deceased/id/:id
+
+// GET - By admission number
+router.get('/admission-number/:admissionNumber', getDeceasedByAdmissionNumber);
+router.get('/deceased/admission-number/:admissionNumber', getDeceasedByAdmissionNumber);
 
 // PUT - Update
 router.put('/:id', updateDeceased);

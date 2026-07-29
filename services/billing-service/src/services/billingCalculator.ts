@@ -77,9 +77,9 @@ export class BillingCalculator {
   async calculateDeceasedCharges(deceasedId: number, tenantSlug: string): Promise<DeceasedCharge> {
     const connection = await mysql.createConnection(this.dbConfig);
     try {
-      // Get deceased details
+      // Get deceased details with charge settings
       const [deceasedRows] = await connection.execute(`
-        SELECT date_admitted, full_name
+        SELECT date_admitted, full_name, per_hour_charge, per_day_charge, charge_currency, storage_type
         FROM deceased
         WHERE id = ? AND tenant_slug = ?
       `, [deceasedId, tenantSlug]);
@@ -91,22 +91,29 @@ export class BillingCalculator {
       const deceased = (deceasedRows as any[])[0];
       const daysAdmitted = Math.max(1, Math.ceil((new Date().getTime() - new Date(deceased.date_admitted).getTime()) / (1000 * 60 * 60 * 24)));
 
-      // Get tenant settings
-      const [settingsRows] = await connection.execute(`
-        SELECT daily_rate, embalming_rate, storage_rate
-        FROM tenant_settings
-        WHERE tenant_slug = ?
-      `, [tenantSlug]);
-
-      let dailyRate = 1500;
+      // Priority: 1. Per-deceased charges, 2. Tenant settings, 3. Default (3000)
+      let dailyRate = 3000; // Default daily rate
       let embalmingRate = 3000;
       let storageRate = 500;
 
-      if (Array.isArray(settingsRows) && settingsRows.length > 0) {
-        const settings = (settingsRows as any[])[0];
-        dailyRate = settings.daily_rate;
-        embalmingRate = settings.embalming_rate;
-        storageRate = settings.storage_rate;
+      // Check if deceased has custom charges set
+      if (deceased.per_day_charge && deceased.per_day_charge > 0) {
+        dailyRate = deceased.per_day_charge;
+        this.logger.info(`Using per-deceased rate for ${deceased.full_name}: ${dailyRate}`);
+      } else {
+        // Fall back to tenant settings
+        const [settingsRows] = await connection.execute(`
+          SELECT daily_rate, embalming_rate, storage_rate
+          FROM tenant_settings
+          WHERE tenant_slug = ?
+        `, [tenantSlug]);
+
+        if (Array.isArray(settingsRows) && settingsRows.length > 0) {
+          const settings = (settingsRows as any[])[0];
+          dailyRate = settings.daily_rate || dailyRate;
+          embalmingRate = settings.embalming_rate;
+          storageRate = settings.storage_rate;
+        }
       }
 
       // Calculate charges

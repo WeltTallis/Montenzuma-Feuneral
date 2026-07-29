@@ -19,12 +19,39 @@ app.use(cors({
 app.use(helmet());
 app.use(express.json());
 
+// ============ GLOBAL UPLOADS CONFIGURATION ============
+// Use global uploads folder (same as coffin service)
+const getGlobalUploadsDir = () => {
+  const possiblePaths = [
+    path.join(process.cwd(), 'uploads'),
+    path.join(__dirname, '../../uploads'),
+    path.join(__dirname, '../../../uploads'),
+  ];
+  
+  // Return the first path that exists or can be created
+  for (const basePath of possiblePaths) {
+    try {
+      if (!fs.existsSync(basePath)) {
+        fs.mkdirSync(basePath, { recursive: true });
+      }
+      return basePath;
+    } catch (e) {
+      continue;
+    }
+  }
+  
+  // Fallback to temp directory
+  return path.join(require('os').tmpdir(), 'restpoint-uploads');
+};
+
+const GLOBAL_UPLOADS_DIR = getGlobalUploadsDir();
+
 // ============ STORAGE CONFIGURATION ============
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const tenantSlug = req.headers['x-tenant-slug'] || 'system_shared';
     const deceasedId = req.params.deceasedId || req.body.deceasedId || 'unknown';
-    const uploadPath = path.join(__dirname, 'uploads', tenantSlug, deceasedId);
+    const uploadPath = path.join(GLOBAL_UPLOADS_DIR, 'documents', tenantSlug, deceasedId);
 
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
@@ -87,7 +114,8 @@ app.get('/health', (req, res) => {
 });
 
 // ============ STATIC FILES ============
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+// Serve files from global uploads directory
+app.use('/uploads', express.static(GLOBAL_UPLOADS_DIR, {
   setHeaders: (res) => {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -133,7 +161,7 @@ app.get('/api/v1/restpoint/documents/:deceasedId', async (req, res) => {
       documentId: doc.document_id,
       originalName: doc.original_name,
       storedName: doc.stored_name,
-      url: `/uploads/${tenantSlug}/${deceasedId}/${doc.stored_name}`,
+      url: `/uploads/documents/${tenantSlug}/${deceasedId}/${doc.stored_name}`,
       mimeType: doc.mime_type,
       sizeKB: Math.round(doc.file_size / 1024),
       category: doc.category || 'General',
@@ -145,14 +173,14 @@ app.get('/api/v1/restpoint/documents/:deceasedId', async (req, res) => {
     console.warn(`[DOCUMENTS] DB query failed for listing, falling back to filesystem: ${dbError.message}`);
     
     // Fallback: List files from filesystem
-    const uploadDir = path.join(__dirname, 'uploads', tenantSlug, deceasedId);
+    const uploadDir = path.join(GLOBAL_UPLOADS_DIR, 'documents', tenantSlug, deceasedId);
     if (fs.existsSync(uploadDir)) {
       const files = fs.readdirSync(uploadDir);
       formattedDocs = files.map((fileName, index) => ({
         documentId: `fs-${Date.now()}-${index}`,
         originalName: fileName.replace(/^doc-\d+-\d+-/, ''),
         storedName: fileName,
-        url: `/uploads/${tenantSlug}/${deceasedId}/${fileName}`,
+        url: `/uploads/documents/${tenantSlug}/${deceasedId}/${fileName}`,
         mimeType: 'application/octet-stream',
         sizeKB: Math.round((fs.statSync(path.join(uploadDir, fileName)).size) / 1024),
         category: 'General',
@@ -189,7 +217,7 @@ app.post('/v1/restpoint/documents/:deceasedId/upload', upload.single('document')
     const originalName = req.file.originalname;
     const mimeType = req.file.mimetype;
     const fileSize = req.file.size;
-    const filePath = `/uploads/${tenantSlug}/${deceasedId}/${storedName}`;
+    const filePath = `/uploads/documents/${tenantSlug}/${deceasedId}/${storedName}`;
 
     // Try to insert document record into database
     let documentId = Date.now();
@@ -268,7 +296,7 @@ app.get('/v1/restpoint/documents/download/:documentId', async (req, res) => {
 
     const doc = docs[0];
     const tenantSlug = req.tenantSlug;
-    const filePath = path.join(__dirname, 'uploads', tenantSlug, doc.deceased_id, doc.stored_name);
+    const filePath = path.join(GLOBAL_UPLOADS_DIR, 'documents', tenantSlug, doc.deceased_id, doc.stored_name);
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ success: false, message: 'File not found on server' });
@@ -304,7 +332,7 @@ app.delete('/v1/restpoint/documents/:deceasedId/:documentId', async (req, res) =
     }
 
     const doc = docs[0];
-    const filePath = path.join(__dirname, 'uploads', tenantSlug, deceasedId, doc.stored_name);
+    const filePath = path.join(GLOBAL_UPLOADS_DIR, 'documents', tenantSlug, deceasedId, doc.stored_name);
 
     // Delete file from filesystem
     if (fs.existsSync(filePath)) {
@@ -360,15 +388,14 @@ app.use(errorHandler);
 // ============ SERVER STARTUP ============
 const startServer = async () => {
   try {
-    // Ensure uploads directory exists
-    const uploadsDir = path.join(__dirname, 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    // Ensure global uploads directory exists
+    if (!fs.existsSync(GLOBAL_UPLOADS_DIR)) {
+      fs.mkdirSync(GLOBAL_UPLOADS_DIR, { recursive: true });
     }
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`\n📄 Documents Service running on port ${PORT}`);
-      console.log(`📁 Uploads directory: ${uploadsDir}`);
+      console.log(`📁 Uploads directory: ${GLOBAL_UPLOADS_DIR}`);
       console.log(`🌐 API Base: http://localhost:${PORT}/api/v1/restpoint\n`);
     });
   } catch (error) {

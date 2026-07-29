@@ -9,6 +9,8 @@ const ChartJS = Chart;
 import { useSocket } from '../../../utils/context/socketContext';
 import { workshopService } from '../services/workshopService';
 
+const Ctx = createContext(null);
+
 // ═══════════════════════════════════════════════════════════
 //  DESIGN TOKENS — WHITE LIGHT THEME
 // ═══════════════════════════════════════════════════════════
@@ -165,6 +167,41 @@ const transformWorker = (worker) => ({
   avgHours: 3 + Math.random() * 5,
   trend: ['up', 'stable', 'down'][Math.floor(Math.random() * 3)],
 });
+
+// ═══════════════════════════════════════════════════════════
+//  DASHBOARD TAB — Overview
+// ═══════════════════════════════════════════════════════════
+const DashboardTab = () => {
+  const ctx = useContext(Ctx);
+  if (!ctx) return null;
+  const { orders, materials, workers, activity, toasts, loading, error, connected, addToast, openModal, closeModal, createOrder, advanceStage, reassignOrder, removeOrder, restockMat, addMaterial, refreshData } = ctx;
+
+  const totalOrders = orders.length;
+  const activeOrders = orders.filter(o => o.currentStage !== 'completed').length;
+  const completedToday = orders.filter(o => o.currentStage === 'completed' && new Date(o.createdAt).toDateString() === new Date().toDateString()).length;
+  const lowStock = materials.filter(m => m.quantity <= m.minLevel).length;
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
+        <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Total Orders</div>
+        <div style={{ fontSize: 32, fontWeight: 700, color: T.t1 }}>{totalOrders}</div>
+      </div>
+      <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
+        <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Active Orders</div>
+        <div style={{ fontSize: 32, fontWeight: 700, color: T.accent }}>{activeOrders}</div>
+      </div>
+      <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
+        <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Completed Today</div>
+        <div style={{ fontSize: 32, fontWeight: 700, color: T.ok }}>{completedToday}</div>
+      </div>
+      <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
+        <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Low Stock Items</div>
+        <div style={{ fontSize: 32, fontWeight: 700, color: lowStock > 0 ? T.err : T.t3 }}>{lowStock}</div>
+      </div>
+    </div>
+  );
+};
 
 // ═══════════════════════════════════════════════════════════
 //  MAIN APP

@@ -37,7 +37,7 @@ const SERVICE_URLS = {
   mpesa: process.env.MPESA_SERVICE_URL || 'http://127.0.0.1:5006',
   portal: process.env.PORTAL_SERVICE_URL || 'http://127.0.0.1:5007',
   invoices: process.env.INVOICES_SERVICE_URL || 'http://127.0.0.1:5008',
-  notification: process.env.NOTIFICATION_SERVICE_URL || 'http://127.0.0.1:8111',
+  notification: process.env.NOTIFICATION_SERVICE_URL || 'http://127.0.0.1:5018',
   documents: process.env.DOCUMENTS_SERVICE_URL || 'http://127.0.0.1:8112',
   analytics: process.env.ANALYTICS_SERVICE_URL || 'http://127.0.0.1:5012',
   bodycheckout: process.env.BODYCHECKOUT_SERVICE_URL || 'http://127.0.0.1:5013',
@@ -54,9 +54,82 @@ const SERVICE_URLS = {
   hearse: process.env.HEARSE_SERVICE_URL || 'http://127.0.0.1:5023',
   leave: process.env.LEAVE_SERVICE_URL || 'http://127.0.0.1:5017',
   support: process.env.SUPPORT_SERVICE_URL || 'http://127.0.0.1:8111',
+  florist: process.env.FLORIST_SERVICE_URL || 'http://127.0.0.1:7070',
 };
 
 const app = express();
+
+// ─── Circuit Breaker & Service Health Tracking ─────────────────────
+const serviceHealth = {};
+const HEALTH_CHECK_INTERVAL = 30000; // Check every 30 seconds
+const FAILURE_THRESHOLD = 3; // Mark as down after 3 failures
+const RECOVERY_TIMEOUT = 60000; // Try recovery after 60 seconds
+
+// Initialize health status for all services
+Object.keys(SERVICE_URLS).forEach(serviceName => {
+  serviceHealth[serviceName] = {
+    isHealthy: true,
+    failures: 0,
+    lastFailure: null,
+    lastCheck: null,
+  };
+});
+
+// Health check function for a single service
+async function checkServiceHealth(serviceName, url) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    
+    // Append /health to the URL
+    const healthUrl = url.endsWith('/') ? `${url}health` : `${url}/health`;
+    
+    const response = await fetch(healthUrl, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    const isHealthy = response.ok;
+    serviceHealth[serviceName].lastCheck = Date.now();
+    
+    if (isHealthy) {
+      serviceHealth[serviceName].failures = 0;
+      serviceHealth[serviceName].isHealthy = true;
+      Logger.info(`[HEALTH] ${serviceName} is healthy`);
+    } else {
+      handleServiceFailure(serviceName);
+      Logger.warn(`[HEALTH] ${serviceName} returned ${response.status}`);
+    }
+  } catch (error) {
+    handleServiceFailure(serviceName);
+    Logger.warn(`[HEALTH] ${serviceName} health check failed: ${error.message}`);
+  }
+}
+
+function handleServiceFailure(serviceName) {
+  serviceHealth[serviceName].failures++;
+  serviceHealth[serviceName].lastFailure = Date.now();
+  
+  if (serviceHealth[serviceName].failures >= FAILURE_THRESHOLD && serviceHealth[serviceName].isHealthy) {
+    serviceHealth[serviceName].isHealthy = false;
+    Logger.warn(`[CIRCUIT BREAKER] ${serviceName} marked as DOWN`);
+  }
+}
+
+// Periodic health check for all services
+async function performHealthChecks() {
+  const checks = Object.entries(SERVICE_URLS).map(([serviceName, url]) => {
+    const baseUrl = url.split('/')[0] + '//' + url.split('/')[2];
+    return checkServiceHealth(serviceName, baseUrl);
+  });
+  
+  await Promise.allSettled(checks);
+}
+
+// Start health check interval
+const healthCheckInterval = setInterval(performHealthChecks, HEALTH_CHECK_INTERVAL);
+Logger.info('[CIRCUIT BREAKER] Health monitoring started');
 
 // Honor proxy headers when running behind a reverse proxy (load balancer, nginx, CDN)
 if ((process.env.TRUST_PROXY || 'false').toString().toLowerCase() === 'true') {
@@ -92,6 +165,49 @@ app.use((req, res, next) => {
   next();
 });
 
+// Middleware to check service health before proxying
+function checkServiceAvailability(req, res, next) {
+  const urlWithoutQuery = req.url.split('?')[0];
+  const pathParts = urlWithoutQuery.split('/').filter(Boolean);
+  const firstSegment = pathParts[0];
+
+  if (!firstSegment) {
+    return res.status(400).json({ success: false, message: 'No service specified' });
+  }
+
+  // Map route to service name
+  const serviceName = Object.keys(SERVICE_ROUTES).find(
+    route => firstSegment === route || firstSegment.startsWith(route + '-')
+  );
+
+  if (!serviceName) {
+    return next(); // Unknown service, let normal routing handle it
+  }
+
+  const health = serviceHealth[serviceName];
+  
+  // Check if service is marked as unhealthy
+  if (health && !health.isHealthy) {
+    const timeSinceFailure = Date.now() - health.lastFailure;
+    
+    // If within recovery timeout, immediately return 503 (no logging to reduce spam)
+    if (timeSinceFailure < RECOVERY_TIMEOUT) {
+      return res.status(503).json({
+        success: false,
+        message: `${serviceName.charAt(0).toUpperCase() + serviceName.slice(1)} service is temporarily unavailable. Please try again later.`,
+        service: serviceName,
+        error: 'SERVICE_DOWN'
+      });
+    } else {
+      // Recovery timeout reached, allow request and reset status
+      Logger.info(`[CIRCUIT BREAKER] ${serviceName} recovered, allowing requests`);
+      health.isHealthy = true;
+      health.failures = 0;
+    }
+  }
+
+  next();
+}
 
 // SERVICE ROUTING TABLE
 
@@ -155,6 +271,9 @@ const SERVICE_ROUTES = {
   // Workshop service (port 6969)
   'workshop': SERVICE_URLS.workshop,
 
+  // Florist service (port 7070)
+  'florist': SERVICE_URLS.florist,
+
   // Documents service (port 5011)
   'documents': SERVICE_URLS.documents,
 
@@ -198,16 +317,6 @@ const SERVICE_ROUTES = {
   'marketplace': SERVICE_URLS.marketplace,
 };
 
-// SINGLE MOUNT POINT - Dynamic Routing Middleware
-
-// Mount a single middleware at /api/v1/restpoint that:
-// 1. Strips /api/v1/restpoint from the URL (done by Express)
-// 2. Extracts the first path segment to determine the target service
-// 3. Proxies the request to the correct backend service
-
-// This ensures the FULL backend path (e.g., /hearses/available) is preserved.
-// =============================================================================
-
 // Create proxy instances for each unique target URL (cached)
 const proxyCache = {};
 for (const targetUrl of Object.values(SERVICE_ROUTES)) {
@@ -216,8 +325,8 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
       target: targetUrl,
       changeOrigin: true,
       secure: false,
-      proxyTimeout: 300000, // 5 minutes for long operations
-      timeout: 300000, // 5 minutes 
+      proxyTimeout: 3000, // 3 seconds - fail fast
+      timeout: 3000, // 3 seconds - fail fast
       onProxyReq: (proxyReq, req, res) => {
         if (req.headers.authorization) proxyReq.setHeader('Authorization', req.headers.authorization);
         if (req.headers['x-tenant-slug']) proxyReq.setHeader('x-tenant-slug', req.headers['x-tenant-slug']);
@@ -245,6 +354,15 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
         if (!res.headersSent) {
           const firstSegment = (req.originalUrl || req.url || '').split('/').filter(Boolean)[2] || 'unknown';
           const friendlyName = firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1);
+          
+          // Track failure in circuit breaker
+          const serviceName = Object.keys(SERVICE_ROUTES).find(
+            route => firstSegment === route || firstSegment.startsWith(route + '-')
+          );
+          if (serviceName) {
+            handleServiceFailure(serviceName);
+          }
+          
           res.status(503).json({
             success: false,
             message: `${friendlyName} service is temporarily unavailable. Please try again later.`,
@@ -260,7 +378,7 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
 
 // Dynamic routing middleware mounted at /api/v1/restpoint
 // Express strips /api/v1/restpoint 
-app.use('/api/v1/restpoint', (req, res, next) => {
+app.use('/api/v1/restpoint', checkServiceAvailability, (req, res, next) => {
   // Extract the first path segment from the stripped URL
   // req.url = /hearses/available → firstSegment = hearses
   // IMPORTANT: Strip query string first to avoid "hearses?t=123" as service name
@@ -297,25 +415,6 @@ app.use('/api/v1/restpoint', (req, res, next) => {
 // =============================================================================
 // HEALTH & DEBUG
 // =============================================================================
-app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    status: 'ok',
-    service: APP_NAME,
-    version: APP_VERSION,
-    port: PORT,
-    uptime: process.uptime(),
-    services: Object.keys(SERVICE_URLS),
-  });
-});
-
-app.get('/services', (req, res) => {
-  res.json({
-    success: true,
-    services: SERVICE_URLS,
-  });
-});
-
 
 // 404 HANDLER
 
@@ -339,24 +438,87 @@ app.use((err, req, res, next) => {
   });
 });
 
+// HEALTH CHECK ENDPOINTS
 
-// START SERVER
+app.get('/health', (req, res) => {
+  const serviceStatus = {};
+  Object.keys(SERVICE_URLS).forEach(serviceName => {
+    const health = serviceHealth[serviceName];
+    serviceStatus[serviceName] = {
+      url: SERVICE_URLS[serviceName],
+      healthy: health.isHealthy,
+      failures: health.failures,
+      lastCheck: health.lastCheck ? new Date(health.lastCheck).toISOString() : null,
+      lastFailure: health.lastFailure ? new Date(health.lastFailure).toISOString() : null,
+    };
+  });
 
-const server = app.listen(PORT, HOST, () => {
-  Logger.info(`  ${APP_NAME} v${APP_VERSION}`);
-  Logger.info(`  Running on http://${HOST}:${PORT}`);
-  Logger.info(' Available Endpoints:');
-  Logger.info(`   GET  http://localhost:${PORT}/health`);
+  const allHealthy = Object.values(serviceHealth).every(h => h.isHealthy);
+  
+  res.json({
+    success: true,
+    status: allHealthy ? 'ok' : 'degraded',
+    service: APP_NAME,
+    version: APP_VERSION,
+    port: PORT,
+    uptime: process.uptime(),
+    services: serviceStatus,
+  });
 });
 
+app.get('/health/:service', async (req, res) => {
+  const serviceName = req.params.service;
+  const url = SERVICE_URLS[serviceName];
+  
+  if (!url) {
+    return res.status(404).json({
+      success: false,
+      message: `Unknown service: ${serviceName}`,
+    });
+  }
+
+  // Trigger immediate health check
+  const baseUrl = url.split('/')[0] + '//' + url.split('/')[2];
+  await checkServiceHealth(serviceName, baseUrl);
+  
+  const health = serviceHealth[serviceName];
+  res.json({
+    success: true,
+    service: serviceName,
+    url: url,
+    healthy: health.isHealthy,
+    failures: health.failures,
+    lastCheck: health.lastCheck ? new Date(health.lastCheck).toISOString() : null,
+    lastFailure: health.lastFailure ? new Date(health.lastFailure).toISOString() : null,
+  });
+});
+
+// Graceful shutdown
 process.on('SIGINT', () => {
   Logger.info('Shutting down...');
+  clearInterval(healthCheckInterval);
   server.close(() => process.exit(0));
 });
 
 process.on('SIGTERM', () => {
   Logger.info('Shutting down...');
+  clearInterval(healthCheckInterval);
   server.close(() => process.exit(0));
+});
+
+// START SERVER
+
+const server = app.listen(PORT, HOST, async () => {
+  Logger.info(`  ${APP_NAME} v${APP_VERSION}`);
+  Logger.info(`  Running on http://${HOST}:${PORT}`);
+  Logger.info(' Available Endpoints:');
+  Logger.info(`   GET  http://localhost:${PORT}/health`);
+  Logger.info(`   GET  http://localhost:${PORT}/health/:service`);
+  
+  // Perform initial health check on startup
+  Logger.info(' Performing initial health checks...');
+  await performHealthChecks();
+  Logger.info(' Health checks complete');
 });
 
 module.exports = app;

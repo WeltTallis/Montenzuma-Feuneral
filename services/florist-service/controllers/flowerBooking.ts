@@ -156,17 +156,31 @@ export const createBooking = async (req: any, res: any) => {
     try {
         const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
         const {
-            flower_type, flower_description, service_type, customer,
-            customer_phone, customer_email, deceased_name, branch,
-            delivery_date, delivery_time, delivery_address, amount,
-            notes, urgent
+            arrangement_name, arrangement_price, deceased_name, booked_by,
+            funeral_home, date, time, priority, card_message, phone, email,
+            quantity, arrangements, special_instructions, colors, primary_color, accent_color, ribbon_color
         } = req.body;
 
+        // Map frontend fields to backend schema
+        const flower_type = arrangement_name || 'Custom Arrangement';
+        const flower_description = arrangements || '';
+        const service_type = 'funeral';
+        const customer = booked_by || 'Guest';
+        const customer_phone = phone || '';
+        const customer_email = email || '';
+        const branch = funeral_home || 'Not specified';
+        const delivery_date = date;
+        const delivery_time = time || '10:00';
+        const delivery_address = funeral_home || '';
+        const amount = parseFloat(arrangement_price) || 0;
+        const notes = [card_message, special_instructions, colors].filter(Boolean).join('\n');
+        const urgent = priority === 'High' ? 1 : 0;
+
         // Validation
-        if (!flower_type || !service_type || !customer || !branch || !delivery_date || !delivery_time) {
+        if (!delivery_date || !delivery_time || !customer) {
             return res.status(400).json({
                 success: false,
-                error: 'Missing required fields: flower_type, service_type, customer, branch, delivery_date, delivery_time'
+                error: 'Missing required fields: date, time, and customer name are required'
             });
         }
 
@@ -185,13 +199,15 @@ export const createBooking = async (req: any, res: any) => {
             (booking_id, flower_type, flower_description, service_type, customer, 
              customer_phone, customer_email, deceased_name, branch, 
              delivery_date, delivery_time, delivery_address, invoice_number, 
-             amount, status, notes, urgent, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+             amount, status, notes, urgent, created_by, quantity, arrangements, 
+             primary_color, accent_color, ribbon_color)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 booking_id, flower_type, flower_description || '', service_type, customer,
                 customer_phone || '', customer_email || '', deceased_name || '', branch,
                 delivery_date, delivery_time, delivery_address || '', invoice_number,
-                amount || 0, notes || '', urgent ? 1 : 0, req.tenantSlug || 'system'
+                amount || 0, notes || '', urgent ? 1 : 0, req.tenantSlug || 'system',
+                quantity || 1, arrangements || '', primary_color || '', accent_color || '', ribbon_color || ''
             ]
         );
 
@@ -206,8 +222,8 @@ export const createBooking = async (req: any, res: any) => {
             if (existingCustomers.length > 0) {
                 await safeTenantQuery(
                     dbName,
-                    'UPDATE flower_customers SET total_orders = total_orders + 1, total_spent = total_spent + ? WHERE id = ?',
-                    [amount || 0, existingCustomers[0].id]
+                    'UPDATE flower_customers SET total_orders = total_orders + 1, total_spent = total_spent + ?, email = ? WHERE id = ?',
+                    [amount || 0, customer_email || '', existingCustomers[0].id]
                 );
             } else {
                 await safeTenantQuery(
@@ -225,6 +241,32 @@ export const createBooking = async (req: any, res: any) => {
             'SELECT * FROM flower_bookings WHERE booking_id = ? LIMIT 1',
             [booking_id]
         );
+
+        // Emit notification for new flower booking
+        try {
+            const axios = require('axios');
+            const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+            await axios.post(`${socketioServiceUrl}/emit/flower-booking-created`, {
+                tenantSlug: req.tenantSlug || 'system',
+                data: {
+                    id: `flower-booking-${booking_id}-${Date.now()}`,
+                    bookingId: booking_id,
+                    customer: customer,
+                    deceasedName: deceased_name || '',
+                    flowerType: flower_type,
+                    deliveryDate: delivery_date,
+                    amount: amount,
+                    title: 'New Flower Booking',
+                    message: `New flower booking: ${flower_type} for ${deceased_name || customer}`,
+                    type: 'new_booking',
+                    priority: urgent ? 'high' : 'medium',
+                    fullContent: `Booking ID: ${booking_id}\nCustomer: ${customer}\nFlower: ${flower_type}\nDelivery: ${delivery_date}\nAmount: ${amount}`,
+                }
+            }, { timeout: 5000 });
+            console.log(`[FLORIST] Emitted flower-booking-created for ${booking_id}`);
+        } catch (emitError: any) {
+            console.warn('[FLORIST] Failed to emit flower-booking-created notification:', emitError.message);
+        }
 
         res.status(201).json({ success: true, data: newBooking[0], message: 'Booking created successfully' });
     } catch (error: any) {
@@ -259,7 +301,8 @@ export const updateBooking = async (req: any, res: any) => {
             'flower_type', 'flower_description', 'service_type', 'customer',
             'customer_phone', 'customer_email', 'deceased_name', 'branch',
             'delivery_date', 'delivery_time', 'delivery_address', 'amount',
-            'status', 'notes', 'urgent'
+            'status', 'notes', 'urgent', 'quantity', 'arrangements',
+            'primary_color', 'accent_color', 'ribbon_color'
         ];
 
         const setClauses: string[] = [];
@@ -331,6 +374,29 @@ export const updateBookingStatus = async (req: any, res: any) => {
             [id, id]
         );
 
+        // Emit notification for booking status update
+        try {
+            const axios = require('axios');
+            const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+            await axios.post(`${socketioServiceUrl}/emit/flower-booking-updated`, {
+                tenantSlug: req.tenantSlug || 'system',
+                data: {
+                    id: `flower-booking-updated-${id}-${Date.now()}`,
+                    bookingId: updated[0]?.booking_id || id,
+                    customer: updated[0]?.customer || '',
+                    status: status,
+                    title: 'Booking Status Updated',
+                    message: `Flower booking ${updated[0]?.booking_id || id} status changed to ${status}`,
+                    type: 'booking_update',
+                    priority: 'medium',
+                    fullContent: `Booking ID: ${updated[0]?.booking_id || id}\nCustomer: ${updated[0]?.customer || ''}\nNew Status: ${status}`,
+                }
+            }, { timeout: 5000 });
+            console.log(`[FLORIST] Emitted flower-booking-updated for ${id}`);
+        } catch (emitError: any) {
+            console.warn('[FLORIST] Failed to emit flower-booking-updated notification:', emitError.message);
+        }
+
         res.json({ success: true, data: updated[0], message: `Status updated to ${status}` });
     } catch (error: any) {
         console.error('[FLORIST] Error updating booking status:', error.message);
@@ -355,6 +421,27 @@ export const deleteBooking = async (req: any, res: any) => {
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ success: false, error: 'Booking not found' });
+        }
+
+        // Emit notification for booking deletion
+        try {
+            const axios = require('axios');
+            const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+            await axios.post(`${socketioServiceUrl}/emit/flower-booking-deleted`, {
+                tenantSlug: req.tenantSlug || 'system',
+                data: {
+                    id: `flower-booking-deleted-${id}-${Date.now()}`,
+                    bookingId: id,
+                    title: 'Booking Cancelled',
+                    message: `Flower booking ${id} has been cancelled/deleted`,
+                    type: 'removal',
+                    priority: 'low',
+                    fullContent: `Booking ID: ${id}\nStatus: Cancelled/Deleted`,
+                }
+            }, { timeout: 5000 });
+            console.log(`[FLORIST] Emitted flower-booking-deleted for ${id}`);
+        } catch (emitError: any) {
+            console.warn('[FLORIST] Failed to emit flower-booking-deleted notification:', emitError.message);
         }
 
         res.json({ success: true, message: 'Booking deleted successfully' });

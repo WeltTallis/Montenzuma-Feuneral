@@ -22,6 +22,8 @@ const LEAVE_STATUS = {
     CANCELLED: 'cancelled'
 };
 
+const DEFAULT_LEAVE_DAYS = 26;
+
 // ============================================
 // HELPER: Emit real-time updates
 // ============================================
@@ -29,6 +31,65 @@ const emitUpdate = (tenantSlug, event, data) => {
     if (io) {
         io.to(`tenant_${tenantSlug}`).emit(event, data);
         io.to('admin').emit(event, data);
+    }
+};
+
+// ============================================
+// HELPER: Calculate leave balance
+// ============================================
+const calculateLeaveBalance = async (dbName, userId) => {
+    try {
+        // Get initial balance
+        const [userRows] = await safeTenantQuery(
+            dbName,
+            'SELECT annual_leave_balance FROM users WHERE user_id = ?',
+            [userId]
+        );
+        const initialBalance = parseFloat(userRows[0]?.annual_leave_balance) || DEFAULT_LEAVE_DAYS;
+
+        // Get manual additions
+        const [additionRows] = await safeTenantQuery(
+            dbName,
+            'SELECT COALESCE(SUM(days), 0) as total FROM leave_day_additions WHERE user_id = ?',
+            [userId]
+        );
+        const manualAdditions = parseFloat(additionRows[0]?.total) || 0;
+
+        // Get holiday compensations
+        const [holidayRows] = await safeTenantQuery(
+            dbName,
+            'SELECT COUNT(*) as count FROM holiday_compensations WHERE user_id = ?',
+            [userId]
+        );
+        const holidayCompensations = parseInt(holidayRows[0]?.count) || 0;
+
+        // Get leave taken (only approved annual leave)
+        const [takenRows] = await safeTenantQuery(
+            dbName,
+            'SELECT COALESCE(SUM(days), 0) as total FROM leave_requests WHERE user_id = ? AND leave_type = ? AND status = ?',
+            [userId, LEAVE_TYPES.ANNUAL, LEAVE_STATUS.APPROVED]
+        );
+        const leaveTaken = parseFloat(takenRows[0]?.total) || 0;
+
+        // Calculate current balance
+        const currentBalance = initialBalance + manualAdditions + holidayCompensations - leaveTaken;
+
+        return {
+            initial: initialBalance,
+            manualAdditions,
+            holidayCompensations,
+            leaveTaken,
+            currentBalance
+        };
+    } catch (error) {
+        console.error('Error calculating leave balance:', error);
+        return {
+            initial: DEFAULT_LEAVE_DAYS,
+            manualAdditions: 0,
+            holidayCompensations: 0,
+            leaveTaken: 0,
+            currentBalance: DEFAULT_LEAVE_DAYS
+        };
     }
 };
 
@@ -604,6 +665,245 @@ const getUsersOnLeave = async (req, res) => {
     }
 };
 
+// ============================================
+// ADD LEAVE DAYS (Admin)
+// ============================================
+const addLeaveDays = async (req, res) => {
+    const tenantSlug = req.tenantSlug;
+    const dbName = req.tenant.db_name;
+    const { user_id, days, reason, added_by } = req.body;
+
+    try {
+        if (!user_id || !days || days < 1) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'User ID and valid days (>= 1) are required'
+            });
+        }
+
+        if (!reason || !reason.trim()) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Reason is required for adding leave days'
+            });
+        }
+
+        // Record the addition
+        const result = await safeTenantExecute(
+            dbName,
+            `INSERT INTO leave_day_additions (user_id, days, reason, added_by, created_at) 
+       VALUES (?, ?, ?, ?, CURDATE())`,
+            [user_id, days, reason, added_by || 1]
+        );
+
+        const additionId = result.insertId;
+
+        // Get the created record
+        const [additionRows] = await safeTenantQuery(
+            dbName,
+            `SELECT lda.*, u.name, u.email 
+       FROM leave_day_additions lda 
+       JOIN users u ON lda.user_id = u.user_id 
+       WHERE lda.id = ?`,
+            [additionId]
+        );
+
+        const addition = additionRows[0];
+
+        // Emit real-time update
+        emitUpdate(tenantSlug, 'leave:days_added', addition);
+
+        return res.status(201).json({
+            status: 'success',
+            message: `Added ${days} leave days successfully`,
+            data: addition
+        });
+
+    } catch (error) {
+        console.error('Error adding leave days:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Failed to add leave days',
+            error: error.message
+        });
+    }
+};
+
+// ============================================
+// REMOVE LEAVE DAYS (Admin)
+// ============================================
+const removeLeaveDays = async (req, res) => {
+    const tenantSlug = req.tenantSlug;
+    const dbName = req.tenant.db_name;
+    const additionId = req.params.id;
+
+    try {
+        // Get the addition record
+        const [additionRows] = await safeTenantQuery(
+            dbName,
+            'SELECT * FROM leave_day_additions WHERE id = ?',
+            [additionId]
+        );
+
+        if (!additionRows || additionRows.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Leave day addition not found'
+            });
+        }
+
+        const addition = additionRows[0];
+
+        // Delete the addition
+        await safeTenantExecute(
+            dbName,
+            'DELETE FROM leave_day_additions WHERE id = ?',
+            [additionId]
+        );
+
+        // Emit real-time update
+        emitUpdate(tenantSlug, 'leave:days_removed', { addition_id: additionId, user_id: addition.user_id, days: addition.days });
+
+        return res.status(200).json({
+            status: 'success',
+            message: `Removed ${addition.days} leave days successfully`
+        });
+
+    } catch (error) {
+        console.error('Error removing leave days:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Failed to remove leave days',
+            error: error.message
+        });
+    }
+};
+
+// ============================================
+// RECORD HOLIDAY COMPENSATION (Admin)
+// ============================================
+const recordHolidayCompensation = async (req, res) => {
+    const tenantSlug = req.tenantSlug;
+    const dbName = req.tenant.db_name;
+    const { user_id, holiday_date, holiday_name, note, recorded_by } = req.body;
+
+    try {
+        if (!user_id || !holiday_date || !holiday_name) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'User ID, holiday date, and holiday name are required'
+            });
+        }
+
+        // Record the holiday compensation
+        const result = await safeTenantExecute(
+            dbName,
+            `INSERT INTO holiday_compensations (user_id, holiday_date, holiday_name, note, recorded_by, created_at) 
+       VALUES (?, ?, ?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE note = VALUES(note), created_at = NOW()`,
+            [user_id, holiday_date, holiday_name, note || null, recorded_by || 1]
+        );
+
+        const compensationId = result.insertId;
+
+        // Get the created record
+        const [compensationRows] = await safeTenantQuery(
+            dbName,
+            `SELECT hc.*, u.name, u.email 
+       FROM holiday_compensations hc 
+       JOIN users u ON hc.user_id = u.user_id 
+       WHERE hc.id = ?`,
+            [compensationId]
+        );
+
+        const compensation = compensationRows[0];
+
+        // Emit real-time update
+        emitUpdate(tenantSlug, 'leave:holiday_recorded', compensation);
+
+        return res.status(201).json({
+            status: 'success',
+            message: 'Holiday compensation recorded successfully',
+            data: compensation
+        });
+
+    } catch (error) {
+        console.error('Error recording holiday compensation:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Failed to record holiday compensation',
+            error: error.message
+        });
+    }
+};
+
+// ============================================
+// GET LEAVE BALANCE (User/Admin)
+// ============================================
+const getLeaveBalance = async (req, res) => {
+    const dbName = req.tenant.db_name;
+    const userId = req.params.user_id || req.headers['x-user-id'];
+
+    try {
+        const balance = await calculateLeaveBalance(dbName, userId);
+
+        return res.status(200).json({
+            status: 'success',
+            data: balance
+        });
+
+    } catch (error) {
+        console.error('Error fetching leave balance:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch leave balance',
+            error: error.message
+        });
+    }
+};
+
+// ============================================
+// GET ALL LEAVE BALANCES (Admin)
+// ============================================
+const getAllLeaveBalances = async (req, res) => {
+    const dbName = req.tenant.db_name;
+
+    try {
+        // Get all users
+        const [users] = await safeTenantQuery(
+            dbName,
+            'SELECT user_id, name, email, annual_leave_balance FROM users ORDER BY name ASC'
+        );
+
+        // Calculate balance for each user
+        const balances = await Promise.all(
+            users.map(async (user) => {
+                const balance = await calculateLeaveBalance(dbName, user.user_id);
+                return {
+                    user_id: user.user_id,
+                    name: user.name,
+                    email: user.email,
+                    ...balance
+                };
+            })
+        );
+
+        return res.status(200).json({
+            status: 'success',
+            count: balances.length,
+            data: balances
+        });
+
+    } catch (error) {
+        console.error('Error fetching all leave balances:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch leave balances',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     applyForLeave,
     getAllLeaves,
@@ -614,6 +914,13 @@ module.exports = {
     uploadDocument,
     getLeaveStats,
     getUsersOnLeave,
+    addLeaveDays,
+    removeLeaveDays,
+    recordHolidayCompensation,
+    getLeaveBalance,
+    getAllLeaveBalances,
+    calculateLeaveBalance,
     LEAVE_TYPES,
-    LEAVE_STATUS
+    LEAVE_STATUS,
+    DEFAULT_LEAVE_DAYS
 };

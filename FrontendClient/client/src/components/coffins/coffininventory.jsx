@@ -342,7 +342,6 @@ const CoffinDashboard = () => {
       const data = modal.data;
       const formData = new FormData();
       formData.append('name', data.name);
-      if (data.sku) formData.append('sku', data.sku);
       formData.append('type', data.type);
       formData.append('material', data.material);
       formData.append('price', parseFloat(data.price));
@@ -811,10 +810,7 @@ const CoffinDashboard = () => {
                   <FormLabel>Name *</FormLabel>
                   <FormInput required value={modal.data.name || ''} onChange={e => setModal({ ...modal, data: { ...modal.data, name: e.target.value } })} placeholder="Mahogany Heritage" />
                 </FormGroup>
-                <FormGroup>
-                  <FormLabel>SKU</FormLabel>
-                  <FormInput value={modal.data.sku || ''} onChange={e => setModal({ ...modal, data: { ...modal.data, sku: e.target.value } })} placeholder="Auto-generated from name" />
-                </FormGroup>
+                <FormGroup></FormGroup>
               </FormRow>
               <FormRow>
                 <FormGroup>

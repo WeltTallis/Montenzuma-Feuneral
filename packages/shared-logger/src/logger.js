@@ -43,4 +43,3 @@ const logger = (0, pino_1.default)({
 }, transport);
 exports.logger = logger;
 exports.default = logger;
-//# sourceMappingURL=logger.js.map

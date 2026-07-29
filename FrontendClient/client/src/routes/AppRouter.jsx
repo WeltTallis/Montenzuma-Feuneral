@@ -67,6 +67,7 @@ const ContactPage = lazy(() => import('../modules/pages/ContactPage'));
 const WeltTallisAbout = lazy(() => import('../modules/about/WeltTallisAbout'));
 const LoginPage = lazy(() => import('../components/auth/login'));
 const PortalLoginPage = lazy(() => import('../components/auth/PortalLogin'));
+const ReceptionPortal = lazy(() => import('../components/reception/ReceptionPortal'));
 const ForgotPassword = lazy(() => import('../components/auth/ForgotPassword'));
 const ChangePassword = lazy(() => import('../components/auth/changePassword'));
 const InvoiceManager = lazy(() => import('../components/invoices/invoicemanager'));
@@ -98,6 +99,7 @@ const CataloguePage = lazy(() => import('../components/catalogue/catalogue'));
 
 // Flower Booking System
 const FlowerBookings = lazy(() => import('../components/florists/FlowerBookings'));
+const FlowerBookingForm = lazy(() => import('../components/florists/FlowerBookingForm'));
 const FlowerOrderDetail = lazy(() => import('../components/florists/FlowerOrderDetail'));
 
 const HearseBookings = lazy(() => import('../components/hearse/hearseBookings'));
@@ -172,7 +174,7 @@ const DashboardLayout = ({ children, tenantData }) => {
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F7F9FB', flexDirection: 'column' }}>
       <div style={{ display: 'flex', flex: 1 }}>
         <ModernSidebar tenantData={tenantData} userData={{ name: user?.full_name || user?.name, role: user?.role || 'Administrator' }} onLogout={handleLogout} onToggle={handleSidebarToggle} />
-        <main style={{ flex: 1, marginLeft, padding: contentPadding, minHeight: 'calc(100vh - 60px)', background: '#F7F9FB', transition: 'margin-left 0.3s ease, padding 0.3s ease' }}>
+        <main style={{ flex: 1, marginLeft, padding: contentPadding,  background: '#F7F9FB', transition: 'margin-left 0.3s ease, padding 0.3s ease' }}>
           {/* Top Bar with Notification Bell */}
           <div style={{
             display: 'flex',
@@ -488,6 +490,11 @@ const TenantDashboardRoutes = ({ tenantData }) => {
           <Layout tenantData={tenantData}><FlowerBookings /></Layout>
         </RoleBasedRoute>
       } />
+      <Route path="flowers/new" element={
+        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
+          <FlowerBookingForm />
+        </RoleBasedRoute>
+      } />
       <Route path="flowers/order/:id" element={
         <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
           <Layout tenantData={tenantData}><FlowerOrderDetail /></Layout>
@@ -505,6 +512,13 @@ const TenantDashboardRoutes = ({ tenantData }) => {
       <Route path="driver-portal" element={
         <RoleBasedRoute allowedRoles={['driver']} userRole={userRole}>
           <DriverPortal />
+        </RoleBasedRoute>
+      } />
+
+      {/* Receptionist Portal - Standalone without sidebar */}
+      <Route path="receptionist" element={
+        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user']} userRole={userRole}>
+          <ReceptionPortal />
         </RoleBasedRoute>
       } />
 
@@ -644,8 +658,9 @@ const AppRouter = () => (
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/change-password" element={<ChangePassword />} />
-      <Route path="/portal" element={<Navigate to="/portal/login" replace />} />
-      <Route path="/insurance" element={<InsurancePage />} />
+<Route path="/portal" element={<Navigate to="/portal/login" replace />} />
+<Route path="/reception" element={<ReceptionPortal />} />
+<Route path="/insurance" element={<InsurancePage />} />
       <Route path="/memorial" element={<MemorialPage />} />
       <Route path="/portal/login" element={<PortalLoginPage />} />
 

@@ -65,9 +65,10 @@ router.post('/users', protect, createUser);
 // SESSION STATUS
 // ============================================
 router.get('/session', (req: Request, res: Response) => {
+  const session = req.session as any;
   const isAuthenticated = !!(
-    req.session?.userId &&
-    req.session?.tenantId &&
+    session?.userId &&
+    session?.tenantId &&
     req.cookies?.['restpoint.sid']
   );
 
@@ -79,9 +80,9 @@ router.get('/session', (req: Request, res: Response) => {
     success: true,
     authenticated: true,
     session: {
-      userId: req.session.userId,
-      tenantId: req.session.tenantId,
-      tenantSlug: req.session.tenantSlug,
+      userId: session.userId,
+      tenantId: session.tenantId,
+      tenantSlug: session.tenantSlug,
     },
   });
 });

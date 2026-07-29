@@ -8,22 +8,22 @@ import { LayoutDashboard, Users, FileText, Calendar, Box, Hammer, ShoppingCart, 
 // ============================================================
 
 const COLORS = {
-  primary: '#0A2463',
-  primaryLight: '#1A3A7A',
+  bgPage: '#F4F5F7',
   white: '#FFFFFF',
-  bg: '#F5F7FA',
-  border: '#E8ECF0',
-  text: '#1A1D24',
-  textSecondary: '#6B7280',
-  textLight: '#9CA3AF',
-  activeBg: 'rgba(10, 36, 99, 0.05)',
-  hoverBg: 'rgba(0, 0, 0, 0.02)',
-  danger: '#E74C3C',
-  shadow: 'rgba(0, 0, 0, 0.04)',
+  border: '#E8E8E8',
+  textMain: '#000000',
+  textMuted: '#555555',
+  textLight: '#999999',
+  green: '#2E7D32',
+  greenBg: '#E8F5E9',
+  red: '#D32F2F',
+  redHover: '#B71C1C',
+  grayHover: '#F5F5F5',
+  shadow: 'rgba(0, 0, 0, 0.15)',
 };
 
 const TRANSITIONS = {
-  default: '0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+  default: '0.3s cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 // ============================================================
@@ -46,14 +46,13 @@ const SidebarWrapper = styled.div`
 `;
 
 const SidebarContainer = styled.aside`
-  width: ${(props) => (props.$isOpen ? '240px' : '68px')};
+  width: ${(props) => (props.$isOpen ? '200px' : '60px')};
   background: ${COLORS.white};
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: width ${TRANSITIONS.default};
   border-right: 1px solid ${COLORS.border};
-  box-shadow: 2px 0 8px ${COLORS.shadow};
   height: 100vh;
   position: relative;
 `;
@@ -62,60 +61,56 @@ const SidebarNav = styled.nav`
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 24px 8px 8px 8px;
+  padding: ${(props) => (props.$isOpen ? '20px 16px' : '20px 8px')};
   
   &::-webkit-scrollbar {
-    width: 3px;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: ${COLORS.border};
-    border-radius: 4px;
+    width: 0;
   }
 `;
 
 const NavSection = styled.div`
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 `;
 
 const NavSectionTitle = styled.div`
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 10px;
+  font-weight: 700;
   color: ${COLORS.textLight};
-  padding: ${(props) => (props.$isOpen ? '0 12px 6px' : '0 0 6px')};
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: ${(props) => (props.$isOpen ? '0 12px 12px 12px' : '0')};
   text-align: ${(props) => (props.$isOpen ? 'left' : 'center')};
-  opacity: ${(props) => (props.$isOpen ? 1 : 0.5)};
+  opacity: ${(props) => (props.$isOpen ? 1 : 0)};
   transition: opacity ${TRANSITIONS.default};
   white-space: nowrap;
   overflow: hidden;
+  
+  ${(props) => !props.$isOpen && `
+    height: 12px;
+    margin-bottom: 16px;
+  `}
 `;
 
 const MenuItem = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  margin: 2px 0;
+  gap: 14px;
+  padding: 0 12px;
+  height: 44px;
+  margin-bottom: 4px;
   cursor: pointer;
-  border-radius: 8px;
-  background: ${(props) => (props.$active ? COLORS.activeBg : 'transparent')};
-  color: ${(props) => (props.$active ? COLORS.primary : COLORS.textSecondary)};
+  border-radius: 10px;
+  background: ${(props) => (props.$active ? COLORS.greenBg : 'transparent')};
+  color: ${(props) => (props.$active ? COLORS.green : COLORS.textMain)};
   transition: all ${TRANSITIONS.default};
   justify-content: ${(props) => (props.$collapsed ? 'center' : 'flex-start')};
   position: relative;
-  min-height: 40px;
-  
-  ${(props) => props.$active && `
-    font-weight: 500;
-  `}
+  font-size: 14px;
+  font-weight: 700;
   
   &:hover {
-    background: ${COLORS.activeBg};
-    color: ${COLORS.primary};
+    background: ${COLORS.grayHover};
+    color: ${COLORS.textMain};
   }
 `;
 
@@ -124,12 +119,20 @@ const MenuItemIcon = styled.span`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  color: ${(props) => (props.$active ? COLORS.primary : COLORS.textSecondary)};
+  width: 22px;
+  height: 22px;
+  color: ${(props) => (props.$active ? COLORS.green : COLORS.textMain)};
+  
+  svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2.2;
+  }
 `;
 
 const MenuItemLabel = styled.span`
-  font-size: 0.85rem;
+  font-size: 14px;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -139,12 +142,12 @@ const MenuItemLabel = styled.span`
 `;
 
 const MenuBadge = styled.span`
-  background: ${COLORS.primary};
+  background: ${COLORS.textMain};
   color: ${COLORS.white};
-  font-size: 0.65rem;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 12px;
   opacity: ${(props) => (props.$visible ? 1 : 0)};
   transition: opacity ${TRANSITIONS.default};
   flex-shrink: 0;
@@ -155,38 +158,39 @@ const CollapsedItem = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px;
+  padding: 0;
   margin: 2px 0;
   cursor: pointer;
-  border-radius: 8px;
-  background: ${(props) => (props.$active ? COLORS.activeBg : 'transparent')};
-  color: ${(props) => (props.$active ? COLORS.primary : COLORS.textSecondary)};
+  border-radius: 10px;
+  background: ${(props) => (props.$active ? COLORS.greenBg : 'transparent')};
+  color: ${(props) => (props.$active ? COLORS.green : COLORS.textMain)};
   transition: all ${TRANSITIONS.default};
-  min-height: 40px;
+  height: 44px;
   
   &:hover {
-    background: ${COLORS.activeBg};
-    color: ${COLORS.primary};
+    background: ${COLORS.grayHover};
+    color: ${COLORS.textMain};
   }
 `;
 
 const Tooltip = styled.div`
   position: absolute;
-  left: calc(100% + 12px);
+  left: calc(100% + 16px);
   top: 50%;
   transform: translateY(-50%);
-  background: ${COLORS.text};
+  background: ${COLORS.textMain};
   color: ${COLORS.white};
   padding: 6px 12px;
   border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
   opacity: 0;
   visibility: hidden;
   transition: all ${TRANSITIONS.default};
   z-index: 100;
   pointer-events: none;
+  box-shadow: 0 4px 12px ${COLORS.shadow};
   
   &::before {
     content: '';
@@ -195,7 +199,7 @@ const Tooltip = styled.div`
     top: 50%;
     transform: translateY(-50%);
     border: 5px solid transparent;
-    border-right-color: ${COLORS.text};
+    border-right-color: ${COLORS.textMain};
   }
   
   ${CollapsedItem}:hover & {
@@ -205,53 +209,100 @@ const Tooltip = styled.div`
 `;
 
 const SidebarFooter = styled.div`
-  padding: 12px;
+  padding: ${(props) => (props.$isOpen ? '12px 16px' : '12px 8px')};
   border-top: 1px solid ${COLORS.border};
-  margin-top: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transition: padding ${TRANSITIONS.default};
+`;
+
+const SwitchTabButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  background: ${COLORS.bgPage};
+  color: ${COLORS.textMain};
+  border: 1px solid ${COLORS.border};
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all ${TRANSITIONS.default};
+  white-space: nowrap;
+  text-align: left;
+  position: relative;
+  justify-content: ${(props) => (props.$collapsed ? 'center' : 'flex-start')};
+  
+  &:hover {
+    background: #EEEEEE;
+  }
+  
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2.2;
+    flex-shrink: 0;
+  }
 `;
 
 const LogoutButton = styled.button`
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  padding: 10px;
-  color: ${COLORS.textSecondary};
   display: flex;
   align-items: center;
-  justify-content: ${(props) => (props.$collapsed ? 'center' : 'flex-start')};
-  gap: 12px;
-  width: 100%;
-  font-size: 0.85rem;
+  gap: 14px;
+  height: 40px;
+  padding: 0 12px;
+  background: ${COLORS.red};
+  color: ${COLORS.white};
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
   transition: all ${TRANSITIONS.default};
+  white-space: nowrap;
+  text-align: left;
+  position: relative;
+  justify-content: ${(props) => (props.$collapsed ? 'center' : 'flex-start')};
   
   &:hover {
-    background: rgba(231, 76, 60, 0.08);
-    color: ${COLORS.danger};
+    background: ${COLORS.redHover};
+  }
+  
+  svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2.2;
+    flex-shrink: 0;
   }
 `;
 
 const ToggleButton = styled.button`
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  padding: 10px;
+  background: ${COLORS.bgPage};
+  border: 1px solid ${COLORS.border};
+  color: ${COLORS.textMain};
   cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
-  justify-content: ${(props) => (props.$isOpen ? 'flex-start' : 'center')};
+  justify-content: center;
   transition: all ${TRANSITIONS.default};
-  color: ${COLORS.textSecondary};
-  gap: 12px;
-  width: 100%;
-  font-size: 0.85rem;
+  flex-shrink: 0;
+  padding: 0;
   
   &:hover {
-    background: ${COLORS.hoverBg};
-    color: ${COLORS.text};
+    background: ${COLORS.textMain};
+    color: white;
+  }
+  
+  svg {
+    width: 16px;
+    height: 16px;
+    transition: transform ${TRANSITIONS.default};
   }
 `;
 
@@ -273,7 +324,7 @@ const MobileMenuButton = styled.button`
   display: none;
   align-items: center;
   justify-content: center;
-  color: ${COLORS.text};
+  color: ${COLORS.textMain};
   
   @media (max-width: 767px) {
     display: flex;
@@ -322,7 +373,7 @@ const CloseButton = styled.button`
   display: flex;
   align-items: center;
   align-self: flex-end;
-  color: ${COLORS.textSecondary};
+  color: ${COLORS.textMuted};
   margin-bottom: 16px;
 `;
 
@@ -456,6 +507,11 @@ const ModernSidebar = ({
     if (isMobile) setIsOpen(false);
   };
 
+  const handleSwitchToTab = () => {
+    const tenantSlug = slug || localStorage.getItem('tenantSlug') || 'default';
+    navigate(`/tenant/${tenantSlug}/receptionist`, { replace: true });
+  };
+
   const toggleSidebar = useCallback(() => {
     const newState = !isOpen;
     setIsOpen(newState);
@@ -479,7 +535,7 @@ const ModernSidebar = ({
         tabIndex={0}
       >
         <MenuItemIcon $active={isActive(item.path)}>
-          <item.icon size={18} />
+          <item.icon size={20} />
         </MenuItemIcon>
         <MenuItemLabel $active={isActive(item.path)} $visible={isOpen}>
           {item.label}
@@ -502,19 +558,19 @@ const ModernSidebar = ({
       >
         <Tooltip>{item.label}</Tooltip>
         <MenuItemIcon $active={isActive(item.path)}>
-          <item.icon size={18} />
+          <item.icon size={20} />
         </MenuItemIcon>
         {item.badge && (
           <span style={{
             position: 'absolute',
             top: '4px',
             right: '4px',
-            background: COLORS.primary,
+            background: COLORS.textMain,
             color: COLORS.white,
-            fontSize: '0.55rem',
-            fontWeight: 600,
-            padding: '1px 4px',
-            borderRadius: '8px',
+            fontSize: '10px',
+            fontWeight: 700,
+            padding: '2px 7px',
+            borderRadius: '12px',
             minWidth: '12px',
             textAlign: 'center'
           }}>
@@ -540,7 +596,7 @@ const ModernSidebar = ({
             <X size={22} />
           </CloseButton>
 
-          <SidebarNav>
+          <SidebarNav $isOpen={true}>
             {menuItems.map((section, idx) => (
               <NavSection key={idx}>
                 {section.section && (
@@ -553,7 +609,7 @@ const ModernSidebar = ({
             ))}
           </SidebarNav>
 
-          <SidebarFooter>
+          <SidebarFooter $isOpen={true}>
             <LogoutButton $collapsed={false} onClick={handleLogout}>
               <LogOut size={18} />
               <span>Sign Out</span>
@@ -568,12 +624,12 @@ const ModernSidebar = ({
   return (
     <SidebarWrapper>
       <SidebarContainer $isOpen={isOpen}>
-        <SidebarNav>
+        <SidebarNav $isOpen={isOpen}>
           {menuItems.map((section, idx) => (
             <NavSection key={idx}>
               {section.section && (
                 <NavSectionTitle $isOpen={isOpen}>
-                  {isOpen ? section.section : section.section.slice(0, 1)}
+                  {isOpen ? section.section : ''}
                 </NavSectionTitle>
               )}
               {isOpen ? renderMenuItems(section.items) : renderCollapsedItems(section.items)}
@@ -581,20 +637,27 @@ const ModernSidebar = ({
           ))}
         </SidebarNav>
 
-        <SidebarFooter>
+        <SidebarFooter $isOpen={isOpen}>
+          <SwitchTabButton $collapsed={!isOpen} onClick={handleSwitchToTab}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2v6M9 5h6M5 8l-3 4 3 4M19 8l3 4-3 4M9 22h6"></path>
+              <rect x="7" y="12" width="10" height="6" rx="1" />
+            </svg>
+            {isOpen && <span>Switch to Tab</span>}
+            {!isOpen && <Tooltip>Switch to Tab</Tooltip>}
+          </SwitchTabButton>
+
           <LogoutButton $collapsed={!isOpen} onClick={handleLogout}>
             <LogOut size={18} />
             {isOpen && <span>Sign Out</span>}
+            {!isOpen && <Tooltip>Sign Out</Tooltip>}
           </LogoutButton>
 
           <ToggleButton $isOpen={isOpen} onClick={toggleSidebar}>
             {isOpen ? (
-              <>
-                <ChevronLeft size={18} />
-                <span>Collapse</span>
-              </>
+              <ChevronLeft size={16} />
             ) : (
-              <ChevronRight size={18} />
+              <ChevronRight size={16} />
             )}
           </ToggleButton>
         </SidebarFooter>

@@ -9,6 +9,48 @@ import jwt from 'jsonwebtoken';
 import validator from 'validator';
 import mysql from 'mysql2/promise';
 
+
+// ============================================
+// TYPE DECLARATIONS - Fix for TypeScript errors
+// ============================================
+import 'express-session';
+
+declare module 'express-session' {
+  interface SessionData {
+    csrfToken?: string;
+    userId?: number;
+    tenantId?: number;
+    tenantSlug?: string;
+    dbName?: string;
+  }
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        userId: number;
+        email: string;
+        tenantId: number;
+        tenantName: string;
+        tenantSlug: string;
+        dbName: string;
+        role: string;
+        branchDbName?: string | null;
+        [key: string]: any;
+      };
+      tenant?: {
+        db_name: string;
+        tenant_slug?: string;
+        name?: string;
+        [key: string]: any;
+      };
+      tenantSlug?: string;
+      branchId?: string | null;
+    }
+  }
+}
+// ============================================
 // ============================================
 // GLOBAL SECRETS (validated at startup)
 // ============================================
@@ -480,8 +522,14 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     }
 
     const result = await generateTokens(rows[0], tenants[0], branchDbName);
-    res.status(200).json({ success: true, message: 'Token refreshed successfully', accessToken: result.accessToken });
-  } catch {
+    res.status(200).json({
+      success: true,
+      message: 'Token refreshed successfully',
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    });
+  } catch (error: any) {
+    console.error('[Auth] Token refresh failed:', error.message);
     res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
   }
 };

@@ -32,6 +32,26 @@ app.use(cors({
     ],
 }));
 
+// Health check - BEFORE tenant middleware to avoid log spam
+app.get('/health', (req: Request, res: Response) => {
+    res.status(200).json({
+        status: 'UP',
+        service: 'deceased-service',
+        timestamp: new Date().toISOString(),
+        port: PORT
+    });
+});
+
+// Root health check for API gateway
+app.get('/', (req: Request, res: Response) => {
+    res.status(200).json({
+        status: 'UP',
+        service: 'deceased-service',
+        timestamp: new Date().toISOString(),
+        port: PORT
+    });
+});
+
 // Middleware
 app.use(helmet({
     contentSecurityPolicy: false,
@@ -49,7 +69,10 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
         (req as any).tenantSlug = tenantSlug;
         (req as any).branchId = branchId;
 
-        console.log(`[DECEASED] ${req.method} ${req.path} - Tenant: ${tenantSlug}`);
+        // Only log non-health-check requests
+        if (req.path !== '/health') {
+            console.log(`[DECEASED] ${req.method} ${req.path} - Tenant: ${tenantSlug || 'undefined'}`);
+        }
 
         if (!tenantSlug || tenantSlug === 'system_shared') {
             (req as any).tenant = {
@@ -63,7 +86,6 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 
         let resolvedDbName = null;
 
-        console.log(`[DECEASED] Trying direct database connection for: ${tenantSlug}`);
         try {
             const testPool = require('mysql2/promise').createPool({
                 host: process.env.DB_HOST || '127.0.0.1',
@@ -78,11 +100,10 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
             const [result] = await testPool.query('SELECT 1');
             if (result) {
                 resolvedDbName = tenantSlug;
-                console.log(`[DECEASED] Direct database connection successful: ${resolvedDbName}`);
             }
             await testPool.end().catch(() => { });
         } catch (dbErr) {
-            console.log(`[DECEASED] Direct database connection failed: ${dbErr.message}`);
+            // Silent fail for health checks
         }
 
         if (!resolvedDbName) {
@@ -90,7 +111,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
                 const { resolveDatabase } = require('../../shared/dbConfig');
                 resolvedDbName = await resolveDatabase(tenantSlug);
             } catch (e) {
-                console.log(`[DECEASED] resolveDatabase failed: ${e.message}`);
+                // Silent fail for health checks
             }
         }
 
@@ -108,7 +129,6 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
             name: tenantSlug,
             tenant_slug: tenantSlug
         };
-        console.log(`[DECEASED] Tenant resolved: ${resolvedDbName}`);
 
         next();
     } catch (error) {
@@ -121,30 +141,13 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
     }
 });
 
-// Request logging
+// Request logging - only for non-health-check requests
 app.use((req: Request, res: Response, next: NextFunction) => {
-    console.log(`[DECEASED] ${req.method} ${req.path}`);
+    if (req.path !== '/health') {
+        console.log(`[DECEASED] ${req.method} ${req.path}`);
+    }
     next();
 });
-
-// Health check
-app.get('/health', (req: Request, res: Response) => {
-    res.status(200).json({
-        status: 'UP',
-        service: 'deceased-service',
-        tenant: (req as any).tenantSlug,
-        timestamp: new Date().toISOString(),
-        port: PORT
-    });
-});
-
-// Auto-migrate: Ensure deceased tables exist in tenant databases
-import { migrateTenantTables } from './migrate-tenant-tables';
-if (process.env.DB_NAME) {
-    migrateTenantTables(process.env.DB_NAME).catch(err => {
-        console.warn(`[DECEASED] Auto-migration warning for ${process.env.DB_NAME}:`, err.message);
-    });
-}
 
 // Mount routes
 import autopsyRoutes from './routes/autopsyRoutes';
@@ -154,15 +157,15 @@ import nextOfKinRoutes from './routes/nextOfKinRoutes';
 import hearseRoutes from './routes/hearseRoutes';
 import documentsRoutes from './routes/documentsRoutes';
 
+import deceasedRoutes from './routes/deceasedRoutes';
+app.use('/', deceasedRoutes);
+
 app.use('/', nextOfKinRoutes);
 app.use('/', hearseRoutes);
 app.use('/', documentsRoutes);
 app.use('/', autopsyRoutes);
 app.use('/', chargesRoutes);
 app.use('/', chargeSettingsRoutes);
-
-import deceasedRoutes from './routes/deceasedRoutes';
-app.use('/', deceasedRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -211,6 +214,9 @@ const io = new SocketIOServer(server, {
 
 // Make io available globally for controllers
 (global as any).io = io;
+
+// Initialize BullMQ Worker for Excel Export
+import './workers/excelExportWorker';
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {

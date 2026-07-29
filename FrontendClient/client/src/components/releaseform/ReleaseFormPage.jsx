@@ -1,17 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {
   Check, Loader2, CheckCircle, X, FileText, User,
-  RotateCcw, ShieldCheck, AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard
+  RotateCcw, ShieldCheck, AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, Search
 } from '../../utils/icons/icons';
-import ReusableSignaturePad from '../../utils/signature/signaturepad';
 
 import styled, { keyframes } from 'styled-components';
 import { useTenantStore } from '../../modules/seo/useTenantStore';
 import api from '../../api/axios';
 import { ENDPOINTS } from '../../api/endpoints';
+
+// Dynamically import signature pad to avoid SSR issues
+const ReusableSignaturePad = React.lazy(() => import('../../utils/signature/signaturepad'));
 
 const COLORS = {
   black: '#0a0a0a',
@@ -593,26 +595,37 @@ const ReleaseFormPage = () => {
     permitNumber: '',
     itemsReturned: '',
     notes: '',
-    receivedBy: '',
+    receivedBy: getLoggedInUserEmail(), // Auto-fill with logged-in user's email
     staffName: getLoggedInUserEmail(),
     docsConfirmed: false,
     allDocsComplete: false,
   });
   const [recipientSignature, setRecipientSignature] = useState(null);
+  const [admissionNumberInput, setAdmissionNumberInput] = useState('');
+  const [isLookingUp, setIsLookingUp] = useState(false);
 
   useEffect(() => {
     if (location.state?.deceasedData) {
       setDeceasedData(location.state.deceasedData);
       setIsLoading(false);
-    } else {
+    } else if (id && id !== 'new') {
+      // Only fetch if we have a valid ID (not 'new' or empty)
       fetchDeceasedData();
+    } else {
+      // No valid ID, show search prompt
+      setIsLoading(false);
     }
   }, [id]);
 
-  // Auto-fill current time on component mount
+  // Auto-fill current time and receivedBy on component mount
   useEffect(() => {
     const currentTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    setFormData(prev => ({ ...prev, releaseTime: currentTime }));
+    const userEmail = getLoggedInUserEmail();
+    setFormData(prev => ({ 
+      ...prev, 
+      releaseTime: currentTime,
+      receivedBy: userEmail // Ensure receivedBy is set from logged-in user
+    }));
   }, []);
 
   const fetchDeceasedData = async () => {
@@ -630,12 +643,81 @@ const ReleaseFormPage = () => {
       });
       const data = response.data?.data || response.data || {};
       setDeceasedData(data);
+
+      // Fetch postmortem data if available
+      fetchPostmortemData(id, tenantSlug);
     } catch (error) {
       console.error('Error fetching deceased data:', error);
       const errorMessage = error.response?.data?.message || 'Failed to load deceased information';
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const [postmortemData, setPostmortemData] = useState(null);
+
+  const fetchPostmortemData = async (deceasedId, tenantSlug) => {
+    try {
+      const response = await api.get(`/postmortem/${deceasedId}`, {
+        headers: { 'x-tenant-slug': tenantSlug },
+      });
+
+      if (response.data?.success && response.data?.data) {
+        setPostmortemData(response.data.data);
+      }
+    } catch (error) {
+      // Postmortem may not exist, that's okay
+      console.log('No postmortem data found');
+    }
+  };
+
+  const lookupDeceasedByAdmissionNumber = async (admissionNumber) => {
+    if (!admissionNumber || admissionNumber.trim() === '') {
+      toast.error('Please enter an admission number');
+      return;
+    }
+
+    setIsLookingUp(true);
+    try {
+      const tenantSlug = getTenantSlug();
+      if (!tenantSlug) {
+        toast.error('Tenant information not found');
+        return;
+      }
+
+      const response = await api.get(`/deceased/admission-number/${encodeURIComponent(admissionNumber)}`, {
+        headers: { 'x-tenant-slug': tenantSlug },
+      });
+
+      if (response.data?.success && response.data?.data) {
+        const deceased = response.data.data;
+        setDeceasedData(deceased);
+        toast.success(`Found: ${deceased.full_name}`);
+        
+        // Update URL with deceased ID for better UX
+        navigate(`/release-form/${deceased.id}`, { 
+          state: { deceasedData: deceased },
+          replace: true 
+        });
+      } else {
+        toast.error('Deceased not found with this admission number');
+        setDeceasedData(null);
+      }
+    } catch (error) {
+      console.error('Error looking up deceased:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to look up deceased';
+      toast.error(errorMessage);
+      setDeceasedData(null);
+    } finally {
+      setIsLookingUp(false);
+    }
+  };
+
+  const handleAdmissionNumberKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      lookupDeceasedByAdmissionNumber(admissionNumberInput);
     }
   };
 
@@ -648,12 +730,8 @@ const ReleaseFormPage = () => {
     const errors = [];
     if (!formData.releasedTo.trim()) errors.push('Released To name is required');
     if (!formData.relationship) errors.push('Relationship to Deceased is required');
-    if (!formData.idNumber.trim()) errors.push('ID Number is required');
-    if (!formData.phoneNumber.trim()) errors.push('Phone Number is required');
     if (!formData.releaseDate) errors.push('Release Date is required');
     if (!formData.releaseTime) errors.push('Release Time is required');
-    if (!formData.receivedBy.trim()) errors.push('Received By name is required');
-    if (!formData.staffName) errors.push('Staff name is required');
     if (!formData.docsConfirmed) errors.push('Please confirm all documentation is complete');
     if (!recipientSignature) errors.push('Recipient signature is required');
 
@@ -742,13 +820,15 @@ const ReleaseFormPage = () => {
     return (
       <Container>
         <Page>
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
-            <AlertCircle size={48} color={COLORS.red} style={{ marginBottom: '1rem' }} />
-            <h2 style={{ color: COLORS.dark, marginBottom: '0.5rem' }}>Deceased Not Found</h2>
-            <p style={{ color: COLORS.textSecondary, marginBottom: '1.5rem' }}>Unable to load deceased information</p>
-            <BackButton onClick={() => navigate(-1)}>
-              <ArrowRight size={16} /> Go Back
-            </BackButton>
+          <div style={{ textAlign: 'center', padding: '2rem', background: '#fff9f0', border: '1px solid #f0e0c0', borderRadius: '4px', marginTop: '2rem' }}>
+            <AlertCircle size={48} color={COLORS.infoDark} style={{ marginBottom: '1rem' }} />
+            <h2 style={{ color: COLORS.dark, marginBottom: '0.5rem' }}>Search for Deceased Record</h2>
+            <p style={{ color: COLORS.textSecondary, marginBottom: '1.5rem' }}>Please use the search box above to look up a deceased record by admission number</p>
+            <NoticeBar style={{ maxWidth: '600px', margin: '0 auto 1.5rem' }}>
+              <NoticeBarText>
+                <strong>Example:</strong> Enter an admission number like "ADM-2024-001" and press Enter or click the Search button to load the deceased details.
+              </NoticeBarText>
+            </NoticeBar>
           </div>
         </Page>
       </Container>
@@ -805,6 +885,48 @@ const ReleaseFormPage = () => {
         </SubLine>
 
         <form onSubmit={handleSubmit} noValidate>
+          {/* Admission Number Lookup */}
+          <Section>
+            <SectionHead>
+              <SectionNum>🔍</SectionNum>
+              <SectionTitle>Quick Lookup by Admission Number</SectionTitle>
+            </SectionHead>
+            <SectionBody>
+              <Row>
+                <Col2>
+                  <Label>Enter Admission Number</Label>
+                  <InputLg 
+                    type="text" 
+                    placeholder="Enter admission number and press Enter or click Search"
+                    value={admissionNumberInput}
+                    onChange={(e) => setAdmissionNumberInput(e.target.value)}
+                    onKeyPress={handleAdmissionNumberKeyPress}
+                  />
+                </Col2>
+                <Col style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <PrimaryButton 
+                    type="button" 
+                    onClick={() => lookupDeceasedByAdmissionNumber(admissionNumberInput)}
+                    disabled={isLookingUp}
+                    style={{ marginBottom: '0.5rem' }}
+                  >
+                    {isLookingUp ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Search size={16} />
+                        Search
+                      </>
+                    )}
+                  </PrimaryButton>
+                </Col>
+              </Row>
+            </SectionBody>
+          </Section>
+
           {/* Section 1: Deceased Information */}
           <Section>
             <SectionHead>
@@ -842,6 +964,40 @@ const ReleaseFormPage = () => {
               </Row>
             </SectionBody>
           </Section>
+
+          {/* Section 1.5: Death Specifics (from Postmortem) */}
+          {postmortemData && (
+            <Section>
+              <SectionHead>
+                <SectionNum>01.5</SectionNum>
+                <SectionTitle>Death Specifics</SectionTitle>
+              </SectionHead>
+              <SectionBody>
+                <Row>
+                  <Col>
+                    <Label>Date of Death</Label>
+                    <Input type="text" value={deceasedData?.date_of_death ? new Date(deceasedData.date_of_death).toLocaleDateString() : ''} readOnly />
+                  </Col>
+                  <Col>
+                    <Label>Place of Death</Label>
+                    <Input type="text" value={postmortemData?.place_of_death || deceasedData?.place_of_death || ''} readOnly />
+                  </Col>
+                </Row>
+                <Row>
+                  <Col2>
+                    <Label>Cause of Death</Label>
+                    <Input type="text" value={postmortemData?.cause_of_death || deceasedData?.cause_of_death || 'Not specified'} readOnly />
+                  </Col2>
+                </Row>
+                <Row>
+                  <Col2>
+                    <Label>Physician</Label>
+                    <Input type="text" value={postmortemData?.physician || deceasedData?.physician || ''} readOnly />
+                  </Col2>
+                </Row>
+              </SectionBody>
+            </Section>
+          )}
 
           {/* Section 2: Next of Kin */}
           <Section>
@@ -969,17 +1125,19 @@ const ReleaseFormPage = () => {
             <SectionBody>
               <Row>
                 <Col>
-                  <Label>Received By (Name) *</Label>
-                  <Input type="text" name="receivedBy" value={formData.receivedBy} onChange={handleInputChange} placeholder="Name of person receiving" required />
+                  <Label>Received By (Email)</Label>
+                  <Input type="email" name="receivedBy" value={formData.receivedBy} onChange={handleInputChange} placeholder="Email of person receiving" readOnly />
                   <SignatureWrapper>
                     <Label>Signature *</Label>
-                    <ReusableSignaturePad
-                      penColor="#000080"
-                      penWidth={2.5}
-                      placeholder="Sign here"
-                      onChange={setRecipientSignature}
-                      style={{ height: '120px' }}
-                    />
+                    <Suspense fallback={<div style={{ padding: '1rem', textAlign: 'center', color: '#999' }}>Loading signature pad...</div>}>
+                      <ReusableSignaturePad
+                        penColor="#000080"
+                        penWidth={2.5}
+                        placeholder="Sign here"
+                        onChange={setRecipientSignature}
+                        style={{ height: '120px' }}
+                      />
+                    </Suspense>
                   </SignatureWrapper>
                 </Col>
               </Row>

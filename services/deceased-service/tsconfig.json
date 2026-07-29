@@ -23,6 +23,8 @@
     "services/**/*.ts",
     "utils/**/*.ts",
     "config/**/*.ts",
+    "queues/**/*.ts",
+    "workers/**/*.ts",
     "../../shared/**/*.ts",
     "../../packages/shared-config/src/**/*.ts",
     "../../packages/shared-logger/src/**/*.ts",

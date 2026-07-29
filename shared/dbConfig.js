@@ -479,4 +479,3 @@ exports.default = {
     closeAllConnections: exports.closeAllConnections,
     healthCheck: exports.healthCheck,
 };
-//# sourceMappingURL=dbConfig.js.map

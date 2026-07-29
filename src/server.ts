@@ -1,0 +1,10 @@
+﻿import express from "express";
+import http from "http";
+import { Server, Socket } from "socket.io";
+import { createClient } from "redis";
+import { createAdapter } from "@socket.io/redis-adapter";
+import dotenv from "dotenv";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+dotenv.config();

@@ -351,6 +351,15 @@ export const deleteDeceased = async (req: Request, res: Response): Promise<Respo
         }
 
         const isNumeric = /^\d+$/.test(id);
+        
+        // Get deceased details before deletion for notification
+        const checkQuery = `
+            SELECT deceased_id, full_name FROM deceased 
+            WHERE ${isNumeric ? 'id = ?' : 'deceased_id = ?'} 
+        `;
+        const checkResult = await safeTenantQuery(dbName, checkQuery, [isNumeric ? parseInt(id, 10) : id]);
+        const deceasedRecord = (checkResult as any[])[0];
+        
         const deleteQuery = `
             DELETE FROM deceased
             WHERE ${isNumeric ? 'id = ?' : 'deceased_id = ?'} 
@@ -363,6 +372,31 @@ export const deleteDeceased = async (req: Request, res: Response): Promise<Respo
         await redisService.serviceDel('deceased-service', tenantSlug, `deceased:list:${tenantId}`);
         await redisService.serviceDel('deceased-service', tenantSlug, `deceased:stats:${tenantId}`);
 
+        // Emit notification for deceased removal
+        try {
+            const axios = require('axios');
+            const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+            await axios.post(`${socketioServiceUrl}/emit/deceased-removed`, {
+                tenantSlug,
+                data: {
+                    id: `deceased-removed-${id}-${Date.now()}`,
+                    deceasedId: id,
+                    fullName: deceasedRecord?.full_name || 'Unknown',
+                    title: 'Record Removed',
+                    message: `Deceased record removed: ${deceasedRecord?.full_name || id}`,
+                    type: 'removal',
+                    priority: 'low',
+                    fullContent: `Deceased record has been removed from the system.\nID: ${id}`,
+                }
+            }, { timeout: 5000 });
+            Logger.info({ message: `Emitted deceased-removed for ${id}` });
+        } catch (emitError: any) {
+            Logger.warn({
+                message: `Failed to emit deceased-removed notification`,
+                error: emitError.message
+            });
+        }
+
         return res.status(200).json({
             success: true,
             message: 'Deceased record deleted successfully'
@@ -370,6 +404,85 @@ export const deleteDeceased = async (req: Request, res: Response): Promise<Respo
 
     } catch (error: any) {
         Logger.error('deleteDeceased error: ' + (error as Error).message);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal Server Error',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// ============================================
+// GET DECEASED BY ADMISSION NUMBER
+// ============================================
+export const getDeceasedByAdmissionNumber = async (req: Request, res: Response): Promise<Response> => {
+    const admissionNumber = req.params.admissionNumber;
+
+    if (!admissionNumber) {
+        return res.status(400).json({
+            success: false,
+            message: 'Admission number is required'
+        });
+    }
+
+    try {
+        const dbName = (req as any).tenant?.db_name;
+        const tenantSlug = (req as any).tenantSlug || "unknown";
+
+        if (!dbName) {
+            return res.status(400).json({
+                success: false,
+                message: 'No database configured. Please provide x-tenant-slug header.'
+            });
+        }
+
+        // Try cache first
+        const cacheKey = `deceased:admission:${admissionNumber}`;
+        const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);
+
+        if (cached) {
+            Logger.info({ message: `Deceased with admission number ${admissionNumber} served from Redis` });
+            return res.status(200).json({
+                success: true,
+                source: "cache",
+                data: cached
+            });
+        }
+
+        const query = `
+            SELECT *
+            FROM deceased
+            WHERE admission_number = ? AND tenant_slug = ?
+            LIMIT 1
+        `;
+
+        const records = await safeTenantQuery(dbName, query, [admissionNumber, tenantSlug]);
+        const deceased = records && records.length > 0 ? records[0] : null;
+
+        if (!deceased) {
+            return res.status(404).json({
+                success: false,
+                message: 'Deceased record not found with this admission number'
+            });
+        }
+
+        // Cache the result
+        await redisService.serviceSet(
+            'deceased-service',
+            tenantSlug,
+            cacheKey,
+            deceased,
+            600 // 10 minutes TTL
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: 'Deceased record fetched successfully',
+            data: deceased
+        });
+
+    } catch (error: any) {
+        Logger.error('getDeceasedByAdmissionNumber error: ' + (error as Error).message);
         return res.status(500).json({
             success: false,
             message: 'Internal Server Error',

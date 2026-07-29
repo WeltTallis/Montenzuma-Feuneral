@@ -31,7 +31,31 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   INDEX idx_leave_dates (start_date, end_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-ALTER TABLE users ADD COLUMN IF NOT EXISTS annual_leave_balance DECIMAL(5,2) DEFAULT 21.00;
+CREATE TABLE IF NOT EXISTS leave_day_additions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  days INT NOT NULL,
+  reason TEXT,
+  added_by INT NOT NULL,
+  created_at DATE DEFAULT (CURRENT_DATE),
+  INDEX idx_addition_user (user_id),
+  INDEX idx_addition_date (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS holiday_compensations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  holiday_date DATE NOT NULL,
+  holiday_name VARCHAR(255) NOT NULL,
+  note TEXT,
+  recorded_by INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_holiday_user (user_id),
+  INDEX idx_holiday_date (holiday_date),
+  UNIQUE KEY unique_user_holiday (user_id, holiday_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS annual_leave_balance DECIMAL(5,2) DEFAULT 26.00;
 `;
 
 async function migrateTenantTables(dbName) {
@@ -68,15 +92,15 @@ async function migrateTenantTables(dbName) {
 
             // Add annual_leave_balance column
             await safeTenantQuery(dbName,
-                'ALTER TABLE users ADD COLUMN IF NOT EXISTS annual_leave_balance DECIMAL(5,2) DEFAULT 21.00'
+                'ALTER TABLE users ADD COLUMN IF NOT EXISTS annual_leave_balance DECIMAL(5,2) DEFAULT 26.00'
             );
             console.log(`[LEAVE] Added annual_leave_balance column to users table`);
 
             // Update existing users to have the default balance
             await safeTenantQuery(dbName,
-                'UPDATE users SET annual_leave_balance = 21.00 WHERE annual_leave_balance IS NULL'
+                'UPDATE users SET annual_leave_balance = 26.00 WHERE annual_leave_balance IS NULL'
             );
-            console.log(`[LEAVE] Updated existing users with default leave balance`);
+            console.log(`[LEAVE] Updated existing users with default leave balance (26 days)`);
         } catch (err) {
             // Columns might already exist
             console.log(`[LEAVE] Users table columns check: ${err.message}`);

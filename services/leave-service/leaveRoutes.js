@@ -8,7 +8,12 @@ const {
   cancelLeave,
   uploadDocument,
   getLeaveStats,
-  getUsersOnLeave
+  getUsersOnLeave,
+  addLeaveDays,
+  removeLeaveDays,
+  recordHolidayCompensation,
+  getLeaveBalance,
+  getAllLeaveBalances
 } = require('./leaveController');
 
 const { protect, authorizeAny } = require('../../../services/app-global/middlewares/authMiddleware');
@@ -38,6 +43,29 @@ router.patch('/:id/cancel', cancelLeave);
 
 // Upload supporting document
 router.post('/:id/upload-document', uploadDocument);
+
+// ============================================
+// LEAVE DAY MANAGEMENT (Admin)
+// ============================================
+
+// Add leave days to employee
+router.post('/admin/add-days', addLeaveDays);
+
+// Remove leave days addition
+router.delete('/admin/add-days/:id', removeLeaveDays);
+
+// Record holiday compensation
+router.post('/admin/holiday-compensation', recordHolidayCompensation);
+
+// ============================================
+// LEAVE BALANCES
+// ============================================
+
+// Get leave balance for a user
+router.get('/balance/:user_id', getLeaveBalance);
+
+// Get all leave balances (Admin)
+router.get('/balances', getAllLeaveBalances);
 
 // ============================================
 // DASHBOARD & STATS

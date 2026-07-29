@@ -247,6 +247,35 @@ export const registerNewDeceased = async (
             }
         }
 
+        // ==============================
+        // EMIT NOTIFICATION
+        // ==============================
+        try {
+            const axios = require('axios');
+            const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+            await axios.post(`${socketioServiceUrl}/emit/deceased-admitted`, {
+                tenantSlug,
+                data: {
+                    id: `deceased-${deceased_id}-${Date.now()}`,
+                    deceasedId: deceased_id,
+                    fullName: data.full_name,
+                    admissionNumber: admission_number,
+                    dateOfAdmission: now,
+                    title: 'New Admission',
+                    message: `New deceased admitted: ${data.full_name}`,
+                    type: 'new_body',
+                    priority: 'medium',
+                    fullContent: `Name: ${data.full_name}\nAdmission Number: ${admission_number}\nGender: ${data.gender}\nDate: ${now}`,
+                }
+            }, { timeout: 5000 });
+            Logger.info({ message: `Emitted deceased-admitted for ${deceased_id}` });
+        } catch (emitError: any) {
+            Logger.warn({
+                message: `Failed to emit deceased-admitted notification`,
+                error: emitError.message
+            });
+        }
+
         return res.status(201).json({
             success: true,
             message: "Deceased registered successfully",

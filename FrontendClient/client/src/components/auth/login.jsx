@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, ShieldCheck, CheckCircle, AlertCircle, Mark } from '../../utils/icons/icons';
+import { Eye, EyeOff, ArrowRight, ShieldCheck, CheckCircle, AlertCircle } from '../../utils/icons/icons';
 import { useAuth } from '../../utils/context/AuthContext';
 import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import LoginColors from '../../utils/colors/index'
 const C = LoginColors;
-
 
 const Spinner = () => (
   <span className="spinner" />
@@ -43,7 +43,6 @@ export default function LoginPage() {
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     const slug = localStorage.getItem('tenantSlug');
-    // Only redirect to dashboard if we have BOTH a token AND a real tenant slug
     if (token && token !== 'undefined' && token !== 'null' && slug && slug !== 'default') {
       navigate('/dashboard');
     } else if (!token || token === 'undefined' || token === 'null') {
@@ -72,23 +71,29 @@ export default function LoginPage() {
     setMessage({ type: '', text: '' });
 
     try {
-      // Use AuthContext's login which stores tokens AND updates React state
-      // This ensures ProtectedRoute sees the authenticated user immediately
       const result = await authLogin({
         identifier: email.trim(),
         password: password.trim(),
       });
 
       if (result && result.success) {
-        toast.success('Login successful! Welcome back.');
-        // AuthContext already stored tokens and setUser() - just read back for UI
+        toast.success('Login successful! Welcome back.', {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "light",
+        });
+        
         const data = result;
         const tenantSlug = data.tenant?.tenantSlug || data.user?.tenantSlug;
 
         setSuccessName(data.user?.fullName || 'Director');
         setShowSuccess(true);
 
-        // Navigate immediately after a brief success animation
         setTimeout(() => {
           if (data.user?.role === 'systemadmin') {
             localStorage.setItem('systemAdmin', 'true');
@@ -106,7 +111,16 @@ export default function LoginPage() {
           }
         }, 400);
       } else {
-        toast.error(result?.message || 'Invalid credentials. Please try again.');
+        toast.error(result?.message || 'Invalid credentials. Please try again.', {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "light",
+        });
         setMessage({
           type: 'error',
           text: result?.message || 'Invalid credentials. Please try again.'
@@ -114,7 +128,16 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error('Login error:', err);
-      toast.error(err.response?.data?.message || 'Connection error. Please try again.');
+      toast.error(err.response?.data?.message || 'Connection error. Please try again.', {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
+      });
       setMessage({
         type: 'error',
         text: err.response?.data?.message || 'Connection error. Please try again.'
@@ -130,12 +153,50 @@ export default function LoginPage() {
     <div className="page-wrapper">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&display=swap');
+        
         *{margin:0;padding:0;box-sizing:border-box}
         html{scroll-behavior:smooth}
         body{font-family:'Inter',sans-serif;color:${C.gray};background:${C.bone2};-webkit-font-smoothing:antialiased}
         h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-0.01em;color:${C.ink}}
         
         .page-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background: ${C.bone2}; }
+        
+        /* Toast Container - Minimal padding */
+        .Toastify__toast-container {
+          width: 380px !important;
+          max-width: 90vw !important;
+          padding: 0 !important;
+        }
+        .Toastify__toast {
+          border-radius: 8px !important;
+          font-family: 'Inter', sans-serif !important;
+          font-size: 0.85rem !important;
+          padding: 10px 14px !important;
+          min-height: 44px !important;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+          margin-bottom: 0.5rem !important;
+        }
+        .Toastify__toast-body {
+          padding: 0 !important;
+          margin: 0 !important;
+          font-size: 0.85rem !important;
+        }
+        .Toastify__toast-icon {
+          width: 18px !important;
+          margin-right: 8px !important;
+        }
+        .Toastify__progress-bar {
+          height: 2px !important;
+        }
+        .Toastify__close-button {
+          padding: 2px !important;
+          opacity: 0.5 !important;
+          width: 20px !important;
+        }
+        .Toastify__close-button > svg {
+          width: 14px !important;
+          height: 14px !important;
+        }
         
         /* Layout */
         .login-container { width: 100%; max-width: 920px; display: flex; background: ${C.white}; border-radius: 24px; overflow: hidden; box-shadow: 0 40px 80px -20px rgba(21,23,26,0.12), 0 10px 20px rgba(21,23,26,0.04); min-height: 520px; }
@@ -208,6 +269,7 @@ export default function LoginPage() {
           .sidebar-logo { margin-bottom: 1.5rem; }
           .sidebar-headline { font-size: 1.4rem; }
           .login-form { padding: 2.5rem 2rem; }
+          .Toastify__toast-container { width: 320px !important; }
         }
         @media (max-width: 480px) {
           .page-wrapper { padding: 0; }
@@ -216,10 +278,25 @@ export default function LoginPage() {
           .sidebar-headline { display: none; }
           .sidebar-text { display: none; }
           .login-form { padding: 2rem 1.5rem; }
+          .Toastify__toast-container { width: 280px !important; }
+          .Toastify__toast { padding: 8px 12px !important; font-size: 0.8rem !important; min-height: 38px !important; }
         }
       `}</style>
 
-      <ToastContainer position="top-right" />
+      <ToastContainer 
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        limit={3}
+      />
+      
       <div className="login-container">
         {/* Sidebar */}
         <div className="login-sidebar">
@@ -227,7 +304,7 @@ export default function LoginPage() {
           <div className="sidebar-glow"></div>
           <div className="sidebar-content">
             <div className="sidebar-logo">
-              <Mark size={28} color={C.brassLight} />
+              <ShieldCheck size={28} color={C.brassLight} />
               Rest Point
             </div>
             <div>

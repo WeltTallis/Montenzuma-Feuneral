@@ -22,31 +22,41 @@ const Icons = {
    COMPONENT
    ════════════════════════════════════════════════════════════════ */
 
-const ReusableSignaturePad = forwardRef(({
-  penColor = '#0a0a0a',
-  penWidth = 2.5, 
-  backgroundColor = 'transparent',
-  placeholder = 'Sign here',
-  disabled = false,
-  showControls = true,
-  showUndo = true,
-  showClear = true,
-  showSave = true,
-  onSave,
-  onChange,
-  canvasProps = {},
-  className = '',
-  style = {},
-}, ref) => {
+const ReusableSignaturePad = forwardRef((props, ref) => {
+  const {
+    penColor = '#0a0a0a',
+    penWidth = 2.5, 
+    backgroundColor = 'transparent',
+    placeholder = 'Sign here',
+    disabled = false,
+    showControls = true,
+    showUndo = true,
+    showClear = true,
+    showSave = true,
+    onSave,
+    onChange,
+    canvasProps = {},
+    className = '',
+    style = {},
+  } = props;
+
   const wrapperRef = useRef(null);
   const canvasContainerRef = useRef(null); // Dedicated ref for the drawing area
   const sigCanvas = useRef(null);
+  const [isClient, setIsClient] = useState(false);
+  
+  // Ensure we're on the client side before using refs
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   const historyRef = useRef([]);
   const [hasContent, setHasContent] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 600, height: 250 });
 
   // Dynamically measure ONLY the canvas container to get exact drawing pixels
   useEffect(() => {
+    if (!isClient) return;
+    
     const measure = () => {
       if (!canvasContainerRef.current) return;
       
@@ -91,7 +101,7 @@ const ReusableSignaturePad = forwardRef(({
       window.removeEventListener('resize', measure);
       if (observer) observer.disconnect();
     };
-  }, [canvasSize.width, canvasSize.height]);
+  }, [canvasSize.width, canvasSize.height, isClient]);
 
   useImperativeHandle(ref, () => ({
     clear: handleClear,
@@ -100,14 +110,16 @@ const ReusableSignaturePad = forwardRef(({
     toBlob: (cb, mime, q) => sigCanvas.current?.toBlob(cb, mime, q),
     getTrimmedCanvas: () => sigCanvas.current?.getTrimmedCanvas(),
     fromDataURL: (url, opts) => {
-      sigCanvas.current?.fromDataURL(url, opts);
-      setHasContent(true);
+      if (sigCanvas.current) {
+        sigCanvas.current.fromDataURL(url, opts);
+        setHasContent(true);
+      }
     },
     undo: handleUndo,
   }));
 
   const handleBegin = useCallback(() => {
-    if (disabled) return;
+    if (disabled || !isClient) return;
     try {
       const currentData = sigCanvas.current?.toDataURL();
       if (currentData) {
@@ -116,10 +128,10 @@ const ReusableSignaturePad = forwardRef(({
     } catch (e) {
       console.warn('Signature Pad: Could not save history state', e);
     }
-  }, [disabled]);
+  }, [disabled, isClient]);
 
   const handleEnd = useCallback(() => {
-    if (disabled) return;
+    if (disabled || !isClient) return;
     setHasContent(true);
     if (onChange) {
       try {
@@ -129,37 +141,41 @@ const ReusableSignaturePad = forwardRef(({
         console.warn('Signature Pad: Error generating data URL', e);
       }
     }
-  }, [disabled, onChange]);
+  }, [disabled, onChange, isClient]);
 
   const handleClear = useCallback(() => {
+    if (!isClient) return;
     sigCanvas.current?.clear();
     historyRef.current = [];
     setHasContent(false);
     if (onChange) onChange(null);
-  }, [onChange]);
+  }, [onChange, isClient]);
 
   const handleUndo = useCallback(() => {
+    if (!isClient) return;
     if (historyRef.current.length === 0) {
       handleClear();
       return;
     }
     const prevState = historyRef.current.pop();
-    sigCanvas.current?.fromDataURL(prevState, {
-      width: sigCanvas.current.getCanvas().width,
-      height: sigCanvas.current.getCanvas().height,
-      ratio: 1,
-    });
+    if (sigCanvas.current) {
+      sigCanvas.current.fromDataURL(prevState, {
+        width: sigCanvas.current.getCanvas().width,
+        height: sigCanvas.current.getCanvas().height,
+        ratio: 1,
+      });
 
-    if (sigCanvas.current?.isEmpty()) {
-      setHasContent(false);
-      if (onChange) onChange(null);
-    } else {
-      if (onChange) onChange(prevState);
+      if (sigCanvas.current.isEmpty()) {
+        setHasContent(false);
+        if (onChange) onChange(null);
+      } else {
+        if (onChange) onChange(prevState);
+      }
     }
-  }, [handleClear, onChange]);
+  }, [handleClear, onChange, isClient]);
 
   const handleSave = useCallback(() => {
-    if (!sigCanvas.current || sigCanvas.current.isEmpty()) return;
+    if (!isClient || !sigCanvas.current || sigCanvas.current.isEmpty()) return;
 
     try {
       const trimmedCanvas = sigCanvas.current.getTrimmedCanvas();
@@ -176,7 +192,24 @@ const ReusableSignaturePad = forwardRef(({
     } catch (e) {
       console.error('Signature Pad: Error saving signature', e);
     }
-  }, [onSave]);
+  }, [onSave, isClient]);
+
+  if (!isClient) {
+    return (
+      <div
+        ref={wrapperRef}
+        className={`sp-wrapper ${disabled ? 'sp-disabled' : ''} ${className}`}
+        style={style}
+      >
+        <div className="sp-canvas-container" ref={canvasContainerRef}>
+          <div className="sp-placeholder">
+            {Icons.pen}
+            <span>{placeholder}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

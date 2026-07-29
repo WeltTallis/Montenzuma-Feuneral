@@ -1,11 +1,12 @@
 {
   "name": "socketio-service",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "start:dev": "nodemon server.js"
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsc && node dist/server.js",
+    "start:dev": "tsc && node dist/server.js"
   },
   "dependencies": {
     "@socket.io/redis-adapter": "^8.2.1",
@@ -17,6 +18,12 @@
     "socket.io": "^4.7.2"
   },
   "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.0",
+    "@types/cors": "^2.8.17",
+    "@types/helmet": "^4.0.0",
+    "@types/express-rate-limit": "^6.0.0",
+    "typescript": "^5.3.0",
     "nodemon": "^3.0.1"
   }
 }
