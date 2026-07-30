@@ -46,7 +46,7 @@ const SERVICE_URLS = {
   chemicals: process.env.CHEMICALS_SERVICE_URL || 'http://127.0.0.1:5019',
   billing: process.env.BILLING_SERVICE_URL || 'http://127.0.0.1:5017',
   socketio: process.env.SOCKETIO_SERVICE_URL || 'http://127.0.0.1:5018',
-  workshop: process.env.WORKSHOP_SERVICE_URL || 'http://127.0.0.1:6969',
+  workshop: process.env.WORKSHOP_SERVICE_URL || 'http://127.0.0.1:6060',
   extra: process.env.EXTRA_SERVICES_URL || 'http://127.0.0.1:5019',
   call: process.env.CALL_SERVICE_URL || 'http://127.0.0.1:5020',
   qrcode: process.env.QRCODE_SERVICE_URL || 'http://127.0.0.1:5021',

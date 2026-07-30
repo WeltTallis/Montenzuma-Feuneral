@@ -10,7 +10,7 @@ import {
   Check, Loader2, CheckCircle, X, FileText, User,
   RotateCcw, ShieldCheck, AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, ScanBarcode
 } from '../../../utils/icons/icons';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 
 const COLORS = {
     black: '#0a0a0a',
@@ -49,6 +49,13 @@ const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
 
+/* ---------- Responsive helpers ---------- */
+const media = {
+  tablet: (...args) => css`@media (max-width: 1024px) { ${css(...args)} }`,
+  mobile: (...args) => css`@media (max-width: 768px) { ${css(...args)} }`,
+  small: (...args) => css`@media (max-width: 480px) { ${css(...args)} }`,
+};
+
 const Container = styled.div`
   min-height: 100vh;
   background: #d5d3cf;
@@ -56,17 +63,32 @@ const Container = styled.div`
   color: ${COLORS.dark};
   font-size: 10.5px;
   line-height: 1.5;
+
+  ${media.tablet`
+    font-size: 12px;
+  `}
+  ${media.mobile`
+    font-size: 13px;
+    background: #ececea;
+  `}
 `;
 
 const Page = styled.div`
-  max-width: 100%;
-  margin: 0;
+  max-width: 1400px;
+  margin: 0 auto;
   background: white;
   position: relative;
   padding: 1rem;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+
+  ${media.tablet`
+    padding: 0.75rem;
+  `}
+  ${media.mobile`
+    padding: 0.5rem;
+  `}
 `;
 
 const Header = styled.div`
@@ -95,6 +117,16 @@ const Title = styled.h1`
   text-transform: uppercase;
   letter-spacing: 0.01em;
   line-height: 1.2;
+
+  ${media.tablet`
+    font-size: 1.25rem;
+  `}
+  ${media.mobile`
+    font-size: 1.1rem;
+  `}
+  ${media.small`
+    font-size: 1rem;
+  `}
 `;
 
 const Subtitle = styled.p`
@@ -104,6 +136,10 @@ const Subtitle = styled.p`
   font-style: italic;
   color: ${COLORS.mid};
   margin: 0.25rem 0 0;
+
+  ${media.mobile`
+    font-size: 0.75rem;
+  `}
 `;
 
 const SaasBrand = styled.div`
@@ -113,11 +149,53 @@ const SaasBrand = styled.div`
   text-transform: uppercase;
   color: ${COLORS.gray};
   margin-bottom: 0.25rem;
+
+  ${media.mobile`
+    font-size: 0.625rem;
+    letter-spacing: 0.12em;
+  `}
+`;
+
+const TopBar = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-bottom: 0.625rem;
+  border-bottom: 2.5px solid ${COLORS.black};
+  margin-bottom: 0.375rem;
+  gap: 1rem;
+
+  ${media.tablet`
+    flex-wrap: wrap;
+  `}
+  ${media.mobile`
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  `}
+`;
+
+const TopBarLeft = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const TopBarRight = styled.div`
+  text-align: right;
+  flex-shrink: 0;
+
+  ${media.mobile`
+    text-align: left;
+  `}
 `;
 
 const AdmissionIdBlock = styled.div`
   text-align: right;
   margin-bottom: 0.5rem;
+
+  ${media.mobile`
+    text-align: left;
+  `}
 `;
 
 const AdmissionIdLabel = styled.div`
@@ -135,16 +213,29 @@ const AdmissionIdValue = styled.div`
   font-weight: 700;
   color: ${COLORS.black};
   letter-spacing: 0.08em;
+
+  ${media.mobile`
+    font-size: 1rem;
+  `}
 `;
 
 const TopMeta = styled.div`
   display: flex;
   gap: 1.5rem;
   justify-content: flex-end;
+
+  ${media.mobile`
+    justify-content: flex-start;
+    gap: 1rem;
+  `}
 `;
 
 const TopMetaItem = styled.div`
   text-align: right;
+
+  ${media.mobile`
+    text-align: left;
+  `}
 `;
 
 const TopMetaLabel = styled.div`
@@ -172,6 +263,13 @@ const SubLine = styled.div`
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: ${COLORS.lightGray};
+  gap: 0.5rem;
+
+  ${media.mobile`
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.6rem;
+  `}
 `;
 
 const Section = styled.div`
@@ -201,6 +299,11 @@ const SectionTitle = styled.span`
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+
+  ${media.mobile`
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+  `}
 `;
 
 const SectionBody = styled.div`
@@ -211,36 +314,87 @@ const Row = styled.div`
   display: flex;
   gap: 0.75rem;
   margin-bottom: 0.5rem;
+
+  ${media.tablet`
+    flex-wrap: wrap;
+  `}
+  ${media.mobile`
+    flex-direction: column;
+    gap: 0.5rem;
+  `}
 `;
 
 const Col = styled.div`
   flex: 1;
   min-width: 0;
+
+  ${media.tablet`
+    flex: 1 1 45%;
+    min-width: 200px;
+  `}
+  ${media.mobile`
+    flex: 1 1 100%;
+    min-width: 0;
+  `}
 `;
 
 const Col2 = styled.div`
   flex: 2;
   min-width: 0;
+
+  ${media.tablet`
+    flex: 1 1 100%;
+  `}
+  ${media.mobile`
+    flex: 1 1 100%;
+  `}
 `;
 
 const Col05 = styled.div`
   flex: 0.5;
   min-width: 0;
+
+  ${media.tablet`
+    flex: 1 1 30%;
+    min-width: 120px;
+  `}
+  ${media.mobile`
+    flex: 1 1 100%;
+  `}
 `;
 
 const Col06 = styled.div`
   flex: 0.6;
   min-width: 0;
+
+  ${media.tablet`
+    flex: 1 1 30%;
+    min-width: 140px;
+  `}
+  ${media.mobile`
+    flex: 1 1 100%;
+  `}
 `;
 
 const Col04 = styled.div`
   flex: 0.4;
   min-width: 0;
+
+  ${media.mobile`
+    flex: 1 1 100%;
+  `}
 `;
 
 const Col15 = styled.div`
   flex: 1.5;
   min-width: 0;
+
+  ${media.tablet`
+    flex: 1 1 60%;
+  `}
+  ${media.mobile`
+    flex: 1 1 100%;
+  `}
 `;
 
 const Label = styled.label`
@@ -251,6 +405,10 @@ const Label = styled.label`
   text-transform: uppercase;
   color: ${COLORS.gray};
   margin-bottom: 0.1875rem;
+
+  ${media.mobile`
+    font-size: 0.7rem;
+  `}
 `;
 
 const Input = styled.input`
@@ -264,6 +422,7 @@ const Input = styled.input`
   color: ${COLORS.dark};
   background: ${COLORS.bgField};
   transition: border-color 0.15s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -276,12 +435,23 @@ const Input = styled.input`
     color: ${COLORS.gray};
     cursor: not-allowed;
   }
+
+  ${media.mobile`
+    height: 2.25rem;
+    font-size: 0.8rem;
+    padding: 0 0.625rem;
+  `}
 `;
 
 const InputLg = styled(Input)`
   height: 2rem;
   font-size: 0.75rem;
   font-weight: 600;
+
+  ${media.mobile`
+    height: 2.4rem;
+    font-size: 0.85rem;
+  `}
 `;
 
 const Select = styled.select`
@@ -295,12 +465,19 @@ const Select = styled.select`
   color: ${COLORS.dark};
   background: ${COLORS.bgField};
   transition: border-color 0.15s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
     border-color: ${COLORS.black};
     box-shadow: 0 0 0 1.5px rgba(0,0,0,0.08);
   }
+
+  ${media.mobile`
+    height: 2.25rem;
+    font-size: 0.8rem;
+    padding: 0 0.625rem;
+  `}
 `;
 
 const TextArea = styled.textarea`
@@ -314,18 +491,32 @@ const TextArea = styled.textarea`
   color: ${COLORS.dark};
   background: ${COLORS.bgField};
   resize: vertical;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
     border-color: ${COLORS.black};
     box-shadow: 0 0 0 1.5px rgba(0,0,0,0.08);
   }
+
+  ${media.mobile`
+    font-size: 0.8rem;
+    min-height: 3.5rem;
+    padding: 0.5rem;
+  `}
 `;
 
 const CheckGrid = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem 1.125rem;
+
+  ${media.tablet`
+    gap: 0.25rem 1rem;
+  `}
+  ${media.mobile`
+    gap: 0.4rem 1rem;
+  `}
 `;
 
 const CheckItem = styled.label`
@@ -336,6 +527,14 @@ const CheckItem = styled.label`
   color: ${COLORS.mid};
   cursor: pointer;
   padding: 0.1875rem 0;
+
+  ${media.mobile`
+    font-size: 0.75rem;
+    flex: 1 1 45%;
+  `}
+  ${media.small`
+    flex: 1 1 100%;
+  `}
 `;
 
 const Checkbox = styled.input.attrs({ type: 'checkbox' })`
@@ -365,6 +564,11 @@ const Checkbox = styled.input.attrs({ type: 'checkbox' })`
     border-width: 0 1.5px 1.5px 0;
     transform: rotate(45deg);
   }
+
+  ${media.mobile`
+    width: 1.1rem;
+    height: 1.1rem;
+  `}
 `;
 
 const Radio = styled.input.attrs({ type: 'radio' })`
@@ -392,6 +596,11 @@ const Radio = styled.input.attrs({ type: 'radio' })`
     border-radius: 50%;
     background: ${COLORS.black};
   }
+
+  ${media.mobile`
+    width: 1.1rem;
+    height: 1.1rem;
+  `}
 `;
 
 const ErrorMessage = styled.span`
@@ -399,6 +608,10 @@ const ErrorMessage = styled.span`
   font-size: 0.6875rem;
   margin-top: 0.25rem;
   display: block;
+
+  ${media.mobile`
+    font-size: 0.75rem;
+  `}
 `;
 
 const AlertBox = styled.div`
@@ -433,6 +646,10 @@ const SignatureWrapper = styled.div`
   border-radius: 2px;
   padding: 1rem;
   background: ${COLORS.bgField};
+
+  ${media.mobile`
+    padding: 0.625rem;
+  `}
 `;
 
 const SigCard = styled.div`
@@ -454,6 +671,10 @@ const SigCardHead = styled.div`
 
 const SigCardBody = styled.div`
   padding: 0.625rem;
+
+  ${media.mobile`
+    padding: 0.5rem;
+  `}
 `;
 
 const SigCanvasWrap = styled.div`
@@ -468,6 +689,17 @@ const SigCanvasWrap = styled.div`
   position: relative;
   margin-bottom: 0.375rem;
   overflow: hidden;
+  width: 100%;
+
+  & > canvas {
+    width: 100% !important;
+    height: 100% !important;
+    touch-action: none;
+  }
+
+  ${media.mobile`
+    height: 9rem;
+  `}
 `;
 
 const SigPlaceholder = styled.span`
@@ -493,6 +725,11 @@ const SigMetaRow = styled.div`
   display: flex;
   gap: 0.5rem;
   margin-top: 0.375rem;
+
+  ${media.mobile`
+    flex-direction: column;
+    gap: 0.5rem;
+  `}
 `;
 
 const ActionsContainer = styled.div`
@@ -502,6 +739,14 @@ const ActionsContainer = styled.div`
   margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 0.5px solid ${COLORS.borderLight};
+  flex-wrap: wrap;
+
+  ${media.mobile`
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+  `}
 `;
 
 const PrimaryButton = styled.button`
@@ -515,6 +760,7 @@ const PrimaryButton = styled.button`
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   transition: ${COLORS.transition};
   box-shadow: ${COLORS.shadowSm};
@@ -530,6 +776,12 @@ const PrimaryButton = styled.button`
     cursor: not-allowed;
     transform: none;
   }
+
+  ${media.mobile`
+    width: 100%;
+    padding: 0.85rem 1.25rem;
+    font-size: 0.9rem;
+  `}
 `;
 
 const SecondaryButton = styled.button`
@@ -543,6 +795,7 @@ const SecondaryButton = styled.button`
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   transition: ${COLORS.transition};
 
@@ -550,26 +803,12 @@ const SecondaryButton = styled.button`
     background: ${COLORS.bg};
     border-color: ${COLORS.textSecondary};
   }
-`;
 
-const BackButton = styled.button`
-  background: ${COLORS.surface};
-  color: ${COLORS.text};
-  border: 1px solid ${COLORS.border};
-  border-radius: ${COLORS.radiusSm};
-  padding: 0.625rem 1.25rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: ${COLORS.transition};
-
-  &:hover {
-    background: ${COLORS.bg};
-    border-color: ${COLORS.black};
-  }
+  ${media.mobile`
+    width: 100%;
+    padding: 0.85rem 1.25rem;
+    font-size: 0.9rem;
+  `}
 `;
 
 const HighlightRow = styled.div`
@@ -586,6 +825,10 @@ const LegalBlock = styled.div`
   border-left: 3px solid ${COLORS.black};
   border-radius: 0 3px 3px 0;
   margin-bottom: 0.625rem;
+
+  ${media.mobile`
+    padding: 0.625rem 0.75rem;
+  `}
 `;
 
 const LegalText = styled.p`
@@ -597,6 +840,11 @@ const LegalText = styled.p`
   &:last-child {
     margin-bottom: 0;
   }
+
+  ${media.mobile`
+    font-size: 0.8rem;
+    line-height: 1.6;
+  `}
 `;
 
 const NoticeBar = styled.div`
@@ -608,29 +856,21 @@ const NoticeBar = styled.div`
   border: 1px solid #f0e0c0;
   border-radius: 2px;
   margin-bottom: 0.75rem;
+
+  ${media.mobile`
+    padding: 0.625rem 0.75rem;
+  `}
 `;
 
 const NoticeBarText = styled.div`
   font-size: 0.6875rem;
   color: ${COLORS.mid};
   line-height: 1.5;
-`;
 
-const FacilityUse = styled.div`
-  padding: 0.625rem 0.75rem;
-  background: #f0f3f7;
-  border: 1px solid #d8dfe8;
-  border-radius: 2px;
-  margin-top: 0.625rem;
-`;
-
-const FacilityUseTitle = styled.div`
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #6a7d94;
-  margin-bottom: 0.5rem;
+  ${media.mobile`
+    font-size: 0.8rem;
+    line-height: 1.55;
+  `}
 `;
 
 const Footer = styled.div`
@@ -640,6 +880,14 @@ const Footer = styled.div`
   padding-top: 0.5rem;
   border-top: 0.5px solid ${COLORS.borderLight};
   margin-top: auto;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+
+  ${media.mobile`
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  `}
 `;
 
 const FooterLeft = styled.div`
@@ -647,6 +895,10 @@ const FooterLeft = styled.div`
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: ${COLORS.lightGray};
+
+  ${media.mobile`
+    font-size: 0.65rem;
+  `}
 `;
 
 const FooterRight = styled.div`
@@ -655,6 +907,10 @@ const FooterRight = styled.div`
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: ${COLORS.lightGray};
+
+  ${media.mobile`
+    font-size: 0.65rem;
+  `}
 `;
 
 const ScanButton = styled.button`
@@ -681,6 +937,22 @@ const ScanButton = styled.button`
     color: ${COLORS.dark};
     border-color: ${COLORS.black};
   }
+
+  ${media.mobile`
+    height: 2.25rem;
+    font-size: 0.75rem;
+    padding: 0 0.875rem;
+  `}
+`;
+
+const ScanRow = styled.div`
+  display: flex;
+  gap: 0.5rem;
+
+  ${media.mobile`
+    flex-direction: column;
+    gap: 0.4rem;
+  `}
 `;
 
 const ClearSigButton = styled.button`
@@ -701,6 +973,27 @@ const ClearSigButton = styled.button`
     color: ${COLORS.dark};
     border-color: ${COLORS.border};
   }
+
+  ${media.mobile`
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+  `}
+`;
+
+const IDScannerModalWrap = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  padding: 1rem;
+
+  & > * {
+    max-width: 100%;
+    max-height: 100%;
+  }
 `;
 
 
@@ -718,7 +1011,7 @@ const DeceasedRegistrationForm = () => {
     const [showIdScanner, setShowIdScanner] = useState(false);
     const [admissionId, setAdmissionId] = useState('');
 
-    // Get logged-in user email from storage
+    /* ---------- Helpers ---------- */
     const getLoggedInUserEmail = () => {
         try {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -728,10 +1021,19 @@ const DeceasedRegistrationForm = () => {
         }
     };
 
+    // Auto-generate current time in HH:MM (24h) — hidden from UI
+    const getCurrentTime = () => {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+    };
+
     const initialFormData = {
         admission_number: location.state?.permitNumber || '',
         date_admitted: new Date().toISOString().split('T')[0],
-        time_received: '',
+        // Auto-generated, hidden from UI
+        time_received: getCurrentTime(),
         full_name: '',
         gender: '',
         age: '',
@@ -749,11 +1051,19 @@ const DeceasedRegistrationForm = () => {
         received_from: '',
         receiving_officer: '',
         signature: '',
+        // Hidden from UI but still sent to backend
         verified_by: getLoggedInUserEmail(),
         permit_number: '',
+        belongings_description: '',
+        relationship: '',
     };
 
     const [formData, setFormData] = useState(initialFormData);
+
+    // Refresh time_received right before submit to ensure freshness (still hidden)
+    useEffect(() => {
+        setFormData(prev => ({ ...prev, time_received: getCurrentTime() }));
+    }, []);
 
     // Fetch admission number when gender changes
     useEffect(() => {
@@ -804,23 +1114,21 @@ const DeceasedRegistrationForm = () => {
         if (!formData.full_name.trim()) newErrors.full_name = 'Full name is required';
         if (!formData.gender) newErrors.gender = 'Gender is required';
         if (!formData.date_admitted) newErrors.date_admitted = 'Date admitted is required';
-        if (!formData.time_received) newErrors.time_received = 'Time received is required';
-        
+
         // Email validation
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
             newErrors.email = 'Please enter a valid email address';
         }
-        
-        // Phone validation (Kenyan format: +254XXXXXXXXX or 07XXXXXXXX)
+
+        // Phone validation (Kenyan format)
         if (formData.tel_number && !/^(\+254|0)[17]\d{8}$/.test(formData.tel_number.replace(/\s/g, ''))) {
             newErrors.tel_number = 'Please enter a valid Kenyan phone number (e.g., +254712345678 or 0712345678)';
         }
-        
-        // Alternative phone validation
+
         if (formData.alternative_phone && !/^(\+254|0)[17]\d{8}$/.test(formData.alternative_phone.replace(/\s/g, ''))) {
             newErrors.alternative_phone = 'Please enter a valid Kenyan phone number';
         }
-        
+
         if (sigPadRef1.current?.isEmpty()) {
             newErrors.signature = 'Signature is required to proceed';
         }
@@ -840,6 +1148,9 @@ const DeceasedRegistrationForm = () => {
             const token = getAuthToken();
             const signatureData = sigPadRef1.current?.toDataURL();
 
+            // Re-capture fresh time at submission moment (hidden from UI)
+            const freshTime = getCurrentTime();
+
             const payload = {
                 full_name: formData.full_name,
                 cause_of_death: formData.cause_of_death,
@@ -847,7 +1158,7 @@ const DeceasedRegistrationForm = () => {
                 national_id: formData.id_number,
                 received_from: formData.received_from,
                 age: formData.age ? parseInt(formData.age, 10) : 0,
-                time_received: formData.time_received,
+                time_received: freshTime,
                 body_status: formData.body_status || 'Normal Condition',
                 contact_person: formData.contact_person,
                 tell_no: formData.tel_number,
@@ -858,7 +1169,7 @@ const DeceasedRegistrationForm = () => {
                 alternative_phone: formData.alternative_phone || null,
                 email: formData.email || null,
                 receiving_officer: formData.receiving_officer || null,
-                verified_by: formData.verified_by || null,
+                verified_by: formData.verified_by || getLoggedInUserEmail() || null,
                 relationship: formData.relationship || null,
                 permit_no: formData.permit_number || null,
                 date_admitted: formData.date_admitted,
@@ -881,13 +1192,14 @@ const DeceasedRegistrationForm = () => {
                 throw new Error(result.message || 'Registration failed');
             }
 
-            // Show success message
             toast.success(`Successfully registered: ${formData.full_name}`);
-            
+
             // Reset form for next registration
             setFormData({
                 ...initialFormData,
                 verified_by: getLoggedInUserEmail(),
+                time_received: getCurrentTime(),
+                date_admitted: new Date().toISOString().split('T')[0],
             });
             setAdmissionId('');
             sigPadRef1.current?.clear();
@@ -908,6 +1220,8 @@ const DeceasedRegistrationForm = () => {
         setFormData({
             ...initialFormData,
             verified_by: getLoggedInUserEmail(),
+            time_received: getCurrentTime(),
+            date_admitted: new Date().toISOString().split('T')[0],
         });
         setErrors({});
         setMessage({ type: '', text: '' });
@@ -951,13 +1265,13 @@ const DeceasedRegistrationForm = () => {
 
             <Page>
                 {/* Top Bar */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: '0.625rem', borderBottom: '2.5px solid ' + COLORS.black, marginBottom: '0.375rem' }}>
-                    <div>
-                        <SaasBrand>Welcome & We are deeply sorry for your loss. </SaasBrand>
+                <TopBar>
+                    <TopBarLeft>
+                        <SaasBrand>Welcome &amp; We are deeply sorry for your loss.</SaasBrand>
                         <Title>Admission Information</Title>
                         <Subtitle>Please provide the information needed to begin the admission process.</Subtitle>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    </TopBarLeft>
+                    <TopBarRight>
                         <AdmissionIdBlock>
                             <AdmissionIdLabel>Admission ID</AdmissionIdLabel>
                             <AdmissionIdValue>
@@ -973,13 +1287,9 @@ const DeceasedRegistrationForm = () => {
                                 <TopMetaLabel>Date</TopMetaLabel>
                                 <TopMetaValue>{formData.date_admitted}</TopMetaValue>
                             </TopMetaItem>
-                            <TopMetaItem>
-                                <TopMetaLabel>Time</TopMetaLabel>
-                                <TopMetaValue>{formData.time_received}</TopMetaValue>
-                            </TopMetaItem>
                         </TopMeta>
-                    </div>
-                </div>
+                    </TopBarRight>
+                </TopBar>
 
                 <SubLine>
                     <span>Confidential Medical-Legal Record</span>
@@ -1002,7 +1312,6 @@ const DeceasedRegistrationForm = () => {
                                             type="text"
                                             name="admission_number"
                                             value={admissionId || formData.admission_number}
-                                            className="inp-disabled"
                                             placeholder="Auto-generated from gender"
                                             readOnly
                                             disabled
@@ -1018,16 +1327,6 @@ const DeceasedRegistrationForm = () => {
                                         />
                                         {errors.date_admitted && <ErrorMessage>{errors.date_admitted}</ErrorMessage>}
                                     </Col>
-                                    <Col06>
-                                        <Label>Time Received <span style={{ color: COLORS.red }}>*</span></Label>
-                                        <InputLg
-                                            type="time"
-                                            name="time_received"
-                                            value={formData.time_received}
-                                            onChange={handleChange}
-                                        />
-                                        {errors.time_received && <ErrorMessage>{errors.time_received}</ErrorMessage>}
-                                    </Col06>
                                 </Row>
                             </HighlightRow>
                             <Row>
@@ -1173,7 +1472,7 @@ const DeceasedRegistrationForm = () => {
                     <Section>
                         <SectionHead>
                             <SectionNum>03</SectionNum>
-                            <SectionTitle>Next of Kin — Contact & Identification</SectionTitle>
+                            <SectionTitle>Next of Kin — Contact &amp; Identification</SectionTitle>
                         </SectionHead>
                         <SectionBody>
                             <Row>
@@ -1201,7 +1500,7 @@ const DeceasedRegistrationForm = () => {
                             <Row>
                                 <Col15>
                                     <Label>ID Number (Government-Issued)</Label>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <ScanRow>
                                         <Input
                                             type="text"
                                             name="id_number"
@@ -1218,7 +1517,7 @@ const DeceasedRegistrationForm = () => {
                                             <ScanBarcode size={13} />
                                             Scan ID
                                         </ScanButton>
-                                    </div>
+                                    </ScanRow>
                                 </Col15>
                                 <Col06>
                                     <Label>ID Type</Label>
@@ -1245,6 +1544,7 @@ const DeceasedRegistrationForm = () => {
                                         onChange={handleChange}
                                         placeholder="+254 7XX XXX XXX"
                                     />
+                                    {errors.tel_number && <ErrorMessage>{errors.tel_number}</ErrorMessage>}
                                 </Col>
                                 <Col>
                                     <Label>Alternative Phone</Label>
@@ -1255,18 +1555,19 @@ const DeceasedRegistrationForm = () => {
                                         onChange={handleChange}
                                         placeholder="+254 7XX XXX XXX"
                                     />
+                                    {errors.alternative_phone && <ErrorMessage>{errors.alternative_phone}</ErrorMessage>}
                                 </Col>
-                            <Col06>
-                                <Label>Email</Label>
-                                <Input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    placeholder="email@example.com"
-                                />
-                                {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
-                            </Col06>
+                                <Col06>
+                                    <Label>Email</Label>
+                                    <Input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        placeholder="email@example.com"
+                                    />
+                                    {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
+                                </Col06>
                             </Row>
                         </SectionBody>
                     </Section>
@@ -1275,7 +1576,7 @@ const DeceasedRegistrationForm = () => {
                     <Section>
                         <SectionHead>
                             <SectionNum>04</SectionNum>
-                            <SectionTitle>Personal Effects & Valuables Inventory</SectionTitle>
+                            <SectionTitle>Personal Effects &amp; Valuables Inventory</SectionTitle>
                         </SectionHead>
                         <SectionBody>
                             <CheckGrid style={{ marginBottom: '0.5rem' }}>
@@ -1313,7 +1614,7 @@ const DeceasedRegistrationForm = () => {
                     <Section>
                         <SectionHead>
                             <SectionNum>05</SectionNum>
-                            <SectionTitle>Declaration & Authorization</SectionTitle>
+                            <SectionTitle>Declaration &amp; Authorization</SectionTitle>
                         </SectionHead>
                         <SectionBody>
                             <LegalBlock>
@@ -1374,46 +1675,24 @@ const DeceasedRegistrationForm = () => {
                         </NoticeBarText>
                     </NoticeBar>
 
-                    {/* Facility Use */}
-                    <FacilityUse>
-                        <FacilityUseTitle>For Facility Use Only</FacilityUseTitle>
-                        <Row style={{ marginBottom: 0 }}>
-                            <Col>
-                                <Label>Verified By</Label>
-                                <Input
-                                    type="email"
-                                    name="verified_by"
-                                    value={formData.verified_by}
-                                    onChange={handleChange}
-                                    placeholder="user@email.com"
-                                />
-                            </Col>
-                        </Row>
-                    </FacilityUse>
-
                     {/* Actions */}
-                    <ActionsContainer style={{ justifyContent: 'space-between' }}>
-                        <SecondaryButton type="button" onClick={() => navigate(`/tenant/${getTenantSlug()}/all-deceased`)}>
-                            <ArrowRight size={15} style={{ transform: 'rotate(180deg)' }} /> Back to All Deceased
+                    <ActionsContainer style={{ justifyContent: 'flex-end' }}>
+                        <SecondaryButton type="button" onClick={handleClear} disabled={isSubmitting}>
+                            <RotateCcw size={15} /> Clear Form
                         </SecondaryButton>
-                        <div style={{ display: 'flex', gap: '0.75rem' }}>
-                            <SecondaryButton type="button" onClick={handleClear} disabled={isSubmitting}>
-                                <RotateCcw size={15} /> Clear Form
-                            </SecondaryButton>
-                            <PrimaryButton type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 size={15} className="animate-spin" />
-                                        Processing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Check size={15} />
-                                        Register Deceased
-                                    </>
-                                )}
-                            </PrimaryButton>
-                        </div>
+                        <PrimaryButton type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 size={15} className="animate-spin" />
+                                    Processing...
+                                </>
+                            ) : (
+                                <>
+                                    <Check size={15} />
+                                    Register Deceased
+                                </>
+                            )}
+                        </PrimaryButton>
                     </ActionsContainer>
                 </form>
 
@@ -1426,12 +1705,14 @@ const DeceasedRegistrationForm = () => {
 
             {/* ID Scanner Modal */}
             {showIdScanner && (
-                <IDScannerComponent
-                    onScanComplete={handleIdScanComplete}
-                    onClose={() => setShowIdScanner(false)}
-                    autoCapture={true}
-                    captureDelay={3000}
-                />
+                <IDScannerModalWrap>
+                    <IDScannerComponent
+                        onScanComplete={handleIdScanComplete}
+                        onClose={() => setShowIdScanner(false)}
+                        autoCapture={true}
+                        captureDelay={3000}
+                    />
+                </IDScannerModalWrap>
             )}
         </Container>
     );

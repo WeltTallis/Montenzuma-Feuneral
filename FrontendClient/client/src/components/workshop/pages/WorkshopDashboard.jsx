@@ -1,1002 +1,239 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from 'react';
-
-// ── Chart.js ──
-import { Chart, registerables } from 'chart.js';
-Chart.register(...registerables);
-const ChartJS = Chart;
-
-// ── API & Context ──
+import React, { useState, useEffect, useCallback, useMemo, createContext, useContext } from 'react';
 import { useSocket } from '../../../utils/context/socketContext';
 import { workshopService } from '../services/workshopService';
 
-const Ctx = createContext(null);
+import WorkshopHeader from './WorkshopHeader';
+import WorkshopTabs from './WorkshopTabs';
+import DashboardTab from './DashboardTab';
+import OrdersTab from './OrdersTab';
+import WorkersTab from './WorkersTab';
+import MaterialsTab from './MaterialsTab';
+import AnalyticsTab from './AnalyticsTab';
+import ModalRouter from './ModalRouter';
+import Toasts from './Toasts';
 
-// ═══════════════════════════════════════════════════════════
-//  DESIGN TOKENS — WHITE LIGHT THEME
-// ═══════════════════════════════════════════════════════════
-const T = {
-  bg: '#F8FAFC',
-  surface: '#FFFFFF',
-  surfaceHover: '#F1F5F9',
-  bdr: '#E2E8F0',
-  border: '#E2E8F0',
-  borderLight: '#F1F5F9',
-  bdrS: '#CBD5E1',
-  text: '#0F172A',
-  textBody: '#334155',
-  textSecondary: '#64748B',
-  textMuted: '#94A3B8',
-  textFaint: '#CBD5E1',
-  t1: '#0F172A',
-  t2: '#475569',
-  t3: '#94A3B8',
-  accent: '#2563EB',
-  accentD: 'rgba(37, 99, 235, 0.08)',
-  accentBg: '#EFF6FF',
-  accentLight: '#93C5FD',
-  ok: '#059669',
-  okBg: '#ECFDF5',
-  okLight: '#6EE7B7',
-  err: '#DC2626',
-  errBg: '#FEF2F2',
-  errLight: '#FCA5A5',
-  warn: '#D97706',
-  warnBg: '#FFFBEB',
-  warnLight: '#FCD34D',
-  info: '#3B82F6',
-  infoBg: '#EFF6FF',
-  purple: '#7C3AED',
-  purpleBg: '#F5F3FF',
-  cyan: '#0891B2',
-  cyanBg: '#ECFEFF',
-  orange: '#EA580C',
-  orangeBg: '#FFF7ED',
-  pink: '#DB2777',
-  pinkBg: '#FDF2F8',
-  teal: '#0D9488',
-  tealBg: '#F0FDFA',
-  chartColors: ['#2563EB', '#7C3AED', '#0891B2', '#059669', '#D97706', '#DC2626', '#DB2777', '#EA580C'],
-};
+export const Ctx = createContext(null);
 
 const STAGES = [
-  { id: 'cutting', label: 'Cutting', icon: 'fa-scissors', color: '#EF4444' },
-  { id: 'assembly', label: 'Assembly', icon: 'fa-screwdriver-wrench', color: '#F97316' },
-  { id: 'sanding', label: 'Sanding', icon: 'fa-paintbrush', color: '#EAB308' },
-  { id: 'finishing', label: 'Finishing', icon: 'fa-spray-can-sparkles', color: '#22C55E' },
-  { id: 'upholstery', label: 'Upholstery', icon: 'fa-couch', color: '#14B8A6' },
-  { id: 'hardware', label: 'Hardware', icon: 'fa-wrench', color: '#3B82F6' },
-  { id: 'quality_check', label: 'Quality Check', icon: 'fa-clipboard-check', color: '#8B5CF6' },
-  { id: 'packaging', label: 'Packaging', icon: 'fa-box', color: '#EC4899' },
-  { id: 'completed', label: 'Completed', icon: 'fa-circle-check', color: '#10B981' },
+  { name: 'Building', icon: 'fa-hammer', color: '#2563EB', bg: '#EFF6FF' },
+  { name: 'Waiting Bay', icon: 'fa-clock', color: '#D97706', bg: '#FFFBEB' },
+  { name: 'Painting', icon: 'fa-paint-roller', color: '#7C3AED', bg: '#F5F3FF' },
+  { name: 'Interior', icon: 'fa-couch', color: '#0891B2', bg: '#ECFEFF' },
+  { name: 'Store', icon: 'fa-warehouse', color: '#059669', bg: '#ECFDF5' },
 ];
 
-const WORKERS = [
-  { id: 1, name: 'James Mwangi', role: 'Master Carpenter', initials: 'JM', color: '#2563EB', speed: 0.9, reliability: 0.95, todayCount: 3, weekCount: 14, monthCount: 52, allTime: 384, avgHours: 4.2, trend: 'up' },
-  { id: 2, name: 'Peter Ochieng', role: 'Senior Carpenter', initials: 'PO', color: '#7C3AED', speed: 0.85, reliability: 0.88, todayCount: 2, weekCount: 11, monthCount: 45, allTime: 312, avgHours: 4.8, trend: 'up' },
-  { id: 3, name: 'Samuel Kibet', role: 'Upholsterer', initials: 'SK', color: '#059669', speed: 0.78, reliability: 0.92, todayCount: 2, weekCount: 10, monthCount: 41, allTime: 278, avgHours: 5.1, trend: 'stable' },
-  { id: 4, name: 'David Njoroge', role: 'Finisher', initials: 'DN', color: '#DC2626', speed: 0.82, reliability: 0.85, todayCount: 2, weekCount: 9, monthCount: 38, allTime: 256, avgHours: 4.5, trend: 'down' },
-  { id: 5, name: 'John Kamau', role: 'Apprentice', initials: 'JK', color: '#8B5CF6', speed: 0.6, reliability: 0.75, todayCount: 1, weekCount: 5, monthCount: 22, allTime: 98, avgHours: 7.2, trend: 'up' },
-  { id: 6, name: 'Francis Wanjiku', role: 'Quality Inspector', initials: 'FW', color: '#EC4899', speed: 0.88, reliability: 0.98, todayCount: 3, weekCount: 13, monthCount: 48, allTime: 345, avgHours: 3.8, trend: 'stable' },
-  { id: 7, name: 'Michael Odhiambo', role: 'Hardware Specialist', initials: 'MO', color: '#14B8A6', speed: 0.75, reliability: 0.9, todayCount: 1, weekCount: 7, monthCount: 30, allTime: 198, avgHours: 5.5, trend: 'down' },
-  { id: 8, name: 'Joseph Muthoni', role: 'Sander', initials: 'JM', color: '#D97706', speed: 0.8, reliability: 0.87, todayCount: 2, weekCount: 8, monthCount: 35, allTime: 224, avgHours: 5.0, trend: 'up' },
-];
+const AVATAR_COLORS = ['#1E40AF','#7C3AED','#0891B2','#059669','#D97706','#DB2777','#EA580C','#0D9488'];
 
-const CTYPES = ['Standard', 'Premium', 'Elite', 'Child', 'Infant', 'Oversized'];
-const CUSTOMERS = ['Wanjiru K.', 'Otieno Family', 'Muthoni J.', 'Kipchoge Estate', 'Achieng M.', 'Njeri W.', 'Kamau & Sons', 'Omondi Funeral', 'Wambui T.', 'Chebet Family', 'Mwangi Holdings', 'Akinyi Services'];
-const DECEASED = ['Stephen K.', 'Mary A.', 'Joseph N.', 'Grace W.', 'Peter M.', 'Hannah O.', 'David K.', 'Ruth J.', 'Samuel T.', 'Elizabeth M.', 'John O.', 'Agnes W.'];
-const COLORS = ['Walnut', 'Mahogany', 'Oak', 'Cherry', 'Ebony', 'Pine White'];
-const INTERIORS = ['Satin Gold', 'White Crepe', 'Blue Velvet', 'Rose Pink', 'Cream Silk', 'Burgundy'];
-const PRICES = { Standard: 15000, Premium: 25000, Elite: 45000, Child: 8000, Infant: 5000, Oversized: 55000 };
+const STATUS_TO_STAGE = {
+  'pending': 0, 'building': 0, 'design': 0,
+  'waiting_bay': 1, 'waiting': 1, 'inspection': 1,
+  'painting': 2,
+  'interior': 3, 'upholstery': 3,
+  'completed': 4, 'delivered': 4, 'store': 4
+};
 
-let _id = 1000;
-const gid = () => ++_id;
+const transformWorker = (w) => ({
+  id: w.user_id || w.id,
+  name: w.full_name || `${w.first_name || ''} ${w.last_name || ''}`.trim() || 'Unknown',
+  role: w.role || 'Worker',
+  email: w.email,
+  phone: w.phone,
+  createdAt: w.created_at,
+  color: AVATAR_COLORS[(w.user_id || w.id) % AVATAR_COLORS.length],
+});
 
-function timeAgo(d) {
-  const s = Math.floor((Date.now() - new Date(d)) / 1000);
-  if (s < 60) return 'Just now';
-  if (s < 3600) return Math.floor(s / 60) + 'm ago';
-  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
-  return Math.floor(s / 86400) + 'd ago';
-}
-
-// ═══════════════════════════════════════════════════════════
-//  BACKEND INTEGRATION
-// ═══════════════════════════════════════════════════════════
-
-// Transform backend order to frontend format
-const transformOrder = (order) => {
-  if (!order) return null;
-  const stageMap = {};
-  if (order.stages && Array.isArray(order.stages)) {
-    order.stages.forEach(s => { stageMap[s.stage] = s; });
-  }
-  const currentStage = order.current_stage || order.status || 'pending';
-  const stages = STAGES.map(s => {
-    const backendStage = stageMap[s.id];
-    return {
-      ...s,
-      status: backendStage ? backendStage.status : (STAGES.findIndex(st => st.id === s.id) <= STAGES.findIndex(st => st.id === currentStage) ? 'completed' : 'pending'),
-      startedAt: backendStage?.started_at ? new Date(backendStage.started_at) : null,
-      completedAt: backendStage?.completed_at ? new Date(backendStage.completed_at) : null,
-    };
-  });
-  const currentStageIndex = STAGES.findIndex(s => s.id === currentStage);
+const transformOrder = (o) => {
+  const statusLower = (o.status || 'pending').toLowerCase();
+  const stageIdx = STATUS_TO_STAGE[statusLower] !== undefined ? STATUS_TO_STAGE[statusLower] : 0;
   return {
-    id: order.id,
-    orderNumber: order.order_number,
-    customerName: order.customer_name,
-    deceasedName: order.deceased_name,
-    coffinType: order.coffin_type || 'Standard',
-    color: order.color || 'Walnut',
-    interior: order.interior_fabric || 'Satin Gold',
-    currentStage: currentStageIndex >= 0 ? currentStage : 'pending',
-    stages,
-    assignedWorker: order.assigned_worker || WORKERS[0],
-    priority: order.priority || 'normal',
-    price: parseFloat(order.selling_price) || 20000,
-    createdAt: order.order_date ? new Date(order.order_date) : new Date(),
-    dueDate: order.due_date ? new Date(order.due_date) : new Date(Date.now() + 5 * 86400000),
+    id: o.order_number || `CF-${o.id}`,
+    dbId: o.id,
+    name: o.deceased_name || 'Unnamed',
+    customer: o.customer_name,
+    type: o.coffin_type || 'Standard',
+    size: 'Standard',
+    color: o.color || 'Natural',
+    status: o.status || 'pending',
+    stageIndex: stageIdx,
+    priority: o.priority || 'normal',
+    price: parseFloat(o.selling_price) || 0,
+    cost: parseFloat(o.total_cost) || 0,
+    profit: parseFloat(o.profit) || 0,
+    createdAt: o.order_date ? new Date(o.order_date) : new Date(),
+    updatedAt: o.updated_at ? new Date(o.updated_at) : new Date(),
+    dueDate: o.due_date ? new Date(o.due_date) : null,
+    branchId: o.branch_id,
+    notes: o.notes,
+    stages: o.stages || [],
+    assignments: o.assignments || [],
+    materials: o.materials_used || [],
   };
 };
 
-// Transform backend material to frontend format
-const transformMaterial = (material) => ({
-  id: material.id,
-  name: material.name,
-  category: material.category,
-  quantity: parseFloat(material.quantity) || 0,
-  unit: material.unit || 'pcs',
-  minLevel: parseFloat(material.min_stock_level) || 10,
-  costPerUnit: parseFloat(material.unit_price) || 0,
-  supplier: material.supplier || 'N/A',
+const transformMaterial = (m) => ({
+  id: m.id,
+  name: m.name,
+  category: m.category,
+  quantity: parseFloat(m.quantity) || 0,
+  unit: m.unit || 'pcs',
+  minLevel: parseFloat(m.min_stock_level) || 10,
+  costPerUnit: parseFloat(m.unit_price) || 0,
+  description: m.description,
+  createdAt: m.created_at,
 });
 
-// Transform backend worker to frontend format
-const transformWorker = (worker) => ({
-  id: worker.id,
-  name: `${worker.first_name} ${worker.last_name}`,
-  role: worker.role,
-  initials: `${worker.first_name[0]}${worker.last_name[0]}`,
-  color: ['#2563EB', '#7C3AED', '#059669', '#DC2626', '#8B5CF6', '#EC4899', '#14B8A6', '#D97706'][worker.id % 8],
-  speed: 0.7 + Math.random() * 0.3,
-  reliability: 0.7 + Math.random() * 0.3,
-  todayCount: Math.floor(Math.random() * 5),
-  weekCount: Math.floor(Math.random() * 20) + 5,
-  monthCount: Math.floor(Math.random() * 60) + 10,
-  allTime: Math.floor(Math.random() * 400) + 50,
-  avgHours: 3 + Math.random() * 5,
-  trend: ['up', 'stable', 'down'][Math.floor(Math.random() * 3)],
-});
-
-// ═══════════════════════════════════════════════════════════
-//  DASHBOARD TAB — Overview
-// ═══════════════════════════════════════════════════════════
-const DashboardTab = () => {
-  const ctx = useContext(Ctx);
-  if (!ctx) return null;
-  const { orders, materials, workers, activity, toasts, loading, error, connected, addToast, openModal, closeModal, createOrder, advanceStage, reassignOrder, removeOrder, restockMat, addMaterial, refreshData } = ctx;
-
-  const totalOrders = orders.length;
-  const activeOrders = orders.filter(o => o.currentStage !== 'completed').length;
-  const completedToday = orders.filter(o => o.currentStage === 'completed' && new Date(o.createdAt).toDateString() === new Date().toDateString()).length;
-  const lowStock = materials.filter(m => m.quantity <= m.minLevel).length;
-
-  return (
-    <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
-          <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Total Orders</div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: T.t1 }}>{totalOrders}</div>
-        </div>
-        <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
-          <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Active Orders</div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: T.accent }}>{activeOrders}</div>
-        </div>
-        <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
-          <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Completed Today</div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: T.ok }}>{completedToday}</div>
-        </div>
-        <div style={{ background: T.surface, borderRadius: 16, padding: '20px', border: `1px solid ${T.bdr}` }}>
-          <div style={{ fontSize: 12, color: T.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Low Stock Items</div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: lowStock > 0 ? T.err : T.t3 }}>{lowStock}</div>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-        <button onClick={() => openModal('createOrder')} style={{ padding: '12px 24px', borderRadius: 10, background: T.accent, color: '#fff', border: 'none', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <i className="fas fa-plus" style={{ fontSize: 12 }} />
-          Create Order
-        </button>
-        <button onClick={() => openModal('addMaterial')} style={{ padding: '12px 24px', borderRadius: 10, background: T.ok, color: '#fff', border: 'none', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <i className="fas fa-box" style={{ fontSize: 12 }} />
-          Add Material
-        </button>
-      </div>
-
-      <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
-        <h3 style={{ fontSize: 18, fontWeight: 600, color: T.t1, marginBottom: 16 }}>Recent Activity</h3>
-        <div style={{ display: 'grid', gap: 8 }}>
-          {activity.slice(0, 5).map((act, i) => (
-            <div key={i} style={{ padding: 12, background: T.bg, borderRadius: 8, fontSize: 14, color: T.t2 }}>
-              <span style={{ fontWeight: 600, color: T.t1 }}>{act.worker?.name}</span> {act.action} <span style={{ color: T.accent }}>{act.coffin?.orderNumber}</span>
-              <span style={{ float: 'right', color: T.t3, fontSize: 12 }}>{timeAgo(act.time)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════
-//  PRODUCTION TAB
-// ═══════════════════════════════════════════════════════════
-const ProductionTab = () => {
-  const ctx = useContext(Ctx);
-  if (!ctx) return null;
-  const { orders } = ctx;
-
-  return (
-    <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
-      <h2 style={{ fontSize: 24, fontWeight: 700, color: T.t1, marginBottom: 16 }}>Production Pipeline</h2>
-      <p style={{ color: T.t3, marginBottom: 24 }}>Track orders through production stages</p>
-      <div style={{ display: 'grid', gap: 12 }}>
-        {orders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: T.t3 }}>No orders in production</div>
-        ) : (
-          orders.filter(o => o.currentStage !== 'completed').map(order => (
-            <div key={order.id} style={{ padding: 16, background: T.bg, borderRadius: 12, border: `1px solid ${T.bdr}` }}>
-              <div style={{ fontWeight: 600, color: T.t1 }}>{order.orderNumber}</div>
-              <div style={{ fontSize: 14, color: T.t3, marginTop: 4 }}>{order.customerName} — {order.deceasedName}</div>
-              <div style={{ fontSize: 12, color: T.accent, marginTop: 8, textTransform: 'capitalize' }}>
-                Current Stage: {order.currentStage.replace(/_/g, ' ')}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════
-//  LEADERBOARD TAB
-// ═══════════════════════════════════════════════════════════
-const LeaderboardTab = () => {
-  const ctx = useContext(Ctx);
-  if (!ctx) return null;
-  const { workers } = ctx;
-
-  return (
-    <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
-      <h2 style={{ fontSize: 24, fontWeight: 700, color: T.t1, marginBottom: 16 }}>Worker Leaderboard</h2>
-      <p style={{ color: T.t3, marginBottom: 24 }}>Top performing workers this month</p>
-      <div style={{ display: 'grid', gap: 12 }}>
-        {workers.sort((a, b) => b.monthCount - a.monthCount).slice(0, 10).map((worker, idx) => (
-          <div key={worker.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, background: T.bg, borderRadius: 12, border: `1px solid ${T.bdr}` }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: idx < 3 ? T.accent : T.bdrS, color: idx < 3 ? '#fff' : T.t1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 }}>
-              {idx + 1}
-            </div>
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: worker.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14 }}>
-              {worker.initials}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, color: T.t1 }}>{worker.name}</div>
-              <div style={{ fontSize: 13, color: T.t3 }}>{worker.role}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontWeight: 700, color: T.accent, fontSize: 18 }}>{worker.monthCount}</div>
-              <div style={{ fontSize: 12, color: T.t3 }}>orders</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════
-//  INSIGHTS TAB
-// ═══════════════════════════════════════════════════════════
-const InsightsTab = () => {
-  const ctx = useContext(Ctx);
-  if (!ctx) return null;
-  const { orders, activity } = ctx;
-
-  const completedOrders = orders.filter(o => o.currentStage === 'completed').length;
-  const completionRate = orders.length > 0 ? Math.round((completedOrders / orders.length) * 100) : 0;
-
-  return (
-    <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
-      <h2 style={{ fontSize: 24, fontWeight: 700, color: T.t1, marginBottom: 16 }}>Production Insights</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={{ padding: 20, background: T.accentBg, borderRadius: 12, border: `1px solid ${T.accent}20` }}>
-          <div style={{ fontSize: 12, color: T.accent, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>Completion Rate</div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: T.accent }}>{completionRate}%</div>
-        </div>
-        <div style={{ padding: 20, background: T.okBg, borderRadius: 12, border: `1px solid ${T.ok}20` }}>
-          <div style={{ fontSize: 12, color: T.ok, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>Completed Orders</div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: T.ok }}>{completedOrders}</div>
-        </div>
-        <div style={{ padding: 20, background: T.warnBg, borderRadius: 12, border: `1px solid ${T.warn}20` }}>
-          <div style={{ fontSize: 12, color: T.warn, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>Active Orders</div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: T.warn }}>{orders.filter(o => o.currentStage !== 'completed').length}</div>
-        </div>
-      </div>
-      <h3 style={{ fontSize: 18, fontWeight: 600, color: T.t1, marginBottom: 12 }}>Recent Activity</h3>
-      <div style={{ display: 'grid', gap: 8 }}>
-        {activity.slice(0, 5).map((act, i) => (
-          <div key={i} style={{ padding: 12, background: T.bg, borderRadius: 8, fontSize: 14, color: T.t2 }}>
-            <span style={{ fontWeight: 600, color: T.t1 }}>{act.worker?.name}</span> {act.action} <span style={{ color: T.accent }}>{act.coffin?.orderNumber}</span>
-            <span style={{ float: 'right', color: T.t3, fontSize: 12 }}>{timeAgo(act.time)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════
-//  ANALYTICS TAB
-// ═══════════════════════════════════════════════════════════
-const AnalyticsTab = () => {
-  const ctx = useContext(Ctx);
-  if (!ctx) return null;
-  const { orders, materials } = ctx;
-
-  const typeCount = orders.reduce((acc, o) => { acc[o.coffinType] = (acc[o.coffinType] || 0) + 1; return acc; }, {});
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.price || 0), 0);
-
-  return (
-    <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
-      <h2 style={{ fontSize: 24, fontWeight: 700, color: T.t1, marginBottom: 16 }}>Analytics</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={{ padding: 20, background: T.purpleBg, borderRadius: 12, border: `1px solid ${T.purple}20` }}>
-          <div style={{ fontSize: 12, color: T.purple, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>Total Revenue</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: T.purple }}>KES {totalRevenue.toLocaleString()}</div>
-        </div>
-        <div style={{ padding: 20, background: T.cyanBg, borderRadius: 12, border: `1px solid ${T.cyan}20` }}>
-          <div style={{ fontSize: 12, color: T.cyan, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>Total Orders</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: T.cyan }}>{orders.length}</div>
-        </div>
-      </div>
-      <h3 style={{ fontSize: 18, fontWeight: 600, color: T.t1, marginBottom: 12 }}>Orders by Type</h3>
-      <div style={{ display: 'grid', gap: 8 }}>
-        {Object.entries(typeCount).map(([type, count]) => (
-          <div key={type} style={{ display: 'flex', justifyContent: 'space-between', padding: 12, background: T.bg, borderRadius: 8 }}>
-            <span style={{ color: T.t2 }}>{type}</span>
-            <span style={{ fontWeight: 600, color: T.t1 }}>{count}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════
-//  WORKERS TAB
-// ═══════════════════════════════════════════════════════════
-const WorkersTab = () => {
-  const ctx = useContext(Ctx);
-  if (!ctx) return null;
-  const { workers } = ctx;
-
-  return (
-    <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
-      <h2 style={{ fontSize: 24, fontWeight: 700, color: T.t1, marginBottom: 16 }}>Workers Management</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-        {workers.map(worker => (
-          <div key={worker.id} style={{ padding: 20, background: T.bg, borderRadius: 12, border: `1px solid ${T.bdr}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-              <div style={{ width: 48, height: 48, borderRadius: '50%', background: worker.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 16 }}>
-                {worker.initials}
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, color: T.t1 }}>{worker.name}</div>
-                <div style={{ fontSize: 13, color: T.t3 }}>{worker.role}</div>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, textAlign: 'center' }}>
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: T.accent }}>{worker.todayCount}</div>
-                <div style={{ fontSize: 11, color: T.t3 }}>Today</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: T.ok }}>{worker.weekCount}</div>
-                <div style={{ fontSize: 11, color: T.t3 }}>Week</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: T.purple }}>{worker.monthCount}</div>
-                <div style={{ fontSize: 11, color: T.t3 }}>Month</div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════
-//  MATERIALS TAB
-// ═══════════════════════════════════════════════════════════
-const MaterialsTab = () => {
-  const ctx = useContext(Ctx);
-  if (!ctx) return null;
-  const { materials, restockMat } = ctx;
-
-  return (
-    <div style={{ background: T.surface, borderRadius: 16, padding: '2rem', border: `1px solid ${T.bdr}` }}>
-      <h2 style={{ fontSize: 24, fontWeight: 700, color: T.t1, marginBottom: 16 }}>Materials Inventory</h2>
-      <div style={{ display: 'grid', gap: 12 }}>
-        {materials.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: T.t3 }}>No materials in inventory</div>
-        ) : (
-          materials.map(mat => (
-            <div key={mat.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: T.bg, borderRadius: 12, border: `1px solid ${T.bdr}` }}>
-              <div>
-                <div style={{ fontWeight: 600, color: T.t1 }}>{mat.name}</div>
-                <div style={{ fontSize: 13, color: T.t3, marginTop: 4 }}>{mat.category} • {mat.unit}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 700, color: mat.quantity <= mat.minLevel ? T.err : T.t1, fontSize: 18 }}>{mat.quantity}</div>
-                  <div style={{ fontSize: 11, color: T.t3 }}>in stock</div>
-                </div>
-                {mat.quantity <= mat.minLevel && (
-                  <button onClick={() => restockMat(mat.id)} style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${T.ok}`, background: T.okBg, color: T.ok, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
-                    Restock
-                  </button>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════
-//  TOASTS COMPONENT
-// ═══════════════════════════════════════════════════════════
-const Toasts = () => {
-  const ctx = useContext(Ctx);
-  if (!ctx) return null;
-  const { toasts } = ctx;
-
-  const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle', warning: 'fa-exclamation-triangle' };
-  const colors = { success: T.ok, error: T.err, info: T.info, warning: T.warn };
-  const bgs = { success: T.okBg, error: T.errBg, info: T.infoBg, warning: T.warnBg };
-
-  return (
-    <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 400 }}>
-      {toasts.map(t => (
-        <div key={t.id} style={{
-          padding: '14px 18px', borderRadius: 12, background: bgs[t.type] || T.surface,
-          border: `1px solid ${colors[t.type] || T.bdr}`, color: colors[t.type] || T.t1,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transform: t.out ? 'translateX(120%)' : 'translateX(0)',
-          transition: 'transform 0.3s ease', display: 'flex', alignItems: 'center', gap: 12
-        }}>
-          <i className={`fas ${icons[t.type] || 'fa-info-circle'}`} style={{ fontSize: 18 }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{t.title}</div>
-            <div style={{ fontSize: 13, opacity: 0.9, marginTop: 2 }}>{t.msg}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════
-//  TOP NAVIGATION
-// ═══════════════════════════════════════════════════════════
-const TopNav = ({ tab, setTab }) => {
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-pie' },
-    { id: 'production', label: 'Production', icon: 'fa-industry' },
-    { id: 'leaderboard', label: 'Leaderboard', icon: 'fa-trophy' },
-    { id: 'insights', label: 'Insights', icon: 'fa-lightbulb' },
-    { id: 'analytics', label: 'Analytics', icon: 'fa-chart-line' },
-    { id: 'workers', label: 'Workers', icon: 'fa-users' },
-    { id: 'materials', label: 'Materials', icon: 'fa-boxes-stacked' },
-  ];
-
-  return (
-    <div style={{
-      background: T.surface, borderBottom: `1px solid ${T.bdr}`, padding: '0 1.5rem',
-      display: 'flex', alignItems: 'center', gap: 4, overflowX: 'auto', position: 'sticky', top: 0, zIndex: 100
-    }}>
-      {tabs.map(t => (
-        <button key={t.id} onClick={() => setTab(t.id)} style={{
-          padding: '14px 18px', background: 'transparent', border: 'none', borderBottom: tab === t.id ? `3px solid ${T.accent}` : '3px solid transparent',
-          color: tab === t.id ? T.accent : T.t3, fontWeight: tab === t.id ? 600 : 500, fontSize: 14, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', transition: 'all 0.2s'
-        }}>
-          <i className={`fas ${t.icon}`} style={{ fontSize: 14 }} />
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════
-//  MODAL ROUTER
-// ═══════════════════════════════════════════════════════════
-const ModalRouter = ({ type, data, close }) => {
-  if (!type) return null;
-
-  const ctx = useContext(Ctx);
-  if (!ctx) return null;
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 20
-    }} onClick={close}>
-      <div style={{
-        background: T.surface, borderRadius: 16, maxWidth: 600, width: '100%', maxHeight: '90vh',
-        overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-      }} onClick={e => e.stopPropagation()}>
-        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${T.bdr}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: 20, fontWeight: 700, color: T.t1, margin: 0 }}>{type === 'createOrder' ? 'Create New Order' : type === 'addMaterial' ? 'Add Material' : type}</h3>
-          <button onClick={close} style={{ background: 'none', border: 'none', fontSize: 24, color: T.t3, cursor: 'pointer', lineHeight: 1 }}>×</button>
-        </div>
-        <div style={{ padding: 24 }}>
-          {type === 'createOrder' && <CreateOrderModal close={close} />}
-          {type === 'addMaterial' && <AddMaterialModal close={close} />}
-          {!['createOrder', 'addMaterial'].includes(type) && <div style={{ color: T.t3 }}>Modal content coming soon</div>}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════
-//  CREATE ORDER MODAL
-// ═══════════════════════════════════════════════════════════
-const CreateOrderModal = ({ close }) => {
-  const ctx = useContext(Ctx);
-  if (!ctx) return null;
-  const { createOrder } = ctx;
-
-  const [form, setForm] = useState({ cust: '', dec: '', type: 'Standard', pri: 'normal', col: 'Walnut', int: 'Satin Gold', due: '' });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    createOrder(form.cust, form.dec, form.type, form.pri, form.col, form.int, form.due);
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <div style={{ display: 'grid', gap: 16 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Customer Name</label>
-          <input required value={form.cust} onChange={e => setForm({ ...form, cust: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Deceased Name</label>
-          <input required value={form.dec} onChange={e => setForm({ ...form, dec: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Coffin Type</label>
-            <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }}>
-              {CTYPES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Priority</label>
-            <select value={form.pri} onChange={e => setForm({ ...form, pri: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }}>
-              <option value="normal">Normal</option>
-              <option value="urgent">Urgent</option>
-              <option value="express">Express</option>
-            </select>
-          </div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Color</label>
-            <select value={form.col} onChange={e => setForm({ ...form, col: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }}>
-              {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Interior</label>
-            <select value={form.int} onChange={e => setForm({ ...form, int: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }}>
-              {INTERIORS.map(i => <option key={i} value={i}>{i}</option>)}
-            </select>
-          </div>
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Due Date</label>
-          <input type="date" value={form.due} onChange={e => setForm({ ...form, due: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
-        </div>
-        <button type="submit" style={{ padding: '12px 24px', borderRadius: 10, background: T.accent, color: '#fff', border: 'none', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>
-          Create Order
-        </button>
-      </div>
-    </form>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════
-//  ADD MATERIAL MODAL
-// ═══════════════════════════════════════════════════════════
-const AddMaterialModal = ({ close }) => {
-  const ctx = useContext(Ctx);
-  if (!ctx) return null;
-  const { addMaterial } = ctx;
-
-  const [form, setForm] = useState({ name: '', cat: '', unit: 'pcs', qty: '', min: 10, cost: '', sup: '' });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    addMaterial(form);
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <div style={{ display: 'grid', gap: 16 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Material Name</label>
-          <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Category</label>
-            <input required value={form.cat} onChange={e => setForm({ ...form, cat: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Unit</label>
-            <select value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }}>
-              <option value="pcs">Pieces</option>
-              <option value="kg">Kilograms</option>
-              <option value="liters">Liters</option>
-              <option value="meters">Meters</option>
-            </select>
-          </div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Quantity</label>
-            <input type="number" required value={form.qty} onChange={e => setForm({ ...form, qty: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Min Stock Level</label>
-            <input type="number" value={form.min} onChange={e => setForm({ ...form, min: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
-          </div>
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Cost per Unit (KES)</label>
-          <input type="number" required value={form.cost} onChange={e => setForm({ ...form, cost: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.t2, marginBottom: 6 }}>Supplier</label>
-          <input value={form.sup} onChange={e => setForm({ ...form, sup: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${T.bdr}`, fontSize: 14 }} />
-        </div>
-        <button type="submit" style={{ padding: '12px 24px', borderRadius: 10, background: T.accent, color: '#fff', border: 'none', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>
-          Add Material
-        </button>
-      </div>
-    </form>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════
-//  MAIN APP
-// ═══════════════════════════════════════════════════════════
 const WorkshopDashboard = () => {
+  const { socket } = useSocket();
   const [tab, setTab] = useState('dashboard');
-  const [modal, setModal] = useState({ type: null, data: null });
-  const [toasts, setToasts] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [materials, setMaterials] = useState([]);
-  const [workers, setWorkers] = useState([]);
-  const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [workers, setWorkers] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [reports, setReports] = useState(null);
+  const [toasts, setToasts] = useState([]);
+  const [modal, setModal] = useState(null);
 
-  const { socket, connected: socketConnected } = useSocket();
-  const tid = useRef(0);
-
-  // ── Load initial data from backend ──
-  useEffect(() => {
-    loadInitialData();
+  const addToast = useCallback((msg, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, msg, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   }, []);
 
-  // ── Socket.io real-time updates ──
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleConnect = () => {
-      console.log('[Workshop] Socket connected');
-      setConnected(true);
-      const tenantSlug = localStorage.getItem('tenantSlug') || 'default';
-      socket.emit('join_tenant', tenantSlug);
-    };
-
-    const handleDisconnect = () => {
-      console.log('[Workshop] Socket disconnected');
-      setConnected(false);
-    };
-
-    const handleOrderUpdate = (data) => {
-      console.log('[Workshop] Real-time order update:', data);
-      setOrders(prev => {
-        const idx = prev.findIndex(o => o.id === data.id);
-        if (idx >= 0) {
-          const updated = [...prev];
-          updated[idx] = { ...updated[idx], ...data };
-          return updated;
-        }
-        return prev;
-      });
-      addToast('info', 'Order Updated', `Order ${data.order_number || data.id} has been updated`);
-    };
-
-    const handleNewOrder = (order) => {
-      console.log('[Workshop] New order received:', order);
-      setOrders(prev => [transformOrder(order), ...prev]);
-      addToast('success', 'New Order', `Order ${order.order_number} created`);
-    };
-
-    const handleStageUpdate = (data) => {
-      console.log('[Workshop] Stage update:', data);
-      setOrders(prev => prev.map(o => {
-        if (o.id !== data.orderId) return o;
-        const newStages = o.stages.map(s =>
-          s.id === data.stageId ? { ...s, status: data.status, completedAt: data.completedAt ? new Date(data.completedAt) : null } : s
-        );
-        return { ...o, stages: newStages };
-      }));
-    };
-
-    const handleMaterialUpdate = (data) => {
-      console.log('[Workshop] Material update:', data);
-      setMaterials(prev => prev.map(m => m.id === data.id ? { ...m, ...data } : m));
-    };
-
-    socket.on('connect', handleConnect);
-    socket.on('disconnect', handleDisconnect);
-    socket.on('order:update', handleOrderUpdate);
-    socket.on('order:created', handleNewOrder);
-    socket.on('stage:update', handleStageUpdate);
-    socket.on('material:update', handleMaterialUpdate);
-
-    if (socketConnected) {
-      handleConnect();
-    }
-
-    return () => {
-      socket.off('connect', handleConnect);
-      socket.off('disconnect', handleDisconnect);
-      socket.off('order:update', handleOrderUpdate);
-      socket.off('order:created', handleNewOrder);
-      socket.off('stage:update', handleStageUpdate);
-      socket.off('material:update', handleMaterialUpdate);
-    };
-  }, [socket, socketConnected]);
-
-  const loadInitialData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-
-      const [ordersRes, materialsRes, workersRes] = await Promise.all([
+      const [ordersRes, workersRes, materialsRes, reportsRes] = await Promise.all([
         workshopService.getOrders(),
-        workshopService.getMaterials(),
         workshopService.getWorkers(),
+        workshopService.getMaterials(),
+        workshopService.getProductionReport().catch(() => ({ data: null })),
       ]);
-
-      if (ordersRes.success && ordersRes.data) {
-        const transformedOrders = ordersRes.data.map(transformOrder).filter(Boolean);
-        setOrders(transformedOrders);
-      }
-
-      if (materialsRes.success && materialsRes.data) {
-        const transformedMaterials = Array.isArray(materialsRes.data) ? materialsRes.data.map(transformMaterial) : [];
-        setMaterials(transformedMaterials);
-      }
-
-      if (workersRes.success && workersRes.data) {
-        const transformedWorkers = Array.isArray(workersRes.data) ? workersRes.data.map(transformWorker) : WORKERS;
-        setWorkers(transformedWorkers);
-      }
-
-      // Generate initial activity from real orders
-      if (ordersRes.success && ordersRes.data) {
-        const initialActivity = [];
-        const acts = ['completed Cutting stage for', 'started Upholstery on', 'passed Quality Check for', 'moved to Assembly for'];
-        ordersRes.data.slice(0, 4).forEach((order, i) => {
-          initialActivity.push({
-            worker: transformedWorkers[i % transformedWorkers.length] || WORKERS[i % 8],
-            action: acts[i % acts.length],
-            coffin: transformOrder(order),
-            time: new Date(Date.now() - i * 1800000),
-            type: i % 2 === 0 ? 'success' : 'info',
-          });
-        });
-        setActivity(initialActivity);
-      }
+      if (ordersRes.data) setOrders(Array.isArray(ordersRes.data) ? ordersRes.data.map(transformOrder) : []);
+      if (workersRes.data) setWorkers(Array.isArray(workersRes.data) ? workersRes.data.map(transformWorker) : []);
+      if (materialsRes.data) setMaterials(Array.isArray(materialsRes.data) ? materialsRes.data.map(transformMaterial) : []);
+      if (reportsRes.data) setReports(reportsRes.data);
+      setConnected(true);
     } catch (err) {
-      console.error('[Workshop] Failed to load data:', err);
-      setError('Failed to load workshop data. Please try again.');
-      // Fallback to empty arrays
-      setOrders([]);
-      setMaterials([]);
-      setWorkers(WORKERS);
+      setError(err.message);
+      addToast('Failed to load data: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
-  };
-
-  const addToast = useCallback((type, title, msg) => {
-    const id = ++tid.current;
-    setToasts(p => [...p, { id, type, title, msg, out: false }]);
-    setTimeout(() => setToasts(p => p.map(t => t.id === id ? { ...t, out: true } : t)), 3500);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3800);
-  }, []);
-
-  const openModal = useCallback((type, data = null) => setModal({ type, data }), []);
-  const closeModal = useCallback(() => setModal({ type: null, data: null }), []);
-
-  const createOrder = useCallback(async (cust, dec, type, pri, col, int, due) => {
-    try {
-      const orderData = {
-        customer_name: cust,
-        deceased_name: dec,
-        coffin_type: type,
-        priority: pri || 'normal',
-        color: col || 'Walnut',
-        interior_fabric: int || 'Satin Gold',
-        due_date: due || new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
-        selling_price: PRICES[type] || 20000,
-        status: 'pending',
-        current_stage: 'cutting',
-      };
-
-      const res = await workshopService.createOrder(orderData);
-      if (res.success && res.data) {
-        const newOrder = transformOrder(res.data);
-        setOrders(p => [newOrder, ...p]);
-        setActivity(a => [{ worker: workers[0], action: 'started new order', coffin: newOrder, time: new Date(), type: 'success' }, ...a]);
-        addToast('success', 'New Order', newOrder.orderNumber + ' — ' + newOrder.coffinType);
-        closeModal();
-      } else {
-        addToast('error', 'Error', res.error || 'Failed to create order');
-      }
-    } catch (err) {
-      addToast('error', 'Error', 'Failed to create order');
-    }
-  }, [workers, addToast, closeModal]);
-
-  const advanceStage = useCallback(async (oid) => {
-    try {
-      const order = orders.find(o => o.id === oid);
-      if (!order) return;
-
-      const currentIdx = STAGES.findIndex(s => s.id === order.currentStage);
-      if (currentIdx >= STAGES.length - 1) {
-        addToast('info', 'Info', 'Order already completed');
-        return;
-      }
-
-      const nextStage = STAGES[currentIdx + 1];
-      const res = await workshopService.completeStage(oid, nextStage.id);
-
-      if (res.success) {
-        setOrders(p => p.map(o => {
-          if (o.id !== oid) return o;
-          const newStages = o.stages.map(s =>
-            s.id === o.currentStage ? { ...s, status: 'completed', completedAt: new Date() } : s
-          );
-          newStages.push({ ...nextStage, status: 'in_progress', startedAt: new Date(), completedAt: null });
-          return { ...o, currentStage: nextStage.id, stages: newStages };
-        }));
-        addToast('success', 'Stage Advanced', `${order.orderNumber} moved to ${nextStage.label}`);
-      } else {
-        addToast('error', 'Error', res.error || 'Failed to advance stage');
-      }
-    } catch (err) {
-      addToast('error', 'Error', 'Failed to advance stage');
-    }
-  }, [orders, addToast]);
-
-  const reassignOrder = useCallback(async (oid) => {
-    try {
-      const w = workers[Math.floor(Math.random() * workers.length)];
-      const res = await workshopService.assignWorkerToOrder(oid, { worker_id: w.id });
-      if (res.success) {
-        setOrders(p => p.map(o => o.id === oid ? { ...o, assignedWorker: w } : o));
-        addToast('info', 'Reassigned', w.name + ' assigned to order');
-      } else {
-        addToast('error', 'Error', res.error || 'Failed to reassign');
-      }
-    } catch (err) {
-      addToast('error', 'Error', 'Failed to reassign order');
-    }
-  }, [workers, addToast]);
-
-  const removeOrder = useCallback(async (oid) => {
-    try {
-      const res = await workshopService.deleteOrder(oid);
-      if (res.success) {
-        setOrders(p => p.filter(o => o.id !== oid));
-        addToast('info', 'Removed', 'Order removed');
-        closeModal();
-      } else {
-        addToast('error', 'Error', res.error || 'Failed to delete order');
-      }
-    } catch (err) {
-      addToast('error', 'Error', 'Failed to delete order');
-    }
-  }, [addToast, closeModal]);
-
-  const restockMat = useCallback((mid) => {
-    setMaterials(p => p.map(m => m.id === mid ? { ...m, quantity: m.quantity + m.minLevel * 2 } : m));
-    addToast('success', 'Restocked', 'Material restocked');
   }, [addToast]);
 
-  const addMaterial = useCallback(async (mat) => {
-    try {
-      const res = await workshopService.createMaterial({
-        name: mat.name,
-        category: mat.cat,
-        unit: mat.unit,
-        quantity: parseInt(mat.qty),
-        min_stock_level: parseInt(mat.min) || 10,
-        unit_price: parseInt(mat.cost) || 0,
-        supplier: mat.sup || 'N/A',
-      });
-      if (res.success && res.data) {
-        const newMat = transformMaterial(res.data);
-        setMaterials(p => [...p, newMat]);
-        addToast('success', 'Added', mat.name + ' added');
-        closeModal();
-      } else {
-        addToast('error', 'Error', res.error || 'Failed to add material');
-      }
-    } catch (err) {
-      addToast('error', 'Error', 'Failed to add material');
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handlers = {
+      'worker:created': () => { addToast('Worker created', 'success'); loadData(); },
+      'worker:deleted': () => { addToast('Worker removed', 'info'); loadData(); },
+      'order:created': () => { addToast('Order created', 'success'); loadData(); },
+      'order:deleted': () => { addToast('Order deleted', 'info'); loadData(); },
+      'order:status:changed': () => { addToast('Order status updated', 'success'); loadData(); },
+      'production:stage:updated': () => loadData(),
+      'production:stage:done': () => { addToast('Stage completed', 'success'); loadData(); },
+      'material:used': () => loadData(),
+    };
+    Object.entries(handlers).forEach(([event, handler]) => { socket.on(event, handler); });
+    return () => { Object.entries(handlers).forEach(([event, handler]) => { socket.off(event, handler); }); };
+  }, [socket, addToast, loadData]);
+
+  const createOrder = async (orderData) => {
+    try { await workshopService.createOrder(orderData); addToast('Order created successfully', 'success'); setModal(null); loadData(); }
+    catch (err) { addToast('Failed to create order: ' + err.message, 'error'); }
+  };
+
+  const updateOrderStatus = async (orderId, status) => {
+    const result = await workshopService.updateOrderStatus(orderId, { status });
+    if (result && result.success) {
+      addToast('Order status updated', 'success');
+      await loadData();
+      return result;
+    } else {
+      const errorMsg = result?.error || 'Update failed';
+      addToast('Failed to update status: ' + errorMsg, 'error');
+      throw new Error(errorMsg);
     }
-  }, [addToast, closeModal]);
+  };
 
-  const ctx = useMemo(() => ({
-    orders, materials, workers, activity, toasts, loading, error, connected, addToast, openModal, closeModal,
-    createOrder, advanceStage, reassignOrder, removeOrder, restockMat, addMaterial, refreshData: loadInitialData,
-  }), [orders, materials, workers, activity, toasts, loading, error, connected, addToast, openModal, closeModal, createOrder, advanceStage, reassignOrder, removeOrder, restockMat, addMaterial, loadInitialData]);
+  const createWorker = async (workerData) => {
+    try { await workshopService.createWorker(workerData); addToast('Worker created', 'success'); setModal(null); loadData(); }
+    catch (err) { addToast('Failed to create worker: ' + err.message, 'error'); }
+  };
 
-  const tabs = { dashboard: DashboardTab, production: ProductionTab, leaderboard: LeaderboardTab, insights: InsightsTab, analytics: AnalyticsTab, workers: WorkersTab, materials: MaterialsTab };
-  const Tab = tabs[tab] || DashboardTab;
+  const deleteWorker = async (id) => {
+    if (!confirm('Remove this worker?')) return;
+    try { await workshopService.deleteWorker(id); addToast('Worker removed', 'info'); loadData(); }
+    catch (err) { addToast('Failed to remove worker: ' + err.message, 'error'); }
+  };
+
+  const addMaterial = async (matData) => {
+    try { await workshopService.createMaterial(matData); addToast('Material added', 'success'); setModal(null); loadData(); }
+    catch (err) { addToast('Failed to add material: ' + err.message, 'error'); }
+  };
+
+  const deleteOrder = async (id) => {
+    if (!confirm('Delete this order?')) return;
+    try { await workshopService.deleteOrder(id); addToast('Order deleted', 'info'); loadData(); }
+    catch (err) { addToast('Failed to delete order: ' + err.message, 'error'); }
+  };
+
+  const value = useMemo(() => ({
+    orders, workers, materials, reports, loading, error, connected,
+    toasts, modal, setModal, addToast, createOrder, updateOrderStatus,
+    createWorker, deleteWorker, addMaterial, deleteOrder, loadData, tab, setTab,
+  }), [orders, workers, materials, reports, loading, error, connected, toasts, modal, tab, createOrder, updateOrderStatus, createWorker, deleteWorker, addMaterial, deleteOrder, loadData]);
+
+  if (loading && !orders.length) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', color: '#64748B' }}>
+        <div style={{ textAlign: 'center' }}>
+          <i className="fas fa-spinner fa-spin" style={{ fontSize: 48, color: '#1E40AF', marginBottom: 16 }} />
+          <div style={{ fontSize: 16, fontWeight: 600 }}>Loading workshop data...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !orders.length) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <div style={{ textAlign: 'center', padding: 40, background: '#FEF2F2', borderRadius: 16, border: '1px solid #DC262630' }}>
+          <i className="fas fa-exclamation-triangle" style={{ fontSize: 48, color: '#DC2626', marginBottom: 16 }} />
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#DC2626', marginBottom: 8 }}>Connection Error</div>
+          <div style={{ fontSize: 14, color: '#64748B', marginBottom: 16 }}>{error}</div>
+          <button onClick={loadData} className="btn btn-primary" style={{ padding: '10px 24px' }}>
+            <i className="fas fa-redo" style={{ fontSize: 12 }} /> Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Ctx.Provider value={ctx}>
-      <div style={{ minHeight: '100vh', background: T.bg, fontFamily: "'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}>
-        <Toasts />
-        <TopNav tab={tab} setTab={setTab} />
-        <div style={{ padding: '1.25rem 1.5rem 3rem', maxWidth: 1400, margin: '0 auto' }}>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: T.t3 }}>
-              <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', marginBottom: '1rem' }} />
-              <div>Loading workshop data...</div>
-            </div>
-          ) : error ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: T.err }}>
-              <i className="fas fa-exclamation-triangle" style={{ fontSize: '2rem', marginBottom: '1rem' }} />
-              <div style={{ marginBottom: '1rem' }}>{error}</div>
-              <button onClick={loadInitialData} style={{ padding: '0.5rem 1rem', borderRadius: 8, border: `1px solid ${T.err}`, background: T.errBg, color: T.err, cursor: 'pointer' }}>
-                Retry
-              </button>
-            </div>
-          ) : (
-            <Tab />
-          )}
+    <Ctx.Provider value={value}>
+      <div style={{ minHeight: '100vh', background: '#F4F6F8' }}>
+        <WorkshopHeader connected={connected} onRefresh={loadData} />
+        <div style={{ maxWidth: 1480, margin: '0 auto', padding: '1rem 1.5rem 3rem' }}>
+          <WorkshopTabs activeTab={tab} onTabChange={setTab} />
+          <div style={{ marginTop: 16 }}>
+            {tab === 'dashboard' && <DashboardTab />}
+            {tab === 'orders' && <OrdersTab />}
+            {tab === 'workers' && <WorkersTab />}
+            {tab === 'materials' && <MaterialsTab />}
+            {tab === 'analytics' && <AnalyticsTab />}
+          </div>
         </div>
-        <ModalRouter type={modal.type} data={modal.data} close={closeModal} />
+        {modal && <ModalRouter 
+          type={modal} 
+          onClose={() => setModal(null)}
+          onSubmit={modal === 'createWorker' ? createWorker : modal === 'createMaterial' ? addMaterial : modal === 'createOrder' ? createOrder : undefined}
+        />}
+        <Toasts toasts={toasts} />
       </div>
     </Ctx.Provider>
   );

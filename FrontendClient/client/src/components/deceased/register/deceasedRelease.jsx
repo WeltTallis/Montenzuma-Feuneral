@@ -3,8 +3,8 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ENDPOINTS } from '../../../api/endpoints';
 import env from '../../../utils/config/env';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
-import { Check, Loader2, XCircle, CheckCircle, X, FileText, User, ArrowLeft, RotateCcw, Truck, UserCheck } from '../../utils/icons/icons';
-import styled, { keyframes } from 'styled-components';
+import { Check, Loader2, XCircle, CheckCircle, RotateCcw } from '../../utils/icons/icons';
+import styled, { keyframes, css } from 'styled-components';
 
 // Neutral color scheme matching the HTML design exactly
 const COLORS = {
@@ -43,7 +43,13 @@ const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
 
-// Styled Components - Professional neutral design
+/* ---------- Responsive helpers ---------- */
+const media = {
+  tablet: (...args) => css`@media (max-width: 1024px) { ${css(...args)} }`,
+  mobile: (...args) => css`@media (max-width: 768px) { ${css(...args)} }`,
+  small: (...args) => css`@media (max-width: 480px) { ${css(...args)} }`,
+};
+
 const Container = styled.div`
   min-height: 100vh;
   background: #d5d3cf;
@@ -51,6 +57,14 @@ const Container = styled.div`
   color: ${COLORS.dark};
   font-size: 10.5px;
   line-height: 1.5;
+
+  ${media.tablet`
+    font-size: 12px;
+  `}
+  ${media.mobile`
+    font-size: 13px;
+    background: #ececea;
+  `}
 `;
 
 const Page = styled.div`
@@ -63,23 +77,46 @@ const Page = styled.div`
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 48px);
+
+  ${media.tablet`
+    padding: 1.5rem;
+    margin: 16px auto;
+  `}
+  ${media.mobile`
+    padding: 1rem;
+    margin: 0;
+    min-height: 100vh;
+    box-shadow: none;
+  `}
 `;
 
-const Header = styled.div`
-  background: ${COLORS.surface};
-  border-bottom: 2.5px solid ${COLORS.black};
-  padding: 1.25rem 2rem;
-  margin-bottom: 1rem;
-`;
-
-const HeaderContent = styled.div`
-  max-width: 1400px;
-  margin: 0 auto;
+const TopBar = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 1rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 2.5px solid ${COLORS.black};
+  margin-bottom: 0.375rem;
+
+  ${media.mobile`
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  `}
+`;
+
+const TopBarLeft = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const TopBarRight = styled.div`
+  text-align: right;
+  flex-shrink: 0;
+
+  ${media.mobile`
+    text-align: left;
+  `}
 `;
 
 const Title = styled.h1`
@@ -91,6 +128,13 @@ const Title = styled.h1`
   text-transform: uppercase;
   letter-spacing: 0.01em;
   line-height: 1.2;
+
+  ${media.tablet`
+    font-size: 1.25rem;
+  `}
+  ${media.mobile`
+    font-size: 1.1rem;
+  `}
 `;
 
 const Subtitle = styled.p`
@@ -100,6 +144,10 @@ const Subtitle = styled.p`
   font-style: italic;
   color: ${COLORS.mid};
   margin: 0.25rem 0 0;
+
+  ${media.mobile`
+    font-size: 0.75rem;
+  `}
 `;
 
 const SaasBrand = styled.div`
@@ -109,14 +157,22 @@ const SaasBrand = styled.div`
   text-transform: uppercase;
   color: ${COLORS.gray};
   margin-bottom: 0.25rem;
+
+  ${media.mobile`
+    font-size: 0.625rem;
+  `}
 `;
 
 const ReleaseIdBlock = styled.div`
   text-align: right;
   margin-bottom: 0.5rem;
+
+  ${media.mobile`
+    text-align: left;
+  `}
 `;
 
-const ReleaseIdLabel = styled.div`
+const ReleaseIdBlockLabel = styled.div`
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.2em;
@@ -125,22 +181,35 @@ const ReleaseIdLabel = styled.div`
   margin-bottom: 0.125rem;
 `;
 
-const ReleaseIdValue = styled.div`
+const ReleaseIdBlockValue = styled.div`
   font-family: 'Source Sans 3', monospace;
   font-size: 1.125rem;
   font-weight: 700;
   color: ${COLORS.black};
   letter-spacing: 0.08em;
+
+  ${media.mobile`
+    font-size: 1rem;
+  `}
 `;
 
 const TopMeta = styled.div`
   display: flex;
   gap: 1.5rem;
   justify-content: flex-end;
+
+  ${media.mobile`
+    justify-content: flex-start;
+    gap: 1rem;
+  `}
 `;
 
 const TopMetaItem = styled.div`
   text-align: right;
+
+  ${media.mobile`
+    text-align: left;
+  `}
 `;
 
 const TopMetaLabel = styled.div`
@@ -168,6 +237,13 @@ const SubLine = styled.div`
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: ${COLORS.lightGray};
+  gap: 0.5rem;
+
+  ${media.mobile`
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.6rem;
+  `}
 `;
 
 const Section = styled.div`
@@ -197,6 +273,11 @@ const SectionTitle = styled.span`
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+
+  ${media.mobile`
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+  `}
 `;
 
 const SectionBody = styled.div`
@@ -207,31 +288,78 @@ const Row = styled.div`
   display: flex;
   gap: 0.75rem;
   margin-bottom: 0.5rem;
+
+  ${media.tablet`
+    flex-wrap: wrap;
+  `}
+  ${media.mobile`
+    flex-direction: column;
+    gap: 0.75rem;
+  `}
 `;
 
 const Col = styled.div`
   flex: 1;
   min-width: 0;
+
+  ${media.tablet`
+    flex: 1 1 45%;
+    min-width: 200px;
+  `}
+  ${media.mobile`
+    flex: 1 1 100%;
+  `}
 `;
 
 const Col2 = styled.div`
   flex: 2;
   min-width: 0;
+
+  ${media.tablet`
+    flex: 1 1 100%;
+  `}
+  ${media.mobile`
+    flex: 1 1 100%;
+  `}
 `;
 
 const Col05 = styled.div`
   flex: 0.5;
   min-width: 0;
+
+  ${media.tablet`
+    flex: 1 1 30%;
+    min-width: 120px;
+  `}
+  ${media.mobile`
+    flex: 1 1 100%;
+  `}
 `;
 
 const Col06 = styled.div`
   flex: 0.6;
   min-width: 0;
+
+  ${media.tablet`
+    flex: 1 1 30%;
+    min-width: 140px;
+  `}
+  ${media.mobile`
+    flex: 1 1 100%;
+  `}
 `;
 
 const Col04 = styled.div`
   flex: 0.4;
   min-width: 0;
+
+  ${media.tablet`
+    flex: 1 1 30%;
+    min-width: 120px;
+  `}
+  ${media.mobile`
+    flex: 1 1 100%;
+  `}
 `;
 
 const Label = styled.label`
@@ -242,6 +370,10 @@ const Label = styled.label`
   text-transform: uppercase;
   color: ${COLORS.gray};
   margin-bottom: 0.1875rem;
+
+  ${media.mobile`
+    font-size: 0.75rem;
+  `}
 `;
 
 const Input = styled.input`
@@ -255,6 +387,7 @@ const Input = styled.input`
   color: ${COLORS.dark};
   background: ${COLORS.bgField};
   transition: border-color 0.15s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -267,12 +400,22 @@ const Input = styled.input`
     color: ${COLORS.textSecondary};
     cursor: not-allowed;
   }
+
+  ${media.mobile`
+    height: 2.5rem;
+    font-size: 0.9rem;
+  `}
 `;
 
 const InputLg = styled(Input)`
   height: 2rem;
   font-size: 0.75rem;
   font-weight: 600;
+
+  ${media.mobile`
+    height: 2.75rem;
+    font-size: 1rem;
+  `}
 `;
 
 const Select = styled.select`
@@ -286,12 +429,18 @@ const Select = styled.select`
   color: ${COLORS.dark};
   background: ${COLORS.bgField};
   transition: border-color 0.15s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
     border-color: ${COLORS.black};
     box-shadow: 0 0 0 1.5px rgba(0,0,0,0.08);
   }
+
+  ${media.mobile`
+    height: 2.5rem;
+    font-size: 0.9rem;
+  `}
 `;
 
 const TextArea = styled.textarea`
@@ -305,18 +454,33 @@ const TextArea = styled.textarea`
   color: ${COLORS.dark};
   background: ${COLORS.bgField};
   resize: vertical;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
     border-color: ${COLORS.black};
     box-shadow: 0 0 0 1.5px rgba(0,0,0,0.08);
   }
+
+  ${media.mobile`
+    font-size: 0.85rem;
+    min-height: 4rem;
+    padding: 0.5rem;
+  `}
 `;
 
 const CheckGrid = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem 1.125rem;
+
+  ${media.tablet`
+    gap: 0.25rem 1rem;
+  `}
+  ${media.mobile`
+    flex-direction: column;
+    gap: 0.5rem;
+  `}
 `;
 
 const CheckItem = styled.label`
@@ -327,6 +491,10 @@ const CheckItem = styled.label`
   color: ${COLORS.mid};
   cursor: pointer;
   padding: 0.1875rem 0;
+
+  ${media.mobile`
+    font-size: 0.8rem;
+  `}
 `;
 
 const Checkbox = styled.input.attrs({ type: 'checkbox' })`
@@ -356,33 +524,11 @@ const Checkbox = styled.input.attrs({ type: 'checkbox' })`
     border-width: 0 1.5px 1.5px 0;
     transform: rotate(45deg);
   }
-`;
 
-const Radio = styled.input.attrs({ type: 'radio' })`
-  appearance: none;
-  width: 0.875rem;
-  height: 0.875rem;
-  border: 1.5px solid ${COLORS.border};
-  background: white;
-  cursor: pointer;
-  flex-shrink: 0;
-  position: relative;
-  border-radius: 50%;
-
-  &:checked {
-    border-color: ${COLORS.black};
-  }
-
-  &:checked::after {
-    content: '';
-    position: absolute;
-    top: 0.1875rem;
-    left: 0.1875rem;
-    width: 0.4375rem;
-    height: 0.4375rem;
-    border-radius: 50%;
-    background: ${COLORS.black};
-  }
+  ${media.mobile`
+    width: 1.1rem;
+    height: 1.1rem;
+  `}
 `;
 
 const ErrorMessage = styled.span`
@@ -390,6 +536,10 @@ const ErrorMessage = styled.span`
   font-size: 0.6875rem;
   margin-top: 0.25rem;
   display: block;
+
+  ${media.mobile`
+    font-size: 0.75rem;
+  `}
 `;
 
 const AlertBox = styled.div`
@@ -398,25 +548,14 @@ const AlertBox = styled.div`
   font-size: 0.8125rem;
   font-weight: 500;
   text-align: center;
-  margin-bottom: 1rem;
-  background: ${props => {
-    const type = props.type || 'info';
-    if (type === 'error') return COLORS.dangerLight;
-    if (type === 'success') return COLORS.successLight;
-    return COLORS.infoLight;
-  }};
-  color: ${props => {
-    const type = props.type || 'info';
-    if (type === 'error') return COLORS.danger;
-    if (type === 'success') return COLORS.success;
-    return COLORS.infoDark;
-  }};
-  border: 1px solid ${props => {
-    const type = props.type || 'info';
-    if (type === 'error') return 'rgba(239, 68, 68, 0.2)';
-    if (type === 'success') return 'rgba(16, 185, 129, 0.2)';
-    return 'rgba(59, 130, 246, 0.2)';
-  }};
+  margin: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: ${props => props.type === 'error' ? COLORS.dangerLight : COLORS.successLight};
+  color: ${props => props.type === 'error' ? COLORS.danger : COLORS.success};
+  border: 1px solid ${props => props.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'};
 `;
 
 const SignatureWrapper = styled.div`
@@ -424,6 +563,10 @@ const SignatureWrapper = styled.div`
   border-radius: 2px;
   padding: 1rem;
   background: ${COLORS.bgField};
+
+  ${media.mobile`
+    padding: 0.625rem;
+  `}
 `;
 
 const ActionsContainer = styled.div`
@@ -433,33 +576,12 @@ const ActionsContainer = styled.div`
   margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 0.5px solid ${COLORS.borderLight};
-`;
+  flex-wrap: wrap;
 
-const ReleaseIdDisplay = styled.div`
-  background: ${COLORS.bgSection};
-  border: 1px solid ${COLORS.border};
-  border-radius: 2px;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-`;
-
-const ReleaseIdLabel = styled.span`
-  font-size: 0.625rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: ${COLORS.gray};
-`;
-
-const ReleaseIdValue = styled.span`
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: ${COLORS.black};
-  font-family: 'Courier New', monospace;
-  letter-spacing: 0.08em;
+  ${media.mobile`
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  `}
 `;
 
 const PrimaryButton = styled.button`
@@ -473,6 +595,7 @@ const PrimaryButton = styled.button`
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   transition: ${COLORS.transition};
   box-shadow: ${COLORS.shadowSm};
@@ -488,6 +611,12 @@ const PrimaryButton = styled.button`
     cursor: not-allowed;
     transform: none;
   }
+
+  ${media.mobile`
+    width: 100%;
+    padding: 0.85rem 1.25rem;
+    font-size: 0.9rem;
+  `}
 `;
 
 const SecondaryButton = styled.button`
@@ -501,6 +630,7 @@ const SecondaryButton = styled.button`
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   transition: ${COLORS.transition};
 
@@ -508,27 +638,14 @@ const SecondaryButton = styled.button`
     background: ${COLORS.bg};
     border-color: ${COLORS.textSecondary};
   }
+
+  ${media.mobile`
+    width: 100%;
+    padding: 0.85rem 1.25rem;
+    font-size: 0.9rem;
+  `}
 `;
 
-const BackButton = styled.button`
-  background: ${COLORS.surface};
-  color: ${COLORS.text};
-  border: 1px solid ${COLORS.border};
-  border-radius: ${COLORS.radiusSm};
-  padding: 0.625rem 1.25rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: ${COLORS.transition};
-
-  &:hover {
-    background: ${COLORS.bg};
-    border-color: ${COLORS.black};
-  }
-`;
 
 const getTenantSlug = () => {
     return localStorage.getItem('tenantSlug') ||
@@ -568,7 +685,7 @@ const DeceasedReleaseForm = () => {
     const initialFormData = {
         admission_number: location.state?.permitNumber || '',
         date_admitted: new Date().toISOString().split('T')[0],
-        time_received: getCurrentTime(),
+        time_received: getCurrentTime(), // Hidden from UI, auto-detected
         full_name: '',
         gender: '',
         age: '',
@@ -580,7 +697,7 @@ const DeceasedReleaseForm = () => {
         id_number: '',
         tel_number: '',
         release_date: new Date().toISOString().split('T')[0],
-        release_time: getCurrentTime(),
+        release_time: getCurrentTime(), // Hidden from UI, auto-detected
         released_by: '',
         release_notes: '',
         next_kin: '',
@@ -609,8 +726,8 @@ const DeceasedReleaseForm = () => {
 
                 const result = await response.json();
                 if (response.ok && result.data) {
-                    // Filter only deceased that are not released
-                    const unreleased = result.data.filter((d: any) => 
+                    // Removed TS syntax (d: any) -> (d)
+                    const unreleased = result.data.filter((d) => 
                         d.body_status !== 'Released' && d.body_status !== 'Transferred'
                     );
                     setDeceasedList(unreleased || []);
@@ -700,12 +817,11 @@ const DeceasedReleaseForm = () => {
         if (!formData.full_name.trim()) newErrors.full_name = 'Full name is required';
         if (!formData.gender) newErrors.gender = 'Gender is required';
         if (!formData.date_admitted) newErrors.date_admitted = 'Date admitted is required';
-        if (!formData.time_received) newErrors.time_received = 'Time received is required';
         if (!formData.release_date) newErrors.release_date = 'Release date is required';
         if (!formData.released_by.trim()) newErrors.released_by = 'Released by is required';
         if (!formData.next_kin.trim()) newErrors.next_kin = 'Next of kin is required';
         if (!formData.id_number.trim()) newErrors.id_number = 'ID number is required';
-        if (!formData.tell_number.trim()) newErrors.tell_number = 'Telephone number is required';
+        if (!formData.tel_number.trim()) newErrors.tel_number = 'Telephone number is required';
         if (!formData.terms_accepted) newErrors.terms_accepted = 'You must accept the terms';
         if (sigPadRef.current?.isEmpty()) {
             newErrors.signature = 'Signature is required to proceed';
@@ -721,9 +837,12 @@ const DeceasedReleaseForm = () => {
         try {
             const tenantSlug = getTenantSlug();
             const signatureData = sigPadRef.current?.toDataURL();
+            const freshTime = getCurrentTime(); // Generate fresh time right before submit
 
             const payload = {
                 ...formData,
+                time_received: freshTime,
+                release_time: freshTime,
                 age: formData.age ? parseInt(formData.age, 10) : null,
                 signature: signatureData,
                 name_of_deceased: formData.full_name,
@@ -775,7 +894,14 @@ const DeceasedReleaseForm = () => {
     };
 
     const handleClear = () => {
-        setFormData(initialFormData);
+        setFormData({
+            ...initialFormData,
+            time_received: getCurrentTime(),
+            release_time: getCurrentTime(),
+            release_date: new Date().toISOString().split('T')[0],
+            date_admitted: new Date().toISOString().split('T')[0],
+            date_of_removal: new Date().toISOString().split('T')[0],
+        });
         setErrors({});
         setReleaseId('');
         sigPadRef.current?.clear();
@@ -800,29 +926,25 @@ const DeceasedReleaseForm = () => {
 
             <Page>
                 {/* Top Bar */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: '0.625rem', borderBottom: '2.5px solid ' + COLORS.black, marginBottom: '0.375rem' }}>
-                    <div>
+                <TopBar>
+                    <TopBarLeft>
                         <SaasBrand>FuneralOS — Release Management</SaasBrand>
                         <Title>Release of Remains</Title>
                         <Subtitle>Authorization for Removal & Transportation of Deceased</Subtitle>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    </TopBarLeft>
+                    <TopBarRight>
                         <ReleaseIdBlock>
-                            <ReleaseIdLabel>Release ID</ReleaseIdLabel>
-                            <ReleaseIdValue>{releaseId || 'RLS-XXXXXX-XXXX'}</ReleaseIdValue>
+                            <ReleaseIdBlockLabel>Release ID</ReleaseIdBlockLabel>
+                            <ReleaseIdBlockValue>{releaseId || 'RLS-XXXXXX-XXXX'}</ReleaseIdBlockValue>
                         </ReleaseIdBlock>
                         <TopMeta>
                             <TopMetaItem>
                                 <TopMetaLabel>Date Issued</TopMetaLabel>
                                 <TopMetaValue>{formData.release_date}</TopMetaValue>
                             </TopMetaItem>
-                            <TopMetaItem>
-                                <TopMetaLabel>Time</TopMetaLabel>
-                                <TopMetaValue>{formData.release_time}</TopMetaValue>
-                            </TopMetaItem>
                         </TopMeta>
-                    </div>
-                </div>
+                    </TopBarRight>
+                </TopBar>
 
                 <SubLine>
                     <span>Confidential Legal Document</span>
@@ -868,16 +990,7 @@ const DeceasedReleaseForm = () => {
                                 />
                                 {errors.date_admitted && <ErrorMessage>{errors.date_admitted}</ErrorMessage>}
                             </Col06>
-                            <Col06>
-                                <Label>Time Received <span style={{ color: COLORS.danger }}>*</span></Label>
-                                <Input
-                                    type="time"
-                                    name="time_received"
-                                    value={formData.time_received}
-                                    onChange={handleChange}
-                                />
-                                {errors.time_received && <ErrorMessage>{errors.time_received}</ErrorMessage>}
-                            </Col06>
+                            {/* Time Received Hidden & Auto-Generated */}
                         </Row>
                     </SectionBody>
                 </Section>
@@ -957,7 +1070,7 @@ const DeceasedReleaseForm = () => {
                                     onChange={handleChange}
                                     placeholder="Facility Name, Address"
                                 />
-                            </Col>
+                            </Col2>
                             <Col>
                                 <Label>Body Status</Label>
                                 <Select
@@ -1016,7 +1129,7 @@ const DeceasedReleaseForm = () => {
                                     onChange={handleChange}
                                     placeholder="Street Address, City, State, ZIP"
                                 />
-                            </Col>
+                            </Col2>
                             <Col06>
                                 <Label>Telephone No. <span style={{ color: COLORS.danger }}>*</span></Label>
                                 <Input
@@ -1026,7 +1139,7 @@ const DeceasedReleaseForm = () => {
                                     onChange={handleChange}
                                     placeholder="(XXX) XXX-XXXX"
                                 />
-                                {errors.tell_number && <ErrorMessage>{errors.tell_number}</ErrorMessage>}
+                                {errors.tel_number && <ErrorMessage>{errors.tel_number}</ErrorMessage>}
                             </Col06>
                         </Row>
                         <Row>
@@ -1062,15 +1175,7 @@ const DeceasedReleaseForm = () => {
                                     onChange={handleChange}
                                 />
                             </Col>
-                            <Col06>
-                                <Label>Time of Removal</Label>
-                                <Input
-                                    type="time"
-                                    name="release_time"
-                                    value={formData.release_time}
-                                    onChange={handleChange}
-                                />
-                            </Col06>
+                            {/* Time of Removal Hidden & Auto-Generated */}
                             <Col06>
                                 <Label>Permit Number</Label>
                                 <Input
@@ -1247,9 +1352,6 @@ const DeceasedReleaseForm = () => {
 
                 {/* Actions */}
                 <ActionsContainer>
-                    <SecondaryButton type="button" onClick={() => navigate(-1)}>
-                        <ArrowLeft size={15} /> Back
-                    </SecondaryButton>
                     <SecondaryButton type="button" onClick={handleClear}>
                         <RotateCcw size={15} /> Clear
                     </SecondaryButton>

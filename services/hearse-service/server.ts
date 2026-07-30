@@ -10,7 +10,7 @@ import asyncHandler from 'express-async-handler';
 
 // Load .env files
 dotenv.config({ path: path.resolve(__dirname, '.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 import restpointRoutes from './routes/hearseRoutes';
 

@@ -17,9 +17,9 @@ const assignWorkerToOrder = async (req: Request, res: Response) => {
         );
 
         const rows: any = await safeTenantQuery(tenantDb,
-            `SELECT wa.*, u.first_name, u.last_name FROM worker_assignments wa 
+            `SELECT wa.*, u.full_name FROM worker_assignments wa
              JOIN users u ON wa.user_id = u.user_id WHERE wa.id = ?`,
-            [insertResult.insertId]
+            [req.params.id]
         );
 
         const io = getIO();
@@ -73,18 +73,27 @@ const updateOrderStatus = async (req: Request, res: Response) => {
         const { orderId } = req.params;
         const { status } = req.body;
 
+        console.log(`[WORKSHOP] Updating order ${orderId} to status: ${status}`);
+
         const updateResult: any = await safeTenantExecute(tenantDb,
             'UPDATE coffin_orders SET status = ? WHERE id = ?',
             [status, orderId]
         );
 
-        if (!updateResult.affectedRows) return res.status(404).json({ error: 'Order not found' });
+        console.log(`[WORKSHOP] Update result:`, updateResult);
+
+        if (!updateResult.affectedRows) {
+            console.log(`[WORKSHOP] Order not found: ${orderId}`);
+            return res.status(404).json({ error: 'Order not found' });
+        }
 
         const rows: any = await safeTenantQuery(tenantDb, 'SELECT * FROM coffin_orders WHERE id = ?', [orderId]);
+        console.log(`[WORKSHOP] Updated order:`, rows[0]);
 
         const io = getIO();
         io.emit('order:status:changed', rows[0]);
 
+        console.log(`[WORKSHOP] Successfully updated order ${orderId}`);
         res.json(rows[0]);
     } catch (error: any) {
         res.status(500).json({ error: error.message });

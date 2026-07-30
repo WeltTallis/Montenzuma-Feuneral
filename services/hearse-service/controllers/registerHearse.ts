@@ -78,7 +78,7 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
         const escapedFields = insertFields.map(f => `\`${f}\``).join(', ');
         const query = `INSERT INTO hearses (${escapedFields}) VALUES (${placeholders})`;
 
-        const [result] = await pool.query(query, insertValues);
+        const [result] = await pool.query(query, insertValues) as [any];
 
         // Emit real-time update via Socket.IO
         const io = req.app.get('io');
@@ -197,7 +197,7 @@ export const deleteHearse = asyncHandler(async (req: Request, res: Response) => 
 export const getAllHearses = asyncHandler(async (req: Request, res: Response) => {
     try {
         const pool = await getHearsePool();
-        const [hearses] = await pool.query(`SELECT h.*, h.branch_name, h.branch_code, h.image FROM hearses h ORDER BY h.created_at DESC`);
+        const [hearses] = await pool.query(`SELECT h.*, h.branch_name, h.branch_code, h.image FROM hearses h ORDER BY h.created_at DESC`) as [any];
         res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.set('Pragma', 'no-cache');
         res.set('Expires', '0');
@@ -213,7 +213,7 @@ export const getAllHearses = asyncHandler(async (req: Request, res: Response) =>
 export const getAvailableHearses = asyncHandler(async (req: Request, res: Response) => {
     try {
         const pool = await getHearsePool();
-        const [hearses] = await pool.query(`SELECT h.*, h.branch_name, h.branch_code FROM hearses h WHERE h.status = 'available' AND h.id NOT IN (SELECT hearse_id FROM hearse_bookings WHERE hearse_id IS NOT NULL AND status NOT IN ('completed', 'cancelled')) ORDER BY h.created_at DESC`);
+        const [hearses] = await pool.query(`SELECT h.*, h.branch_name, h.branch_code FROM hearses h WHERE h.status = 'available' AND h.id NOT IN (SELECT hearse_id FROM hearse_bookings WHERE hearse_id IS NOT NULL AND status NOT IN ('completed', 'cancelled')) ORDER BY h.created_at DESC`) as [any];
         res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.set('Pragma', 'no-cache');
         res.set('Expires', '0');

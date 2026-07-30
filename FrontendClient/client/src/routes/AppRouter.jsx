@@ -69,6 +69,8 @@ const LoginPage = lazy(() => import('../components/auth/login'));
 const PortalLoginPage = lazy(() => import('../components/auth/PortalLogin'));
 const ReceptionPortal = lazy(() => import('../components/reception/ReceptionPortal'));
 const PostmortemResults = lazy(() => import('../components/reception/PostmortemResults'));
+const PostmortemQRPage = lazy(() => import('../components/reception/PostmortemQRPage'));
+const PostmortemPortal = lazy(() => import('../components/deceased/postmortem/postmortem-portal'));
 const ForgotPassword = lazy(() => import('../components/auth/ForgotPassword'));
 const ChangePassword = lazy(() => import('../components/auth/changePassword'));
 const InvoiceManager = lazy(() => import('../components/invoices/invoicemanager'));
@@ -530,6 +532,13 @@ const TenantDashboardRoutes = ({ tenantData }) => {
         </RoleBasedRoute>
       } />
 
+      {/* Postmortem QR Code Page - Standalone without sidebar */}
+      <Route path="postmortem-qr" element={
+        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user']} userRole={userRole}>
+          <PostmortemQRPage />
+        </RoleBasedRoute>
+      } />
+
       {/* Leave Management */}
       <Route path="leaves" element={
         <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user', 'driver']} userRole={userRole}>
@@ -724,6 +733,10 @@ const AppRouter = () => (
       <Route path="/locations/nairobi" element={<NairobiFuneralWelfare />} />
       <Route path="/locations/:city" element={<LocationPage />} />
       <Route path="/dashboard/*" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
+      {/* Public Postmortem QR Code - shows QR code, scanning it leads to verify portal */}
+      <Route path="/tenant/:slug/postmortem-qr" element={<PostmortemQRPage />} />
+      {/* Public Postmortem Verify Portal - scanned QR code leads here instantly */}
+      <Route path="/tenant/:slug/postmortem-verify" element={<PostmortemPortal />} />
       <Route path="/tenant/:slug/*" element={<ProtectedRoute><TenantResolver /></ProtectedRoute>} />
       <Route path="*" element={<LandingPage />} />
     </Routes>

@@ -377,6 +377,11 @@ export const ScanBarcode = (p) => (
   <Icon {...p}><path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><line x1="7" y1="8" x2="7" y2="16" /><line x1="11" y1="8" x2="11" y2="16" /><line x1="15" y1="8" x2="15" y2="16" /></Icon>
 );
 
+// ─── Quote ──────────────────────────────────────────────────────────────────
+export const Quote = (p) => (
+  <Icon {...p}><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" /><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" /></Icon>
+);
+
 // ─── Communications ──────────────────────────────────────────────────────────
 export const Phone = (p) => (
   <Icon {...p}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></Icon>
@@ -596,6 +601,14 @@ export const Smartphone = (p) => (
   <Icon {...p}><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></Icon>
 );
 
+export const Music = (p) => (
+  <Icon {...p}><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></Icon>
+);
+
+export const Mic = (p) => (
+  <Icon {...p}><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></Icon>
+);
+
 export const Camera = (p) => (
   <Icon {...p}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></Icon>
 );
@@ -754,7 +767,7 @@ export const Icons = {
   Search, Filter, SlidersHorizontal, MoreVertical, ZoomIn, ZoomOut, Copy, Send, Share2,
   RefreshCw, RotateCw, RotateCcw, Hash, Tag, QrCode, ScanBarcode,
   // Communications
-  Phone, Mail, Bell, MessageCircle, MessageSquare,
+  Phone, Mail, Bell, MessageCircle, MessageSquare, Quote,
   // Security
   Shield, ShieldCheck, Lock, KeyRound, Eye, EyeOff,
   // Server & Infrastructure
@@ -773,7 +786,7 @@ export const Icons = {
   Building2,
   // Misc
   Heart, Zap, Settings, LogOut,
-  Sun, Moon, CloudSun, Play, Pause, Smartphone, Camera, Wifi, WifiOff, Github, Linkedin, Twitter,
+  Sun, Moon, CloudSun, Play, Pause, Smartphone, Camera, Music, Mic, Wifi, WifiOff, Github, Linkedin, Twitter,
 };
 
 export default Icons;

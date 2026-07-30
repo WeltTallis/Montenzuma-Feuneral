@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
 import axios from 'axios';
@@ -7,6 +7,7 @@ import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
 
+// Import your existing sub-components
 import DeceasedProfileHeader from './DeceasedProfileHeader';
 import DeceasedSidebar from './DeceasedSidebar';
 import OverviewTab from './OverviewTab';
@@ -17,6 +18,7 @@ import BookingsTab from './BookingsTab';
 import ReleaseTab from './ReleaseTab';
 import DocumentsTab from './DocumentsTab';
 import AuditLogTab from './AuditLogTab';
+import ChargeSettingsModal from './ChargeSettingsModal';
 
 const BASE_URL = `${env.FULL_API_URL}/deceased`;
 
@@ -28,47 +30,113 @@ const fadeIn = keyframes`from { opacity: 0; transform: translateY(10px); } to { 
 
 const AppContainer = styled.div`
   font-family: 'Source Sans 3', -apple-system, sans-serif;
-color: #1a1a1a; font-size: 14px; line-height: 1.5;
-  max-width: 2200px; margin: 0 auto; padding: 10px;
+  color: #1a1a1a; 
+  font-size: 14px; 
+  line-height: 1.5;
+  max-width: 1400px; 
+  margin: 0 auto; 
+  padding: 3rem 1.5rem;
+  background: #ffffff;
   animation: ${fadeIn} 0.25s ease-out;
 `;
 
 const ProfileLayout = styled.div`
-  display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: flex-start;
-  @media (max-width: 900px) { grid-template-columns: 1fr; }
+  display: grid; 
+  grid-template-columns: 1fr 320px; 
+  gap: 4rem; 
+  align-items: flex-start;
+  @media (max-width: 900px) { 
+    grid-template-columns: 1fr; 
+    gap: 2rem;
+  }
 `;
 
 const MainContent = styled.div`
-  background: white; border: 1px solid #e0e0e0; border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04); min-width: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 `;
 
 const Tabs = styled.div`
-  display: flex; border-bottom: 1px solid #e0e0e0;
-  background: #fafaf9; overflow-x: auto;
+  display: flex; 
+  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: 2.5rem;
+  overflow-x: auto;
 `;
 
 const TabBtn = styled.button`
-  padding: 16px 20px; background: none; border: none; cursor: pointer;
-  font-size: 13px; font-weight: 600; color: #777777;
-  border-bottom: 2px solid transparent; white-space: nowrap;
-  transition: 0.15s; font-family: 'Source Sans 3', sans-serif;
+  padding: 1rem 0; 
+  margin-right: 2.5rem;
+  background: none; 
+  border: none; 
+  cursor: pointer;
+  font-size: 0.875rem; 
+  font-weight: 600; 
+  color: #888888;
+  border-bottom: 2px solid transparent; 
+  margin-bottom: -2px;
+  white-space: nowrap;
+  transition: all 0.15s ease; 
+  font-family: 'Source Sans 3', sans-serif;
+  display: flex;
+  align-items: center;
+  
   &:hover { color: #1a1a1a; }
-  ${p => p.$active && `color: #0a0a0a; border-bottom-color: #0a0a0a; background: white;`}
+  ${p => p.$active && `
+    color: #0a0a0a; 
+    border-bottom-color: #0a0a0a; 
+  `}
 `;
 
-const TabContent = styled.div`padding: 32px;`;
-const TabPane = styled.div`display: ${p => p.$active ? 'block' : 'none'}; animation: ${fadeIn} 0.2s ease;`;
+const TabContent = styled.div`
+  display: grid;
+  gap: 2.5rem;
+`;
+
+const TabPane = styled.div`
+  display: ${p => p.$active ? 'grid' : 'none'}; 
+  gap: 2.5rem;
+  animation: ${fadeIn} 0.2s ease;
+`;
 
 const LoadingState = styled.div`
-  text-align: center; padding: 60px; color: #777777;
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  text-align: center; 
+  padding: 10rem 0; 
+  color: #777777;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 1rem;
+  
   .spinner {
-    width: 24px; height: 24px; border: 2px solid #e0e0e0;
-    border-top-color: #0a0a0a; border-radius: 50%;
+    width: 24px; 
+    height: 24px; 
+    border: 2px solid #e0e0e0;
+    border-top-color: #0a0a0a; 
+    border-radius: 50%;
     animation: spin 0.6s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+`;
+
+const ChargeSettingsButton = styled.button`
+  background: #0a0a0a;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.2s ease;
+  width: fit-content;
+  
+  &:hover {
+    background: #333;
+  }
 `;
 
 const TABS = [
@@ -92,6 +160,7 @@ const DeceasedDetailPage = () => {
   const [nextOfKin, setNextOfKin] = useState(null);
   const [payments, setPayments] = useState([]);
   const [charges, setCharges] = useState([]);
+  const [showChargeModal, setShowChargeModal] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!deceasedId) return;
@@ -233,10 +302,12 @@ const DeceasedDetailPage = () => {
       <GlobalFonts />
       <AppContainer>
         <ToastContainer position="top-right" />
+        
         <DeceasedProfileHeader
           deceased={deceased}
           onBack={() => { const slug = getTenantSlug(); navigate(`/tenant/${slug}/all-deceased`); }}
           onTabSwitch={switchTab}
+          onChargeSettingsClick={() => setShowChargeModal(true)}
         />
 
         <ProfileLayout>
@@ -253,24 +324,39 @@ const DeceasedDetailPage = () => {
               <TabPane $active={activeTab === 'overview'}>
                 <OverviewTab deceased={deceased} nextOfKin={nextOfKin} />
               </TabPane>
+              
               <TabPane $active={activeTab === 'admission'}>
                 <AdmissionTab deceased={deceased} />
               </TabPane>
+              
               <TabPane $active={activeTab === 'postmortem'}>
                 <PostmortemTab postmortem={postmortem} deceasedId={deceasedId} />
               </TabPane>
+              
               <TabPane $active={activeTab === 'financials'}>
+                <ChargeSettingsButton onClick={() => setShowChargeModal(true)}>
+                  {/* Clean SVG Icon replacing emoji */}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                  </svg>
+                  Set Charge Rates
+                </ChargeSettingsButton>
                 <FinancialsTab charges={charges} payments={payments} deceasedId={deceasedId} />
               </TabPane>
+              
               <TabPane $active={activeTab === 'bookings'}>
                 <BookingsTab deceased={deceased} />
               </TabPane>
+              
               <TabPane $active={activeTab === 'release'}>
-        <ReleaseTab deceased={deceased} nextOfKin={nextOfKin} deceasedId={deceasedId} />
+                <ReleaseTab deceased={deceased} nextOfKin={nextOfKin} deceasedId={deceasedId} />
               </TabPane>
+              
               <TabPane $active={activeTab === 'docs'}>
                 <DocumentsTab documents={deceased?.documents} deceasedId={deceasedId} />
               </TabPane>
+              
               <TabPane $active={activeTab === 'audit'}>
                 <AuditLogTab 
                   deceased={deceased} 
@@ -292,6 +378,10 @@ const DeceasedDetailPage = () => {
             age={deceased?.age}
           />
         </ProfileLayout>
+
+        {showChargeModal && (
+          <ChargeSettingsModal onClose={() => setShowChargeModal(false)} />
+        )}
       </AppContainer>
     </>
   );

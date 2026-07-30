@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware';
 import {
     getAllDeceased,
@@ -20,10 +20,87 @@ import {
 
 import { updateDeceasedStatus } from '../controllers/deceasedControl';
 import { exportExcelWithCharts, checkExportStatus, getExportHistory } from '../controllers/exportExcelController';
+import { resolveDatabase, safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig';
 
 const router = Router();
 
-// Apply authentication to all routes
+// Public endpoint for postmortem portal - no authentication required
+router.get('/public/postmortem/search', async (req: Request, res: Response) => {
+    try {
+        const { phone, id_number, admission_number } = req.query;
+        const tenantSlug = req.headers['x-tenant-slug'] as string || req.headers['x-slug'] as string || 'system_shared';
+        
+        if (!phone && !id_number && !admission_number) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide phone, id_number, or admission_number'
+            });
+        }
+
+        const dbName = await resolveDatabase(tenantSlug);
+        if (!dbName) {
+            return res.status(404).json({
+                success: false,
+                message: 'Tenant not found'
+            });
+        }
+
+        // Search by admission number, phone, or ID
+        let query = 'SELECT * FROM deceased WHERE 1=1';
+        const params: any[] = [];
+
+        if (admission_number) {
+            query += ' AND admission_number = ?';
+            params.push(admission_number);
+        } else if (phone) {
+            query += ' AND next_of_kin_phone LIKE ?';
+            params.push(`%${phone}%`);
+        } else if (id_number) {
+            query += ' AND next_of_kin_id_number = ?';
+            params.push(id_number);
+        }
+
+        query += ' LIMIT 1';
+        const records = await safeTenantQuery(dbName, query, params);
+
+        if (!records || (records as any[]).length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No record found'
+            });
+        }
+
+        const deceased = (records as any[])[0];
+        
+        // Get postmortem data if exists
+        let postmortem = null;
+        try {
+            const pmQuery = 'SELECT * FROM postmortem WHERE deceased_id = ? LIMIT 1';
+            const pmRecords = await safeTenantQuery(dbName, pmQuery, [deceased.deceased_id]);
+            if (pmRecords && (pmRecords as any[]).length > 0) {
+                postmortem = (pmRecords as any[])[0];
+            }
+        } catch (e) {
+            // Postmortem table might not exist yet
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                deceased,
+                postmortem
+            }
+        });
+    } catch (error: any) {
+        console.error('[PUBLIC] Postmortem search error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Search failed'
+        });
+    }
+});
+
+// Apply authentication to all other routes
 router.use(protect);
 router.use(authorizeAny);
 
@@ -88,7 +165,10 @@ router.get('/deceased/autopsy/:deceased_id', getPostmortemByDeceasedId);
 router.put('/postmortem/:id', updatePostmortem);
 router.put('/autopsy/:id', updatePostmortem);
 
-// GET - Generate PDF report
+// Public PDF generation - no auth required
+router.get('/public/postmortem/:deceased_id/pdf', generatePostmortemPDF);
+
+// GET - Generate PDF report (authenticated)
 router.get('/postmortem/:deceased_id/pdf', generatePostmortemPDF);
 router.get('/autopsy/:deceased_id/pdf', generatePostmortemPDF);
 

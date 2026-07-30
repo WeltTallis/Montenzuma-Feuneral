@@ -10,3 +10,9 @@
 {"level":"info","message":"Daily billing schedule: 0 0 8 * * *","timestamp":"2026-07-29T06:20:51.607Z"}
 {"level":"info","message":"Fallback service: Not configured","timestamp":"2026-07-29T06:20:51.607Z"}
 {"level":"info","message":"========================================","timestamp":"2026-07-29T06:20:51.607Z"}
+{"level":"info","message":"Billing service scheduled: 0 0 8 * * *","timestamp":"2026-07-30T17:30:40.484Z"}
+{"level":"info","message":"========================================","timestamp":"2026-07-30T17:30:40.542Z"}
+{"level":"info","message":"Billing Service started on port 5017","timestamp":"2026-07-30T17:30:40.543Z"}
+{"level":"info","message":"Daily billing schedule: 0 0 8 * * *","timestamp":"2026-07-30T17:30:40.543Z"}
+{"level":"info","message":"Fallback service: Not configured","timestamp":"2026-07-30T17:30:40.544Z"}
+{"level":"info","message":"========================================","timestamp":"2026-07-30T17:30:40.545Z"}

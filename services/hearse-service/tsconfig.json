@@ -20,6 +20,7 @@
     "routes/**/*.ts",
     "controllers/**/*.ts",
     "models/**/*.ts",
+     "src/migrations/**/*" ,
     "services/**/*.ts",
     "utils/**/*.ts",
     "config/**/*.ts",
@@ -32,7 +33,7 @@
     "../../app-global/**/*.js",
     "../../configurations/**/*.ts",
     "migrate-tenant-tables.js",
-    "database.js"
+    "database.ts"
   ],
   "exclude": [
     "node_modules",

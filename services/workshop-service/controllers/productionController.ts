@@ -9,7 +9,7 @@ const getAssignments = async (req: Request, res: Response) => {
         if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
 
         const rows = await safeTenantQuery(tenantDb,
-            `SELECT wa.*, u.first_name, u.last_name 
+            `SELECT wa.*, u.full_name 
              FROM worker_assignments wa 
              JOIN users u ON wa.user_id = u.user_id 
              ORDER BY wa.assigned_at DESC`
@@ -86,7 +86,7 @@ const assignWorker = async (req: Request, res: Response) => {
         );
 
         const rows: any = await safeTenantQuery(tenantDb,
-            `SELECT wa.*, u.first_name, u.last_name FROM worker_assignments wa 
+            `SELECT wa.*, u.full_name FROM worker_assignments wa 
              JOIN users u ON wa.user_id = u.user_id WHERE wa.id = ?`,
             [insertResult.insertId]
         );
@@ -126,7 +126,7 @@ const updateAssignment = async (req: Request, res: Response) => {
         if (!updateResult.affectedRows) return res.status(404).json({ error: 'Assignment not found' });
 
         const rows: any = await safeTenantQuery(tenantDb,
-            `SELECT wa.*, u.first_name, u.last_name FROM worker_assignments wa 
+            `SELECT wa.*, u.full_name FROM worker_assignments wa 
              JOIN users u ON wa.user_id = u.user_id WHERE wa.id = ?`,
             [req.params.id]
         );

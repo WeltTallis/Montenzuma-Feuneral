@@ -130,13 +130,13 @@ console.log('[WORKSHOP] Registering routes...');
 app.use('/workshop', workshopRouter);
 
 // Log all registered routes for debugging
-const logRoutes = (router, prefix = '') => {
+const logRoutes = (router: any, prefix = '') => {
     if (!router || !router.stack) {
         console.log('[WORKSHOP] No routes to log');
         return;
     }
 
-    router.stack.forEach((layer) => {
+    router.stack.forEach((layer: any) => {
         if (layer.route) {
             const methods = Object.keys(layer.route.methods).map(m => m.toUpperCase()).join(', ');
             console.log(`[WORKSHOP] Route registered: ${methods} ${prefix}${layer.route.path}`);
@@ -154,6 +154,10 @@ setTimeout(() => {
 
 // Health check
 app.get('/api/health', (_req: any, res: any) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/health', (_req: any, res: any) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -183,6 +187,7 @@ async function ensureWorkshopTables(dbName: string) {
 
         if (!hasUsers || !hasOrders || !hasMaterials) {
             // Run the migration for this tenant
+            // @ts-ignore - migration file is JavaScript
             const { up } = await import('./migrations/20240622000001_create_workshop_tables.js');
             await up(tenantKnex);
             console.log(`[WORKSHOP] ✅ Workshop tables created in: ${dbName}`);
@@ -202,55 +207,20 @@ async function ensureWorkshopTables(dbName: string) {
 // START SERVER
 // ============================================
 async function startServer() {
-    // Run auto-migration on the main database
-    const mainDb = process.env.DB_NAME || 'restpoint_main';
-    console.log(`[WORKSHOP] Running auto-migration for workshop tables in: ${mainDb}`);
-    await ensureWorkshopTables(mainDb);
+    // Run auto-migration on the workshop database
+    const workshopDb = process.env.DB_NAME || 'restpoint_main';
+    console.log(`[WORKSHOP] Running auto-migration for workshop tables in: ${workshopDb}`);
+    await ensureWorkshopTables(workshopDb);
+    console.log('[WORKSHOP] Workshop database ready (tenant query skipped — using direct DB)');
 
-    // Run auto-migration on tenant databases
-    console.log('[WORKSHOP] Checking for tenant databases to migrate...');
-    try {
-        // Create temporary knex instance to query tenants
-        const tempKnex = knex({
-            client: 'mysql2',
-            connection: {
-                host: process.env.DB_HOST || 'localhost',
-                user: process.env.DB_USER || 'root',
-                password: process.env.DB_PASSWORD || '',
-                database: 'tenant_tracking',
-            },
-            pool: { min: 1, max: 5 },
-        });
-
-        const tenants = await tempKnex('tenants')
-            .where({ status: 'active' })
-            .select('db_name', 'name');
-
-        console.log(`[WORKSHOP] Found ${tenants.length} active tenant(s)`);
-
-        for (const tenant of tenants) {
-            console.log(`[WORKSHOP] Migrating tenant: ${tenant.name} (${tenant.db_name})`);
-            const success = await ensureWorkshopTables(tenant.db_name);
-            if (success) {
-                console.log(`[WORKSHOP] ✅ Successfully migrated: ${tenant.name}`);
-            } else {
-                console.error(`[WORKSHOP] ❌ Failed to migrate: ${tenant.name}`);
-            }
-        }
-
-        await tempKnex.destroy();
-    } catch (error) {
-        console.error('[WORKSHOP] Tenant migration error:', error);
-    }
-
-    const PORT = Number(process.env.PORT) || 6969;
+    const PORT = Number(process.env.PORT) || 6060;
 
     server.listen(PORT, '0.0.0.0', () => {
         console.log('========================================');
         console.log(`🔧 Workshop Service`);
         console.log(`   Port: ${PORT}`);
         console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-        console.log(`   DB: ${process.env.DB_NAME || 'not configured'}`);
+        console.log(`   DB: ${workshopDb}`);
         console.log('========================================');
     });
 }

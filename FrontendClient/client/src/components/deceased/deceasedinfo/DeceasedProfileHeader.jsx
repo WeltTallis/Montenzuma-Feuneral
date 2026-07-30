@@ -42,7 +42,7 @@ const RouteCalcBtn = styled.button`
   &:hover { background: #0d2d3a; border-color: #0d2d3a; }
 `;
 
-const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch }) => {
+const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettingsClick }) => {
   const navigate = useNavigate();
   const { id: deceasedId } = useParams();
   const [showRouteOptimizer, setShowRouteOptimizer] = useState(false);
@@ -74,7 +74,9 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch }) => {
             Route Calculations
           </RouteCalcBtn>
           <Btn>Scan Docs</Btn>
-          <Btn>Generate PDF</Btn>
+          {onChargeSettingsClick && (
+            <Btn $primary onClick={onChargeSettingsClick}>⚙️ Charge Settings</Btn>
+          )}
           <Btn $danger onClick={navigateToReleaseForm}>Release Body</Btn>
         </HeaderActions>
       </ProfileHeader>

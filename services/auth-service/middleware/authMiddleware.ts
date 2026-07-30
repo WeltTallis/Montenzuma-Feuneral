@@ -95,10 +95,14 @@ export const protect = async (
 
     // Attach user info
     req.user = {
-      ...verified,
-      dbName: decoded.dbName,
+      userId: verified.id,
+      email: verified.email,
       tenantId: decoded.tenantId,
+      tenantName: decoded.tenantName || '',
       tenantSlug: decoded.tenantSlug,
+      dbName: decoded.dbName,
+      role: verified.role,
+      branchDbName: decoded.branchDbName || null,
     };
 
     next();
@@ -131,4 +135,15 @@ export const authorize = (...roles: string[]) => {
 
     next();
   };
+};
+
+/**
+ * AuthorizeAny middleware - allows any authenticated user (just checks they're logged in)
+ */
+export const authorizeAny = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Not authorized' });
+    return;
+  }
+  next();
 };

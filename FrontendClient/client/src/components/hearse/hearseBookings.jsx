@@ -258,22 +258,22 @@ const MainContent = styled.div`
 
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1rem;
 `;
 
 const StatCard = styled.div`
   background: ${props => props.$bg || COLORS.surface};
-  border-radius: ${COLORS.radius};
+  border-radius: ${COLORS.radiusSm};
   box-shadow: ${COLORS.shadowSm};
   border: 1px solid ${COLORS.border};
-  padding: 1rem;
+  padding: 0.6rem 0.75rem;
   transition: ${COLORS.transition};
 
   &:hover {
     box-shadow: ${COLORS.shadowMd};
-    transform: translateY(-2px);
+    transform: translateY(-1px);
   }
 `;
 
@@ -281,19 +281,21 @@ const StatHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.35rem;
 `;
 
 const StatLabel = styled.div`
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: 0.68rem;
+  font-weight: 600;
   color: ${COLORS.textSecondary};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 `;
 
 const StatIcon = styled.div`
-  width: 36px;
-  height: 36px;
-  border-radius: ${COLORS.radiusSm};
+  width: 28px;
+  height: 28px;
+  border-radius: ${COLORS.radiusXs};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -302,16 +304,16 @@ const StatIcon = styled.div`
 `;
 
 const StatValue = styled.div`
-  font-size: 1.75rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: ${COLORS.text};
   line-height: 1.2;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.1rem;
 `;
 
 const StatSubtext = styled.div`
-  font-size: 0.75rem;
-  color: ${COLORS.textSecondary};
+  font-size: 0.65rem;
+  color: ${COLORS.textMuted};
 `;
 
 const FilterCard = styled.div`
@@ -725,7 +727,7 @@ const HearseBookings = () => {
 
   const [registerHearseOpen, setRegisterHearseOpen] = useState(false);
   const [hearseForm, setHearseForm] = useState({
-    plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_id: ''
+    plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_code: ''
   });
   const [registerLoading, setRegisterLoading] = useState(false);
 
@@ -1431,8 +1433,8 @@ const HearseBookings = () => {
         <DrawerBody>
           <form onSubmit={async (e) => {
             e.preventDefault();
-            if (!hearseForm.plate_number || !hearseForm.branch_id) {
-              showToast('Plate number and branch are required', 'error');
+            if (!hearseForm.plate_number || !hearseForm.branch_code) {
+              showToast('Plate number and branch code are required', 'error');
               return;
             }
             setRegisterLoading(true);
@@ -1450,7 +1452,7 @@ const HearseBookings = () => {
               }
               showToast('Hearse registered successfully!');
               setRegisterHearseOpen(false);
-              setHearseForm({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_id: '' });
+              setHearseForm({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_code: '' });
               // Reload hearses
               const hrs = await api.getAllHearses();
               setAllHearses(hrs);
@@ -1512,37 +1514,17 @@ const HearseBookings = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.375rem', fontSize: '0.8125rem', color: COLORS.text }}>
-                  Branch *
-                </label>
-                <select
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${COLORS.border}`, borderRadius: COLORS.radiusSm, fontSize: '0.8125rem', color: COLORS.text, background: COLORS.surface }}
-                  value={hearseForm.branch_id}
-                  onChange={e => setHearseForm(p => ({ ...p, branch_id: e.target.value }))}
-                  required
-                >
-                  <option value="">— Select Branch —</option>
-                  {branchOptions.map(b => (
-                    <option key={b.branch_id} value={b.branch_id}>{b.branch_name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.375rem', fontSize: '0.8125rem', color: COLORS.text }}>
-                  Status
-                </label>
-                <select
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${COLORS.border}`, borderRadius: COLORS.radiusSm, fontSize: '0.8125rem', color: COLORS.text, background: COLORS.surface }}
-                  value={hearseForm.status}
-                  onChange={e => setHearseForm(p => ({ ...p, status: e.target.value }))}
-                >
-                  <option value="available">Available</option>
-                  <option value="maintenance">Maintenance</option>
-                  <option value="unavailable">Unavailable</option>
-                </select>
-              </div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.375rem', fontSize: '0.8125rem', color: COLORS.text }}>
+                Branch Code / Name *
+              </label>
+              <input
+                style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${COLORS.border}`, borderRadius: COLORS.radiusSm, fontSize: '0.8125rem', color: COLORS.text, background: COLORS.surface }}
+                placeholder="e.g., main-branch or Nairobi"
+                value={hearseForm.branch_code}
+                onChange={e => setHearseForm(p => ({ ...p, branch_code: e.target.value }))}
+                required
+              />
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>

@@ -15,7 +15,7 @@ const getWorkers = async (req: Request, res: Response) => {
         }
 
         const [rows] = await safeTenantQuery(tenantDb,
-            "SELECT user_id, first_name, last_name, email, role, phone, created_at FROM users WHERE role IN ('worker', 'manager') ORDER BY first_name ASC"
+            "SELECT user_id, full_name, email, role, phone, created_at FROM users WHERE role IN ('worker', 'manager') ORDER BY full_name ASC"
         );
         res.json(rows);
     } catch (error: any) {
@@ -34,19 +34,19 @@ const createWorker = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Tenant database not resolved' });
         }
 
-        const { first_name, last_name, email, password, role, phone } = req.body;
+        const { full_name, email, password, role, phone } = req.body;
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
         const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO users (first_name, last_name, email, password, role, phone)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [first_name, last_name, email, hashedPassword, role || 'worker', phone]
+            `INSERT INTO users (full_name, email, password, role, phone)
+             VALUES (?, ?, ?, ?, ?)`,
+            [full_name, email, hashedPassword, role || 'worker', phone]
         );
 
         const newWorker: any = await safeTenantQuery(tenantDb,
-            "SELECT user_id, first_name, last_name, email, role, phone, created_at FROM users WHERE user_id = ?",
+            "SELECT user_id, full_name, email, role, phone, created_at FROM users WHERE user_id = ?",
             [insertResult.insertId]
         );
 
@@ -73,7 +73,7 @@ const updateWorker = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Tenant database not resolved' });
         }
 
-        const allowedFields = ['first_name', 'last_name', 'email', 'role', 'phone'];
+        const allowedFields = ['full_name', 'email', 'role', 'phone'];
         const updates: string[] = [];
         const values: any[] = [];
 
@@ -106,7 +106,7 @@ const updateWorker = async (req: Request, res: Response) => {
         }
 
         const [updated] = await safeTenantQuery(tenantDb,
-            "SELECT user_id, first_name, last_name, email, role, phone, created_at FROM users WHERE user_id = ?",
+            "SELECT user_id, full_name, email, role, phone, created_at FROM users WHERE user_id = ?",
             [req.params.id]
         );
 

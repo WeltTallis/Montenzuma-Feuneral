@@ -109,7 +109,6 @@ services:
       - PORTAL_SERVICE_URL=http://restpoint_portal_service:5000
       - INVOICES_SERVICE_URL=http://restpoint_invoice_service:5000
       - COFFIN_SERVICE_URL=http://restpoint_coffin_service:5000
-      - NOTIFICATION_SERVICE_URL=http://restpoint_notification_service:5000
       - DOCUMENTS_SERVICE_URL=http://restpoint_documents_service:5000
       - ANALYTICS_SERVICE_URL=http://restpoint_analytics_service:5000
       - BODYCHECKOUT_SERVICE_URL=http://restpoint_bodycheckout_service:5000
@@ -305,49 +304,6 @@ services:
       mariadb:
         condition: service_healthy
       redis:
-        condition: service_healthy
-    healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # Notification Service
-  notification-service:
-    build:
-      context: .
-      dockerfile: ./services/notification-service/Dockerfile
-    container_name: restpoint_notification_service
-    ports:
-      - '5111:5000'
-    volumes:
-      - notification_service_data:/usr/src/app/data
-    environment:
-      - PORT=5000
-      - NODE_ENV=production
-      - SERVICE_NAME=notification-service
-      - SERVICE_VERSION=1.0.0
-      - CONSUL_HOST=http://restpoint_consul:8500
-      - DB_HOST=restpoint_mariadb
-      - DB_PORT=3306
-      - DB_USER=restpoint_user
-      - DB_PASSWORD=${DB_PASSWORD}
-      - REDIS_HOST=restpoint_redis
-      - REDIS_PORT=6379
-      - RABBITMQ_HOST=restpoint_rabbitmq
-      - RABBITMQ_PORT=5672
-    env_file:
-      - .env
-    networks:
-      - restpoint_network
-    restart: unless-stopped
-    depends_on:
-      mariadb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
@@ -906,8 +862,6 @@ volumes:
   deceased_service_data:
     driver: local
   billing_service_data:
-    driver: local
-  notification_service_data:
     driver: local
   support_service_data:
     driver: local

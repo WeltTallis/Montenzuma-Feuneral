@@ -5,7 +5,7 @@ import { useSocket } from '../../utils/context/socketContext';
 import { api, ENDPOINTS } from '../../api';
 import {
   Calendar, Clock, Users, FileText, AlertCircle, CheckCircle, XCircle,
-  TrendingUp, X, PlusCircle, Wallet, UserPlus, TrashAlt
+  TrendingUp, X, PlusCircle, Wallet, UserPlus, Trash2
 } from '../../utils/icons/icons';
 
 const COLORS = {

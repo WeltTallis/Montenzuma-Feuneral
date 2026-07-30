@@ -22,13 +22,9 @@ export default defineConfig({
   ],
   base: '/',
 
-  // Ensure @vkhangstack/veloqr and other libraries use the app's React instance
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      // Force libraries to use the app's React to avoid "Invalid hook call" errors
-      'react': path.resolve(__dirname, './node_modules/react'),
-      'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
     },
   },
 
