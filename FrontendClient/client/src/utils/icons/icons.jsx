@@ -794,6 +794,119 @@ export const Calculator = (p) => (
   <Icon {...p}><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" y1="6" x2="16" y2="6" /><line x1="8" y1="10" x2="8" y2="10" /><line x1="12" y1="10" x2="12" y2="10" /><line x1="16" y1="10" x2="16" y2="10" /><line x1="8" y1="14" x2="8" y2="14" /><line x1="12" y1="14" x2="12" y2="14" /><line x1="16" y1="14" x2="16" y2="14" /><line x1="8" y1="18" x2="8" y2="18" /><line x1="12" y1="18" x2="12" y2="18" /><line x1="16" y1="18" x2="16" y2="18" /></Icon>
 );
 
+// ─── Additional Icons for Missing Exports ─────────────────────────────────
+export const FileArchive = (p) => (
+  <Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><path d="M16 13H8" /><path d="M16 17H8" /><path d="M10 9H8" /></Icon>
+);
+
+export const ArrowUpRight = (p) => (
+  <Icon {...p}><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></Icon>
+);
+
+export const Code2 = (p) => (
+  <Icon {...p}><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></Icon>
+);
+
+export const FilePlus = (p) => (
+  <Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></Icon>
+);
+
+export const Paintbrush = (p) => (
+  <Icon {...p}><path d="M18.37 2.63 14 7l-2-2 4.37-4.37a1 1 0 0 1 1.42 0l.58.58a1 1 0 0 1 0 1.42z" /><path d="M8 10l4 4-6 6H4v-2l4-4z" /><path d="M14 7l-2-2" /></Icon>
+);
+
+export const Bug = (p) => (
+  <Icon {...p}><path d="M8 2l4 2 4-2" /><path d="M8 6l4 2 4-2" /><path d="M20 12h-4a4 4 0 0 1-4-4v-2" /><path d="M4 12h4a4 4 0 0 0 4-4v-2" /><path d="M12 12v10" /><path d="M8 16h8" /><path d="M12 16v6" /><path d="M16 19a4 4 0 0 1-8 0" /></Icon>
+);
+
+export const Lightbulb = (p) => (
+  <Icon {...p}><path d="M9 18h6" /><path d="M10 22h4" /><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" /></Icon>
+);
+
+export const HelpCircle = (p) => (
+  <Icon {...p}><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></Icon>
+);
+
+export const FileDigit = (p) => (
+  <Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><rect x="8" y="12" width="8" height="4" rx="1" /><path d="M9 13v4" /></Icon>
+);
+
+export const FileUp = (p) => (
+  <Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><polyline points="12 18 12 12" /><line x1="9" y1="15" x2="15" y2="15" /></Icon>
+);
+
+export const Crown = (p) => (
+  <Icon {...p}><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z" /><path d="M5 20h14" /></Icon>
+);
+
+export const BookText = (p) => (
+  <Icon {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /><line x1="8" y1="7" x2="16" y2="7" /><line x1="8" y1="11" x2="14" y2="11" /></Icon>
+);
+
+export const Eraser = (p) => (
+  <Icon {...p}><path d="M7 21h10" /><path d="M4.28 14.28l9.44-9.44a1 1 0 0 1 1.41 0l4.03 4.03a1 1 0 0 1 0 1.41L9.72 19.72a1 1 0 0 1-1.41 0L4.28 15.69a1 1 0 0 1 0-1.41z" /></Icon>
+);
+
+export const HardHat = (p) => (
+  <Icon {...p}><path d="M2 18a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2H2v-2z" /><path d="M12 6v4" /><path d="M6 14v-4a6 6 0 0 1 12 0v4" /><path d="M10 16h4" /></Icon>
+);
+
+export const TrafficCone = (p) => (
+  <Icon {...p}><path d="M9.3 6.2l-4 11.9A2 2 0 0 0 7.2 20h9.6a2 2 0 0 0 1.9-1.9l-4-11.9A2 2 0 0 0 13 5h-2a2 2 0 0 0-1.7 1.2z" /><path d="M7 14h10" /><path d="M6 18h12" /><path d="M8 10h8" /></Icon>
+);
+
+export const PieChart = (p) => (
+  <Icon {...p}><path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></Icon>
+);
+
+export const Flame = (p) => (
+  <Icon {...p}><path d="M12 2s-4 4-4 7c0 2.21 1.79 4 4 4s4-1.79 4-4c0-3-4-7-4-7z" /><path d="M12 13c-2 0-3 1-3 2s1 2 3 2 3-1 3-2-1-2-3-2z" /><path d="M12 20c-3 0-5-1-5-3 0-1.5 2-3 5-3s5 1.5 5 3c0 2-2 3-5 3z" /></Icon>
+);
+
+export const Video = (p) => (
+  <Icon {...p}><path d="M22 8l-6 4 6 4V8z" /><rect x="2" y="6" width="14" height="12" rx="2" ry="2" /></Icon>
+);
+
+export const Percent = (p) => (
+  <Icon {...p}><line x1="19" y1="5" x2="5" y2="19" /><circle cx="6.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="17.5" r="2.5" /></Icon>
+);
+
+export const Badge = (p) => (
+  <Icon {...p}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></Icon>
+);
+
+export const Scale = (p) => (
+  <Icon {...p}><path d="M12 3v18" /><path d="M8 5h8" /><path d="M6 12c0 1.66 2.69 4 6 4s6-2.34 6-4" /><path d="M6 12v6c0 1.66 2.69 4 6 4s6-2.34 6-4v-6" /></Icon>
+);
+
+export const UploadCloud = (p) => (
+  <Icon {...p}><polyline points="16 16 12 12 8 16" /><line x1="12" y1="12" x2="12" y2="21" /><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" /><polyline points="16 16 12 12 8 16" /></Icon>
+);
+
+export const TrendingDown = (p) => (
+  <Icon {...p}><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></Icon>
+);
+
+export const Hourglass = (p) => (
+  <Icon {...p}><path d="M5 22h14" /><path d="M5 2h14" /><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" /><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" /></Icon>
+);
+
+export const CheckSquare = (p) => (
+  <Icon {...p}><polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></Icon>
+);
+
+export const PlusSquare = (p) => (
+  <Icon {...p}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></Icon>
+);
+
+export const ShoppingBag = (p) => (
+  <Icon {...p}><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></Icon>
+);
+
+export const Warehouse = (p) => (
+  <Icon {...p}><path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35z" /><path d="M6 18h2" /><path d="M10 18h2" /><path d="M6 14h2" /><path d="M10 14h2" /><path d="M14 18h2" /><path d="M18 14h2" /><path d="M14 14h2" /><path d="M18 18h2" /></Icon>
+);
+
 // ─── Aggregate Object (convenience) ──────────────────────────────────────────
 export const Icons = {
   // Navigation & Layout
@@ -808,7 +921,7 @@ export const Icons = {
   // Time & Calendar
   Clock, Timer, History, Calendar, CalendarDays,
   // Files & Documents
-  FileText, FileImage, FileSpreadsheet, ClipboardList,
+  FileText, FileImage, FileSpreadsheet, ClipboardList, FileArchive, FilePlus, FileDigit, FileUp,
   // News & Media
   Newspaper,
   // Location & Map
@@ -830,16 +943,18 @@ export const Icons = {
   // Medical & Laboratory
   Beaker, FlaskConical, Syringe, Stethoscope, TestTube2,
   // Analytics & Charts
-  TrendingUp, BarChart3, BarChart2, Activity, PieChartIcon,
+  TrendingUp, BarChart3, BarChart2, Activity, PieChartIcon, PieChart, TrendingDown,
   // Objects & Items
-  Box, Package, ShoppingCart, Trophy, Star, Flower2, HardDrive, Type,
+  Box, Package, ShoppingCart, ShoppingBag, Trophy, Star, Flower2, HardDrive, Type,
   // Targets & Goals
   Target, GitCompareArrows,
   // Buildings & Places
-  Building2,
+  Building2, Warehouse,
   // Misc
   Heart, Zap, Settings, LogOut,
   Sun, Moon, CloudSun, Play, Pause, Smartphone, Camera, Music, Mic, Wifi, WifiOff, Github, Linkedin, Twitter,
+  // Additional
+  ArrowUpRight, Code2, Paintbrush, Bug, Lightbulb, HelpCircle, Crown, BookText, Eraser, HardHat, TrafficCone, Flame, Video, Percent, Badge, Scale, UploadCloud, Hourglass, CheckSquare, PlusSquare,
 };
 
 export default Icons;
