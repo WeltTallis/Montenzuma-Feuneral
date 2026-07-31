@@ -429,10 +429,10 @@ const TenantDashboardRoutes = ({ tenantData }) => {
         </RoleBasedRoute>
       } />
 
-      {/* Chemicals - Available to admin, manager, staff */}
+      {/* Chemicals - Analytics only, no inventory/usage tracking */}
       <Route path="chemicals" element={
         <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><ChemicalManagementDashboard /></Layout>
+          <Layout tenantData={tenantData}><ChemicalInventoryAnalytics /></Layout>
         </RoleBasedRoute>
       } />
       <Route path="chemicals/analytics" element={

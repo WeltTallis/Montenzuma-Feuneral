@@ -15,6 +15,7 @@ export interface NextOfKinRecord {
   notified_at: Date | null;
   address: string | null;
   alternative_contact: string | null;
+  signature: string | null;
   created_by: string | null;
   created_at: Date;
   updated_at: Date;
@@ -33,6 +34,7 @@ export interface CreateNextOfKinDTO {
   is_primary?: boolean;
   address?: string;
   alternative_contact?: string;
+  signature?: string;
   created_by?: string;
 }
 
@@ -60,17 +62,44 @@ export class NextOfKinModel {
       );
     }
 
-    const result = await execute(req,
-      `INSERT INTO next_of_kin (
-        deceased_id, full_name, relationship, contact, email,
-        is_primary, address, alternative_contact, created_by, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [
-        data.deceased_id, data.full_name, data.relationship, data.contact,
-        data.email || null, data.is_primary || false, data.address || null,
-        data.alternative_contact || null, data.created_by || null
-      ]
-    );
+    // Check if signature column exists in the table
+    let hasSignatureColumn = true;
+    try {
+      const columns = await query(req,
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'next_of_kin' AND COLUMN_NAME = 'signature'`
+      );
+      hasSignatureColumn = columns.length > 0;
+    } catch {
+      hasSignatureColumn = true; // Default to true if we can't check
+    }
+
+    let result;
+    if (hasSignatureColumn) {
+      result = await execute(req,
+        `INSERT INTO next_of_kin (
+          deceased_id, full_name, relationship, contact, email,
+          is_primary, address, alternative_contact, signature, created_by, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          data.deceased_id, data.full_name, data.relationship, data.contact,
+          data.email || null, data.is_primary || false, data.address || null,
+          data.alternative_contact || null, data.signature || null, data.created_by || null
+        ]
+      );
+    } else {
+      result = await execute(req,
+        `INSERT INTO next_of_kin (
+          deceased_id, full_name, relationship, contact, email,
+          is_primary, address, alternative_contact, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          data.deceased_id, data.full_name, data.relationship, data.contact,
+          data.email || null, data.is_primary || false, data.address || null,
+          data.alternative_contact || null, data.created_by || null
+        ]
+      );
+    }
 
     return this.getById(req, (result as ResultSetHeader).insertId);
   }

@@ -157,10 +157,11 @@ export const getNextOfKinByDeceasedId = async (
             relationship: item.relationship,
             contact: item.contact,
             email: item.email || null,
-            alternative_phone: item.alternative_phone || null,
+            alternative_phone: item.alternative_phone || item.alternative_contact || null,
             id_number: item.id_number || null,
             id_type: item.id_type || null,
             address: item.address || null,
+            signature: item.signature || null,
             is_primary: item.is_primary || false,
             is_notified: item.is_notified || false,
             created_at: item.created_at

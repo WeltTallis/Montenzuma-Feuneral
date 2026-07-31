@@ -190,6 +190,53 @@ export const recordPayment = async (req: Request, res: Response) => {
     
     mockPayments.push(newPayment);
     
+    // ==============================
+    // EMIT PAYMENT NOTIFICATION
+    // ==============================
+    try {
+      const axios = require('axios');
+      // Try multiple socketio service URLs (Docker DNS, localhost fallback)
+      const configuredUrl = process.env.SOCKETIO_SERVICE_URL || '';
+      const candidateUrls = [
+        configuredUrl,
+        'http://localhost:5018',
+        'http://127.0.0.1:5018',
+      ].filter(Boolean);
+
+      const emitPayload = {
+        tenantSlug,
+        data: {
+          id: `payment-${newPayment.id}-${Date.now()}`,
+          deceasedId: paymentData.deceased_id,
+          amount: paymentData.amount,
+          paymentMethod: paymentData.payment_method,
+          title: 'Payment Received',
+          message: `Payment of ${paymentData.amount} received via ${paymentData.payment_method}`,
+          type: 'payment-received',
+          priority: 'high',
+          fullContent: `Payment recorded for deceased ${paymentData.deceased_id}.\nAmount: ${paymentData.amount}\nMethod: ${paymentData.payment_method}\nDate: ${newPayment.payment_date}`,
+        }
+      };
+
+      let emitted = false;
+      for (const socketioServiceUrl of candidateUrls) {
+        try {
+          await axios.post(`${socketioServiceUrl}/emit/payment-received`, emitPayload, { timeout: 3000 });
+          emitted = true;
+          console.log(`[PAYMENT] Emitted payment-received notification via ${socketioServiceUrl}`);
+          break;
+        } catch (urlError: any) {
+          console.warn(`[PAYMENT] SocketIO URL failed: ${socketioServiceUrl} - ${urlError.message}`);
+        }
+      }
+
+      if (!emitted) {
+        console.warn('[PAYMENT] All socketio URLs failed to emit payment notification');
+      }
+    } catch (emitError: any) {
+      console.warn('[PAYMENT] Failed to emit payment notification:', emitError.message);
+    }
+    
     return res.status(201).json({
       success: true,
       data: newPayment,

@@ -728,6 +728,7 @@ export const FaInbox = (p) => <Icon {...p}><polyline points="22 12 16 12 14 15 1
 export const FaPaperPlane = (p) => <Icon {...p}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></Icon>;
 export const FaBan = (p) => <Icon {...p}><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></Icon>;
 export const FaSeedling = (p) => <Icon {...p}><path d="M12 22v-7" /><path d="M7 8c0-2.8 2.2-5 5-5s5 2.2 5 5" /><path d="M7 8c0 2.8 2.2 5 5 5" /><path d="M5 8h14" /></Icon>;
+export const Image = (p) => <Icon {...p}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></Icon>;
 export const FaImage = (p) => <Icon {...p}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></Icon>;
 export const FaStarOfDavid = (p) => <Icon {...p}><polygon points="12 2 15 8 21 8 16 13 18 19 12 15 6 19 8 13 3 8 9 8" /></Icon>;
 export const FaMinusCircle = (p) => <Icon {...p}><circle cx="12" cy="12" r="10" /><line x1="8" y1="12" x2="16" y2="12" /></Icon>;

@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../api/axios';
 import { getTenantHeaders } from '../../api/endpoints';
 import { useSocket } from '../../utils/context/socketContext';
-import { getTenantSlug, getAuthToken } from '../../utils/globalAuth';
+import { getTenantSlug } from '../../utils/globalAuth';
 import {
   Bell, CheckCircle, X, Clock, Trash2,
   UserPlus, Truck, DollarSign, AlertTriangle,
-  AlertCircle, CheckCheck, ChevronDown
+  AlertCircle, CheckCheck, ChevronDown, Info,
+  PlusCircle, ShoppingBag, Star, ArrowRight, Check,
+  Box
 } from '../../utils/icons/icons';
 import './NotificationBell.css';
 
@@ -18,57 +20,76 @@ const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
-  const [expandedId, setExpandedId] = useState(null); // Track which notification is expanded
-
   const dropdownRef = useRef(null);
-  const audioRef = useRef(null); // Ref for the audio element
-  const { socket, connected } = useSocket();
+  const audioRef = useRef(null);
+  const { socket } = useSocket();
 
-  // --- Play Notification Sound from audio.mp3 ---
+  // ─── Audio ───
   const playNotificationSound = useCallback(() => {
     try {
       if (audioRef.current) {
-        audioRef.current.currentTime = 0; // Rewind to start
-        audioRef.current.play().catch(e => console.warn("Audio playback failed:", e));
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
       }
-    } catch (e) {
-      console.error("Error playing sound:", e);
-    }
+    } catch {}
   }, []);
 
-  // --- Icon Mapping ---
-  const getTypeIcon = (type) => {
-    const icons = {
-      'success': <CheckCircle size={16} />,
-      'error': <AlertCircle size={16} />,
-      'warning': <AlertTriangle size={16} />,
-      'info': <Bell size={16} />,
-      'new_body': <UserPlus size={16} />,
-      'dispatch_created': <Truck size={16} />,
-      'body_dispatched': <CheckCircle size={16} />,
-      'balance_update': <DollarSign size={16} />,
-      'billing-threshold-exceeded': <AlertTriangle size={16} />,
-      'billing-critical': <AlertCircle size={16} />,
+  // ─── Icon & Priority Color Mapping ───
+  const getPriorityMeta = (type, priority) => {
+    const colorMap = {
+      'new_body': { cls: 'icon-red', icon: <UserPlus size={18} /> },
+      'deceased-admitted': { cls: 'icon-red', icon: <UserPlus size={18} /> },
+      'payment-received': { cls: 'icon-green', icon: <DollarSign size={18} /> },
+      'payment': { cls: 'icon-green', icon: <DollarSign size={18} /> },
+      'balance_update': { cls: 'icon-green', icon: <DollarSign size={18} /> },
+      'billing-critical': { cls: 'icon-red', icon: <AlertTriangle size={18} /> },
+      'billing-threshold-exceeded': { cls: 'icon-yellow', icon: <AlertTriangle size={18} /> },
+      'invoice-overdue': { cls: 'icon-red', icon: <AlertTriangle size={18} /> },
+      'warning': { cls: 'icon-yellow', icon: <AlertTriangle size={18} /> },
+      'error': { cls: 'icon-red', icon: <AlertCircle size={18} /> },
+      'success': { cls: 'icon-green', icon: <CheckCircle size={18} /> },
+      'info': { cls: 'icon-navy', icon: <Info size={18} /> },
+      'dispatch_created': { cls: 'icon-yellow', icon: <Truck size={18} /> },
+      'body_dispatched': { cls: 'icon-green', icon: <CheckCircle size={18} /> },
+      'postmortem-completed': { cls: 'icon-purple', icon: <CheckCircle size={18} /> },
+      'postmortem_results': { cls: 'icon-purple', icon: <CheckCircle size={18} /> },
+      'release-requested': { cls: 'icon-yellow', icon: <AlertTriangle size={18} /> },
+      'invoice-created': { cls: 'icon-purple', icon: <DollarSign size={18} /> },
+      'new_booking': { cls: 'icon-navy', icon: <ShoppingBag size={18} /> },
+      'coffin-used': { cls: 'icon-gold', icon: <Box size={18} /> },
+      'body-released': { cls: 'icon-purple', icon: <CheckCircle size={18} /> },
+      'coffin-created': { cls: 'icon-gold', icon: <Box size={18} /> },
+      'coffin-updated': { cls: 'icon-yellow', icon: <Info size={18} /> },
+      'coffin-deleted': { cls: 'icon-red', icon: <AlertCircle size={18} /> },
+      'coffin-assigned': { cls: 'icon-green', icon: <CheckCircle size={18} /> },
+      'production-update': { cls: 'icon-navy', icon: <Star size={18} /> },
+      'worker-assignment': { cls: 'icon-yellow', icon: <UserPlus size={18} /> },
+      'reminder': { cls: 'icon-yellow', icon: <Clock size={18} /> },
     };
-    return icons[type] || <Bell size={16} />;
+
+    if (colorMap[type]) return colorMap[type];
+
+    // Fallback by priority
+    if (priority === 'high') return { cls: 'icon-red', icon: <AlertTriangle size={18} /> };
+    if (priority === 'medium') return { cls: 'icon-yellow', icon: <Info size={18} /> };
+    return { cls: 'icon-navy', icon: <Info size={18} /> };
   };
 
-  // --- Toast Management ---
+  // ─── Toast Management ───
   const addToast = useCallback((notification) => {
     const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { ...notification, toastId: id }]);
-    playNotificationSound(); // Play audio.mp3 on new toast
-
+    playNotificationSound();
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.toastId !== id));
-    }, 6000); // Auto-remove after 6 seconds
+    }, 6000);
   }, [playNotificationSound]);
 
   const removeToast = (id) => {
     setToasts(prev => prev.filter(t => t.toastId !== id));
   };
 
-  // --- API Calls ---
+  // ─── API Calls ───
   const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
@@ -78,11 +99,10 @@ const NotificationBell = () => {
 
       const response = await api.get(url, {
         headers: { ...headers, 'x-tenant-slug': tenantSlug },
-        // Prevent service worker from caching
         params: { _t: Date.now() }
       });
 
-      if (response.data?.notifications) {
+      if (response.data?.notifications && response.data.notifications.length > 0) {
         const redisNotifications = response.data.notifications.map(notif => ({
           id: notif.id,
           type: notif.type || 'info',
@@ -95,20 +115,21 @@ const NotificationBell = () => {
           data: notif.data || null,
         }));
 
-        setNotifications(redisNotifications);
-        setUnreadCount(redisNotifications.filter(n => !n.is_read).length);
-      } else {
-        setNotifications([]);
-        setUnreadCount(0);
+        setNotifications(prev => {
+          if (!prev || prev.length === 0) return redisNotifications;
+          const redisIds = new Set(redisNotifications.map(n => String(n.id)));
+          const liveOnly = prev.filter(p => !redisIds.has(String(p.id)) && !p.persisted);
+          return [...redisNotifications, ...liveOnly];
+        });
+
+        setNotifications(prevNotifs => {
+          const mergedUnread = prevNotifs.filter(n => !n.is_read).length;
+          setUnreadCount(mergedUnread);
+          return prevNotifs;
+        });
       }
-    } catch (error) {
-      // Silently handle notification service errors (service may not be running)
-      // Only log in development mode
-      if (import.meta.env.DEV) {
-        console.warn('[NotificationBell] Service unavailable:', error.message);
-      }
-      setNotifications([]);
-      setUnreadCount(0);
+    } catch {
+      // Keep live socket notifications on error
     } finally {
       setLoading(false);
     }
@@ -120,7 +141,7 @@ const NotificationBell = () => {
       await api.put(`${NOTIFICATION_SERVICE}/notifications/${id}/read`, {}, { headers });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
+    } catch {
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
@@ -132,7 +153,7 @@ const NotificationBell = () => {
       await api.put(`${NOTIFICATION_SERVICE}/notifications/mark-all-read`, {}, { headers });
       setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
       setUnreadCount(0);
-    } catch (error) {
+    } catch {
       setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
       setUnreadCount(0);
     }
@@ -142,121 +163,287 @@ const NotificationBell = () => {
     try {
       const headers = getTenantHeaders();
       await api.delete(`${NOTIFICATION_SERVICE}/notifications/${id}`, { headers });
-      const deleted = notifications.find(n => n.id === id);
       setNotifications(prev => prev.filter(n => n.id !== id));
-      if (deleted && !deleted.is_read) setUnreadCount(prev => Math.max(0, prev - 1));
-      if (expandedId === id) setExpandedId(null);
-    } catch (error) {
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch {
       setNotifications(prev => prev.filter(n => n.id !== id));
-      if (expandedId === id) setExpandedId(null);
+      setUnreadCount(prev => Math.max(0, prev - 1));
     }
   };
 
-  // --- Effects ---
+  // ─── Effects ───
   useEffect(() => {
+    // Fetch notifications immediately and on interval
+    console.log('[NotificationBell] Initial fetch');
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  // Fetch notifications when socket connects (in case we missed live events)
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleConnect = () => {
+      console.log('[NotificationBell] Socket connected, fetching notifications');
+      fetchNotifications();
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('reconnect', handleConnect);
+
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('reconnect', handleConnect);
+    };
+  }, [socket, fetchNotifications]);
+
+  // Log socket connection status for debugging
+  useEffect(() => {
+    if (!socket) {
+      console.warn('[NotificationBell] Socket not available - notifications will only work via polling');
+      return;
+    }
+
+    const logConnection = () => {
+      console.log('[NotificationBell] Socket status:', {
+        connected: socket.connected,
+        id: socket.id,
+        hasListeners: socket.hasListeners('notification:body-released')
+      });
+    };
+
+    logConnection();
+    const interval = setInterval(logConnection, 10000); // Log every 10 seconds
+    return () => clearInterval(interval);
+  }, [socket]);
 
   // Real-time Socket Listener
   useEffect(() => {
     if (!socket) return;
 
     const handleNotification = (eventName, data) => {
-      console.log('[NOTIFICATION] 🔔 Socket event received:', {
-        eventName,
-        data,
-        timestamp: new Date().toISOString()
-      });
+      console.log('[NotificationBell] 📨 Received socket event:', eventName, data);
+      let formatted;
+      const eventTypeMap = {
+        'notification:deceased-admitted': { type: 'new_body', title: 'New Admission', priority: 'high' },
+        'notification:status-change': { type: 'info', title: 'Status Update', priority: 'low' },
+        'notification:release-requested': { type: 'release-requested', title: 'Release Requested', priority: 'high' },
+        'notification:invoice-created': { type: 'invoice-created', title: 'Invoice Created', priority: 'medium' },
+        'notification:payment-received': { type: 'payment-received', title: 'Payment Received', priority: 'high' },
+        'alert:invoice-overdue': { type: 'invoice-overdue', title: 'Invoice Overdue', priority: 'critical' },
+        'alert:low-stock': { type: 'warning', title: 'Low Stock Alert', priority: 'high' },
+        'notification:coffin-used': { type: 'coffin-used', title: 'Coffin Used', priority: 'low' },
+        'notification:body-released': { type: 'body-released', title: 'Body Released', priority: 'medium' },
+        'notification:postmortem-completed': { type: 'postmortem-completed', title: 'Postmortem Completed', priority: 'medium' },
+      };
 
-      // Handle raw hearse booking events
+      // Raw hearse events
       if (eventName === 'new_booking') {
-        const formatted = {
+        formatted = {
           id: data.booking_id || data.id || Date.now(),
-          type: 'info',
+          type: 'new_booking',
+          title: 'New Hearse Booking',
           message: data.message || `New booking for ${data.booking?.client_name || 'client'}`,
           fullContent: data.booking ? `${data.booking.client_name} - ${data.booking.destination || ''}` : 'New hearse booking created',
           is_read: 0,
           created_at: data.timestamp || new Date().toISOString(),
-          title: 'New Hearse Booking',
           priority: 'high',
           data,
         };
+        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
-        addToast(formatted);
         return;
       }
 
       if (eventName === 'booking_status_updated') {
-        const formatted = {
+        formatted = {
           id: `status-${data.booking_id}-${Date.now()}`,
           type: 'info',
+          title: 'Booking Status Update',
           message: data.message || `Booking status changed to ${data.status}`,
           fullContent: `Booking #${data.booking_id} status updated to ${data.status}`,
           is_read: 0,
           created_at: data.timestamp || new Date().toISOString(),
-          title: 'Booking Status Update',
           priority: 'medium',
           data,
         };
+        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
-        addToast(formatted);
         return;
       }
 
       if (eventName === 'booking_postponed') {
-        const formatted = {
+        formatted = {
           id: `postponed-${data.booking_id}-${Date.now()}`,
           type: 'warning',
+          title: 'Booking Postponed',
           message: `Booking #${data.booking_id} has been postponed`,
           fullContent: `Reason: ${data.reason || 'Not provided'}`,
           is_read: 0,
           created_at: data.timestamp || new Date().toISOString(),
-          title: 'Booking Postponed',
           priority: 'high',
           data,
         };
+        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
-        addToast(formatted);
         return;
       }
 
-      const eventTypeMap = {
-        'notification:deceased-admitted': 'new_body',
-        'notification:status-change': 'info',
-        'notification:release-requested': 'warning',
-        'notification:invoice-created': 'balance_update',
-        'alert:invoice-overdue': 'billing-critical',
-        'alert:low-stock': 'warning',
-        'notification:postmortem-completed': 'success',
-      };
+      // Body released event
+      if (eventName === 'body-released' || eventName === 'notification:body-released') {
+        formatted = {
+          id: data.id || `body-release-${Date.now()}`,
+          type: 'body-released',
+          title: data.title || 'Body Released',
+          message: data.message || 'Body has been released',
+          fullContent: data.fullContent || 'Release completed',
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: data.priority || 'medium',
+          data,
+        };
+        addToast(formatted);
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        return;
+      }
 
-      const type = eventTypeMap[eventName] || 'info';
-      const title = data.title || eventName.split(':').pop().replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      const message = data.message || `New event: ${title}`;
-      const fullContent = data.fullContent || data.details || message;
+      // Hearse booking reminder
+      if (eventName === 'hearse-booking-reminder') {
+        formatted = {
+          id: data.id || `reminder-${Date.now()}`,
+          type: 'reminder',
+          title: data.title || 'Upcoming Hearse Bookings',
+          message: data.message || 'You have upcoming hearse bookings',
+          fullContent: data.fullContent || 'No details available',
+          is_read: 0,
+          created_at: new Date().toISOString(),
+          priority: data.priority || 'high',
+          data,
+        };
+        addToast(formatted);
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        return;
+      }
 
-      const formatted = {
-        id: data.id || Date.now(),
-        type,
-        message,
-        fullContent,
-        is_read: 0,
-        created_at: data.timestamp || new Date().toISOString(),
-        title,
-        priority: data.priority || 'low',
-        data,
-      };
+      // Postmortem results ready
+      if (eventName === 'postmortem-results-ready') {
+        formatted = {
+          id: data.id || `pm-results-${Date.now()}`,
+          type: 'postmortem_results',
+          title: data.title || 'Postmortem Results Available',
+          message: data.message || 'Postmortem results are now available',
+          fullContent: data.fullContent || 'No details available',
+          is_read: 0,
+          created_at: new Date().toISOString(),
+          priority: data.priority || 'high',
+          data,
+        };
+        addToast(formatted);
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        return;
+      }
 
-      console.log('[NOTIFICATION] ✅ Formatted notification:', formatted);
+      // Coffin events
+      if (['coffin-created', 'coffin-updated', 'coffin-deleted', 'coffin-assigned'].includes(eventName)) {
+        const eventMeta = {
+          'coffin-created': { type: 'coffin-created', title: 'New Coffin Added', priority: 'medium' },
+          'coffin-updated': { type: 'coffin-updated', title: 'Coffin Updated', priority: 'low' },
+          'coffin-deleted': { type: 'coffin-deleted', title: 'Coffin Removed', priority: 'medium' },
+          'coffin-assigned': { type: 'coffin-assigned', title: 'Coffin Assigned', priority: 'high' },
+        };
+        const meta = eventMeta[eventName];
+        formatted = {
+          id: data.id || `coffin-${Date.now()}`,
+          type: meta.type,
+          title: data.title || meta.title,
+          message: data.message || 'Coffin inventory update',
+          fullContent: data.fullContent || 'No details available',
+          is_read: 0,
+          created_at: new Date().toISOString(),
+          priority: data.priority || meta.priority,
+          data,
+        };
+        addToast(formatted);
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        return;
+      }
 
-      setNotifications(prev => [formatted, ...prev]);
-      setUnreadCount(prev => prev + 1);
-      addToast(formatted);
+      // Workshop production events
+      if (['production-stage-updated', 'worker-assigned', 'worker-assignment-updated'].includes(eventName)) {
+        const eventMeta = {
+          'production-stage-updated': { type: 'production-update', title: 'Production Stage Updated', priority: 'medium' },
+          'worker-assigned': { type: 'worker-assignment', title: 'Worker Assigned', priority: 'medium' },
+          'worker-assignment-updated': { type: 'worker-update', title: 'Worker Assignment Updated', priority: 'low' },
+        };
+        const meta = eventMeta[eventName];
+        formatted = {
+          id: data.id || `workshop-${Date.now()}`,
+          type: meta.type,
+          title: data.title || meta.title,
+          message: data.message || 'Workshop update',
+          fullContent: data.fullContent || 'No details available',
+          is_read: 0,
+          created_at: new Date().toISOString(),
+          priority: data.priority || meta.priority,
+          data,
+        };
+        addToast(formatted);
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        return;
+      }
+
+      // Flower booking events
+      if (['flower-booking-created', 'flower-booking-updated', 'flower-booking-deleted'].includes(eventName)) {
+        const eventMeta = {
+          'flower-booking-created': { type: 'new_booking', title: 'New Flower Booking', priority: 'medium' },
+          'flower-booking-updated': { type: 'booking_update', title: 'Booking Status Updated', priority: 'medium' },
+          'flower-booking-deleted': { type: 'removal', title: 'Booking Cancelled', priority: 'low' },
+        };
+        const meta = eventMeta[eventName];
+        formatted = {
+          id: data.id || `flower-${Date.now()}`,
+          type: meta.type,
+          title: data.title || meta.title,
+          message: data.message || 'Flower booking update',
+          fullContent: data.fullContent || 'No details available',
+          is_read: 0,
+          created_at: new Date().toISOString(),
+          priority: data.priority || meta.priority,
+          data,
+        };
+        addToast(formatted);
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        return;
+      }
+
+      // Mapped events
+      const meta = eventTypeMap[eventName];
+      if (meta) {
+        formatted = {
+          id: data.id || Date.now(),
+          type: meta.type,
+          title: data.title || meta.title,
+          message: data.message || `New event: ${meta.title}`,
+          fullContent: data.fullContent || data.details || data.message || '',
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: data.priority || meta.priority || 'low',
+          data,
+        };
+        addToast(formatted);
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+      }
     };
 
     const notificationEvents = [
@@ -265,93 +452,99 @@ const NotificationBell = () => {
       'notification:payment-received', 'alert:invoice-overdue',
       'alert:low-stock', 'notification:coffin-used',
       'notification:body-released', 'notification:postmortem-completed',
+      'notification:postmortem-results-ready',
       'new_booking', 'booking_status_updated', 'booking_postponed',
+      'hearse-booking-reminder',
+      'coffin-created', 'coffin-updated', 'coffin-deleted', 'coffin-assigned',
+      'production-stage-updated', 'worker-assigned', 'worker-assignment-updated',
+      'flower-booking-created', 'flower-booking-updated', 'flower-booking-deleted',
+      'body-released', // Direct event from body-release service
     ];
 
-    console.log('[NOTIFICATION] 📡 Registering socket listeners for events:', notificationEvents);
+    console.log('[NotificationBell] Setting up listeners for', notificationEvents.length, 'events');
 
     const handlers = {};
     notificationEvents.forEach(event => {
       const handler = (data) => handleNotification(event, data);
       handlers[event] = handler;
       socket.on(event, handler);
-      console.log(`[NOTIFICATION] 📡 Registered listener for: ${event}`);
     });
 
-    console.log('[NOTIFICATION] ✅ All socket listeners registered successfully');
+    console.log('[NotificationBell] All socket listeners registered');
 
     return () => {
-      console.log('[NOTIFICATION] 🧹 Cleaning up socket listeners');
+      console.log('[NotificationBell] Cleaning up socket listeners');
       Object.entries(handlers).forEach(([event, handler]) => socket.off(event, handler));
     };
   }, [socket, addToast]);
-
 
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsOpen(false);
-        setExpandedId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // --- Helpers ---
+  // ─── Helpers ───
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
     const diffMs = new Date() - date;
     const diffMins = Math.floor(diffMs / 60000);
     if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 60) return `${diffMins}m`;
     const diffHours = Math.floor(diffMs / 3600000);
-    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffHours < 24) return `${diffHours}h`;
     const diffDays = Math.floor(diffMs / 86400000);
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 7) return `${diffDays}d`;
     return date.toLocaleDateString();
   };
 
-  const getTypeColor = (type) => {
-    const colors = {
-      'new_body': '#3B82F6', 'autopsy_done': '#8B5CF6', 'dispatch_created': '#F59E0B',
-      'body_dispatched': '#10B981', 'balance_update': '#6366F1', 'billing-critical': '#EF4444',
-    };
-    return colors[type] || '#6B7280';
-  };
-
-  const handleItemClick = (notif) => {
-    if (!notif.is_read) markAsRead(notif.id);
-    setExpandedId(expandedId === notif.id ? null : notif.id);
+  const formatTimeFull = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const diffMs = new Date() - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    const diffHours = Math.floor(diffMs / 3600000);
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    const diffDays = Math.floor(diffMs / 86400000);
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
   };
 
   return (
     <>
-      {/* Hidden audio element for notification sound */}
       <audio ref={audioRef} src="/audio/alert.mp3" preload="auto" />
 
       {/* ─── Real-Time Toast Popups ─── */}
       <div className="nb-toast-container">
-        {toasts.map((toast) => (
-          <div key={toast.toastId} className="nb-toast" onClick={() => removeToast(toast.toastId)}>
-            <div className="nb-toast-icon" style={{ background: `${getTypeColor(toast.type)}20`, color: getTypeColor(toast.type) }}>
-              {getTypeIcon(toast.type)}
+        {toasts.map((toast) => {
+          const meta = getPriorityMeta(toast.type, toast.priority);
+          return (
+            <div key={toast.toastId} className="nb-toast" onClick={() => removeToast(toast.toastId)}>
+              <div className={`nb-toast-icon ${meta.cls}`}>
+                {meta.icon}
+              </div>
+              <div className="nb-toast-content">
+                <p className="nb-toast-title">{toast.title}</p>
+                <p className="nb-toast-message">{toast.message}</p>
+                <span className="nb-toast-time"><Clock size={10} /> {formatTimeFull(toast.created_at)}</span>
+              </div>
+              <button className="nb-toast-close" onClick={(e) => { e.stopPropagation(); removeToast(toast.toastId); }}>
+                <X size={14} />
+              </button>
             </div>
-            <div className="nb-toast-content">
-              <p className="nb-toast-title">{toast.title}</p>
-              <p className="nb-toast-message">{toast.message}</p>
-              <span className="nb-toast-time"><Clock size={10} /> Just now</span>
-            </div>
-            <button className="nb-toast-close" onClick={(e) => { e.stopPropagation(); removeToast(toast.toastId); }}>
-              <X size={14} />
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* ─── Bell & Dropdown ─── */}
+      {/* ─── Bell & Glass Dropdown ─── */}
       <div className="nb-container" ref={dropdownRef}>
         <button
           className={`nb-bell-btn ${isOpen ? 'nb-active' : ''}`}
@@ -365,79 +558,72 @@ const NotificationBell = () => {
         </button>
 
         <div className={`nb-dropdown ${isOpen ? 'nb-open' : ''}`}>
-          <div className="nb-header">
-            <h3 className="nb-title">
-              Notifications
-              {unreadCount > 0 && <span className="nb-count-text">({unreadCount} new)</span>}
-            </h3>
-            {unreadCount > 0 && (
-              <button className="nb-action-btn" onClick={markAllAsRead}>
-                <CheckCheck size={14} /> Mark all read
-              </button>
-            )}
-          </div>
+          <div className="nb-panel">
+            {/* Simple Header */}
+            <div className="nb-header">
+              <h3 className="nb-title">Notifications</h3>
+            </div>
 
-          <div className="nb-list">
-            {loading && notifications.length === 0 ? (
-              <div className="nb-empty nb-loading">Loading notifications...</div>
-            ) : notifications.length === 0 ? (
-              <div className="nb-empty">
-                <Bell size={28} strokeWidth={1.5} />
-                <p>All caught up!</p>
-                <span>You have no new notifications</span>
-              </div>
-            ) : (
-              notifications.map((notif) => (
-                <div
-                  key={notif.id}
-                  className={`nb-item ${!notif.is_read ? 'nb-unread' : ''} ${expandedId === notif.id ? 'nb-expanded' : ''}`}
-                  onClick={() => handleItemClick(notif)}
-                >
-                  <div
-                    className="nb-item-icon"
-                    style={{ background: `${getTypeColor(notif.type)}15`, color: getTypeColor(notif.type) }}
-                  >
-                    {getTypeIcon(notif.type)}
-                  </div>
-
-                  <div className="nb-item-content">
-                    <div className="nb-item-top">
-                      <p className="nb-item-title">{notif.title}</p>
-                      <span className="nb-item-time"><Clock size={10} /> {formatTime(notif.created_at)}</span>
-                    </div>
-                    <p className="nb-item-message">{notif.message}</p>
-
-                    {/* Expandable Full Content */}
-                    {expandedId === notif.id && (
-                      <div className="nb-item-details">
-                        <div className="nb-detail-divider"></div>
-                        <p className="nb-detail-text">{notif.fullContent}</p>
-                        {notif.data && Object.keys(notif.data).length > 0 && (
-                          <div className="nb-detail-meta">
-                            <strong>Metadata:</strong>
-                            <pre>{JSON.stringify(notif.data, null, 2)}</pre>
+            {/* Notification List */}
+            <div className="nb-list">
+              {loading && notifications.length === 0 ? (
+                <div className="nb-empty">
+                  <Bell size={28} strokeWidth={1.5} />
+                  <p className="nb-empty-title">Loading notifications...</p>
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="nb-empty">
+                  <Bell size={28} strokeWidth={1.5} />
+                  <p className="nb-empty-title">All caught up!</p>
+                  <span>No notifications to show</span>
+                </div>
+              ) : (
+                notifications.map((notif) => {
+                  const meta = getPriorityMeta(notif.type, notif.priority);
+                  const shortTime = formatTime(notif.created_at);
+                  const fullTime = formatTimeFull(notif.created_at);
+                  return (
+                    <div
+                      key={notif.id}
+                      className={`nb-item ${!notif.is_read ? 'nb-unread' : ''}`}
+                      onClick={() => { if (!notif.is_read) markAsRead(notif.id); }}
+                    >
+                      <div className={`nb-item-icon ${meta.cls}`}>
+                        {meta.icon}
+                      </div>
+                      <div className="nb-item-content">
+                        <p className="nb-item-title">{notif.title}</p>
+                        <p className="nb-item-message">{notif.message}</p>
+                        <div className="nb-item-meta">
+                          <span>{fullTime}</span>
+                          <span className="nb-dot" />
+                          <span>{notif.type || 'Notification'}</span>
+                        </div>
+                        {notif.fullContent && (
+                          <div className="nb-item-full">
+                            {notif.fullContent}
                           </div>
                         )}
                       </div>
-                    )}
-
-                    {expandedId !== notif.id && (
-                      <div className="nb-expand-hint">
-                        Click to read more <ChevronDown size={12} />
+                      <div className="nb-item-right">
+                        <span className="nb-item-time">{shortTime}</span>
                       </div>
-                    )}
-                  </div>
 
-                  <button
-                    className="nb-item-delete"
-                    onClick={(e) => { e.stopPropagation(); deleteNotification(notif.id); }}
-                    title="Delete"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))
-            )}
+                      {/* Hover actions */}
+                      <div className="nb-actions">
+                        <button
+                          className="nb-action-btn"
+                          title="Dismiss"
+                          onClick={(e) => { e.stopPropagation(); deleteNotification(notif.id); }}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
       </div>

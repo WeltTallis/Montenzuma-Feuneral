@@ -78,6 +78,14 @@ export const SocketProvider = ({ children }) => {
             const userId = user?.user_id || user?.userId || user?.id || null;
             const userRole = user?.role || null;
 
+            console.log('[Socket] Connection details:', { 
+                socketId: socketInstance.id, 
+                tenantSlug, 
+                userId, 
+                userRole,
+                hasUser: !!userStr 
+            });
+
             // Primary join event (kebab-case for central socketio-service)
             if (tenantSlug && userId) {
                 try {
@@ -86,11 +94,20 @@ export const SocketProvider = ({ children }) => {
                         userId, 
                         userRole,
                         timestamp: new Date().toISOString()
+                    }, (response) => {
+                        // Callback to confirm join
+                        console.log('[Socket] Join tenant response:', response);
                     });
-                    console.log('[Socket] Join tenant:', { tenantSlug, userId, userRole });
+                    console.log('[Socket] Emitted join-tenant:', { tenantSlug, userId, userRole });
                 } catch (e) { 
                     console.warn('[Socket] Failed to emit join-tenant:', e); 
                 }
+            } else {
+                console.warn('[Socket] Cannot join tenant room - missing tenantSlug or userId:', { 
+                    tenantSlug, 
+                    userId,
+                    hasUser: !!userStr 
+                });
             }
 
             // Join branch rooms for scoped notifications
@@ -98,8 +115,14 @@ export const SocketProvider = ({ children }) => {
             if (branchId) {
                 try {
                     socketInstance.emit('join-branch', { tenantSlug, branchId });
-                } catch (e) { /* ignore */ }
+                    console.log('[Socket] Joined branch:', { branchId });
+                } catch (e) { 
+                    console.warn('[Socket] Failed to join branch:', e); 
+                }
             }
+
+            // Fetch notifications after connecting
+            console.log('[Socket] Connection established, notifications should now work');
         });
 
         socketInstance.on('disconnect', (reason) => {
@@ -119,6 +142,26 @@ export const SocketProvider = ({ children }) => {
             console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
             setConnected(true);
             setReconnecting(false);
+
+            // Re-join tenant room after reconnection
+            const userStr = localStorage.getItem('user');
+            const user = userStr ? JSON.parse(userStr) : {};
+            const userId = user?.user_id || user?.userId || user?.id || null;
+            const userRole = user?.role || null;
+
+            if (tenantSlug && userId) {
+                try {
+                    socketInstance.emit('join-tenant', { 
+                        tenantSlug, 
+                        userId, 
+                        userRole,
+                        timestamp: new Date().toISOString()
+                    });
+                    console.log('[Socket] Re-joined tenant after reconnect:', { tenantSlug, userId });
+                } catch (e) { 
+                    console.warn('[Socket] Failed to re-join tenant:', e); 
+                }
+            }
         });
 
         socketInstance.on('reconnect_attempt', (attemptNumber) => {

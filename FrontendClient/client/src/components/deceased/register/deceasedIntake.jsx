@@ -17,15 +17,15 @@ const COLORS = {
     dark: '#1a1a1a',
     mid: '#444444',
     gray: '#777777',
-    lightGray: '#aaaaaa',
+    lightGray: '#ffffff',
     border: '#c8c8c8',
     borderLight: '#e0e0e0',
-    bgField: '#f7f7f5',
-    bgAccent: '#f0eeea',
-    bgSection: '#fafaf9',
+    bgField: 'hsl(0, 0%, 100%)',
+    bgAccent: 'rgb(255, 255, 255)',
+    bgSection: 'rgb(255, 255, 255)',
     red: '#c0392b',
     white: '#FFFFFF',
-    bg: '#f5f7fa',
+    bg: '#ffffff', // Changed from grey to white
     surface: '#ffffff',
     text: '#111827',
     textSecondary: '#6b7280',
@@ -58,7 +58,7 @@ const media = {
 
 const Container = styled.div`
   min-height: 100vh;
-  background: #d5d3cf;
+  background: #ffffff; /* Removed grey, now pure white */
   font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: ${COLORS.dark};
   font-size: 10.5px;
@@ -69,7 +69,7 @@ const Container = styled.div`
   `}
   ${media.mobile`
     font-size: 13px;
-    background: #ececea;
+    background: #ffffff; /* Removed grey here as well */
   `}
 `;
 
@@ -1267,13 +1267,13 @@ const DeceasedRegistrationForm = () => {
                 {/* Top Bar */}
                 <TopBar>
                     <TopBarLeft>
-                        <SaasBrand>Welcome &amp; We are deeply sorry for your loss.</SaasBrand>
+                        <SaasBrand >Welcome &amp; We are deeply sorry for your loss.</SaasBrand>
                         <Title>Admission Information</Title>
                         <Subtitle>Please provide the information needed to begin the admission process.</Subtitle>
                     </TopBarLeft>
                     <TopBarRight>
                         <AdmissionIdBlock>
-                            <AdmissionIdLabel>Admission ID</AdmissionIdLabel>
+                            <AdmissionIdLabel>FILE ID / ADM </AdmissionIdLabel>
                             <AdmissionIdValue>
                                 {loadingAdmission ? (
                                     <span style={{ fontSize: '0.75rem', color: COLORS.gray }}>Generating...</span>
@@ -1341,7 +1341,7 @@ const DeceasedRegistrationForm = () => {
                                     />
                                 </Col>
                                 <Col>
-                                    <Label>Received From (Facility / Person)</Label>
+                                    <Label>Received From (Facility Name / Person)</Label>
                                     <Input
                                         type="text"
                                         name="received_from"
@@ -1351,7 +1351,7 @@ const DeceasedRegistrationForm = () => {
                                     />
                                 </Col>
                                 <Col>
-                                    <Label>Receiving Officer</Label>
+                                    <Label>Admitting Officer</Label>
                                     <Input
                                         type="text"
                                         name="receiving_officer"
@@ -1368,7 +1368,7 @@ const DeceasedRegistrationForm = () => {
                     <Section>
                         <SectionHead>
                             <SectionNum>02</SectionNum>
-                            <SectionTitle>Deceased Personal Information</SectionTitle>
+                            <SectionTitle>   About Your Loved One / Personal Information</SectionTitle>
                         </SectionHead>
                         <SectionBody>
                             <Row>

@@ -8,6 +8,7 @@ import { processSignature } from "../utils/uploadSignature";
 import * as z from "zod";
 import sharp from "sharp";
 import redisService from "../../../packages/shared-services/dist/redisService";
+import { NextOfKinModel } from "../models/NextOfKin";
 
 const SERVICE_NAME = 'deceased-service';
 
@@ -231,14 +232,20 @@ export const registerNewDeceased = async (
                     id_number: data.national_id || null,
                     id_type: data.id_type || null,
                     address: null,
+                    signature: signaturePath,
                     is_primary: true,
                     created_by: data.verified_by || null
                 };
 
-                const { NextOfKinModel } = await import('../models/NextOfKin.js');
                 await NextOfKinModel.create(req, nextOfKinData);
                 nextOfKinRegistered = true;
                 Logger.info({ message: `Next of kin auto-registered for ${deceased_id}` });
+
+                // Invalidate next of kin cache
+                if (tenantSlug && tenantId) {
+                    await redisService.serviceDel('deceased-service', tenantSlug, `nextofkin:deceased:${deceased_id}`);
+                    await redisService.serviceDel('deceased-service', tenantSlug, `nextofkin:list:${tenantId}`);
+                }
             } catch (nextOfKinError) {
                 Logger.warn({
                     message: `Failed to auto-register next of kin for ${deceased_id}`,
@@ -252,8 +259,15 @@ export const registerNewDeceased = async (
         // ==============================
         try {
             const axios = require('axios');
-            const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
-            await axios.post(`${socketioServiceUrl}/emit/deceased-admitted`, {
+            // Try multiple socketio service URLs (Docker DNS, localhost fallback)
+            const configuredUrl = process.env.SOCKETIO_SERVICE_URL || '';
+            const candidateUrls = [
+                configuredUrl,
+                'http://localhost:5018',
+                'http://127.0.0.1:5018',
+            ].filter(Boolean);
+
+            const emitPayload = {
                 tenantSlug,
                 data: {
                     id: `deceased-${deceased_id}-${Date.now()}`,
@@ -267,8 +281,23 @@ export const registerNewDeceased = async (
                     priority: 'medium',
                     fullContent: `Name: ${data.full_name}\nAdmission Number: ${admission_number}\nGender: ${data.gender}\nDate: ${now}`,
                 }
-            }, { timeout: 5000 });
-            Logger.info({ message: `Emitted deceased-admitted for ${deceased_id}` });
+            };
+
+            let emitted = false;
+            for (const socketioServiceUrl of candidateUrls) {
+                try {
+                    await axios.post(`${socketioServiceUrl}/emit/deceased-admitted`, emitPayload, { timeout: 3000 });
+                    emitted = true;
+                    Logger.info({ message: `Emitted deceased-admitted for ${deceased_id} via ${socketioServiceUrl}` });
+                    break;
+                } catch (urlError: any) {
+                    Logger.warn({ message: `SocketIO URL failed: ${socketioServiceUrl}`, error: urlError.message });
+                }
+            }
+
+            if (!emitted) {
+                Logger.warn({ message: `All socketio URLs failed for ${deceased_id}` });
+            }
         } catch (emitError: any) {
             Logger.warn({
                 message: `Failed to emit deceased-admitted notification`,

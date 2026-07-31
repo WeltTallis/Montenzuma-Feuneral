@@ -10,3 +10,5 @@ const THEME = {
     red: '#dc3545',
   }
 };
+
+export default THEME;

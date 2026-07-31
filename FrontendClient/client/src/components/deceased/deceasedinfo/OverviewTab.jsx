@@ -86,6 +86,7 @@ const StatusTag = styled.span`
 
 const OverviewTab = ({ deceased, nextOfKin }) => {
   const d = deceased || {};
+  const nok = nextOfKin || {};
   const name = d.full_name || d.name || 'Unknown';
   const sex = d.sex || d.gender || '';
 
@@ -99,7 +100,8 @@ const OverviewTab = ({ deceased, nextOfKin }) => {
     return `${env.API_GATEWAY_URL}/${signaturePath}`;
   };
 
-  const signatureUrl = getSignatureUrl(d.signature);
+  // Try to get signature from deceased record first, then from next of kin
+  const signatureUrl = getSignatureUrl(d.signature || nok.signature);
 
   return (
     <>

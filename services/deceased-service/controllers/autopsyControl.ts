@@ -224,6 +224,29 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
             // Emit socket event for real-time update
             emitPostmortemUpdate(tenantSlug, deceased_id, { status: 'completed', pathologist_name, cause_of_death, manner_of_death, completed_at: now });
 
+            // Emit notification for postmortem completion with results
+            try {
+                const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+                const axios = require('axios');
+                await axios.post(`${socketioServiceUrl}/emit/postmortem-results-ready`, {
+                    tenantSlug,
+                    data: {
+                        id: `postmortem-results-${deceased_id}-${Date.now()}`,
+                        deceasedId: deceased_id,
+                        pathologistName: pathologist_name || 'N/A',
+                        causeOfDeath: cause_of_death || 'Pending',
+                        mannerOfDeath: manner_of_death || 'Undetermined',
+                        title: 'Postmortem Results Available',
+                        message: `Postmortem results for ${deceased_id} are now available`,
+                        type: 'postmortem_results',
+                        priority: 'high',
+                        fullContent: `Deceased ID: ${deceased_id}\nPathologist: ${pathologist_name || 'N/A'}\nCause of Death: ${cause_of_death || 'Pending'}\nManner of Death: ${manner_of_death || 'Undetermined'}\nCompleted: ${now}`
+                    }
+                }, { timeout: 5000 });
+            } catch (emitError) {
+                console.warn('[POSTMORTEM] Failed to emit postmortem-results-ready notification:', emitError.message);
+            }
+
             return res.status(200).json({
                 success: true,
                 message: 'Postmortem data saved successfully',
@@ -271,6 +294,29 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
             
             // Emit socket event for real-time update
             emitPostmortemUpdate(tenantSlug, deceased_id, { status: 'completed', pathologist_name, cause_of_death, manner_of_death, completed_at: now });
+
+            // Emit notification for postmortem completion with results
+            try {
+                const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+                const axios = require('axios');
+                await axios.post(`${socketioServiceUrl}/emit/postmortem-results-ready`, {
+                    tenantSlug,
+                    data: {
+                        id: `postmortem-results-${deceased_id}-${Date.now()}`,
+                        deceasedId: deceased_id,
+                        pathologistName: pathologist_name || 'N/A',
+                        causeOfDeath: cause_of_death || 'Pending',
+                        mannerOfDeath: manner_of_death || 'Undetermined',
+                        title: 'Postmortem Results Available',
+                        message: `Postmortem results for ${deceased_id} are now available`,
+                        type: 'postmortem_results',
+                        priority: 'high',
+                        fullContent: `Deceased ID: ${deceased_id}\nPathologist: ${pathologist_name || 'N/A'}\nCause of Death: ${cause_of_death || 'Pending'}\nManner of Death: ${manner_of_death || 'Undetermined'}\nCompleted: ${now}`
+                    }
+                }, { timeout: 5000 });
+            } catch (emitError) {
+                console.warn('[POSTMORTEM] Failed to emit postmortem-results-ready notification:', emitError.message);
+            }
 
             return res.status(201).json({
                 success: true,

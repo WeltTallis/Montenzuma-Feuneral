@@ -6,10 +6,16 @@ global:
     datacenter: restpoint
 
 scrape_configs:
+  # ============================================
+  # PROMETHEUS SELF-MONITORING
+  # ============================================
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
+  # ============================================
+  # INFRASTRUCTURE METRICS
+  # ============================================
   - job_name: 'node-exporter'
     static_configs:
       - targets: ['84.247.183.53:9100']
@@ -18,34 +24,171 @@ scrape_configs:
     static_configs:
       - targets: ['84.247.183.53:8082']
 
-  - job_name: 'mysql-exporter'
-    static_configs:
-      - targets: ['84.247.183.53:9104']
-
-  - job_name: 'redis-exporter'
-    static_configs:
-      - targets: ['84.247.183.53:9121']
-
-  - job_name: 'rabbitmq-exporter'
-    static_configs:
-      - targets: ['84.247.183.53:9419']
-
   - job_name: 'process-exporter'
     static_configs:
       - targets: ['84.247.183.53:9256']
 
+  # ============================================
+  # DATABASE METRICS
+  # ============================================
+  - job_name: 'mysql-exporter'
+    static_configs:
+      - targets: ['84.247.183.53:9104']
+
+  # ============================================
+  # CACHE METRICS
+  # ============================================
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['84.247.183.53:9121']
+
+  # ============================================
+  # MESSAGE QUEUE METRICS
+  # ============================================
+  - job_name: 'rabbitmq-exporter'
+    static_configs:
+      - targets: ['84.247.183.53:9419']
+
+  # ============================================
+  # API GATEWAY - Request Metrics
+  # ============================================
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['84.247.183.53:5000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # ============================================
+  # ALL MICROSERVICES - Health & Metrics
+  # ============================================
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['84.247.183.53:5001']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'tenant-service'
+    static_configs:
+      - targets: ['84.247.183.53:5002']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'deceased-service'
+    static_configs:
+      - targets: ['84.247.183.53:5003']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'hearse-service'
+    static_configs:
+      - targets: ['84.247.183.53:5023']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'coffin-service'
+    static_configs:
+      - targets: ['84.247.183.53:5008']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'florist-service'
+    static_configs:
+      - targets: ['84.247.183.53:7070']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'workshop-service'
+    static_configs:
+      - targets: ['84.247.183.53:6060']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'bodycheckout-service'
+    static_configs:
+      - targets: ['84.247.183.53:5013']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'billing-service'
+    static_configs:
+      - targets: ['84.247.183.53:5017']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'analytics-service'
+    static_configs:
+      - targets: ['84.247.183.53:5012']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'socketio-service'
+    static_configs:
+      - targets: ['84.247.183.53:5018']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'documents-service'
+    static_configs:
+      - targets: ['84.247.183.53:8112']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'support-service'
+    static_configs:
+      - targets: ['84.247.183.53:8111']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'chemicals-service'
+    static_configs:
+      - targets: ['84.247.183.53:5019']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'leave-service'
+    static_configs:
+      - targets: ['84.247.183.53:5016']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'scanner-service'
+    static_configs:
+      - targets: ['84.247.183.53:5022']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # ============================================
+  # WORKER SERVICES - Background Jobs
+  # ============================================
+  - job_name: 'excel-export-worker'
+    static_configs:
+      - targets: ['84.247.183.53:5003']
+    metrics_path: '/metrics/workers'
+    scrape_interval: 15s
+
+  # ============================================
+  # BLACKBOX - External Service Monitoring
+  # ============================================
   - job_name: 'blackbox-http'
     metrics_path: /probe
     params:
       module: [http_2xx]
     static_configs:
       - targets:
-        - http://84.247.183.53:5000/health
-        - http://84.247.183.53:5001/health
-        - http://84.247.183.53:5002/health
-        - http://84.247.183.53:5003/health
-        - http://84.247.183.53:3003
-        - https://restpoint.co.ke
+          - http://84.247.183.53:5000/health
+          - http://84.247.183.53:5001/health
+          - http://84.247.183.53:5002/health
+          - http://84.247.183.53:5003/health
+          - http://84.247.183.53:5018/health
+          - http://84.247.183.53:5013/health
+          - http://84.247.183.53:5023/health
+          - http://84.247.183.53:5008/health
+          - http://84.247.183.53:7070/health
+          - http://84.247.183.53:6060/health
+          - http://84.247.183.53:5017/health
+          - http://84.247.183.53:5012/health
+          - http://84.247.183.53:3003
+          - https://restpoint.co.ke
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

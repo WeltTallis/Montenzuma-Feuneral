@@ -5,15 +5,29 @@ import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs/promises';
 import crypto from 'crypto';
+import axios from 'axios';
 import { safeQuery, getConnection, releaseConnection } from '@montezuma/shared-config';
 import logger from '@montezuma/shared-logger';
 import { getKenyaTimeISO } from '@montezuma/shared-utils';
 
+const SOCKETIO_SERVICE_URL = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+
+const emitNotification = async (event: string, data: any, tenantSlug: string) => {
+  try {
+    await axios.post(`${SOCKETIO_SERVICE_URL}/emit/${event}`, {
+      tenantSlug,
+      data
+    }, { timeout: 3000 });
+  } catch (error) {
+    logger.warn(`[COFFIN] Failed to emit ${event}: ${(error as any).message}`);
+  }
+};
+
 // Extend Request with tenant and user
 interface TenantRequest extends Request {
   tenantSlug?: string;
-  tenant?: { id: string; slug: string; name: string };
-  user?: { userId: string; email: string; role: string; name: string };
+  tenant?: any;
+  user?: any;
   files?: Express.Multer.File[];
 }
 
@@ -274,6 +288,22 @@ export const createCoffin = async (req: TenantRequest, res: Response): Promise<R
     // Clear cache
     clearCache('allCoffins');
 
+    // Emit notification
+    await emitNotification('coffin-created', {
+      id: `coffin-${coffinDbId}-${Date.now()}`,
+      coffinId: finalCoffinId,
+      type,
+      material,
+      quantity: quantity || 1,
+      price: priceKES,
+      currency,
+      title: 'New Coffin Added',
+      message: `New ${type} coffin (${material}) added to inventory - Qty: ${quantity || 1}`,
+      type: 'coffin-created',
+      priority: 'medium',
+      fullContent: `Coffin ID: ${finalCoffinId}\nType: ${type}\nMaterial: ${material}\nQuantity: ${quantity || 1}\nPrice: ${currency} ${priceKES.toFixed(2)}`
+    }, tenantSlug);
+
     return res.status(201).json({
       success: true,
       message: '✅ Coffin created successfully',
@@ -495,6 +525,17 @@ export const updateCoffin = async (req: TenantRequest, res: Response): Promise<R
     clearCache('allCoffins');
     clearCache(`coffin_${tenantSlug}`);
 
+    // Emit notification
+    await emitNotification('coffin-updated', {
+      id: `coffin-update-${id}-${Date.now()}`,
+      coffinId: id,
+      title: 'Coffin Updated',
+      message: `Coffin ${id} inventory details updated`,
+      type: 'coffin-updated',
+      priority: 'low',
+      fullContent: `Coffin ID: ${id}\nUpdated fields: ${updateFields.join(', ')}`
+    }, tenantSlug);
+
     return res.status(200).json({ success: true, message: '✅ Coffin updated successfully' });
 
   } catch (error: any) {
@@ -548,6 +589,17 @@ export const deleteCoffin = async (req: TenantRequest, res: Response): Promise<R
     // Clear caches
     clearCache('allCoffins');
     clearCache(`coffin_${tenantSlug}`);
+
+    // Emit notification
+    await emitNotification('coffin-deleted', {
+      id: `coffin-delete-${id}-${Date.now()}`,
+      coffinId: id,
+      title: 'Coffin Removed',
+      message: `Coffin ${id} has been removed from inventory`,
+      type: 'coffin-deleted',
+      priority: 'medium',
+      fullContent: `Coffin ID: ${id} has been soft-deleted from inventory`
+    }, tenantSlug);
 
     return res.status(200).json({ success: true, message: '✅ Coffin deleted successfully' });
 
@@ -606,7 +658,7 @@ export const assignCoffin = async (req: TenantRequest, res: Response): Promise<R
     const assignedBy = assigned_by || req.user?.name || 'system';
 
     // Insert assignment
-    await connection.query(
+    const [insertResult] = await connection.query(
       `INSERT INTO deceased_coffin (deceased_id, coffin_id, tenant_id, assigned_by_username, assigned_date, rfid, created_at)
        VALUES (?, ?, ?, ?, ?, ?, NOW())`,
       [deceased_id, coffins[0].coffin_id, tenantSlug, assignedBy, finalAssignedDate, rfid]
@@ -624,10 +676,28 @@ export const assignCoffin = async (req: TenantRequest, res: Response): Promise<R
     clearCache('allCoffins');
     clearCache('recentAssignments');
 
+    // Emit notification
+    await emitNotification('coffin-assigned', {
+      id: `coffin-assign-${deceased_id}-${Date.now()}`,
+      deceasedId: deceased_id,
+      deceasedName: deceased_name,
+      coffinId: coffins[0].coffin_id,
+      coffinType: coffins[0].type,
+      material: coffins[0].material,
+      rfid,
+      assignedDate: finalAssignedDate,
+      assignedBy: assignedBy,
+      title: 'Coffin Assigned',
+      message: `Coffin assigned to ${deceased_name} - ${coffins[0].type} (${coffins[0].material})`,
+      type: 'coffin-assigned',
+      priority: 'high',
+      fullContent: `Deceased: ${deceased_name}\nCoffin: ${coffins[0].type} (${coffins[0].material})\nRFID: ${rfid}\nAssigned By: ${assignedBy}\nDate: ${finalAssignedDate}`
+    }, tenantSlug);
+
     return res.status(201).json({
       success: true,
       message: '✅ Coffin assigned successfully',
-      assignment_id: (result as any).insertId,
+      assignment_id: (insertResult as any).insertId,
       rfid,
       coffin_details: { type: coffins[0].type, material: coffins[0].material }
     });

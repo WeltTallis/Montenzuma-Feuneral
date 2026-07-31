@@ -441,7 +441,6 @@ const ModernSidebar = ({
         { icon: Truck, label: 'Hearse', path: `/tenant/${tenantSlug}/hearse` },
         { icon: Users, label: 'Deceased', path: `/tenant/${tenantSlug}/deceased` },
         { icon: Package, label: 'Coffins', path: `/tenant/${tenantSlug}/coffins` },
-        { icon: Beaker, label: 'Chemicals', path: `/tenant/${tenantSlug}/chemicals` },
         { icon: Hammer, label: 'Workshop', path: `/tenant/${tenantSlug}/workshop` },
         { icon: ShoppingCart, label: 'Flower Bookings', path: `/tenant/${tenantSlug}/flowers` },
         { icon: ShoppingCart, label: 'Catalogue', path: `/tenant/${tenantSlug}/catalogue` },

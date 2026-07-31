@@ -1,7 +1,21 @@
 import { Request, Response } from "express"
+import axios from 'axios';
 import { safeTenantQuery, safeTenantExecute } from '../database/db'
 // @ts-ignore - socket module types not fully declared
 import { getIO } from '../socket'
+
+const SOCKETIO_SERVICE_URL = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+
+const emitNotification = async (event: string, data: any, tenantSlug: string) => {
+  try {
+    await axios.post(`${SOCKETIO_SERVICE_URL}/emit/${event}`, {
+      tenantSlug,
+      data
+    }, { timeout: 3000 });
+  } catch (error) {
+    console.warn(`[WORKSHOP] Failed to emit ${event}: ${(error as any).message}`);
+  }
+};
 
 const getAssignments = async (req: Request, res: Response) => {
     try {
@@ -65,6 +79,20 @@ const updateStage = async (req: Request, res: Response) => {
         const io = getIO();
         io.emit('production:stage:updated', rows[0]);
 
+        // Emit notification
+        await emitNotification('production-stage-updated', {
+          id: `stage-${req.params.stageId}-${Date.now()}`,
+          stageId: req.params.stageId,
+          orderId: req.params.orderId,
+          stage: rows[0].stage,
+          status: rows[0].status,
+          title: 'Production Stage Updated',
+          message: `Stage "${rows[0].stage}" status updated to "${rows[0].status}"`,
+          type: 'production-update',
+          priority: 'medium',
+          fullContent: `Order ID: ${req.params.orderId}\nStage: ${rows[0].stage}\nStatus: ${rows[0].status}\nNotes: ${rows[0].notes || 'None'}`
+        }, (req as any).tenantSlug || 'system');
+
         res.json(rows[0]);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
@@ -93,6 +121,21 @@ const assignWorker = async (req: Request, res: Response) => {
 
         const io = getIO();
         io.emit('worker:assigned', rows[0]);
+
+        // Emit notification
+        await emitNotification('worker-assigned', {
+          id: `worker-assign-${insertResult.insertId}-${Date.now()}`,
+          assignmentId: insertResult.insertId,
+          orderId: orderId,
+          userId: user_id,
+          stage: stage,
+          workerName: rows[0].full_name,
+          title: 'Worker Assigned to Production',
+          message: `${rows[0].full_name} assigned to ${stage} stage`,
+          type: 'worker-assignment',
+          priority: 'medium',
+          fullContent: `Worker: ${rows[0].full_name}\nOrder ID: ${orderId}\nStage: ${stage}\nNotes: ${notes || 'None'}`
+        }, (req as any).tenantSlug || 'system');
 
         res.status(201).json(rows[0]);
     } catch (error: any) {
@@ -133,6 +176,19 @@ const updateAssignment = async (req: Request, res: Response) => {
 
         const io = getIO();
         io.emit('worker:assignment:updated', rows[0]);
+
+        // Emit notification
+        await emitNotification('worker-assignment-updated', {
+          id: `worker-update-${req.params.id}-${Date.now()}`,
+          assignmentId: req.params.id,
+          orderId: req.params.orderId,
+          updates: updates.join(', '),
+          title: 'Worker Assignment Updated',
+          message: `Assignment #${req.params.id} has been updated`,
+          type: 'worker-update',
+          priority: 'low',
+          fullContent: `Assignment ID: ${req.params.id}\nUpdated fields: ${updates.join(', ')}`
+        }, (req as any).tenantSlug || 'system');
 
         res.json(rows[0]);
     } catch (error: any) {
