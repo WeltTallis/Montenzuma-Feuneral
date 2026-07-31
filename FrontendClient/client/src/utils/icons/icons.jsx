@@ -774,6 +774,26 @@ export const UserCog = (p) => (
   <Icon {...p}><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /><circle cx="18" cy="18" r="3" /><path d="M18 16v.01" /></Icon>
 );
 
+export const Fingerprint = (p) => (
+  <Icon {...p}><path d="M12 11a2 2 0 0 1 2 2" /><path d="M10 17a2 2 0 0 0 2-2" /><path d="M8.5 17a2.5 2.5 0 0 1 2.5-2.5" /><path d="M14 17a2 2 0 0 0-2-2" /><path d="M6.5 17a3.5 3.5 0 0 1 3.5-3.5" /><path d="M12 5a3 3 0 0 0-3 3" /><path d="M12 5a3 3 0 0 1 3 3" /><path d="M5 17a4 4 0 0 1 4-4" /><path d="M19 17a4 4 0 0 0-4-4" /><path d="M3 17a5 5 0 0 1 5-5" /><path d="M21 17a5 5 0 0 0-5-5" /></Icon>
+);
+
+export const Cross = (p) => (
+  <Icon {...p}><path d="M12 2v20M2 12h20" strokeWidth="3" /></Icon>
+);
+
+export const ListChecks = (p) => (
+  <Icon {...p}><path d="M3 5l2 2 4-4" /><path d="M3 13l2 2 4-4" /><path d="M3 21l2 2 4-4" /><line x1="12" y1="5" x2="21" y2="5" /><line x1="12" y1="13" x2="21" y2="13" /><line x1="12" y1="21" x2="21" y2="21" /></Icon>
+);
+
+export const Headphones = (p) => (
+  <Icon {...p}><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5a9 9 0 0 1 18 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" /></Icon>
+);
+
+export const Calculator = (p) => (
+  <Icon {...p}><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" y1="6" x2="16" y2="6" /><line x1="8" y1="10" x2="8" y2="10" /><line x1="12" y1="10" x2="12" y2="10" /><line x1="16" y1="10" x2="16" y2="10" /><line x1="8" y1="14" x2="8" y2="14" /><line x1="12" y1="14" x2="12" y2="14" /><line x1="16" y1="14" x2="16" y2="14" /><line x1="8" y1="18" x2="8" y2="18" /><line x1="12" y1="18" x2="12" y2="18" /><line x1="16" y1="18" x2="16" y2="18" /></Icon>
+);
+
 // ─── Aggregate Object (convenience) ──────────────────────────────────────────
 export const Icons = {
   // Navigation & Layout
