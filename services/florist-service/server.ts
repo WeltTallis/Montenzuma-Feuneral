@@ -5,13 +5,22 @@
 
 import dotenv from 'dotenv';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Fix __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from the correct location (project root)
+const envPath = path.resolve(__dirname, '../../.env');
+console.log(`[FLORIST] Loading .env from: ${envPath}`);
+dotenv.config({ path: envPath });
+
 import express from 'express';
 import cors from 'cors';
 import knex from 'knex';
-import { flowerBookingRouter } from './routes/flowerBookingRoutes';
-import flowerSampleRoutes from './routes/flowerSampleRoutes';
+import { flowerBookingRouter } from './routes/flowerBookingRoutes.ts';
+import flowerSampleRoutes from './routes/flowerSampleRoutes.ts';
 
 const app = express();
 
@@ -58,9 +67,13 @@ const initDatabase = async () => {
 const runMigrations = async () => {
     if (!floristKnex) return;
     try {
-        // Run Knex migrations
-        const knexConfig = require('./knexfile.js');
-        const migrationKnex = knex(knexConfig.development);
+        // Get the directory path for knexfile
+        const knexfilePath = path.resolve(__dirname, './knexfile.js');
+        console.log(`[FLORIST] Loading knexfile from: ${knexfilePath}`);
+        
+        // Dynamic import for knexfile
+        const knexConfig = await import(knexfilePath);
+        const migrationKnex = knex(knexConfig.default?.development || knexConfig.development);
         
         // Check if migrations table exists
         const hasMigrationsTable = await migrationKnex.schema.hasTable('knex_migrations');
@@ -115,8 +128,12 @@ app.use(async (req: any, res: any, next: any) => {
     }
 
     try {
-        // @ts-ignore
-        const { resolveDatabase, safeTenantQuery } = await import('../../shared/dbConfig.js');
+        // @ts-ignore - Dynamic import for shared dbConfig
+        const dbConfigPath = path.resolve(__dirname, '../../shared/dbConfig.js');
+        console.log(`[FLORIST] Loading dbConfig from: ${dbConfigPath}`);
+        
+        const dbConfig = await import(dbConfigPath);
+        const { resolveDatabase, safeTenantQuery } = dbConfig;
 
         let dbName = await resolveDatabase(tenantSlug);
 
@@ -179,8 +196,28 @@ app.use('/florist', flowerBookingRouter);
 app.use('/florist/flower-samples', flowerSampleRoutes);
 
 // Health check
-app.get('/api/health', (_req: any, res: any) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', (_req: any, res: any) => {
+    res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        service: 'florist-service',
+        version: '1.0.0',
+        __dirname: __dirname // For debugging
+    });
+});
+
+// Test endpoint to verify configuration
+app.get('/florist/test-config', (_req: any, res: any) => {
+    res.json({
+        success: true,
+        message: 'Florist service is running',
+        config: {
+            __dirname: __dirname,
+            envFile: path.resolve(__dirname, '../../.env'),
+            storagePath: process.env.STORAGE_PATH || '/opt/storage/uploads',
+            dbName: process.env.DB_NAME || 'restpoint_main'
+        }
+    });
 });
 
 // ============================================
@@ -213,8 +250,9 @@ async function ensureFloristTables(dbName: string) {
             // Ensure flower_samples table exists
             if (!hasFlowerSamples) {
                 try {
-                    const { up: upSamples } = await import('./migrations/20240625000001_add_flower_samples.js');
-                    await upSamples(tenantKnex);
+                    const migrationsPath = path.resolve(__dirname, './migrations/20240625000001_add_flower_samples.js');
+                    const migration = await import(migrationsPath);
+                    await migration.up(tenantKnex);
                     console.log(`[FLORIST] ✅ flower_samples table created in: ${dbName}`);
                 } catch (e) {
                     console.log(`[FLORIST] Creating flower_samples table directly...`);
@@ -239,9 +277,14 @@ async function ensureFloristTables(dbName: string) {
             
             // Run the main migration for other tables
             if (!hasFlowerBookings || !hasFlowerCustomers || !hasFlowerPackages || !hasDeliveryZones) {
-                const { up } = await import('./migrations/20240622000001_create_flower_bookings_tables.js');
-                await up(tenantKnex);
-                console.log(`[FLORIST] ✅ Florist tables created in: ${dbName}`);
+                try {
+                    const migrationsPath = path.resolve(__dirname, './migrations/20240622000001_create_flower_bookings_tables.js');
+                    const migration = await import(migrationsPath);
+                    await migration.up(tenantKnex);
+                    console.log(`[FLORIST] ✅ Florist tables created in: ${dbName}`);
+                } catch (e) {
+                    console.error(`[FLORIST] Failed to run main migration:`, e);
+                }
             }
         } else {
             console.log(`[FLORIST] ✓ Florist tables already exist in: ${dbName}`);
@@ -259,6 +302,10 @@ async function ensureFloristTables(dbName: string) {
 // START SERVER
 // ============================================
 async function startServer() {
+    console.log(`[FLORIST] Starting Florist Service...`);
+    console.log(`[FLORIST] Working directory: ${__dirname}`);
+    console.log(`[FLORIST] Project root: ${path.resolve(__dirname, '../..')}`);
+    
     const mainDb = process.env.DB_NAME || 'restpoint_main';
     console.log(`[FLORIST] Running auto-migration for florist tables in: ${mainDb}`);
     await ensureFloristTables(mainDb);
@@ -277,20 +324,26 @@ async function startServer() {
             pool: { min: 1, max: 5 },
         });
 
-        const tenants = await tempKnex('tenants')
-            .where({ status: 'active' })
-            .select('db_name', 'name');
+        // Check if tenants table exists
+        const hasTenants = await tempKnex.schema.hasTable('tenants');
+        if (hasTenants) {
+            const tenants = await tempKnex('tenants')
+                .where({ status: 'active' })
+                .select('db_name', 'name');
 
-        console.log(`[FLORIST] Found ${tenants.length} active tenant(s)`);
+            console.log(`[FLORIST] Found ${tenants.length} active tenant(s)`);
 
-        for (const tenant of tenants) {
-            console.log(`[FLORIST] Migrating tenant: ${tenant.name} (${tenant.db_name})`);
-            const success = await ensureFloristTables(tenant.db_name);
-            if (success) {
-                console.log(`[FLORIST] ✅ Successfully migrated: ${tenant.name}`);
-            } else {
-                console.error(`[FLORIST] ❌ Failed to migrate: ${tenant.name}`);
+            for (const tenant of tenants) {
+                console.log(`[FLORIST] Migrating tenant: ${tenant.name} (${tenant.db_name})`);
+                const success = await ensureFloristTables(tenant.db_name);
+                if (success) {
+                    console.log(`[FLORIST] ✅ Successfully migrated: ${tenant.name}`);
+                } else {
+                    console.error(`[FLORIST] ❌ Failed to migrate: ${tenant.name}`);
+                }
             }
+        } else {
+            console.log('[FLORIST] No tenants table found, skipping tenant migration');
         }
 
         await tempKnex.destroy();
@@ -298,18 +351,51 @@ async function startServer() {
         console.error('[FLORIST] Tenant migration error:', error);
     }
 
-    const PORT = Number(process.env.PORT) || 7070;
+    const PORT = Number(process.env.FLORIST_PORT) || Number(process.env.PORT) || 7070;
+    const HOST = process.env.HOST || '0.0.0.0';
 
-    app.listen(PORT, '0.0.0.0', () => {
+    app.listen(PORT, HOST, () => {
         console.log('========================================');
         console.log(`🌺 Florist Service`);
         console.log(`   Port: ${PORT}`);
+        console.log(`   Host: ${HOST}`);
         console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`   Working Directory: ${__dirname}`);
         console.log(`   DB: ${process.env.DB_NAME || 'not configured'}`);
+        console.log(`   Storage: ${process.env.STORAGE_PATH || '/opt/storage/uploads'}`);
         console.log('========================================');
     });
 }
 
+// Handle unhandled rejections
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[FLORIST] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+    console.error('[FLORIST] Uncaught Exception:', error);
+    process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('[FLORIST] SIGTERM received, shutting down gracefully...');
+    if (floristKnex) {
+        floristKnex.destroy();
+    }
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('[FLORIST] SIGINT received, shutting down gracefully...');
+    if (floristKnex) {
+        floristKnex.destroy();
+    }
+    process.exit(0);
+});
+
+// Initialize and start
 startServer();
 
 export default app;

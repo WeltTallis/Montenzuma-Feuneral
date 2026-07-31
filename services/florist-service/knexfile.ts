@@ -1,4 +1,7 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
+import dotenv from 'dotenv';
+import path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const getClientConfig = () => {
   const DB_HOST = process.env.DB_HOST || 'localhost';
@@ -25,7 +28,7 @@ const getClientConfig = () => {
   };
 };
 
-module.exports = {
+export default {
   development: getClientConfig(),
   production: getClientConfig(),
 };

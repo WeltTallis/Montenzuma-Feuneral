@@ -15,7 +15,7 @@ import {
     getMonthlyTrend,
     getCustomers,
     getCustomerById
-} from '../controllers/flowerBooking';
+} from '../controllers/flowerBooking.ts';
 
 export const flowerBookingRouter = Router();
 

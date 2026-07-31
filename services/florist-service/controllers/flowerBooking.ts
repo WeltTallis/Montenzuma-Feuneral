@@ -5,6 +5,7 @@
 
 // @ts-ignore
 import { getTenantDB, safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig.js';
+import axios from 'axios';
 
 interface Booking {
     id?: number;
@@ -244,7 +245,6 @@ export const createBooking = async (req: any, res: any) => {
 
         // Emit notification for new flower booking
         try {
-            const axios = require('axios');
             const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
             await axios.post(`${socketioServiceUrl}/emit/flower-booking-created`, {
                 tenantSlug: req.tenantSlug || 'system',
@@ -376,7 +376,6 @@ export const updateBookingStatus = async (req: any, res: any) => {
 
         // Emit notification for booking status update
         try {
-            const axios = require('axios');
             const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
             await axios.post(`${socketioServiceUrl}/emit/flower-booking-updated`, {
                 tenantSlug: req.tenantSlug || 'system',
@@ -425,7 +424,6 @@ export const deleteBooking = async (req: any, res: any) => {
 
         // Emit notification for booking deletion
         try {
-            const axios = require('axios');
             const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
             await axios.post(`${socketioServiceUrl}/emit/flower-booking-deleted`, {
                 tenantSlug: req.tenantSlug || 'system',

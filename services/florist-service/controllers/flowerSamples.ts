@@ -1,20 +1,21 @@
 // flowerSample.controller.ts
 // @ts-ignore
-import { Request, Response } from 'express';
-import { ResultSetHeader } from 'mysql2';
-import { 
+import type { Request, Response } from 'express';
+import type { ResultSetHeader } from 'mysql2';
+import type { 
   FlowerSample, 
   FlowerSampleRecord, 
   CreateFlowerSampleDTO,
   Image 
-} from '../models/flowerSamplesModel';
+} from '../models/flowerSamplesModel.ts';
 
 // Import your database utilities
-import { query, execute } from '../../../shared/dbConfig';
-const crypto = require('crypto');
-const path = require('path');
-const fs = require('fs/promises');
-const sharp = require('sharp');
+import { query, execute } from '../../../shared/dbConfig.js';
+import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs/promises';
+import sharp from 'sharp';
+import os from 'os';
 
 // ============================================
 // CONFIGURATION
@@ -85,7 +86,7 @@ const ensureUploadDir = async (tenantSlug: string): Promise<string> => {
   }
 
   if (!dir) {
-    dir = path.join(require('os').tmpdir(), 'flower-uploads', tenantSlug);
+    dir = path.join(os.tmpdir(), 'flower-uploads', tenantSlug);
     await fs.mkdir(dir, { recursive: true });
     console.log(`[FLOWER] Using temp upload dir: ${dir}`);
   }
@@ -116,10 +117,7 @@ const compressAndSaveImage = async (
     await sharp(buffer)
       .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
       .sharpen({
-        sigma: 2.5,
-        minalpha: 0.3,
-        flat: 1.5,
-        jagged: 2.0
+        sigma: 2.5
       })
       .modulate({
         brightness: 1.05,

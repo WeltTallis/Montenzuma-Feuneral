@@ -741,6 +741,39 @@ export const CheckCheck = (p) => (
 );
 export const FaReceipt = Receipt;
 
+// ─── Additional Icons for SEO Modules ────────────────────────────────────────
+export const GitBranch = (p) => (
+  <Icon {...p}><line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M18 9a9 9 0 0 1-9 9" /></Icon>
+);
+
+export const Thermometer = (p) => (
+  <Icon {...p}><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z" /></Icon>
+);
+
+export const Flag = (p) => (
+  <Icon {...p}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></Icon>
+);
+
+export const Briefcase = (p) => (
+  <Icon {...p}><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></Icon>
+);
+
+export const BookOpen = (p) => (
+  <Icon {...p}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></Icon>
+);
+
+export const Link2 = (p) => (
+  <Icon {...p}><path d="M9 17H7A5 5 0 0 1 7 7h2" /><path d="M15 7h2a5 5 0 0 1 0 10h-2" /><line x1="8" y1="12" x2="16" y2="12" /></Icon>
+);
+
+export const Sparkles = (p) => (
+  <Icon {...p}><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z" /></Icon>
+);
+
+export const UserCog = (p) => (
+  <Icon {...p}><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /><circle cx="18" cy="18" r="3" /><path d="M18 16v.01" /></Icon>
+);
+
 // ─── Aggregate Object (convenience) ──────────────────────────────────────────
 export const Icons = {
   // Navigation & Layout

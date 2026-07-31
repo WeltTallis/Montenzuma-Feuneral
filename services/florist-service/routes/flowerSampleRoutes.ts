@@ -2,12 +2,12 @@
 import { Router } from 'express';
 import multer from 'multer';
 import {
-  createFlowerArrangement,
-  getFlowerArrangementById,
-  updateFlowerArrangement,
-  deleteFlowerArrangement,
-  getAllFlowerArrangements
-} from '../controllers/flowerSamples';
+    createFlowerArrangement,
+    getFlowerArrangementById,
+    updateFlowerArrangement,
+    deleteFlowerArrangement,
+    getAllFlowerArrangements
+} from '../controllers/flowerSamples.ts';
 
 // Configure multer for file uploads (memory storage)
 const storage = multer.memoryStorage();

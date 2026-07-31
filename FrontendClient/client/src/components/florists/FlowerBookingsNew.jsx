@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Flower2, MapPin, User, Calendar, Clock, ChevronLeft, ChevronRight, X, Check, Truck, Home, Package, AlertTriangle } from '../../utils/icons/icons';
+import api from '../../api/axios'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -64,11 +65,10 @@ const FlowerBookingsNew = () => {
   const loadBookings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/restpoint/florist/bookings');
-      const data = await res.json();
-      setBookings(data.data || []);
+      const res = await api.get('/florist/bookings');
+      setBookings(res.data.data || []);
     } catch (e) {
-      showToast('Failed to load bookings', 'error');
+      showToast(e.friendlyMessage || 'Failed to load bookings', 'error');
     }
     setLoading(false);
   }, [showToast]);
@@ -118,20 +118,13 @@ const FlowerBookingsNew = () => {
     }
 
     try {
-      const headers = { 'Content-Type': 'application/json', 'x-tenant-slug': localStorage.getItem('tenantSlug') || 'default' };
       const payload = {
         ...newBooking,
         product_id: null,
         flower_type: null,
         amount: parseFloat(newBooking.arrangement_price) || 0
       };
-      const res = await fetch('/api/v1/restpoint/florist/bookings', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) throw new Error('Failed to create booking');
+      await api.post('/florist/bookings', payload);
 
       showToast('Booking placed successfully!');
       await loadBookings();
@@ -147,22 +140,17 @@ const FlowerBookingsNew = () => {
         priority: 'Normal'
       });
     } catch (e) {
-      showToast('Failed to create booking', 'error');
+      showToast(e.friendlyMessage || 'Failed to create booking', 'error');
     }
   }, [newBooking, showToast, loadBookings]);
 
   const updateStatus = useCallback(async (id, nextStatus) => {
     try {
-      const headers = { 'Content-Type': 'application/json', 'x-tenant-slug': localStorage.getItem('tenantSlug') || 'default' };
-      await fetch(`/api/v1/restpoint/florist/bookings/${id}/status`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ status: nextStatus })
-      });
+      await api.put(`/florist/bookings/${id}/status`, { status: nextStatus });
       showToast(`Status updated to ${STATUS_LABELS[nextStatus]}`);
       await loadBookings();
     } catch (e) {
-      showToast('Failed to update status', 'error');
+      showToast(e.friendlyMessage || 'Failed to update status', 'error');
     }
   }, [showToast, loadBookings]);
 
@@ -172,14 +160,11 @@ const FlowerBookingsNew = () => {
     const formData = new FormData(form);
     
     try {
-      const tenantSlug = localStorage.getItem('tenantSlug') || 'system_shared';
-      const res = await fetch('/api/v1/restpoint/florist/flower-arrangements', {
-        method: 'POST',
-        headers: { 'x-tenant-slug': tenantSlug },
-        body: formData
+      const res = await api.post('/florist/flower-arrangements', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      const data = await res.json();
+      const data = res.data;
       if (data.success) {
         showToast('Arrangement created successfully!');
         setShowCreateModal(false);
@@ -188,7 +173,7 @@ const FlowerBookingsNew = () => {
         showToast(data.message || 'Failed to create arrangement', 'error');
       }
     } catch (err) {
-      showToast('Failed to create arrangement', 'error');
+      showToast(err.friendlyMessage || 'Failed to create arrangement', 'error');
     }
   };
 

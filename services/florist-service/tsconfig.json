@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "commonjs",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "lib": ["ES2022"],
     "outDir": "./dist",
     "rootDir": ".",
@@ -13,7 +14,8 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "types": ["node"],
-    "typeRoots": ["./types", "../../node_modules/@types"]
+    "typeRoots": ["./types", "../../node_modules/@types"],
+    "allowImportingTsExtensions": true
   },
   "include": [
     "server.ts",

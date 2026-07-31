@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import api from '../../api/axios'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 const ARRANGEMENTS = [
@@ -963,13 +964,22 @@ function BookingForm({ selected, quantities, onBack, onDone }) {
     if (!selected.length) { alert('Please select at least one arrangement.'); return }
     try {
       const names = selected.map(id => ARRANGEMENTS.find(a => a.id === id).name + ' ×' + (quantities[id] || 1)).join(', ')
-      await fetch('/api/v1/restpoint/florist/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-tenant-slug': localStorage.getItem('tenantSlug') || 'default' },
-        body: JSON.stringify({ arrangement_name: names, deceased_name: form.deceased || null, booked_by: form.yourName || null, funeral_home: form.location || null, date: form.date || null, phone: form.phone || null, email: form.email || null, card_message: form.message || null, quantity: totalItems, special_instructions: form.notes || null }),
+      await api.post('/florist/bookings', {
+        arrangement_name: names,
+        deceased_name: form.deceased || null,
+        booked_by: form.yourName || null,
+        funeral_home: form.location || null,
+        date: form.date || null,
+        phone: form.phone || null,
+        email: form.email || null,
+        card_message: form.message || null,
+        quantity: totalItems,
+        special_instructions: form.notes || null
       })
       onDone(form)
-    } catch { alert('Failed to submit. Please try again.') }
+    } catch (error) {
+      alert(error.friendlyMessage || 'Failed to submit. Please try again.')
+    }
   }
 
   return (
@@ -1060,10 +1070,10 @@ export default function App() {
     const loadArrangements = async () => {
       try {
         const tenantSlug = localStorage.getItem('tenantSlug') || 'system_shared';
-        const res = await fetch(`/api/v1/restpoint/florist/flower-samples?tenant_slug=${tenantSlug}`, {
-          headers: { 'x-tenant-slug': tenantSlug }
+        const res = await api.get('/florist/flower-samples', {
+          params: { tenant_slug: tenantSlug }
         });
-        const data = await res.json();
+        const data = res.data;
         if (data.success && data.data && data.data.length > 0) {
           const transformed = data.data.map((sample, index) => ({
             id: sample.sample_id || `arr-${index}`,
