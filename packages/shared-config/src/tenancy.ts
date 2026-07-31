@@ -2,11 +2,20 @@
  * Tenant validation and isolation helpers
  */
 
-import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import type { Response, NextFunction, RequestHandler } from 'express';
 import type { TenantRecord, TenantValidationResult } from './types';
 import { TenantIsolationError } from './types';
 import { RowDataPacket } from 'mysql2/promise';
 import { safeQueryOne } from './database';
+    
+// Request type augmentation for tenant properties
+declare module 'express' {
+  interface Request {
+    tenantId?: number;
+    tenantSlug?: string;
+    tenant?: TenantRecord;
+  }
+}
 
 /**
  * Validates if a tenant exists and is currently active.
@@ -55,9 +64,9 @@ export const tenantMiddleware: RequestHandler = async (req, res, next) => {
     if (!result.active) {
       return res.status(403).json({ success: false, message: result.reason });
     }
-    req.tenant = result.tenant;
+    (req as any).tenant = result.tenant;
   }
 
-  req.tenantSlug = tenantSlug;
+  (req as any).tenantSlug = tenantSlug;
   next();
 };

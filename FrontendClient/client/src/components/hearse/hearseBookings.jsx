@@ -86,7 +86,7 @@ const genId = (id, plateNumber) => {
 
 const getTenantSlug = () => localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug') || 'default';
 const getAuthHeaders = () => {
-  const token = sessionStorage.getItem('authToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken') || '';
   const headers = { 'x-tenant-slug': getTenantSlug() };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   return headers;
@@ -716,7 +716,7 @@ const HearseBookings = () => {
   const { user } = useAuthStore();
 
   const [newForm, setNewForm] = useState({
-    hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', booking_dates: [], branch_id: ''
+    hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: [], branch_id: '', booking_date: ''
   });
   const [selectedBookingDates, setSelectedBookingDates] = useState([]);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -849,7 +849,12 @@ const HearseBookings = () => {
     setPrefillDate(dateStr);
     const initialDates = dateStr ? [dateStr] : [];
     setSelectedBookingDates(initialDates);
-    setNewForm({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', booking_dates: initialDates, branch_id: '' });
+    // Auto-fill branch from localStorage user data
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : {};
+    const userBranchId = user?.branch_id || '';
+    const userBranchCode = user?.branch_code || '';
+    setNewForm({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: initialDates, branch_id: userBranchId, booking_date: dateStr || '' });
     setNewBookingOpen(true);
   }, []);
   const closeNewBooking = useCallback(() => {
@@ -878,7 +883,11 @@ const HearseBookings = () => {
     const dateStr = dates[0];
     setPrefillDate(dateStr);
     setSelectedBookingDates(dates);
-    setNewForm({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', booking_dates: dates, branch_id: '' });
+    // Auto-fill branch from localStorage user data
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : {};
+    const userBranchId = user?.branch_id || '';
+    setNewForm({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: dates, branch_id: userBranchId, booking_date: dateStr || '' });
     setNewBookingOpen(true);
   }, []);
 
@@ -897,13 +906,17 @@ const HearseBookings = () => {
       if (user?.email) headers['x-user-email'] = user.email;
       headers['x-user-name'] = user?.full_name || user?.username || user?.name || 'System';
 
+      const firstBookingDate = selectedBookingDates.length > 0 ? selectedBookingDates[0] + 'T00:00:00' : new Date().toISOString();
+
       const requestBody = {
         hearse_id: newForm.hearse_id,
         client_name: newForm.client_name,
         client_phone: newForm.client_phone || '',
         from_location: newForm.from_location,
-        to_location: newForm.to_location,
-        from_timestamp: newForm.booking_date,
+        destination: newForm.to_location,  // Backend expects 'destination' field
+        from_timestamp: firstBookingDate,
+        booking_date: firstBookingDate,
+        booking_dates: selectedBookingDates,
         booked_by: user?.email || 'system',
         branch_id: newForm.branch_id || user?.branch_id || '',
         branch_code: user?.branch_code || ''
@@ -1833,26 +1846,23 @@ const HearseBookings = () => {
 
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.375rem', fontSize: '0.8125rem', color: COLORS.text }}>
-                Branch
+                Branch (auto-filled from profile)
               </label>
-              <select
+              <input
                 style={{
                   width: '100%',
                   padding: '0.5rem 0.75rem',
-                  border: `1px solid ${COLORS.border}`,
+                  border: `1px solid ${COLORS.borderLight}`,
                   borderRadius: COLORS.radiusSm,
                   fontSize: '0.8125rem',
-                  color: COLORS.text,
-                  background: COLORS.surface
+                  color: COLORS.textSecondary,
+                  background: COLORS.bg,
+                  cursor: 'not-allowed'
                 }}
-                value={newForm.branch_id}
-                onChange={e => setNewForm(p => ({ ...p, branch_id: e.target.value }))}
-              >
-                <option value="">— Default —</option>
-                {branchOptions.map(b => (
-                  <option key={b.branch_id} value={b.branch_id}>{b.branch_name}</option>
-                ))}
-              </select>
+                value={newForm.branch_id ? (branchOptions.find(b => String(b.branch_id) === String(newForm.branch_id))?.branch_name || `Branch #${newForm.branch_id}`) : 'Auto-filled from your profile'}
+                disabled
+                readOnly
+              />
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>

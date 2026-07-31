@@ -33,7 +33,7 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
             return;
         }
 
-        const { plate_number, hearse_name, model, capacity, status, branch_id, branch_code, driver_id, insurance_expiry, service_due_date } = req.body;
+        const { plate_number, hearse_name, model, capacity, status, branch_id, branch_code, driver_id } = req.body;
         const image = req.file ? `uploads/hearses/${req.file.filename}` : null;
 
         if (!plate_number) {
@@ -41,44 +41,64 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
             return;
         }
 
-        if (!branch_id) {
-            res.status(400).json({ success: false, message: 'Branch selection is required. Please select a branch.' });
-            return;
-        }
-
         const now = getKenyaTimeISO();
         const pool = await getHearsePool();
 
         let resolvedBranchCode = branch_code || null;
-        try {
-            const [branchRows] = await pool.query('SELECT branch_code, branch_name FROM branches WHERE branch_id = ? AND is_active = TRUE', [branch_id]);
-            const branchRow = branchRows[0];
-            if (branchRow) {
-                resolvedBranchCode = branchRow.branch_code || `BRANCH-${branch_id}`;
-            } else {
-                resolvedBranchCode = `BRANCH-${branch_id}`;
-            }
-        } catch (e) {
-            resolvedBranchCode = branch_code || `BRANCH-${branch_id}`;
-        }
+        let assignedBranchId = parseInt(branch_id) || 1;
 
-        const assignedBranchId = parseInt(branch_id) || 1;
+        // If branch_code is provided, look up the branch_id from database
+        if (branch_code && !branch_id) {
+            try {
+                const [branchRows] = await pool.query('SELECT branch_id, branch_name FROM branches WHERE branch_code = ? AND is_active = TRUE', [branch_code]);
+                const branchRow = branchRows[0];
+                if (branchRow) {
+                    assignedBranchId = branchRow.branch_id;
+                    resolvedBranchCode = branch_code;
+                } else {
+                    // Branch code not found, use the provided code as-is
+                    resolvedBranchCode = branch_code;
+                    assignedBranchId = 1; // Default to first branch
+                }
+            } catch (e) {
+                // If lookup fails, use provided values
+                resolvedBranchCode = branch_code;
+                assignedBranchId = 1;
+            }
+        } else if (branch_id) {
+            // If branch_id is provided, look up the branch_code
+            try {
+                const [branchRows] = await pool.query('SELECT branch_code, branch_name FROM branches WHERE branch_id = ? AND is_active = TRUE', [branch_id]);
+                const branchRow = branchRows[0];
+                if (branchRow) {
+                    resolvedBranchCode = branchRow.branch_code || `BRANCH-${branch_id}`;
+                } else {
+                    resolvedBranchCode = `BRANCH-${branch_id}`;
+                }
+            } catch (e) {
+                resolvedBranchCode = branch_code || `BRANCH-${branch_id}`;
+            }
+        } else {
+            // Neither branch_id nor branch_code provided
+            res.status(400).json({ success: false, message: 'Branch identification is required. Please provide branch_code or branch_id.' });
+            return;
+        }
         const [countResult] = await pool.query('SELECT COUNT(*) as count FROM hearses');
         const hearseNumber = String((countResult[0]?.count || 0) + 1).padStart(3, '0');
         const hearse_code = `HRS-${hearseNumber}`;
 
-        const insertFields = ['hearse_code', 'hearse_name', 'plate_number', 'model', 'capacity', 'status', 'branch_id', 'branch_name', 'branch_code', 'min_charge_ksh', 'max_charge_ksh', 'is_own_branch', 'active_bookings', 'created_at', 'updated_at'];
+        const insertFields = ['hearse_code', 'hearse_name', 'plate_number', 'model', 'capacity', 'status', 'branch_id', 'branch_name', 'branch_code', 'is_own_branch', 'active_bookings', 'created_at', 'updated_at'];
         const insertValues = [
             hearse_code, hearse_name || null, plate_number.trim(), model || null, capacity || 8, status || 'available',
             assignedBranchId, resolvedBranchCode ? `Branch ${assignedBranchId}` : `Branch ${assignedBranchId}`,
-            resolvedBranchCode || `BRANCH-${assignedBranchId}`, 0.00, 0.00, 1, 0, now, now
+            resolvedBranchCode || `BRANCH-${assignedBranchId}`, 1, 0, now, now
         ];
 
         const placeholders = insertValues.map(() => '?').join(', ');
         const escapedFields = insertFields.map(f => `\`${f}\``).join(', ');
         const query = `INSERT INTO hearses (${escapedFields}) VALUES (${placeholders})`;
 
-        const [result] = await pool.query(query, insertValues) as [any];
+        const [result] = await pool.query(query, insertValues) as any;
 
         // Emit real-time update via Socket.IO
         const io = req.app.get('io');
@@ -110,7 +130,7 @@ export const updateHearse = asyncHandler(async (req: Request, res: Response) => 
     try {
         const { id } = req.params;
         const pool = await getHearsePool();
-        const { plate_number, hearse_name, model, capacity, min_charge_ksh, max_charge_ksh, status, branch_id, driver_id, make, year, description, features, chassis_number, engine_number, insurance_expiry, service_due_date } = req.body;
+        const { plate_number, hearse_name, model, capacity, status, branch_id, branch_code, driver_id, description } = req.body;
         const image = req.file ? `uploads/hearses/${req.file.filename}` : null;
         const now = getKenyaTimeISO();
 
@@ -122,19 +142,63 @@ export const updateHearse = asyncHandler(async (req: Request, res: Response) => 
         if (hearse_name) { fields.push('hearse_name = ?'); values.push(hearse_name); }
         if (model) { fields.push('model = ?'); values.push(model); }
         if (capacity !== undefined && capacity !== null) { fields.push('capacity = ?'); values.push(capacity); }
-        if (min_charge_ksh !== undefined && min_charge_ksh !== null) { fields.push('min_charge_ksh = ?'); values.push(min_charge_ksh); }
-        if (max_charge_ksh !== undefined && max_charge_ksh !== null) { fields.push('max_charge_ksh = ?'); values.push(max_charge_ksh); }
         if (status) { fields.push('status = ?'); values.push(status); }
-        if (branch_id) { fields.push('branch_id = ?'); values.push(branch_id); }
+        
+        // Handle branch update - support both branch_id and branch_code
+        if (branch_code && !branch_id) {
+            // Look up branch_id from branch_code
+            try {
+                const [branchRows] = await pool.query('SELECT branch_id, branch_name FROM branches WHERE branch_code = ? AND is_active = TRUE', [branch_code]);
+                const branchRow = branchRows[0];
+                if (branchRow) {
+                    fields.push('branch_id = ?');
+                    values.push(branchRow.branch_id);
+                    fields.push('branch_code = ?');
+                    values.push(branch_code);
+                    fields.push('branch_name = ?');
+                    values.push(branchRow.branch_name || `Branch ${branchRow.branch_id}`);
+                } else {
+                    // Branch code not found, use provided code with default id
+                    fields.push('branch_id = ?');
+                    values.push(1);
+                    fields.push('branch_code = ?');
+                    values.push(branch_code);
+                    fields.push('branch_name = ?');
+                    values.push(`Branch 1`);
+                }
+            } catch (e) {
+                // If lookup fails, use provided values
+                fields.push('branch_id = ?');
+                values.push(1);
+                fields.push('branch_code = ?');
+                values.push(branch_code);
+            }
+        } else if (branch_id) {
+            // If branch_id is provided, look up branch_code
+            try {
+                const [branchRows] = await pool.query('SELECT branch_code, branch_name FROM branches WHERE branch_id = ? AND is_active = TRUE', [branch_id]);
+                const branchRow = branchRows[0];
+                if (branchRow) {
+                    fields.push('branch_id = ?');
+                    values.push(branch_id);
+                    fields.push('branch_code = ?');
+                    values.push(branchRow.branch_code || `BRANCH-${branch_id}`);
+                    fields.push('branch_name = ?');
+                    values.push(branchRow.branch_name || `Branch ${branch_id}`);
+                } else {
+                    fields.push('branch_id = ?');
+                    values.push(branch_id);
+                    fields.push('branch_code = ?');
+                    values.push(`BRANCH-${branch_id}`);
+                }
+            } catch (e) {
+                fields.push('branch_id = ?');
+                values.push(branch_id);
+            }
+        }
+        
         if (driver_id !== undefined && driver_id !== null) { fields.push('driver_id = ?'); values.push(driver_id); }
-        if (make) { fields.push('make = ?'); values.push(make); }
-        if (year) { fields.push('year = ?'); values.push(year); }
         if (description) { fields.push('description = ?'); values.push(description); }
-        if (features) { fields.push('features = ?'); values.push(features); }
-        if (chassis_number) { fields.push('chassis_number = ?'); values.push(chassis_number); }
-        if (engine_number) { fields.push('engine_number = ?'); values.push(engine_number); }
-        if (insurance_expiry) { fields.push('insurance_expiry = ?'); values.push(insurance_expiry); }
-        if (service_due_date) { fields.push('service_due_date = ?'); values.push(service_due_date); }
 
         if (fields.length === 0) {
             res.status(400).json({ success: false, message: 'No fields to update' });
@@ -197,7 +261,7 @@ export const deleteHearse = asyncHandler(async (req: Request, res: Response) => 
 export const getAllHearses = asyncHandler(async (req: Request, res: Response) => {
     try {
         const pool = await getHearsePool();
-        const [hearses] = await pool.query(`SELECT h.*, h.branch_name, h.branch_code, h.image FROM hearses h ORDER BY h.created_at DESC`) as [any];
+        const [hearses] = await pool.query(`SELECT h.*, h.branch_name, h.branch_code, h.image FROM hearses h ORDER BY h.created_at DESC`) as any;
         res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.set('Pragma', 'no-cache');
         res.set('Expires', '0');
@@ -213,7 +277,7 @@ export const getAllHearses = asyncHandler(async (req: Request, res: Response) =>
 export const getAvailableHearses = asyncHandler(async (req: Request, res: Response) => {
     try {
         const pool = await getHearsePool();
-        const [hearses] = await pool.query(`SELECT h.*, h.branch_name, h.branch_code FROM hearses h WHERE h.status = 'available' AND h.id NOT IN (SELECT hearse_id FROM hearse_bookings WHERE hearse_id IS NOT NULL AND status NOT IN ('completed', 'cancelled')) ORDER BY h.created_at DESC`) as [any];
+        const [hearses] = await pool.query(`SELECT h.*, h.branch_name, h.branch_code FROM hearses h WHERE h.status = 'available' AND h.id NOT IN (SELECT hearse_id FROM hearse_bookings WHERE hearse_id IS NOT NULL AND status NOT IN ('completed', 'cancelled')) ORDER BY h.created_at DESC`) as any;
         res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.set('Pragma', 'no-cache');
         res.set('Expires', '0');

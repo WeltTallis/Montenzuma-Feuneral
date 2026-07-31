@@ -91,11 +91,5 @@ export class ValidationError extends AppError {
 // ============================================================
 // REQUEST AUGMENTATION
 // ============================================================
-
-declare module 'express-serve-static-core' {
-  interface Request {
-    tenantId?: number;
-    tenantSlug?: string;
-    tenant?: TenantRecord;
-  }
-}
+// Note: Request augmentation is defined in the service's global.d.ts files
+// to avoid circular dependency issues with the express module

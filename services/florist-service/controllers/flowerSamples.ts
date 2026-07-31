@@ -1,7 +1,7 @@
 // flowerSample.controller.ts
 // @ts-ignore
 import { Request, Response } from 'express';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { ResultSetHeader } from 'mysql2';
 import { 
   FlowerSample, 
   FlowerSampleRecord, 
@@ -10,8 +10,7 @@ import {
 } from '../models/flowerSamplesModel';
 
 // Import your database utilities
-// @ts-ignore
-const { query, execute } = require('../../../shared/dbConfig');
+import { query, execute } from '../../../shared/dbConfig';
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs/promises');
@@ -22,7 +21,7 @@ const sharp = require('sharp');
 // ============================================
 
 // In-memory cache
-const sampleCache = new Map();
+const arrangementCache = new Map();
 const CACHE_TTL = 300000; // 5 minutes
 
 // ============================================
@@ -30,30 +29,30 @@ const CACHE_TTL = 300000; // 5 minutes
 // ============================================
 
 const getCached = (key: string): any => {
-  const cached = sampleCache.get(key);
+  const cached = arrangementCache.get(key);
   if (cached && cached.expiry > Date.now()) return cached.data;
-  sampleCache.delete(key);
+  arrangementCache.delete(key);
   return null;
 };
 
 const setCached = (key: string, data: any): void => {
-  sampleCache.set(key, { data, expiry: Date.now() + CACHE_TTL });
+  arrangementCache.set(key, { data, expiry: Date.now() + CACHE_TTL });
 };
 
 const clearCache = (pattern?: string): void => {
   if (pattern) {
-    for (const key of sampleCache.keys()) {
-      if (key.includes(pattern)) sampleCache.delete(key);
+    for (const key of arrangementCache.keys()) {
+      if (key.includes(pattern)) arrangementCache.delete(key);
     }
   } else {
-    sampleCache.clear();
+    arrangementCache.clear();
   }
 };
 
-const generateFlowerSampleId = (): string => {
+const generateArrangementId = (): string => {
   const timestamp = Date.now().toString().slice(-6);
   const random = crypto.randomBytes(3).toString('hex').toUpperCase();
-  return `FS-${timestamp}-${random}`;
+  return `ARR-${timestamp}-${random}`;
 };
 
 // ─── Upload path fallbacks ───
@@ -115,8 +114,22 @@ const compressAndSaveImage = async (
     console.log(`[FLOWER] Image metadata: ${metadata.width}x${metadata.height}, format: ${metadata.format}`);
 
     await sharp(buffer)
-      .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 80 })
+      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+      .sharpen({
+        sigma: 2.5,
+        minalpha: 0.3,
+        flat: 1.5,
+        jagged: 2.0
+      })
+      .modulate({
+        brightness: 1.05,
+        saturation: 1.1
+      })
+      .webp({ 
+        quality: 92,
+        effort: 6,
+        lossless: false
+      })
       .toFile(outputPath);
 
     const stats = await fs.stat(outputPath);
@@ -130,10 +143,10 @@ const compressAndSaveImage = async (
 };
 
 // ─── Helper to parse JSON strings from DB ───
-const parseJSONFields = (record: FlowerSampleRecord): FlowerSample => {
+const parseJSONFields = (record: any): any => {
   return {
     id: record.id,
-    sample_id: record.sample_id,
+    arrangement_id: record.arrangement_id,
     title: record.title,
     description: record.description,
     types: JSON.parse(record.types),
@@ -160,9 +173,9 @@ const stringifyJSONFields = (data: Partial<CreateFlowerSampleDTO>): any => {
 // ============================================
 
 /**
- * CREATE - Create a new flower sample
+ * CREATE - Create a new flower arrangement
  */
-export const createFlowerSample = async (req: any, res: any): Promise<any> => {
+export const createFlowerArrangement = async (req: any, res: any): Promise<any> => {
   const tenantSlug = req.tenantSlug;
 
   if (!tenantSlug) {
@@ -198,8 +211,8 @@ export const createFlowerSample = async (req: any, res: any): Promise<any> => {
       return res.status(400).json({ success: false, message: 'Sizes must be a non-empty array' });
     }
 
-    // Generate unique sample ID
-    const sampleId = generateFlowerSampleId();
+    // Generate unique arrangement ID
+    const arrangementId = generateArrangementId();
 
     // Prepare images array
     let images: Image[] = [];
@@ -245,12 +258,12 @@ export const createFlowerSample = async (req: any, res: any): Promise<any> => {
 
     const sql = `
       INSERT INTO flower_samples 
-      (sample_id, title, description, types, colors, sizes, images, tenant_slug, created_at, updated_at) 
+      (arrangement_id, title, description, types, colors, sizes, images, tenant_slug, created_at, updated_at) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     `;
 
-    await execute<ResultSetHeader>(req, sql, [
-      sampleId,
+    await execute(req, sql, [
+      arrangementId,
       title,
       description,
       data.types,
@@ -264,12 +277,12 @@ export const createFlowerSample = async (req: any, res: any): Promise<any> => {
     clearCache(tenantSlug);
 
     // Fetch the created record
-    const createdSample = await getFlowerSampleByIdInternal(req, sampleId, tenantSlug);
+    const createdArrangement = await getFlowerArrangementByIdInternal(req, arrangementId, tenantSlug);
 
     return res.status(201).json({
       success: true,
-      message: 'Flower sample created successfully',
-      data: createdSample
+      message: 'Flower arrangement created successfully',
+      data: createdArrangement
     });
 
   } catch (error: any) {
@@ -279,9 +292,9 @@ export const createFlowerSample = async (req: any, res: any): Promise<any> => {
 };
 
 /**
- * GET BY ID - Get a single flower sample by ID
+ * GET BY ID - Get a single flower arrangement by ID
  */
-export const getFlowerSampleById = async (req: any, res: any): Promise<any> => {
+export const getFlowerArrangementById = async (req: any, res: any): Promise<any> => {
   const tenantSlug = req.tenantSlug;
   const { id } = req.params;
 
@@ -290,56 +303,56 @@ export const getFlowerSampleById = async (req: any, res: any): Promise<any> => {
   }
 
   try {
-    const sample = await getFlowerSampleByIdInternal(req, id, tenantSlug);
+    const arrangement = await getFlowerArrangementByIdInternal(req, id, tenantSlug);
     
-    if (!sample) {
+    if (!arrangement) {
       return res.status(404).json({ 
         success: false, 
-        message: `Flower sample with ID ${id} not found` 
+        message: `Flower arrangement with ID ${id} not found` 
       });
     }
 
     return res.status(200).json({
       success: true,
-      data: sample
+      data: arrangement
     });
 
   } catch (error: any) {
-    console.error('Get flower sample by ID error:', error);
+    console.error('Get flower arrangement by ID error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Internal helper to get sample by ID
-const getFlowerSampleByIdInternal = async (
+// Internal helper to get arrangement by ID
+const getFlowerArrangementByIdInternal = async (
   req: any, 
   id: string, 
   tenantSlug: string
-): Promise<FlowerSample | null> => {
-  const cacheKey = `sample_${tenantSlug}_${id}`;
+): Promise<any | null> => {
+  const cacheKey = `arrangement_${tenantSlug}_${id}`;
   let cached = getCached(cacheKey);
   
   if (cached) {
     return cached;
   }
 
-  const sql = 'SELECT * FROM flower_samples WHERE sample_id = ? AND tenant_slug = ?';
-  const records = await query<FlowerSampleRecord[]>(req, sql, [id, tenantSlug]);
+  const sql = 'SELECT * FROM flower_samples WHERE arrangement_id = ? AND tenant_slug = ?';
+  const records = await query(req, sql, [id, tenantSlug]);
   
   if (!records || records.length === 0) {
     return null;
   }
 
-  const sample = parseJSONFields(records[0]);
-  setCached(cacheKey, sample);
+  const arrangement = parseJSONFields(records[0]);
+  setCached(cacheKey, arrangement);
   
-  return sample;
+  return arrangement;
 };
 
 /**
- * UPDATE - Update a flower sample
+ * UPDATE - Update a flower arrangement
  */
-export const updateFlowerSample = async (req: any, res: any): Promise<any> => {
+export const updateFlowerArrangement = async (req: any, res: any): Promise<any> => {
   const tenantSlug = req.tenantSlug;
   const { id } = req.params;
 
@@ -348,12 +361,12 @@ export const updateFlowerSample = async (req: any, res: any): Promise<any> => {
   }
 
   try {
-    // Check if sample exists
-    const existingSample = await getFlowerSampleByIdInternal(req, id, tenantSlug);
-    if (!existingSample) {
+    // Check if arrangement exists
+    const existingArrangement = await getFlowerArrangementByIdInternal(req, id, tenantSlug);
+    if (!existingArrangement) {
       return res.status(404).json({ 
         success: false, 
-        message: `Flower sample with ID ${id} not found` 
+        message: `Flower arrangement with ID ${id} not found` 
       });
     }
 
@@ -367,11 +380,11 @@ export const updateFlowerSample = async (req: any, res: any): Promise<any> => {
     if (sizes && Array.isArray(sizes)) updates.sizes = JSON.stringify(sizes);
 
     // Handle image updates
-    let images = [...existingSample.images];
+    let images = [...existingArrangement.images];
     if (providedImages && Array.isArray(providedImages)) {
       images = providedImages.map((img: any) => ({
         url: img.url,
-        alt_text: img.alt_text || existingSample.title,
+        alt_text: img.alt_text || existingArrangement.title,
         is_primary: img.is_primary || false,
         order: img.order || 0
       }));
@@ -385,7 +398,7 @@ export const updateFlowerSample = async (req: any, res: any): Promise<any> => {
         const imageUrl = await compressAndSaveImage(file.buffer, file.originalname, tenantSlug);
         images.push({
           url: imageUrl,
-          alt_text: `${existingSample.title} - new image ${i + 1}`,
+          alt_text: `${existingArrangement.title} - new image ${i + 1}`,
           is_primary: images.length === 0 && i === 0,
           order: images.length + i
         });
@@ -403,21 +416,21 @@ export const updateFlowerSample = async (req: any, res: any): Promise<any> => {
     const sql = `
       UPDATE flower_samples 
       SET ${updateFields}, updated_at = NOW() 
-      WHERE sample_id = ? AND tenant_slug = ?
+      WHERE arrangement_id = ? AND tenant_slug = ?
     `;
 
-    await execute<ResultSetHeader>(req, sql, updateParams);
+    await execute(req, sql, updateParams);
 
     // Clear cache
     clearCache(tenantSlug);
 
-    // Fetch updated sample
-    const updatedSample = await getFlowerSampleByIdInternal(req, id, tenantSlug);
+    // Fetch updated arrangement
+    const updatedArrangement = await getFlowerArrangementByIdInternal(req, id, tenantSlug);
 
     return res.status(200).json({
       success: true,
-      message: 'Flower sample updated successfully',
-      data: updatedSample
+      message: 'Flower arrangement updated successfully',
+      data: updatedArrangement
     });
 
   } catch (error: any) {
@@ -427,9 +440,9 @@ export const updateFlowerSample = async (req: any, res: any): Promise<any> => {
 };
 
 /**
- * DELETE - Delete a flower sample
+ * DELETE - Delete a flower arrangement
  */
-export const deleteFlowerSample = async (req: any, res: any): Promise<any> => {
+export const deleteFlowerArrangement = async (req: any, res: any): Promise<any> => {
   const tenantSlug = req.tenantSlug;
   const { id } = req.params;
 
@@ -438,17 +451,17 @@ export const deleteFlowerSample = async (req: any, res: any): Promise<any> => {
   }
 
   try {
-    // Check if sample exists
-    const existingSample = await getFlowerSampleByIdInternal(req, id, tenantSlug);
-    if (!existingSample) {
+    // Check if arrangement exists
+    const existingArrangement = await getFlowerArrangementByIdInternal(req, id, tenantSlug);
+    if (!existingArrangement) {
       return res.status(404).json({ 
         success: false, 
-        message: `Flower sample with ID ${id} not found` 
+        message: `Flower arrangement with ID ${id} not found` 
       });
     }
 
     // Delete associated images from filesystem
-    for (const image of existingSample.images) {
+    for (const image of existingArrangement.images) {
       try {
         const imagePath = path.join(process.cwd(), 'public', image.url);
         await fs.unlink(imagePath).catch(() => {});
@@ -458,15 +471,15 @@ export const deleteFlowerSample = async (req: any, res: any): Promise<any> => {
     }
 
     // Delete from database
-    const sql = 'DELETE FROM flower_samples WHERE sample_id = ? AND tenant_slug = ?';
-    await execute<ResultSetHeader>(req, sql, [id, tenantSlug]);
+    const sql = 'DELETE FROM flower_samples WHERE arrangement_id = ? AND tenant_slug = ?';
+    await execute(req, sql, [id, tenantSlug]);
 
     // Clear cache
     clearCache(tenantSlug);
 
     return res.status(200).json({
       success: true,
-      message: `Flower sample with ID ${id} deleted successfully`
+      message: `Flower arrangement with ID ${id} deleted successfully`
     });
 
   } catch (error: any) {
@@ -476,14 +489,14 @@ export const deleteFlowerSample = async (req: any, res: any): Promise<any> => {
 };
 
 /**
- * GET ALL - Get all flower samples with optional filtering
- * GET /api/flower-samples
+ * GET ALL - Get all flower arrangements with optional filtering
+ * GET /api/flower-arrangements
  * Query params:
  *   - color: Filter by color (e.g., "red", "white", "pink", "mixed")
  *   - type: Filter by type (e.g., "casket sprays", "standing wreaths", "bouquets", "sympathy baskets")
  *   - size: Filter by size (optional)
  */
-export const getAllFlowerSamples = async (req: any, res: any): Promise<any> => {
+export const getAllFlowerArrangements = async (req: any, res: any): Promise<any> => {
   const tenantSlug = req.tenantSlug;
 
   if (!tenantSlug) {
@@ -494,7 +507,7 @@ export const getAllFlowerSamples = async (req: any, res: any): Promise<any> => {
     const { color, type, size } = req.query;
 
     // Build cache key based on filters
-    const cacheKey = `all_samples_${tenantSlug}_${color || 'all'}_${type || 'all'}_${size || 'all'}`;
+    const cacheKey = `all_arrangements_${tenantSlug}_${color || 'all'}_${type || 'all'}_${size || 'all'}`;
     let cached = getCached(cacheKey);
     
     if (cached) {
@@ -531,21 +544,21 @@ export const getAllFlowerSamples = async (req: any, res: any): Promise<any> => {
 
     sql += ' ORDER BY created_at DESC';
 
-    const records = await query<FlowerSampleRecord[]>(req, sql, params);
+    const records = await query(req, sql, params);
     
-    const samples = records.map(record => parseJSONFields(record));
+    const arrangements = records.map(record => parseJSONFields(record));
 
     // Cache the results
-    setCached(cacheKey, samples);
+    setCached(cacheKey, arrangements);
 
     return res.status(200).json({
       success: true,
-      count: samples.length,
-      data: samples
+      count: arrangements.length,
+      data: arrangements
     });
 
   } catch (error: any) {
-    console.error('Get all flower samples error:', error);
+    console.error('Get all flower arrangements error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };

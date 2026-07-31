@@ -202,8 +202,8 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
             INSERT INTO hearse_bookings
             (booking_code, hearse_id, tenant_db_name, client_name, client_phone, client_email, destination,
              booking_date, status, created_at, updated_at,
-             booked_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             booked_by, from_location, to_location, booking_dates)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const insertParams = [
@@ -218,7 +218,10 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
             bookingStatus,
             now,
             now,
-            createdByName
+            createdByName,
+            req.body.from_location || null,
+            req.body.to_location || null,
+            req.body.booking_dates ? JSON.stringify(req.body.booking_dates) : null
         ];
 
         const result = await safeQuery(insertQuery, insertParams);

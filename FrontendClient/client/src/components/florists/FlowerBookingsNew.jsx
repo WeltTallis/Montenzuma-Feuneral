@@ -53,6 +53,7 @@ const FlowerBookingsNew = () => {
     priority: 'Normal'
   });
   const [toasts, setToasts] = useState([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const showToast = useCallback((msg, type = 'success') => {
     const id = Date.now();
@@ -165,6 +166,32 @@ const FlowerBookingsNew = () => {
     }
   }, [showToast, loadBookings]);
 
+  const handleCreateArrangement = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    
+    try {
+      const tenantSlug = localStorage.getItem('tenantSlug') || 'system_shared';
+      const res = await fetch('/api/v1/restpoint/florist/flower-arrangements', {
+        method: 'POST',
+        headers: { 'x-tenant-slug': tenantSlug },
+        body: formData
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        showToast('Arrangement created successfully!');
+        setShowCreateModal(false);
+        form.reset();
+      } else {
+        showToast(data.message || 'Failed to create arrangement', 'error');
+      }
+    } catch (err) {
+      showToast('Failed to create arrangement', 'error');
+    }
+  };
+
   const renderToolbar = () => {
     const d = calDate;
     return (
@@ -185,10 +212,23 @@ const FlowerBookingsNew = () => {
           <button style={styles.viewBtn(view === 'list')} onClick={() => setView('list')}>List</button>
           <button style={styles.viewBtn(view === 'calendar')} onClick={() => setView('calendar')}>Calendar</button>
         </div>
-        <button style={styles.placeBookingBtn} onClick={() => openNewBookingForm('')}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Place Booking
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            style={{
+              ...styles.placeBookingBtn,
+              background: '#475A43',
+              boxShadow: '0 4px 12px rgba(71,90,67,0.25)'
+            }}
+            onClick={() => setShowCreateModal(true)}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create Arrangement
+          </button>
+          <button style={styles.placeBookingBtn} onClick={() => openNewBookingForm('')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Place Booking
+          </button>
+        </div>
       </div>
     );
   };
@@ -632,6 +672,289 @@ const FlowerBookingsNew = () => {
           </div>
         ))}
       </div>
+
+      {/* Create Arrangement Modal */}
+      {showCreateModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '24px'
+        }} onClick={() => setShowCreateModal(false)}>
+          <div style={{
+            background: '#0a0b0c',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '16px',
+            maxWidth: '650px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{
+              padding: '24px 28px',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{
+                fontFamily: "'Playfair Display', serif",
+                fontSize: '24px',
+                fontWeight: 600,
+                color: '#fff',
+                margin: 0
+              }}>Create New Arrangement</h2>
+              <button 
+                onClick={() => setShowCreateModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'rgba(255,255,255,0.4)',
+                  fontSize: '28px',
+                  cursor: 'pointer',
+                  padding: 0,
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >×</button>
+            </div>
+
+            <form onSubmit={handleCreateArrangement} style={{ padding: '28px' }}>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.35)',
+                  marginBottom: '8px'
+                }}>Title *</label>
+                <input
+                  type="text"
+                  name="title"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontFamily: "'DM Sans', system-ui, sans-serif",
+                    background: 'rgba(255,255,255,0.02)',
+                    color: '#fff',
+                    outline: 'none'
+                  }}
+                  placeholder="e.g., White Rose Wreath"
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.35)',
+                  marginBottom: '8px'
+                }}>Description *</label>
+                <textarea
+                  name="description"
+                  required
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontFamily: "'DM Sans', system-ui, sans-serif",
+                    background: 'rgba(255,255,255,0.02)',
+                    color: '#fff',
+                    outline: 'none',
+                    resize: 'vertical'
+                  }}
+                  placeholder="Describe the arrangement..."
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.35)',
+                  marginBottom: '8px'
+                }}>Types (comma-separated)</label>
+                <input
+                  type="text"
+                  name="types"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontFamily: "'DM Sans', system-ui, sans-serif",
+                    background: 'rgba(255,255,255,0.02)',
+                    color: '#fff',
+                    outline: 'none'
+                  }}
+                  placeholder="e.g., Wreath, Spray, Bouquet"
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.35)',
+                  marginBottom: '8px'
+                }}>Colors (comma-separated)</label>
+                <input
+                  type="text"
+                  name="colors"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontFamily: "'DM Sans', system-ui, sans-serif",
+                    background: 'rgba(255,255,255,0.02)',
+                    color: '#fff',
+                    outline: 'none'
+                  }}
+                  placeholder="e.g., White, Red, Pink"
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.35)',
+                  marginBottom: '8px'
+                }}>Sizes (comma-separated)</label>
+                <input
+                  type="text"
+                  name="sizes"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontFamily: "'DM Sans', system-ui, sans-serif",
+                    background: 'rgba(255,255,255,0.02)',
+                    color: '#fff',
+                    outline: 'none'
+                  }}
+                  placeholder="e.g., Small, Medium, Large"
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.35)',
+                  marginBottom: '8px'
+                }}>Images (multiple)</label>
+                <input
+                  type="file"
+                  name="images"
+                  accept="image/*"
+                  multiple
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontFamily: "'DM Sans', system-ui, sans-serif",
+                    background: 'rgba(255,255,255,0.02)',
+                    color: '#fff'
+                  }}
+                />
+                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '6px' }}>
+                  You can select multiple images for this arrangement
+                </p>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end',
+                paddingTop: '20px',
+                borderTop: '1px solid rgba(255,255,255,0.06)'
+              }}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowCreateModal(false)}
+                  style={{
+                    padding: '11px 20px',
+                    borderRadius: '8px',
+                    background: 'transparent',
+                    color: 'rgba(255,255,255,0.5)',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    cursor: 'pointer',
+                    fontFamily: "'DM Sans', system-ui, sans-serif"
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  style={{
+                    padding: '11px 24px',
+                    borderRadius: '8px',
+                    background: '#475A43',
+                    color: '#fff',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: "'DM Sans', system-ui, sans-serif"
+                  }}
+                >
+                  Create Arrangement
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

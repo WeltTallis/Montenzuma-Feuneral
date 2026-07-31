@@ -2,11 +2,11 @@
 import { Router } from 'express';
 import multer from 'multer';
 import {
-  createFlowerSample,
-  getFlowerSampleById,
-  updateFlowerSample,
-  deleteFlowerSample,
-  getAllFlowerSamples
+  createFlowerArrangement,
+  getFlowerArrangementById,
+  updateFlowerArrangement,
+  deleteFlowerArrangement,
+  getAllFlowerArrangements
 } from '../controllers/flowerSamples';
 
 // Configure multer for file uploads (memory storage)
@@ -29,65 +29,67 @@ const upload = multer({
 const router = Router();
 
 // Middleware to handle multiple file uploads (max 10 files)
-const uploadMiddleware = upload.array('images', 10);
+const uploadMiddleware = (req: any, res: any, next: any) => {
+  upload.array('images', 10)(req, res, next);
+};
 
 // ============================================
 // ROUTES
 // ============================================
 
 /**
- * GET ALL - List all flower samples with optional filtering
- * GET /api/flower-samples
+ * GET ALL - List all flower arrangements with optional filtering
+ * GET /api/flower-arrangements
  * Query params: color, type, size
  */
 router.get(
   '/',
-  getAllFlowerSamples
+  getAllFlowerArrangements as any
 );
 
 /**
- * CREATE - Create a new flower sample
- * POST /api/flower-samples
+ * CREATE - Create a new flower arrangement
+ * POST /api/flower-arrangements
  * Body: { title, description, types, colors, sizes, images? }
  * Files: images (optional, multiple)
  */
 router.post(
   '/',
   uploadMiddleware,
-  createFlowerSample
+  createFlowerArrangement as any
 );
 
 /**
- * GET BY ID - Get a flower sample by ID
- * GET /api/flower-samples/:id
- * Params: id (sample_id)
+ * GET BY ID - Get a flower arrangement by ID
+ * GET /api/flower-arrangements/:id
+ * Params: id (arrangement_id)
  */
 router.get(
   '/:id',
-  getFlowerSampleById
+  getFlowerArrangementById as any
 );
 
 /**
- * UPDATE - Update a flower sample
- * PUT /api/flower-samples/:id
- * Params: id (sample_id)
+ * UPDATE - Update a flower arrangement
+ * PUT /api/flower-arrangements/:id
+ * Params: id (arrangement_id)
  * Body: { title?, description?, types?, colors?, sizes?, images? }
  * Files: images (optional, multiple)
  */
 router.put(
   '/:id',
   uploadMiddleware,
-  updateFlowerSample
+  updateFlowerArrangement as any
 );
 
 /**
- * DELETE - Delete a flower sample
- * DELETE /api/flower-samples/:id
- * Params: id (sample_id)
+ * DELETE - Delete a flower arrangement
+ * DELETE /api/flower-arrangements/:id
+ * Params: id (arrangement_id)
  */
 router.delete(
   '/:id',
-  deleteFlowerSample
+  deleteFlowerArrangement as any
 );
 
 export default router;

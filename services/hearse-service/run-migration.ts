@@ -5,7 +5,7 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { runMigrations } from '../database/db';
+import { runMigrations } from './database';
 
 // Load environment variables from multiple locations
 dotenv.config({ path: path.resolve(__dirname, '../.env') });

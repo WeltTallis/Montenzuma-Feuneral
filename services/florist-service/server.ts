@@ -11,6 +11,7 @@ import express from 'express';
 import cors from 'cors';
 import knex from 'knex';
 import { flowerBookingRouter } from './routes/flowerBookingRoutes';
+import flowerSampleRoutes from './routes/flowerSampleRoutes';
 
 const app = express();
 
@@ -67,21 +68,21 @@ const runMigrations = async () => {
             await migrationKnex.migrate.latest();
             console.log('[FLORIST] Knex migrations completed successfully');
         } else {
-        // Check if florist migrations have been run
-        const hasFlowerBookings = await migrationKnex.schema.hasTable('flower_bookings');
-        if (!hasFlowerBookings) {
-            await migrationKnex.migrate.latest();
-            console.log('[FLORIST] Knex migrations completed successfully');
-        } else {
-            // Check if new columns exist (for existing installations)
-            const hasQuantity = await migrationKnex.schema.hasColumn('flower_bookings', 'quantity');
-            if (!hasQuantity) {
+            // Check if florist migrations have been run
+            const hasFlowerBookings = await migrationKnex.schema.hasTable('flower_bookings');
+            if (!hasFlowerBookings) {
                 await migrationKnex.migrate.latest();
-                console.log('[FLORIST] Additional migrations completed');
+                console.log('[FLORIST] Knex migrations completed successfully');
             } else {
-                console.log('[FLORIST] Migrations already up to date');
+                // Check if new columns exist (for existing installations)
+                const hasQuantity = await migrationKnex.schema.hasColumn('flower_bookings', 'quantity');
+                if (!hasQuantity) {
+                    await migrationKnex.migrate.latest();
+                    console.log('[FLORIST] Additional migrations completed');
+                } else {
+                    console.log('[FLORIST] Migrations already up to date');
+                }
             }
-        }
         }
         
         await migrationKnex.destroy();
@@ -175,6 +176,7 @@ app.use(async (req: any, res: any, next: any) => {
 // ============================================
 console.log('[FLORIST] Registering routes...');
 app.use('/florist', flowerBookingRouter);
+app.use('/florist/flower-samples', flowerSampleRoutes);
 
 // Health check
 app.get('/api/health', (_req: any, res: any) => {
@@ -205,12 +207,42 @@ async function ensureFloristTables(dbName: string) {
         const hasFlowerCustomers = await tenantKnex.schema.hasTable('flower_customers');
         const hasFlowerPackages = await tenantKnex.schema.hasTable('flower_packages');
         const hasDeliveryZones = await tenantKnex.schema.hasTable('delivery_zones');
+        const hasFlowerSamples = await tenantKnex.schema.hasTable('flower_samples');
 
-        if (!hasFlowerBookings || !hasFlowerCustomers || !hasFlowerPackages || !hasDeliveryZones) {
-            // Run the migration for this tenant
-            const { up } = await import('./migrations/20240622000001_create_flower_bookings_tables.js');
-            await up(tenantKnex);
-            console.log(`[FLORIST] ✅ Florist tables created in: ${dbName}`);
+        if (!hasFlowerBookings || !hasFlowerCustomers || !hasFlowerPackages || !hasDeliveryZones || !hasFlowerSamples) {
+            // Ensure flower_samples table exists
+            if (!hasFlowerSamples) {
+                try {
+                    const { up: upSamples } = await import('./migrations/20240625000001_add_flower_samples.js');
+                    await upSamples(tenantKnex);
+                    console.log(`[FLORIST] ✅ flower_samples table created in: ${dbName}`);
+                } catch (e) {
+                    console.log(`[FLORIST] Creating flower_samples table directly...`);
+                    const exists = await tenantKnex.schema.hasTable('flower_samples');
+                    if (!exists) {
+                        await tenantKnex.schema.createTable('flower_samples', (table) => {
+                            table.increments('id').primary();
+                            table.string('sample_id', 50).unique();
+                            table.string('title', 255).notNullable();
+                            table.text('description');
+                            table.json('types');
+                            table.json('colors');
+                            table.json('sizes');
+                            table.json('images');
+                            table.string('tenant_slug', 100);
+                            table.timestamps(true, true);
+                        });
+                        console.log(`[FLORIST] ✅ flower_samples table created in: ${dbName}`);
+                    }
+                }
+            }
+            
+            // Run the main migration for other tables
+            if (!hasFlowerBookings || !hasFlowerCustomers || !hasFlowerPackages || !hasDeliveryZones) {
+                const { up } = await import('./migrations/20240622000001_create_flower_bookings_tables.js');
+                await up(tenantKnex);
+                console.log(`[FLORIST] ✅ Florist tables created in: ${dbName}`);
+            }
         } else {
             console.log(`[FLORIST] ✓ Florist tables already exist in: ${dbName}`);
         }

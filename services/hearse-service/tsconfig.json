@@ -3,10 +3,10 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "../../",
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "sourceMap": true,
-    "composite": true,
+    "composite": false,
     "strict": false,
     "noImplicitAny": false,
     "noUncheckedIndexedAccess": false,
@@ -20,7 +20,6 @@
     "routes/**/*.ts",
     "controllers/**/*.ts",
     "models/**/*.ts",
-     "src/migrations/**/*" ,
     "services/**/*.ts",
     "utils/**/*.ts",
     "config/**/*.ts",
@@ -32,8 +31,16 @@
     "../../app-global/**/*.ts",
     "../../app-global/**/*.js",
     "../../configurations/**/*.ts",
+    "../../services/auth-service/src/types/**/*.ts",
     "migrate-tenant-tables.js",
     "database.ts"
+  ],
+  "files": [
+    "migrations/20260716_001_create_hearses.js",
+    "migrations/20260716_002_add_status_options.js",
+    "migrations/20260716_003_add_hearse_name.js",
+    "migrations/20260716_004_add_analytics_fields.js",
+    "migrations/20260716_005_add_vehicle_details.js"
   ],
   "exclude": [
     "node_modules",

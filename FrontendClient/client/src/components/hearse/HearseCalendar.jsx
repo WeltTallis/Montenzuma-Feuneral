@@ -1,23 +1,294 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Truck, MapPin, Phone, User, Clock, X, ArrowLeft, Calendar, Plus } from '../../utils/icons/icons';
+import React, { useState, useCallback } from 'react';
+import styled, { css } from 'styled-components';
+import { Truck, MapPin, X, ArrowLeft, Calendar, Plus } from '../../utils/icons/icons'; // Adjust import paths as needed
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const STATUS_CONFIG = {
-  pending: { label: 'Pending', color: '#F59E0B', bg: 'rgba(245,158,11,.12)', strong: '#b45309' },
-  booked: { label: 'Booked', color: '#2563EB', bg: 'rgba(37,99,235,.12)', strong: '#1d4ed8' },
-  in_transit: { label: 'In Transit', color: '#D32F2F', bg: 'rgba(211,47,47,.12)', strong: '#b71c1c' },
-  completed: { label: 'Completed', color: '#2E7D32', bg: 'rgba(46,125,50,.12)', strong: '#1b5e20' },
-  cancelled: { label: 'Cancelled', color: '#64748b', bg: 'rgba(100,116,139,.12)', strong: '#475569' },
+  pending: { label: 'Pending', color: '#F59E0B', bg: 'rgba(245,158,11,.1)', strong: '#b45309' },
+  booked: { label: 'Booked', color: '#2563EB', bg: 'rgba(37,99,235,.1)', strong: '#1d4ed8' },
+  in_transit: { label: 'In Transit', color: '#D32F2F', bg: 'rgba(211,47,47,.1)', strong: '#b71c1c' },
+  completed: { label: 'Completed', color: '#059669', bg: 'rgba(5,150,105,.1)', strong: '#047857' },
+  cancelled: { label: 'Cancelled', color: '#64748b', bg: 'rgba(100,116,139,.1)', strong: '#475569' },
 };
 
 const pad = n => String(n).padStart(2, '0');
 const fmtDateStr = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const parseDate = s => { const d = new Date(s); return isNaN(d) ? null : d; };
 const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
-const fmtTime = s => s ? new Date(s).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
 const fmtDateTime = s => s ? new Date(s).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+
+// --- Styled Components ---
+const CalContainer = styled.div`
+  background: #ffffff;
+  border-radius: 12px;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #0a0a0a;
+  position: relative;
+  overflow: hidden;
+`;
+
+const Toolbar = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f0f0f0;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+    justify-content: center;
+  }
+`;
+
+const ToolGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+`;
+
+const CalTitle = styled.h2`
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const IconBtn = styled.button`
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  background: #ffffff; border: 1px solid #e0e0e0; border-radius: 6px;
+  cursor: pointer; color: #333;
+  transition: all 0.15s;
+
+  &:hover { background: #f7f7f5; border-color: #0a0a0a; }
+`;
+
+const GhostBtn = styled.button`
+  background: #ffffff; border: 1px solid #e0e0e0; border-radius: 6px;
+  padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 600; color: #333;
+  cursor: pointer; transition: all 0.15s;
+
+  &:hover { background: #f7f7f5; border-color: #0a0a0a; }
+`;
+
+const ViewToggle = styled.div`
+  display: flex; background: #f7f7f5; border: 1px solid #e0e0e0;
+  border-radius: 6px; padding: 3px; gap: 2px;
+`;
+
+const ToggleBtn = styled.button`
+  padding: 0.375rem 0.875rem; border-radius: 4px; border: none;
+  background: transparent; font-size: 0.75rem; font-weight: 600;
+  color: ${p => p.$active ? '#0a0a0a' : '#666'}; cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: ${p => p.$active ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'};
+  background: ${p => p.$active ? '#ffffff' : 'transparent'};
+`;
+
+const Legend = styled.div`
+  display: flex; gap: 1rem; font-size: 0.7rem; color: #666; font-weight: 500;
+  flex-wrap: wrap; justify-content: center;
+`;
+
+const LegendItem = styled.span`display: inline-flex; align-items: center; gap: 0.25rem;`;
+const LegendDot = styled.span`width: 8px; height: 8px; border-radius: 2px; background: ${p => p.color};`;
+
+const MonthGridWrapper = styled.div`padding: 1.5rem; @media (max-width: 768px) { padding: 0.5rem; }`;
+const WeekdaysRow = styled.div`display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 8px;`;
+const WeekdayCell = styled.div`
+  text-align: center; font-size: 0.7rem; font-weight: 700; color: #888;
+  text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 0;
+`;
+
+const DaysGrid = styled.div`display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; @media (max-width: 600px) { gap: 4px; }`;
+
+const DayCell = styled.div`
+  min-height: 110px;
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  opacity: ${p => p.$outside ? 0.4 : 1};
+  border-color: ${p => p.$isToday ? '#0a0a0a' : '#f0f0f0'};
+  box-shadow: ${p => p.$isSelected ? '0 0 0 2px #0a0a0a' : 'none'};
+
+  &:hover { border-color: #0a0a0a; }
+
+  @media (max-width: 600px) {
+    min-height: 70px;
+    padding: 4px;
+  }
+`;
+
+const DayNum = styled.div`
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 0.85rem; font-weight: 700; color: #0a0a0a;
+  margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;
+`;
+
+const TodayCircle = styled.span`
+  background: #0a0a0a; color: #fff; width: 24px; height: 24px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;
+`;
+
+const EventPill = styled.div`
+  font-size: 0.7rem; padding: 3px 6px; border-radius: 4px; margin-bottom: 4px;
+  background: ${p => p.bg}; color: ${p => p.strong}; border-left: 3px solid ${p => p.color};
+  font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer; transition: all 0.15s;
+
+  &:hover { transform: translateY(-1px); }
+`;
+
+const MoreLink = styled.div`
+  font-size: 0.65rem; color: #666; font-weight: 700; padding: 2px 6px; cursor: pointer;
+  &:hover { color: #0a0a0a; }
+`;
+
+const WeekScroll = styled.div`overflow-x: auto; padding: 1rem; &::-webkit-scrollbar { height: 8px; } &::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; } `;
+const WeekGrid = styled.div`display: grid; grid-template-columns: 60px repeat(7, 1fr); min-width: 800px; gap: 1px; background: #f0f0f0; border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden;`;
+
+const WeekHeaderCell = styled.div`
+  padding: 12px 6px; text-align: center; background: ${p => p.$isToday ? '#0a0a0a' : '#ffffff'};
+  color: ${p => p.$isToday ? '#fff' : '#0a0a0a'};
+`;
+const TimeGutter = styled.div`padding: 6px; font-size: 0.7rem; color: #888; text-align: right; height: 54px; background: #ffffff;`;
+const WeekCell = styled.div`
+  height: 54px; background: #ffffff; position: relative; border-top: 1px solid #f0f0f0;
+  &:hover { background: #fafafa; }
+`;
+
+const SchedEvent = styled.div`
+  position: absolute; left: 3px; right: 3px; top: 2px; height: ${p => p.height}px;
+  background: ${p => p.bg}; border-left: 3px solid ${p => p.color}; border-radius: 4px;
+  padding: 4px 6px; font-size: 0.65rem; color: #0a0a0a; overflow: hidden; cursor: pointer;
+  z-index: 1; transition: all 0.15s;
+  &:hover { z-index: 2; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+`;
+
+const FAB = styled.button`
+  position: absolute; bottom: 24px; right: 24px; width: 56px; height: 56px;
+  border-radius: 50%; background: #0a0a0a; color: #fff; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: all 0.2s; z-index: 10;
+
+  &:hover { transform: scale(1.05); background: #333; }
+`;
+
+// Drawer & Modals
+const Overlay = styled.div`
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 90;
+`;
+
+const Drawer = styled.div`
+  position: fixed; top: 0; right: 0; bottom: 0; width: 480px; max-width: 100%;
+  background: #ffffff; z-index: 100; box-shadow: -10px 0 30px -10px rgba(0,0,0,0.1);
+  transform: translateX(${p => p.open ? '0' : '100%'});
+  transition: transform 0.3s ease; display: flex; flex-direction: column;
+
+  @media (max-width: 600px) { width: 100%; }
+`;
+
+const DrawerHeader = styled.div`
+  padding: 1.5rem; border-bottom: 1px solid #f0f0f0; display: flex;
+  justify-content: space-between; align-items: center; background: #ffffff;
+`;
+
+const DrawerTitle = styled.h3`font-family: 'Merriweather', Georgia, serif; font-size: 1.1rem; font-weight: 700; margin: 0;`;
+const DrawerSub = styled.p`font-size: 0.8rem; color: #666; margin: 0.25rem 0 0 0;`;
+
+const CloseBtn = styled.button`
+  width: 36px; height: 36px; border-radius: 6px; background: #fff; border: 1px solid #e0e0e0;
+  color: #333; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: all 0.15s; &:hover { border-color: #0a0a0a; color: #0a0a0a; }
+`;
+
+const DrawerBody = styled.div`padding: 1.5rem; flex: 1; overflow-y: auto;`;
+
+const BackBtn = styled.button`
+  display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600;
+  color: #0a0a0a; margin-bottom: 1rem; cursor: pointer; background: transparent; border: none;
+`;
+
+const BookingCard = styled.div`
+  display: flex; gap: 12px; align-items: center; padding: 12px; background: #ffffff;
+  border: 1px solid #f0f0f0; border-radius: 8px; cursor: pointer; margin-bottom: 8px;
+  transition: all 0.15s; &:hover { border-color: #0a0a0a; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+`;
+
+const IconBox = styled.div`
+  width: 40px; height: 40px; border-radius: 8px; background: ${p => p.bg}; color: ${p => p.color};
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+`;
+
+const StatusBadge = styled.span`
+  padding: 4px 10px; border-radius: 4px; background: ${p => p.bg}; color: ${p => p.strong};
+  font-weight: 700; border: 1px solid ${p => p.color}; font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px;
+`;
+
+const DetailHero = styled.div`
+  display: flex; gap: 1rem; align-items: center; padding: 1.25rem; background: #ffffff;
+  border: 1px solid #f0f0f0; border-radius: 8px; margin-bottom: 1.5rem;
+`;
+
+const DetailGrid = styled.div`display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; @media (max-width: 480px) { grid-template-columns: 1fr; }`;
+const DetailBox = styled.div`padding: 1rem; background: #ffffff; border: 1px solid #f0f0f0; border-radius: 8px;`;
+const DetailLabel = styled.div`font-size: 0.7rem; font-weight: 700; color: #888; text-transform: uppercase; margin-bottom: 0.25rem;`;
+const DetailValue = styled.div`font-size: 0.9rem; font-weight: 600; color: #0a0a0a;`;
+
+const Timeline = styled.div`position: relative; padding-left: 24px; margin-top: 8px;`;
+const TimelineLine = styled.div`position: absolute; left: 7px; top: 4px; bottom: 4px; width: 2px; background: #e0e0e0;`;
+const TimelineItem = styled.div`position: relative; padding-bottom: 1.25rem; &:last-child { padding-bottom: 0; }`;
+const TimelineDot = styled.div`
+  position: absolute; left: -22px; top: 2px; width: 12px; height: 12px; border-radius: 50%;
+  background: ${p => p.done ? '#0a0a0a' : p.active ? '#0a0a0a' : '#fff'};
+  border: 2px solid ${p => p.done || p.active ? '#0a0a0a' : '#ccc'};
+  box-shadow: ${p => p.active ? '0 0 0 4px rgba(10,10,10,0.1)' : 'none'};
+`;
+const TimelineTitle = styled.div`font-size: 0.85rem; font-weight: 600; color: #0a0a0a;`;
+const TimelineTime = styled.div`font-size: 0.75rem; color: #666; margin-top: 2px;`;
+
+const ModalOverlay = styled.div`
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px;
+`;
+
+const ModalContent = styled.div`
+  background: #ffffff; border-radius: 12px; width: 100%; max-width: 500px;
+  max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  display: flex; flex-direction: column;
+`;
+
+const ModalHeader = styled.div`padding: 1.5rem; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;`;
+const ModalBody = styled.div`padding: 1.5rem; overflow-y: auto; flex: 1;`;
+const ModalFooter = styled.div`padding: 1rem 1.5rem; border-top: 1px solid #f0f0f0; display: flex; gap: 12px; justify-content: flex-end;`;
+
+const BtnPrimary = styled.button`
+  padding: 0.625rem 1.25rem; border-radius: 6px; background: #0a0a0a; color: #fff; border: none;
+  font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  transition: all 0.15s; &:hover { background: #333; }
+`;
+
+const BtnSecondary = styled.button`
+  padding: 0.625rem 1.25rem; border-radius: 6px; background: #fff; color: #333; border: 1px solid #e0e0e0;
+  font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
+  &:hover { background: #f7f7f5; border-color: #0a0a0a; }
+`;
+
+const SelectedDatesWrap = styled.div`margin-bottom: 1.5rem; padding: 1rem; background: #f7f7f5; border-radius: 6px; border: 1px solid #e0e0e0;`;
+const DateChip = styled.span`padding: 4px 10px; background: #fff; border: 1px solid #0a0a0a; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: #0a0a0a; margin-right: 4px;`;
+
 
 const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onDateSelect, onCreateBooking }) => {
   const [calView, setCalView] = useState('month');
@@ -76,10 +347,6 @@ const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onD
     setDrawerOpen(true);
   }, []);
 
-  const backToList = useCallback(() => {
-    setActiveBookingId(null);
-  }, []);
-
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
     setActiveBookingId(null);
@@ -92,56 +359,26 @@ const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onD
 
   const toggleDateSelection = (dateStr) => {
     setTempSelectedDates(prev => {
-      if (prev.includes(dateStr)) {
-        return prev.filter(d => d !== dateStr);
-      } else {
-        return [...prev, dateStr].sort();
-      }
+      if (prev.includes(dateStr)) return prev.filter(d => d !== dateStr);
+      return [...prev, dateStr].sort();
     });
   };
 
   const confirmDateSelection = () => {
     setSelectedDates(tempSelectedDates);
     setShowDatePicker(false);
-    if (onCreateBooking && tempSelectedDates.length > 0) {
-      onCreateBooking(tempSelectedDates);
-    }
+    if (onCreateBooking && tempSelectedDates.length > 0) onCreateBooking(tempSelectedDates);
   };
 
-  const cancelDateSelection = () => {
-    setTempSelectedDates([]);
-    setShowDatePicker(false);
-  };
-
-  const renderToolbar = () => {
-    const d = calDate;
+  const renderCalEvent = (b, dateStr) => {
+    const cfg = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
+    const time = getBookingTime(b);
+    const label = `${time ? time + ' ' : ''}${b.client_name?.split(' ')[0] || ''}`;
     return (
-      <div style={styles.toolbar}>
-        <div style={styles.nav}>
-          <div style={styles.title}>
-            <button style={styles.arrowBtn} onClick={() => calNav(-1)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-            </button>
-            {MONTHS[d.getMonth()]} {d.getFullYear()}
-            <button style={styles.arrowBtn} onClick={() => calNav(1)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
-            </button>
-          </div>
-          <button style={styles.todayBtn} onClick={calToday}>Today</button>
-        </div>
-        <div style={styles.viewToggle}>
-          <button style={styles.viewBtn(calView === 'month')} onClick={() => setCalView('month')}>Month</button>
-          <button style={styles.viewBtn(calView === 'week')} onClick={() => setCalView('week')}>Week</button>
-        </div>
-        <div style={styles.legend}>
-          {Object.keys(STATUS_CONFIG).map(s => (
-            <span key={s} style={styles.legendItem}>
-              <span style={styles.legendDot(STATUS_CONFIG[s].color)} />
-              {STATUS_CONFIG[s].label}
-            </span>
-          ))}
-        </div>
-      </div>
+      <EventPill key={b.booking_id || b.id} bg={cfg.bg} color={cfg.color} strong={cfg.strong}
+        onClick={(e) => { e.stopPropagation(); viewBooking(b.booking_id || b.id); }}>
+        {label}
+      </EventPill>
     );
   };
 
@@ -149,18 +386,17 @@ const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onD
     const d = calDate;
     const year = d.getFullYear(), month = d.getMonth();
     const first = new Date(year, month, 1);
-    const startOffset = (first.getDay() + 6) % 7;
+    const startOffset = first.getDay();
     const gridStart = addDays(first, -startOffset);
-    const days = [];
-    for (let i = 0; i < 42; i++) days.push(addDays(gridStart, i));
+    const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
     const todayStr = fmtDateStr(new Date());
 
     return (
-      <div style={styles.monthGrid}>
-        <div style={styles.weekdays}>
-          {WEEKDAYS.map(w => <div key={w} style={styles.weekday}>{w}</div>)}
-        </div>
-        <div style={styles.daysGrid}>
+      <MonthGridWrapper>
+        <WeekdaysRow>
+          {WEEKDAYS.map(w => <WeekdayCell key={w}>{w}</WeekdayCell>)}
+        </WeekdaysRow>
+        <DaysGrid>
           {days.map(day => {
             const dateStr = fmtDateStr(day);
             const outside = day.getMonth() !== month;
@@ -171,204 +407,123 @@ const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onD
             const more = events.length - visible.length;
 
             return (
-              <div
-                key={dateStr}
-                style={styles.day(outside, isToday, isSelected)}
-                onClick={() => toggleDateSelection(dateStr)}
-              >
-                <div style={styles.dayNum}>
-                  <span style={isToday ? styles.todayNum : {}}>{day.getDate()}</span>
-                </div>
+              <DayCell key={dateStr} $outside={outside} $isToday={isToday} $isSelected={isSelected} onClick={() => toggleDateSelection(dateStr)}>
+                <DayNum>
+                  {isToday ? <TodayCircle>{day.getDate()}</TodayCircle> : <span>{day.getDate()}</span>}
+                </DayNum>
                 {visible.map(ev => renderCalEvent(ev, dateStr))}
-                {more > 0 && (
-                  <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 700, padding: '2px 6px', cursor: 'pointer' }}
-                    onClick={(e) => { e.stopPropagation(); openDayList(dateStr); }}>
-                    +{more} more
-                  </div>
-                )}
-              </div>
+                {more > 0 && <MoreLink onClick={(e) => { e.stopPropagation(); openDayList(dateStr); }}>+{more} more</MoreLink>}
+              </DayCell>
             );
           })}
-        </div>
-      </div>
-    );
-  };
-
-  const renderCalEvent = (b, dateStr) => {
-    const cfg = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
-    const start = b.start_date || formatDateStr(b.booking_date || b.estimated_departure_time);
-    const end = b.end_date || start;
-    const isStart = dateStr === start;
-    const isEnd = dateStr === end;
-    const isMid = !isStart && !isEnd;
-    const isMulti = (b.duration_days || 1) > 1;
-
-    let pos = '';
-    if (isMulti) {
-      if (isStart) pos = 'start';
-      else if (isEnd) pos = 'end';
-      else if (isMid) pos = 'mid';
-    }
-
-    const time = getBookingTime(b);
-    const timeStr = (isStart && time) ? time : '';
-    const label = isMulti && isMid
-      ? b.client_name?.split(' ')[0] || ''
-      : `${timeStr} ${b.client_name?.split(' ')[0] || ''}`;
-
-    return (
-      <div
-        key={b.booking_id || b.id}
-        style={styles.event(cfg, isMulti, pos)}
-        onClick={(e) => { e.stopPropagation(); viewBooking(b.booking_id || b.id); }}
-        title={`${b.client_name} · ${b.destination || ''} · ${cfg.label}`}
-      >
-        {label}
-      </div>
+        </DaysGrid>
+      </MonthGridWrapper>
     );
   };
 
   const renderWeekGrid = () => {
     const d = calDate;
-    const dow = (d.getDay() + 6) % 7;
+    const dow = d.getDay();
     const weekStart = addDays(d, -dow);
-    const days = [];
-    for (let i = 0; i < 7; i++) days.push(addDays(weekStart, i));
+    const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
     const todayStr = fmtDateStr(new Date());
-    const hours = [];
-    for (let i = 6; i <= 20; i++) hours.push(i);
+    const hours = Array.from({ length: 15 }, (_, i) => i + 6);
 
     return (
-      <div style={{ overflow: 'auto' }}>
-        <div style={styles.weekGrid}>
-          <div style={{ ...styles.headerCell(false), background: '#0f172a', borderRight: '1px solid #334155' }} />
+      <WeekScroll>
+        <WeekGrid>
+          <WeekHeaderCell></WeekHeaderCell>
           {days.map(day => {
             const dateStr = fmtDateStr(day);
             const isToday = dateStr === todayStr;
             return (
-              <div key={dateStr} style={styles.headerCell(isToday)}>
-                <div style={styles.headerDayName}>{WEEKDAYS[(day.getDay() + 6) % 7]}</div>
-                <div style={styles.headerDayNum}>{day.getDate()}</div>
-              </div>
-            );
-          })}
-
-          <div style={{ ...styles.allDayCell, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', background: '#0f172a' }}>
-            All Day
-          </div>
-          {days.map(day => {
-            const dateStr = fmtDateStr(day);
-            const allDayEvents = bookings.filter(b => (b.duration_days || 1) > 1 && (b.start_date || formatDateStr(b.booking_date)) <= dateStr && (b.end_date || (b.start_date || formatDateStr(b.booking_date))) >= dateStr);
-            return (
-              <div key={dateStr} style={styles.allDayCell}>
-                {allDayEvents.map(b => {
-                  const cfg = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
-                  return (
-                    <div key={b.booking_id || b.id} style={styles.allDayEvent(cfg)} onClick={() => viewBooking(b.booking_id || b.id)}>
-                      <MapPin size={10} /> {b.client_name?.split(' ')[0] || ''} ({(b.duration_days || 1)}d)
-                    </div>
-                  );
-                })}
-              </div>
+              <WeekHeaderCell key={dateStr} $isToday={isToday}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: isToday ? '#aaa' : '#888' }}>{WEEKDAYS[day.getDay()]}</div>
+                <div style={{ fontSize: '1rem', fontWeight: 700 }}>{day.getDate()}</div>
+              </WeekHeaderCell>
             );
           })}
 
           {hours.map(h => (
             <React.Fragment key={h}>
-              <div style={styles.timeGutter}>{pad(h)}:00</div>
+              <TimeGutter>{pad(h)}:00</TimeGutter>
               {days.map(day => {
                 const dateStr = fmtDateStr(day);
                 const events = bookings.filter(b => {
-                  if ((b.duration_days || 1) > 1) return false;
                   const bDate = formatDateStr(b.booking_date || b.estimated_departure_time);
                   return bDate === dateStr && new Date(b.booking_date).getHours() === h;
                 });
                 return (
-                  <div key={dateStr} style={styles.dayCol}>
+                  <WeekCell key={dateStr}>
                     {events.map(b => {
                       const cfg = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
                       const height = (b.duration_hours || 1) * 54 - 4;
                       return (
-                        <div key={b.booking_id || b.id} style={styles.schedEvent(cfg, height)} onClick={() => viewBooking(b.booking_id || b.id)}>
-                          <span style={styles.evTime}>{getBookingTime(b)}</span>
-                          <div style={styles.evTitle}>{b.client_name}</div>
-                          <div style={styles.evSub}>{b.destination || ''}</div>
-                        </div>
+                        <SchedEvent key={b.booking_id || b.id} bg={cfg.bg} color={cfg.color} height={height} onClick={() => viewBooking(b.booking_id || b.id)}>
+                          <span style={{ fontSize: '0.65rem', fontWeight: 700, display: 'block', marginBottom: '2px' }}>{getBookingTime(b)}</span>
+                          <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.client_name}</div>
+                          <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.destination || ''}</div>
+                        </SchedEvent>
                       );
                     })}
-                  </div>
+                  </WeekCell>
                 );
               })}
             </React.Fragment>
           ))}
-        </div>
-      </div>
+        </WeekGrid>
+      </WeekScroll>
     );
   };
 
-  const renderDrawerContent = () => {
-    if (activeBookingId) return renderBookingDetail();
-
+  const renderDrawerList = () => {
     const dateStr = selectedDate || fmtDateStr(new Date());
     const events = getEventsForDate(dateStr);
     const d = parseDate(dateStr);
-    if (!d) return '';
+    if (!d) return null;
 
     return (
       <>
-        <div style={styles.drawerHeader}>
+        <DrawerHeader>
           <div>
-            <div style={styles.drawerTitle}>{d.toLocaleDateString('en-US', { weekday: 'long' })}</div>
-            <div style={styles.drawerSub}>
-              {d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} · {events.length} booking{events.length !== 1 ? 's' : ''}
-            </div>
+            <DrawerTitle>{d.toLocaleDateString('en-US', { weekday: 'long' })}</DrawerTitle>
+            <DrawerSub>{d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} · {events.length} booking{events.length !== 1 ? 's' : ''}</DrawerSub>
           </div>
-          <button style={styles.drawerClose} onClick={closeDrawer}>
-            <X size={16} />
-          </button>
-        </div>
-        <div style={styles.drawerBody}>
+          <CloseBtn onClick={closeDrawer}><X size={16} /></CloseBtn>
+        </DrawerHeader>
+        <DrawerBody>
           {events.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
-              <Calendar size={40} style={{ opacity: 0.3, marginBottom: '16px' }} />
-              <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>No bookings for this day</h4>
-              <p style={{ fontSize: '12px' }}>Click a day to view or add bookings.</p>
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#888' }}>
+              <Calendar size={32} style={{ opacity: 0.3, marginBottom: '12px' }} />
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '6px' }}>No bookings for this day</h4>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {events.map(b => {
-                const cfg = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
-                return (
-                  <div key={b.booking_id || b.id} style={styles.drawerCard} onClick={() => viewBooking(b.booking_id || b.id)}>
-                    <div style={{
-                      width: '40px', height: '40px', borderRadius: '12px', background: cfg.bg, color: cfg.color,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                    }}>
-                      <Truck size={20} />
+            events.map(b => {
+              const cfg = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
+              return (
+                <BookingCard key={b.booking_id || b.id} onClick={() => viewBooking(b.booking_id || b.id)}>
+                  <IconBox bg={cfg.bg} color={cfg.color}><Truck size={20} /></IconBox>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{b.client_name} <span style={{ color: '#888', fontWeight: 500, fontSize: '0.75rem' }}>· {getBookingTime(b) || 'All day'}</span></div>
+                    <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <MapPin size={10} /> {b.destination || 'N/A'}
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: '13px', color: '#0f172a' }}>
-                        {b.client_name} <span style={{ color: '#64748b', fontWeight: 500, fontSize: '11px' }}>· {getBookingTime(b) || 'All day'}</span>
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#334155', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <MapPin size={10} /> {b.destination || ''}
-                      </div>
-                    </div>
-                    <span style={styles.statusBadge(cfg)}>{cfg.label}</span>
                   </div>
-                );
-              })}
-            </div>
+                  <StatusBadge bg={cfg.bg} strong={cfg.strong} color={cfg.color}>{cfg.label}</StatusBadge>
+                </BookingCard>
+              );
+            })
           )}
-        </div>
+        </DrawerBody>
       </>
     );
   };
 
-  const renderBookingDetail = () => {
+  const renderDrawerDetail = () => {
     const b = bookings.find(x => (x.booking_id || x.id) === activeBookingId);
-    if (!b) return '';
+    if (!b) return null;
     const cfg = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
+    
     const timeline = [
       { key: 'pending', title: 'Booking Created', time: b.created_at },
       { key: 'booked', title: 'Confirmed & Booked', time: b.status === 'booked' || ['in_transit', 'completed'].includes(b.status) ? b.booking_date : null },
@@ -380,68 +535,45 @@ const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onD
 
     return (
       <>
-        <div style={styles.drawerHeader}>
+        <DrawerHeader>
           <div>
-            <div style={styles.drawerTitle}>Booking Details</div>
-            <div style={styles.drawerSub}>ID: BK-{String(1000 + (b.booking_id || b.id || 0)).padStart(4, '0')}</div>
+            <DrawerTitle>Booking Details</DrawerTitle>
+            <DrawerSub>ID: BK-{String(1000 + (b.booking_id || b.id || 0)).padStart(4, '0')}</DrawerSub>
           </div>
-          <button style={styles.drawerClose} onClick={closeDrawer}>
-            <X size={16} />
-          </button>
-        </div>
-        <div style={styles.drawerBody}>
-          <button style={styles.backBtn} onClick={backToList}>
-            <ArrowLeft size={12} /> Back to List
-          </button>
+          <CloseBtn onClick={closeDrawer}><X size={16} /></CloseBtn>
+        </DrawerHeader>
+        <DrawerBody>
+          <BackBtn onClick={() => setActiveBookingId(null)}><ArrowLeft size={12} /> Back to List</BackBtn>
 
-          <div style={styles.detailHero}>
-            <div style={styles.heroIcon}>
-              <Truck size={24} />
-            </div>
+          <DetailHero>
+            <IconBox bg={cfg.bg} color={cfg.color} style={{ width: '52px', height: '52px', borderRadius: '8px' }}><Truck size={24} /></IconBox>
             <div style={{ flex: 1 }}>
-              <div style={styles.heroName}>{b.hearse_name || 'Vehicle'}</div>
-              <div style={styles.heroMeta}>
-                <span style={{ fontSize: '10px', padding: '3px 6px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px', fontWeight: 700, color: '#334155' }}>
-                  {b.plate_number || b.number_plate || 'N/A'}
-                </span>
-                {(b.duration_days || 0) > 1 && <span style={{ color: '#7c3aed', fontWeight: 600 }}>{b.duration_days} Day Trip</span>}
-              </div>
-              <div style={styles.heroClient}>{b.client_name}</div>
+              <div style={{ fontSize: '1rem', fontWeight: 700 }}>{b.hearse_name || 'Vehicle'}</div>
+              <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '4px' }}>{b.plate_number || b.number_plate || 'N/A'}</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, marginTop: '6px' }}>{b.client_name}</div>
             </div>
-            <span style={styles.statusBadge(cfg)}>{cfg.label}</span>
-          </div>
+            <StatusBadge bg={cfg.bg} strong={cfg.strong} color={cfg.color}>{cfg.label}</StatusBadge>
+          </DetailHero>
 
-          <div style={styles.detailGrid}>
-            <div style={styles.detailItem}>
-              <div style={styles.detailLabel}>Client Phone</div>
-              <div style={styles.detailValue}>{b.client_phone || '—'}</div>
-            </div>
-            <div style={styles.detailItem}>
-              <div style={styles.detailLabel}>Departure Time</div>
-              <div style={styles.detailValue}>{fmtDateTime(b.booking_date)}</div>
-            </div>
-            <div style={styles.detailItem}>
-              <div style={styles.detailLabel}>From Location</div>
-              <div style={styles.detailValue}>{b.from_location || '—'}</div>
-            </div>
-            <div style={styles.detailItem}>
-              <div style={styles.detailLabel}>Destination</div>
-              <div style={styles.detailValue}>{b.destination || '—'}</div>
-            </div>
-          </div>
+          <DetailGrid>
+            <DetailBox><DetailLabel>Client Phone</DetailLabel><DetailValue>{b.client_phone || '—'}</DetailValue></DetailBox>
+            <DetailBox><DetailLabel>Departure</DetailLabel><DetailValue>{fmtDateTime(b.booking_date)}</DetailValue></DetailBox>
+            <DetailBox><DetailLabel>From</DetailLabel><DetailValue>{b.from_location || '—'}</DetailValue></DetailBox>
+            <DetailBox><DetailLabel>Destination</DetailLabel><DetailValue>{b.destination || '—'}</DetailValue></DetailBox>
+          </DetailGrid>
 
-          <h4 style={{ fontFamily: "'Sora', sans-serif", fontSize: '13px', marginBottom: '14px', color: '#334155' }}>Status Timeline</h4>
-          <div style={styles.timeline}>
-            <div style={styles.timelineLine} />
+          <h4 style={{ fontSize: '0.85rem', marginBottom: '1rem', color: '#333' }}>Status Timeline</h4>
+          <Timeline>
+            <TimelineLine />
             {timeline.map((t, i) => (
-              <div key={t.key} style={styles.timelineItem}>
-                <div style={styles.timelineDot(i === activeIdx, i < activeIdx)} />
-                <div style={styles.timelineTitle}>{t.title}</div>
-                <div style={styles.timelineTime}>{t.time ? fmtDateTime(t.time) : '—'}</div>
-              </div>
+              <TimelineItem key={t.key}>
+                <TimelineDot active={i === activeIdx} done={i < activeIdx} />
+                <TimelineTitle>{t.title}</TimelineTitle>
+                <TimelineTime>{t.time ? fmtDateTime(t.time) : '—'}</TimelineTime>
+              </TimelineItem>
             ))}
-          </div>
-        </div>
+          </Timeline>
+        </DrawerBody>
       </>
     );
   };
@@ -450,47 +582,36 @@ const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onD
     const d = calDate;
     const year = d.getFullYear(), month = d.getMonth();
     const first = new Date(year, month, 1);
-    const startOffset = (first.getDay() + 6) % 7;
+    const startOffset = first.getDay();
     const gridStart = addDays(first, -startOffset);
-    const days = [];
-    for (let i = 0; i < 42; i++) days.push(addDays(gridStart, i));
+    const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
     const todayStr = fmtDateStr(new Date());
 
     return (
-      <div style={styles.modalOverlay} onClick={cancelDateSelection}>
-        <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-          <div style={styles.modalHeader}>
+      <ModalOverlay onClick={() => setShowDatePicker(false)}>
+        <ModalContent onClick={(e) => e.stopPropagation()}>
+          <ModalHeader>
             <div>
-              <div style={styles.modalTitle}>Select Dates for Booking</div>
-              <div style={styles.modalSub}>Choose one or more dates (click to toggle)</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>Select Dates for Booking</div>
+              <div style={{ fontSize: '0.8rem', color: '#666' }}>Choose one or more dates (click to toggle)</div>
             </div>
-            <button style={styles.modalClose} onClick={cancelDateSelection}>
-              <X size={18} />
-            </button>
-          </div>
+            <CloseBtn onClick={() => setShowDatePicker(false)}><X size={18} /></CloseBtn>
+          </ModalHeader>
 
-          <div style={styles.modalBody}>
-            <div style={styles.selectedDatesInfo}>
-              <div style={styles.selectedCount}>{tempSelectedDates.length} date{tempSelectedDates.length !== 1 ? 's' : ''} selected</div>
-              {tempSelectedDates.length > 0 && (
-                <div style={styles.selectedDatesList}>
-                  {tempSelectedDates.map(dateStr => {
-                    const date = parseDate(dateStr);
-                    return (
-                      <span key={dateStr} style={styles.selectedDateChip}>
-                        {date?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+          <ModalBody>
+            <SelectedDatesWrap>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '8px' }}>{tempSelectedDates.length} date{tempSelectedDates.length !== 1 ? 's' : ''} selected</div>
+              {tempSelectedDates.map(dateStr => {
+                const date = parseDate(dateStr);
+                return <DateChip key={dateStr}>{date?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</DateChip>;
+              })}
+            </SelectedDatesWrap>
 
-            <div style={styles.miniCalendar}>
-              <div style={styles.miniWeekdays}>
-                {WEEKDAYS.map(w => <div key={w} style={styles.miniWeekday}>{w}</div>)}
-              </div>
-              <div style={styles.miniDaysGrid}>
+            <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '12px' }}>
+              <WeekdaysRow style={{ marginBottom: '4px' }}>
+                {WEEKDAYS.map(w => <WeekdayCell key={w} style={{ fontSize: '0.65rem', padding: '4px' }}>{w}</WeekdayCell>)}
+              </WeekdaysRow>
+              <DaysGrid style={{ gap: '4px' }}>
                 {days.map(day => {
                   const dateStr = fmtDateStr(day);
                   const outside = day.getMonth() !== month;
@@ -499,761 +620,74 @@ const HearseCalendar = ({ bookings, onItemClick, onAddForDate, selectedDate, onD
                   const isPast = day < new Date(todayStr);
 
                   return (
-                    <div
-                      key={dateStr}
-                      style={styles.miniDay(outside, isToday, isSelected, isPast)}
-                      onClick={() => !isPast && !outside && toggleDateSelection(dateStr)}
-                    >
-                      <div style={styles.miniDayNum(isSelected)}>
-                        {isSelected && <div style={styles.miniCheckmark}>✓</div>}
-                        {day.getDate()}
-                      </div>
+                    <div key={dateStr} style={{
+                      aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      borderRadius: '6px', cursor: isPast || outside ? 'not-allowed' : 'pointer',
+                      background: isSelected ? '#0a0a0a' : isToday ? 'rgba(10,10,10,0.05)' : '#fff',
+                      border: `1px solid ${isSelected ? '#0a0a0a' : isToday ? '#0a0a0a' : '#e0e0e0'}`,
+                      opacity: outside || isPast ? 0.3 : 1, color: isSelected ? '#fff' : '#0a0a0a',
+                      fontWeight: 600, fontSize: '0.8rem'
+                    }} onClick={() => !isPast && !outside && toggleDateSelection(dateStr)}>
+                      {day.getDate()}
                     </div>
                   );
                 })}
-              </div>
+              </DaysGrid>
             </div>
-          </div>
+          </ModalBody>
 
-          <div style={styles.modalFooter}>
-            <button style={styles.cancelBtn} onClick={cancelDateSelection}>Cancel</button>
-            <button
-              style={styles.confirmBtn}
-              onClick={confirmDateSelection}
-              disabled={tempSelectedDates.length === 0}
-            >
-              <Plus size={16} />
-              Confirm & Create Booking
-            </button>
-          </div>
-        </div>
-      </div>
+          <ModalFooter>
+            <BtnSecondary onClick={() => setShowDatePicker(false)}>Cancel</BtnSecondary>
+            <BtnPrimary onClick={confirmDateSelection} disabled={tempSelectedDates.length === 0} style={{ opacity: tempSelectedDates.length === 0 ? 0.5 : 1 }}>
+              <Plus size={16} /> Confirm & Create
+            </BtnPrimary>
+          </ModalFooter>
+        </ModalContent>
+      </ModalOverlay>
     );
   };
 
   return (
-    <div style={styles.container}>
-      {renderToolbar()}
-      <div style={{ background: '#f8fafc', position: 'relative' }}>
-        {calView === 'month' ? renderMonthGrid() : renderWeekGrid()}
+    <CalContainer>
+      <Toolbar>
+        <ToolGroup>
+          <CalTitle>
+            <IconBtn onClick={() => calNav(-1)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg></IconBtn>
+            {MONTHS[calDate.getMonth()]} {calDate.getFullYear()}
+            <IconBtn onClick={() => calNav(1)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg></IconBtn>
+          </CalTitle>
+          <GhostBtn onClick={calToday}>Today</GhostBtn>
+        </ToolGroup>
 
-        {/* Floating Add Button */}
-        <button style={styles.fab} onClick={openDatePicker} title="Add new booking">
-          <Plus size={24} />
-        </button>
-      </div>
+        <ViewToggle>
+          <ToggleBtn $active={calView === 'month'} onClick={() => setCalView('month')}>Month</ToggleBtn>
+          <ToggleBtn $active={calView === 'week'} onClick={() => setCalView('week')}>Week</ToggleBtn>
+        </ViewToggle>
 
-      {drawerOpen && <div style={styles.overlay} onClick={closeDrawer} />}
-      <div style={styles.drawer(drawerOpen)}>
-        {renderDrawerContent()}
-      </div>
+        <Legend>
+          {Object.keys(STATUS_CONFIG).map(s => (
+            <LegendItem key={s}>
+              <LegendDot color={STATUS_CONFIG[s].color} />
+              {STATUS_CONFIG[s].label}
+            </LegendItem>
+          ))}
+        </Legend>
+      </Toolbar>
+
+      {calView === 'month' ? renderMonthGrid() : renderWeekGrid()}
+
+      <FAB onClick={openDatePicker}>
+        <Plus size={24} />
+      </FAB>
+
+      {drawerOpen && <Overlay onClick={closeDrawer} />}
+      <Drawer open={drawerOpen}>
+        {drawerOpen && (activeBookingId ? renderDrawerDetail() : renderDrawerList())}
+      </Drawer>
 
       {showDatePicker && renderDatePickerModal()}
-    </div>
+    </CalContainer>
   );
-};
-
-const styles = {
-  container: {
-    background: '#f8fafc',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    border: '1px solid #e2e8f0',
-    fontFamily: "'Inter', system-ui, sans-serif",
-    fontSize: '14px',
-    color: '#0f172a',
-    position: 'relative',
-    minHeight: '600px',
-  },
-  toolbar: {
-    background: '#ffffff',
-    padding: '16px 20px',
-    borderBottom: '1px solid #e2e8f0',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '12px',
-    flexWrap: 'wrap',
-  },
-  nav: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  title: {
-    fontFamily: "'Sora', sans-serif",
-    fontSize: '18px',
-    fontWeight: 700,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    color: '#0f172a',
-  },
-  arrowBtn: {
-    width: '32px',
-    height: '32px',
-    borderRadius: '8px',
-    border: '1px solid #cbd5e1',
-    background: '#ffffff',
-    color: '#334155',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    transition: 'all .2s ease',
-  },
-  todayBtn: {
-    padding: '6px 12px',
-    borderRadius: '8px',
-    background: '#ffffff',
-    border: '1px solid #cbd5e1',
-    fontSize: '11px',
-    fontWeight: 600,
-    color: '#334155',
-    cursor: 'pointer',
-    transition: 'all .2s ease',
-  },
-  viewToggle: {
-    display: 'flex',
-    background: '#f1f5f9',
-    border: '1px solid #e2e8f0',
-    borderRadius: '10px',
-    padding: '3px',
-    gap: '2px',
-  },
-  viewBtn: (active) => ({
-    padding: '6px 14px',
-    borderRadius: '7px',
-    fontSize: '11px',
-    fontWeight: 600,
-    color: active ? '#0d9488' : '#64748b',
-    background: active ? '#ffffff' : 'transparent',
-    border: 'none',
-    cursor: 'pointer',
-    boxShadow: active ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-    transition: 'all .2s ease',
-  }),
-  legend: {
-    display: 'flex',
-    gap: '14px',
-    fontSize: '10px',
-    color: '#334155',
-    fontWeight: 500,
-    flexWrap: 'wrap',
-  },
-  legendDot: (color) => ({
-    width: '10px',
-    height: '10px',
-    borderRadius: '3px',
-    background: color,
-    display: 'inline-block',
-  }),
-  legendItem: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '5px',
-  },
-  monthGrid: {
-    padding: '16px',
-  },
-  weekdays: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(7,1fr)',
-    gap: '8px',
-    marginBottom: '10px',
-  },
-  weekday: {
-    textAlign: 'center',
-    fontSize: '10px',
-    fontWeight: 700,
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: '.08em',
-    padding: '8px 0',
-  },
-  daysGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(7,1fr)',
-    gap: '8px',
-  },
-  day: (outside, isToday, isSelected) => ({
-    position: 'relative',
-    minHeight: '110px',
-    background: isToday ? 'linear-gradient(180deg,rgba(46,125,50,.05),#fff 40%)' : '#ffffff',
-    border: `1px solid ${isToday ? '#2E7D32' : '#e2e8f0'}`,
-    borderRadius: '14px',
-    padding: '8px',
-    cursor: 'pointer',
-    transition: 'all .2s ease',
-    overflow: 'hidden',
-    opacity: outside ? 0.3 : 1,
-    background: outside ? '#f8fafc' : undefined,
-    borderColor: outside ? 'transparent' : undefined,
-    boxShadow: isSelected ? '0 0 0 2px rgba(46,125,50,.2), 0 4px 6px -1px rgba(0,0,0,.05)' : undefined,
-  }),
-  dayNum: {
-    fontFamily: "'Sora', sans-serif",
-    fontSize: '13px',
-    fontWeight: 600,
-    color: '#0f172a',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '6px',
-  },
-  todayNum: {
-    background: '#2E7D32',
-    color: '#fff',
-    width: '24px',
-    height: '24px',
-    borderRadius: '50%',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '12px',
-    boxShadow: '0 4px 10px rgba(46,125,50,.15)',
-  },
-  event: (cfg, isMulti, pos) => ({
-    position: 'relative',
-    fontSize: '10px',
-    padding: '3px 6px',
-    borderRadius: '6px',
-    marginBottom: '3px',
-    background: cfg.bg,
-    color: cfg.strong,
-    borderLeft: `3px solid ${cfg.color}`,
-    cursor: 'pointer',
-    transition: 'all .2s ease',
-    overflow: 'hidden',
-    whiteSpace: 'nowrap',
-    textOverflow: 'ellipsis',
-    fontWeight: 600,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '3px',
-    ...(isMulti ? {
-      background: `linear-gradient(90deg, ${cfg.color}, ${cfg.color})`,
-      color: '#fff',
-      borderLeft: 'none',
-      boxShadow: `0 2px 4px ${cfg.bg}`,
-      borderRadius: pos === 'start' ? '6px 0 0 6px' : pos === 'end' ? '0 6px 6px 0' : '0',
-    } : {}),
-  }),
-  weekGrid: {
-    display: 'grid',
-    gridTemplateColumns: '60px repeat(7,1fr)',
-    minWidth: '850px',
-    background: '#ffffff',
-  },
-  headerCell: (isToday) => ({
-    padding: '12px 6px',
-    textAlign: 'center',
-    borderBottom: '1px solid #334155',
-    borderRight: '1px solid #334155',
-    background: isToday ? '#1e40af' : '#0f172a',
-    position: 'sticky',
-    top: 0,
-    zIndex: 10,
-    color: '#f8fafc',
-  }),
-  headerDayName: {
-    fontSize: '10px',
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
-    color: '#94a3b8',
-  },
-  headerDayNum: {
-    fontFamily: "'Sora', sans-serif",
-    fontSize: '18px',
-    fontWeight: 700,
-    color: '#f8fafc',
-    marginTop: '3px',
-  },
-  allDayCell: {
-    borderBottom: '1px solid #e2e8f0',
-    borderRight: '1px solid #334155',
-    background: '#1e293b',
-    padding: '6px',
-    minHeight: '40px',
-    position: 'relative',
-    color: '#f8fafc',
-  },
-  allDayEvent: (cfg) => ({
-    background: `linear-gradient(90deg, ${cfg.color}, ${cfg.color})`,
-    color: '#fff',
-    fontSize: '10px',
-    fontWeight: 600,
-    padding: '6px 10px',
-    borderRadius: '6px',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    boxShadow: `0 2px 4px ${cfg.bg}`,
-    cursor: 'pointer',
-    transition: 'all .2s ease',
-  }),
-  timeGutter: {
-    padding: '6px',
-    borderRight: '1px solid #e2e8f0',
-    borderBottom: '1px solid #e2e8f0',
-    fontSize: '10px',
-    color: '#64748b',
-    textAlign: 'right',
-    fontWeight: 600,
-    height: '54px',
-    background: '#f1f5f9',
-  },
-  dayCol: {
-    borderRight: '1px solid #e2e8f0',
-    borderBottom: '1px solid #e2e8f0',
-    height: '54px',
-    position: 'relative',
-    background: '#ffffff',
-    transition: 'all .2s ease',
-  },
-  schedEvent: (cfg, height) => ({
-    position: 'absolute',
-    left: '3px',
-    right: '3px',
-    top: '2px',
-    height: `${height}px`,
-    background: cfg.bg,
-    borderLeft: `3px solid ${cfg.color}`,
-    borderRadius: '6px',
-    padding: '6px 8px',
-    fontSize: '10px',
-    color: '#0f172a',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-    cursor: 'pointer',
-    transition: 'all .2s ease',
-    overflow: 'hidden',
-    zIndex: 1,
-  }),
-  evTime: {
-    fontSize: '9px',
-    fontWeight: 700,
-    display: 'block',
-    marginBottom: '2px',
-  },
-  evTitle: {
-    fontWeight: 700,
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    color: '#0f172a',
-  },
-  evSub: {
-    fontSize: '9px',
-    color: '#334155',
-    marginTop: '2px',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  },
-  overlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(15,23,42,0.4)',
-    backdropFilter: 'blur(4px)',
-    zIndex: 90,
-  },
-  drawer: (open) => ({
-    position: 'fixed',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: '480px',
-    maxWidth: '100%',
-    background: '#ffffff',
-    zIndex: 100,
-    boxShadow: '-10px 0 30px -10px rgba(0,0,0,0.1)',
-    transform: open ? 'translateX(0)' : 'translateX(100%)',
-    transition: 'transform .35s cubic-bezier(.4,0,.2,1)',
-    display: 'flex',
-    flexDirection: 'column',
-    borderLeft: '1px solid #e2e8f0',
-  }),
-  drawerHeader: {
-    padding: '20px 24px',
-    borderBottom: '1px solid #e2e8f0',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    background: '#f1f5f9',
-    flexShrink: 0,
-  },
-  drawerTitle: {
-    fontFamily: "'Sora', sans-serif",
-    fontSize: '17px',
-    fontWeight: 700,
-    color: '#0f172a',
-  },
-  drawerSub: {
-    fontSize: '12px',
-    color: '#64748b',
-    marginTop: '3px',
-    fontWeight: 500,
-  },
-  drawerClose: {
-    width: '34px',
-    height: '34px',
-    borderRadius: '10px',
-    background: '#ffffff',
-    border: '1px solid #e2e8f0',
-    color: '#334155',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    transition: 'all .2s ease',
-  },
-  drawerBody: {
-    padding: '24px',
-    flex: 1,
-    overflowY: 'auto',
-  },
-  backBtn: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    fontSize: '12px',
-    fontWeight: 600,
-    color: '#0d9488',
-    marginBottom: '16px',
-    cursor: 'pointer',
-    background: 'transparent',
-    border: 'none',
-    transition: 'all .2s ease',
-  },
-  detailHero: {
-    display: 'flex',
-    gap: '14px',
-    alignItems: 'center',
-    padding: '18px',
-    background: '#f1f5f9',
-    border: '1px solid #e2e8f0',
-    borderRadius: '16px',
-    marginBottom: '20px',
-  },
-  heroIcon: {
-    width: '52px',
-    height: '52px',
-    borderRadius: '14px',
-    background: 'rgba(13,148,136,.15)',
-    color: '#0d9488',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  heroName: {
-    fontSize: '15px',
-    fontWeight: 700,
-    fontFamily: "'Sora', sans-serif",
-    color: '#0f172a',
-  },
-  heroMeta: {
-    fontSize: '12px',
-    color: '#334155',
-    marginTop: '5px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  heroClient: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: '#0d9488',
-    marginTop: '6px',
-  },
-  detailGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '10px',
-    marginBottom: '20px',
-  },
-  detailItem: {
-    padding: '12px',
-    background: '#f1f5f9',
-    border: '1px solid #e2e8f0',
-    borderRadius: '12px',
-  },
-  detailLabel: {
-    fontSize: '10px',
-    fontWeight: 700,
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: '.06em',
-    marginBottom: '5px',
-  },
-  detailValue: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: '#0f172a',
-    wordBreak: 'break-word',
-  },
-  statusBadge: (cfg) => ({
-    padding: '5px 12px',
-    borderRadius: '8px',
-    background: cfg.bg,
-    color: cfg.strong,
-    fontWeight: 700,
-    border: `1px solid ${cfg.color}`,
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '5px',
-    fontSize: '11px',
-    alignSelf: 'flex-start',
-  }),
-  timeline: {
-    position: 'relative',
-    paddingLeft: '26px',
-    marginTop: '10px',
-  },
-  timelineLine: {
-    position: 'absolute',
-    left: '8px',
-    top: '4px',
-    bottom: '4px',
-    width: '2px',
-    background: '#e2e8f0',
-  },
-  timelineDot: (active, done) => ({
-    position: 'absolute',
-    left: '-22px',
-    top: '2px',
-    width: '12px',
-    height: '12px',
-    borderRadius: '50%',
-    background: done ? '#2E7D32' : active ? '#0d9488' : '#ffffff',
-    border: `2px solid ${done ? '#2E7D32' : active ? '#0d9488' : '#64748b'}`,
-    boxShadow: active ? '0 0 0 4px rgba(46,125,50,.15)' : 'none',
-  }),
-  timelineItem: {
-    position: 'relative',
-    paddingBottom: '16px',
-  },
-  timelineTitle: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: '#0f172a',
-  },
-  timelineTime: {
-    fontSize: '11px',
-    color: '#64748b',
-    marginTop: '2px',
-  },
-  drawerCard: {
-    display: 'flex',
-    gap: '12px',
-    alignItems: 'center',
-    padding: '12px',
-    background: '#f1f5f9',
-    borderRadius: '14px',
-    border: '1px solid #e2e8f0',
-    cursor: 'pointer',
-    transition: 'all .2s ease',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: '24px',
-    right: '24px',
-    width: '56px',
-    height: '56px',
-    borderRadius: '16px',
-    background: '#000000',
-    color: '#ffffff',
-    border: 'none',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-    transition: 'all .2s ease',
-    zIndex: 10,
-  },
-  modalOverlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.5)',
-    backdropFilter: 'blur(8px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 200,
-    padding: '20px',
-  },
-  modalContent: {
-    background: '#ffffff',
-    borderRadius: '20px',
-    width: '100%',
-    maxWidth: '600px',
-    maxHeight: '90vh',
-    overflow: 'hidden',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  modalHeader: {
-    padding: '24px',
-    borderBottom: '1px solid #e2e8f0',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    background: '#f8fafc',
-  },
-  modalTitle: {
-    fontSize: '20px',
-    fontWeight: 700,
-    color: '#0f172a',
-    marginBottom: '4px',
-  },
-  modalSub: {
-    fontSize: '13px',
-    color: '#64748b',
-  },
-  modalClose: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '10px',
-    background: '#ffffff',
-    border: '1px solid #e2e8f0',
-    color: '#334155',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    transition: 'all .2s ease',
-    flexShrink: 0,
-  },
-  modalBody: {
-    padding: '24px',
-    overflowY: 'auto',
-    flex: 1,
-  },
-  selectedDatesInfo: {
-    marginBottom: '20px',
-    padding: '16px',
-    background: '#f1f5f9',
-    borderRadius: '12px',
-    border: '1px solid #e2e8f0',
-  },
-  selectedCount: {
-    fontSize: '13px',
-    fontWeight: 700,
-    color: '#0f172a',
-    marginBottom: '8px',
-  },
-  selectedDatesList: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px',
-  },
-  selectedDateChip: {
-    padding: '4px 12px',
-    background: '#ffffff',
-    border: '1px solid #2E7D32',
-    borderRadius: '8px',
-    fontSize: '12px',
-    fontWeight: 600,
-    color: '#2E7D32',
-  },
-  miniCalendar: {
-    background: '#ffffff',
-    border: '1px solid #e2e8f0',
-    borderRadius: '12px',
-    padding: '16px',
-  },
-  miniWeekdays: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(7,1fr)',
-    gap: '4px',
-    marginBottom: '8px',
-  },
-  miniWeekday: {
-    textAlign: 'center',
-    fontSize: '10px',
-    fontWeight: 700,
-    color: '#64748b',
-    textTransform: 'uppercase',
-    padding: '4px',
-  },
-  miniDaysGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(7,1fr)',
-    gap: '4px',
-  },
-  miniDay: (outside, isToday, isSelected, isPast) => ({
-    aspectRatio: '1',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '10px',
-    cursor: isPast || outside ? 'not-allowed' : 'pointer',
-    background: isSelected ? '#2E7D32' : isToday ? 'rgba(46,125,50,.1)' : outside ? '#f8fafc' : '#ffffff',
-    border: `1px solid ${isSelected ? '#2E7D32' : isToday ? '#2E7D32' : '#e2e8f0'}`,
-    opacity: outside || isPast ? 0.3 : 1,
-    transition: 'all .2s ease',
-    position: 'relative',
-  }),
-  miniDayNum: (isSelected) => ({
-    fontSize: '13px',
-    fontWeight: 600,
-    color: isSelected ? '#ffffff' : '#0f172a',
-    position: 'relative',
-  }),
-  miniCheckmark: {
-    position: 'absolute',
-    top: '-8px',
-    right: '-8px',
-    width: '16px',
-    height: '16px',
-    borderRadius: '50%',
-    background: '#ffffff',
-    color: '#2E7D32',
-    fontSize: '10px',
-    fontWeight: 700,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    border: '2px solid #2E7D32',
-  },
-  modalFooter: {
-    padding: '16px 24px',
-    borderTop: '1px solid #e2e8f0',
-    display: 'flex',
-    gap: '12px',
-    justifyContent: 'flex-end',
-    background: '#f8fafc',
-  },
-  cancelBtn: {
-    padding: '10px 20px',
-    borderRadius: '10px',
-    background: '#ffffff',
-    border: '1px solid #e2e8f0',
-    color: '#334155',
-    fontSize: '13px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    transition: 'all .2s ease',
-  },
-  confirmBtn: {
-    padding: '10px 20px',
-    borderRadius: '10px',
-    background: '#000000',
-    color: '#ffffff',
-    border: 'none',
-    fontSize: '13px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    transition: 'all .2s ease',
-    opacity: 1,
-  },
 };
 
 export default HearseCalendar;

@@ -85,7 +85,7 @@ export default function TicketPage() {
     }, [tenantSlug]);
 
     useEffect(() => {
-        const token = localStorage.getItem('authToken') || localStorage.getItem('accessToken');
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
         const socket = io(SOCKET_URL, {
             auth: { token, tenantSlug },
             transports: ['websocket', 'polling'],

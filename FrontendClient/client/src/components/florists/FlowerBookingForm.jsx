@@ -1052,6 +1052,50 @@ export default function App() {
   const [selected, setSelected] = useState([])
   const [quantities, setQuantities] = useState({})
   const [doneForm, setDoneForm] = useState({})
+  const [arrangements, setArrangements] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  // Fetch flower arrangements from backend API
+  useEffect(() => {
+    const loadArrangements = async () => {
+      try {
+        const tenantSlug = localStorage.getItem('tenantSlug') || 'system_shared';
+        const res = await fetch(`/api/v1/restpoint/florist/flower-samples?tenant_slug=${tenantSlug}`, {
+          headers: { 'x-tenant-slug': tenantSlug }
+        });
+        const data = await res.json();
+        if (data.success && data.data && data.data.length > 0) {
+          const transformed = data.data.map((sample, index) => ({
+            id: sample.sample_id || `arr-${index}`,
+            name: sample.title,
+            img: sample.images && sample.images.length > 0 
+              ? (typeof sample.images[0] === 'string' ? sample.images[0] : sample.images[0].url)
+              : ARRANGEMENTS[index]?.img || 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=1600&h=1000&fit=crop&auto=format',
+            portrait: sample.images && sample.images.length > 0 
+              ? (typeof sample.images[0] === 'string' ? sample.images[0] : sample.images[0].url)
+              : ARRANGEMENTS[index]?.portrait || 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=900&h=1200&fit=crop&auto=format',
+            tag: sample.types && sample.types.length > 0 ? sample.types[0] : ARRANGEMENTS[index]?.tag || 'Arrangement',
+            note: 'Custom arrangement',
+            desc: sample.description || ARRANGEMENTS[index]?.desc || 'A beautiful floral arrangement.',
+            size: ARRANGEMENTS[index]?.size || 'Standard',
+            flowers: sample.description || 'Fresh flowers',
+            weight: ARRANGEMENTS[index]?.weight || '5–10 lbs',
+            display: ARRANGEMENTS[index]?.display || 'Standard display',
+            w: ARRANGEMENTS[index]?.w || '18–24"', 
+            h: ARRANGEMENTS[index]?.h || '12–18"', 
+            d: ARRANGEMENTS[index]?.d || '12–18"',
+            placement: ARRANGEMENTS[index]?.placement || 'Place at the memorial service.',
+          }));
+          setArrangements(transformed);
+        }
+      } catch (e) {
+        console.error('Failed to load flower samples:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadArrangements();
+  }, []);
 
   const toggle = (id) => {
     setSelected(prev => {
@@ -1070,6 +1114,7 @@ export default function App() {
   }
 
   const totalItems = selected.reduce((s, id) => s + (quantities[id] || 1), 0)
+  const displayArrangements = arrangements.length > 0 ? arrangements : ARRANGEMENTS
 
   return (
     <>

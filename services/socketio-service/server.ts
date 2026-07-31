@@ -116,15 +116,18 @@ const corsOptions: cors.CorsOptions = {
 app.use(cors(corsOptions));
 
 // Rate Limiting
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req: Request) => req.path === '/health' // Skip health checks
-});
-app.use('/emit', limiter);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  skip: (req: any) => req.path === '/health' // Skip health checks
+} as any);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+app.use('/emit', limiter as any);
 
 // Body Parser with size limits
 app.use(express.json({ limit: '10kb' }));

@@ -101,7 +101,7 @@ const WorkshopDashboard = lazy(() => import('../components/workshop/pages/Worksh
 const CataloguePage = lazy(() => import('../components/catalogue/catalogue'));
 
 // Flower Booking System
-const FlowerBookings = lazy(() => import('../components/florists/FlowerBookings'));
+const FlowerBookings = lazy(() => import('../components/florists/FlowerBookingsNew'));
 const FlowerBookingForm = lazy(() => import('../components/florists/FlowerBookingForm'));
 const FlowerOrderDetail = lazy(() => import('../components/florists/FlowerOrderDetail'));
 
@@ -171,7 +171,7 @@ const DashboardLayout = ({ children, tenantData }) => {
   const handleSidebarToggle = (isOpen) => setSidebarOpen(isOpen);
   const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
   const marginLeft = isMobile ? '0' : (sidebarOpen ? '240px' : '68px');
-  const contentPadding = sidebarOpen ? '2rem' : '1.5rem';
+  const contentPadding = isMobile ? '0.75rem' : (sidebarOpen ? '2rem' : '1.5rem');
   const footerMarginLeft = isMobile ? '0' : (sidebarOpen ? '240px' : '68px');
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F7F9FB', flexDirection: 'column' }}>

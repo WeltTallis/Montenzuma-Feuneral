@@ -56,8 +56,8 @@ export interface KnexMigrationConfig {
 const HEARSE_DB_CONFIG: DatabaseConfig = {
   host: process.env.DB_HOST || '127.0.0.1',
   port: parseInt(process.env.DB_PORT || '3306', 10),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
+  user: process.env.DB_USER || 'restpoint_user',
+  password: process.env.DB_PASSWORD || 'RestPointUser2024',
   database: process.env.HEARSE_DB_NAME || 'restpoint_hearses',
   waitForConnections: true,
   connectionLimit: 10,
@@ -188,7 +188,8 @@ export const runMigrations = async (): Promise<void> => {
     },
     migrations: {
       directory: path.join(__dirname, 'migrations'),
-      tableName: 'knex_migrations'
+      tableName: 'knex_migrations',
+      extension: 'js'
     },
     pool: {
       min: 2,
@@ -229,7 +230,8 @@ export const rollbackMigrations = async (): Promise<void> => {
     },
     migrations: {
       directory: path.join(__dirname, 'migrations'),
-      tableName: 'knex_migrations'
+      tableName: 'knex_migrations',
+      extension: 'js'
     },
     pool: {
       min: 2,

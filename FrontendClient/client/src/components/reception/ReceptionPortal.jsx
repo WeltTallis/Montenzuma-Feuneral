@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Flame, Building2, LogOut, Flower2, ArrowLeft, FileText } from 'lucide-react';
-import QRCodeModal from './QRCodeModal';
 import './ReceptionPortal.css';
 
 const ReceptionPortal = () => {
@@ -12,7 +11,6 @@ const ReceptionPortal = () => {
   const [greeting, setGreeting] = useState('Good morning');
   const [selectedService, setSelectedService] = useState(null);
   const [showOverlay, setShowOverlay] = useState(false);
-  const [showQRModal, setShowQRModal] = useState(false);
   const [deceasedId, setDeceasedId] = useState('ADM-2025-00472');
   
   // Remove unused imports and functions
@@ -97,11 +95,6 @@ const ReceptionPortal = () => {
     setTimeout(() => {
       showToast('Report downloaded successfully');
     }, 1500);
-  };
-
-  const handleViewResults = () => {
-    setShowQRModal(false);
-    navigate(`/tenant/${tenantSlug}/postmortem-results`, { replace: true });
   };
 
   const showToast = (message) => {
@@ -241,61 +234,6 @@ const ReceptionPortal = () => {
         </div>
       )}
 
-      {/* QR Code Modal for Postmortem Results */}
-      {showQRModal && (
-        <div className="qr-modal-overlay" onClick={() => setShowQRModal(false)}>
-          <div className="qr-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="qr-modal-close" onClick={() => setShowQRModal(false)}>
-              <X size={24} />
-            </button>
-            <div className="qr-modal-header">
-              <QrCode size={32} />
-              <h2>Postmortem Results Access</h2>
-              <p>Scan QR code to view or download results</p>
-            </div>
-            <div className="qr-modal-body">
-              <div className="qr-code-container">
-                <QRCodeSVG
-                  value={getQRCodeValue()}
-                  size={250}
-                  level="H"
-                  includeMargin
-                  bgColor="#FFFFFF"
-                  fgColor="#2C2820"
-                />
-              </div>
-              <div className="qr-info-section">
-                <div className="qr-id-input">
-                  <label>Deceased ID:</label>
-                  <input
-                    type="text"
-                    value={deceasedId}
-                    onChange={(e) => setDeceasedId(e.target.value.toUpperCase())}
-                    placeholder="ADM-2025-00472"
-                  />
-                </div>
-                <div className="qr-url-display">
-                  <strong>Scan URL:</strong>
-                  <code>{getQRCodeValue()}</code>
-                </div>
-              </div>
-            </div>
-            <div className="qr-modal-actions">
-              <button className="qr-btn qr-btn-secondary" onClick={handleViewResults}>
-                <Eye size={18} />
-                View Results
-              </button>
-              <button className="qr-btn qr-btn-primary" onClick={handleDownloadPDF}>
-                <Download size={18} />
-                Download PDF
-              </button>
-            </div>
-            <div className="qr-modal-footer">
-              <p>Clients can scan this QR code with their phone camera to access postmortem results</p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
