@@ -426,6 +426,25 @@ const NotificationBell = () => {
         return;
       }
 
+      // Postmortem accessed via QR scan
+      if (eventName === 'postmortem-accessed') {
+        formatted = {
+          id: data.id || `pm-access-${Date.now()}`,
+          type: 'postmortem_results',
+          title: 'Postmortem Results Accessed',
+          message: data.deceasedName ? `Results accessed for ${data.deceasedName}` : 'Postmortem results accessed via QR scan',
+          fullContent: `Accessed by: ${data.accessedBy || 'External User'}\nMethod: ${data.accessMethod || 'QR Code'}\nTime: ${new Date(data.accessTime || Date.now()).toLocaleString()}`,
+          is_read: 0,
+          created_at: data.accessTime || new Date().toISOString(),
+          priority: data.priority || 'medium',
+          data,
+        };
+        addToast(formatted);
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        return;
+      }
+
       // Mapped events
       const meta = eventTypeMap[eventName];
       if (meta) {
@@ -459,6 +478,7 @@ const NotificationBell = () => {
       'production-stage-updated', 'worker-assigned', 'worker-assignment-updated',
       'flower-booking-created', 'flower-booking-updated', 'flower-booking-deleted',
       'body-released', // Direct event from body-release service
+      'postmortem-accessed', // Postmortem results accessed via QR scan
     ];
 
     console.log('[NotificationBell] Setting up listeners for', notificationEvents.length, 'events');

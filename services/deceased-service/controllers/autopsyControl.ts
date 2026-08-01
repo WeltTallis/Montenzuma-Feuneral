@@ -5,6 +5,7 @@ import { DateTime } from 'luxon';
 import PDFDocument from 'pdfkit';
 
 import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../shared/dbConfig';
+import { renderStampOnPDFKit } from '../../../packages/shared-stamps/dist/index';
 
 interface TenantRequest extends Request {
     tenantSlug?: string;
@@ -623,7 +624,10 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
                 examination_summary,
                 external_pathologist_name,
                 pathologist_name,
-                external_pathologist_id
+                external_pathologist_id,
+                cause_of_death,
+                contributing_conditions,
+                completed_at
             FROM postmortem 
             WHERE deceased_id = ?
         `;
@@ -640,12 +644,34 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
             SELECT 
                 full_name,
                 date_of_death,
-                signature
+                signature,
+                admission_number,
+                date_of_birth,
+                age,
+                gender,
+                place_of_death,
+                national_id,
+                phone_number,
+                alternative_phone
             FROM deceased 
             WHERE deceased_id = ?
         `;
         const deceasedResults = await safeTenantQuery(dbName, deceasedQuery, [deceased_id]);
         const deceased = deceasedResults && (deceasedResults as any[]).length > 0 ? (deceasedResults as any[])[0] : null;
+
+        // Get Next of Kin information
+        const nextOfKinQuery = `
+            SELECT 
+                full_name,
+                relationship,
+                contact,
+                id_number
+            FROM next_of_kin 
+            WHERE deceased_id = ? AND is_primary = 1 AND is_deleted = 0
+            LIMIT 1
+        `;
+        const nextOfKinResults = await safeTenantQuery(dbName, nextOfKinQuery, [deceased_id]);
+        const nextOfKin = nextOfKinResults && (nextOfKinResults as any[]).length > 0 ? (nextOfKinResults as any[])[0] : null;
 
         const facilityName = formatFacilityName(tenantSlug);
         const reportDate = DateTime.now().setZone('Africa/Nairobi').toFormat('yyyy-MM-dd');
@@ -656,24 +682,44 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         const underlyingCause = postmortem.underlying_cause_of_death || 'Pending determination';
         const mannerOfDeath = postmortem.manner_of_death || 'Natural';
         const pathStatement = postmortem.examination_summary || 'No additional statement provided.';
-        const examinerName = postmortem.external_pathologist_name || postmortem.pathologist_name || 'Dr. Alex Mercer, M.D.';
-        const examinerTitle = postmortem.external_pathologist_id ? 'M.D., Forensic Pathologist' : 'Chief Medical Examiner';
+        const examinerName = postmortem.external_pathologist_name || postmortem.pathologist_name || 'Not specified';
+        const examinerTitle = postmortem.external_pathologist_id ? 'M.D., Forensic Pathologist' : 'Medical Examiner';
 
         const deceasedIdStr = typeof deceased_id === 'string' ? deceased_id : String(deceased_id);
         const fullName = deceased?.full_name || 'Unknown';
+        const admissionNumber = deceased?.admission_number || 'N/A';
+        const dateOfBirth = deceased?.date_of_birth ? new Date(deceased.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+        const age = deceased?.age || 'N/A';
+        const gender = deceased?.gender || 'N/A';
+        const dateOfDeath = deceased?.date_of_death ? new Date(deceased.date_of_death).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+        const placeOfDeath = deceased?.place_of_death || 'N/A';
+        const nationalId = deceased?.national_id || 'N/A';
+        
+        const kinName = nextOfKin?.full_name || 'N/A';
+        const kinRelationship = nextOfKin?.relationship || 'N/A';
+        const kinPhone = nextOfKin?.contact || 'N/A';
+        const kinIdNumber = nextOfKin?.id_number || 'N/A';
 
         // Load Signature Image Buffer
         let signatureBuffer: Buffer | null = null;
         const signaturePath = deceased?.signature;
         
-        if (signaturePath && typeof signaturePath === 'string' && !signaturePath.startsWith('data:image')) {
+        if (signaturePath && typeof signaturePath === 'string') {
             try {
-                const relativePath = signaturePath.replace(/^\/uploads\//, '');
-                const uploadsBase = process.env.UPLOADS_BASE_DIR || path.resolve(process.cwd(), 'uploads');
-                const fsPath = path.join(uploadsBase, relativePath);
+                // Handle both file paths and base64 data URLs
+                if (signaturePath.startsWith('data:image')) {
+                    // Extract base64 data from data URL
+                    const base64Data = signaturePath.split(',')[1];
+                    signatureBuffer = Buffer.from(base64Data, 'base64');
+                } else {
+                    // Load from file system
+                    const relativePath = signaturePath.replace(/^\/uploads\//, '');
+                    const uploadsBase = process.env.UPLOADS_BASE_DIR || path.resolve(process.cwd(), 'uploads');
+                    const fsPath = path.join(uploadsBase, relativePath);
 
-                if (fs.existsSync(fsPath)) {
-                    signatureBuffer = fs.readFileSync(fsPath);
+                    if (fs.existsSync(fsPath)) {
+                        signatureBuffer = fs.readFileSync(fsPath);
+                    }
                 }
             } catch (sigError) {
                 console.warn(`[PDF] Failed to load signature:`, sigError);
@@ -796,6 +842,70 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
            .lineTo(rightColX + colWidth, y + 54).stroke();
 
         y += Math.max(facNameHeight + 38, 62) + (verticalGap / 2);
+
+        // ========== 2.5. DECEDENT DETAILS SECTION ==========
+        doc.fillColor('#0a0a0a').rect(MARGIN, y, CONTENT_WIDTH, 18).fill();
+        doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(8);
+        doc.text('00', MARGIN + 8, y + 5);
+        doc.text('DECEDENT INFORMATION', MARGIN + 28, y + 5);
+        
+        y += 24;
+        
+        // Decedent Details Grid
+        const detailColWidth = CONTENT_WIDTH / 3;
+        let detailX = MARGIN;
+        
+        // Column 1: Basic Info
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#777777');
+        doc.text('ADMISSION NO.', detailX, y);
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a');
+        doc.text(admissionNumber, detailX, y + 10);
+        
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#777777');
+        doc.text('DATE OF BIRTH', detailX, y + 24);
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a');
+        doc.text(dateOfBirth, detailX, y + 34);
+        
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#777777');
+        doc.text('AGE', detailX, y + 48);
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a');
+        doc.text(String(age), detailX, y + 58);
+        
+        // Column 2: More Details
+        detailX += detailColWidth;
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#777777');
+        doc.text('GENDER', detailX, y);
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a');
+        doc.text(gender, detailX, y + 10);
+        
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#777777');
+        doc.text('DATE OF DEATH', detailX, y + 24);
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a');
+        doc.text(dateOfDeath, detailX, y + 34);
+        
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#777777');
+        doc.text('PLACE OF DEATH', detailX, y + 48);
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a');
+        doc.text(placeOfDeath, detailX, y + 58);
+        
+        // Column 3: ID and Next of Kin
+        detailX += detailColWidth;
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#777777');
+        doc.text('ID NUMBER', detailX, y);
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a');
+        doc.text(nationalId, detailX, y + 10);
+        
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#777777');
+        doc.text('NEXT OF KIN', detailX, y + 24);
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a');
+        doc.text(kinName, detailX, y + 34, { width: detailColWidth - 10 });
+        
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#777777');
+        doc.text('RELATIONSHIP', detailX, y + 48);
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a');
+        doc.text(kinRelationship, detailX, y + 58);
+        
+        y += 80 + (verticalGap / 2);
 
         // ========== 3. SECTION 01: CAUSE OF DEATH ==========
         doc.fillColor('#0a0a0a').rect(MARGIN, y, CONTENT_WIDTH, 18).fill();
@@ -929,33 +1039,48 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a');
         doc.text(`${examinerName}, ${examinerTitle}`, MARGIN, sigBlockY + sigHeightOffset + 15);
 
-        // Right Side: Custom Blue Stamp Seal
+        // Right Side: Dynamic Stamp Seal (generated from shared-stamps package)
         const stampRadius = 38;
         const stampX = PAGE_WIDTH - MARGIN - stampRadius - 15;
         const stampY = sigBlockY + stampRadius;
 
-        doc.save();
-        doc.translate(stampX, stampY);
-        doc.rotate(-8);
-
-        doc.strokeColor('#170C79').lineWidth(2.2).circle(0, 0, stampRadius).stroke();
-        doc.strokeColor('#170C79').lineWidth(1).circle(0, 0, stampRadius - 3.5).stroke();
-
-        doc.fillColor('#170C79').font('Helvetica-Bold').fontSize(8);
-        doc.text('CERTIFIED', -stampRadius, -16, { width: stampRadius * 2, align: 'center' });
-        doc.font('Helvetica').fontSize(7);
-        doc.text('Medical', -stampRadius, -6, { width: stampRadius * 2, align: 'center' });
-        doc.text('Examiner', -stampRadius, 3, { width: stampRadius * 2, align: 'center' });
-        doc.text('Official', -stampRadius, 12, { width: stampRadius * 2, align: 'center' });
-
-        doc.restore();
-
-        doc.save();
-        doc.translate(stampX, stampY + stampRadius + 5);
-        doc.rotate(-8);
-        doc.font('Helvetica-Bold').fontSize(8).fillColor('#170C79');
-        doc.text(examinerName, -60, 0, { width: 120, align: 'center' });
-        doc.restore();
+        renderStampOnPDFKit(doc, {
+          stampName: 'Medical Examiner Certificate',
+          funeralHomeName: facilityName,
+          bottomText: 'MEDICAL EXAMINER OFFICIAL RECORD',
+          centerLabel: 'CERTIFIED',
+          subtitle: 'Medical Examiner',
+          date: new Date(),
+          style: 'medical-examiner',
+          ring: {
+            outerColor: '#170C79',
+            innerColor: '#170C79',
+            innerOffset: 8,
+          },
+          outerText: {
+            color: '#170C79',
+            fontSize: 8,
+            letterSpacing: 1,
+          },
+          bottomTextStyle: {
+            color: '#170C79',
+            fontSize: 5,
+            letterSpacing: 1,
+          },
+          centerLabelStyle: {
+            color: '#170C79',
+            fontSize: 9,
+            letterSpacing: 1,
+          },
+        }, {
+          x: stampX,
+          y: stampY,
+          radius: stampRadius,
+          rotation: -8,
+          drawName: true,
+          name: examinerName,
+          color: '#170C79',
+        });
 
         // ========== 6. CLEAN FOOTER (NON-OVERLAPPING) ==========
         const footerY = 754;

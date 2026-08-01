@@ -71,6 +71,8 @@ const ReceptionPortal = lazy(() => import('../components/reception/ReceptionPort
 const PostmortemResults = lazy(() => import('../components/reception/PostmortemResults'));
 const PostmortemQRPage = lazy(() => import('../components/reception/PostmortemQRPage'));
 const PostmortemPortal = lazy(() => import('../components/deceased/postmortem/postmortem-portal'));
+import PostmortemVerifyPage from '../components/reception/PostmortemVerifyPage';
+import PostmortemResultsPage from '../components/reception/PostmortemResultsPage';
 const ForgotPassword = lazy(() => import('../components/auth/ForgotPassword'));
 const ChangePassword = lazy(() => import('../components/auth/changePassword'));
 const InvoiceManager = lazy(() => import('../components/invoices/invoicemanager'));
@@ -736,7 +738,12 @@ const AppRouter = () => (
       {/* Public Postmortem QR Code - shows QR code, scanning it leads to verify portal */}
       <Route path="/tenant/:slug/postmortem-qr" element={<PostmortemQRPage />} />
       {/* Public Postmortem Verify Portal - scanned QR code leads here instantly */}
-      <Route path="/tenant/:slug/postmortem-verify" element={<PostmortemPortal />} />
+      <Route path="/tenant/:slug/postmortem-verify" element={<PostmortemVerifyPage />} />
+      {/* Postmortem Results with session ID */}
+      <Route path="/tenant/:slug/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
+      {/* New separate verification and results pages */}
+      <Route path="/postmortem/verify" element={<PostmortemVerifyPage />} />
+      <Route path="/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
       <Route path="/tenant/:slug/*" element={<ProtectedRoute><TenantResolver /></ProtectedRoute>} />
       <Route path="*" element={<LandingPage />} />
     </Routes>

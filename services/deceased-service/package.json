@@ -13,6 +13,7 @@
     "@montezuma/shared-config": "^1.0.0",
     "@montezuma/shared-logger": "^1.0.0",
     "@montezuma/shared-services": "^1.0.0",
+    "@montezuma/shared-stamps": "^1.0.0",
     "@montezuma/shared-utils": "^1.0.0",
     "axios": "^1.6.0",
     "bcrypt": "^6.0.0",

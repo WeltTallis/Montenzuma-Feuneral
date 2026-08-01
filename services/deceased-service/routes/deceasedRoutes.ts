@@ -25,15 +25,15 @@ import { resolveDatabase, safeTenantQuery, safeTenantExecute } from '../../../sh
 const router = Router();
 
 // Public endpoint for postmortem portal - no authentication required
-router.get('/public/postmortem/search', async (req: Request, res: Response) => {
+const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
     try {
-        const { phone, id_number, admission_number } = req.query;
+        const { phone, id_number, admission_number, deceased_id } = req.query;
         const tenantSlug = req.headers['x-tenant-slug'] as string || req.headers['x-slug'] as string || 'system_shared';
-        
-        if (!phone && !id_number && !admission_number) {
+
+        if (!phone && !id_number && !admission_number && !deceased_id) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide phone, id_number, or admission_number'
+                message: 'Please provide phone, id_number, admission_number, or deceased_id'
             });
         }
 
@@ -45,23 +45,49 @@ router.get('/public/postmortem/search', async (req: Request, res: Response) => {
             });
         }
 
-        // Search by admission number, phone, or ID
-        let query = 'SELECT * FROM deceased WHERE 1=1';
+        // Search by deceased_id, admission number, phone, or ID
+        let query = 'SELECT deceased_id, full_name, date_of_death, admission_number, date_of_birth, age, gender, place_of_death, national_id, phone_number, signature, pathologist_signature FROM deceased WHERE 1=1';
         const params: any[] = [];
 
-        if (admission_number) {
+        if (deceased_id) {
+            query += ' AND deceased_id = ?';
+            params.push(deceased_id);
+        } else if (admission_number) {
             query += ' AND admission_number = ?';
             params.push(admission_number);
         } else if (phone) {
-            query += ' AND next_of_kin_phone LIKE ?';
-            params.push(`%${phone}%`);
+            // Search in deceased table first
+            query += ' AND (phone_number LIKE ? OR alternative_phone LIKE ?)';
+            params.push(`%${phone}%`, `%${phone}%`);
         } else if (id_number) {
-            query += ' AND next_of_kin_id_number = ?';
+            query += ' AND national_id = ?';
             params.push(id_number);
         }
 
         query += ' LIMIT 1';
-        const records = await safeTenantQuery(dbName, query, params);
+        let records = await safeTenantQuery(dbName, query, params);
+
+        // If phone search didn't find in deceased table, try next_of_kin table
+        if ((!records || (records as any[]).length === 0) && phone) {
+            try {
+                const nokQuery = `SELECT d.deceased_id, d.full_name, d.date_of_death, d.admission_number, 
+                    d.date_of_birth, d.age, d.gender, d.place_of_death, d.national_id, 
+                    d.phone_number, d.signature, d.pathologist_signature,
+                    nok.full_name as next_of_kin_name, nok.relationship as next_of_kin_relationship,
+                    nok.contact as next_of_kin_phone, nok.email as next_of_kin_email,
+                    nok.signature as next_of_kin_signature
+                    FROM deceased d 
+                    INNER JOIN next_of_kin nok ON d.deceased_id = nok.deceased_id 
+                    WHERE nok.contact LIKE ? AND nok.is_deleted = FALSE 
+                    LIMIT 1`;
+                const nokRecords = await safeTenantQuery(dbName, nokQuery, [`%${phone}%`]);
+                if (nokRecords && (nokRecords as any[]).length > 0) {
+                    records = nokRecords;
+                }
+            } catch (e) {
+                console.error('[PUBLIC] Next of kin search error:', e);
+            }
+        }
 
         if (!records || (records as any[]).length === 0) {
             return res.status(404).json({
@@ -71,6 +97,29 @@ router.get('/public/postmortem/search', async (req: Request, res: Response) => {
         }
 
         const deceased = (records as any[])[0];
+        
+        // Get next of kin data if not already joined
+        if (!deceased.next_of_kin_name) {
+            try {
+                const nokQuery = `SELECT * FROM next_of_kin WHERE deceased_id = ? AND is_deleted = FALSE ORDER BY is_primary DESC, created_at ASC LIMIT 1`;
+                const nokRecords = await safeTenantQuery(dbName, nokQuery, [deceased.deceased_id]);
+                if (nokRecords && (nokRecords as any[]).length > 0) {
+                    const nok = (nokRecords as any[])[0];
+                    deceased.next_of_kin_name = nok.full_name;
+                    deceased.next_of_kin_relationship = nok.relationship;
+                    deceased.next_of_kin_phone = nok.contact;
+                    deceased.next_of_kin_email = nok.email;
+                    deceased.next_of_kin_id_number = nok.id_number || null;
+                    // Use next of kin signature if deceased doesn't have one
+                    if (!deceased.signature && nok.signature) {
+                        deceased.signature = nok.signature;
+                    }
+                }
+            } catch (e) {
+                // next_of_kin table might not exist
+                console.error('[PUBLIC] Next of kin fetch error:', e);
+            }
+        }
         
         // Get postmortem data if exists
         let postmortem = null;
@@ -84,11 +133,24 @@ router.get('/public/postmortem/search', async (req: Request, res: Response) => {
             // Postmortem table might not exist yet
         }
 
+        // Get tenant info
+        let tenantInfo = null;
+        try {
+            const tenantQuery = `SELECT name, address, phone, email FROM tenant_tracking WHERE slug = ? LIMIT 1`;
+            const tenantRecords = await safeTenantQuery('tenant_tracking', tenantQuery, [tenantSlug]);
+            if (tenantRecords && (tenantRecords as any[]).length > 0) {
+                tenantInfo = (tenantRecords as any[])[0];
+            }
+        } catch (e) {
+            // tenant_tracking table might not exist
+        }
+
         return res.status(200).json({
             success: true,
             data: {
                 deceased,
-                postmortem
+                postmortem,
+                tenant: tenantInfo
             }
         });
     } catch (error: any) {
@@ -98,7 +160,11 @@ router.get('/public/postmortem/search', async (req: Request, res: Response) => {
             message: 'Search failed'
         });
     }
-});
+};
+
+// Register both route patterns (with and without /deceased prefix for gateway compatibility)
+router.get('/public/postmortem/search', handlePublicPostmortemSearch);
+router.get('/deceased/public/postmortem/search', handlePublicPostmortemSearch);
 
 // Apply authentication to all other routes
 router.use(protect);
@@ -167,6 +233,7 @@ router.put('/autopsy/:id', updatePostmortem);
 
 // Public PDF generation - no auth required
 router.get('/public/postmortem/:deceased_id/pdf', generatePostmortemPDF);
+router.get('/deceased/public/postmortem/:deceased_id/pdf', generatePostmortemPDF);
 
 // GET - Generate PDF report (authenticated)
 router.get('/postmortem/:deceased_id/pdf', generatePostmortemPDF);

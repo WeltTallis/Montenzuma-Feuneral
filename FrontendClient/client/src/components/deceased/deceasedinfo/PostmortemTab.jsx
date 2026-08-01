@@ -191,9 +191,10 @@ const PostmortemTab = ({ postmortem, deceasedId }) => {
         <DetailItem><DetailLabel>Date Completed</DetailLabel><DetailValue>{formatDate(pm.completed_at || pm.updated_at)}</DetailValue></DetailItem>
       </DetailGrid>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24, gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24, gap: 12, flexWrap: 'wrap' }}>
         <Btn onClick={openForm}>Open Examination Form</Btn>
-        <Btn $primary onClick={generatePDF}>Generate Full PDF Report</Btn>
+        <Btn $primary onClick={generatePDF}>Download PDF Report</Btn>
+        <Btn onClick={() => navigate(-1)}>Sign Out</Btn>
       </div>
     </>
   );

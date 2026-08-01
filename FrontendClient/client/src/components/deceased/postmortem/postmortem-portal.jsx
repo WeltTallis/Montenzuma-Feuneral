@@ -4,6 +4,7 @@ import styled from 'styled-components';
 
 import api from '../../../api/axios';
 import { ENDPOINTS, getTenantHeaders } from '../../../api/endpoints';
+import { useSocket } from '../../../utils/context/socketContext';
 
 
 
@@ -216,7 +217,7 @@ const VerifyTitle = styled.div`
 
 const ToggleGroup = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   border-bottom: 2px solid #f0f0f0;
 `;
 
@@ -586,69 +587,12 @@ const BackButton = styled.button`
   }
 `;
 
-// --- Mock Data for Fallback ---
-const MOCK_DECEASED_RECORDS = {
-  '29384756': {
-    admission_no: 'ADM-2025-00472',
-    first_name: 'James',
-    last_name: 'Mwangi Ochieng',
-    date_of_birth: 'August 12, 1965',
-    age: '59 Years',
-    gender: 'Male',
-    date_of_death: 'June 28, 2025',
-    place_of_death: 'Nairobi Hospital',
-    kin_name: 'Wanjiru Ochieng',
-    kin_relationship: 'Spouse',
-    kin_telephone: '+254 712 345 678',
-    kin_id_number: '29384756',
-    exam_date: 'July 1, 2025',
-    exam_time: '09:30 AM (EAT)',
-    pathologist: 'Dr. Wanjiku Gathoni',
-    facility: 'RestPoint Mortuary',
-    manner_of_death: 'Natural',
-    immediate_cause: 'Acute myocardial infarction',
-    underlying_cause: 'Coronary artery disease',
-    contributing_factors: 'Hypertension, Diabetes',
-    examination_summary: 'External examination revealed no signs of trauma or foul play. Internal examination confirmed severe blockage (95%) in the left anterior descending (LAD) artery. The heart showed left ventricular hypertrophy. All other major organs were unremarkable. Toxicology screens returned negative.',
-    pathologist_signature: 'Dr. W. Gathoni',
-    verification_id: 'PM-2025-0947-A',
-    digital_timestamp: '01-JUL-2025 11:45:02',
-    status: 'Completed'
-  },
-  '0712345678': {
-    admission_no: 'ADM-2025-00472',
-    first_name: 'James',
-    last_name: 'Mwangi Ochieng',
-    date_of_birth: 'August 12, 1965',
-    age: '59 Years',
-    gender: 'Male',
-    date_of_death: 'June 28, 2025',
-    place_of_death: 'Nairobi Hospital',
-    kin_name: 'Wanjiru Ochieng',
-    kin_relationship: 'Spouse',
-    kin_telephone: '+254 712 345 678',
-    kin_id_number: '29384756',
-    exam_date: 'July 1, 2025',
-    exam_time: '09:30 AM (EAT)',
-    pathologist: 'Dr. Wanjiku Gathoni',
-    facility: 'RestPoint Mortuary',
-    manner_of_death: 'Natural',
-    immediate_cause: 'Acute myocardial infarction',
-    underlying_cause: 'Coronary artery disease',
-    contributing_factors: 'Hypertension, Diabetes',
-    examination_summary: 'External examination revealed no signs of trauma or foul play. Internal examination confirmed severe blockage (95%) in the left anterior descending (LAD) artery. The heart showed left ventricular hypertrophy. All other major organs were unremarkable. Toxicology screens returned negative.',
-    pathologist_signature: 'Dr. W. Gathoni',
-    verification_id: 'PM-2025-0947-A',
-    digital_timestamp: '01-JUL-2025 11:45:02',
-    status: 'Completed'
-  }
-};
-
 const AutopsyPortal = () => {
   const { slug } = useParams();
   const tenantSlug = slug || 'system_shared';
+  const { socket } = useSocket();
   
-  const [searchType, setSearchType] = useState('id'); // 'phone' or 'id'
+  const [searchType, setSearchType] = useState('id'); // 'phone', 'id', or 'deceased_id'
   const [inputValue, setInputValue] = useState('');
   const [showReport, setShowReport] = useState(false);
   const [reportData, setReportData] = useState(null);
@@ -671,7 +615,8 @@ const AutopsyPortal = () => {
     e.preventDefault();
     const value = inputValue.trim();
     if (!value) {
-      setError('Please enter your ' + (searchType === 'phone' ? 'phone number' : 'ID number'));
+      const fieldLabel = searchType === 'phone' ? 'phone number' : searchType === 'id' ? 'ID number' : 'deceased ID';
+      setError('Please enter your ' + fieldLabel);
       return;
     }
     
@@ -681,17 +626,18 @@ const AutopsyPortal = () => {
     
     try {
       // Use public endpoint (no auth required)
-      const queryParams = new URLSearchParams();
-      queryParams.append('x-tenant-slug', tenantSlug);
+      const params = {};
       
       if (searchType === 'phone') {
-        queryParams.append('phone', value);
+        params.phone = value;
       } else if (searchType === 'id') {
-        queryParams.append('id_number', value);
+        params.id_number = value;
+      } else if (searchType === 'deceased_id') {
+        params.deceased_id = value;
       }
       
       const response = await api.get('/deceased/public/postmortem/search', {
-        params: queryParams.toString(),
+        params,
         headers: {
           'x-tenant-slug': tenantSlug
         }
@@ -703,18 +649,38 @@ const AutopsyPortal = () => {
         setShowReport(true);
         showToast('Record found successfully');
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Emit socket notification to next of kin
+        if (socket && socket.connected) {
+          const notification = {
+            tenantSlug,
+            type: 'postmortem_accessed',
+            priority: 'medium',
+            deceasedId: deceased.deceased_id || deceased.id,
+            deceasedName: `${deceased.first_name || ''} ${deceased.last_name || ''}`.trim(),
+            accessedBy: 'External User (QR Scan)',
+            accessTime: new Date().toISOString(),
+            accessMethod: 'QR Code Verification',
+            searchType,
+            searchValue: value,
+          };
+          socket.emit('postmortem-accessed', notification);
+          console.log('[Postmortem Portal] Emitted access notification:', notification);
+        } else {
+          console.warn('[Postmortem Portal] Socket not connected, notification not sent');
+        }
       } else {
-        setError('No record found matching your ' + (searchType === 'phone' ? 'phone number' : 'ID number') + '. Please verify your details and try again.');
+        const fieldLabel = searchType === 'phone' ? 'phone number' : searchType === 'id' ? 'ID number' : 'deceased ID';
+        setError('No record found matching your ' + fieldLabel + '. Please verify your details and try again.');
       }
     } catch (err) {
       console.error('Search error:', err);
-      // Fallback to mock data
-      const mockRecord = MOCK_DECEASED_RECORDS[value];
-      if (mockRecord) {
-        setReportData(formatRecord(mockRecord));
-        setShowReport(true);
-        showToast('Record found (offline mode)');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+      const errMsg = err.response?.data?.message || err.response?.data?.error;
+      if (errMsg) {
+        setError(errMsg);
+      } else if (err.response?.status === 404) {
+        const fieldLabel = searchType === 'phone' ? 'phone number' : searchType === 'id' ? 'ID number' : 'deceased ID';
+        setError('No record found matching your ' + fieldLabel + '. Please verify your details and try again.');
       } else {
         setError('Unable to search at this time. Please try again later.');
       }
@@ -796,7 +762,7 @@ const AutopsyPortal = () => {
             <HeaderBlock>
               <ShieldCheck size={32} color="#0a0a0a" />
               <h1>Autopsy Portal</h1>
-              <p>Enter Next of Kin Telephone or ID Number to securely verify and download records.</p>
+              <p>Enter Next of Kin Telephone, ID Number, or Deceased ID to securely verify and download records.</p>
             </HeaderBlock>
 
             <VerifyTitle>
@@ -811,13 +777,18 @@ const AutopsyPortal = () => {
               <ToggleBtn $active={searchType === 'id'} onClick={() => handleToggle('id')}>
                 <IdCard /> ID Number
               </ToggleBtn>
+              <ToggleBtn $active={searchType === 'deceased_id'} onClick={() => handleToggle('deceased_id')}>
+                <User /> Deceased ID
+              </ToggleBtn>
             </ToggleGroup>
 
             <form onSubmit={handleAccessReport} style={{ display: 'grid', gap: '1.5rem' }}>
               <InputGroup>
-                <InputLabel>{searchType === 'phone' ? 'Phone Number' : 'ID Number'}</InputLabel>
+                <InputLabel>
+                  {searchType === 'phone' ? 'Phone Number' : searchType === 'id' ? 'ID Number' : 'Deceased ID'}
+                </InputLabel>
                 <InputWrapper>
-                  {searchType === 'phone' ? <Phone size={18} /> : <IdCard size={18} />}
+                  {searchType === 'phone' ? <Phone size={18} /> : searchType === 'id' ? <IdCard size={18} /> : <User size={18} />}
                   <input
                     type="text"
                     value={inputValue}
@@ -825,7 +796,7 @@ const AutopsyPortal = () => {
                       setInputValue(e.target.value);
                       setError('');
                     }}
-                    placeholder={searchType === 'phone' ? '0712345678' : '12345678'}
+                    placeholder={searchType === 'phone' ? '0712345678' : searchType === 'id' ? '12345678' : 'MON-PET-XXXXXX-XXXXXX'}
                     required
                     disabled={loading}
                   />
