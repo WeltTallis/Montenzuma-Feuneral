@@ -258,22 +258,25 @@ const MainContent = styled.div`
 
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
   margin-bottom: 1rem;
 `;
 
+// Updated StatCard to handle deep solid colors
 const StatCard = styled.div`
   background: ${props => props.$bg || COLORS.surface};
   border-radius: ${COLORS.radiusSm};
-  box-shadow: ${COLORS.shadowSm};
-  border: 1px solid ${COLORS.border};
-  padding: 0.6rem 0.75rem;
+  box-shadow: ${COLORS.shadowMd};
+  border: none;
+  padding: 1rem 1.25rem;
   transition: ${COLORS.transition};
+  position: relative;
+  overflow: hidden;
 
   &:hover {
-    box-shadow: ${COLORS.shadowMd};
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: ${COLORS.shadowLg};
   }
 `;
 
@@ -281,39 +284,40 @@ const StatHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.5rem;
 `;
 
 const StatLabel = styled.div`
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: ${COLORS.textSecondary};
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 `;
 
 const StatIcon = styled.div`
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: ${COLORS.radiusXs};
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${props => props.$bg};
-  color: ${props => props.$color};
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
 `;
 
 const StatValue = styled.div`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: ${COLORS.text};
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ffffff;
   line-height: 1.2;
-  margin-bottom: 0.1rem;
+  margin-bottom: 0.25rem;
 `;
 
 const StatSubtext = styled.div`
-  font-size: 0.65rem;
-  color: ${COLORS.textMuted};
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
 `;
 
 const FilterCard = styled.div`
@@ -453,7 +457,7 @@ const StatusBadge = styled.span`
   align-items: center;
   gap: 0.375rem;
   padding: 0.3rem 0.75rem;
-  border-radius: 2rem;
+  border-radius:2rem;
   font-size: 0.75rem;
   font-weight: 500;
   background: ${props => {
@@ -1048,51 +1052,51 @@ const HearseBookings = () => {
       </Header>
 
       <MainContent>
-        {/* Stats Cards */}
+        {/* Stats Cards - Deep Solid Colors */}
         <StatsGrid>
-          <StatCard $bg="#f0f7f4">
+          <StatCard $bg="#1e3a8a"> {/* Deep Blue */}
             <StatHeader>
               <StatLabel>Total Bookings</StatLabel>
-              <StatIcon $bg="#f0f7f4" $color="#266b52">{Icons.truck}</StatIcon>
+              <StatIcon>{Icons.truck}</StatIcon>
             </StatHeader>
             <StatValue>{stats.total}</StatValue>
             <StatSubtext>All time</StatSubtext>
           </StatCard>
 
-          <StatCard $bg="#dbeafe">
+          <StatCard $bg="#0f766e"> {/* Deep Teal */}
             <StatHeader>
               <StatLabel>Active</StatLabel>
-              <StatIcon $bg={COLORS.infoLight} $color={COLORS.infoDark}>{Icons.car}</StatIcon>
+              <StatIcon>{Icons.car}</StatIcon>
             </StatHeader>
             <StatValue>{stats.active}</StatValue>
-            <StatSubtext style={{ color: COLORS.info }}>In progress</StatSubtext>
+            <StatSubtext>In progress</StatSubtext>
           </StatCard>
 
-          <StatCard $bg="#fef3c7">
+          <StatCard $bg="#d97706"> {/* Deep Amber/Orange */}
             <StatHeader>
               <StatLabel>Pending</StatLabel>
-              <StatIcon $bg={COLORS.warningLight} $color={COLORS.warningDark}>{Icons.clock}</StatIcon>
+              <StatIcon>{Icons.clock}</StatIcon>
             </StatHeader>
             <StatValue>{stats.pending}</StatValue>
-            <StatSubtext style={{ color: COLORS.warning }}>Needs attention</StatSubtext>
+            <StatSubtext>Needs attention</StatSubtext>
           </StatCard>
 
-          <StatCard $bg="#fce7f3">
+          <StatCard $bg="#be185d"> {/* Deep Pink/Rose */}
             <StatHeader>
               <StatLabel>In Transit</StatLabel>
-              <StatIcon $bg="#fce7f3" $color="#db2777">{Icons.truck}</StatIcon>
+              <StatIcon>{Icons.truck}</StatIcon>
             </StatHeader>
             <StatValue>{stats.inProgress}</StatValue>
-            <StatSubtext style={{ color: '#db2777' }}>On the road</StatSubtext>
+            <StatSubtext>On the road</StatSubtext>
           </StatCard>
 
-          <StatCard $bg="#d1fae5">
+          <StatCard $bg="#15803d"> {/* Deep Green */}
             <StatHeader>
               <StatLabel>Completed</StatLabel>
-              <StatIcon $bg={COLORS.successLight} $color={COLORS.successDark}>{Icons.check}</StatIcon>
+              <StatIcon>{Icons.check}</StatIcon>
             </StatHeader>
             <StatValue>{stats.completed}</StatValue>
-            <StatSubtext style={{ color: COLORS.success }}>Delivered</StatSubtext>
+            <StatSubtext>Delivered</StatSubtext>
           </StatCard>
         </StatsGrid>
 

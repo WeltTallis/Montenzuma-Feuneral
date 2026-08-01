@@ -8,15 +8,17 @@ import { getTenantSlug } from '../../utils/globalAuth';
 
 const API = env.FULL_API_URL;
 
-// ─── Design Tokens (from Memoria Inventory template) ─────────────────
+// ─── Design Tokens (Modern SaaS Aesthetic) ───────────────────────────
 const S = {
-  primary: '#4338ca',
-  primaryLight: '#eef2ff',
+  primary: '#1d4ed8', // Rich Royal Blue
+  primaryLight: '#eff6ff',
+  primaryDark: '#1e3a8a',
   bg: '#f8fafc',
   cardBg: '#ffffff',
   text: '#0f172a',
   textMuted: '#64748b',
   border: '#e2e8f0',
+  borderLight: '#f1f5f9',
   success: '#059669',
   successLight: '#ecfdf5',
   warning: '#d97706',
@@ -26,6 +28,11 @@ const S = {
   info: '#0284c7',
   drawerWidth: 520,
   font: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+  shadowSm: '0 1px 2px rgba(0, 0, 0, 0.04)',
+  shadowMd: '0 4px 6px rgba(0, 0, 0, 0.06)',
+  shadowLg: '0 10px 15px rgba(0, 0, 0, 0.08)',
+  shadowXl: '0 20px 25px rgba(0, 0, 0, 0.1)',
+  transition: 'all 0.2s ease',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -37,8 +44,8 @@ const getStockStatus = (stock) => {
 
 const getBookingStatus = (status) => {
   const map = {
-    pending: { label: 'Pending Approval', cls: 'tag-pe' },
-    booked: { label: 'Approved / Booked', cls: 'tag-bo' },
+    pending: { label: 'Pending', cls: 'tag-pe' },
+    booked: { label: 'Approved', cls: 'tag-bo' },
     completed: { label: 'Completed', cls: 'tag-co' },
     cancelled: { label: 'Cancelled', cls: 'tag-ca' },
     approved: { label: 'Approved', cls: 'tag-ar' },
@@ -51,7 +58,7 @@ const getBookingStatus = (status) => {
 
 const getReqStatus = (status) => {
   const map = {
-    pending: { label: 'Pending Approval', cls: 'tag-pe' },
+    pending: { label: 'Pending', cls: 'tag-pe' },
     approved: { label: 'Approved', cls: 'tag-ar' },
     rejected: { label: 'Rejected', cls: 'tag-ou' },
     transferring: { label: 'In Transit', cls: 'tag-tr' },
@@ -82,7 +89,7 @@ const styles = {
     color: S.text,
     background: S.bg,
     minHeight: '100vh',
-    fontSize: 15,
+    fontSize: 14,
     WebkitFontSmoothing: 'antialiased',
   },
   hd: {
@@ -95,9 +102,9 @@ const styles = {
   },
   hdLeft: { display: 'flex', alignItems: 'center', gap: 16 },
   hdH1: {
-    fontSize: 28,
-    fontWeight: 800,
-    letterSpacing: '-1px',
+    fontSize: 24,
+    fontWeight: 700,
+    letterSpacing: '-0.025em',
     display: 'flex',
     alignItems: 'center',
     gap: 14,
@@ -106,52 +113,106 @@ const styles = {
   hdH1Icon: {
     color: S.primary,
     background: S.primaryLight,
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: 24,
+    fontSize: 22,
   },
-  hdInfoP: { color: S.textMuted, fontSize: 14, marginTop: 4, margin: 0 },
+  hdInfoP: { color: S.textMuted, fontSize: 13, marginTop: 4, margin: 0 },
+  
+  // Stats Cards
+  statsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '16px',
+    marginBottom: '32px',
+  },
+  statCard: {
+    borderRadius: '12px',
+    padding: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    height: '120px',
+    boxShadow: S.shadowMd,
+    transition: S.transition,
+  },
+  statHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: '12px',
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  statIcon: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '8px',
+    background: 'rgba(255, 255, 255, 0.15)',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '16px',
+  },
+  statValue: {
+    fontSize: '32px',
+    fontWeight: '800',
+    color: '#ffffff',
+    lineHeight: '1',
+  },
+  statSubtext: {
+    fontSize: '12px',
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: '4px',
+    fontWeight: '500',
+  },
+
   notifContainer: { position: 'relative' },
   notifBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     border: `1px solid ${S.border}`,
     background: '#fff',
     cursor: 'pointer',
-    fontSize: 20,
+    fontSize: 18,
     color: S.textMuted,
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    transition: 'all 0.2s',
+    transition: S.transition,
   },
   notifBadge: {
     position: 'absolute',
-    top: -6,
-    right: -6,
+    top: -4,
+    right: -4,
     background: S.danger,
     color: '#fff',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 700,
-    padding: '3px 7px',
-    borderRadius: 12,
+    padding: '3px 6px',
+    borderRadius: 10,
     border: '2px solid #fff',
   },
   notifPanel: {
     position: 'absolute',
-    top: 64,
+    top: 60,
     right: 0,
     width: 380,
     background: '#fff',
     border: `1px solid ${S.border}`,
     borderRadius: 16,
-    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+    boxShadow: S.shadowXl,
     zIndex: 200,
     display: 'none',
     flexDirection: 'column',
@@ -160,146 +221,151 @@ const styles = {
   },
   notifPanelOpen: { display: 'flex' },
   notifHeader: {
-    padding: '18px 20px',
+    padding: '16px 20px',
     borderBottom: `1px solid ${S.border}`,
     fontWeight: 700,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    fontSize: 14,
   },
   notifList: { overflowY: 'auto', flex: 1 },
   notifItem: {
-    padding: '16px 20px',
-    borderBottom: '1px solid #f1f5f9',
+    padding: '14px 20px',
+    borderBottom: `1px solid ${S.borderLight}`,
     display: 'flex',
-    gap: 14,
+    gap: 12,
     alignItems: 'flex-start',
   },
-  notifItemUnread: { background: '#fafbff' },
+  notifItemUnread: { background: S.primaryLight },
   notifIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: 16,
+    fontSize: 14,
     flexShrink: 0,
   },
+  
+  // Modern Tabs (Segmented Control)
   tabs: {
-    display: 'flex',
+    display: 'inline-flex',
     gap: 4,
-    marginBottom: 28,
+    marginBottom: 24,
     background: '#fff',
-    padding: 8,
-    borderRadius: 14,
+    padding: 4,
+    borderRadius: 10,
     border: `1px solid ${S.border}`,
-    width: 'fit-content',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+    boxShadow: S.shadowSm,
   },
   tab: {
-    padding: '10px 20px',
-    borderRadius: 10,
+    padding: '8px 16px',
+    borderRadius: 8,
     border: 'none',
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: 600,
     cursor: 'pointer',
     background: 'transparent',
     color: S.textMuted,
-    transition: 'all 0.2s',
+    transition: S.transition,
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     fontFamily: 'inherit',
   },
   tabActive: {
     background: S.primary,
     color: '#fff',
-    boxShadow: '0 2px 8px rgba(67,56,202,0.2)',
+    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
   },
   badge: {
     background: '#fff',
     color: S.primary,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 700,
-    padding: '2px 7px',
-    borderRadius: 10,
-    marginLeft: 4,
+    padding: '2px 6px',
+    borderRadius: 8,
   },
   badgeActive: { background: 'rgba(255,255,255,0.2)', color: '#fff' },
+  
+  // Tables
   tw: {
     background: '#fff',
     border: `1px solid ${S.border}`,
     borderRadius: 16,
     overflow: 'hidden',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+    boxShadow: S.shadowMd,
   },
   tt: {
-    padding: '20px 24px',
+    padding: '16px 24px',
     borderBottom: `1px solid ${S.border}`,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 16,
     flexWrap: 'wrap',
+    background: '#fff',
   },
   sbox: {
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     background: S.bg,
     border: `1px solid ${S.border}`,
-    borderRadius: 10,
-    padding: '12px 16px',
-    width: 320,
+    borderRadius: 8,
+    padding: '10px 14px',
+    width: 300,
   },
   sboxInput: {
     border: 'none',
     outline: 'none',
     background: 'transparent',
-    fontSize: 15,
+    fontSize: 14,
     width: '100%',
     fontFamily: 'inherit',
     color: S.text,
   },
-  ff: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  ff: { display: 'flex', gap: 6, flexWrap: 'wrap' },
   fn: {
-    padding: '10px 16px',
+    padding: '8px 14px',
     borderRadius: 8,
     border: `1px solid ${S.border}`,
     background: '#fff',
     color: S.textMuted,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 600,
     cursor: 'pointer',
-    transition: 'all 0.2s',
+    transition: S.transition,
     fontFamily: 'inherit',
   },
-  fnActive: { background: S.primary, color: '#fff', borderColor: S.primary },
+  fnActive: { background: S.primaryLight, color: S.primary, borderColor: S.primary },
   tableWrap: { overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: {
-    padding: '14px 24px',
+    padding: '12px 24px',
     textAlign: 'left',
-    fontSize: 12,
+    fontSize: 11,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: '0.05em',
     color: S.textMuted,
     background: S.bg,
     fontWeight: 700,
     borderBottom: `1px solid ${S.border}`,
+    whiteSpace: 'nowrap',
   },
   td: {
-    padding: '18px 24px',
-    fontSize: 15,
-    borderBottom: '1px solid #f1f5f9',
+    padding: '14px 24px',
+    fontSize: 14,
+    borderBottom: `1px solid ${S.borderLight}`,
     color: '#334155',
     verticalAlign: 'middle',
   },
-  ci: { display: 'flex', alignItems: 'center', gap: 14 },
+  ci: { display: 'flex', alignItems: 'center', gap: 12 },
   thumb: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 10,
     background: S.primaryLight,
     color: S.primary,
@@ -308,22 +374,21 @@ const styles = {
     justifyContent: 'center',
     fontSize: 18,
     fontWeight: 700,
-    textTransform: 'uppercase',
     flexShrink: 0,
   },
-  cname: { fontWeight: 600, color: S.text, fontSize: 15 },
-  sku: { fontSize: 13, color: S.textMuted },
+  cname: { fontWeight: 600, color: S.text, fontSize: 14 },
+  sku: { fontSize: 12, color: S.textMuted },
   tag: {
     display: 'inline-flex',
     alignItems: 'center',
-    padding: '5px 12px',
-    borderRadius: 20,
-    fontSize: 12,
+    padding: '4px 10px',
+    borderRadius: 16,
+    fontSize: 11,
     fontWeight: 600,
   },
   ib: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -332,23 +397,24 @@ const styles = {
     background: '#fff',
     color: S.textMuted,
     cursor: 'pointer',
-    transition: 'all 0.2s',
+    transition: S.transition,
     margin: '0 2px',
+    fontSize: 14,
   },
   es: {
     textAlign: 'center',
-    padding: '64px 24px',
+    padding: '48px 24px',
     color: S.textMuted,
   },
-  esIcon: { fontSize: 32, marginBottom: 16, opacity: 0.3 },
-  esP: { fontSize: 16, margin: 0 },
+  esIcon: { fontSize: 28, marginBottom: 12, opacity: 0.2 },
+  esP: { fontSize: 14, margin: 0 },
   rg: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 },
 
   // Modal styles
   moOverlay: {
     position: 'fixed',
     inset: 0,
-    background: 'rgba(15,23,42,0.7)',
+    background: 'rgba(15,23,42,0.6)',
     backdropFilter: 'blur(6px)',
     zIndex: 250,
     display: 'none',
@@ -359,27 +425,27 @@ const styles = {
   moOpen: { display: 'flex' },
   md: {
     background: '#fff',
-    borderRadius: 20,
+    borderRadius: 16,
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 580,
     maxHeight: '90vh',
     overflowY: 'auto',
-    boxShadow: '0 30px 60px rgba(0,0,0,0.2)',
+    boxShadow: S.shadowXl,
   },
   mh: {
-    padding: '24px 28px',
+    padding: '20px 24px',
     borderBottom: `1px solid ${S.border}`,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  mh2: { fontSize: 20, fontWeight: 700, margin: 0 },
+  mh2: { fontSize: 18, fontWeight: 700, margin: 0 },
   mx: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    border: `1px solid ${S.border}`,
-    background: '#fff',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    border: `none`,
+    background: 'transparent',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -387,47 +453,50 @@ const styles = {
     fontSize: 18,
     color: S.textMuted,
   },
-  mb: { padding: 28 },
+  mb: { padding: 24 },
   mf: {
-    padding: '20px 28px',
+    padding: '16px 24px',
     borderTop: `1px solid ${S.border}`,
     display: 'flex',
     justifyContent: 'flex-end',
     gap: 12,
+    background: S.bg,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
-  fg: { marginBottom: 20 },
-  fr: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 },
+  fg: { marginBottom: 16 },
+  fr: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
   fl: {
     display: 'block',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 600,
     color: S.textMuted,
-    marginBottom: 8,
+    marginBottom: 6,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: '0.05em',
   },
   fi: {
     width: '100%',
-    padding: '12px 16px',
-    borderRadius: 10,
+    padding: '10px 14px',
+    borderRadius: 8,
     border: `1px solid ${S.border}`,
     background: '#fff',
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'inherit',
     outline: 'none',
-    transition: 'all 0.2s',
+    transition: S.transition,
     boxSizing: 'border-box',
   },
   fs: {
     width: '100%',
-    padding: '12px 16px',
-    borderRadius: 10,
+    padding: '10px 14px',
+    borderRadius: 8,
     border: `1px solid ${S.border}`,
     background: '#fff',
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'inherit',
     outline: 'none',
-    transition: 'all 0.2s',
+    transition: S.transition,
     cursor: 'pointer',
     boxSizing: 'border-box',
   },
@@ -435,31 +504,31 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    padding: '12px 20px',
-    borderRadius: 10,
+    gap: 6,
+    padding: '10px 16px',
+    borderRadius: 8,
     border: 'none',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 600,
     cursor: 'pointer',
     fontFamily: 'inherit',
-    transition: 'all 0.2s',
+    transition: S.transition,
     whiteSpace: 'nowrap',
   },
-  btnP: { background: S.primary, color: '#fff', boxShadow: '0 4px 12px rgba(67,56,202,0.2)' },
+  btnP: { background: S.primary, color: '#fff', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)' },
   btnD: { background: S.danger, color: '#fff' },
   btnG: { background: '#f1f5f9', color: '#475569' },
   btnS: { background: S.success, color: '#fff' },
   btnW: { background: S.warning, color: '#fff' },
-  btnSm: { padding: '8px 14px', fontSize: 13, borderRadius: 8 },
-  btnWFull: { width: '100%', padding: 14 },
+  btnSm: { padding: '6px 12px', fontSize: 12, borderRadius: 6 },
+  btnWFull: { width: '100%', padding: 12 },
 
   // Drawer
   drawerOverlay: {
     position: 'fixed',
     inset: 0,
-    background: 'rgba(15,23,42,0.6)',
-    backdropFilter: 'blur(3px)',
+    background: 'rgba(15,23,42,0.5)',
+    backdropFilter: 'blur(4px)',
     zIndex: 199,
     opacity: 0,
     pointerEvents: 'none',
@@ -483,22 +552,22 @@ const styles = {
   },
   drawerOpen: { transform: 'translateX(0)' },
   drawerHeader: {
-    padding: '24px 28px',
+    padding: '20px 24px',
     borderBottom: `1px solid ${S.border}`,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  drawerHeaderH2: { fontSize: 20, fontWeight: 700, margin: 0 },
-  drawerBody: { flex: 1, overflowY: 'auto', padding: 28 },
+  drawerHeaderH2: { fontSize: 18, fontWeight: 700, margin: 0 },
+  drawerBody: { flex: 1, overflowY: 'auto', padding: 24 },
 
   // Detail drawer
   detailImage: {
     width: '100%',
-    height: 240,
-    background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
-    borderRadius: 16,
-    marginBottom: 28,
+    height: 220,
+    background: `linear-gradient(135deg, ${S.bg} 0%, ${S.borderLight} 100%)`,
+    borderRadius: 12,
+    marginBottom: 24,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -507,49 +576,51 @@ const styles = {
   detailStatus: {
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 28,
-    fontSize: 18,
+    gap: 8,
+    marginBottom: 24,
+    fontSize: 16,
     fontWeight: 700,
   },
-  statusDot: { width: 12, height: 12, borderRadius: '50%' },
-  detailSection: { marginBottom: 28 },
+  statusDot: { width: 10, height: 10, borderRadius: '50%' },
+  detailSection: { marginBottom: 24 },
   detailSectionH4: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: 700,
-    color: S.text,
-    marginBottom: 16,
-    paddingBottom: 10,
+    color: S.textMuted,
+    marginBottom: 12,
+    paddingBottom: 8,
     borderBottom: `1px solid ${S.border}`,
     display: 'flex',
     alignItems: 'center',
     gap: 8,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
   },
   detailRow: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '10px 0',
-    fontSize: 15,
+    padding: '8px 0',
+    fontSize: 14,
   },
   detailRowSpan: { color: S.textMuted },
   detailRowStrong: { color: S.text, fontWeight: 600, textAlign: 'right' },
-  otherBranchesList: { display: 'flex', flexDirection: 'column', gap: 10 },
+  otherBranchesList: { display: 'flex', flexDirection: 'column', gap: 8 },
   otherBranchItem: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '12px 16px',
+    padding: '10px 14px',
     background: S.bg,
-    borderRadius: 10,
-    fontSize: 14,
+    borderRadius: 8,
+    fontSize: 13,
     border: `1px solid ${S.border}`,
   },
-  branchTag: { display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600 },
-  detailActions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 32 },
+  branchTag: { display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 },
+  detailActions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 24 },
 
   // Tracker
-  tracker: { display: 'flex', justifyContent: 'space-between', position: 'relative', margin: '32px 0 40px' },
+  tracker: { display: 'flex', justifyContent: 'space-between', position: 'relative', margin: '24px 0 32px' },
   trackerDot: {
     width: 32,
     height: 32,
@@ -560,14 +631,14 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 700,
     transition: 'all 0.3s',
   },
   trackerStep: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, zIndex: 1, textAlign: 'center', width: '25%' },
-  trackerLabel: { fontSize: 12, fontWeight: 600, color: S.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
-  historyLog: { background: S.bg, border: `1px solid ${S.border}`, borderRadius: 14, padding: 20, marginTop: 20 },
-  historyItem: { display: 'flex', alignItems: 'flex-start', gap: 14, paddingBottom: 20, position: 'relative' },
+  trackerLabel: { fontSize: 11, fontWeight: 600, color: S.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  historyLog: { background: S.bg, border: `1px solid ${S.border}`, borderRadius: 12, padding: 16, marginTop: 16 },
+  historyItem: { display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 16, position: 'relative' },
   historyCheck: {
     width: 20,
     height: 20,
@@ -589,7 +660,7 @@ const styles = {
     justifyContent: 'center',
     padding: 60,
     color: S.textMuted,
-    fontSize: 15,
+    fontSize: 14,
     gap: 10,
   },
 };
@@ -604,7 +675,7 @@ const Tag = ({ cls, children }) => {
     'tag-bo': { background: '#e0f2fe', color: S.info },
     'tag-co': { background: S.successLight, color: S.success },
     'tag-ca': { background: S.dangerLight, color: S.danger },
-    'tag-ar': { background: '#e0e7ff', color: '#4338ca' },
+    'tag-ar': { background: '#e0e7ff', color: S.primaryDark },
     'tag-tr': { background: S.warningLight, color: S.warning },
     'tag-de': { background: S.successLight, color: S.success },
   };
@@ -884,23 +955,16 @@ const CoffinDashboard = () => {
     const isBorrowed = c.owner_branch_id && c.owner_branch_id != c.branch_id;
 
     const content = `
-      <div style="border-radius:16px; overflow:hidden;">
+      <div style="border-radius:12px; overflow:hidden;">
         <div style="${objToStr(styles.detailImage)}">
-          <i class="fa-solid fa-image" style="font-size:64px; color:#cbd5e1"></i>
+          <i class="fa-solid fa-image" style="font-size:56px; color:#cbd5e1"></i>
         </div>
         <div style="${objToStr(styles.detailStatus)}">
-          <span style="width:12px; height:12px; border-radius:50%; background:${st.color}; display:inline-block"></span>
+          <span style="width:10px; height:10px; border-radius:50%; background:${st.color}; display:inline-block"></span>
           ${st.label}
         </div>
-        ${isBorrowed ? `
-        <div style="background:#eef2ff; border:1px solid #c7d2fe; padding:16px; border-radius:12px; margin-bottom:24px;">
-          <div style="font-size:14px; font-weight:600; color:#4338ca; margin-bottom:4px;">
-            📍 Owner: ${branches.find(b => b.id == c.owner_branch_id)?.name || 'Unknown'}
-          </div>
-          <div style="font-size:14px; font-weight:600; color:#4338ca;">
-            📦 Current Location: ${branches.find(b => b.id == c.branch_id)?.name || 'Unknown'}
-          </div>
-        </div>` : ''}
+        ${isBorrowed ? ``
+        : ''}
         <div style="${objToStr(styles.detailSection)}">
           <h4 style="${objToStr(styles.detailSectionH4)}"><i class="fa-solid fa-boxes-stacked"></i> Inventory</h4>
           <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Total Stock</span><strong style="${objToStr(styles.detailRowStrong)}">${c.stock}</strong></div>
@@ -926,13 +990,13 @@ const CoffinDashboard = () => {
               const stock = coffins.filter(co => co.branch_id == b.id && co.name === c.name).reduce((sum, co) => sum + (parseInt(co.stock) || 0), 0);
               const color = stock > 2 ? S.success : stock > 0 ? S.warning : S.danger;
               return `<div style="${objToStr(styles.otherBranchItem)}">
-                <span style="${objToStr(styles.branchTag)}"><span style="width:10px; height:10px; border-radius:50%; background:${color}; display:inline-block"></span>${b.name}</span>
+                <span style="${objToStr(styles.branchTag)}"><span style="width:8px; height:8px; border-radius:50%; background:${color}; display:inline-block"></span>${b.name}</span>
                 <strong>${stock} Available</strong>
               </div>`;
             }).join('')}
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-top:32px;">
+        <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-top:24px;">
           ${c.stock > 0 ? `<button class="drawer-btn btn-s" onclick="window.__openBookingModal(${c.coffin_id || c.id})"><i class="fa-solid fa-calendar-plus"></i> Book Locally</button>` : `<button class="drawer-btn btn-w" onclick="window.__openFindStock('${c.name?.replace(/'/g, "\\'") || ''}')"><i class="fa-solid fa-network-wired"></i> Find Stock Elsewhere</button>`}
           <button class="drawer-btn btn-d" onclick="window.__deleteCoffin(${c.coffin_id || c.id})"><i class="fa-solid fa-trash"></i> Delete Coffin</button>
           <button class="drawer-btn btn-g" onclick="window.__closeDrawer()">Close</button>
@@ -964,9 +1028,9 @@ const CoffinDashboard = () => {
       </div>
       <div style="${objToStr(styles.detailSection)}">
         <h4 style="${objToStr(styles.detailSectionH4)}"><i class="fa-solid fa-sticky-note"></i> Notes</h4>
-        <div style="background:${S.bg}; padding:16px; border-radius:10px; font-size:14px; color:#334155; border:1px solid ${S.border};">${b.notes || 'No notes provided'}</div>
+        <div style="background:${S.bg}; padding:12px; border-radius:8px; font-size:13px; color:#334155; border:1px solid ${S.border};">${b.notes || 'No notes provided'}</div>
       </div>
-      <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-top:32px;">
+      <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-top:24px;">
         ${b.status === 'pending' ? `<button class="drawer-btn btn-s" onclick="window.__handleBookingStatus(${b.id},'booked')"><i class="fa-solid fa-check"></i> Approve Reservation</button>` : ''}
         ${b.status === 'pending' ? `<button class="drawer-btn btn-d" onclick="window.__handleBookingStatus(${b.id},'cancelled')"><i class="fa-solid fa-times"></i> Cancel Reservation</button>` : ''}
         ${b.status === 'booked' ? `<button class="drawer-btn btn-s" onclick="window.__handleBookingStatus(${b.id},'completed')"><i class="fa-solid fa-check-double"></i> Mark Completed</button>` : ''}
@@ -985,35 +1049,35 @@ const CoffinDashboard = () => {
     const currentStageIdx = stages.indexOf(r.status);
     const stageLabels = ['Requested', 'Approved', 'In Transit', 'Delivered'];
 
-    let trackerHtml = `<div style="position:relative; margin:32px 0 40px;">
+    let trackerHtml = `<div style="position:relative; margin:24px 0 32px;">
       <div style="position:absolute; top:16px; left:16px; right:16px; height:3px; background:${S.border}; z-index:0; border-radius:2px;"></div>
       <div style="display:flex; justify-content:space-between;">`;
     stageLabels.forEach((label, idx) => {
       let stepClass = '';
       let icon = (idx + 1).toString();
-      if (idx < currentStageIdx) { stepClass = 'done'; icon = '<i class="fa-solid fa-check" style="font-size:13px"></i>'; }
+      if (idx < currentStageIdx) { stepClass = 'done'; icon = '<i class="fa-solid fa-check" style="font-size:12px"></i>'; }
       else if (idx === currentStageIdx) stepClass = 'active';
       const dotBg = idx < currentStageIdx ? S.success : idx === currentStageIdx ? S.primary : '#fff';
       const dotBorder = idx < currentStageIdx ? S.success : idx === currentStageIdx ? S.primary : S.border;
       const dotColor = idx < currentStageIdx || idx === currentStageIdx ? '#fff' : S.textMuted;
       const labelColor = idx <= currentStageIdx ? S.text : S.textMuted;
       trackerHtml += `<div style="display:flex; flex-direction:column; align-items:center; gap:8px; z-index:1; text-align:center; width:25%;">
-        <div style="width:32px; height:32px; border-radius:50%; background:${dotBg}; border:3px solid ${dotBorder}; color:${dotColor}; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; transition:all 0.3s; ${idx === currentStageIdx ? 'transform:scale(1.1);' : ''}">${icon}</div>
-        <div style="font-size:12px; font-weight:600; color:${labelColor}; text-transform:uppercase; letter-spacing:0.5px;">${label}</div>
+        <div style="width:32px; height:32px; border-radius:50%; background:${dotBg}; border:3px solid ${dotBorder}; color:${dotColor}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; transition:all 0.3s; ${idx === currentStageIdx ? 'transform:scale(1.1);' : ''}">${icon}</div>
+        <div style="font-size:11px; font-weight:600; color:${labelColor}; text-transform:uppercase; letter-spacing:0.05em;">${label}</div>
       </div>`;
     });
     trackerHtml += `</div></div>`;
 
-    let historyHtml = `<div style="background:${S.bg}; border:1px solid ${S.border}; border-radius:14px; padding:20px; margin-top:20px;">`;
+    let historyHtml = `<div style="background:${S.bg}; border:1px solid ${S.border}; border-radius:12px; padding:16px; margin-top:16px;">`;
     if (r.history && r.history.length > 0) {
       r.history.forEach((h, idx) => {
         const time = new Date(r.created_at || Date.now()).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        historyHtml += `<div style="display:flex; align-items:flex-start; gap:14px; padding-bottom:20px; position:relative;">
+        historyHtml += `<div style="display:flex; align-items:flex-start; gap:12px; padding-bottom:16px; position:relative;">
           ${idx < r.history.length - 1 ? `<div style="position:absolute; left:9px; top:24px; bottom:-6px; width:2px; background:${S.border};"></div>` : ''}
           <div style="width:20px; height:20px; border-radius:50%; background:${S.success}; color:#fff; font-size:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; z-index:1;"><i class="fa-solid fa-check"></i></div>
           <div>
-            <div style="font-size:14px; color:${S.text}; font-weight:500;">${h}</div>
-            <div style="font-size:12px; color:${S.textMuted}; margin-top:2px;">${time}</div>
+            <div style="font-size:13px; color:${S.text}; font-weight:500;">${h}</div>
+            <div style="font-size:11px; color:${S.textMuted}; margin-top:2px;">${time}</div>
           </div>
         </div>`;
       });
@@ -1032,12 +1096,12 @@ const CoffinDashboard = () => {
       </div>
       <div style="${objToStr(styles.detailSection)}">
         <h4 style="${objToStr(styles.detailSectionH4)}"><i class="fa-solid fa-sticky-note"></i> Reason</h4>
-        <div style="background:${S.bg}; padding:16px; border-radius:10px; font-size:14px; color:#334155; border:1px solid ${S.border};">${r.notes || 'No reason provided'}</div>
+        <div style="background:${S.bg}; padding:12px; border-radius:8px; font-size:13px; color:#334155; border:1px solid ${S.border};">${r.notes || 'No reason provided'}</div>
       </div>
-      <h4 style="font-size:15px; font-weight:700; margin-top:32px; margin-bottom:16px;">Progress Tracker</h4>
+      <h4 style="font-size:13px; font-weight:700; margin-top:24px; margin-bottom:12px; color:${S.textMuted}; text-transform:uppercase; letter-spacing:0.05em;">Progress Tracker</h4>
       ${trackerHtml}
       ${historyHtml}
-      <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-top:32px;">
+      <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-top:24px;">
         ${r.status === 'pending' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction(${r.id},'approve')"><i class="fa-solid fa-check"></i> Approve Request</button>` : ''}
         ${r.status === 'approved' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-w" onclick="window.__handleStockAction(${r.id},'transferring')"><i class="fa-solid fa-truck"></i> Mark In Transit</button>` : ''}
         ${r.status === 'transferring' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction(${r.id},'delivered')"><i class="fa-solid fa-check-double"></i> Confirm Delivered</button>` : ''}
@@ -1092,9 +1156,9 @@ const CoffinDashboard = () => {
     setInterSearch(searchQuery);
     const content = `
       <div style="margin-bottom:24px;">
-        <div style="display:flex; align-items:center; gap:12px; background:${S.bg}; border:1px solid ${S.border}; border-radius:10px; padding:12px 16px; width:100%;">
+        <div style="display:flex; align-items:center; gap:12px; background:${S.bg}; border:1px solid ${S.border}; border-radius:8px; padding:12px 16px; width:100%;">
           <i class="fa-solid fa-magnifying-glass" style="color:${S.textMuted}"></i>
-          <input id="interSearchInput" placeholder="Search coffin name or type..." style="border:none; outline:none; background:transparent; font-size:15px; width:100%; font-family:inherit; color:${S.text};" value="${searchQuery}" oninput="window.__renderInterResults(this.value)">
+          <input id="interSearchInput" placeholder="Search coffin name or type..." style="border:none; outline:none; background:transparent; font-size:14px; width:100%; font-family:inherit; color:${S.text};" value="${searchQuery}" oninput="window.__renderInterResults(this.value)">
         </div>
       </div>
       <div id="interResults"></div>
@@ -1152,7 +1216,7 @@ const CoffinDashboard = () => {
         <button class="drawer-btn btn-g btn-sm" style="margin-bottom:24px;" onclick="window.__openFindStock('')"><i class="fa-solid fa-arrow-left"></i> Back to Search</button>
         <div style="${objToStr(styles.detailSection)}">
           <h4 style="${objToStr(styles.detailSectionH4)}">Reserve & Request Transfer</h4>
-          <p style="color:${S.textMuted}; font-size:14px; margin-bottom:24px; line-height:1.5;">You are requesting <strong>${c.name}</strong> from ${branches.find(b => b.id == c.branch_id)?.name || 'other branch'}. This will create a booking and a transfer request.</p>
+          <p style="color:${S.textMuted}; font-size:13px; margin-bottom:24px; line-height:1.5;">You are requesting <strong>${c.name}</strong> from ${branches.find(b => b.id == c.branch_id)?.name || 'other branch'}. This will create a booking and a transfer request.</p>
         </div>
         <div style="${objToStr(styles.fg)}"><label style="${objToStr(styles.fl)}">Client Name *</label><input class="drawer-input" id="ir-client" placeholder="John Doe"></div>
         <div style="${objToStr(styles.fg)}"><label style="${objToStr(styles.fl)}">Deceased Name *</label><input class="drawer-input" id="ir-deceased" placeholder="Jane Doe"></div>
@@ -1216,8 +1280,8 @@ const CoffinDashboard = () => {
   // ─── Render Inventory Tab ───────────────────────────────────────────
   const renderInventory = () => (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-        <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 16 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
           Inventory <span style={{ color: S.textMuted, fontWeight: 400 }}>({branchCoffins.length} items)</span>
         </h3>
         <button style={{ ...styles.btn, ...styles.btnP }} onClick={() => setModal({ open: true, type: 'coffin', data: { type: 'Traditional', stock: 0, price: 0 } })}>
@@ -1268,7 +1332,7 @@ const CoffinDashboard = () => {
                       <p style={styles.esP}>No coffins found locally.</p>
                       {invQuery && (
                         <button
-                          style={{ ...styles.btn, ...styles.btnP, marginTop: 20 }}
+                          style={{ ...styles.btn, ...styles.btnP, marginTop: 16 }}
                           onClick={() => openFindStock(invQuery)}
                         >
                           <i className="fa-solid fa-network-wired"></i> Find "{invQuery}" in other branches
@@ -1338,8 +1402,8 @@ const CoffinDashboard = () => {
   // ─── Render Bookings Tab ────────────────────────────────────────────
   const renderBookings = () => (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-        <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Reservations</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 16 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Reservations</h3>
         <button
           style={{ ...styles.btn, ...styles.btnP }}
           onClick={() => setModal({ open: true, type: 'booking', data: { service_date: new Date().toISOString().split('T')[0] } })}
@@ -1428,8 +1492,8 @@ const CoffinDashboard = () => {
   // ─── Render Transfers Tab ───────────────────────────────────────────
   const renderTransfers = () => (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-        <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Transfers</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 16 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Transfers</h3>
         <button style={{ ...styles.btn, ...styles.btnP }} onClick={() => openFindStock()}>
           <i className="fa-solid fa-network-wired"></i> Find in Other Branches
         </button>
@@ -1437,7 +1501,7 @@ const CoffinDashboard = () => {
       <div style={styles.rg}>
         <div style={styles.tw}>
           <div style={styles.tt}>
-            <h4 style={{ fontSize: 17, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
               <i className="fa-solid fa-arrow-down" style={{ color: S.success }}></i> Incoming ({incomingRequests.length})
             </h4>
           </div>
@@ -1518,7 +1582,7 @@ const CoffinDashboard = () => {
 
         <div style={styles.tw}>
           <div style={styles.tt}>
-            <h4 style={{ fontSize: 17, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
               <i className="fa-solid fa-arrow-up" style={{ color: S.warning }}></i> Outgoing ({outgoingRequests.length})
             </h4>
           </div>
@@ -1577,13 +1641,13 @@ const CoffinDashboard = () => {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         .drawer-btn {
-          display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-          padding: 12px 20px; border-radius: 10px; border: none; font-size: 14px;
+          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+          padding: 10px 16px; border-radius: 8px; border: none; font-size: 13px;
           font-weight: 600; cursor: pointer; font-family: inherit;
-          transition: all 0.2s; white-space: nowrap; width: 100%;
+          transition: ${S.transition}; white-space: nowrap; width: 100%;
         }
-        .drawer-btn.btn-p { background: ${S.primary}; color: #fff; box-shadow: 0 4px 12px rgba(67,56,202,0.2); }
-        .drawer-btn.btn-p:hover { background: #3730a3; transform: translateY(-1px); }
+        .drawer-btn.btn-p { background: ${S.primary}; color: #fff; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2); }
+        .drawer-btn.btn-p:hover { background: ${S.primaryDark}; transform: translateY(-1px); }
         .drawer-btn.btn-d { background: ${S.danger}; color: #fff; }
         .drawer-btn.btn-d:hover { background: #b91c1c; }
         .drawer-btn.btn-g { background: #f1f5f9; color: #475569; }
@@ -1592,24 +1656,24 @@ const CoffinDashboard = () => {
         .drawer-btn.btn-s:hover { background: #047857; }
         .drawer-btn.btn-w { background: ${S.warning}; color: #fff; }
         .drawer-btn.btn-w:hover { background: #b45309; }
-        .drawer-btn.btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
-        .drawer-btn.btn-w-full { width: 100%; padding: 14px; }
+        .drawer-btn.btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; width: auto; }
+        .drawer-btn.btn-w-full { width: 100%; padding: 12px; }
         .drawer-input {
-          width: 100%; padding: 12px 16px; border-radius: 10px;
-          border: 1px solid ${S.border}; background: #fff; font-size: 15px;
-          font-family: inherit; outline: none; transition: all 0.2s;
+          width: 100%; padding: 10px 14px; border-radius: 8px;
+          border: 1px solid ${S.border}; background: #fff; font-size: 14px;
+          font-family: inherit; outline: none; transition: ${S.transition};
           box-sizing: border-box;
         }
-        .drawer-input:focus, .drawer-textarea:focus { border-color: ${S.primary}; box-shadow: 0 0 0 3px rgba(67,56,202,0.1); }
+        .drawer-input:focus, .drawer-textarea:focus { border-color: ${S.primary}; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
         .drawer-textarea {
-          width: 100%; padding: 12px 16px; border-radius: 10px;
-          border: 1px solid ${S.border}; background: #fff; font-size: 15px;
-          font-family: inherit; outline: none; transition: all 0.2s;
+          width: 100%; padding: 10px 14px; border-radius: 8px;
+          border: 1px solid ${S.border}; background: #fff; font-size: 14px;
+          font-family: inherit; outline: none; transition: ${S.transition};
           resize: vertical; box-sizing: border-box;
         }
         .inline-tag {
-          display: inline-flex; align-items: center; padding: 5px 12px;
-          border-radius: 20px; font-size: 12px; font-weight: 600;
+          display: inline-flex; align-items: center; padding: 4px 10px;
+          border-radius: 16px; font-size: 11px; font-weight: 600;
         }
         .inline-tag.tag-ok { background: ${S.successLight}; color: ${S.success}; }
         .inline-tag.tag-lo { background: ${S.warningLight}; color: ${S.warning}; }
@@ -1618,10 +1682,10 @@ const CoffinDashboard = () => {
         .inline-tag.tag-bo { background: #e0f2fe; color: ${S.info}; }
         .inline-tag.tag-co { background: ${S.successLight}; color: ${S.success}; }
         .inline-tag.tag-ca { background: ${S.dangerLight}; color: ${S.danger}; }
-        .inline-tag.tag-ar { background: #e0e7ff; color: #4338ca; }
+        .inline-tag.tag-ar { background: #e0e7ff; color: ${S.primaryDark}; }
         .inline-tag.tag-tr { background: ${S.warningLight}; color: ${S.warning}; }
         .inline-tag.tag-de { background: ${S.successLight}; color: ${S.success}; }
-        tr:hover td { background: #fafbfc; }
+        tr:hover td { background: #f8fafc; }
       `}</style>
 
       <ToastContainer position="top-center" autoClose={3000} />
@@ -1659,7 +1723,7 @@ const CoffinDashboard = () => {
             </div>
             <div style={styles.notifList}>
               {notifications.length === 0 ? (
-                <div style={{ ...styles.es, padding: 48 }}>
+                <div style={{ ...styles.es, padding: 32 }}>
                   <i className="fa-solid fa-bell-slash" style={styles.esIcon}></i>
                   <p style={styles.esP}>No notifications</p>
                 </div>
@@ -1672,8 +1736,8 @@ const CoffinDashboard = () => {
                         <i className="fa-solid fa-bell"></i>
                       </div>
                       <div>
-                        <div style={{ fontSize: 14, color: '#334155', fontWeight: 500 }}>{n.msg}</div>
-                        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{time}</div>
+                        <div style={{ fontSize: 13, color: '#334155', fontWeight: 500 }}>{n.msg}</div>
+                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{time}</div>
                       </div>
                     </div>
                   );
@@ -1681,6 +1745,45 @@ const CoffinDashboard = () => {
               )}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Modern Stat Cards */}
+      <div style={styles.statsGrid}>
+        <div style={{ ...styles.statCard, background: '#1e3a8a' }}> {/* Deep Blue */}
+          <div style={styles.statHeader}>
+            <span style={styles.statLabel}>Total Stock</span>
+            <div style={styles.statIcon}><i className="fa-solid fa-boxes-stacked"></i></div>
+          </div>
+          <div style={styles.statValue}>{totalStock}</div>
+          <div style={styles.statSubtext}>Units available</div>
+        </div>
+
+        <div style={{ ...styles.statCard, background: '#15803d' }}> {/* Deep Green */}
+          <div style={styles.statHeader}>
+            <span style={styles.statLabel}>Available</span>
+            <div style={styles.statIcon}><i className="fa-solid fa-circle-check"></i></div>
+          </div>
+          <div style={styles.statValue}>{totalStock - lowStockCount - outOfStockCount}</div>
+          <div style={styles.statSubtext}>Ready to book</div>
+        </div>
+
+        <div style={{ ...styles.statCard, background: '#d97706' }}> {/* Deep Amber */}
+          <div style={styles.statHeader}>
+            <span style={styles.statLabel}>Low Stock</span>
+            <div style={styles.statIcon}><i className="fa-solid fa-triangle-exclamation"></i></div>
+          </div>
+          <div style={styles.statValue}>{lowStockCount}</div>
+          <div style={styles.statSubtext}>Needs restocking</div>
+        </div>
+
+        <div style={{ ...styles.statCard, background: '#b91c1c' }}> {/* Deep Red */}
+          <div style={styles.statHeader}>
+            <span style={styles.statLabel}>Out of Stock</span>
+            <div style={styles.statIcon}><i className="fa-solid fa-times-circle"></i></div>
+          </div>
+          <div style={styles.statValue}>{outOfStockCount}</div>
+          <div style={styles.statSubtext}>Unavailable items</div>
         </div>
       </div>
 
@@ -1901,7 +2004,7 @@ const CoffinDashboard = () => {
                     ))}
                   </select>
                   {branchCoffins.filter(c => c.stock > 0).length === 0 && (
-                    <div style={{ background: S.warningLight, border: '1px solid #fcd34d', color: '#92400e', padding: 12, borderRadius: 10, marginTop: 8, textAlign: 'center', fontSize: 13 }}>
+                    <div style={{ background: S.warningLight, border: '1px solid #fcd34d', color: '#92400e', padding: 12, borderRadius: 8, marginTop: 8, textAlign: 'center', fontSize: 13 }}>
                       <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: 6 }}></i>
                       No local stock available.
                       <button

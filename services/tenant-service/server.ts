@@ -8,6 +8,7 @@ import { TenantModel } from './models/Tenant.model';
 import onboardingRoutes from './routes/onboardingRoutes';
 import systemAdminRoutes from './routes/systemAdminRoutes';
 import { UserController } from './controllers/userController';
+import { BranchController } from './controllers/branchController';
 import { errorHandler, notFoundHandler, asyncHandler } from '../app-global/middlewares/errorHandler';
 
 dotenv.config();
@@ -397,6 +398,69 @@ app.get('/tenant/:tenantSlug/branches', asyncHandler(async (req: Request, res: R
   (req as any).dbName = tenant.db_name;
   await userController.getBranches(req, res);
   (req as any).dbName = originalDbName;
+}));
+
+// ============================================
+// BRANCH CONNECTION ROUTES (Inter-branch communication)
+// ============================================
+// These routes allow branches to establish connections with each other
+// so they can communicate (e.g., request coffin inventory from a partner branch)
+const branchController = new BranchController();
+
+// Create a new branch (with auto-connect to existing branches)
+app.post('/tenant/:tenantSlug/branches', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.createBranch(req, res);
+}));
+
+// List all branch connections for a tenant
+app.get('/tenant/:tenantSlug/branches/connections', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.listConnections(req, res);
+}));
+
+// List connections for a specific branch
+app.get('/tenant/:tenantSlug/branches/:branchId/connections', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.listBranchConnections(req, res);
+}));
+
+// Create a connection between two branches
+app.post('/tenant/:tenantSlug/branches/connections', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.createConnection(req, res);
+}));
+
+// Update a branch connection status
+app.put('/tenant/:tenantSlug/branches/connections/:connectionId', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.updateConnection(req, res);
+}));
+
+// Delete a branch connection
+app.delete('/tenant/:tenantSlug/branches/connections/:connectionId', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.deleteConnection(req, res);
+}));
+
+// Auto-connect all branches to each other
+app.post('/tenant/:tenantSlug/branches/auto-connect', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.autoConnect(req, res);
+}));
+
+// Check if two branches can communicate
+app.get('/tenant/:tenantSlug/branches/:branchId/connections/check/:connectedBranchId', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.checkConnection(req, res);
 }));
 
 // Create user route (tenantSlug only)

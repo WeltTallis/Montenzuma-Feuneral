@@ -55,8 +55,21 @@ async function main() {
       location: payload.location,
       country: payload.country,
       deployment_type: payload.deployment_type,
+      logo_url: payload.logo_url,
       branches: payload.branches
     });
+
+    // Auto-connect all branches so they can communicate with each other
+    try {
+      const tenantSlug = payload.tenant_slug || (payload.tenant_name || 'tenant').replace(/\s+/g, '-').toLowerCase();
+      const tenant = await TenantModel.findBySubdomain(tenantSlug);
+      if (tenant) {
+        await TenantModel.autoConnectBranches(tenant.db_name, tenantSlug);
+        console.log(`✅ Auto-connected all branches for tenant: ${tenantSlug}`);
+      }
+    } catch (autoConnectErr: any) {
+      console.warn(`⚠️ Auto-connect branches failed: ${autoConnectErr.message}`);
+    }
 
     await updateProvisioningStatus(tenantSlug, 'completed', 100, 'Provisioning completed');
     process.exit(0);

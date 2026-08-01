@@ -3,6 +3,7 @@ import sharp from 'sharp';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import { centralizedUploadService } from '../../../packages/shared-services/src/centralizedUploadService';
 import   Logger   from   '../../../packages/shared-logger/dist/index'
 
 
@@ -70,17 +71,6 @@ const processSignature = async (
     const id = generateDatedCheckoutId();
     const timestamp = Date.now();
     const filename = `signature_${id}_${timestamp}.png`;
-    const outputPath = path.join(__dirname, '..', 'uploads', 'signatures', filename);
-
-    // Ensure directory exists
-    const dir = path.dirname(outputPath);
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-    
-
-    
-
 
     // Process image with Sharp
     let sharpInstance = sharp(file.buffer);
@@ -129,13 +119,27 @@ const processSignature = async (
         .digest('hex')
         .slice(0, 16);
 
-    // Save file
-    fs.writeFileSync(outputPath, processedBuffer);
+    // Upload to centralized storage
+    const uploadResult = await centralizedUploadService.uploadSignature(
+        processedBuffer,
+        filename,
+        'system', // TODO: Pass tenantSlug from request context
+        {
+            quality: 95,
+            maxWidth: 1500,
+            maxHeight: 1000,
+            format: 'png',
+        }
+    );
+
+    if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Failed to upload signature');
+    }
 
     // Return file info
     return {
         filename,
-        path: outputPath,
+        path: uploadResult.path,
         size: processedBuffer.length,
         width: processedMetadata.width || 0,
         height: processedMetadata.height || 0,

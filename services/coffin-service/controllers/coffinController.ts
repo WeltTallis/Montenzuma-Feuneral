@@ -9,6 +9,7 @@ import axios from 'axios';
 import { safeQuery, getConnection, releaseConnection } from '@montezuma/shared-config';
 import logger from '@montezuma/shared-logger';
 import { getKenyaTimeISO } from '@montezuma/shared-utils';
+import { centralizedUploadService } from '../../../packages/shared-services/src/centralizedUploadService';
 
 const SOCKETIO_SERVICE_URL = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
 
@@ -102,30 +103,44 @@ const getTenantUploadPath = (tenantSlug: string): string => {
   return path.join(IMAGE_CONFIG.OUTPUT_DIR, tenantSlug);
 };
 
-// Helper: Process single image with Sharp
+// Helper: Process single image with Sharp and upload to centralized storage
 const processImage = async (
   inputBuffer: Buffer,
-  outputPath: string,
   index: number,
-  originalName: string
+  originalName: string,
+  tenantSlug: string,
+  coffinId: number
 ): Promise<string> => {
   try {
     const metadata = await sharp(inputBuffer).metadata();
     logger.debug(`Processing image ${index + 1}: ${originalName} (${metadata.width}x${metadata.height})`);
 
-    await sharp(inputBuffer)
+    // Process image with Sharp
+    const processedBuffer = await sharp(inputBuffer)
       .resize(IMAGE_CONFIG.TARGET_WIDTH, IMAGE_CONFIG.TARGET_HEIGHT, { 
         fit: 'cover', 
         position: 'center',
         withoutEnlargement: false 
       })
       .webp({ quality: IMAGE_CONFIG.QUALITY, effort: 6 })
-      .toFile(outputPath);
+      .toBuffer();
 
-    const stats = await fs.stat(outputPath);
-    logger.debug(`   Processed: ${(stats.size / 1024).toFixed(2)} KB`);
+    // Upload to centralized storage
+    const uploadResult = await centralizedUploadService.uploadImage(
+      processedBuffer,
+      originalName,
+      tenantSlug,
+      'coffins',
+      `coffin-${coffinId}`
+    );
 
-    return outputPath.replace('public/', '');
+    if (!uploadResult.success) {
+      throw new Error(uploadResult.error || 'Failed to upload image');
+    }
+
+    logger.debug(`   Uploaded: ${(uploadResult.size / 1024).toFixed(2)} KB`);
+
+    return uploadResult.urlPath;
   } catch (error) {
     logger.error(`Image processing failed for ${originalName}:`, error);
     throw new Error(`Image processing failed: ${error}`);
@@ -138,9 +153,6 @@ const processImages = async (
   coffinId: number, 
   tenantSlug: string
 ): Promise<string[]> => {
-  const uploadDir = getTenantUploadPath(tenantSlug);
-  await ensureDirectoryExists(uploadDir);
-
   const processedImages: string[] = [];
   const errors: string[] = [];
 
@@ -153,11 +165,7 @@ const processImages = async (
     }
 
     try {
-      const timestamp = Date.now();
-      const imageName = `coffin-${coffinId}-${timestamp}-${i}.${IMAGE_CONFIG.FORMAT}`;
-      const outputPath = path.join(uploadDir, imageName);
-      
-      const webPath = await processImage(file.buffer, outputPath, i, file.originalname);
+      const webPath = await processImage(file.buffer, i, file.originalname, tenantSlug, coffinId);
       processedImages.push(webPath);
     } catch (error) {
       errors.push(`${file.originalname}: ${error.message}`);

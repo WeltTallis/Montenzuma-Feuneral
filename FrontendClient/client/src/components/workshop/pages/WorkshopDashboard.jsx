@@ -82,6 +82,22 @@ const transformMaterial = (m) => ({
   createdAt: m.created_at,
 });
 
+// ─── Design Tokens ───────────────────────────────────────────────────
+const S = {
+  primary: '#1d4ed8',
+  primaryDark: '#1e3a8a',
+  bg: '#f8fafc',
+  text: '#0f172a',
+  textMuted: '#64748b',
+  border: '#e2e8f0',
+  danger: '#dc2626',
+  dangerLight: '#fef2f2',
+  font: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+  shadowLg: '0 10px 25px rgba(0, 0, 0, 0.05)',
+  shadowXl: '0 20px 40px rgba(0, 0, 0, 0.08)',
+  transition: 'all 0.2s ease',
+};
+
 const WorkshopDashboard = () => {
   const { socket } = useSocket();
   const [tab, setTab] = useState('dashboard');
@@ -188,39 +204,120 @@ const WorkshopDashboard = () => {
     createWorker, deleteWorker, addMaterial, deleteOrder, loadData, tab, setTab,
   }), [orders, workers, materials, reports, loading, error, connected, toasts, modal, tab, createOrder, updateOrderStatus, createWorker, deleteWorker, addMaterial, deleteOrder, loadData]);
 
+  // ─── Loading State ──────────────────────────────────────────────────
   if (loading && !orders.length) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', color: '#64748B' }}>
-        <div style={{ textAlign: 'center' }}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: 48, color: '#1E40AF', marginBottom: 16 }} />
-          <div style={{ fontSize: 16, fontWeight: 600 }}>Loading workshop data...</div>
+      <div style={{
+        minHeight: '100vh',
+        background: S.bg,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexDirection: 'column',
+        fontFamily: S.font,
+        color: S.textMuted,
+      }}>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <div style={{
+          width: 48,
+          height: 48,
+          border: `4px solid ${S.border}`,
+          borderTopColor: S.primary,
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <div style={{ fontSize: 15, fontWeight: 600, marginTop: 16 }}>
+          Loading workshop data...
         </div>
       </div>
     );
   }
 
+  // ─── Error State ────────────────────────────────────────────────────
   if (error && !orders.length) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-        <div style={{ textAlign: 'center', padding: 40, background: '#FEF2F2', borderRadius: 16, border: '1px solid #DC262630' }}>
-          <i className="fas fa-exclamation-triangle" style={{ fontSize: 48, color: '#DC2626', marginBottom: 16 }} />
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#DC2626', marginBottom: 8 }}>Connection Error</div>
-          <div style={{ fontSize: 14, color: '#64748B', marginBottom: 16 }}>{error}</div>
-          <button onClick={loadData} className="btn btn-primary" style={{ padding: '10px 24px' }}>
-            <i className="fas fa-redo" style={{ fontSize: 12 }} /> Retry
+      <div style={{
+        minHeight: '100vh',
+        background: S.bg,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+        fontFamily: S.font,
+      }}>
+        <div style={{
+          textAlign: 'center',
+          padding: 40,
+          background: '#fff',
+          borderRadius: 16,
+          border: `1px solid ${S.dangerLight}`,
+          boxShadow: S.shadowLg,
+          maxWidth: 420,
+        }}>
+          <div style={{
+            width: 56,
+            height: 56,
+            background: S.dangerLight,
+            color: S.danger,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 20px',
+            fontSize: 24,
+          }}>
+            <i className="fas fa-exclamation-triangle"></i>
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: S.text, marginBottom: 8 }}>
+            Connection Error
+          </div>
+          <div style={{ fontSize: 14, color: S.textMuted, marginBottom: 24, lineHeight: 1.5 }}>
+            {error}
+          </div>
+          <button 
+            onClick={loadData} 
+            style={{
+              background: S.primary,
+              color: '#fff',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: 8,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 14,
+              transition: S.transition,
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = S.primaryDark}
+            onMouseLeave={e => e.currentTarget.style.background = S.primary}
+          >
+            <i className="fas fa-redo" style={{ fontSize: 12 }} /> Retry Connection
           </button>
         </div>
       </div>
     );
   }
 
+  // ─── Main Render ────────────────────────────────────────────────────
   return (
     <Ctx.Provider value={value}>
-      <div style={{ minHeight: '100vh', background: '#F4F6F8' }}>
+      <style>{`
+        body { font-family: ${S.font}; background-color: ${S.bg}; }
+        * { box-sizing: border-box; }
+      `}</style>
+      <div style={{ 
+        minHeight: '100vh', 
+        background: S.bg,
+        color: S.text,
+        WebkitFontSmoothing: 'antialiased'
+      }}>
         <WorkshopHeader connected={connected} onRefresh={loadData} />
-        <div style={{ maxWidth: 1480, margin: '0 auto', padding: '1rem 1.5rem 3rem' }}>
+        <div style={{ maxWidth: 1480, margin: '0 auto', padding: '24px 24px 48px' }}>
           <WorkshopTabs activeTab={tab} onTabChange={setTab} />
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 24 }}>
             {tab === 'dashboard' && <DashboardTab />}
             {tab === 'orders' && <OrdersTab />}
             {tab === 'workers' && <WorkersTab />}

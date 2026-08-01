@@ -12,6 +12,7 @@ COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/shared-config/package.json ./packages/shared-config/
 COPY packages/shared-logger/package.json ./packages/shared-logger/
 COPY packages/shared-services/package.json ./packages/shared-services/
+COPY packages/shared-stamps/package.json ./packages/shared-stamps/
 COPY packages/shared-utils/package.json ./packages/shared-utils/
 COPY shared/package.json ./shared/
 COPY services/deceased-service/package.json ./services/deceased-service/
@@ -24,11 +25,12 @@ COPY shared/ ./shared/
 COPY services/app-global/ ./services/app-global/
 COPY services/deceased-service/ ./services/deceased-service/
 
-# Build shared packages in dependency order (shared-config → shared-logger → shared-utils → shared-services)
+# Build shared packages in dependency order (shared-config → shared-logger → shared-utils → shared-services → shared-stamps)
 RUN cd packages/shared-config && npm run build
 RUN cd packages/shared-logger && npm run build
 RUN cd packages/shared-services && npm run build
 RUN cd packages/shared-utils && npm run build
+RUN cd packages/shared-stamps && npm run build
 
 # Install tsx for running TypeScript directly (server.ts entry point)
 RUN npm install -g tsx

@@ -5,6 +5,8 @@ import { TenantModel } from '../models/Tenant.model';
 import provisionQueue from '../scripts/provisionQueue';
 import { Request, Response } from 'express';
 import logger from '@montezuma/shared-logger';
+import * as fs from 'fs';
+import { centralizedUploadService } from '../../../packages/shared-services/src/centralizedUploadService';
 
 /**
  * OnboardingController — handles tenant registration, login, logout, org info
@@ -80,6 +82,35 @@ export class OnboardingController {
       }
 
       const finalDeploymentType = deploymentType || (normalizedBranches.length > 1 ? 'multi' : 'single');
+
+    
+      // ─── PROCESS LOGO UPLOAD ─────────────────────────────────────────────
+      let logoUrl: string | null = null;
+      if (req.file) {
+        try {
+          const tenantSlug = finalTenantName.replace(/\s+/g, '-').toLowerCase();
+          
+          // Upload to centralized storage
+          const logoBuffer = fs.readFileSync(req.file.path);
+          const uploadResult = await centralizedUploadService.uploadTenantLogo(
+            logoBuffer,
+            req.file.originalname,
+            tenantSlug
+          );
+
+          // Clean up the temp file
+          try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+
+          if (uploadResult.success) {
+            logoUrl = uploadResult.urlPath;
+            logger.info({ service: 'tenant-service', function: 'createOrganization', message: 'Logo uploaded to centralized storage', logoUrl });
+          } else {
+            logger.warn({ service: 'tenant-service', function: 'createOrganization', message: 'Logo upload failed', error: uploadResult.error });
+          }
+        } catch (logoErr: any) {
+          logger.warn({ service: 'tenant-service', function: 'createOrganization', message: 'Logo upload failed', error: logoErr.message });
+        }
+      }
 
       (async () => {
         try {
@@ -199,7 +230,8 @@ export class OnboardingController {
                 country: country || null,
                 deployment_type: finalDeploymentType,
                 branches: normalizedBranches,
-                tenant_slug: tenantSlug
+                tenant_slug: tenantSlug,
+                logo_url: logoUrl
               };
 
               try {
@@ -219,6 +251,7 @@ export class OnboardingController {
             message: 'Organization provisioning started',
             data: {
               tenantSlug: finalTenantName.replace(/\s+/g, '-').toLowerCase(),
+              logoUrl,
               note: 'Provisioning is running in the background. The UI will receive progress via socket events and can poll /onboarding/status/:tenantSlug as a fallback.'
             }
           });
@@ -381,7 +414,7 @@ export class OnboardingController {
           data: {
             token,
             refreshToken,
-            tenant: { tenantId: tenant.tenant_id, tenantName: tenant.tenant_name, tenantSlug: tenant.tenant_slug, country: tenant.country },
+            tenant: { tenantId: tenant.tenant_id, tenantName: tenant.tenant_name, tenantSlug: tenant.tenant_slug, country: tenant.country, location: tenant.location, logoUrl: tenant.logo_url },
             user: { userId: user.user_id, email: user.email, fullName: user.full_name, role: user.role, branchId: user.branch_id, branchSlug }
           }
         });

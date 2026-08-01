@@ -445,6 +445,404 @@ export const getCoffinAnalytics = async (req: TenantRequest, res: Response): Pro
   }
 };
 
+// ============================================
+// INTER-BRANCH COFFIN INVENTORY REQUESTS
+// ============================================
+// These functions allow branches to request coffin inventory from
+// other branches they have a connection with.
+// For example, Branch Y can request coffins from Branch X if they
+// have an active branch connection.
+
+/**
+ * GET /coffins/branch/:branchId/connected-inventory
+ * Get coffin inventory from all branches connected to the specified branch.
+ * This allows a branch to see what coffins are available at partner branches.
+ */
+export const getConnectedBranchInventory = async (req: TenantRequest, res: Response): Promise<Response> => {
+  const tenantSlug = req.tenantSlug;
+  const branchId = parseInt(req.params.branchId);
+
+  if (!tenantSlug) {
+    return res.status(403).json({ success: false, message: 'Valid tenant required' });
+  }
+
+  if (!branchId) {
+    return res.status(400).json({ success: false, message: 'Valid branch ID required' });
+  }
+
+  try {
+    const dbName = await lookupTenantDatabase(tenantSlug);
+    if (!dbName) {
+      return res.status(404).json({ success: false, message: 'Tenant database not found' });
+    }
+
+    // Ensure branch_connections table exists
+    await safeTenantQuery(dbName, `
+      CREATE TABLE IF NOT EXISTS branch_connections (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenant_slug VARCHAR(255) NOT NULL,
+        branch_id INT NOT NULL,
+        connected_branch_id INT NOT NULL,
+        connection_type ENUM('referral','transfer','partnership','parent_child') DEFAULT 'partnership',
+        status ENUM('active','inactive','pending') DEFAULT 'active',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_tenant_slug (tenant_slug),
+        INDEX idx_branch_id (branch_id),
+        INDEX idx_connected_branch_id (connected_branch_id),
+        UNIQUE KEY unique_branch_connection (tenant_slug, branch_id, connected_branch_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Get all branches connected to this branch
+    const connections = await safeTenantQuery(dbName, `
+      SELECT bc.connected_branch_id, b.branch_name, b.branch_slug, b.branch_db_name
+      FROM branch_connections bc
+      INNER JOIN branches b ON bc.connected_branch_id = b.branch_id
+      WHERE bc.branch_id = ? AND bc.status = 'active' AND b.is_active = TRUE
+    `, [branchId]);
+
+    if (connections.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        message: 'No connected branches found. Create branch connections first.'
+      });
+    }
+
+    // Get coffin inventory from each connected branch
+    const connectedInventory: any[] = [];
+    for (const conn of connections) {
+      try {
+        const branchDbName = conn.branch_db_name;
+        if (!branchDbName) continue;
+
+        // Query coffins from the connected branch's database
+        const branchCoffins = await safeTenantQuery(branchDbName, `
+          SELECT c.coffin_id, c.custom_id, c.type, c.material, c.exact_price, 
+                 c.currency, c.price_usd, c.quantity, c.supplier, c.origin, 
+                 c.color, c.size, c.category,
+                 GROUP_CONCAT(DISTINCT ci.image_url) as image_urls
+          FROM coffins c
+          LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id AND c.tenant_id = ci.tenant_id
+          WHERE c.is_deleted = FALSE AND c.quantity > 0
+          GROUP BY c.coffin_id
+          ORDER BY c.created_at DESC
+        `);
+
+        if (branchCoffins.length > 0) {
+          connectedInventory.push({
+            branch_id: conn.connected_branch_id,
+            branch_name: conn.branch_name,
+            branch_slug: conn.branch_slug,
+            branch_db_name: conn.branch_db_name,
+            coffins: branchCoffins.map((coffin: any) => ({
+              ...coffin,
+              images: coffin.image_urls ? coffin.image_urls.split(',').slice(0, 10) : [],
+              display_price: coffin.currency === 'USD'
+                ? `$${coffin.price_usd} (Ksh ${coffin.exact_price})`
+                : `Ksh ${coffin.exact_price} ($${coffin.price_usd})`
+            }))
+          });
+        }
+      } catch (err: any) {
+        logger.warn(`Failed to get inventory from branch ${conn.branch_name}: ${err.message}`);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: connectedInventory,
+      count: connectedInventory.length,
+      message: `Found inventory from ${connectedInventory.length} connected branch(es)`
+    });
+  } catch (error: any) {
+    logger.error('Get connected branch inventory error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * POST /coffins/branch/request-transfer
+ * Request a coffin transfer from one branch to another.
+ * Body: { from_branch_id, to_branch_id, coffin_id, quantity, notes }
+ */
+export const requestCoffinTransfer = async (req: TenantRequest, res: Response): Promise<Response> => {
+  const tenantSlug = req.tenantSlug;
+
+  if (!tenantSlug) {
+    return res.status(403).json({ success: false, message: 'Valid tenant required' });
+  }
+
+  try {
+    const dbName = await lookupTenantDatabase(tenantSlug);
+    if (!dbName) {
+      return res.status(404).json({ success: false, message: 'Tenant database not found' });
+    }
+
+    const { from_branch_id, to_branch_id, coffin_id, quantity, notes } = req.body;
+
+    if (!from_branch_id || !to_branch_id || !coffin_id) {
+      return res.status(400).json({ success: false, message: 'from_branch_id, to_branch_id, and coffin_id are required' });
+    }
+
+    const transferQty = parseInt(quantity) || 1;
+
+    // Ensure branch_connections table exists
+    await safeTenantQuery(dbName, `
+      CREATE TABLE IF NOT EXISTS branch_connections (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenant_slug VARCHAR(255) NOT NULL,
+        branch_id INT NOT NULL,
+        connected_branch_id INT NOT NULL,
+        connection_type ENUM('referral','transfer','partnership','parent_child') DEFAULT 'partnership',
+        status ENUM('active','inactive','pending') DEFAULT 'active',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_tenant_slug (tenant_slug),
+        INDEX idx_branch_id (branch_id),
+        INDEX idx_connected_branch_id (connected_branch_id),
+        UNIQUE KEY unique_branch_connection (tenant_slug, branch_id, connected_branch_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Ensure coffin_transfer_requests table exists
+    await safeTenantQuery(dbName, `
+      CREATE TABLE IF NOT EXISTS coffin_transfer_requests (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenant_slug VARCHAR(255) NOT NULL,
+        from_branch_id INT NOT NULL,
+        to_branch_id INT NOT NULL,
+        coffin_id INT NOT NULL,
+        quantity INT NOT NULL DEFAULT 1,
+        status ENUM('pending','approved','rejected','completed','cancelled') DEFAULT 'pending',
+        requested_by VARCHAR(255),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_tenant_slug (tenant_slug),
+        INDEX idx_from_branch (from_branch_id),
+        INDEX idx_to_branch (to_branch_id),
+        INDEX idx_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Verify branches can communicate
+    const [connections] = await safeTenantQuery(dbName, `
+      SELECT id FROM branch_connections 
+      WHERE branch_id = ? AND connected_branch_id = ? AND status = 'active'
+      LIMIT 1
+    `, [to_branch_id, from_branch_id]);
+
+    if (!connections || (connections as any[]).length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'Branches are not connected. Create a branch connection first.'
+      });
+    }
+
+    // Create the transfer request
+    const result = await safeTenantQuery(dbName, `
+      INSERT INTO coffin_transfer_requests 
+        (tenant_slug, from_branch_id, to_branch_id, coffin_id, quantity, status, requested_by, notes)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
+    `, [tenantSlug, from_branch_id, to_branch_id, coffin_id, transferQty, req.user?.name || 'system', notes || null]);
+
+    const transferId = (result as any).insertId;
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        transfer_id: transferId,
+        from_branch_id,
+        to_branch_id,
+        coffin_id,
+        quantity: transferQty,
+        status: 'pending',
+        message: 'Coffin transfer request created. Waiting for approval from the source branch.'
+      }
+    });
+  } catch (error: any) {
+    logger.error('Request coffin transfer error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * GET /coffins/branch/transfer-requests
+ * Get all coffin transfer requests for a tenant.
+ */
+export const getTransferRequests = async (req: TenantRequest, res: Response): Promise<Response> => {
+  const tenantSlug = req.tenantSlug;
+  const branchId = req.query.branch_id as string;
+
+  if (!tenantSlug) {
+    return res.status(403).json({ success: false, message: 'Valid tenant required' });
+  }
+
+  try {
+    const dbName = await lookupTenantDatabase(tenantSlug);
+    if (!dbName) {
+      return res.status(404).json({ success: false, message: 'Tenant database not found' });
+    }
+
+    // Ensure coffin_transfer_requests table exists
+    await safeTenantQuery(dbName, `
+      CREATE TABLE IF NOT EXISTS coffin_transfer_requests (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenant_slug VARCHAR(255) NOT NULL,
+        from_branch_id INT NOT NULL,
+        to_branch_id INT NOT NULL,
+        coffin_id INT NOT NULL,
+        quantity INT NOT NULL DEFAULT 1,
+        status ENUM('pending','approved','rejected','completed','cancelled') DEFAULT 'pending',
+        requested_by VARCHAR(255),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_tenant_slug (tenant_slug),
+        INDEX idx_from_branch (from_branch_id),
+        INDEX idx_to_branch (to_branch_id),
+        INDEX idx_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    let sql = `
+      SELECT ctr.*, 
+             b1.branch_name as from_branch_name,
+             b2.branch_name as to_branch_name,
+             c.type as coffin_type, c.material as coffin_material, c.custom_id as coffin_custom_id
+      FROM coffin_transfer_requests ctr
+      LEFT JOIN branches b1 ON ctr.from_branch_id = b1.branch_id
+      LEFT JOIN branches b2 ON ctr.to_branch_id = b2.branch_id
+      LEFT JOIN coffins c ON ctr.coffin_id = c.coffin_id
+    `;
+    const params: any[] = [];
+
+    if (branchId) {
+      sql += ` WHERE ctr.from_branch_id = ? OR ctr.to_branch_id = ?`;
+      params.push(parseInt(branchId), parseInt(branchId));
+    }
+
+    sql += ` ORDER BY ctr.created_at DESC`;
+
+    const requests = await safeTenantQuery(dbName, sql, params);
+
+    return res.status(200).json({
+      success: true,
+      data: requests,
+      count: requests.length
+    });
+  } catch (error: any) {
+    logger.error('Get transfer requests error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * PUT /coffins/branch/transfer-requests/:id
+ * Update a transfer request status (approve, reject, complete, cancel).
+ */
+export const updateTransferRequest = async (req: TenantRequest, res: Response): Promise<Response> => {
+  const tenantSlug = req.tenantSlug;
+  const transferId = parseInt(req.params.id);
+
+  if (!tenantSlug) {
+    return res.status(403).json({ success: false, message: 'Valid tenant required' });
+  }
+
+  try {
+    const dbName = await lookupTenantDatabase(tenantSlug);
+    if (!dbName) {
+      return res.status(404).json({ success: false, message: 'Tenant database not found' });
+    }
+
+    const { status, approved_by } = req.body;
+    const validStatuses = ['pending', 'approved', 'rejected', 'completed', 'cancelled'];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: `Valid status required: ${validStatuses.join(', ')}` });
+    }
+
+    // Get the transfer request
+    const [transferRows] = await safeTenantQuery(dbName, `
+      SELECT * FROM coffin_transfer_requests WHERE id = ? LIMIT 1
+    `, [transferId]);
+
+    if (!transferRows || (transferRows as any[]).length === 0) {
+      return res.status(404).json({ success: false, message: 'Transfer request not found' });
+    }
+
+    const transfer = (transferRows as any[])[0];
+
+    // Update the status
+    await safeTenantQuery(dbName, `
+      UPDATE coffin_transfer_requests SET status = ?, updated_at = NOW() WHERE id = ?
+    `, [status, transferId]);
+
+    // If completing, transfer the coffin inventory
+    if (status === 'completed') {
+      const [fromBranchRows] = await safeTenantQuery(dbName, `
+        SELECT branch_db_name FROM branches WHERE branch_id = ? LIMIT 1
+      `, [transfer.from_branch_id]);
+
+      const [toBranchRows] = await safeTenantQuery(dbName, `
+        SELECT branch_db_name FROM branches WHERE branch_id = ? LIMIT 1
+      `, [transfer.to_branch_id]);
+
+      if (fromBranchRows && (fromBranchRows as any[]).length > 0 && toBranchRows && (toBranchRows as any[]).length > 0) {
+        const fromDbName = (fromBranchRows as any[])[0].branch_db_name;
+        const toDbName = (toBranchRows as any[])[0].branch_db_name;
+
+        // Reduce quantity from source branch
+        await safeTenantQuery(fromDbName, `
+          UPDATE coffins SET quantity = GREATEST(0, quantity - ?) WHERE coffin_id = ?
+        `, [transfer.quantity, transfer.coffin_id]);
+
+        // Check if coffin exists in destination branch
+        const [destCoffins] = await safeTenantQuery(toDbName, `
+          SELECT coffin_id, quantity FROM coffins WHERE custom_id = (SELECT custom_id FROM coffins WHERE coffin_id = ? LIMIT 1) LIMIT 1
+        `, [transfer.coffin_id]);
+
+        if (destCoffins && (destCoffins as any[]).length > 0) {
+          await safeTenantQuery(toDbName, `
+            UPDATE coffins SET quantity = quantity + ? WHERE coffin_id = ?
+          `, [transfer.quantity, (destCoffins as any[])[0].coffin_id]);
+        } else {
+          // Copy the coffin to destination branch
+          const [sourceCoffinRows] = await safeTenantQuery(fromDbName, `
+            SELECT * FROM coffins WHERE coffin_id = ? LIMIT 1
+          `, [transfer.coffin_id]);
+
+          if (sourceCoffinRows && (sourceCoffinRows as any[]).length > 0) {
+            const sc = (sourceCoffinRows as any[])[0];
+            await safeTenantQuery(toDbName, `
+              INSERT INTO coffins (custom_id, tenant_id, type, material, exact_price, currency, 
+                price_usd, exchange_rate, quantity, supplier, origin, color, size, category, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            `, [sc.custom_id, tenantSlug, sc.type, sc.material, sc.exact_price, sc.currency,
+                sc.price_usd, sc.exchange_rate, transfer.quantity, sc.supplier, sc.origin,
+                sc.color, sc.size, sc.category]);
+          }
+        }
+
+        logger.info(`Coffin transfer completed: ${transfer.quantity} coffin(s) from branch ${transfer.from_branch_id} to branch ${transfer.to_branch_id}`);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Transfer request ${status} successfully`,
+      data: { transfer_id: transferId, status, approved_by: approved_by || req.user?.name }
+    });
+  } catch (error: any) {
+    logger.error('Update transfer request error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const healthCheck = async (req: Request, res: Response): Promise<Response> => {
   return res.status(200).json({ status: 'UP', service: 'coffin-service', timestamp: getKenyaTimeISO() });
 };

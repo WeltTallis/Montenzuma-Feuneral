@@ -16,3 +16,9 @@
 {"level":"info","message":"Daily billing schedule: 0 0 8 * * *","timestamp":"2026-07-30T17:30:40.543Z"}
 {"level":"info","message":"Fallback service: Not configured","timestamp":"2026-07-30T17:30:40.544Z"}
 {"level":"info","message":"========================================","timestamp":"2026-07-30T17:30:40.545Z"}
+{"level":"info","message":"Cron job triggered: Daily billing","timestamp":"2026-07-31T15:00:00.845Z"}
+{"level":"info","message":"========================================","timestamp":"2026-07-31T15:00:00.965Z"}
+{"level":"info","message":"Starting scheduled daily billing job","timestamp":"2026-07-31T15:00:00.968Z"}
+{"level":"info","message":"========================================","timestamp":"2026-07-31T15:00:00.970Z"}
+{"code":"ENOTFOUND","errno":-3008,"fatal":true,"hostname":"restpoint_mariadb","level":"error","message":"Fatal error in daily billing job: getaddrinfo ENOTFOUND restpoint_mariadb","stack":"Error: getaddrinfo ENOTFOUND restpoint_mariadb\n    at safeQuery (C:\\Users\\User\\Downloads\\restpoint\\shared\\config\\db.js:151:35)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async runDailyBilling (C:\\Users\\User\\Downloads\\restpoint\\services\\billing-service\\server.js:261:21)","syscall":"getaddrinfo","timestamp":"2026-07-31T15:00:03.242Z"}
+{"code":"ENOTFOUND","errno":-3008,"fatal":true,"hostname":"restpoint_mariadb","level":"error","message":"Cron job failed: getaddrinfo ENOTFOUND restpoint_mariadb","stack":"Error: getaddrinfo ENOTFOUND restpoint_mariadb\n    at safeQuery (C:\\Users\\User\\Downloads\\restpoint\\shared\\config\\db.js:151:35)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async runDailyBilling (C:\\Users\\User\\Downloads\\restpoint\\services\\billing-service\\server.js:261:21)","syscall":"getaddrinfo","timestamp":"2026-07-31T15:00:03.244Z"}

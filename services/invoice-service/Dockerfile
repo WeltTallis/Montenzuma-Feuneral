@@ -13,6 +13,7 @@ COPY packages/shared-utils/package.json ./packages/shared-utils/
 COPY packages/shared-config/package.json ./packages/shared-config/
 COPY packages/shared-logger/package.json ./packages/shared-logger/
 COPY packages/shared-services/package.json ./packages/shared-services/
+COPY packages/shared-stamps/package.json ./packages/shared-stamps/
 COPY services/invoice-service/package.json ./services/invoice-service/
 
 RUN npm config set fetch-timeout 600000 && npm install --omit=optional
@@ -28,6 +29,7 @@ RUN cd packages/shared-config && npm run build
 RUN cd packages/shared-logger && npm run build
 RUN cd packages/shared-services && npm run build
 RUN cd packages/shared-utils && npm run build
+RUN cd packages/shared-stamps && npm run build
 
 RUN mkdir -p /usr/src/app/data && chown -R nodejs:nodejs /usr/src/app
 

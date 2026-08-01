@@ -313,18 +313,20 @@ export function getOptionalMigrations(): Migration[] {
 }
 
 export function getMainTenantMigrations(): Migration[] {
-  // By default, when creating a primary tenant database keep the migration set
-  // small and safe: only run core/essential migrations. Optional feature
-  // migrations are applied later using the migration runner.
-  return getCoreMigrations();
+  // Primary/main database for multi-branch tenants gets ALL migrations
+  // This includes all services: deceased, coffins, chemicals, hearse, florist, etc.
+  return ALL_TENANT_MIGRATIONS;
 }
 
 export function getBranchMigrations(): Migration[] {
-  return BRANCH_MIGRATIONS;
+  // Branch databases get ALL migrations EXCEPT workshop
+  // Workshop remains only in the primary/main database
+  return ALL_TENANT_MIGRATIONS.filter(m => !m.name.includes('workshop'));
 }
 
 export function getSingleTenantMigrations(): Migration[] {
-  return SINGLE_TENANT_MIGRATIONS;
+  // Single-branch tenants get ALL migrations in their one database
+  return ALL_TENANT_MIGRATIONS;
 }
 
 export function getAllTenantMigrations(): Migration[] {

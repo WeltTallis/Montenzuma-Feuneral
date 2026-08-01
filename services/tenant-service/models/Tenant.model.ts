@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import mysql from 'mysql2/promise';
 import slugify from 'slugify';
-import { getMainTenantMigrations, getBranchMigrations, getSingleTenantMigrations, getAllTenantMigrations } from '../../../shared/services/all-service-migrations';
+import { getMainTenantMigrations, getBranchMigrations, getSingleTenantMigrations, getAllTenantMigrations, HEARSE_SERVICE_MIGRATIONS } from '../../../shared/services/all-service-migrations';
 import { MigrationService } from '../../../shared/services/migration-service';
 import * as dotenv from 'dotenv';
 import axios from 'axios';
@@ -21,6 +21,7 @@ export interface RegisterTenantData {
     location?: string;
     country?: string;
     deployment_type?: 'single' | 'multi';
+    logo_url?: string | null;
     branches?: Array<{
         branch_name: string;
         branch_location: string;
@@ -57,6 +58,18 @@ export interface BranchInfo {
     branch_email: string | null;
     is_active: boolean;
     created_at: Date;
+}
+
+export interface BranchConnection {
+    id: number;
+    tenant_slug: string;
+    branch_id: number;
+    connected_branch_id: number;
+    connection_type: 'referral' | 'transfer' | 'partnership' | 'parent_child';
+    status: 'active' | 'inactive' | 'pending';
+    notes: string | null;
+    created_at: Date;
+    updated_at: Date;
 }
 
 // ============================================
@@ -264,7 +277,7 @@ async function createCompleteTenantDatabase(
     location: string | null,
     branches: Array<{ branch_name: string; branch_location: string; branch_phone: string; branch_email: string }> | undefined,
     deploymentType: 'single' | 'multi'
-): Promise<{ dbName: string; branches: Array<{ branch_name: string; branch_slug: string; branch_db_name: string }> }> {
+): Promise<{ dbName: string; branches: Array<{ branch_name: string; branch_slug: string; branch_db_name: string }>; sharedHearseDbName?: string | null }> {
     const serverConn = await getServerPool();
     const migrationService = new MigrationService();
 
@@ -292,24 +305,41 @@ async function createCompleteTenantDatabase(
     emitOnboardingProgress(subdomain, 'Database created', 10, `Primary database ${dbName} created`);
 
     // ============================================================
-    // FIX: ALL migrations run on the PRIMARY database
+    // MULTI-BRANCH: Create shared hearse bookings database
     // ============================================================
-    // For single-tenant: use getSingleTenantMigrations() (no Workshop)
-    // For multi-tenant MAIN branch: use getMainTenantMigrations() (includes Workshop)
-    // For multi-tenant sub-branches: use getBranchMigrations() (no Workshop)
+    let sharedHearseDbName: string | null = null;
+    if (deploymentType === 'multi' && branchList.length > 1) {
+      sharedHearseDbName = `${generateSlug(tenantName)}-shared-hearse`;
+      await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`${sharedHearseDbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+      await serverConn.query(`GRANT ALL PRIVILEGES ON \`${sharedHearseDbName}\`.* TO '${dbUser}'@'%'`);
+      console.log(`✅ Created shared hearse bookings database: ${sharedHearseDbName}`);
+      
+      // Run hearse-related migrations on the shared database
+      const hearseMigrations = HEARSE_SERVICE_MIGRATIONS;
+      const hearseMigrationResult = await migrationService.runTenantMigrations(sharedHearseDbName, hearseMigrations, dbConfig);
+      if (!hearseMigrationResult.success) {
+        console.error(`❌ Hearse migration errors for ${sharedHearseDbName}:`, hearseMigrationResult.errors);
+        // Don't fail the entire provisioning, just log the error
+      } else {
+        console.log(`✅ Shared hearse database ready: ${hearseMigrationResult.migrationsRun.length} migrations executed`);
+      }
+    }
 
+    // ============================================================
+    // FIX: Run migrations on PRIMARY database based on deployment type
+    // ============================================================
     const isMultiTenant = deploymentType === 'multi';
-    const isFirstBranch = true; // Primary DB is always the first/main branch
-
-    // Always run the full migration set on the primary/first branch so the main DB
-    // contains all feature tables (deceased, coffins, workshops, invoices, etc.).
-    const primaryMigrations = getAllTenantMigrations();
-    console.log(`📋 Using FULL migrations for primary DB: ${dbName} (${primaryMigrations.length} migrations)`);
+    
+    // Primary database migration strategy:
+    // - Single branch: ALL migrations
+    // - Multi-branch main: ALL migrations (includes workshop)
+    const primaryMigrations = isMultiTenant ? getMainTenantMigrations() : getSingleTenantMigrations();
+    console.log(`📋 Using ${isMultiTenant ? 'MULTI-BRANCH PRIMARY' : 'SINGLE-BRANCH'} migrations for primary DB: ${dbName} (${primaryMigrations.length} migrations)`);
 
     const totalMigrations = primaryMigrations.length;
     let completedMigrations = 0;
 
-    // Run migrations (no inline callback — MigrationService handles errors/logging)
+    // Run migrations on primary database
     const migrationResult = await migrationService.runTenantMigrations(dbName, primaryMigrations, dbConfig);
     if (!migrationResult.success) {
         console.error(`❌ Migration errors for ${dbName}:`, migrationResult.errors);
@@ -394,14 +424,12 @@ async function createCompleteTenantDatabase(
             await serverConn.query(`GRANT ALL PRIVILEGES ON \`${branchDbName}\`.* TO '${dbUser}'@'%'`);
 
             // ============================================================
-            // FIX: ALL migrations run on EVERY branch database
-            // Sub-branches get ALL migrations EXCEPT Workshop
+            // FIX: Branch databases get ALL migrations EXCEPT workshop
+            // Workshop remains only in the primary/main database
             // ============================================================
             const branchMigrations = getBranchMigrations();
-            console.log(`📋 Running ALL migrations (${branchMigrations.length} total) for branch DB: ${branchDbName}`);
+            console.log(`📋 Running branch migrations (${branchMigrations.length} total) for branch DB: ${branchDbName}`);
 
-            let branchCompletedMigrations = 0;
-            console.log(`   📋 Starting branch migrations for ${branchDbName} (${branchMigrations.length} migrations)`);
             const branchResult = await migrationService.runTenantMigrations(branchDbName, branchMigrations, dbConfig);
 
             if (!branchResult.success) {
@@ -440,6 +468,9 @@ async function createCompleteTenantDatabase(
 
         console.log(`✅ Tenant setup complete: ${subdomain}`);
         console.log(`   📁 Primary DB: ${dbName}`);
+        if (sharedHearseDbName) {
+            console.log(`   🚗 Shared Hearse DB: ${sharedHearseDbName}`);
+        }
         branchData.forEach(b => console.log(`      - ${b.branch_name} (slug: ${b.branch_slug}, db: ${b.branch_db_name})`));
 
         emitOnboardingProgress(subdomain, 'Finalizing', 95, 'Setup complete');
@@ -448,7 +479,7 @@ async function createCompleteTenantDatabase(
     }
 
     emitOnboardingProgress(subdomain, 'Complete', 100, 'Tenant setup successful');
-    return { dbName, branches: branchData };
+    return { dbName, branches: branchData, sharedHearseDbName };
 }
 
 // ============================================
@@ -457,7 +488,7 @@ async function createCompleteTenantDatabase(
 
 export class TenantModel {
     static async registerTenant(data: RegisterTenantData): Promise<{ tenant: Tenant; token: string }> {
-        const { tenant_name, email, password, full_name, phone, location, country, deployment_type, branches } = data;
+        const { tenant_name, email, password, full_name, phone, location, country, deployment_type, branches, logo_url } = data;
 
         const branchList = (branches && branches.length > 0) ? branches : [
             { branch_name: tenant_name, branch_location: location || 'Main Location', branch_phone: phone || '', branch_email: email }
@@ -607,19 +638,33 @@ export class TenantModel {
 
         const hasDeploymentTypeColumn = Array.isArray(columns) && columns.length > 0;
 
+        // Ensure logo_url column exists
+        try {
+            const [logoCols] = await serverConn.query(`
+                SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_SCHEMA = 'tenant_tracking' 
+                AND TABLE_NAME = 'tenants' 
+                AND COLUMN_NAME = 'logo_url'
+            `);
+            if (Array.isArray(logoCols) && logoCols.length === 0) {
+                await serverConn.query(`ALTER TABLE tenant_tracking.tenants ADD COLUMN logo_url VARCHAR(500) NULL AFTER country`);
+                console.log('✅ Added logo_url column to tenants table');
+            }
+        } catch (e) { /* column may already exist */ }
+
         let result;
         if (hasDeploymentTypeColumn) {
             const [insertResult] = await serverConn.query(
-                `INSERT INTO tenant_tracking.tenants (tenant_name, tenant_slug, db_name, email, phone, location, country, status, subscription_status, deployment_type)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 'trial', ?)`,
-                [tenant_name, subdomain, dbName, email, phone || null, location || null, country || null, finalDeploymentType]
+                `INSERT INTO tenant_tracking.tenants (tenant_name, tenant_slug, db_name, email, phone, location, country, logo_url, status, subscription_status, deployment_type)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 'trial', ?)`,
+                [tenant_name, subdomain, dbName, email, phone || null, location || null, country || null, logo_url || null, finalDeploymentType]
             );
             result = insertResult;
         } else {
             const [insertResult] = await serverConn.query(
-                `INSERT INTO tenant_tracking.tenants (tenant_name, tenant_slug, db_name, email, phone, location, country, status, subscription_status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 'trial')`,
-                [tenant_name, subdomain, dbName, email, phone || null, location || null, country || null]
+                `INSERT INTO tenant_tracking.tenants (tenant_name, tenant_slug, db_name, email, phone, location, country, logo_url, status, subscription_status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 'trial')`,
+                [tenant_name, subdomain, dbName, email, phone || null, location || null, country || null, logo_url || null]
             );
             result = insertResult;
 
@@ -1070,6 +1115,265 @@ export class TenantModel {
             );
             const list = rows as any[];
             return list.length > 0 ? list[0].branch_db_name : null;
+        } finally {
+            await conn.end();
+        }
+    }
+
+    // ─── Branch Connection Operations ──────────────────────────────────
+    // Enables inter-branch communication (e.g., coffin inventory requests)
+
+    /**
+     * Ensure the branch_connections table exists in the tenant database.
+     * This table tracks relationships between branches so they can
+     * communicate (e.g., request coffin inventory from each other).
+     */
+    static async ensureBranchConnectionsTable(tenantDbName: string): Promise<void> {
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS branch_connections (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    tenant_slug VARCHAR(255) NOT NULL,
+                    branch_id INT NOT NULL,
+                    connected_branch_id INT NOT NULL,
+                    connection_type ENUM('referral','transfer','partnership','parent_child') DEFAULT 'partnership',
+                    status ENUM('active','inactive','pending') DEFAULT 'active',
+                    notes TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (branch_id) REFERENCES branches(branch_id) ON DELETE CASCADE,
+                    FOREIGN KEY (connected_branch_id) REFERENCES branches(branch_id) ON DELETE CASCADE,
+                    INDEX idx_tenant_slug (tenant_slug),
+                    INDEX idx_branch_id (branch_id),
+                    INDEX idx_connected_branch_id (connected_branch_id),
+                    UNIQUE KEY unique_branch_connection (tenant_slug, branch_id, connected_branch_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            `);
+        } finally {
+            await conn.end();
+        }
+    }
+
+    /**
+     * Create a connection between two branches so they can communicate.
+     * This is bidirectional - if branch A connects to branch B, branch B
+     * can also communicate with branch A.
+     */
+    static async createBranchConnection(
+        tenantDbName: string,
+        tenantSlug: string,
+        branchId: number,
+        connectedBranchId: number,
+        connectionType: 'referral' | 'transfer' | 'partnership' | 'parent_child' = 'partnership',
+        notes?: string
+    ): Promise<number> {
+        await this.ensureBranchConnectionsTable(tenantDbName);
+
+        if (branchId === connectedBranchId) {
+            throw new Error('Cannot connect a branch to itself');
+        }
+
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            // Verify both branches exist and are active
+            const [branchCheck] = await conn.query(
+                'SELECT branch_id FROM branches WHERE branch_id IN (?, ?) AND is_active = TRUE',
+                [branchId, connectedBranchId]
+            );
+            if ((branchCheck as any[]).length < 2) {
+                throw new Error('One or both branches not found or inactive');
+            }
+
+            // Insert the connection (bidirectional)
+            await conn.query(
+                `INSERT IGNORE INTO branch_connections (tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+                 VALUES (?, ?, ?, ?, 'active', ?)`,
+                [tenantSlug, branchId, connectedBranchId, connectionType, notes || null]
+            );
+
+            // Also create the reverse connection so both branches know about each other
+            await conn.query(
+                `INSERT IGNORE INTO branch_connections (tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+                 VALUES (?, ?, ?, ?, 'active', ?)`,
+                [tenantSlug, connectedBranchId, branchId, connectionType, notes || null]
+            );
+
+            // Get the connection ID
+            const [rows] = await conn.query(
+                'SELECT id FROM branch_connections WHERE tenant_slug = ? AND branch_id = ? AND connected_branch_id = ? LIMIT 1',
+                [tenantSlug, branchId, connectedBranchId]
+            );
+            const list = rows as any[];
+            return list.length > 0 ? list[0].id : 0;
+        } finally {
+            await conn.end();
+        }
+    }
+
+    /**
+     * Get all connections for a specific branch.
+     * Returns the branches that this branch can communicate with.
+     */
+    static async getBranchConnections(tenantDbName: string, branchId: number): Promise<any[]> {
+        await this.ensureBranchConnectionsTable(tenantDbName);
+
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            const [rows] = await conn.query(
+                `SELECT bc.*, 
+                        b.branch_name as connected_branch_name,
+                        b.branch_slug as connected_branch_slug,
+                        b.branch_db_name as connected_branch_db_name,
+                        b.branch_location as connected_branch_location,
+                        b.branch_phone as connected_branch_phone
+                 FROM branch_connections bc
+                 INNER JOIN branches b ON bc.connected_branch_id = b.branch_id
+                 WHERE bc.branch_id = ? AND bc.status = 'active'
+                 ORDER BY bc.created_at DESC`,
+                [branchId]
+            );
+            return rows as any[];
+        } finally {
+            await conn.end();
+        }
+    }
+
+    /**
+     * Get all branch connections for a tenant.
+     */
+    static async getAllBranchConnections(tenantDbName: string): Promise<any[]> {
+        await this.ensureBranchConnectionsTable(tenantDbName);
+
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            const [rows] = await conn.query(
+                `SELECT bc.*, 
+                        b1.branch_name as branch_name,
+                        b1.branch_slug as branch_slug,
+                        b2.branch_name as connected_branch_name,
+                        b2.branch_slug as connected_branch_slug
+                 FROM branch_connections bc
+                 INNER JOIN branches b1 ON bc.branch_id = b1.branch_id
+                 INNER JOIN branches b2 ON bc.connected_branch_id = b2.branch_id
+                 WHERE bc.status = 'active'
+                 ORDER BY bc.created_at DESC`
+            );
+            return rows as any[];
+        } finally {
+            await conn.end();
+        }
+    }
+
+    /**
+     * Update a branch connection status.
+     */
+    static async updateBranchConnection(
+        tenantDbName: string,
+        connectionId: number,
+        status: 'active' | 'inactive' | 'pending'
+    ): Promise<void> {
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            await conn.query(
+                'UPDATE branch_connections SET status = ? WHERE id = ?',
+                [status, connectionId]
+            );
+        } finally {
+            await conn.end();
+        }
+    }
+
+    /**
+     * Delete a branch connection (and its reverse).
+     */
+    static async deleteBranchConnection(tenantDbName: string, connectionId: number): Promise<void> {
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            // Get the connection details first
+            const [rows] = await conn.query(
+                'SELECT branch_id, connected_branch_id FROM branch_connections WHERE id = ?',
+                [connectionId]
+            );
+            const list = rows as any[];
+            if (list.length > 0) {
+                const { branch_id, connected_branch_id } = list[0];
+                // Delete both directions
+                await conn.query(
+                    'DELETE FROM branch_connections WHERE (branch_id = ? AND connected_branch_id = ?) OR (branch_id = ? AND connected_branch_id = ?)',
+                    [branch_id, connected_branch_id, connected_branch_id, branch_id]
+                );
+            }
+        } finally {
+            await conn.end();
+        }
+    }
+
+    /**
+     * Check if two branches can communicate (have an active connection).
+     */
+    static async canBranchesCommunicate(
+        tenantDbName: string,
+        branchId: number,
+        connectedBranchId: number
+    ): Promise<boolean> {
+        await this.ensureBranchConnectionsTable(tenantDbName);
+
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            const [rows] = await conn.query(
+                `SELECT id FROM branch_connections 
+                 WHERE branch_id = ? AND connected_branch_id = ? AND status = 'active'
+                 LIMIT 1`,
+                [branchId, connectedBranchId]
+            );
+            return (rows as any[]).length > 0;
+        } finally {
+            await conn.end();
+        }
+    }
+
+    /**
+     * Auto-connect all branches within a tenant when a new branch is created.
+     * This ensures every branch knows about every other branch by default.
+     */
+    static async autoConnectBranches(tenantDbName: string, tenantSlug: string): Promise<void> {
+        await this.ensureBranchConnectionsTable(tenantDbName);
+
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            const [branches] = await conn.query(
+                'SELECT branch_id FROM branches WHERE is_active = TRUE ORDER BY branch_id'
+            );
+            const branchList = branches as any[];
+
+            // Create connections between all pairs of branches
+            for (let i = 0; i < branchList.length; i++) {
+                for (let j = i + 1; j < branchList.length; j++) {
+                    const branchA = branchList[i].branch_id;
+                    const branchB = branchList[j].branch_id;
+
+                    // Check if connection already exists
+                    const [existing] = await conn.query(
+                        'SELECT id FROM branch_connections WHERE branch_id = ? AND connected_branch_id = ? LIMIT 1',
+                        [branchA, branchB]
+                    );
+                    if ((existing as any[]).length === 0) {
+                        // Create bidirectional connection
+                        await conn.query(
+                            `INSERT INTO branch_connections (tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+                             VALUES (?, ?, ?, 'partnership', 'active', 'Auto-connected on tenant setup')`,
+                            [tenantSlug, branchA, branchB]
+                        );
+                        await conn.query(
+                            `INSERT INTO branch_connections (tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+                             VALUES (?, ?, ?, 'partnership', 'active', 'Auto-connected on tenant setup')`,
+                            [tenantSlug, branchB, branchA]
+                        );
+                    }
+                }
+            }
+            console.log(`✅ Auto-connected ${branchList.length} branches for tenant: ${tenantSlug}`);
         } finally {
             await conn.end();
         }

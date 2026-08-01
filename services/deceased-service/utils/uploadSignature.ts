@@ -1,9 +1,9 @@
 import sharp from 'sharp';
-import { imageUploadService } from '../../../packages/shared-services/src/imageUploadService';
+import { centralizedUploadService } from '../../../packages/shared-services/src/centralizedUploadService';
 
 /**
  * Process and save a signature buffer as an optimized image.
- * Uses the centralized image upload service with sharp for compression.
+ * Uses the centralized upload service with sharp for compression.
  * Enhances signature visibility by increasing boldness and contrast.
  *
  * @param inputBuffer - Raw image buffer from signature pad
@@ -99,21 +99,22 @@ export async function processSignature(
             .toBuffer();
     }
 
-    // Step 3: Upload to storage
-    const result = await imageUploadService.uploadImage(
+    // Step 3: Upload to centralized storage
+    const result = await centralizedUploadService.uploadSignature(
         finalBuffer,
         `${filename}.${finalFormat}`,
-        'signatures',
         tenantSlug || 'system',
-        undefined,
         {
+            quality: quality,
             maxWidth: maxWidth,
             maxHeight: maxHeight,
-            quality: quality,
             format: finalFormat,
-            stripMetadata: true,
         }
     );
+
+    if (!result.success) {
+        throw new Error(result.error || 'Failed to upload signature');
+    }
 
     return result.urlPath;
 }

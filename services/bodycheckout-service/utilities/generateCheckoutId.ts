@@ -1,31 +1,30 @@
 import crypto from 'crypto';
 
 /**
- * Generate a dated checkout ID with RLS prefix
- * Format: RLS-YYMMDD-XXXXXXXX (where X is hex)
- * Example: RLS-240715-A3F5E8D9
+ * Generate short dated ID
+ * Format: RLS-YYMMDD-XXX
+ * Example: RLS-240715-A3F
  */
 const generateDatedCheckoutId = (): string => {
     const date = new Date();
     const dateStr = date.getFullYear().toString().slice(2) + 
                    String(date.getMonth() + 1).padStart(2, '0') +
                    String(date.getDate()).padStart(2, '0');
-    const random = crypto.randomBytes(4).toString('hex').toUpperCase();
+    const random = crypto.randomBytes(2).toString('hex').toUpperCase().slice(0, 3);
     return `RLS-${dateStr}-${random}`;
 };
 
 /**
- * Generate a timestamp-based ID with random suffix
- * Format: RLS-XXXXXXXXXX-XXXX (timestamp in base36 + random)
- * Example: RLS-K4X8F2M9N7-3A5F
+ * Generate short timestamp ID
+ * Format: RLS-XXXXX-XXX
+ * Example: RLS-K4X8F-3A5
  */
 const generateTimestampCheckoutId = (): string => {
-    const timestamp = Date.now().toString(36).toUpperCase();
-    const random = crypto.randomBytes(2).toString('hex').toUpperCase();
+    const timestamp = Date.now().toString(36).toUpperCase().slice(-5);
+    const random = crypto.randomBytes(2).toString('hex').toUpperCase().slice(0, 3);
     return `RLS-${timestamp}-${random}`;
 };
 
-// Export only the two functions
 export {
     generateDatedCheckoutId,
     generateTimestampCheckoutId

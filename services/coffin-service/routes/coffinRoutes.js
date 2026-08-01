@@ -24,6 +24,22 @@ router.post('/assign', coffinController.assignCoffin);
 // Analytics
 router.get('/analytics/dashboard', coffinController.getCoffinAnalytics);
 
+// ─── Inter-Branch Coffin Inventory & Transfers ──────────────────────
+// These routes allow branches to communicate with each other to request
+// coffin inventory from connected partner branches.
+
+// Get coffin inventory from all connected branches
+router.get('/branch/:branchId/connected-inventory', coffinController.getConnectedBranchInventory);
+
+// Request a coffin transfer from one branch to another
+router.post('/branch/request-transfer', coffinController.requestCoffinTransfer);
+
+// Get all coffin transfer requests (optionally filtered by branch)
+router.get('/branch/transfer-requests', coffinController.getTransferRequests);
+
+// Update a transfer request status (approve, reject, complete, cancel)
+router.put('/branch/transfer-requests/:id', coffinController.updateTransferRequest);
+
 // Health
 router.get('/health', coffinController.healthCheck);
 
