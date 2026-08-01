@@ -161,7 +161,11 @@ const DashboardLayout = ({ children, tenantData }) => {
     const saved = localStorage.getItem('sidebarOpen');
     return saved !== null ? saved === 'true' : true;
   });
+  const [isMobile, setIsMobile] = useState(() => {
+    return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  });
   const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+  
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
@@ -170,16 +174,33 @@ const DashboardLayout = ({ children, tenantData }) => {
     localStorage.removeItem('tenantSlug');
     navigate('/login');
   };
+  
   const handleSidebarToggle = (isOpen) => setSidebarOpen(isOpen);
-  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  
+  // Add resize listener to detect mobile/desktop changes
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setSidebarOpen(false);
+      }
+    };
+    
+    handleResize(); // Check on mount
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
   const marginLeft = isMobile ? '0' : (sidebarOpen ? '240px' : '68px');
-  const contentPadding = isMobile ? '0.75rem' : (sidebarOpen ? '2rem' : '1.5rem');
+  const contentPadding = isMobile ? '0.5rem 0.75rem' : (sidebarOpen ? '2rem' : '1.5rem');
   const footerMarginLeft = isMobile ? '0' : (sidebarOpen ? '240px' : '68px');
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F7F9FB', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', flex: 1 }}>
+      <div style={{ display: 'flex', flex: 1, position: 'relative' }}>
         <ModernSidebar tenantData={tenantData} userData={{ name: user?.full_name || user?.name, role: user?.role || 'Administrator' }} onLogout={handleLogout} onToggle={handleSidebarToggle} />
-        <main style={{ flex: 1, marginLeft, padding: contentPadding, background: '#F7F9FB', transition: 'margin-left 0.3s ease, padding 0.3s ease' }}>
+        <main style={{ flex: 1, marginLeft, padding: contentPadding, background: '#F7F9FB', transition: 'margin-left 0.3s ease, padding 0.3s ease', margin: isMobile ? '0' : marginLeft, padding: isMobile ? '0.5rem 0.75rem' : contentPadding }}>
           {/* Top Bar with Notification Bell */}
           <div style={{
             display: 'flex',

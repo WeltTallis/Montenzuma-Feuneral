@@ -60,6 +60,7 @@
     "**/*.test.ts",
     "**/*.spec.ts",
     "FrontendClient/**/*",
-    "services/**/node_modules/**/*"
+    "services/**/node_modules/**/*",
+    "packages/**/*"
   ]
 }

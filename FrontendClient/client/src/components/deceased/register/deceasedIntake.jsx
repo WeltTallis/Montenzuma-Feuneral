@@ -75,7 +75,7 @@ const Container = styled.div`
 
 const Page = styled.div`
   max-width: 1400px;
-  margin: 0 auto;
+  margin: 0;
   background: white;
   position: relative;
   padding: 1rem;
@@ -88,7 +88,12 @@ const Page = styled.div`
   `}
   ${media.mobile`
     padding: 0.5rem;
+    margin: 0;
   `}
+
+  @media (min-width: 768px) {
+    margin: 0 auto;
+  }
 `;
 
 const Header = styled.div`

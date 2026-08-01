@@ -44,15 +44,20 @@ const C = {
 // ─── Styled Components ──────────────────────────────────────────────
 const AppContainer = styled.div`
   font-family: 'Source Sans 3', -apple-system, sans-serif;
- 
+  
   color: ${C.dark};
   font-size: 14px;
   line-height: 1.5;
   min-height: 100vh;
 
-  margin: 0 auto;
+  margin: 0;
   padding: 0px;
   animation: ${fadeIn} 0.25s ease-out;
+
+  @media (min-width: 768px) {
+    margin: 0 auto;
+    max-width: 1400px;
+  }
 `;
 
 const PageHeader = styled.div`
