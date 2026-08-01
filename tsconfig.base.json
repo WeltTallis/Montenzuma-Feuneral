@@ -50,7 +50,6 @@
   },
   "include": [
     "shared/**/*",
-    "packages/**/*",
     "services/**/*",
     "scripts/**/*"
   ],
