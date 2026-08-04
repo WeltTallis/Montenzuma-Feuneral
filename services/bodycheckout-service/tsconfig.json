@@ -4,7 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": ".",
+    "rootDir": "../..",
     "strict": false,
     "noImplicitAny": false,
     "noUncheckedIndexedAccess": false,
@@ -24,7 +24,9 @@
     "utils/**/*.ts",
     "config/**/*.ts",
     "utilities/**/*.ts",
-    "types/**/*.d.ts"
+    "types/**/*.d.ts",
+    "../../shared/**/*.ts",
+    "../../packages/shared-services/src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

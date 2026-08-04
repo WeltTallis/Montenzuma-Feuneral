@@ -12,6 +12,23 @@ import {
 } from '../../utils/icons/icons';
 import './NotificationBell.css';
 
+const BellOffIcon = (p) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 14} height={p.size || 14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8.7 3A6 6 0 0 1 18 8c0 4.5 2 6.5 2 6.5H9" />
+    <path d="M17 17H3s2-2 2-6.5a5.5 5.5 0 0 1 .7-2.5" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    <line x1="2" y1="2" x2="22" y2="22" />
+  </svg>
+);
+
+const Volume2Icon = (p) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 14} height={p.size || 14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+  </svg>
+);
+
 const NOTIFICATION_SERVICE = '/notification';
 
 const NotificationBell = () => {
@@ -19,7 +36,7 @@ const NotificationBell = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [toasts, setToasts] = useState([]);
+  const [isMuted, setIsMuted] = useState(() => localStorage.getItem('nb_muted') === 'true');
   const dropdownRef = useRef(null);
   const audioRef = useRef(null);
   const { socket } = useSocket();
@@ -27,12 +44,25 @@ const NotificationBell = () => {
   // ─── Audio ───
   const playNotificationSound = useCallback(() => {
     try {
-      if (audioRef.current) {
+      if (!isMuted && audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(() => {});
       }
     } catch {}
+  }, [isMuted]);
+
+  const toggleMute = useCallback(() => {
+    setIsMuted(prev => {
+      const newVal = !prev;
+      localStorage.setItem('nb_muted', String(newVal));
+      return newVal;
+    });
   }, []);
+
+  // ─── Toast Management ───
+  const removeToast = (id) => {
+    // Toast notifications removed - no-op
+  };
 
   // ─── Icon & Priority Color Mapping ───
   const getPriorityMeta = (type, priority) => {
@@ -75,19 +105,6 @@ const NotificationBell = () => {
     return { cls: 'icon-navy', icon: <Info size={18} /> };
   };
 
-  // ─── Toast Management ───
-  const addToast = useCallback((notification) => {
-    const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { ...notification, toastId: id }]);
-    playNotificationSound();
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.toastId !== id));
-    }, 6000);
-  }, [playNotificationSound]);
-
-  const removeToast = (id) => {
-    setToasts(prev => prev.filter(t => t.toastId !== id));
-  };
 
   // ─── API Calls ───
   const fetchNotifications = useCallback(async () => {
@@ -173,8 +190,6 @@ const NotificationBell = () => {
 
   // ─── Effects ───
   useEffect(() => {
-    // Fetch notifications immediately and on interval
-    console.log('[NotificationBell] Initial fetch');
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
@@ -185,7 +200,6 @@ const NotificationBell = () => {
     if (!socket) return;
 
     const handleConnect = () => {
-      console.log('[NotificationBell] Socket connected, fetching notifications');
       fetchNotifications();
     };
 
@@ -197,26 +211,6 @@ const NotificationBell = () => {
       socket.off('reconnect', handleConnect);
     };
   }, [socket, fetchNotifications]);
-
-  // Log socket connection status for debugging
-  useEffect(() => {
-    if (!socket) {
-      console.warn('[NotificationBell] Socket not available - notifications will only work via polling');
-      return;
-    }
-
-    const logConnection = () => {
-      console.log('[NotificationBell] Socket status:', {
-        connected: socket.connected,
-        id: socket.id,
-        hasListeners: socket.hasListeners('notification:body-released')
-      });
-    };
-
-    logConnection();
-    const interval = setInterval(logConnection, 10000); // Log every 10 seconds
-    return () => clearInterval(interval);
-  }, [socket]);
 
   // Real-time Socket Listener
   useEffect(() => {
@@ -238,7 +232,73 @@ const NotificationBell = () => {
         'notification:postmortem-completed': { type: 'postmortem-completed', title: 'Postmortem Completed', priority: 'medium' },
       };
 
-      // Raw hearse events
+      // Hearse booking created (from socketio service)
+      if (eventName === 'notification:hearse-booking-created') {
+        const bookingDetails = data.booking || data;
+        const detailsHtml = `
+          <strong style="color: #fbbf24;">Booking Code:</strong> <span style="color: #fff;">${bookingDetails.booking_code || data.bookingId || 'N/A'}</span><br/>
+          <strong style="color: #fbbf24;">Client:</strong> <span style="color: #10b981;">${bookingDetails.client_name || data.clientName || 'Unknown'}</span><br/>
+          <strong style="color: #fbbf24;">Phone:</strong> <span style="color: #fff;">${bookingDetails.phone || data.phone || 'N/A'}</span><br/>
+          <strong style="color: #fbbf24;">Destination:</strong> <span style="color: #8b5cf6;">${bookingDetails.destination || data.destination || 'N/A'}</span><br/>
+          <strong style="color: #fbbf24;">Hearse:</strong> <span style="color: #fff;">${bookingDetails.hearse_id || data.hearseId || 'N/A'}</span>
+        `;
+        
+        formatted = {
+          id: data.id || data.bookingId || `hearse-booking-${Date.now()}`,
+          type: 'new_booking',
+          title: data.title || 'New Hearse Booking',
+          message: data.message || `New hearse booking: ${bookingDetails.client_name || 'Client'} to ${bookingDetails.destination || 'destination'}`,
+          fullContent: detailsHtml,
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: data.priority || 'high',
+          data,
+        };
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        playNotificationSound();
+        return;
+      }
+
+      // Hearse booking updated (from socketio service)
+      if (eventName === 'notification:hearse-booking-updated') {
+        formatted = {
+          id: data.id || `hearse-updated-${Date.now()}`,
+          type: 'booking_update',
+          title: data.title || 'Hearse Booking Updated',
+          message: data.message || 'Hearse booking status changed',
+          fullContent: data.fullContent || 'Booking updated',
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: data.priority || 'medium',
+          data,
+        };
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        playNotificationSound();
+        return;
+      }
+
+      // Hearse booking postponed (from socketio service)
+      if (eventName === 'notification:hearse-booking-postponed') {
+        formatted = {
+          id: data.id || `hearse-postponed-${Date.now()}`,
+          type: 'warning',
+          title: data.title || 'Booking Postponed',
+          message: data.message || 'Hearse booking has been postponed',
+          fullContent: data.fullContent || 'Booking postponed',
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: data.priority || 'high',
+          data,
+        };
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        playNotificationSound();
+        return;
+      }
+
+      // Raw hearse events (direct io.emit)
       if (eventName === 'new_booking') {
         formatted = {
           id: data.booking_id || data.id || Date.now(),
@@ -251,9 +311,9 @@ const NotificationBell = () => {
           priority: 'high',
           data,
         };
-        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
+        playNotificationSound();
         return;
       }
 
@@ -269,9 +329,9 @@ const NotificationBell = () => {
           priority: 'medium',
           data,
         };
-        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
+        playNotificationSound();
         return;
       }
 
@@ -287,9 +347,9 @@ const NotificationBell = () => {
           priority: 'high',
           data,
         };
-        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
+        playNotificationSound();
         return;
       }
 
@@ -306,13 +366,13 @@ const NotificationBell = () => {
           priority: data.priority || 'medium',
           data,
         };
-        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
+        playNotificationSound();
         return;
       }
 
-      // Hearse booking reminder
+      // Hearse booking reminder (from getUpcomingBookings endpoint)
       if (eventName === 'hearse-booking-reminder') {
         formatted = {
           id: data.id || `reminder-${Date.now()}`,
@@ -325,9 +385,64 @@ const NotificationBell = () => {
           priority: data.priority || 'high',
           data,
         };
-        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
+        playNotificationSound();
+        return;
+      }
+
+      // Hearse cron notifications (from notificationCronService)
+      if (eventName === 'notification:upcoming_bookings_24h') {
+        formatted = {
+          id: data.id || `upcoming-${Date.now()}`,
+          type: 'reminder',
+          title: data.title || 'Upcoming Bookings Tomorrow',
+          message: data.message || 'You have upcoming bookings',
+          fullContent: data.fullContent || `You have ${data.bookings?.length || 0} booking(s) scheduled for tomorrow`,
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: data.priority || 'high',
+          data,
+        };
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        playNotificationSound();
+        return;
+      }
+
+      if (eventName === 'notification:urgent_bookings_2h') {
+        formatted = {
+          id: data.id || `urgent-${Date.now()}`,
+          type: 'urgent_reminder',
+          title: data.title || '⚠️ Urgent: Bookings in Next 2 Hours',
+          message: data.message || 'Bookings starting soon!',
+          fullContent: data.fullContent || `${data.bookings?.length || 0} booking(s) starting soon!`,
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: 'critical',
+          data,
+        };
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        playNotificationSound();
+        return;
+      }
+
+      if (eventName === 'notification:weekly_bookings_summary') {
+        formatted = {
+          id: data.id || `weekly-${Date.now()}`,
+          type: 'weekly_summary',
+          title: data.title || '📋 Weekly Bookings Summary',
+          message: data.message || 'Weekly bookings summary',
+          fullContent: data.fullContent || `You have ${data.totalBookings || 0} booking(s) scheduled for the next 7 days`,
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: data.priority || 'medium',
+          data,
+        };
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        playNotificationSound();
         return;
       }
 
@@ -344,9 +459,9 @@ const NotificationBell = () => {
           priority: data.priority || 'high',
           data,
         };
-        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
+        playNotificationSound();
         return;
       }
 
@@ -370,9 +485,48 @@ const NotificationBell = () => {
           priority: data.priority || meta.priority,
           data,
         };
-        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
+        playNotificationSound();
+        return;
+      }
+
+      // Coffin booking created (from socketio service)
+      if (eventName === 'coffin-booking-created' || eventName === 'notification:coffin-booking-created') {
+        formatted = {
+          id: data.id || data.booking_id || `coffin-booking-${Date.now()}`,
+          type: 'new_booking',
+          title: data.title || 'New Coffin Reservation',
+          message: data.message || 'New coffin reservation created',
+          fullContent: data.fullContent || '',
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: data.priority || 'high',
+          data,
+        };
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        playNotificationSound();
+        return;
+      }
+
+      // Coffin stock request / transfer request (from socketio service)
+      if (eventName === 'coffin-stock-request' || eventName === 'notification:coffin-stock-request') {
+        const isClientRequest = data.req_type === 'client' || (data.data && data.data.req_type === 'client');
+        formatted = {
+          id: data.id || data.request_id || `coffin-request-${Date.now()}`,
+          type: isClientRequest ? 'new_booking' : 'info',
+          title: data.title || (isClientRequest ? 'New Coffin Transfer Request' : 'Stock Request'),
+          message: data.message || 'Coffin transfer request',
+          fullContent: data.fullContent || '',
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: data.priority || 'high',
+          data,
+        };
+        setNotifications(prev => [formatted, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        playNotificationSound();
         return;
       }
 
@@ -395,9 +549,9 @@ const NotificationBell = () => {
           priority: data.priority || meta.priority,
           data,
         };
-        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
+        playNotificationSound();
         return;
       }
 
@@ -420,9 +574,9 @@ const NotificationBell = () => {
           priority: data.priority || meta.priority,
           data,
         };
-        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
+        playNotificationSound();
         return;
       }
 
@@ -439,9 +593,9 @@ const NotificationBell = () => {
           priority: data.priority || 'medium',
           data,
         };
-        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
+        playNotificationSound();
         return;
       }
 
@@ -459,9 +613,9 @@ const NotificationBell = () => {
           priority: data.priority || meta.priority || 'low',
           data,
         };
-        addToast(formatted);
         setNotifications(prev => [formatted, ...prev]);
         setUnreadCount(prev => prev + 1);
+        playNotificationSound();
       }
     };
 
@@ -472,16 +626,18 @@ const NotificationBell = () => {
       'alert:low-stock', 'notification:coffin-used',
       'notification:body-released', 'notification:postmortem-completed',
       'notification:postmortem-results-ready',
+      'notification:hearse-booking-created', 'notification:hearse-booking-updated', 'notification:hearse-booking-postponed',
+      'notification:upcoming_bookings_24h', 'notification:urgent_bookings_2h', 'notification:weekly_bookings_summary',
       'new_booking', 'booking_status_updated', 'booking_postponed',
       'hearse-booking-reminder',
       'coffin-created', 'coffin-updated', 'coffin-deleted', 'coffin-assigned',
+      'coffin-booking-created', 'notification:coffin-booking-created',
+      'coffin-stock-request', 'notification:coffin-stock-request',
       'production-stage-updated', 'worker-assigned', 'worker-assignment-updated',
       'flower-booking-created', 'flower-booking-updated', 'flower-booking-deleted',
       'body-released', // Direct event from body-release service
       'postmortem-accessed', // Postmortem results accessed via QR scan
     ];
-
-    console.log('[NotificationBell] Setting up listeners for', notificationEvents.length, 'events');
 
     const handlers = {};
     notificationEvents.forEach(event => {
@@ -490,13 +646,10 @@ const NotificationBell = () => {
       socket.on(event, handler);
     });
 
-    console.log('[NotificationBell] All socket listeners registered');
-
     return () => {
-      console.log('[NotificationBell] Cleaning up socket listeners');
       Object.entries(handlers).forEach(([event, handler]) => socket.off(event, handler));
     };
-  }, [socket, addToast]);
+  }, [socket, playNotificationSound]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -542,46 +695,42 @@ const NotificationBell = () => {
     <>
       <audio ref={audioRef} src="/audio/alert.mp3" preload="auto" />
 
-      {/* ─── Real-Time Toast Popups ─── */}
-      <div className="nb-toast-container">
-        {toasts.map((toast) => {
-          const meta = getPriorityMeta(toast.type, toast.priority);
-          return (
-            <div key={toast.toastId} className="nb-toast" onClick={() => removeToast(toast.toastId)}>
-              <div className={`nb-toast-icon ${meta.cls}`}>
-                {meta.icon}
-              </div>
-              <div className="nb-toast-content">
-                <p className="nb-toast-title">{toast.title}</p>
-                <p className="nb-toast-message">{toast.message}</p>
-                <span className="nb-toast-time"><Clock size={10} /> {formatTimeFull(toast.created_at)}</span>
-              </div>
-              <button className="nb-toast-close" onClick={(e) => { e.stopPropagation(); removeToast(toast.toastId); }}>
-                <X size={14} />
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ─── Bell & Glass Dropdown ─── */}
+      {/* ─── Floating Bell & Glass Dropdown ─── */}
       <div className="nb-container" ref={dropdownRef}>
-        <button
-          className={`nb-bell-btn ${isOpen ? 'nb-active' : ''}`}
-          onClick={() => setIsOpen(!isOpen)}
-          title="Notifications"
-        >
-          <Bell size={20} />
-          {unreadCount > 0 && (
-            <span className="nb-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
-          )}
-        </button>
+        <div className="nb-bell-wrap">
+          <button
+            className={`nb-bell-btn ${isOpen ? 'nb-active' : ''}`}
+            onClick={() => setIsOpen(!isOpen)}
+            title="Notifications"
+          >
+            <Bell size={18} />
+            {unreadCount > 0 && (
+              <span className="nb-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+            )}
+          </button>
+        </div>
 
         <div className={`nb-dropdown ${isOpen ? 'nb-open' : ''}`}>
           <div className="nb-panel">
             {/* Simple Header */}
             <div className="nb-header">
               <h3 className="nb-title">Notifications</h3>
+              <div className="nb-header-actions">
+                {unreadCount > 0 && (
+                  <button className="nb-mark-all" onClick={markAllAsRead}>
+                    <CheckCheck size={14} />
+                    Mark all read
+                  </button>
+                )}
+                <button
+                  className="nb-mute-header-btn"
+                  onClick={toggleMute}
+                  title={isMuted ? 'Unmute notifications' : 'Mute notifications'}
+                >
+                  {isMuted ? <BellOffIcon size={14} /> : <Volume2Icon size={14} />}
+                  <span>{isMuted ? 'Unmute' : 'Mute'}</span>
+                </button>
+              </div>
             </div>
 
             {/* Notification List */}

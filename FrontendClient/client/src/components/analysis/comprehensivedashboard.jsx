@@ -89,7 +89,7 @@ const ChartCard = ({ title, icon: Icon, color, children, height = "300px" }) => 
 
   return (
     <Card className="h-100 border-0" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-      <Card.Body className="p-4">
+      <Card.Body className="p-3">
         <div className="d-flex align-items-center gap-2 mb-3">
           <div style={{
             width: "30px", height: "30px", borderRadius: "8px",
@@ -171,11 +171,11 @@ const SafeChart = ({ ChartComponent, data, options, chartName = "Chart" }) => {
 };
 
 const SectionHeader = ({ title, icon: Icon, color }) => (
-  <div className="d-flex align-items-center gap-3 mb-4 pb-3" style={{ borderBottom: `2px solid ${COLORS.border}` }}>
-    <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: color + "15", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <Icon size={20} style={{ color }} />
+  <div className="d-flex align-items-center gap-2 mb-3 pb-2" style={{ borderBottom: `2px solid ${COLORS.border}` }}>
+    <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: color + "15", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Icon size={16} style={{ color }} />
     </div>
-    <h5 className="mb-0 fw-bold" style={{ color: COLORS.dark, fontSize: "1rem" }}>{title}</h5>
+    <h5 className="mb-0 fw-bold" style={{ color: COLORS.dark, fontSize: "0.9rem" }}>{title}</h5>
   </div>
 );
 
@@ -200,7 +200,7 @@ const BranchComparisonTable = ({ branches }) => {
   const arr = Object.values(branches);
   return (
     <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-      <Card.Body className="p-4">
+      <Card.Body className="p-3">
         <SectionHeader title="Branch Comparison" icon={Building2} color={COLORS.purple} />
         <div style={{ overflowX: "auto" }}>
           <Table responsive hover size="sm" style={{ fontSize: "0.85rem" }}>
@@ -278,7 +278,7 @@ const BranchOfMonthBanner = ({ insights }) => {
   if (!insights?.topPerformer) return null;
   return (
     <Card className="border-0 mb-4" style={{ borderRadius: "14px", background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)", color: "white", boxShadow: '0 4px 20px rgba(15, 52, 96, 0.3)' }}>
-      <Card.Body className="p-4">
+      <Card.Body className="p-3">
         <Row className="align-items-center">
           <Col md={3}>
             <div className="d-flex align-items-center gap-3">
@@ -332,7 +332,7 @@ const RecommendationsCard = ({ recommendations }) => {
   if (!recommendations?.length) return null;
   return (
     <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-      <Card.Body className="p-4">
+      <Card.Body className="p-3">
         <SectionHeader title="AI Insights & Recommendations" icon={AlertTriangle} color={COLORS.warning} />
         {recommendations.map((rec, i) => (
           <div key={i} className={`p-3 rounded-3 mb-2 d-flex align-items-start gap-2`} style={{
@@ -995,11 +995,11 @@ const ComprehensiveDashboard = () => {
   const safeCompRevenue = buildComparisonDataset('revenue');
 
   return (
-    <Container fluid className="py-4" style={{ background: COLORS.light, minHeight: "100vh" }}>
+    <Container fluid className="py-2" style={{ background: COLORS.light, minHeight: "100vh" }}>
       {/* HEADER */}
-      <Card className="border-0 mb-4" style={{ borderRadius: "16px", background: "#111113", boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <Card className="border-0 mb-3" style={{ borderRadius: "16px", background: "#111113", boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
+        <Card.Body className="p-3">
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
               <h2 className="text-white fw-bold mb-1" style={{ fontSize: "1.4rem", letterSpacing: "-0.02em" }}>Analytics</h2>
               <p className="text-white-50 mb-0" style={{ fontSize: "0.8rem" }}>Real-time branch comparison & intelligent insights</p>
@@ -1148,16 +1148,16 @@ const ComprehensiveDashboard = () => {
 
       {/* Error Alert */}
       {error && (
-        <Alert variant="danger" dismissible onClose={() => setError(null)} className="mb-4" style={{ borderRadius: "12px", border: "none", fontWeight: "500" }}>
+        <Alert variant="danger" dismissible onClose={() => setError(null)} className="mb-3" style={{ borderRadius: "12px", border: "none", fontWeight: "500" }}>
           <AlertTriangle size={16} className="me-2" />{error}
         </Alert>
       )}
 
       {/* BRANCH COMPARISON PANEL */}
       {branches.length > 0 && (
-        <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-          <Card.Body className="p-4">
-            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-3">
+      <Card className="border-0 mb-3" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
+        <Card.Body className="p-3">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2 mb-2">
               <div>
                 <h5 className="fw-bold mb-1" style={{ fontSize: "1rem" }}>Branch Comparison</h5>
                 <p className="text-muted mb-0" style={{ fontSize: "0.78rem" }}>Use the Compare dropdown above to select branches and visualize performance</p>
@@ -1250,7 +1250,7 @@ const ComprehensiveDashboard = () => {
       {insights && <BranchOfMonthBanner insights={insights} />}
 
       {/* KEY METRICS - ROW 1 with Trend Indicators */}
-      <Row className="g-3 mb-4">
+      <Row className="g-2 mb-3">
         <Col xs={6} lg={3}>
           <Card className="h-100 border-0" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)', cursor: 'pointer' }} onClick={() => setActiveTab('deceased')}>
             <Card.Body className="p-3">
@@ -1330,7 +1330,7 @@ const ComprehensiveDashboard = () => {
       </Row>
 
       {/* KEY METRICS - ROW 2 - Clickable for Drill-down */}
-      <Row className="g-3 mb-4">
+      <Row className="g-2 mb-3">
         <Col xs={6} md={3}>
           <Card className="h-100 border-0" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)', cursor: 'pointer' }} onClick={() => openDrillDown('fleet', bookings.fleet)}>
             <Card.Body className="p-3">
@@ -1395,9 +1395,9 @@ const ComprehensiveDashboard = () => {
 
       {/* ADVANCED ANALYTICS SECTION - Hearse Utilization, Case Pipeline, Staff Workload */}
       <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-        <Card.Body className="p-4">
+        <Card.Body className="p-3">
           <SectionHeader title="Advanced Analytics" icon={BarChart2} color={COLORS.purple} />
-          <Row className="g-3">
+          <Row className="g-2">
             {/* Hearse Utilization */}
             <Col lg={4} md={6}>
               <div className="p-3 rounded-3" style={{ background: "#f8fafc", border: "1px solid #e2e8f0", cursor: 'pointer' }} onClick={() => openDrillDown('fleet', bookings.fleet)}>
@@ -1508,8 +1508,8 @@ const ComprehensiveDashboard = () => {
 
       {/* CALENDAR SECTION - Interactive Calendar with Events */}
       <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
+        <Card.Body className="p-3">
+          <div className="d-flex justify-content-between align-items-center mb-3">
             <SectionHeader title="Schedule Calendar" icon={Calendar} color={COLORS.info} />
             <Button size="sm" variant="light" className="d-flex align-items-center gap-2" style={{ borderRadius: "8px", fontSize: "0.78rem" }} onClick={openCalendar}>
               <Calendar size={14} /> View Full Calendar
@@ -1517,7 +1517,7 @@ const ComprehensiveDashboard = () => {
           </div>
 
           {/* Mini Calendar Grid */}
-          <Row className="g-3">
+          <Row className="g-2">
             <Col md={8}>
               <div className="p-3 rounded-3" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
                 <div className="d-flex justify-content-between align-items-center mb-3">
@@ -1586,15 +1586,15 @@ const ComprehensiveDashboard = () => {
 
       {/* BRANCH PERFORMANCE SECTION - Clickable Charts */}
       <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
+        <Card.Body className="p-3">
+          <div className="d-flex justify-content-between align-items-center mb-3">
             <SectionHeader title="Branch Performance" icon={Building2} color={COLORS.purple} />
             <Button size="sm" variant="light" className="d-flex align-items-center gap-2" style={{ borderRadius: "8px", fontSize: "0.78rem" }}>
               <Download size={14} /> Export Report
             </Button>
           </div>
 
-          <Row className="g-3">
+          <Row className="g-2">
             <Col lg={6} md={12}>
               <div className="p-3 rounded-3" style={{ background: "#f8fafc", border: "1px solid #e2e8f0", cursor: 'pointer' }} onClick={() => openDrillDown('branches', { revenue: [450000, 320000, 280000, 350000], names: ['Nairobi Main', 'Mombasa Branch', 'Kisumu Branch', 'Nakuru Branch'] })}>
                 <div className="d-flex align-items-center justify-content-between mb-2">
@@ -1627,8 +1627,8 @@ const ComprehensiveDashboard = () => {
 
       {/* DECEASED RECORDS SECTION - Interactive Cards with Trend Charts */}
       <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
+        <Card.Body className="p-3">
+          <div className="d-flex justify-content-between align-items-center mb-3">
             <SectionHeader title="Deceased Records" icon={User} color={COLORS.primary} />
             <div className="d-flex gap-2">
               <Button size="sm" variant="light" className="d-flex align-items-center gap-2" style={{ borderRadius: "8px", fontSize: "0.78rem" }}>
@@ -1641,7 +1641,7 @@ const ComprehensiveDashboard = () => {
           </div>
 
           {/* Trend Charts Row */}
-          <Row className="g-3 mb-4">
+          <Row className="g-2 mb-3">
             <Col md={4}>
               <div className="p-3 rounded-3" style={{ background: "#f8fafc", border: "1px solid #e2e8f0", height: "180px" }}>
                 <div className="d-flex align-items-center justify-content-between mb-2">
@@ -1715,8 +1715,8 @@ const ComprehensiveDashboard = () => {
 
       {/* FLOWER BOOKINGS SECTION - Interactive Cards with Analytics */}
       <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
+        <Card.Body className="p-3">
+          <div className="d-flex justify-content-between align-items-center mb-3">
             <SectionHeader title="Flower Bookings" icon={Flower2} color="#ec4899" />
             <div className="d-flex gap-2">
               <Button size="sm" variant="light" className="d-flex align-items-center gap-2" style={{ borderRadius: "8px", fontSize: "0.78rem" }}>
@@ -1729,7 +1729,7 @@ const ComprehensiveDashboard = () => {
           </div>
 
           {/* Flower Booking Stats */}
-          <Row className="g-3 mb-4">
+          <Row className="g-2 mb-3">
             <Col md={3}>
               <div className="p-3 rounded-3" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
                 <div className="d-flex align-items-center gap-2 mb-1">
@@ -1773,7 +1773,7 @@ const ComprehensiveDashboard = () => {
           </Row>
 
           {/* Trend Chart */}
-          <Row className="g-3 mb-4">
+          <Row className="g-2 mb-3">
             <Col md={12}>
               <div className="p-3 rounded-3" style={{ background: "#f8fafc", border: "1px solid #e2e8f0", height: "200px" }}>
                 <div className="d-flex align-items-center justify-content-between mb-2">
@@ -1838,10 +1838,10 @@ const ComprehensiveDashboard = () => {
 
       {/* DECEASED SECTION - Charts */}
       {(safeDeceasedTrendsData || safeCaseStatusData || safeFleetData) && (
-        <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-          <Card.Body className="p-4">
-            <SectionHeader title="Deceased Management" icon={Users} color={COLORS.primary} />
-            <Row className="g-4">
+      <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
+        <Card.Body className="p-3">
+          <SectionHeader title="Deceased Management" icon={Users} color={COLORS.primary} />
+            <Row className="g-3">
               {safeDeceasedTrendsData && (
                 <Col lg={6}>
                   <ChartCard title="Cases Trend (12 Months)" icon={TrendingUp} color={COLORS.primary} height="280px">
@@ -1870,9 +1870,9 @@ const ComprehensiveDashboard = () => {
 
       {/* BOOKINGS + MOST BOOKED HEARSES */}
       <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-        <Card.Body className="p-4">
+        <Card.Body className="p-3">
           <SectionHeader title="Hearse Bookings & Fleet Performance" icon={Truck} color={COLORS.purple} />
-          <Row className="g-3 mb-3">
+          <Row className="g-2 mb-3">
             <Col lg={5} md={12}>
               <ChartCard title="Bookings Breakdown" icon={Calendar} color={COLORS.chart3} height="220px">
                 {safeBookingsChartData ? (
@@ -1940,10 +1940,10 @@ const ComprehensiveDashboard = () => {
 
       {/* INVENTORY SECTION */}
       {(safeCoffinSalesData || safeTopUsedChemicalsData || chemicals.lowStock?.length > 0) && (
-        <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-          <Card.Body className="p-4">
-            <SectionHeader title="Inventory Management" icon={Box} color={COLORS.warning} />
-            <Row className="g-4">
+      <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
+        <Card.Body className="p-3">
+          <SectionHeader title="Inventory Management" icon={Box} color={COLORS.warning} />
+            <Row className="g-3">
               {safeCoffinSalesData && (
                 <Col lg={4} md={12}>
                   <ChartCard title="Coffin Sales by Type" icon={ShoppingCart} color={COLORS.warning} height="240px">
@@ -2002,10 +2002,10 @@ const ComprehensiveDashboard = () => {
 
       {/* WORKSHOP SECTION */}
       {workshop.orders?.total > 0 && (
-        <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-          <Card.Body className="p-4">
-            <SectionHeader title="Workshop Production" icon={Activity} color={COLORS.purple} />
-            <Row className="g-3 mb-3">
+      <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
+        <Card.Body className="p-3">
+          <SectionHeader title="Workshop Production" icon={Activity} color={COLORS.purple} />
+            <Row className="g-2 mb-3">
               {[
                 { label: "Total Orders", value: workshop.orders?.total || 0, bg: COLORS.purpleLight, color: COLORS.purple },
                 { label: "Completed", value: workshop.orders?.completed || 0, bg: COLORS.successLight, color: COLORS.success },
@@ -2020,7 +2020,7 @@ const ComprehensiveDashboard = () => {
                 </Col>
               ))}
             </Row>
-            <Row className="g-4">
+            <Row className="g-3">
               <Col lg={8}>
                 <ChartCard title="Workshop Stage Performance" icon={BarChart3} color={COLORS.purple} height="320px">
                   {safeWorkshopProductionData ? (
@@ -2070,10 +2070,10 @@ const ComprehensiveDashboard = () => {
 
       {/* CHEMICALS SECTION */}
       {(safeChemicalUsageTrendsData || safeTopUsedChemicalsData || chemicals.expiringSoon?.length > 0) && (
-        <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-          <Card.Body className="p-4">
-            <SectionHeader title="Chemicals & Consumables" icon={FlaskConical} color={COLORS.info} />
-            <Row className="g-4">
+      <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
+        <Card.Body className="p-3">
+          <SectionHeader title="Chemicals & Consumables" icon={FlaskConical} color={COLORS.info} />
+            <Row className="g-3">
               {safeChemicalUsageTrendsData && (
                 <Col lg={6}>
                   <ChartCard title="Chemical Usage Trends" icon={TrendingUp} color={COLORS.info} height="280px">
@@ -2112,10 +2112,10 @@ const ComprehensiveDashboard = () => {
 
       {/* PPE REQUESTS SECTION */}
       {safePPEStatusData && (
-        <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
-          <Card.Body className="p-4">
-            <SectionHeader title="PPE Requests" icon={Shield} color={COLORS.warning} />
-            <Row className="g-4">
+      <Card className="border-0 mb-4" style={{ borderRadius: "14px", boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' }}>
+        <Card.Body className="p-3">
+          <SectionHeader title="PPE Requests" icon={Shield} color={COLORS.warning} />
+            <Row className="g-3">
               <Col md={4}>
                 <ChartCard title="Request Status" icon={Shield} color={COLORS.warning} height="280px">
                   <SafeChart ChartComponent={Doughnut} data={safePPEStatusData} options={radialChartOptions} chartName="PPEStatus" />

@@ -63,13 +63,30 @@ class CentralizedUploadService {
     tenantSlug: string,
     options?: Partial<UploadOptions>
   ): Promise<UploadResult> {
-    return this.uploadFile(buffer, filename, tenantSlug, 'signatures', {
+    console.log('[UPLOAD] uploadSignature called:', {
+      filename,
+      tenantSlug,
+      bufferSize: buffer.length,
+      uploadUrl: this.axiosInstance.defaults.baseURL,
+      options
+    });
+    
+    const result = await this.uploadFile(buffer, filename, tenantSlug, 'signatures', {
       quality: 85,
       maxWidth: 800,
       maxHeight: 300,
       format: 'webp',
       ...options,
     });
+    
+    console.log('[UPLOAD] uploadSignature result:', {
+      success: result.success,
+      urlPath: result.urlPath,
+      error: result.error,
+      filename: result.filename
+    });
+    
+    return result;
   }
 
   /**
@@ -196,8 +213,20 @@ class CentralizedUploadService {
         headers: form.getHeaders(),
       });
 
-      if (response.data.success) {
+      console.log('[UPLOAD] Raw response:', {
+        hasSuccess: response.data.hasOwnProperty('success'),
+        success: response.data.success,
+        hasData: response.data.hasOwnProperty('data'),
+        keys: Object.keys(response.data)
+      });
+
+      // Handle both response formats: {success: true, data: {...}} or just {...}
+      if (response.data.success && response.data.data) {
+        // Standard format: {success: true, data: result}
         return response.data.data;
+      } else if (response.data.urlPath) {
+        // Direct format: the response IS the result object
+        return response.data;
       } else {
         return {
           success: false,
@@ -206,7 +235,7 @@ class CentralizedUploadService {
           urlPath: '',
           size: 0,
           mimeType: '',
-          error: response.data.message || 'Upload failed',
+          error: response.data.message || response.data.error || 'Upload failed',
         };
       }
     } catch (error: any) {

@@ -41,7 +41,6 @@ const corsOptions = {
     allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'x-tenant-id', 'x-user-id', 'x-branch-id', 'x-branch-code']
 };
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -374,6 +373,10 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
         error: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
 });
+
+// Initialize notification cron service
+import { initializeNotificationCron } from './utilities/notificationCronService';
+initializeNotificationCron(io);
 
 // Start server
 const PORT = Number(process.env.PORT) || 5002;

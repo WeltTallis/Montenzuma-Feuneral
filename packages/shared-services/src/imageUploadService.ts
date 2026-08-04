@@ -222,7 +222,7 @@ class ImageUploadService {
     }
 
     // Resize
-    const resizeOptions: sharp.ResizeOptions = {};
+    const resizeOptions: any = {};
     if (config.maxWidth || config.maxHeight) {
       resizeOptions.fit = 'inside';
       resizeOptions.withoutEnlargement = true;

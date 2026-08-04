@@ -30,13 +30,15 @@ const UserManagement = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [formData, setFormData] = useState({
-    email: '', full_name: '', phone: '', password: '', role: 'staff',
+    email: '', full_name: '', username: '', phone: '', password: '', role: 'staff', branch_id: '',
   });
   const [formErrors, setFormErrors] = useState({});
   const [formResult, setFormResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState(null);
+  const [branches, setBranches] = useState([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
 
   const userStr = localStorage.getItem('user');
   let currentUser = {};
@@ -46,10 +48,25 @@ const UserManagement = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get(`/api/v2/restpoint/users`, {
+      const response = await api.get(`/users`, {
         headers: { 'x-tenant-slug': slug || 'system_shared' }
       });
-      setUsers(response.data?.users || response.data?.data || []);
+      const rawUsers = response.data?.users || response.data?.data || [];
+      // Auth service returns camelCase fields; normalize to the names this component expects
+      setUsers(rawUsers.map((u) => ({
+        user_id: u.userId,
+        email: u.email,
+        full_name: u.fullName,
+        username: u.username || u.email,
+        role: u.role,
+        branch_id: u.branchId || null,
+        branch_name: u.branchName || null,
+        is_active: u.isActive !== false,
+        isActive: u.isActive !== false,
+        phone: u.phone || '',
+        last_login_at: u.lastLoginAt || null,
+        created_at: u.createdAt || null,
+      })));
     } catch (error) {
       console.error('Error fetching users:', error);
       setError(error.response?.data?.message || 'Failed to load users. Please try again.');
@@ -60,14 +77,40 @@ const UserManagement = () => {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
+  // Fetch branches for multi-branch user assignment
+  useEffect(() => {
+    const fetchBranches = async () => {
+      setLoadingBranches(true);
+      try {
+        const response = await api.get(`/branches`, {
+          headers: { 'x-tenant-slug': slug || 'system_shared' }
+        });
+        const branchData = response.data?.data?.branches || response.data?.branches || [];
+        setBranches(Array.isArray(branchData) ? branchData : []);
+      } catch (error) {
+        console.error('Error fetching branches:', error);
+        setBranches([]);
+      } finally {
+        setLoadingBranches(false);
+      }
+    };
+
+    if (slug) {
+      fetchBranches();
+    }
+  }, [slug]);
+
   const adminCount = users.filter(u => u.role === 'admin').length;
 
   const validateForm = () => {
     const errors = {};
+    if (!formData.full_name.trim()) errors.full_name = 'Full name is required';
+    if (!formData.username.trim()) errors.username = 'Username is required';
     if (!formData.email.trim()) errors.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errors.email = 'Invalid email format';
-    if (!formData.full_name.trim()) errors.full_name = 'Full name is required';
     if (!formData.password || formData.password.length < 6) errors.password = 'Password must be at least 6 characters';
+    if (!formData.role) errors.role = 'Please select a role';
+    if (branches.length > 0 && !formData.branch_id) errors.branch_id = 'Please select a branch';
     if (formData.role === 'admin' && adminCount >= MAX_ADMINS) errors.role = `Maximum ${MAX_ADMINS} admins allowed`;
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -81,13 +124,13 @@ const UserManagement = () => {
     setFormResult(null);
 
     try {
-      const response = await api.post(`/api/v2/restpoint/users/register`, formData, {
+      const response = await api.post(`/users`, formData, {
         headers: { 'x-tenant-slug': slug || 'system_shared' }
       });
 
       if (response.data?.success) {
-        setFormResult({ success: true, message: 'User added successfully!' });
-        setFormData({ email: '', full_name: '', phone: '', password: '', role: 'staff' });
+        setFormResult({ success: true, message: response.data?.message || 'User added successfully!' });
+        setFormData({ email: '', full_name: '', username: '', phone: '', password: '', role: 'staff', branch_id: '' });
         fetchUsers();
         setTimeout(() => { setShowAddModal(false); setFormResult(null); }, 1500);
       } else {
@@ -105,16 +148,19 @@ const UserManagement = () => {
 
   const handleDeleteUser = async (userId) => {
     try {
-      const response = await api.delete(`/api/v2/restpoint/users/${userId}`, {
+      const response = await api.delete(`/users/${userId}`, {
         headers: { 'x-tenant-slug': slug || 'system_shared' }
       });
 
       if (response.data?.success) {
         fetchUsers();
         setShowDeleteConfirm(null);
+      } else {
+        setFormResult({ success: false, message: response.data?.message || 'Failed to delete user' });
       }
     } catch (error) {
       console.error('Error deleting user:', error);
+      setFormResult({ success: false, message: error.response?.data?.message || 'Failed to delete user. Please try again.' });
     }
   };
 
@@ -142,7 +188,17 @@ const UserManagement = () => {
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const inputStyle = `width: 100%; padding: 0.7rem 0.85rem; border: 1px solid ${C.line}; border-radius: 8px; font-size: 0.85rem; outline: none; transition: all 0.2s ease; background: ${C.bone}; color: ${C.ink};`;
+  const inputStyle = {
+    width: '100%',
+    padding: '0.7rem 0.85rem',
+    border: `1px solid ${C.line}`,
+    borderRadius: '8px',
+    fontSize: '0.85rem',
+    outline: 'none',
+    transition: 'all 0.2s ease',
+    background: C.bone,
+    color: C.ink,
+  };
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '1rem', position: 'relative', zIndex: 1 }}>
@@ -156,7 +212,7 @@ const UserManagement = () => {
             {users.length} users · {adminCount}/{MAX_ADMINS} admins
           </p>
         </div>
-        <button onClick={() => { setFormData({ email: '', full_name: '', phone: '', password: '', role: 'staff' }); setFormResult(null); setFormErrors({}); setShowAddModal(true); }}
+        <button onClick={() => { setFormData({ email: '', full_name: '', username: '', phone: '', password: '', role: 'staff', branch_id: '' }); setFormResult(null); setFormErrors({}); setShowAddModal(true); }}
           style={{
             padding: '0.65rem 1.25rem', background: C.ink,
             color: C.bone, border: 'none', borderRadius: '2px', fontSize: '0.85rem', fontWeight: 500,
@@ -261,21 +317,7 @@ const UserManagement = () => {
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-                {/* Only admin can delete, and can't delete themselves */}
-                {currentUser?.role === 'admin' && user.user_id !== currentUser?.userId && (
-                  <button onClick={() => setShowDeleteConfirm(user)}
-                    style={{
-                      padding: '0.5rem', border: `1px solid rgba(239,68,68,0.2)`, borderRadius: '8px',
-                      cursor: 'pointer', background: 'rgba(239,68,68,0.05)', color: C.danger,
-                      display: 'flex', transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => { e.target.style.background = 'rgba(239,68,68,0.1)'; }}
-                    onMouseLeave={(e) => { e.target.style.background = 'rgba(239,68,68,0.05)'; }}
-                    title="Delete user"
-                  >
-                    <UserX size={16} />
-                  </button>
-                )}
+                {/* Delete action requires a backend DELETE /users/:id route; currently unavailable in auth service */}
               </div>
             </div>
           ))}
@@ -351,19 +393,20 @@ const UserManagement = () => {
 
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: C.ink, marginBottom: '0.4rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Username *
+                  </label>
+                  <input value={formData.username} onChange={(e) => setFormData(p => ({ ...p, username: e.target.value }))}
+                    placeholder="e.g. johndoe" style={inputStyle} />
+                  {formErrors.username && <p style={{ fontSize: '0.7rem', color: C.danger, marginTop: '0.2rem' }}>{formErrors.username}</p>}
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: C.ink, marginBottom: '0.4rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                     Email Address *
                   </label>
                   <input type="email" value={formData.email} onChange={(e) => setFormData(p => ({ ...p, email: e.target.value }))}
                     placeholder="user@example.com" style={inputStyle} />
                   {formErrors.email && <p style={{ fontSize: '0.7rem', color: C.danger, marginTop: '0.2rem' }}>{formErrors.email}</p>}
-                </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: C.ink, marginBottom: '0.4rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    Phone Number
-                  </label>
-                  <input value={formData.phone} onChange={(e) => setFormData(p => ({ ...p, phone: e.target.value }))}
-                    placeholder="+254 700 000 000" style={inputStyle} />
                 </div>
 
                 <div style={{ marginBottom: '1rem' }}>
@@ -399,6 +442,27 @@ const UserManagement = () => {
                   </div>
                   {formErrors.role && <p style={{ fontSize: '0.7rem', color: C.danger, marginTop: '0.2rem' }}>{formErrors.role}</p>}
                 </div>
+
+                {branches.length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: C.ink, marginBottom: '0.4rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      Assign to Branch *
+                    </label>
+                    <select
+                      value={formData.branch_id}
+                      onChange={(e) => setFormData(p => ({ ...p, branch_id: e.target.value }))}
+                      style={{ ...inputStyle, cursor: 'pointer' }}
+                    >
+                      <option value="">Select a branch...</option>
+                      {branches.map((branch) => (
+                        <option key={branch.branch_id || branch.id} value={branch.branch_id || branch.id}>
+                          {branch.branch_name || branch.name || 'Branch'}
+                        </option>
+                      ))}
+                    </select>
+                    {formErrors.branch_id && <p style={{ fontSize: '0.7rem', color: C.danger, marginTop: '0.2rem' }}>{formErrors.branch_id}</p>}
+                  </div>
+                )}
 
                 <button type="submit" disabled={isSubmitting}
                   style={{

@@ -108,84 +108,86 @@ const runMigrations = async () => {
 // TENANT RESOLUTION MIDDLEWARE
 // ============================================
 app.use(async (req: any, res: any, next: any) => {
-    const tenantSlug = (req.headers['x-tenant-slug'] || req.headers['x-slug'] || 'system_shared') as string;
-    const branchId = req.headers['x-branch-id'] || null;
+  const tenantSlug = (req.headers['x-tenant-slug'] || req.headers['x-slug'] || 'system_shared') as string;
+  const branchId = req.headers['x-branch-id'] || null;
 
-    req.tenantSlug = tenantSlug;
-    req.branchId = branchId;
+  req.tenantSlug = tenantSlug;
+  req.branchId = branchId;
 
-    console.log(`[FLORIST] Request: ${req.method} ${req.path}`);
-    console.log(`[FLORIST] Tenant: ${tenantSlug}, Branch: ${branchId}`);
+  console.log(`[FLORIST] Request: ${req.method} ${req.path}`);
+  console.log(`[FLORIST] Tenant: ${tenantSlug}, Branch: ${branchId}`);
 
-    if (tenantSlug === 'system_shared') {
-        console.log('[FLORIST] Using system_shared tenant (bypassing validation)');
-        req.tenant = {
-            db_name: process.env.DB_NAME || 'restpoint_main',
-            tenant_id: 1,
-            name: 'System Shared'
-        };
-        return next();
+  if (tenantSlug === 'system_shared') {
+    console.log('[FLORIST] Using system_shared tenant (bypassing validation)');
+    req.tenant = {
+      db_name: process.env.DB_NAME || 'restpoint_main',
+      tenant_id: 1,
+      name: 'System Shared'
+    };
+    return next();
+  }
+
+  try {
+    // @ts-ignore - Dynamic import for shared dbConfig
+    const dbConfigPath = path.resolve(__dirname, '../../shared/dbConfig.js');
+    console.log(`[FLORIST] Loading dbConfig from: ${dbConfigPath}`);
+    
+    const dbConfig = await import(dbConfigPath);
+    const { resolveDatabase, safeTenantQuery } = dbConfig;
+
+    let dbName = await resolveDatabase(tenantSlug);
+
+    if (!dbName) {
+      // For multi-branch tenants, the database name is the tenant slug
+      // For single-branch tenants, also use the tenant slug
+      dbName = tenantSlug.replace(/-/g, '_');
     }
 
-    try {
-        // @ts-ignore - Dynamic import for shared dbConfig
-        const dbConfigPath = path.resolve(__dirname, '../../shared/dbConfig.js');
-        console.log(`[FLORIST] Loading dbConfig from: ${dbConfigPath}`);
-        
-        const dbConfig = await import(dbConfigPath);
-        const { resolveDatabase, safeTenantQuery } = dbConfig;
+    req.tenant = {
+      db_name: dbName,
+      tenant_slug: tenantSlug,
+      name: tenantSlug
+    };
+    console.log(`[FLORIST] Tenant resolved: ${dbName}`);
 
-        let dbName = await resolveDatabase(tenantSlug);
-
-        if (!dbName) {
-            dbName = tenantSlug.replace(/-/g, '_');
+    if (!req.branchId && dbName) {
+      const lastDash = tenantSlug.lastIndexOf('-');
+      if (lastDash > 0) {
+        const branchPart = tenantSlug.substring(lastDash + 1);
+        try {
+          const branches = await safeTenantQuery(
+            dbName,
+            'SELECT branch_id FROM branches WHERE branch_slug LIKE ? OR branch_name LIKE ? LIMIT 1',
+            [`%${branchPart}%`, `%${branchPart}%`]
+          );
+          if (branches.length > 0) {
+            req.branchId = branches[0].branch_id.toString();
+            console.log(`[FLORIST] Branch resolved: ${req.branchId}`);
+          }
+        } catch (e) {
+          console.log('[FLORIST] Branch resolution skipped:', (e as Error).message);
         }
-
-        req.tenant = {
-            db_name: dbName,
-            tenant_slug: tenantSlug,
-            name: tenantSlug
-        };
-        console.log(`[FLORIST] Tenant resolved: ${dbName}`);
-
-        if (!req.branchId && dbName) {
-            const lastDash = tenantSlug.lastIndexOf('-');
-            if (lastDash > 0) {
-                const branchPart = tenantSlug.substring(lastDash + 1);
-                try {
-                    const branches = await safeTenantQuery(
-                        dbName,
-                        'SELECT branch_id FROM branches WHERE branch_slug LIKE ? OR branch_name LIKE ? LIMIT 1',
-                        [`%${branchPart}%`, `%${branchPart}%`]
-                    );
-                    if (branches.length > 0) {
-                        req.branchId = branches[0].branch_id.toString();
-                        console.log(`[FLORIST] Branch resolved: ${req.branchId}`);
-                    }
-                } catch (e) {
-                    console.log('[FLORIST] Branch resolution skipped:', (e as Error).message);
-                }
-            }
-        }
-
-        // Ensure florist tables exist in tenant database
-        if (dbName) {
-            try {
-                await ensureFloristTables(dbName);
-            } catch (tableError: any) {
-                console.error(`[FLORIST] Warning: Could not ensure tables in ${dbName}:`, tableError.message);
-            }
-        }
-    } catch (err: any) {
-        console.error('[FLORIST] Tenant resolution error:', err.message);
-        req.tenant = {
-            db_name: process.env.DB_NAME || 'restpoint_main',
-            tenant_slug: tenantSlug,
-            name: tenantSlug
-        };
+      }
     }
 
-    next();
+    // Ensure florist tables exist in tenant database
+    if (dbName) {
+      try {
+        await ensureFloristTables(dbName);
+      } catch (tableError: any) {
+        console.error(`[FLORIST] Warning: Could not ensure tables in ${dbName}:`, tableError.message);
+      }
+    }
+  } catch (err: any) {
+    console.error('[FLORIST] Tenant resolution error:', err.message);
+    req.tenant = {
+      db_name: process.env.DB_NAME || 'restpoint_main',
+      tenant_slug: tenantSlug,
+      name: tenantSlug
+    };
+  }
+
+  next();
 });
 
 // ============================================

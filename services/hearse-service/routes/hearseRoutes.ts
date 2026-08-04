@@ -2,7 +2,8 @@ import express from 'express';
 import { registerHearse, updateHearse, deleteHearse, getAllHearses, getAvailableHearses, upload } from '../controllers/registerHearse';
 import { makeHearseBooking, getAllHearseBookings, assignDriverToBooking, updateBookingStatus, postponeHearseBooking, getAllDrivers, getBookingsByDriver, getDriverDashboard, getAvailabilityAcrossBranches, checkAvailabilityByDate } from '../controllers/bookHerse';
 import { getHearseFleetAnalytics, getHearsePeriodAnalytics } from '../controllers/hearseAnalytics';
-import { protect } from '../../auth-service/middleware/authMiddleware';
+// @ts-ignore - authMiddleware is JavaScript, not TypeScript
+import { protect } from '../../app-global/middlewares/authMiddleware';
 
 const router = express.Router();
 

@@ -1005,6 +1005,19 @@ const IDScannerModalWrap = styled.div`
 const DeceasedRegistrationForm = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    
+    const getTenantSlug = () => {
+      return localStorage.getItem('tenantSlug') ||
+        localStorage.getItem('tenant_slug') ||
+        (() => {
+          try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            return user.tenantSlug || user.tenant?.slug || 'default';
+          } catch {
+            return 'default';
+          }
+        })();
+    };
     const sigPadRef1 = useRef(null);
 
     const [loading, setLoading] = useState(false);
@@ -1682,6 +1695,9 @@ const DeceasedRegistrationForm = () => {
 
                     {/* Actions */}
                     <ActionsContainer style={{ justifyContent: 'flex-end' }}>
+                        <SecondaryButton type="button" onClick={() => navigate(`/tenant/${getTenantSlug()}/receptionist`)}>
+                            ← Back to Reception
+                        </SecondaryButton>
                         <SecondaryButton type="button" onClick={handleClear} disabled={isSubmitting}>
                             <RotateCcw size={15} /> Clear Form
                         </SecondaryButton>

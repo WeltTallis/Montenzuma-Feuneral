@@ -57,10 +57,17 @@ interface Customer {
 export const getBookings = async (req: any, res: any) => {
     try {
         const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
+        const tenantSlug = req.tenantSlug;
         const { status, branch, flower_type, date_from, date_to, search, page = '1', limit = '20' } = req.query;
 
         let whereClause = 'WHERE 1=1';
         const params: any[] = [];
+
+        // Add tenant isolation if not system_shared
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            whereClause += ' AND created_by = ?';
+            params.push(tenantSlug);
+        }
 
         if (status) {
             whereClause += ' AND status = ?';
@@ -107,9 +114,29 @@ export const getBookings = async (req: any, res: any) => {
             [...params, limitNum, offset]
         );
 
+        // Enrich bookings with arrangement details from flower_samples
+        const enrichedBookings = await Promise.all(
+            bookings.map(async (booking: any) => {
+                try {
+                    const arrangementQuery = `SELECT title, types, images FROM flower_samples WHERE title = ? AND tenant_slug = ? LIMIT 1`;
+                    const arrangements = await safeTenantQuery(dbName, arrangementQuery, [booking.flower_type, tenantSlug]);
+                    
+                    if (arrangements && arrangements.length > 0) {
+                        return {
+                            ...booking,
+                            arrangement: arrangements[0]
+                        };
+                    }
+                    return booking;
+                } catch (e) {
+                    return booking;
+                }
+            })
+        );
+
         res.json({
             success: true,
-            data: bookings,
+            data: enrichedBookings,
             pagination: {
                 total,
                 page: pageNum,

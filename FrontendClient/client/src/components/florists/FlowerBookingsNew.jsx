@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Flower2, MapPin, User, Calendar, Clock, ChevronLeft, ChevronRight, X, Check, Truck, Home, Package, AlertTriangle } from '../../utils/icons/icons';
 import api from '../../api/axios'
+import { useSocket } from '../../utils/context/socketContext'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -19,14 +20,6 @@ const STATUS_DESC = {
   completed: 'Successfully delivered to the specified location.'
 };
 
-const PRODUCTS = [
-  { id: 1, name: 'Peaceful White Lilies', price: 120, images: ['https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=800&q=80'], category: 'Sympathy Arrangement' },
-  { id: 2, name: 'Garden of Serenity', price: 180, images: ['https://images.unsplash.com/photo-1591886960571-74d43a9d4164?auto=format&fit=crop&w=800&q=80'], category: 'Funeral Wreath' },
-  { id: 3, name: 'Custom Sympathy Wreath', price: 150, images: [], category: 'Custom Wreath' },
-  { id: 4, name: 'Voodoo Rose', price: 220, images: ['https://images.unsplash.com/photo-1606041008023-472dfb5e530f?auto=format&fit=crop&w=800&q=80'], category: 'Tea-hybrid Rose' },
-  { id: 5, name: 'Everlasting Green Plant', price: 85, images: [], category: 'Potted Plant' }
-];
-
 const pad = n => String(n).padStart(2, '0');
 const fmtDateStr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const parseDate = s => { const d = new Date(s); return isNaN(d) ? null : d; };
@@ -36,6 +29,7 @@ const fmtDateTime = s => s ? new Date(s).toLocaleString('en-US',{month:'short',d
 const fmtDateOnly = s => s ? new Date(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'N/A';
 
 const FlowerBookingsNew = () => {
+  const { socket, connected } = useSocket()
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list');
@@ -44,6 +38,7 @@ const FlowerBookingsNew = () => {
   const [activeBookingId, setActiveBookingId] = useState(null);
   const [detailImageIndex, setDetailImageIndex] = useState(0);
   const [newBooking, setNewBooking] = useState({
+    arrangement_id: null,
     arrangement_name: '',
     arrangement_price: '',
     deceased_name: '',
@@ -55,6 +50,17 @@ const FlowerBookingsNew = () => {
   });
   const [toasts, setToasts] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showArrangementPicker, setShowArrangementPicker] = useState(false);
+  const [arrangements, setArrangements] = useState([]);
+
+  const loadArrangements = useCallback(async () => {
+    try {
+      const res = await api.get('/florist/flower-samples/');
+      setArrangements(res.data.data || []);
+    } catch (e) {
+      console.error('Failed to load arrangements:', e);
+    }
+  }, []);
 
   const showToast = useCallback((msg, type = 'success') => {
     const id = Date.now();
@@ -73,7 +79,46 @@ const FlowerBookingsNew = () => {
     setLoading(false);
   }, [showToast]);
 
-  useEffect(() => { loadBookings(); }, [loadBookings]);
+  // Real-time socket listeners for flower bookings
+  useEffect(() => {
+    if (!socket || !connected) return;
+
+    console.log('[FlowerBookings] Setting up real-time listeners');
+
+    const handleNewBooking = (data) => {
+      console.log('[FlowerBookings] New booking received:', data);
+      showToast(`New booking: ${data.flowerType || 'Flower booking'} for ${data.deceasedName || 'customer'}`, 'success');
+      loadBookings();
+    };
+
+    const handleBookingUpdated = (data) => {
+      console.log('[FlowerBookings] Booking updated:', data);
+      showToast(`Booking ${data.bookingId} status changed to ${data.status}`, 'info');
+      loadBookings();
+    };
+
+    const handleBookingDeleted = (data) => {
+      console.log('[FlowerBookings] Booking deleted:', data);
+      showToast(`Booking ${data.bookingId} has been cancelled`, 'error');
+      loadBookings();
+    };
+
+    socket.on('notification:flower-booking-created', handleNewBooking);
+    socket.on('notification:flower-booking-updated', handleBookingUpdated);
+    socket.on('notification:flower-booking-deleted', handleBookingDeleted);
+
+    return () => {
+      console.log('[FlowerBookings] Cleaning up socket listeners');
+      socket.off('notification:flower-booking-created', handleNewBooking);
+      socket.off('notification:flower-booking-updated', handleBookingUpdated);
+      socket.off('notification:flower-booking-deleted', handleBookingDeleted);
+    };
+  }, [socket, connected, showToast, loadBookings]);
+
+  useEffect(() => { 
+    loadArrangements();
+    loadBookings(); 
+  }, [loadBookings, loadArrangements]);
 
   const getEventsForDate = useCallback((dateStr) => {
     return bookings.filter(b => b.delivery_date === dateStr);
@@ -118,10 +163,21 @@ const FlowerBookingsNew = () => {
     }
 
     try {
+      // Find the selected arrangement to get its slug
+      const selectedArrangement = arrangements.find(a => a.arrangement_id === newBooking.arrangement_id);
+      const flowerTypeSlug = selectedArrangement?.arrangement_id || selectedArrangement?.title || newBooking.arrangement_name;
+
       const payload = {
-        ...newBooking,
-        product_id: null,
-        flower_type: null,
+        arrangement_name: newBooking.arrangement_name,
+        arrangement_price: newBooking.arrangement_price,
+        deceased_name: newBooking.deceased_name,
+        booked_by: newBooking.booked_by,
+        funeral_home: newBooking.funeral_home,
+        date: newBooking.date,
+        time: newBooking.time,
+        priority: newBooking.priority,
+        arrangement_id: newBooking.arrangement_id,
+        flower_type: flowerTypeSlug,
         amount: parseFloat(newBooking.arrangement_price) || 0
       };
       await api.post('/florist/bookings', payload);
@@ -130,6 +186,7 @@ const FlowerBookingsNew = () => {
       await loadBookings();
       setView('list');
       setNewBooking({
+        arrangement_id: null,
         arrangement_name: '',
         arrangement_price: '',
         deceased_name: '',
@@ -142,7 +199,17 @@ const FlowerBookingsNew = () => {
     } catch (e) {
       showToast(e.friendlyMessage || 'Failed to create booking', 'error');
     }
-  }, [newBooking, showToast, loadBookings]);
+  }, [newBooking, arrangements, showToast, loadBookings]);
+
+  const selectArrangement = useCallback((arrangement) => {
+    setNewBooking(prev => ({
+      ...prev,
+      arrangement_id: arrangement.arrangement_id,
+      arrangement_name: arrangement.title,
+      arrangement_price: arrangement.price || ''
+    }));
+    setShowArrangementPicker(false);
+  }, []);
 
   const updateStatus = useCallback(async (id, nextStatus) => {
     try {
@@ -251,20 +318,26 @@ const FlowerBookingsNew = () => {
   };
 
   const renderBookingCard = (b) => {
-    const product = PRODUCTS.find(p => p.id === b.flower_type) || PRODUCTS[0];
+    // Match booking with arrangement by name (flower_type stores the arrangement name)
+    const product = arrangements.find(a => a.title === b.flower_type) || arrangements[0] || {
+      title: b.flower_type || 'Custom Arrangement',
+      price: b.amount || 0,
+      images: [],
+      types: ['Custom']
+    };
     const statusCfg = STATUS_FLOW.indexOf(b.status) >= 0 ? { label: STATUS_LABELS[b.status], color: '#2F4F3E', bg: '#f0f7f4' } : { label: b.status, color: '#64748b', bg: '#f1f5f9' };
 
     return (
       <div style={styles.bookingCard} onClick={() => viewBooking(b.id)}>
         <div style={styles.mediaThumb}>
           {product.images?.length > 0 ? (
-            <img src={product.images[0]} alt={product.name} />
+            <img src={product.images[0]?.url || product.images[0]} alt={product.title} />
           ) : (
-            <div style={styles.mediaThumbPlaceholder}>{product.name.charAt(0)}</div>
+            <div style={styles.mediaThumbPlaceholder}>{product.title?.charAt(0) || 'F'}</div>
           )}
         </div>
         <div style={styles.bookingInfo}>
-          <div style={styles.bookingName}>{product.name}</div>
+          <div style={styles.bookingName}>{product.title}</div>
           <div style={styles.bookingMeta}>
             <div><User size={12} /> {b.deceased_name}</div>
             <div><MapPin size={12} /> {b.funeral_home} - {b.delivery_time}</div>
@@ -334,10 +407,15 @@ const FlowerBookingsNew = () => {
                   <span style={isToday ? styles.todayNum : {}}>{day.getDate()}</span>
                 </div>
                 {visible.map(b => {
-                  const product = PRODUCTS.find(p => p.id === b.flower_type) || PRODUCTS[0];
+                  const product = arrangements.find(a => a.title === b.flower_type) || arrangements[0] || {
+                    title: b.flower_type || 'Custom Arrangement',
+                    price: b.amount || 0,
+                    images: [],
+                    types: ['Custom']
+                  };
                   return (
                     <div key={b.id} style={styles.calEvent}>
-                      {b.delivery_time} - {product.name.split(' ')[0]}
+                      {b.delivery_time} - {product.title.split(' ')[0]}
                     </div>
                   );
                 })}
@@ -381,16 +459,100 @@ const FlowerBookingsNew = () => {
         </div>
 
         <div style={styles.formSection}>
-          <label style={styles.formLabel}>1. Arrangement Details</label>
+          <label style={styles.formLabel}>1. Select Arrangement</label>
+          
+          {/* Arrangement Picker Button */}
+          <button 
+            style={{
+              ...styles.inputIcon,
+              cursor: 'pointer',
+              justifyContent: 'space-between',
+              width: '100%',
+              marginBottom: '12px'
+            }}
+            onClick={() => setShowArrangementPicker(!showArrangementPicker)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Flower2 size={18} />
+              <span style={{ color: newBooking.arrangement_id ? '#1C1A17' : '#9C9389' }}>
+                {newBooking.arrangement_id ? `${newBooking.arrangement_name} (ID: ${newBooking.arrangement_id})` : 'Choose from available arrangements'}
+              </span>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showArrangementPicker ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </button>
+
+          {/* Arrangement Picker Dropdown */}
+          {showArrangementPicker && (
+            <div style={{
+              background: '#fff',
+              border: '1px solid #EAE7E2',
+              borderRadius: '14px',
+              padding: '12px',
+              marginBottom: '12px',
+              maxHeight: '300px',
+              overflowY: 'auto'
+            }}>
+              {arrangements.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#9C9389', fontSize: '13px' }}>
+                  No arrangements available. Create one first.
+                </div>
+              ) : (
+                <div style={styles.productGrid}>
+                  {arrangements.map(arrangement => (
+                    <div
+                      key={arrangement.arrangement_id}
+                      style={{
+                        ...styles.productCard,
+                        border: newBooking.arrangement_id === arrangement.arrangement_id 
+                          ? '2px solid #2F4F3E' 
+                          : '1px solid #EAE7E2',
+                        background: newBooking.arrangement_id === arrangement.arrangement_id 
+                          ? '#f0f7f4' 
+                          : '#fff'
+                      }}
+                      onClick={() => selectArrangement(arrangement)}
+                    >
+                      {newBooking.arrangement_id === arrangement.arrangement_id && (
+                        <div style={styles.productCheck}>
+                          <Check size={14} />
+                        </div>
+                      )}
+                      <div style={styles.productMedia}>
+                        {arrangement.images?.length > 0 ? (
+                          <img 
+                            src={arrangement.images[0]?.url || arrangement.images[0]} 
+                            alt={arrangement.title}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div style={styles.productMediaPlaceholder}>
+                            {arrangement.title?.charAt(0) || 'F'}
+                          </div>
+                        )}
+                      </div>
+                      <div style={styles.productName}>{arrangement.title}</div>
+                      <div style={styles.productPrice}>
+                        {arrangement.types?.[0] || 'Custom'} · ID: {arrangement.arrangement_id}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Manual Entry (if no arrangement selected) */}
           <div style={styles.formGrid}>
             <div style={styles.inputGroup}>
               <div style={styles.inputIcon}>
                 <Flower2 size={18} />
                 <input
                   type="text"
-                  placeholder="Arrangement Name"
+                  placeholder="Arrangement Name (or type custom)"
                   value={newBooking.arrangement_name}
-                  onChange={e => setNewBooking(prev => ({ ...prev, arrangement_name: e.target.value }))}
+                  onChange={e => setNewBooking(prev => ({ ...prev, arrangement_name: e.target.value, arrangement_id: null }))}
                   required
                 />
               </div>
@@ -409,6 +571,22 @@ const FlowerBookingsNew = () => {
               </div>
             </div>
           </div>
+          
+          {/* Show selected arrangement slug */}
+          {newBooking.arrangement_id && (
+            <div style={{
+              background: '#f0f7f4',
+              border: '1px solid #2F4F3E',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              fontSize: '11px',
+              color: '#2F4F3E',
+              fontWeight: 600,
+              marginTop: '8px'
+            }}>
+              ✓ Using arrangement slug: <strong>{newBooking.arrangement_id}</strong>
+            </div>
+          )}
         </div>
 
         <div style={styles.formSection}>
@@ -512,7 +690,12 @@ const FlowerBookingsNew = () => {
   const renderDetail = () => {
     const b = bookings.find(x => x.id === activeBookingId);
     if (!b) return '';
-    const product = PRODUCTS.find(p => p.id === b.flower_type) || PRODUCTS[0];
+    const product = arrangements.find(a => a.title === b.flower_type) || arrangements[0] || {
+      title: b.flower_type || 'Custom Arrangement',
+      price: b.amount || 0,
+      images: [],
+      types: ['Custom']
+    };
     const currentStatusIdx = STATUS_FLOW.indexOf(b.status);
     const timelineHtml = STATUS_FLOW.map((status, idx) => {
       let stepClass = '';
@@ -553,14 +736,14 @@ const FlowerBookingsNew = () => {
 
     return (
       <div style={styles.detailContainer}>
-        <div style={styles.detailHero}>
-          <div style={styles.carouselTrack}>
-            {product.images?.map((img, idx) => (
-              <div key={idx} style={styles.carouselSlide}>
-                <img src={img} alt={product.name} />
-              </div>
-            ))}
-          </div>
+          <div style={styles.detailHero}>
+            <div style={styles.carouselTrack}>
+              {product.images?.map((img, idx) => (
+                <div key={idx} style={styles.carouselSlide}>
+                  <img src={img.url || img} alt={product.title} />
+                </div>
+              ))}
+            </div>
           <button style={styles.detailBack} onClick={backToList}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
           </button>
@@ -568,13 +751,13 @@ const FlowerBookingsNew = () => {
         <div style={styles.detailBody}>
           <div style={styles.chipRow}>
             <div style={styles.chipPrimary}>{b.booking_id}</div>
-            <div style={styles.chip}>{product.category}</div>
+            <div style={styles.chip}>{product.types?.[0] || 'Custom'}</div>
             <div style={styles.chip}>{b.delivery_time}</div>
             <span style={{ ...styles.priorityPill, fontSize: '12px', padding: '6px 12px' }}>{b.priority} Priority</span>
           </div>
 
-          <h2 style={styles.detailTitle}>{product.name}</h2>
-          <p style={styles.detailSubtitle}>Sympathy Floral Tribute · ${product.price}</p>
+          <h2 style={styles.detailTitle}>{product.title}</h2>
+          <p style={styles.detailSubtitle}>Sympathy Floral Tribute · ${b.amount?.toFixed(2) || '0.00'}</p>
 
           <div style={styles.trackingCard}>
             <div style={styles.trackingHeader}>

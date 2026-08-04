@@ -22,7 +22,14 @@ const LEAVE_STATUS = {
     CANCELLED: 'cancelled'
 };
 
-const DEFAULT_LEAVE_DAYS = 26;
+const DEFAULT_LEAVE_DAYS = 26; // Each user has 26 days of leave per year by default
+
+// ============================================
+// HELPER: Get tenant slug from request
+// ============================================
+const getTenantSlug = (req) => {
+    return req.tenantSlug || req.headers['x-tenant-slug'] || req.headers['x-slug'] || 'system_shared';
+};
 
 // ============================================
 // HELPER: Emit real-time updates
@@ -37,38 +44,55 @@ const emitUpdate = (tenantSlug, event, data) => {
 // ============================================
 // HELPER: Calculate leave balance
 // ============================================
-const calculateLeaveBalance = async (dbName, userId) => {
+const calculateLeaveBalance = async (dbName, userId, tenantSlug) => {
     try {
-        // Get initial balance
+        // Get initial balance from users table
         const [userRows] = await safeTenantQuery(
             dbName,
-            'SELECT annual_leave_balance FROM users WHERE user_id = ?',
+            'SELECT annual_leave_balance, full_name, email FROM users WHERE user_id = ?',
             [userId]
         );
+        
+        // Default to 26 days if not set
         const initialBalance = parseFloat(userRows[0]?.annual_leave_balance) || DEFAULT_LEAVE_DAYS;
+        
+        // If balance is 0 or null, update it to 26
+        if (!userRows[0]?.annual_leave_balance || parseFloat(userRows[0]?.annual_leave_balance) === 0) {
+            await safeTenantExecute(
+                dbName,
+                'UPDATE users SET annual_leave_balance = 26.00 WHERE user_id = ?',
+                [userId]
+            );
+        }
 
-        // Get manual additions
-        const [additionRows] = await safeTenantQuery(
-            dbName,
-            'SELECT COALESCE(SUM(days), 0) as total FROM leave_day_additions WHERE user_id = ?',
-            [userId]
-        );
+        // Get manual additions (filtered by tenant_slug if provided)
+        let additionQuery = 'SELECT COALESCE(SUM(days), 0) as total FROM leave_day_additions WHERE user_id = ?';
+        let additionParams = [userId];
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            additionQuery += ' AND tenant_slug = ?';
+            additionParams.push(tenantSlug);
+        }
+        const [additionRows] = await safeTenantQuery(dbName, additionQuery, additionParams);
         const manualAdditions = parseFloat(additionRows[0]?.total) || 0;
 
-        // Get holiday compensations
-        const [holidayRows] = await safeTenantQuery(
-            dbName,
-            'SELECT COUNT(*) as count FROM holiday_compensations WHERE user_id = ?',
-            [userId]
-        );
+        // Get holiday compensations (filtered by tenant_slug if provided)
+        let holidayQuery = 'SELECT COUNT(*) as count FROM holiday_compensations WHERE user_id = ?';
+        let holidayParams = [userId];
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            holidayQuery += ' AND tenant_slug = ?';
+            holidayParams.push(tenantSlug);
+        }
+        const [holidayRows] = await safeTenantQuery(dbName, holidayQuery, holidayParams);
         const holidayCompensations = parseInt(holidayRows[0]?.count) || 0;
 
-        // Get leave taken (only approved annual leave)
-        const [takenRows] = await safeTenantQuery(
-            dbName,
-            'SELECT COALESCE(SUM(days), 0) as total FROM leave_requests WHERE user_id = ? AND leave_type = ? AND status = ?',
-            [userId, LEAVE_TYPES.ANNUAL, LEAVE_STATUS.APPROVED]
-        );
+        // Get leave taken (only approved annual leave, filtered by tenant_slug if provided)
+        let takenQuery = 'SELECT COALESCE(SUM(days), 0) as total FROM leave_requests WHERE user_id = ? AND leave_type = ? AND status = ?';
+        let takenParams = [userId, LEAVE_TYPES.ANNUAL, LEAVE_STATUS.APPROVED];
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            takenQuery += ' AND tenant_slug = ?';
+            takenParams.push(tenantSlug);
+        }
+        const [takenRows] = await safeTenantQuery(dbName, takenQuery, takenParams);
         const leaveTaken = parseFloat(takenRows[0]?.total) || 0;
 
         // Calculate current balance
@@ -97,8 +121,8 @@ const calculateLeaveBalance = async (dbName, userId) => {
 // APPLY FOR LEAVE
 // ============================================
 const applyForLeave = async (req, res) => {
-    const tenantSlug = req.tenantSlug;
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
     const userId = req.headers['x-user-id'] || req.body.user_id;
 
     const {
@@ -107,7 +131,8 @@ const applyForLeave = async (req, res) => {
         end_date,
         reason,
         supporting_document,
-        is_half_day = false
+        is_half_day = false,
+        priority = 'medium'
     } = req.body;
 
     try {
@@ -140,28 +165,22 @@ const applyForLeave = async (req, res) => {
 
         // Check if user has enough leave balance (for annual leave)
         if (leave_type === LEAVE_TYPES.ANNUAL) {
-            const [balanceRows] = await safeTenantQuery(
-                dbName,
-                'SELECT annual_leave_balance FROM users WHERE user_id = ? LIMIT 1',
-                [userId]
-            );
-
-            const currentBalance = balanceRows[0]?.annual_leave_balance ?? 21.00;
-            if (currentBalance < days) {
+            const balance = await calculateLeaveBalance(dbName, userId, tenantSlug);
+            if (balance.currentBalance < days) {
                 return res.status(400).json({
                     status: 'error',
-                    message: `Insufficient leave balance. Available: ${currentBalance} days, Requested: ${days} days`
+                    message: `Insufficient leave balance. Available: ${balance.currentBalance} days, Requested: ${days} days`
                 });
             }
         }
 
-        // Create leave request
+        // Create leave request with tenant_slug
         const result = await safeTenantExecute(
             dbName,
             `INSERT INTO leave_requests 
-       (user_id, leave_type, start_date, end_date, days, reason, supporting_document, is_half_day, status, created_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-            [userId, leave_type, start_date, end_date, days, reason || null, supporting_document || null, is_half_day, LEAVE_STATUS.PENDING]
+       (user_id, tenant_slug, leave_type, priority, start_date, end_date, days, reason, supporting_document, is_half_day, status, created_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+            [userId, tenantSlug, leave_type, priority, start_date, end_date, days, reason || null, supporting_document || null, is_half_day, LEAVE_STATUS.PENDING]
         );
 
         const leaveId = result.insertId;
@@ -169,7 +188,7 @@ const applyForLeave = async (req, res) => {
         // Get the created leave request
         const [leaveRows] = await safeTenantQuery(
             dbName,
-            `SELECT lr.*, u.name, u.email 
+            `SELECT lr.*, u.full_name, u.email 
        FROM leave_requests lr 
        JOIN users u ON lr.user_id = u.user_id 
        WHERE lr.id = ?`,
@@ -201,16 +220,22 @@ const applyForLeave = async (req, res) => {
 // GET ALL LEAVES (Admin view)
 // ============================================
 const getAllLeaves = async (req, res) => {
-    const tenantSlug = req.tenantSlug;
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
     const { status, leave_type, start_date, end_date, user_id } = req.query;
 
     try {
-        let query = `SELECT lr.*, u.name, u.email 
+        let query = `SELECT lr.*, u.full_name, u.email 
                  FROM leave_requests lr 
                  JOIN users u ON lr.user_id = u.user_id 
                  WHERE 1=1`;
         const params = [];
+
+        // Filter by tenant_slug for isolation
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            query += ' AND lr.tenant_slug = ?';
+            params.push(tenantSlug);
+        }
 
         if (status) {
             query += ' AND lr.status = ?';
@@ -264,20 +289,25 @@ const getAllLeaves = async (req, res) => {
 // GET MY LEAVES (Employee view)
 // ============================================
 const getMyLeaves = async (req, res) => {
-    const tenantSlug = req.tenantSlug;
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
     const userId = req.headers['x-user-id'] || req.params.user_id;
 
     try {
-        const [rows] = await safeTenantQuery(
-            dbName,
-            `SELECT lr.*, u.name, u.email 
+        let query = `SELECT lr.*, u.full_name, u.email 
        FROM leave_requests lr 
        JOIN users u ON lr.user_id = u.user_id 
-       WHERE lr.user_id = ? 
-       ORDER BY lr.created_at DESC`,
-            [userId]
-        );
+       WHERE lr.user_id = ?`;
+        const params = [userId];
+
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            query += ' AND lr.tenant_slug = ?';
+            params.push(tenantSlug);
+        }
+
+        query += ' ORDER BY lr.created_at DESC';
+
+        const [rows] = await safeTenantQuery(dbName, query, params);
 
         return res.status(200).json({
             status: 'success',
@@ -299,18 +329,23 @@ const getMyLeaves = async (req, res) => {
 // GET LEAVE BY ID
 // ============================================
 const getLeaveById = async (req, res) => {
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
     const leaveId = req.params.id;
 
     try {
-        const [rows] = await safeTenantQuery(
-            dbName,
-            `SELECT lr.*, u.name, u.email 
+        let query = `SELECT lr.*, u.full_name, u.email 
        FROM leave_requests lr 
        JOIN users u ON lr.user_id = u.user_id 
-       WHERE lr.id = ?`,
-            [leaveId]
-        );
+       WHERE lr.id = ?`;
+        const params = [leaveId];
+
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            query += ' AND lr.tenant_slug = ?';
+            params.push(tenantSlug);
+        }
+
+        const [rows] = await safeTenantQuery(dbName, query, params);
 
         if (!rows || rows.length === 0) {
             return res.status(404).json({
@@ -338,8 +373,8 @@ const getLeaveById = async (req, res) => {
 // APPROVE/REJECT LEAVE
 // ============================================
 const updateLeaveStatus = async (req, res) => {
-    const tenantSlug = req.tenantSlug;
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
     const leaveId = req.params.id;
     const { status, rejection_reason, approved_by } = req.body;
 
@@ -353,11 +388,13 @@ const updateLeaveStatus = async (req, res) => {
         }
 
         // Get leave request
-        const [leaveRows] = await safeTenantQuery(
-            dbName,
-            'SELECT * FROM leave_requests WHERE id = ? AND status = ?',
-            [leaveId, LEAVE_STATUS.PENDING]
-        );
+        let leaveQuery = 'SELECT * FROM leave_requests WHERE id = ? AND status = ?';
+        let leaveParams = [leaveId, LEAVE_STATUS.PENDING];
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            leaveQuery += ' AND tenant_slug = ?';
+            leaveParams.push(tenantSlug);
+        }
+        const [leaveRows] = await safeTenantQuery(dbName, leaveQuery, leaveParams);
 
         if (!leaveRows || leaveRows.length === 0) {
             return res.status(404).json({
@@ -393,7 +430,7 @@ const updateLeaveStatus = async (req, res) => {
         // Get updated leave request
         const [updatedRows] = await safeTenantQuery(
             dbName,
-            `SELECT lr.*, u.name, u.email 
+            `SELECT lr.*, u.full_name, u.email 
        FROM leave_requests lr 
        JOIN users u ON lr.user_id = u.user_id 
        WHERE lr.id = ?`,
@@ -425,17 +462,19 @@ const updateLeaveStatus = async (req, res) => {
 // CANCEL LEAVE
 // ============================================
 const cancelLeave = async (req, res) => {
-    const tenantSlug = req.tenantSlug;
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
     const leaveId = req.params.id;
 
     try {
         // Get leave request
-        const [leaveRows] = await safeTenantQuery(
-            dbName,
-            'SELECT * FROM leave_requests WHERE id = ? AND status = ?',
-            [leaveId, LEAVE_STATUS.PENDING]
-        );
+        let leaveQuery = 'SELECT * FROM leave_requests WHERE id = ? AND status = ?';
+        let leaveParams = [leaveId, LEAVE_STATUS.PENDING];
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            leaveQuery += ' AND tenant_slug = ?';
+            leaveParams.push(tenantSlug);
+        }
+        const [leaveRows] = await safeTenantQuery(dbName, leaveQuery, leaveParams);
 
         if (!leaveRows || leaveRows.length === 0) {
             return res.status(404).json({
@@ -490,8 +529,8 @@ const cancelLeave = async (req, res) => {
 // UPLOAD SUPPORTING DOCUMENT
 // ============================================
 const uploadDocument = async (req, res) => {
-    const tenantSlug = req.tenantSlug;
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
     const leaveId = req.params.id;
 
     try {
@@ -548,7 +587,8 @@ const uploadDocument = async (req, res) => {
 // GET LEAVE STATS (Dashboard)
 // ============================================
 const getLeaveStats = async (req, res) => {
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
     const { start_date, end_date } = req.query;
 
     try {
@@ -633,18 +673,25 @@ const getLeaveStats = async (req, res) => {
 // GET USERS ON LEAVE TODAY
 // ============================================
 const getUsersOnLeave = async (req, res) => {
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
 
     try {
-        const [rows] = await safeTenantQuery(
-            dbName,
-            `SELECT lr.*, u.name, u.email 
+        let query = `SELECT lr.*, u.full_name, u.email 
        FROM leave_requests lr 
        JOIN users u ON lr.user_id = u.user_id 
        WHERE lr.status = 'approved' 
-       AND CURDATE() BETWEEN lr.start_date AND lr.end_date
-       ORDER BY lr.start_date ASC`
-        );
+       AND CURDATE() BETWEEN lr.start_date AND lr.end_date`;
+        const params = [];
+
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            query += ' AND lr.tenant_slug = ?';
+            params.push(tenantSlug);
+        }
+
+        query += ' ORDER BY lr.start_date ASC';
+
+        const [rows] = await safeTenantQuery(dbName, query, params);
 
         // Ensure rows is always an array
         const usersArray = Array.isArray(rows) ? rows : (rows ? [rows] : []);
@@ -669,8 +716,8 @@ const getUsersOnLeave = async (req, res) => {
 // ADD LEAVE DAYS (Admin)
 // ============================================
 const addLeaveDays = async (req, res) => {
-    const tenantSlug = req.tenantSlug;
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
     const { user_id, days, reason, added_by } = req.body;
 
     try {
@@ -688,12 +735,12 @@ const addLeaveDays = async (req, res) => {
             });
         }
 
-        // Record the addition
+        // Record the addition with tenant_slug
         const result = await safeTenantExecute(
             dbName,
-            `INSERT INTO leave_day_additions (user_id, days, reason, added_by, created_at) 
-       VALUES (?, ?, ?, ?, CURDATE())`,
-            [user_id, days, reason, added_by || 1]
+            `INSERT INTO leave_day_additions (user_id, tenant_slug, days, reason, added_by, created_at) 
+       VALUES (?, ?, ?, ?, ?, CURDATE())`,
+            [user_id, tenantSlug, days, reason, added_by || 1]
         );
 
         const additionId = result.insertId;
@@ -783,8 +830,8 @@ const removeLeaveDays = async (req, res) => {
 // RECORD HOLIDAY COMPENSATION (Admin)
 // ============================================
 const recordHolidayCompensation = async (req, res) => {
-    const tenantSlug = req.tenantSlug;
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
     const { user_id, holiday_date, holiday_name, note, recorded_by } = req.body;
 
     try {
@@ -795,13 +842,13 @@ const recordHolidayCompensation = async (req, res) => {
             });
         }
 
-        // Record the holiday compensation
+        // Record the holiday compensation with tenant_slug
         const result = await safeTenantExecute(
             dbName,
-            `INSERT INTO holiday_compensations (user_id, holiday_date, holiday_name, note, recorded_by, created_at) 
-       VALUES (?, ?, ?, ?, ?, NOW())
+            `INSERT INTO holiday_compensations (user_id, tenant_slug, holiday_date, holiday_name, note, recorded_by, created_at) 
+       VALUES (?, ?, ?, ?, ?, ?, NOW())
        ON DUPLICATE KEY UPDATE note = VALUES(note), created_at = NOW()`,
-            [user_id, holiday_date, holiday_name, note || null, recorded_by || 1]
+            [user_id, tenantSlug, holiday_date, holiday_name, note || null, recorded_by || 1]
         );
 
         const compensationId = result.insertId;
@@ -841,11 +888,12 @@ const recordHolidayCompensation = async (req, res) => {
 // GET LEAVE BALANCE (User/Admin)
 // ============================================
 const getLeaveBalance = async (req, res) => {
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
     const userId = req.params.user_id || req.headers['x-user-id'];
 
     try {
-        const balance = await calculateLeaveBalance(dbName, userId);
+        const balance = await calculateLeaveBalance(dbName, userId, tenantSlug);
 
         return res.status(200).json({
             status: 'success',
@@ -866,22 +914,23 @@ const getLeaveBalance = async (req, res) => {
 // GET ALL LEAVE BALANCES (Admin)
 // ============================================
 const getAllLeaveBalances = async (req, res) => {
-    const dbName = req.tenant.db_name;
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
 
     try {
         // Get all users
         const [users] = await safeTenantQuery(
             dbName,
-            'SELECT user_id, name, email, annual_leave_balance FROM users ORDER BY name ASC'
+            'SELECT user_id, full_name, email, annual_leave_balance FROM users ORDER BY full_name ASC'
         );
 
         // Calculate balance for each user
         const balances = await Promise.all(
             users.map(async (user) => {
-                const balance = await calculateLeaveBalance(dbName, user.user_id);
+                const balance = await calculateLeaveBalance(dbName, user.user_id, tenantSlug);
                 return {
                     user_id: user.user_id,
-                    name: user.name,
+                    name: user.full_name,
                     email: user.email,
                     ...balance
                 };

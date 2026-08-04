@@ -140,6 +140,10 @@ const Container = styled.div`
   background: ${COLORS.bg};
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color: ${COLORS.text};
+  box-sizing: border-box;
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
 `;
 
 const Header = styled.div`
@@ -157,6 +161,11 @@ const HeaderContent = styled.div`
   align-items: center;
   flex-wrap: wrap;
   gap: 1rem;
+
+  @media (max-width: 900px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const Title = styled.h1`
@@ -167,6 +176,10 @@ const Title = styled.h1`
   align-items: center;
   gap: 0.625rem;
   color: ${COLORS.text};
+
+  @media (max-width: 900px) {
+    font-size: 1.25rem;
+  }
 `;
 
 const LiveBadge = styled.span`
@@ -200,6 +213,16 @@ const HeaderActions = styled.div`
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+
+  @media (max-width: 900px) {
+    flex-direction: column;
+    width: 100%;
+    
+    button {
+      width: 100%;
+      justify-content: center;
+    }
+  }
 `;
 
 const PrimaryButton = styled.button`
@@ -216,6 +239,7 @@ const PrimaryButton = styled.button`
   gap: 0.375rem;
   transition: ${COLORS.transition};
   box-shadow: ${COLORS.shadowSm};
+  white-space: nowrap;
 
   &:hover {
     background: ${COLORS.primaryDark};
@@ -243,6 +267,7 @@ const SecondaryButton = styled.button`
   align-items: center;
   gap: 0.375rem;
   transition: ${COLORS.transition};
+  white-space: nowrap;
 
   &:hover {
     background: ${COLORS.bg};
@@ -254,16 +279,19 @@ const MainContent = styled.div`
   max-width: 1400px;
   margin: 0 auto;
   padding: 1rem;
+
+  @media (max-width: 900px) {
+    padding: 0.75rem;
+  }
 `;
 
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.75rem;
   margin-bottom: 1rem;
 `;
 
-// Updated StatCard to handle deep solid colors
 const StatCard = styled.div`
   background: ${props => props.$bg || COLORS.surface};
   border-radius: ${COLORS.radiusSm};
@@ -335,11 +363,22 @@ const FilterRow = styled.div`
   align-items: center;
   flex-wrap: wrap;
   margin-bottom: ${props => props.$marginBottom || '0'};
+
+  @media (max-width: 900px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    
+    > div, > input, > select {
+      width: 100% !important;
+      min-width: 0 !important;
+    }
+  }
 `;
 
 const SearchInput = styled.input`
   flex: 1;
-  min-width: 250px;
+  min-width: 150px; 
   padding: 0.5rem 0.75rem;
   border: 1px solid ${COLORS.border};
   border-radius: ${COLORS.radiusSm};
@@ -352,6 +391,11 @@ const SearchInput = styled.input`
     outline: none;
     border-color: ${COLORS.primary};
     box-shadow: 0 0 0 3px ${COLORS.accentGlow || 'rgba(59, 130, 246, 0.1)'};
+  }
+
+  @media (max-width: 900px) {
+    width: 100%;
+    min-width: 0;
   }
 `;
 
@@ -415,6 +459,7 @@ const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
   font-size: 0.8125rem;
+  min-width: 800px;
 `;
 
 const TableHead = styled.thead`
@@ -450,6 +495,7 @@ const TableHeader = styled.th`
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  white-space: nowrap;
 `;
 
 const StatusBadge = styled.span`
@@ -457,7 +503,7 @@ const StatusBadge = styled.span`
   align-items: center;
   gap: 0.375rem;
   padding: 0.3rem 0.75rem;
-  border-radius:2rem;
+  border-radius: 2rem;
   font-size: 0.75rem;
   font-weight: 500;
   background: ${props => {
@@ -533,6 +579,10 @@ const Pagination = styled.div`
   border-top: 1px solid ${COLORS.border};
   flex-wrap: wrap;
   gap: 0.5rem;
+
+  @media (max-width: 900px) {
+    justify-content: center;
+  }
 `;
 
 const PageInfo = styled.span`
@@ -544,6 +594,8 @@ const PageButtons = styled.div`
   display: flex;
   gap: 0.25rem;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
 `;
 
 const PageButton = styled.button`
@@ -593,7 +645,7 @@ const Drawer = styled.div`
   top: 0;
   right: 0;
   bottom: 0;
-  width: 480px;
+  width: ${props => props.$w || '480px'};
   max-width: 100%;
   background: ${COLORS.surface};
   box-shadow: ${COLORS.shadowLg};
@@ -602,6 +654,10 @@ const Drawer = styled.div`
   transition: transform 0.3s ease;
   display: flex;
   flex-direction: column;
+
+  @media (max-width: 900px) {
+    width: 100%;
+  }
 `;
 
 const DrawerHeader = styled.div`
@@ -611,6 +667,8 @@ const DrawerHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   background: ${COLORS.bg};
+  flex-wrap: wrap;
+  gap: 0.5rem;
 `;
 
 const DrawerTitle = styled.h2`
@@ -630,6 +688,7 @@ const DrawerBody = styled.div`
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
+  -webkit-overflow-scrolling: touch;
 `;
 
 const DrawerFooter = styled.div`
@@ -642,7 +701,7 @@ const DrawerFooter = styled.div`
 
 const DetailGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
 `;
@@ -678,6 +737,7 @@ const ToastContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  max-width: calc(100% - 2rem);
 `;
 
 const Toast = styled.div`
@@ -693,6 +753,27 @@ const Toast = styled.div`
   background: ${props => props.type === 'error' ? COLORS.dangerLight : COLORS.successLight};
   color: ${props => props.type === 'error' ? COLORS.dangerDark : COLORS.successDark};
   border: 1px solid ${props => props.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'};
+
+  span {
+    flex: 1;
+  }
+`;
+
+const ToastCloseBtn = styled.button`
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 1.125rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 0.5rem;
+  opacity: 0.6;
+  transition: ${COLORS.transition};
+
+  &:hover {
+    opacity: 1;
+  }
 `;
 
 const getTenantSlugFunc = getTenantSlug;
@@ -735,10 +816,14 @@ const HearseBookings = () => {
   });
   const [registerLoading, setRegisterLoading] = useState(false);
 
-  const showToast = useCallback((msg, type = 'success') => {
-    setToasts(p => [...p, { id: Date.now(), message: msg, type }]);
-  }, []);
   const removeToast = useCallback((id) => setToasts(p => p.filter(t => t.id !== id)), []);
+  const showToast = useCallback((msg, type = 'success') => {
+    const id = Date.now();
+    setToasts(p => [...p, { id, message: msg, type }]);
+    setTimeout(() => {
+      setToasts(p => p.filter(t => t.id !== id));
+    }, type === 'error' ? 6000 : 4000);
+  }, []);
 
   const getDateRange = useCallback((filter) => {
     const today = new Date(), ts = formatDateStr(today);
@@ -770,10 +855,24 @@ const HearseBookings = () => {
 
   useEffect(() => {
     if (!socket) return;
-    socket.on('new_booking', (d) => { setBookings(p => [d.booking, ...p]); showToast('New booking!'); });
-    socket.on('booking_status_updated', (d) => { setBookings(p => p.map(b => b.booking_id === d.booking_id ? { ...b, status: d.status, ...d.booking } : b)); });
+    socket.on('new_booking', (d) => {
+      if (d.booking) {
+        setBookings(p => [d.booking, ...p]);
+        const code = d.booking.booking_code || `BK-${d.booking.booking_id}`;
+        const client = d.booking.client_name || 'Client';
+        const destination = d.booking.destination || '';
+        showToast(`New booking: ${code} - ${client}${destination ? ' to ' + destination : ''}`);
+      }
+    });
+    socket.on('booking_status_updated', (d) => {
+      setBookings(p => p.map(b => b.booking_id === d.booking_id ? { ...b, status: d.status, ...d.booking } : b));
+    });
     socket.on('booking_postponed', () => loadData());
-    return () => { socket.off('new_booking'); socket.off('booking_status_updated'); socket.off('booking_postponed'); };
+    return () => {
+      socket.off('new_booking');
+      socket.off('booking_status_updated');
+      socket.off('booking_postponed');
+    };
   }, [socket, showToast, loadData]);
 
   const filtered = useMemo(() => {
@@ -853,14 +952,28 @@ const HearseBookings = () => {
     setPrefillDate(dateStr);
     const initialDates = dateStr ? [dateStr] : [];
     setSelectedBookingDates(initialDates);
-    // Auto-fill branch from localStorage user data
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : {};
     const userBranchId = user?.branch_id || '';
     const userBranchCode = user?.branch_code || '';
-    setNewForm({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: initialDates, branch_id: userBranchId, booking_date: dateStr || '' });
+    const dbName = user?.dbName || user?.branchDbName || '';
+    const branchName = dbName.split('-').pop() || '';
+    
+    setNewForm({ 
+      hearse_id: '', 
+      client_name: '', 
+      client_phone: '', 
+      from_location: '', 
+      to_location: '', 
+      destination: '', 
+      booking_dates: initialDates, 
+      branch_id: userBranchId, 
+      branch_code: branchName,
+      booking_date: dateStr || '' 
+    });
     setNewBookingOpen(true);
   }, []);
+  
   const closeNewBooking = useCallback(() => {
     setNewBookingOpen(false);
     setPrefillDate('');
@@ -881,17 +994,29 @@ const HearseBookings = () => {
     setDatePickerOpen(false);
   };
 
-  // Handle multiple dates from HearseCalendar
   const onCreateBooking = useCallback((dates) => {
     if (!dates || dates.length === 0) return;
     const dateStr = dates[0];
     setPrefillDate(dateStr);
     setSelectedBookingDates(dates);
-    // Auto-fill branch from localStorage user data
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : {};
     const userBranchId = user?.branch_id || '';
-    setNewForm({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: dates, branch_id: userBranchId, booking_date: dateStr || '' });
+    const dbName = user?.dbName || user?.branchDbName || '';
+    const branchName = dbName.split('-').pop() || '';
+    
+    setNewForm({ 
+      hearse_id: '', 
+      client_name: '', 
+      client_phone: '', 
+      from_location: '', 
+      to_location: '', 
+      destination: '', 
+      booking_dates: dates, 
+      branch_id: userBranchId, 
+      branch_code: branchName,
+      booking_date: dateStr || '' 
+    });
     setNewBookingOpen(true);
   }, []);
 
@@ -917,13 +1042,13 @@ const HearseBookings = () => {
         client_name: newForm.client_name,
         client_phone: newForm.client_phone || '',
         from_location: newForm.from_location,
-        destination: newForm.to_location,  // Backend expects 'destination' field
+        destination: newForm.to_location,
         from_timestamp: firstBookingDate,
         booking_date: firstBookingDate,
         booking_dates: selectedBookingDates,
         booked_by: user?.email || 'system',
         branch_id: newForm.branch_id || user?.branch_id || '',
-        branch_code: user?.branch_code || ''
+        branch_code: newForm.branch_code || user?.branch_code || ''
       };
 
       const response = await fetch(`${API_BASE_URL}/hearse-bookings`, {
@@ -947,10 +1072,20 @@ const HearseBookings = () => {
   }, [newForm, showToast, closeNewBooking, loadData]);
 
   const calendarItems = useMemo(() => {
-    return bookings.map(b => ({
-      ...b,
-      date: formatDateStr(b.booking_date || b.estimated_departure_time),
-    }));
+    const items = [];
+    bookings.forEach(b => {
+      let bookingDates = [];
+      try {
+        bookingDates = typeof b.booking_dates === 'string' ? JSON.parse(b.booking_dates) : (b.booking_dates || []);
+      } catch {
+        const fallback = b.booking_date || b.estimated_departure_time;
+        if (fallback) bookingDates = [formatDateStr(fallback)];
+      }
+      bookingDates.forEach((dateStr) => {
+        items.push({ ...b, date: dateStr });
+      });
+    });
+    return items;
   }, [bookings]);
 
   const getBookingTime = useCallback((item) => {
@@ -1125,7 +1260,7 @@ const HearseBookings = () => {
           </FilterRow>
 
           <FilterRow $marginBottom="0.5rem">
-            <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ minWidth: '180px' }}>
+            <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
               <option value="">All Statuses</option>
               {STATUS_LIST.map((status) => {
                 const cfg = STATUS_CONFIG[status];
@@ -1143,7 +1278,7 @@ const HearseBookings = () => {
         <TableCard>
           {viewMode === 'table' && (
             <>
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <Table>
                   <TableHead>
                     <tr>
@@ -1303,121 +1438,231 @@ const HearseBookings = () => {
           <>
             <DrawerHeader>
               <div>
-                <DrawerTitle>
-                  {selectedBooking.booking_code || genId(selectedBooking.booking_id, selectedBooking.plate_number || selectedBooking.number_plate)}
-                </DrawerTitle>
+                <DrawerTitle>Booking Details</DrawerTitle>
                 <DrawerSubtitle>
-                  <StatusBadge $status={selectedBooking.status}>
-                    {STATUS_CONFIG[selectedBooking.status]?.label || selectedBooking.status}
-                  </StatusBadge>
+                  ID: {selectedBooking.booking_code || genId(selectedBooking.booking_id, selectedBooking.plate_number || selectedBooking.number_plate)}
                 </DrawerSubtitle>
               </div>
-              <ActionButton onClick={closeDrawer}>{Icons.x}</ActionButton>
+              <ActionButton 
+                onClick={closeDrawer}
+                style={{ 
+                  background: COLORS.danger,
+                  color: COLORS.white,
+                  padding: '0.5rem 1rem',
+                  borderRadius: COLORS.radiusSm,
+                  fontSize: '0.8125rem',
+                  fontWeight: 500
+                }}
+              >
+                ← Back to List
+              </ActionButton>
             </DrawerHeader>
             <DrawerBody>
-              <div style={{
-                display: 'flex',
-                gap: '1rem',
-                marginBottom: '1.5rem',
-                padding: '1rem',
-                background: COLORS.bg,
-                borderRadius: COLORS.radiusSm,
-                alignItems: 'center'
-              }}>
-                <div style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: COLORS.radiusSm,
-                  background: COLORS.infoLight,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: COLORS.info,
-                  flexShrink: 0
+              {/* Client Information */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ 
+                  fontSize: '0.75rem', 
+                  fontWeight: 700, 
+                  color: COLORS.textSecondary, 
+                  marginBottom: '0.75rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em'
                 }}>
-                  {Icons.truck}
+                  Client Information
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.15rem' }}>
-                    {selectedBooking.hearse_name || 'Vehicle'}
-                  </div>
-                  <div style={{ fontSize: '0.82rem', color: COLORS.textSecondary }}>
-                    <span style={{
-                      fontSize: '0.75rem',
-                      padding: '0.25rem 0.5rem',
-                      background: COLORS.surface,
-                      borderRadius: '0.25rem',
-                      border: `1px solid ${COLORS.border}`
+                <div style={{
+                  padding: '1rem',
+                  background: COLORS.bg,
+                  borderRadius: COLORS.radiusSm,
+                  border: `1px solid ${COLORS.border}`
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '0.75rem',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.25rem', textTransform: 'uppercase' }}>
+                        Client Name
+                      </div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: COLORS.text }}>
+                        {selectedBooking.client_name || '—'}
+                      </div>
+                    </div>
+                    <StatusBadge $status={selectedBooking.status} style={{
+                      fontSize: '0.8125rem',
+                      padding: '0.4rem 0.875rem'
                     }}>
-                      {selectedBooking.plate_number || selectedBooking.number_plate || 'N/A'}
-                    </span>
-                    {selectedBooking.model && <span style={{ marginLeft: '0.5rem' }}>{selectedBooking.model}</span>}
+                      {STATUS_CONFIG[selectedBooking.status]?.label || selectedBooking.status}
+                    </StatusBadge>
                   </div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: COLORS.primary, marginTop: '0.35rem' }}>
-                    {selectedBooking.client_name}
+                  {selectedBooking.client_phone && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.625rem',
+                      background: COLORS.surface,
+                      borderRadius: COLORS.radiusXs,
+                      marginBottom: '0.5rem'
+                    }}>
+                      <span style={{ fontSize: '0.75rem', color: COLORS.textSecondary }}>📞</span>
+                      <span style={{ fontSize: '0.875rem', color: COLORS.text }}>{selectedBooking.client_phone}</span>
+                    </div>
+                  )}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.625rem',
+                    background: COLORS.surface,
+                    borderRadius: COLORS.radiusXs
+                  }}>
+                    <span style={{ fontSize: '0.75rem', color: COLORS.textSecondary }}>👤</span>
+                    <span style={{ fontSize: '0.875rem', color: COLORS.text }}>
+                      Booked by: {selectedBooking.booked_by_name || selectedBooking.booked_by || user?.email || 'System'}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <DetailGrid>
-                <DetailItem>
-                  <DetailLabel>Client</DetailLabel>
-                  <DetailValue>{selectedBooking.client_name}</DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Phone</DetailLabel>
-                  <DetailValue>{selectedBooking.client_phone || '—'}</DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>From</DetailLabel>
-                  <DetailValue>{selectedBooking.from_location || '—'}</DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>To</DetailLabel>
-                  <DetailValue>{selectedBooking.to_location || '—'}</DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Branch</DetailLabel>
-                  <DetailValue>
-                    {selectedBooking.branch_name || branchOptions.find(b => String(b.branch_id) === String(selectedBooking.branch_id))?.branch_name || selectedBooking.branch_code || '—'}
-                  </DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Date</DetailLabel>
-                  <DetailValue>{fmtDateOnly(selectedBooking.booking_date || selectedBooking.estimated_departure_time)}</DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Status</DetailLabel>
-                  <DetailValue>
-                    <StatusBadge $status={selectedBooking.status}>
-                      {STATUS_CONFIG[selectedBooking.status]?.label || selectedBooking.status}
-                    </StatusBadge>
-                  </DetailValue>
-                </DetailItem>
-                {selectedBooking.end_date && (
-                  <DetailItem>
-                    <DetailLabel>End Date</DetailLabel>
-                    <DetailValue>{fmtDateOnly(selectedBooking.end_date)}</DetailValue>
-                  </DetailItem>
-                )}
-                <DetailItem>
-                  <DetailLabel>Booked By</DetailLabel>
-                  <DetailValue>{selectedBooking.booked_by_name || selectedBooking.booked_by || user?.email || '—'}</DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Created</DetailLabel>
-                  <DetailValue>{fmtDate(selectedBooking.created_at)}</DetailValue>
-                </DetailItem>
-                {selectedBooking.updated_at && (
-                  <DetailItem>
-                    <DetailLabel>Updated</DetailLabel>
-                    <DetailValue>{fmtDate(selectedBooking.updated_at)}</DetailValue>
-                  </DetailItem>
-                )}
-              </DetailGrid>
+              {/* Trip Details */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: COLORS.textSecondary, marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Trip Details
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
+                  <div style={{ padding: '1rem', background: COLORS.bg, borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.border}` }}>
+                    <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.375rem', textTransform: 'uppercase' }}>
+                      From Location
+                    </div>
+                    <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: COLORS.text }}>
+                      {selectedBooking.from_location || '—'}
+                    </div>
+                  </div>
+                  <div style={{ padding: '1rem', background: COLORS.bg, borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.border}` }}>
+                    <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.375rem', textTransform: 'uppercase' }}>
+                      To / Destination
+                    </div>
+                    <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: COLORS.text }}>
+                      {selectedBooking.to_location || selectedBooking.destination || '—'}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
+              {/* Vehicle Information */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: COLORS.textSecondary, marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Vehicle Information
+                </div>
+                <div style={{ padding: '1rem', background: COLORS.bg, borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.25rem', textTransform: 'uppercase' }}>
+                        Hearse Name
+                      </div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: COLORS.text }}>
+                        {selectedBooking.hearse_name || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ padding: '0.625rem', background: COLORS.surface, borderRadius: COLORS.radiusXs, display: 'inline-block' }}>
+                    <span style={{ fontSize: '0.75rem', color: COLORS.textSecondary, marginRight: '0.5rem' }}>Plate Number:</span>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: COLORS.text }}>
+                      {selectedBooking.plate_number || selectedBooking.number_plate || 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Schedule */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: COLORS.textSecondary, marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Schedule
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
+                  <div style={{ padding: '1rem', background: COLORS.bg, borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.border}` }}>
+                    <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.375rem', textTransform: 'uppercase' }}>
+                      Booking Date
+                    </div>
+                    <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: COLORS.text }}>
+                      {fmtDateOnly(selectedBooking.booking_date || selectedBooking.estimated_departure_time)}
+                    </div>
+                  </div>
+                  {selectedBooking.delivery_time && (
+                    <div style={{ padding: '1rem', background: COLORS.bg, borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.border}` }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.375rem', textTransform: 'uppercase' }}>
+                        Delivery Time
+                      </div>
+                      <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: COLORS.text }}>
+                        {selectedBooking.delivery_time}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Additional Information */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: COLORS.textSecondary, marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Additional Information
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
+                  <div style={{ padding: '0.875rem', background: COLORS.bg, borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.border}` }}>
+                    <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.25rem', textTransform: 'uppercase' }}>
+                      Branch
+                    </div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 500, color: COLORS.text }}>
+                      {selectedBooking.branch_name || branchOptions.find(b => String(b.branch_id) === String(selectedBooking.branch_id))?.branch_name || selectedBooking.branch_code || '—'}
+                    </div>
+                  </div>
+                  {selectedBooking.end_date && (
+                    <div style={{ padding: '0.875rem', background: COLORS.bg, borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.border}` }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.25rem', textTransform: 'uppercase' }}>
+                        End Date (Multi-day)
+                      </div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 500, color: COLORS.text }}>
+                        {fmtDateOnly(selectedBooking.end_date)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Timestamps */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: COLORS.textSecondary, marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Timestamps
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
+                  <div style={{ padding: '0.875rem', background: COLORS.bg, borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.border}` }}>
+                    <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.25rem', textTransform: 'uppercase' }}>
+                      Created At
+                    </div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 500, color: COLORS.text }}>
+                      {fmtDate(selectedBooking.created_at)}
+                    </div>
+                  </div>
+                  {selectedBooking.updated_at && (
+                    <div style={{ padding: '0.875rem', background: COLORS.bg, borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.border}` }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.25rem', textTransform: 'uppercase' }}>
+                        Last Updated
+                      </div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 500, color: COLORS.text }}>
+                        {fmtDate(selectedBooking.updated_at)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Actions */}
               <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: '1.25rem' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: COLORS.textSecondary, marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Quick Actions
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -1425,7 +1670,7 @@ const HearseBookings = () => {
                     <PrimaryButton
                       key={s}
                       onClick={() => changeStatus(selectedBooking.booking_id || selectedBooking.id, s)}
-                      style={{ fontSize: '0.8125rem', padding: '0.5rem 0.875rem' }}
+                      style={{ fontSize: '0.8125rem', padding: '0.625rem 1rem' }}
                     >
                       Move to {STATUS_CONFIG[s].label}
                     </PrimaryButton>
@@ -1439,7 +1684,7 @@ const HearseBookings = () => {
 
       {/* Register New Hearse Drawer */}
       {registerHearseOpen && <DrawerOverlay onClick={() => setRegisterHearseOpen(false)} />}
-      <Drawer $open={registerHearseOpen} style={{ width: '520px' }}>
+      <Drawer $open={registerHearseOpen} $w="520px">
         <DrawerHeader style={{ background: COLORS.successDark }}>
           <div>
             <DrawerTitle style={{ color: COLORS.white }}>Register New Hearse</DrawerTitle>
@@ -1470,7 +1715,6 @@ const HearseBookings = () => {
               showToast('Hearse registered successfully!');
               setRegisterHearseOpen(false);
               setHearseForm({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_code: '' });
-              // Reload hearses
               const hrs = await api.getAllHearses();
               setAllHearses(hrs);
             } catch (e) {
@@ -1478,7 +1722,7 @@ const HearseBookings = () => {
             }
             setRegisterLoading(false);
           }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.375rem', fontSize: '0.8125rem', color: COLORS.text }}>
                   Plate Number *
@@ -1504,7 +1748,7 @@ const HearseBookings = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.375rem', fontSize: '0.8125rem', color: COLORS.text }}>
                   Model
@@ -1544,7 +1788,7 @@ const HearseBookings = () => {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <SecondaryButton type="button" onClick={() => setRegisterHearseOpen(false)}>
                 Cancel
               </SecondaryButton>
@@ -1558,7 +1802,7 @@ const HearseBookings = () => {
 
       {/* New Booking Drawer */}
       {newBookingOpen && <DrawerOverlay onClick={closeNewBooking} />}
-      <Drawer $open={newBookingOpen} style={{ width: '600px' }}>
+      <Drawer $open={newBookingOpen} $w="600px">
         <DrawerHeader style={{ background: COLORS.primaryDark }}>
           <div>
             <DrawerTitle style={{ color: COLORS.white }}>New Hearse Booking</DrawerTitle>
@@ -1568,21 +1812,13 @@ const HearseBookings = () => {
         </DrawerHeader>
         <DrawerBody>
           <form onSubmit={handleNewBooking}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.375rem', fontSize: '0.8125rem', color: COLORS.text }}>
                   Client Name *
                 </label>
                 <input
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem 0.75rem',
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: COLORS.radiusSm,
-                    fontSize: '0.8125rem',
-                    color: COLORS.text,
-                    background: COLORS.surface
-                  }}
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${COLORS.border}`, borderRadius: COLORS.radiusSm, fontSize: '0.8125rem', color: COLORS.text, background: COLORS.surface }}
                   placeholder="Full name"
                   value={newForm.client_name}
                   onChange={e => setNewForm(p => ({ ...p, client_name: e.target.value }))}
@@ -1594,15 +1830,7 @@ const HearseBookings = () => {
                   Phone
                 </label>
                 <input
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem 0.75rem',
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: COLORS.radiusSm,
-                    fontSize: '0.8125rem',
-                    color: COLORS.text,
-                    background: COLORS.surface
-                  }}
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${COLORS.border}`, borderRadius: COLORS.radiusSm, fontSize: '0.8125rem', color: COLORS.text, background: COLORS.surface }}
                   placeholder="0712 345 678"
                   value={newForm.client_phone}
                   onChange={e => setNewForm(p => ({ ...p, client_phone: e.target.value }))}
@@ -1610,21 +1838,13 @@ const HearseBookings = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.375rem', fontSize: '0.8125rem', color: COLORS.text }}>
                   Select Hearse *
                 </label>
                 <select
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem 0.75rem',
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: COLORS.radiusSm,
-                    fontSize: '0.8125rem',
-                    color: COLORS.text,
-                    background: COLORS.surface
-                  }}
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${COLORS.border}`, borderRadius: COLORS.radiusSm, fontSize: '0.8125rem', color: COLORS.text, background: COLORS.surface }}
                   value={newForm.hearse_id}
                   onChange={e => setNewForm(p => ({ ...p, hearse_id: e.target.value }))}
                   required
@@ -1684,7 +1904,7 @@ const HearseBookings = () => {
             {datePickerOpen && (
               <div style={{
                 position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 99999,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(3px)'
+                display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(3px)', padding: '1rem'
               }} onClick={() => setDatePickerOpen(false)}>
                 <div style={{
                   background: '#fff', borderRadius: '12px', width: '440px', maxWidth: '100%',
@@ -1729,7 +1949,7 @@ const HearseBookings = () => {
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       marginBottom: '0.75rem', padding: '0.25rem 0'
                     }}>
-                      <button style={{
+                      <button type="button" style={{
                         width: '30px', height: '30px', borderRadius: '8px', border: '1px solid #e2e8f0',
                         background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: '#334155', fontSize: '16px'
@@ -1742,7 +1962,7 @@ const HearseBookings = () => {
                       <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
                         {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][pickerMonth]} {pickerYear}
                       </div>
-                      <button style={{
+                      <button type="button" style={{
                         width: '30px', height: '30px', borderRadius: '8px', border: '1px solid #e2e8f0',
                         background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: '#334155', fontSize: '16px'
@@ -1805,21 +2025,13 @@ const HearseBookings = () => {
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.375rem', fontSize: '0.8125rem', color: COLORS.text }}>
                   From Location *
                 </label>
                 <input
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem 0.75rem',
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: COLORS.radiusSm,
-                    fontSize: '0.8125rem',
-                    color: COLORS.text,
-                    background: COLORS.surface
-                  }}
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${COLORS.border}`, borderRadius: COLORS.radiusSm, fontSize: '0.8125rem', color: COLORS.text, background: COLORS.surface }}
                   placeholder="e.g., Nairobi CBD"
                   value={newForm.from_location}
                   onChange={e => setNewForm(p => ({ ...p, from_location: e.target.value }))}
@@ -1831,15 +2043,7 @@ const HearseBookings = () => {
                   To Location *
                 </label>
                 <input
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem 0.75rem',
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: COLORS.radiusSm,
-                    fontSize: '0.8125rem',
-                    color: COLORS.text,
-                    background: COLORS.surface
-                  }}
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${COLORS.border}`, borderRadius: COLORS.radiusSm, fontSize: '0.8125rem', color: COLORS.text, background: COLORS.surface }}
                   placeholder="e.g., Karen Memorial Park"
                   value={newForm.to_location}
                   onChange={e => setNewForm(p => ({ ...p, to_location: e.target.value }))}
@@ -1853,23 +2057,14 @@ const HearseBookings = () => {
                 Branch (auto-filled from profile)
               </label>
               <input
-                style={{
-                  width: '100%',
-                  padding: '0.5rem 0.75rem',
-                  border: `1px solid ${COLORS.borderLight}`,
-                  borderRadius: COLORS.radiusSm,
-                  fontSize: '0.8125rem',
-                  color: COLORS.textSecondary,
-                  background: COLORS.bg,
-                  cursor: 'not-allowed'
-                }}
+                style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${COLORS.borderLight}`, borderRadius: COLORS.radiusSm, fontSize: '0.8125rem', color: COLORS.textSecondary, background: COLORS.bg, cursor: 'not-allowed' }}
                 value={newForm.branch_id ? (branchOptions.find(b => String(b.branch_id) === String(newForm.branch_id))?.branch_name || `Branch #${newForm.branch_id}`) : 'Auto-filled from your profile'}
                 disabled
                 readOnly
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <SecondaryButton type="button" onClick={closeNewBooking}>
                 Cancel
               </SecondaryButton>
@@ -1883,7 +2078,12 @@ const HearseBookings = () => {
 
       {/* Toasts */}
       <ToastContainer>
-        {toasts.map((t) => <Toast key={t.id} type={t.type} onDone={() => removeToast(t.id)}>{t.message}</Toast>)}
+        {toasts.map((t) => (
+          <Toast key={t.id} type={t.type}>
+            <span>{t.message}</span>
+            <ToastCloseBtn onClick={() => removeToast(t.id)} aria-label="Dismiss notification">×</ToastCloseBtn>
+          </Toast>
+        ))}
       </ToastContainer>
     </Container>
   );

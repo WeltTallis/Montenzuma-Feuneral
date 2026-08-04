@@ -55,4 +55,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
 
 # Start application with dumb-init
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "services/auth-service/server.js"]
+CMD ["npx", "tsx", "services/auth-service/server.ts"]

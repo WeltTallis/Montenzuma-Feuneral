@@ -1,14 +1,4 @@
-/**
- * Auth Service - Secure Authentication Microservice
- *
- * TypeScript rewrite with enterprise-grade security:
- * - Helmet (HTTP headers security)
- * - HPP (HTTP parameter pollution protection)
- * - express-session (persistent sessions with Redis store)
- * - CSRF protection (double-submit cookie pattern)
- * - Rate limiting (brute force protection)
- * - JWT tokens with per-tenant secrets
- */
+
 
 import path from 'path';
 import dotenv from 'dotenv';
@@ -56,13 +46,11 @@ const corsOptions: cors.CorsOptions = {
   maxAge: 86400, // 24h preflight cache
 };
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
 // 1c. HPP - prevent HTTP parameter pollution
 app.use(hpp({
-  whitelist: ['page', 'limit', 'status', 'search'], // allow duplicate query params for pagination
+  whitelist: ['page', 'limit', 'status', 'search'], 
 }));
-
 // 1d. Body parsing with limits
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));

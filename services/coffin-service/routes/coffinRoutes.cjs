@@ -1,100 +1,60 @@
 const { Router } = require('express');
 const multer = require('multer');
-
-// Create inline handlers so the router always has valid functions
-const inlineHandlers = {
-  createCoffin: async (req, res) => res.status(503).json({ success: false, message: 'Coffin service loading' }),
-  getAllCoffins: async (req, res) => res.status(503).json({ success: false, message: 'Coffin service loading' }),
-  getCoffinById: async (req, res) => res.status(503).json({ success: false, message: 'Coffin service loading' }),
-  updateCoffin: async (req, res) => res.status(503).json({ success: false, message: 'Coffin service loading' }),
-  deleteCoffin: async (req, res) => res.status(503).json({ success: false, message: 'Coffin service loading' }),
-  assignCoffin: async (req, res) => res.status(503).json({ success: false, message: 'Coffin service loading' }),
-  getCoffinAnalytics: async (req, res) => res.status(503).json({ success: false, message: 'Coffin service loading' }),
-  healthCheck: async (req, res) => res.status(200).json({ status: 'UP', service: 'coffin-service' }),
-};
-
-// Load the JavaScript controller bridge (works with CommonJS)
-let coffinController = { ...inlineHandlers };
-try {
-  console.log('[COFFIN] Loading controller...');
-  const loaded = require('../controllers/coffinController.cjs');
-  console.log('[COFFIN] Controller loaded:', typeof loaded);
-  if (loaded && typeof loaded.createCoffin === 'function') {
-    coffinController = loaded;
-    console.log('[COFFIN] Using controller functions');
-  } else {
-    console.log('[COFFIN] Controller missing functions, using fallback');
-  }
-} catch (e) {
-  console.error('[COFFIN] Failed to load controller:', e.message);
-  console.error('[COFFIN] Stack:', e.stack);
-  // Fallback already set
-}
-
-// Middleware - try to load global, fallback to passthrough
-let authenticateToken = (req, res, next) => next();
-let tenantMiddleware = (req, res, next) => next();
-try {
-  const mw = require('../../global/middlewares');
-  if (mw.authenticateToken) authenticateToken = mw.authenticateToken;
-  if (mw.tenantMiddleware) tenantMiddleware = mw.tenantMiddleware;
-} catch (e) {
-  // Global middleware not available, using passthrough
-}
+const coffinController = require('../controllers/coffinController.cjs');
+const logger = require('../../../packages/shared-logger/dist/index').default;
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// Apply tenant and auth middleware
-router.use(tenantMiddleware);
-router.use(authenticateToken);
+// Apply tenant and auth middleware (passthrough - server.js handles tenant resolution)
+router.use((req, res, next) => next());
 
 // ============================================================
-// COFFIN CRUD - match paths sent by API Gateway proxy
+// COFFIN CRUD
 // ============================================================
-// Gateway sends: POST /api/v1/restpoint/coffins → server mounts at /api/v1/restpoint/coffins → matches /
-// Gateway sends: POST /api/v1/restpoint/coffins/register → matches /register
-// Gateway sends: POST /api/v1/restpoint/coffins/create → matches /create
-router.post('/', upload.array('images', 10), (req, res) => coffinController.createCoffin(req, res));
-router.post('/register', upload.array('images', 10), (req, res) => coffinController.createCoffin(req, res));
-router.post('/create', upload.array('images', 10), (req, res) => coffinController.createCoffin(req, res));
+router.post('/', upload.array('images', 10), coffinController.createCoffin);
+router.post('/register', upload.array('images', 10), coffinController.createCoffin);
+router.post('/create', upload.array('images', 10), coffinController.createCoffin);
 
-router.get('/', (req, res) => coffinController.getAllCoffins(req, res));
-router.get('/all-coffins', (req, res) => coffinController.getAllCoffins(req, res));
-router.get('/list', (req, res) => coffinController.getAllCoffins(req, res));
-router.get('/coffins-list', (req, res) => coffinController.getAllCoffins(req, res));
+router.get('/', coffinController.getAllCoffins);
+router.get('/all-coffins', coffinController.getAllCoffins);
+router.get('/list', coffinController.getAllCoffins);
+router.get('/coffins-list', coffinController.getAllCoffins);
 
-router.get('/detail/:id', (req, res) => coffinController.getCoffinById(req, res));
-router.get('/:id', (req, res) => coffinController.getCoffinById(req, res));
+// Bookings (must be before /:id to avoid route conflicts)
+router.get('/bookings', coffinController.getAllBookings);
+router.get('/bookings/list', coffinController.getAllBookings);
+router.post('/bookings', coffinController.createBooking);
+router.get('/bookings/:id', coffinController.getBookingById);
+router.patch('/bookings/:id/status', coffinController.updateBookingStatus);
+router.patch('/bookings/:id/payment', coffinController.markBookingPaid);
 
-router.put('/:id', upload.array('images', 10), (req, res) => coffinController.updateCoffin(req, res));
-router.put('/update/:id', upload.array('images', 10), (req, res) => coffinController.updateCoffin(req, res));
-
-router.delete('/:id', (req, res) => coffinController.deleteCoffin(req, res));
-router.delete('/delete/:id', (req, res) => coffinController.deleteCoffin(req, res));
+// Stock Requests (must be before /:id to avoid route conflicts)
+router.get('/stock-requests', coffinController.getAllStockRequests);
+router.post('/stock-requests', coffinController.createStockRequest);
+router.get('/stock-requests/:id', coffinController.getStockRequestById);
+router.post('/stock-requests/:id/approve', coffinController.approveStockRequest);
+router.post('/stock-requests/:id/reject', coffinController.rejectStockRequest);
+router.post('/stock-requests/:id/transferring', coffinController.markStockRequestTransferring);
+router.post('/stock-requests/:id/delivered', coffinController.markStockRequestDelivered);
 
 // Assignments
-router.post('/assign', (req, res) => coffinController.assignCoffin(req, res));
-
-// ============================================================
-// BOOKINGS
-// ============================================================
-router.post('/bookings', (req, res) => coffinController.createBooking(req, res));
-router.get('/bookings', (req, res) => coffinController.getBookings(req, res));
-router.patch('/bookings/:id/status', (req, res) => coffinController.updateBookingStatus(req, res));
-
-// ============================================================
-// CROSS-BRANCH STOCK REQUESTS
-// ============================================================
-router.post('/stock-requests', (req, res) => coffinController.createStockRequest(req, res));
-router.get('/stock-requests', (req, res) => coffinController.getStockRequests(req, res));
-router.post('/stock-requests/:id/approve', (req, res) => coffinController.approveStockRequest(req, res));
-router.post('/stock-requests/:id/reject', (req, res) => coffinController.rejectStockRequest(req, res));
+router.post('/assign', coffinController.assignCoffin);
 
 // Analytics
-router.get('/analytics/dashboard', (req, res) => coffinController.getCoffinAnalytics(req, res));
+router.get('/analytics/dashboard', coffinController.getCoffinAnalytics);
+
+// CRUD operations (/:id must be after specific routes)
+router.get('/detail/:id', coffinController.getCoffinById);
+router.get('/:id', coffinController.getCoffinById);
+
+router.put('/:id', upload.array('images', 10), coffinController.updateCoffin);
+router.put('/update/:id', upload.array('images', 10), coffinController.updateCoffin);
+
+router.delete('/:id', coffinController.deleteCoffin);
+router.delete('/delete/:id', coffinController.deleteCoffin);
 
 // Health
-router.get('/health', (req, res) => coffinController.healthCheck(req, res));
+router.get('/health', coffinController.healthCheck);
 
 module.exports = router;

@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS stock_requests (
     service_date DATE,
     notes TEXT,
     specifications JSON,
+    req_type ENUM('client', 'replenishment') DEFAULT 'replenishment',
     status ENUM('pending', 'approved', 'rejected', 'transferring', 'delivered') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -118,6 +119,7 @@ CREATE TABLE IF NOT EXISTS stock_requests (
     INDEX idx_from_branch (from_branch_id),
     INDEX idx_to_branch (to_branch_id),
     INDEX idx_status (status),
+    INDEX idx_req_type (req_type),
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

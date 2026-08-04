@@ -350,16 +350,7 @@ const ApplyLeave = () => {
         setLoading(true);
 
         try {
-            const submitData = {
-                ...formData,
-                user_id: getUserId()
-            };
-
-            // ENDPOINTS.LEAVE.APPLY is a function: (slug) => `/leaves/${slug}/apply`
-            const endpoint = typeof ENDPOINTS.LEAVE.APPLY === 'function'
-                ? ENDPOINTS.LEAVE.APPLY(tenantSlug)
-                : ENDPOINTS.LEAVE.APPLY;
-            const response = await api.post(endpoint, submitData);
+            const submitData = { leave_type: formData.leave_type, priority: formData.priority, start_date: formData.start_date, end_date: formData.end_date, reason: formData.reason, is_half_day: formData.is_half_day, user_id: getUserId(), user_name: formData.user_name, user_email: formData.user_email, user_branch: formData.user_branch, user_role: formData.user_role }; const response = await api.post(ENDPOINTS.LEAVE.APPLY, submitData);
 
             if (response?.data?.status === 'success') {
                 setSuccess('Leave request submitted successfully!');

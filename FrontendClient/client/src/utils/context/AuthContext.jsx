@@ -79,14 +79,48 @@ export const AuthProvider = ({ children }) => {
                     sessionStorage.setItem('refreshToken', refreshTokenVal);
                 }
                 if (userData) {
-                    localStorage.setItem('user', JSON.stringify(userData));
-                    sessionStorage.setItem('user', JSON.stringify(userData));
+                    // SECURITY: Remove sensitive data from localStorage
+                    // Only store non-sensitive user information
+                    const safeUserData = {
+                        username: userData.fullName || userData.username || 'User',
+                        fullName: userData.fullName || userData.username || 'User',
+                        tenantSlug: userData.tenantSlug || userData.tenant?.slug,
+                        parentTenantSlug: userData.parentTenantSlug,
+                        branchDbName: userData.branchDbName,
+                        dbName: userData.dbName,
+                        isActive: userData.isActive,
+                        isVerified: userData.isVerified,
+                    };
+                    localStorage.setItem('user', JSON.stringify(safeUserData));
+                    sessionStorage.setItem('user', JSON.stringify(safeUserData));
+                    console.log('[AuthContext] Safe user data stored (no sensitive info)');
                 }
 
                 // Store tenant slug from multiple possible sources
                 const tenantSlug = data.tenant?.tenantSlug || data.tenant?.slug || userData?.tenantSlug || userData?.tenant?.slug;
                 if (tenantSlug) {
                     localStorage.setItem('tenantSlug', tenantSlug);
+                }
+                
+                // Store parent tenant slug as SEPARATE key (no fallbacks)
+                const parentTenantSlug = userData?.parentTenantSlug || data.tenant?.parentTenantSlug;
+                if (parentTenantSlug) {
+                    localStorage.setItem('parentTenantSlug', parentTenantSlug);
+                    console.log('[AuthContext] Stored parentTenantSlug:', parentTenantSlug);
+                } else {
+                    console.warn('[AuthContext] No parentTenantSlug found in login response!');
+                }
+
+                // Fetch and store branches for inter-branch operations
+                try {
+                    const parentTenantSlug = userData?.parentTenantSlug || tenantSlug;
+                    const branchesRes = await api.get(`/tenant/${parentTenantSlug}/branches`);
+                    if (branchesRes.data?.success && branchesRes.data?.data) {
+                        localStorage.setItem('branches', JSON.stringify(branchesRes.data.data));
+                        console.log('[AuthContext] Branches saved to localStorage:', branchesRes.data.data.length);
+                    }
+                } catch (branchError) {
+                    console.warn('[AuthContext] Could not fetch branches:', branchError.message);
                 }
 
                 setUser({

@@ -118,6 +118,7 @@ body {
 /* ── Browse ─────────────────────────────────────────────────────────────── */
 .browse {
   position: relative; width: 100%; height: 100vh; overflow: hidden;
+  height: 100dvh; /* Dynamic viewport height for mobile */
   background: #0a0b0c;
 }
 .browse-hero {
@@ -245,6 +246,7 @@ body {
 .home-preview {
   position: absolute; bottom: 0; right: 0; z-index: 30;
   width: 290px; max-height: 72vh;
+  max-height: 72dvh; /* Dynamic viewport height for mobile */
   background: rgba(8,9,10,0.94); backdrop-filter: blur(22px);
   border-left: 1px solid rgba(255,255,255,0.07);
   border-top: 1px solid rgba(255,255,255,0.07);
@@ -333,6 +335,7 @@ body {
 .detail-image-panel {
   position: sticky; top: 0;
   width: 52%; height: 100vh; flex-shrink: 0;
+  height: 100dvh; /* Dynamic viewport height for mobile */
   overflow: hidden; background: #111;
 }
 .detail-image-panel img {
@@ -361,6 +364,7 @@ body {
 
 .detail-scroll-panel {
   flex: 1; height: 100vh; overflow-y: auto;
+  height: 100dvh; /* Dynamic viewport height for mobile */
   display: flex; flex-direction: column;
 }
 .detail-nav {
@@ -507,6 +511,7 @@ body {
 /* ── Form ────────────────────────────────────────────────────────────────── */
 .form-page {
   min-height: 100vh; background: #0a0b0c; padding: 80px 24px;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
   display: flex; justify-content: center; font-family: 'Inter', sans-serif;
   animation: fadeIn 0.4s ease; overflow-y: auto;
 }
@@ -560,6 +565,7 @@ body {
 /* ── Done / Candle screen ──────────────────────────────────────────────── */
 .done-page {
   min-height: 100vh; background: #080909;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
   display: flex; align-items: center; justify-content: center;
   padding: 24px; font-family: 'Inter', sans-serif;
 }
@@ -686,11 +692,11 @@ function StoryItem({ arrangement, isActive, isSelected, size, animDelay, onClick
       className={'story-item' + (isSelected ? ' is-sel' : '')}
       onClick={onClick}
       style={{ animationDelay: `${animDelay}s` }}
-      aria-label={arrangement.name}
+      aria-label={arrangement.name || arrangement.title}
     >
       <div className={ringCls} style={{ width: size + 6, height: size + 6, position: 'relative' }}>
         <div className="story-inner" style={{ width: size, height: size }}>
-          <img src={arrangement.portrait} alt={arrangement.name} />
+          <img src={arrangement.portrait || arrangement.img} alt={arrangement.name || arrangement.title} />
         </div>
         {isSelected && <div className="story-check">✓</div>}
       </div>
@@ -700,8 +706,9 @@ function StoryItem({ arrangement, isActive, isSelected, size, animDelay, onClick
 }
 
 // ── Home Preview Panel ────────────────────────────────────────────────────────
-function HomePreview({ selectedIds, onRemove, onProceed }) {
+function HomePreview({ selectedIds, onRemove, onProceed, arrangements = [] }) {
   if (!selectedIds.length) return null
+  const allArrangements = arrangements.length > 0 ? arrangements : ARRANGEMENTS
   return (
     <div className="home-preview">
       <div className="home-preview-header">
@@ -710,13 +717,14 @@ function HomePreview({ selectedIds, onRemove, onProceed }) {
       </div>
       <div className="home-preview-list">
           {selectedIds.map(id => {
-            const a = ARRANGEMENTS.find(x => x.id === id)
+            const a = allArrangements.find(x => x.id === id)
+            if (!a) return null
             return (
             <div key={id} className="home-preview-row">
-              <img className="home-preview-thumb" src={a.img} alt={a.name} />
+              <img className="home-preview-thumb" src={a.img || a.portrait} alt={a.name || a.title} />
               <div className="home-preview-info">
-                <div className="home-preview-name">{a.name}</div>
-                <div className="home-preview-tag">{a.note}</div>
+                <div className="home-preview-name">{a.name || a.title}</div>
+                <div className="home-preview-tag">{a.note || a.tag}</div>
               </div>
               <button className="home-preview-remove" onClick={() => onRemove(id)}>×</button>
             </div>
@@ -731,29 +739,30 @@ function HomePreview({ selectedIds, onRemove, onProceed }) {
 }
 
 // ── Browse Screen ─────────────────────────────────────────────────────────────
-function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview }) {
+function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview, arrangements = [] }) {
   const [bgIdx, setBgIdx] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
+  const allArrangements = arrangements.length > 0 ? arrangements : ARRANGEMENTS
 
   useEffect(() => {
-    const t = setInterval(() => setBgIdx(i => (i + 1) % ARRANGEMENTS.length), 6000)
+    const t = setInterval(() => setBgIdx(i => (i + 1) % allArrangements.length), 6000)
     return () => clearInterval(t)
-  }, [])
+  }, [allArrangements.length])
 
   useEffect(() => {
     if (selectedIds.length > 0) setShowPreview(true)
     if (selectedIds.length === 0) setShowPreview(false)
   }, [selectedIds.length])
 
-  const bg = ARRANGEMENTS[bgIdx]
+  const bg = allArrangements[bgIdx] || allArrangements[0]
 
   return (
     <div className="browse">
-      <img key={bgIdx} className="browse-hero" src={bg.img} alt={bg.name} />
+      <img key={bgIdx} className="browse-hero" src={bg.img || bg.portrait} alt={bg.name || bg.title} />
       <div className="browse-overlay" />
 
       <div className="story-strip">
-        {ARRANGEMENTS.map((a, i) => (
+        {allArrangements.map((a, i) => (
           <StoryItem
             key={a.id}
             arrangement={a}
@@ -779,17 +788,18 @@ function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview }) {
       </div>
 
       {showPreview && selectedIds.length > 0 && (
-        <HomePreview selectedIds={selectedIds} onRemove={onRemove} onProceed={onPreview} />
+        <HomePreview selectedIds={selectedIds} onRemove={onRemove} onProceed={onPreview} arrangements={allArrangements} />
       )}
 
       {!showPreview && selectedIds.length > 0 && (
         <div className="sel-float">
           <div className="sel-float-faces">
             {selectedIds.slice(0, 3).map(id => {
-              const a = ARRANGEMENTS.find(x => x.id === id)
+              const a = allArrangements.find(x => x.id === id)
+              if (!a) return null
               return (
                 <div key={id} className="sel-float-face">
-                  <img src={a.portrait} alt={a.name} />
+                  <img src={a.portrait || a.img} alt={a.name || a.title} />
                 </div>
               )
             })}
@@ -828,9 +838,10 @@ function ColorInputs() {
 }
 
 // ── Expanded / Detail ─────────────────────────────────────────────────────────
-function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, onPreview }) {
+function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, onPreview, arrangements = [] }) {
   const [tab, setTab] = useState('overview')
-  const arr = ARRANGEMENTS.find(a => a.id === activeId)
+  const allArrangements = arrangements.length > 0 ? arrangements : ARRANGEMENTS
+  const arr = allArrangements.find(a => a.id === activeId)
   const isSel = selectedIds.includes(activeId)
 
   useEffect(() => { setTab('overview') }, [activeId])
@@ -841,16 +852,18 @@ function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, on
     return () => window.removeEventListener('keydown', fn)
   }, [onClose])
 
+  if (!arr) return null
+
   return (
     <div className="expanded">
       {/* Left: image */}
       <div className="detail-image-panel">
-        <img key={activeId} src={arr.img} alt={arr.name} />
+        <img key={activeId} src={arr.img || arr.portrait} alt={arr.name || arr.title} />
         <div className="img-overlay" />
         <div className="detail-image-badge">
           <div className="detail-image-badge-tag">{arr.tag} · {arr.note}</div>
           <div className="detail-image-badge-name">
-            {arr.name.split(' ').slice(0, -1).join(' ')} <em>{arr.name.split(' ').slice(-1)}</em>
+            {(arr.name || arr.title).split(' ').slice(0, -1).join(' ')} <em>{(arr.name || arr.title).split(' ').slice(-1)}</em>
           </div>
         </div>
       </div>
@@ -860,7 +873,7 @@ function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, on
         <div className="detail-nav">
           <button className="back-btn" onClick={onClose}>← All arrangements</button>
           <div className="detail-stories">
-            {ARRANGEMENTS.map((a, i) => {
+            {allArrangements.map((a, i) => {
               const ringCls = 'detail-story-ring ' + (a.id === activeId ? 'dsr-active' : selectedIds.includes(a.id) ? 'dsr-selected' : 'dsr-normal')
               return (
                 <button
@@ -868,11 +881,11 @@ function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, on
                   className="detail-story-item"
                   style={{ animationDelay: `${i * 0.15}s` }}
                   onClick={() => onNavigate(a.id)}
-                  aria-label={a.name}
+                  aria-label={a.name || a.title}
                 >
                   <div className={ringCls} style={{ padding: 2 }}>
                     <div className="detail-story-inner" style={{ width: 36, height: 36 }}>
-                      <img src={a.portrait} alt={a.name} />
+                      <img src={a.portrait || a.img} alt={a.name || a.title} />
                     </div>
                   </div>
                 </button>
@@ -884,11 +897,11 @@ function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, on
         <div className="detail-content" key={activeId}>
           {/* Mobile-only overview image */}
           <div className="detail-overview-img">
-            <img src={arr.img} alt={arr.name} />
+            <img src={arr.img || arr.portrait} alt={arr.name || arr.title} />
           </div>
 
           <div className="detail-eyebrow">{arr.tag} · {arr.note}</div>
-          <h2 className="detail-title">{arr.name}</h2>
+          <h2 className="detail-title">{arr.name || arr.title}</h2>
           <p className="detail-desc">{arr.desc}</p>
 
           <div className="tabs">
@@ -950,9 +963,10 @@ function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, on
 }
 
 // ── Booking Form ──────────────────────────────────────────────────────────────
-function BookingForm({ selected, quantities, onBack, onDone }) {
+function BookingForm({ selected, quantities, onBack, onDone, arrangements = [] }) {
   const [form, setForm] = useState({ deceased: '', date: '', location: '', yourName: '', phone: '', email: '', message: '', notes: '' })
   const totalItems = selected.reduce((s, id) => s + (quantities[id] || 1), 0)
+  const allArrangements = arrangements.length > 0 ? arrangements : ARRANGEMENTS
 
   const field = (key, placeholder, type = 'text') => ({
     className: 'form-input', type, value: form[key], placeholder,
@@ -963,7 +977,10 @@ function BookingForm({ selected, quantities, onBack, onDone }) {
     e.preventDefault()
     if (!selected.length) { alert('Please select at least one arrangement.'); return }
     try {
-      const names = selected.map(id => ARRANGEMENTS.find(a => a.id === id).name + ' ×' + (quantities[id] || 1)).join(', ')
+      const names = selected.map(id => {
+        const arr = allArrangements.find(a => a.id === id)
+        return (arr?.name || arr?.title || 'Arrangement') + ' ×' + (quantities[id] || 1)
+      }).join(', ')
       await api.post('/florist/bookings', {
         arrangement_name: names,
         deceased_name: form.deceased || null,
@@ -991,11 +1008,12 @@ function BookingForm({ selected, quantities, onBack, onDone }) {
 
         <div className="form-chips">
           {selected.map(id => {
-            const a = ARRANGEMENTS.find(x => x.id === id)
+            const a = allArrangements.find(x => x.id === id)
+            if (!a) return null
             return (
               <div key={id} className="form-chip">
-                <img src={a.img} alt="" />
-                {a.name} ×{quantities[id] || 1}
+                <img src={a.img || a.portrait} alt="" />
+                {a.name || a.title} ×{quantities[id] || 1}
               </div>
             )
           })}
@@ -1137,6 +1155,7 @@ export default function App() {
             onOpen={id => setExpandedId(id)}
             onRemove={remove}
             onPreview={() => setStep('form')}
+            arrangements={arrangements}
           />
           {expandedId && (
             <ExpandedView
@@ -1146,6 +1165,7 @@ export default function App() {
               onClose={() => setExpandedId(null)}
               onToggle={toggle}
               onPreview={() => setStep('form')}
+              arrangements={arrangements}
             />
           )}
         </>
@@ -1155,6 +1175,7 @@ export default function App() {
         <BookingForm
           selected={selected}
           quantities={quantities}
+          arrangements={arrangements}
           onBack={() => setStep('browse')}
           onDone={f => { setDoneForm(f); setStep('done') }}
         />

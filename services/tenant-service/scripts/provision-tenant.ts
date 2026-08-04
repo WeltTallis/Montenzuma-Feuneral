@@ -5,7 +5,7 @@
 
 import * as process from 'process';
 import * as mysql from 'mysql2/promise';
-import { TenantModel } from '../../models/Tenant.model';
+import { TenantModel } from '../models/Tenant.model';
 
 async function updateProvisioningStatus(tenantSlug: string, status: string, progress: number, details?: string, errorMessage?: string) {
   try {

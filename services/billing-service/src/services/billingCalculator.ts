@@ -54,7 +54,7 @@ export class BillingCalculator {
         charges.daysAdmitted,
         charges.dailyRate,
         charges.baseCharges,
-        charges.additionalCharges,
+        charges.embalmingCharges + charges.storageCharges,
         charges.totalDailyCharge
       ]);
 
@@ -91,19 +91,26 @@ export class BillingCalculator {
       const deceased = (deceasedRows as any[])[0];
       const daysAdmitted = Math.max(1, Math.ceil((new Date().getTime() - new Date(deceased.date_admitted).getTime()) / (1000 * 60 * 60 * 24)));
 
-      // Priority: 1. Per-deceased charges, 2. Tenant settings, 3. Default (3000)
-      let dailyRate = 3000; // Default daily rate
-      let embalmingRate = 3000;
-      let storageRate = 500;
+      // Priority: 1. Per-deceased charges, 2. Tenant settings, 3. Defaults
+      let dailyRate = 1500; // Default daily rate
+      let embalmingRate = 3000; // Default embalming rate
+      let storageRate = 500; // Default storage rate per day
+      let taxRate = 0; // Default tax rate
 
-      // Check if deceased has custom charges set
-      if (deceased.per_day_charge && deceased.per_day_charge > 0) {
+      // Check if deceased has custom charges set (individual billing)
+      const hasCustomCharges = deceased.per_day_charge && deceased.per_day_charge > 0;
+      
+      if (hasCustomCharges) {
+        // Use per-deceased custom rates
         dailyRate = deceased.per_day_charge;
-        this.logger.info(`Using per-deceased rate for ${deceased.full_name}: ${dailyRate}`);
+        embalmingRate = deceased.embalming_rate || embalmingRate;
+        storageRate = deceased.storage_rate || storageRate;
+        taxRate = deceased.tax_rate || taxRate;
+        this.logger.info(`Using per-deceased rates for ${deceased.full_name}: daily=${dailyRate}, embalming=${embalmingRate}, storage=${storageRate}`);
       } else {
-        // Fall back to tenant settings
+        // Fall back to tenant settings (default rates for all clients)
         const [settingsRows] = await connection.execute(`
-          SELECT daily_rate, embalming_rate, storage_rate
+          SELECT daily_rate, embalming_rate, storage_rate, tax_rate
           FROM tenant_settings
           WHERE tenant_slug = ?
         `, [tenantSlug]);
@@ -111,23 +118,33 @@ export class BillingCalculator {
         if (Array.isArray(settingsRows) && settingsRows.length > 0) {
           const settings = (settingsRows as any[])[0];
           dailyRate = settings.daily_rate || dailyRate;
-          embalmingRate = settings.embalming_rate;
-          storageRate = settings.storage_rate;
+          embalmingRate = settings.embalming_rate || embalmingRate;
+          storageRate = settings.storage_rate || storageRate;
+          taxRate = settings.tax_rate || taxRate;
         }
       }
 
       // Calculate charges
       const baseCharges = daysAdmitted * dailyRate;
-      const additionalCharges = 0; // TODO: Add embalming/storage logic
-      const totalDailyCharge = baseCharges + additionalCharges;
+      const embalmingCharges = embalmingRate; // One-time embalming fee
+      const storageCharges = daysAdmitted * storageRate; // Storage per day
+      const subtotal = baseCharges + embalmingCharges + storageCharges;
+      const taxAmount = subtotal * (taxRate / 100);
+      const totalDailyCharge = subtotal + taxAmount;
 
       return {
         deceasedId,
         tenantSlug,
         daysAdmitted,
         dailyRate,
+        embalmingRate,
+        storageRate,
+        taxRate,
         baseCharges,
-        additionalCharges,
+        embalmingCharges,
+        storageCharges,
+        taxAmount,
+        subtotal,
         totalDailyCharge,
         calculatedAt: new Date().toISOString()
       };

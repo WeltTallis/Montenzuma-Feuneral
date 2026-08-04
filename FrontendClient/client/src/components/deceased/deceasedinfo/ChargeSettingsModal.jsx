@@ -4,8 +4,11 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
   const [charges, setCharges] = useState({
     per_hour: 0,
     per_day: 0,
-    currency: 'KSH',
+    currency: 'KES',
     storage_type: 'standard',
+    storage_rate: 500,
+    embalming_rate: 3000,
+    tax_rate: 0,
     notes: ''
   });
 
@@ -17,8 +20,11 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
       setCharges({
         per_hour: deceased.charges.per_hour || 0,
         per_day: deceased.charges.per_day || 0,
-        currency: deceased.charges.currency || 'KSH',
+        currency: deceased.charges.currency || 'KES',
         storage_type: deceased.charges.storage_type || 'standard',
+        storage_rate: deceased.charges.storage_rate || 500,
+        embalming_rate: deceased.charges.embalming_rate || 3000,
+        tax_rate: deceased.charges.tax_rate || 0,
         notes: deceased.charges.notes || ''
       });
     }
@@ -58,20 +64,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
               
               <div style={styles.row}>
                 <div style={styles.field}>
-                  <label style={styles.label}>Per Hour Rate</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={charges.per_hour}
-                    onChange={(e) => setCharges({...charges, per_hour: parseFloat(e.target.value) || 0})}
-                    style={styles.input}
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div style={styles.field}>
-                  <label style={styles.label}>Per Day Rate</label>
+                  <label style={styles.label}>Daily Rate (Ksh)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -79,7 +72,49 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
                     value={charges.per_day}
                     onChange={(e) => setCharges({...charges, per_day: parseFloat(e.target.value) || 0})}
                     style={styles.input}
-                    placeholder="0.00"
+                    placeholder="1500"
+                  />
+                </div>
+
+                <div style={styles.field}>
+                  <label style={styles.label}>Embalming Rate (Ksh)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={charges.embalming_rate}
+                    onChange={(e) => setCharges({...charges, embalming_rate: parseFloat(e.target.value) || 0})}
+                    style={styles.input}
+                    placeholder="3000"
+                  />
+                </div>
+              </div>
+
+              <div style={styles.row}>
+                <div style={styles.field}>
+                  <label style={styles.label}>Storage Rate (Ksh/day)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={charges.storage_rate}
+                    onChange={(e) => setCharges({...charges, storage_rate: parseFloat(e.target.value) || 0})}
+                    style={styles.input}
+                    placeholder="500"
+                  />
+                </div>
+
+                <div style={styles.field}>
+                  <label style={styles.label}>Tax Rate (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={charges.tax_rate}
+                    onChange={(e) => setCharges({...charges, tax_rate: parseFloat(e.target.value) || 0})}
+                    style={styles.input}
+                    placeholder="0"
                   />
                 </div>
               </div>
@@ -91,7 +126,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
                   onChange={(e) => setCharges({...charges, currency: e.target.value})}
                   style={styles.select}
                 >
-                  <option value="KSH">KSH (Kenyan Shilling)</option>
+                  <option value="KES">KES - Kenyan Shilling (Ksh)</option>
                   <option value="USD">USD (US Dollar)</option>
                 </select>
               </div>

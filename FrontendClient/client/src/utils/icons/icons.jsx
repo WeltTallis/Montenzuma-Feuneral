@@ -329,6 +329,10 @@ export const MoreVertical = (p) => (
   <Icon {...p}><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></Icon>
 );
 
+export const MoreHorizontal = (p) => (
+  <Icon {...p}><circle cx="12" cy="12" r="1" /><circle cx="5" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></Icon>
+);
+
 export const ZoomIn = (p) => (
   <Icon {...p}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></Icon>
 );
@@ -548,6 +552,9 @@ export const Building2 = (p) => (
   <Icon {...p}><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" /><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" /><path d="M10 6h4" /><path d="M10 10h4" /><path d="M10 14h4" /><path d="M10 18h4" /></Icon>
 );
 
+// Alias for backward compatibility
+export const Building = Building2;
+
 // ─── Misc ────────────────────────────────────────────────────────────────────
 export const Heart = (p) => (
   <Icon {...p}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></Icon>
@@ -599,6 +606,10 @@ export const Pause = (p) => (
 
 export const Smartphone = (p) => (
   <Icon {...p}><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></Icon>
+);
+
+export const MonitorSmartphone = (p) => (
+  <Icon {...p}><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /><rect x="6" y="6" width="12" height="8" rx="1" /></Icon>
 );
 
 export const Music = (p) => (
@@ -931,7 +942,7 @@ export const Icons = {
   DollarSign, CreditCard, Receipt, Wallet,
   // Actions & Operations
   Plus, PlusCircle, Save, Edit, Edit3, Trash2, Download, Upload, Printer,
-  Search, Filter, SlidersHorizontal, MoreVertical, ZoomIn, ZoomOut, Copy, Send, Share2,
+  Search, Filter, SlidersHorizontal, MoreVertical, MoreHorizontal, ZoomIn, ZoomOut, Copy, Send, Share2,
   RefreshCw, RotateCw, RotateCcw, Hash, Tag, QrCode, ScanBarcode,
   // Communications
   Phone, Mail, Bell, MessageCircle, MessageSquare, Quote,
@@ -950,10 +961,10 @@ export const Icons = {
   // Targets & Goals
   Target, GitCompareArrows,
   // Buildings & Places
-  Building2, Warehouse,
+  Building, Building2, Warehouse,
   // Misc
   Heart, Zap, Settings, LogOut,
-  Sun, Moon, CloudSun, Play, Pause, Smartphone, Camera, Music, Mic, Wifi, WifiOff, Github, Linkedin, Twitter,
+  Sun, Moon, CloudSun, Play, Pause, Smartphone, MonitorSmartphone, Camera, Music, Mic, Wifi, WifiOff, Github, Linkedin, Twitter,
   // Additional
   ArrowUpRight, Code2, Paintbrush, Bug, Lightbulb, HelpCircle, Crown, BookText, Eraser, HardHat, TrafficCone, Flame, Video, Percent, Badge, Scale, UploadCloud, Hourglass, CheckSquare, PlusSquare,
 };

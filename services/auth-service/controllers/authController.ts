@@ -216,12 +216,18 @@ const findTenantByUserEmail = async (email: string): Promise<Tenant | null> => {
 
 const findUserInTenantDB = async (dbName: string, email: string): Promise<User | null> => {
   try {
-    const rows = await queryTenantDB(dbName, 'SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
+    const rows = await queryTenantDB(dbName, 'SELECT * FROM users WHERE email = ? OR username = ?', [email.toLowerCase(), email.toLowerCase()]);
     return rows.length > 0 ? rows[0] : null;
   } catch (error: any) {
-    if (error?.code === 'ER_ACCESS_DENIED_ERROR') throw error;
-    console.error('Error finding user:', error.message);
-    return null;
+    // Fallback: try email-only search (for older schemas without username column)
+    try {
+      const rows2 = await queryTenantDB(dbName, 'SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
+      return rows2.length > 0 ? rows2[0] : null;
+    } catch {
+      if (error?.code === 'ER_ACCESS_DENIED_ERROR') throw error;
+      console.error('Error finding user:', error.message);
+      return null;
+    }
   }
 };
 
@@ -366,6 +372,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         branchId,
         branchDbName,
         dbName,
+        parentTenantSlug: tenant.tenant_slug, // Add parent tenant slug for branch users
         isActive: user.is_active === 1,
         isVerified: user.is_verified === 1,
       },
@@ -405,11 +412,12 @@ export const register = async (_req: Request, res: Response): Promise<void> => {
 
 /**
  * POST /auth/users
+ * Create a new user with username, role, and branch assignment.
+ * Phone has been removed per user request.
  */
 export const createUser = async (req: Request, res: Response): Promise<void> => {
-  const { email, password, full_name, phone, role } = req.body;
+  const { email, password, full_name, username, role, branch_id } = req.body;
   const tenantDbName: string | undefined = req.user?.dbName;
-  const tenantId: number | undefined = req.user?.tenantId;
 
   if (!tenantDbName) {
     res.status(400).json({ success: false, message: 'Tenant database not found in token' });
@@ -427,39 +435,165 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
   try {
     const existingUser = await findUserInTenantDB(tenantDbName, email);
     if (existingUser) {
-      res.status(409).json({ success: false, message: 'User with this email already exists' });
+      res.status(409).json({ success: false, message: 'User with this email or username already exists' });
       return;
     }
 
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
 
-    await queryTenantDB(
-      tenantDbName,
-      `INSERT INTO users (email, password_hash, full_name, phone, role, is_active, is_verified)
-       VALUES (?, ?, ?, ?, ?, 1, 1)`,
-      [email.toLowerCase(), password_hash, full_name, phone || null, role || 'staff']
-    );
+    // Check if username/branch_id columns exist in users table
+    let hasUsernameCol = false;
+    let hasBranchIdCol = false;
+    try {
+      const [columns]: any = await pool.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users'`,
+        [tenantDbName]
+      );
+      hasUsernameCol = columns.some((c: any) => c.COLUMN_NAME === 'username');
+      hasBranchIdCol = columns.some((c: any) => c.COLUMN_NAME === 'branch_id');
+    } catch { /* non-critical */ }
 
-    const newUser = await findUserInTenantDB(tenantDbName, email);
+    let newUserId: number;
+    const effectiveUsername = username || email.toLowerCase();
+
+    if (hasUsernameCol && hasBranchIdCol) {
+      const [result]: any = await pool.query(
+        `INSERT INTO \`${tenantDbName}\`.users 
+         (email, password_hash, full_name, username, role, branch_id, is_active, is_verified)
+         VALUES (?, ?, ?, ?, ?, ?, 1, 1)`,
+        [email.toLowerCase(), password_hash, full_name, effectiveUsername, role || 'staff', branch_id ? parseInt(branch_id) : null]
+      );
+      newUserId = result.insertId;
+    } else if (hasUsernameCol) {
+      const [result]: any = await pool.query(
+        `INSERT INTO \`${tenantDbName}\`.users 
+         (email, password_hash, full_name, username, role, is_active, is_verified)
+         VALUES (?, ?, ?, ?, ?, 1, 1)`,
+        [email.toLowerCase(), password_hash, full_name, effectiveUsername, role || 'staff']
+      );
+      newUserId = result.insertId;
+    } else if (hasBranchIdCol) {
+      const [result]: any = await pool.query(
+        `INSERT INTO \`${tenantDbName}\`.users 
+         (email, password_hash, full_name, role, branch_id, is_active, is_verified)
+         VALUES (?, ?, ?, ?, ?, 1, 1)`,
+        [email.toLowerCase(), password_hash, full_name, role || 'staff', branch_id ? parseInt(branch_id) : null]
+      );
+      newUserId = result.insertId;
+    } else {
+      const [result]: any = await pool.query(
+        `INSERT INTO \`${tenantDbName}\`.users 
+         (email, password_hash, full_name, role, is_active, is_verified)
+         VALUES (?, ?, ?, ?, 1, 1)`,
+        [email.toLowerCase(), password_hash, full_name, role || 'staff']
+      );
+      newUserId = result.insertId;
+    }
+
+    // Fetch created user with branch info
+    let newUser: any = null;
+    try {
+      const [rows]: any = await pool.query(
+        `SELECT u.*, b.branch_name, b.branch_db_name 
+         FROM \`${tenantDbName}\`.users u
+         LEFT JOIN \`${tenantDbName}\`.branches b ON u.branch_id = b.branch_id
+         WHERE u.user_id = ?`,
+        [newUserId]
+      );
+      newUser = rows.length > 0 ? rows[0] : null;
+    } catch {
+      newUser = await findUserInTenantDB(tenantDbName, email);
+    }
+
+    if (!newUser) {
+      res.status(201).json({
+        success: true,
+        message: 'User created successfully',
+        user: { userId: newUserId, email: email.toLowerCase(), fullName: full_name, username: effectiveUsername, role: role || 'staff' },
+      });
+      return;
+    }
 
     res.status(201).json({
       success: true,
       message: 'User created successfully',
       user: {
-        userId: newUser?.user_id,
-        email: newUser?.email,
-        fullName: newUser?.full_name,
-        phone: newUser?.phone,
-        role: newUser?.role,
-        isActive: newUser?.is_active === 1,
-        isVerified: newUser?.is_verified === 1,
+        userId: newUser.user_id,
+        email: newUser.email,
+        fullName: newUser.full_name,
+        username: newUser.username || newUser.email,
+        role: newUser.role,
+        branchId: newUser.branch_id || null,
+        branchName: newUser.branch_name || null,
+        isActive: newUser.is_active === 1 || newUser.is_active === true,
+        isVerified: newUser.is_verified === 1 || newUser.is_verified === true,
       },
     });
   } catch (error: any) {
     res.status(500).json({
       success: false,
       message: 'Failed to create user',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+};
+
+/**
+ * GET /auth/users
+ * List all users in the tenant database
+ */
+export const listUsers = async (req: Request, res: Response): Promise<void> => {
+  const tenantDbName: string | undefined = req.user?.dbName;
+
+  if (!tenantDbName) {
+    res.status(400).json({ success: false, message: 'Tenant database not found in token' });
+    return;
+  }
+
+  try {
+    let rows: any[] = [];
+    try {
+      const [result]: any = await pool.query(
+        `SELECT u.user_id, u.email, u.full_name, u.username, u.role, 
+                u.branch_id, u.is_active, u.is_verified, u.last_login_at, u.created_at,
+                b.branch_name, b.branch_db_name
+         FROM \`${tenantDbName}\`.users u
+         LEFT JOIN \`${tenantDbName}\`.branches b ON u.branch_id = b.branch_id
+         ORDER BY u.created_at DESC`
+      );
+      rows = result;
+    } catch {
+      // Fallback: query without branch join
+      const [result]: any = await pool.query(
+        `SELECT user_id, email, full_name, username, role, branch_id, is_active, is_verified, last_login_at, created_at
+         FROM \`${tenantDbName}\`.users
+         ORDER BY created_at DESC`
+      );
+      rows = result;
+    }
+
+    res.json({
+      success: true,
+      users: rows.map((u: any) => ({
+        userId: u.user_id,
+        email: u.email,
+        fullName: u.full_name,
+        username: u.username || u.email,
+        role: u.role,
+        branchId: u.branch_id || null,
+        branchName: u.branch_name || null,
+        isActive: u.is_active === 1 || u.is_active === true,
+        isVerified: u.is_verified === 1 || u.is_verified === true,
+        lastLoginAt: u.last_login_at || null,
+        createdAt: u.created_at || null,
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch users',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }

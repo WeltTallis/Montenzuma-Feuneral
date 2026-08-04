@@ -49,9 +49,9 @@ export interface LoginLog {
   created_at: Date;
 }
 
-export interface QueryResult<T = any> extends RowDataPacket {
+export type QueryResult<T = any> = RowDataPacket & {
   [key: string]: T;
-}
+};
 
 export interface TransactionResult {
   insertId?: number;

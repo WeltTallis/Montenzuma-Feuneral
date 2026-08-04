@@ -100,7 +100,6 @@ const PublicMemorialPage = lazy(() => import('../components/memorial/PublicMemor
 const ChemicalManagementDashboard = lazy(() => import('../components/chemicals/chemicals'));
 const ChemicalInventoryAnalytics = lazy(() => import('../components/chemicals/chemicalAnalytics'));
 const WorkshopDashboard = lazy(() => import('../components/workshop/pages/WorkshopDashboard'));
-const CataloguePage = lazy(() => import('../components/catalogue/catalogue'));
 
 // Flower Booking System
 const FlowerBookings = lazy(() => import('../components/florists/FlowerBookingsNew'));
@@ -166,6 +165,10 @@ const DashboardLayout = ({ children, tenantData }) => {
   });
   const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
   
+  // Determine deployment type: single tenant vs multi-branch
+  const deploymentType = tenantData?.deploymentType || localStorage.getItem('deploymentType') || 'single';
+  const isSingleTenant = deploymentType === 'single';
+  
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
@@ -193,65 +196,27 @@ const DashboardLayout = ({ children, tenantData }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  const marginLeft = isMobile ? '0' : (sidebarOpen ? '240px' : '68px');
-  const contentPadding = isMobile ? '0.5rem 0.75rem' : (sidebarOpen ? '2rem' : '1.5rem');
-  const footerMarginLeft = isMobile ? '0' : (sidebarOpen ? '240px' : '68px');
+  // For single tenant: no sidebar margin, just compact padding
+  // For multi-branch: sidebar with margin
+  const marginLeft = isSingleTenant ? '0' : (isMobile ? '0' : (sidebarOpen ? '200px' : '60px'));
+  const contentPadding = isMobile ? '0.5rem' : (isSingleTenant ? '0.5rem 0.75rem' : (sidebarOpen ? '0.75rem 1rem 0.75rem 0.25rem' : '0.75rem'));
+  const footerMarginLeft = isSingleTenant ? '0' : (isMobile ? '0' : (sidebarOpen ? '200px' : '60px'));
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F7F9FB', flexDirection: 'column' }}>
       <div style={{ display: 'flex', flex: 1, position: 'relative' }}>
-        <ModernSidebar tenantData={tenantData} userData={{ name: user?.full_name || user?.name, role: user?.role || 'Administrator' }} onLogout={handleLogout} onToggle={handleSidebarToggle} />
-        <main style={{ flex: 1, marginLeft, padding: contentPadding, background: '#F7F9FB', transition: 'margin-left 0.3s ease, padding 0.3s ease', margin: isMobile ? '0' : marginLeft, padding: isMobile ? '0.5rem 0.75rem' : contentPadding }}>
-          {/* Top Bar with Notification Bell */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            padding: '0 0 1rem 0',
-            gap: '1rem',
-          }}>
-          </div>
+        <ModernSidebar 
+          tenantData={tenantData} 
+          deploymentType={deploymentType}
+          userData={{ name: user?.full_name || user?.name, role: user?.role || 'Administrator' }} 
+          onLogout={handleLogout} 
+          onToggle={handleSidebarToggle} 
+        />
+        <main style={{ flex: 1, marginLeft, padding: contentPadding, background: '#F7F9FB', transition: 'margin-left 0.3s ease, padding 0.3s ease', minHeight: '100dvh' }}>
           <Suspense fallback={<RouteLoadingFallback />}>{children}</Suspense>
         </main>
       </div>
-      {/* Floating Notification Bell - Top Right */}
-      <div style={{
-        position: 'fixed',
-        top: '16px',
-        right: '16px',
-        zIndex: 1000,
-      }}>
-        <NotificationBell />
-      </div>
       <div style={{ marginLeft: footerMarginLeft, transition: 'margin-left 0.3s ease' }}>
         <FooterComponent />
-      </div>
-    </div>
-  );
-};
-
-const TenantDashboardHome = () => {
-  const { tenantData } = useTenantStore();
-  return (
-    <div>
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: '#1a1a1a' }}>Welcome back, {tenantData?.name || 'User'}!</h1>
-      <p style={{ color: '#6B7280', marginBottom: '2rem', fontSize: '0.9rem' }}>Here's what's happening with your operations today.</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
-        <div style={{ background: 'white', padding: '1.25rem', borderRadius: '14px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #E5E7EB' }}>
-          <p style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Active Cases</p>
-          <p style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1a1a1a' }}>24</p>
-        </div>
-        <div style={{ background: 'white', padding: '1.25rem', borderRadius: '14px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #E5E7EB' }}>
-          <p style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Pending Bill</p>
-          <p style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1a1a1a' }}>KES 12,500</p>
-        </div>
-        <div style={{ background: 'white', padding: '1.25rem', borderRadius: '14px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #E5E7EB' }}>
-          <p style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>New Registrations</p>
-          <p style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1a1a1a' }}>7</p>
-        </div>
-        <div style={{ background: 'white', padding: '1.25rem', borderRadius: '14px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #E5E7EB' }}>
-          <p style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>This Month</p>
-          <p style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1a1a1a' }}>42</p>
-        </div>
       </div>
     </div>
   );
@@ -365,12 +330,21 @@ const TenantDashboardRoutes = ({ tenantData }) => {
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : {};
   const userRole = user?.role || 'user';
+  const location = useLocation();
 
   // Always use DashboardLayout with sidebar for all users
   const Layout = DashboardLayout;
 
+  // Hide notification bell on client-facing pages (receptionist, register, release)
+  const isClientPage = location.pathname.includes('/receptionist') || 
+                       location.pathname.includes('/deceased/register') ||
+                       location.pathname.includes('/release-form');
+  const showNotificationBell = !isClientPage;
+
   return (
-    <Routes>
+    <>
+      {showNotificationBell && <NotificationBell />}
+      <Routes>
       <Route path="/" element={<Navigate to="all-deceased" replace />} />
 
       {/* Dashboard - Available to all authenticated users */}
@@ -468,13 +442,6 @@ const TenantDashboardRoutes = ({ tenantData }) => {
       <Route path="workshop" element={
         <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
           <Layout tenantData={tenantData}><WorkshopDashboard /></Layout>
-        </RoleBasedRoute>
-      } />
-
-      {/* Catalogue - Available to admin, manager, staff */}
-      <Route path="catalogue" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><CataloguePage /></Layout>
         </RoleBasedRoute>
       } />
 
@@ -595,7 +562,8 @@ const TenantDashboardRoutes = ({ tenantData }) => {
 
       {/* 404 */}
       <Route path="*" element={<Layout tenantData={tenantData}><NotFound /></Layout>} />
-    </Routes>
+      </Routes>
+    </>
   );
 };
 

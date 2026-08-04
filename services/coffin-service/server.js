@@ -2,16 +2,10 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env'), override: false });
 
-// Debug: Check if DB credentials are loaded
-console.log('[COFFIN] DB_USER:', process.env.DB_USER);
-console.log('[COFFIN] DB_PASSWORD:', process.env.DB_PASSWORD ? '***' : 'NOT SET');
-console.log('[COFFIN] DB_HOST:', process.env.DB_HOST);
-console.log('[COFFIN] DB_NAME:', process.env.DB_NAME);
-
-// NOW load modules that depend on environment variables
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const logger = require('../../packages/shared-logger/dist/index').default;
 
 // Load routes AFTER .env is loaded so dbConfig can read DB credentials
 const coffinRoutes = require('./routes/coffinRoutes.cjs');
@@ -27,49 +21,27 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'x-tenant-id', 'x-user-id', 'x-branch-id', 'x-branch-code']
 };
 
-// Simple logger
-const logger = {
-  info: (msg) => console.log(`[COFFIN] ${msg}`),
-  error: (msg, err) => {
-    console.error(`[COFFIN] ERROR: ${msg}`);
-    if (err) {
-      console.error(`[COFFIN] ${err.message}`);
-      if (err.stack) console.error(err.stack);
-    }
-  },
-  warn: (msg) => console.warn(`[COFFIN] WARN: ${msg}`)
-};
-
-logger.info('Starting coffin service...');
+logger.info({ msg: 'Starting coffin service...' });
 
 // Prevent process from exiting
 process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception', error);
+  logger.error({ msg: 'Uncaught Exception', error: error.message, stack: error.stack });
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection', { reason, promise });
-});
-
-process.on('exit', (code) => {
-  logger.info(`Process exiting with code: ${code}`);
+process.on('unhandledRejection', (reason) => {
+  logger.error({ msg: 'Unhandled Rejection', reason: reason?.message || reason });
 });
 
 // Mount routes
-const routes = coffinRoutes;
-
 app.use(cors(corsOptions));
 app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-logger.info('Middleware configured');
-
 // Simple tenant middleware - resolve database from tenant slug
 app.use(async (req, res, next) => {
   try {
     const tenantSlug = req.headers['x-tenant-slug'] || req.headers['x-slug'] || 'system_shared';
-
     req.tenantSlug = tenantSlug;
 
     // For system_shared, use default DB
@@ -80,7 +52,6 @@ app.use(async (req, res, next) => {
         tenant_name: 'System Shared',
         tenant_slug: tenantSlug
       };
-      logger.info(`${req.method} ${req.path} - Tenant: ${tenantSlug} → DB: ${req.tenant.db_name}`);
       return next();
     }
 
@@ -99,9 +70,8 @@ app.use(async (req, res, next) => {
         tenant_slug: tenantSlug,
         tenant_name: tenantSlug
       };
-      logger.info(`${req.method} ${req.path} - Tenant: ${tenantSlug} → DB: ${dbName}`);
     } catch (err) {
-      logger.error('[COFFIN] Tenant resolution error:', err.message);
+      logger.error({ msg: 'Tenant resolution error', tenantSlug, error: err.message });
       // Fall back to default DB rather than blocking
       req.tenant = {
         db_name: process.env.DB_NAME || 'restpoint_main',
@@ -112,7 +82,7 @@ app.use(async (req, res, next) => {
 
     next();
   } catch (error) {
-    logger.error('Middleware error', error);
+    logger.error({ msg: 'Middleware error', error: error.message });
     res.status(500).json({
       success: false,
       message: 'Middleware error',
@@ -122,29 +92,7 @@ app.use(async (req, res, next) => {
 });
 
 // Routes - mount at /coffins to match API gateway paths
-app.use('/coffins', routes);
-
-// Log all registered routes after mounting
-try {
-  logger.info('Registered routes after mounting:');
-  if (app._router && app._router.stack) {
-    app._router.stack.forEach((layer, i) => {
-      if (layer.route) {
-        const methods = Object.keys(layer.route.methods).map(m => m.toUpperCase()).join(', ');
-        logger.info(`  ${methods} ${layer.route.path}`);
-      } else if (layer.name === 'router' && layer.handle && layer.handle.stack) {
-        layer.handle.stack.forEach((subLayer) => {
-          if (subLayer.route) {
-            const methods = Object.keys(subLayer.route.methods).map(m => m.toUpperCase()).join(', ');
-            logger.info(`  ${methods} /coffins${subLayer.route.path}`);
-          }
-        });
-      }
-    });
-  }
-} catch (err) {
-  logger.warn('Could not log routes: ' + err.message);
-}
+app.use('/coffins', coffinRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -176,7 +124,7 @@ app.get('/', (req, res) => {
 
 // 404 handler
 app.use((req, res) => {
-  logger.info(`Route not found: ${req.method} ${req.originalUrl}`);
+  logger.info({ msg: 'Route not found', method: req.method, url: req.originalUrl });
   res.status(404).json({
     status: 'error',
     message: `Route ${req.originalUrl} not found.`
@@ -184,8 +132,8 @@ app.use((req, res) => {
 });
 
 // Global error handler
-app.use((err, req, res, next) => {
-  logger.error('Unhandled Error', err);
+app.use((err, req, res) => {
+  logger.error({ msg: 'Unhandled Error', error: err.message });
   res.status(500).json({
     status: 'error',
     message: 'Internal server error.',
@@ -196,35 +144,25 @@ app.use((err, req, res, next) => {
 // Start server
 try {
   const server = app.listen(PORT, '0.0.0.0', () => {
-    logger.info('========================================');
-    logger.info(`  🚀 Coffin Service`);
-    logger.info(`  📡 Running on http://localhost:${PORT}`);
-    logger.info(`  🔗 Health: http://localhost:${PORT}/health`);
-    logger.info(`  📝 POST: http://localhost:${PORT}/`);
-    logger.info(`  📋 GET: http://localhost:${PORT}/`);
-    logger.info('========================================');
-    console.log('[COFFIN] ✅ Service is ready and listening for requests');
+    logger.info({ msg: 'Coffin Service running', port: PORT, health: `http://localhost:${PORT}/health` });
   });
 
   server.on('error', (error) => {
-    logger.error('Server error', error);
+    logger.error({ msg: 'Server error', error: error.message });
   });
 
   // Graceful shutdown
   process.on('SIGINT', () => {
-    logger.info('Received SIGINT, shutting down...');
+    logger.info({ msg: 'Received SIGINT, shutting down...' });
     server.close(() => process.exit(0));
   });
 
   process.on('SIGTERM', () => {
-    logger.info('Received SIGTERM, shutting down...');
+    logger.info({ msg: 'Received SIGTERM, shutting down...' });
     server.close(() => process.exit(0));
   });
 
-  // Keep-alive
-  setInterval(() => { }, 30000);
-
 } catch (error) {
-  logger.error('Failed to start server', error);
+  logger.error({ msg: 'Failed to start server', error: error.message });
   process.exit(1);
 }

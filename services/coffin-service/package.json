@@ -2,14 +2,11 @@
   "name": "@montezuma/coffin-service",
   "version": "1.0.0",
   "description": "Montezuma Mortuary SaaS coffin-service",
-  "main": "dist/server.js",
+  "main": "server.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/server.js",
-    "dev": "npx ts-node server.js",
-    "dev:watch": "nodemon --watch . --ext ts --exec npx ts-node server.ts",
-    "clean": "rimraf dist",
-    "type-check": "tsc --noEmit"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "migrate": "node migrate-add-coffin-images.js"
   },
   "dependencies": {
     "@montezuma/shared-config": "^1.0.0",

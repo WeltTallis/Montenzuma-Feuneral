@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
 import axios from 'axios';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const API_GATEWAY_URL = import.meta.env.VITE_API_URL || '/api/v1/restpoint';
 const BASE_URL = `${API_GATEWAY_URL}/deceased`;
@@ -41,22 +42,42 @@ const C = {
   brown: '#795548',
 };
 
+// ─── Status Configuration ───────────────────────────────────────────
+const STATUS_CONFIG = {
+  active: { label: 'Active', color: '#1e3a8a', bg: '#e0e7ff' },
+  'in morgue': { label: 'In Morgue', color: '#1e3a8a', bg: '#e0e7ff' },
+  pending: { label: 'Pending', color: '#b45309', bg: '#fffbeb' },
+  released: { label: 'Released', color: '#047857', bg: '#ecfdf5' },
+  transferred: { label: 'Transferred', color: '#6b7280', bg: '#f3f4f6' },
+  default: { label: 'Unknown', color: '#6b7280', bg: '#f3f4f6' }
+};
+
+const getStatusInfo = (statusStr) => {
+  const s = (statusStr || 'active').toLowerCase();
+  return STATUS_CONFIG[s] || STATUS_CONFIG.default;
+};
+
 // ─── Styled Components ──────────────────────────────────────────────
 const AppContainer = styled.div`
   font-family: 'Source Sans 3', -apple-system, sans-serif;
-  
   color: ${C.dark};
   font-size: 14px;
   line-height: 1.5;
-  min-height: 100vh;
+  min-height: 100dvh; /* Fixed mobile viewport issue */
 
   margin: 0;
-  padding: 0px;
-  animation: ${fadeIn} 0.25s ease-out;
 
-  @media (min-width: 768px) {
+  animation: ${fadeIn} 0.25s ease-out;
+  box-sizing: border-box;
+
+  @media (min-width: 901px) {
     margin: 0 auto;
     max-width: 1400px;
+    padding: 32px;
+  }
+
+  @media (max-width: 900px) {
+    padding: 16px;
   }
 `;
 
@@ -67,6 +88,8 @@ const PageHeader = styled.div`
   margin-bottom: 24px;
   flex-wrap: wrap;
   gap: 16px;
+  box-sizing: border-box;
+  
   h1 {
     font-family: 'Merriweather', serif;
     font-size: 24px;
@@ -78,27 +101,69 @@ const PageHeader = styled.div`
     font-size: 14px;
     margin: 4px 0 0;
   }
+
+  @media (max-width: 900px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    h1 { font-size: 22px; }
+    p { font-size: 13px; }
+  }
 `;
 
 const Actions = styled.div`
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  box-sizing: border-box;
+
+  @media (max-width: 900px) {
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
 `;
 
 const Btn = styled.button`
-  padding: 10px 16px; border-radius: 4px; font-weight: 600; font-size: 13px;
-  cursor: pointer; border: 1px solid ${C.border}; background: white; color: ${C.dark};
-  transition: 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 38px;
+  padding: 0 16px; 
+  border-radius: 4px; 
+  font-weight: 600; 
+  font-size: 13px;
+  cursor: pointer; 
+  border: 1px solid ${C.border}; 
+  background: white; 
+  color: ${C.dark};
+  transition: 0.15s; 
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 6px;
   font-family: 'Source Sans 3', sans-serif;
+  white-space: nowrap;
+  box-sizing: border-box;
+  
   &:hover { background: ${C.bgField}; border-color: ${C.gray}; }
+  
   ${p => p.$primary && `background: ${C.black}; color: white; border-color: ${C.black};
     &:hover { background: ${C.dark}; }`}
+    
   ${p => p.$danger && `background: ${C.danger}; color: white; border-color: ${C.danger};
     &:hover { background: #b91c1c; }`}
+    
   ${p => p.$export && `background: ${C.exportBtn}; color: white; border-color: ${C.exportBtn};
     &:hover { background: #0c2530; }`}
-  ${p => p.$sm && `padding: 6px 12px; font-size: 12px;`}
+    
+  ${p => p.$sm && `height: 30px; padding: 0 12px; font-size: 12px;`}
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 900px) {
+    width: 100%;
+  }
 `;
 
 const ListCard = styled.div`
@@ -107,6 +172,7 @@ const ListCard = styled.div`
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-sizing: border-box;
 `;
 
 const ListHeader = styled.div`
@@ -118,7 +184,18 @@ const ListHeader = styled.div`
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
-  h2 { font-size: 16px; font-weight: 700; color: ${C.black}; margin: 0; }
+  box-sizing: border-box;
+  h2 { 
+    font-family: 'Merriweather', serif;
+    font-size: 16px; 
+    font-weight: 700; 
+    color: ${C.black}; 
+    margin: 0; 
+  }
+
+  @media (max-width: 900px) {
+    padding: 16px;
+  }
 `;
 
 const FilterToolbar = styled.div`
@@ -129,84 +206,238 @@ const FilterToolbar = styled.div`
   gap: 12px;
   flex-wrap: wrap;
   align-items: center;
+  box-sizing: border-box;
+
+  @media (max-width: 900px) {
+    padding: 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    
+    > * {
+      width: 100% !important;
+      flex: 1 1 100% !important;
+      min-width: 100% !important;
+    }
+  }
 `;
 
 const FormInput = styled.input`
-  height: 38px;
+  height: 38px; 
   border: 1px solid ${C.border};
   border-radius: 4px;
   padding: 0 12px;
   font-family: 'Source Sans 3', sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   color: ${C.dark};
   background: ${p => p.$search ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23777' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cpath d='m21 21-4.35-4.35'%3E%3C/path%3E%3C/svg%3E") no-repeat 10px center, ${C.bgField}` : C.bgField};
   background-size: ${p => p.$search ? '16px, auto' : 'auto'};
   padding-left: ${p => p.$search ? '34px' : '12px'};
   transition: border-color 0.15s;
   box-sizing: border-box;
-  &:focus { outline: none; border-color: ${C.black}; background: white; }
+  &:focus { outline: none; border-color: ${C.black}; background-color: white; }
 `;
 
 const FormSelect = styled.select`
-  height: 38px;
+  height: 38px; 
   border: 1px solid ${C.border};
   border-radius: 4px;
   padding: 0 12px;
   font-family: 'Source Sans 3', sans-serif;
-  font-size: 14px;
+  font-size: 13px; 
   color: ${C.dark};
   background: ${C.bgField};
   transition: border-color 0.15s;
   cursor: pointer;
-  &:focus { outline: none; border-color: ${C.black}; background: white; }
+  box-sizing: border-box;
+  &:focus { outline: none; border-color: ${C.black}; background-color: white; }
 `;
 
-const TableWrap = styled.div`overflow-x: auto;`;
+const TableWrap = styled.div`
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  
+  /* Hide Table completely on mobile */
+  @media (max-width: 900px) {
+    display: none;
+  }
+`;
 
 const StyledTable = styled.table`
-  width: 100%; border-collapse: collapse; min-width: 800px;
+  width: 100%; 
+  border-collapse: collapse; 
+  min-width: 800px;
+  
   thead th {
-    text-align: left; padding: 12px 24px; font-size: 11px; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.08em; color: ${C.gray};
-    border-bottom: 1px solid ${C.borderLight}; background: ${C.bgSection}; white-space: nowrap;
+    text-align: left; 
+    padding: 12px 24px; 
+    font-size: 11px; 
+    font-weight: 700;
+    text-transform: uppercase; 
+    letter-spacing: 0.08em; 
+    color: ${C.gray};
+    border-bottom: 1px solid ${C.borderLight}; 
+    background: ${C.bgSection}; 
+    white-space: nowrap;
   }
+  
   tbody tr {
-    border-bottom: 1px solid ${C.borderLight}; cursor: pointer; transition: background 0.1s;
+    border-bottom: 1px solid ${C.borderLight}; 
+    cursor: pointer; 
+    transition: background 0.1s;
     &:last-child { border-bottom: none; }
     &:hover { background: ${C.bgField}; }
   }
-  td { padding: 16px 24px; font-size: 14px; color: ${C.dark}; vertical-align: middle; }
+  
+  td { 
+    padding: 16px 24px; 
+    font-size: 14px; 
+    color: ${C.dark}; 
+    vertical-align: middle; 
+  }
+`;
+
+// ─── Mobile Sleek Card Layout ───────────────────────────────────────
+const MobileCardContainer = styled.div`
+  display: none;
+  
+  @media (max-width: 900px) {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+`;
+
+const MobileCard = styled.div`
+  background: white;
+  border: 1px solid ${C.borderLight};
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  cursor: pointer;
+  transition: 0.2s;
+  box-sizing: border-box;
+  
+  &:active {
+    transform: scale(0.98);
+    background: ${C.bgField};
+  }
+`;
+
+const MobileCardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+`;
+
+const MobileCardNameWrap = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+`;
+
+const MobileCardDetails = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid ${C.borderLight};
+  
+  div {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  span {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: ${C.gray};
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  
+  strong {
+    font-size: 14px;
+    color: ${C.dark};
+    font-weight: 600;
+  }
+`;
+
+const MobileCardFooter = styled.div`
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
 `;
 
 const AvatarSm = styled.div`
-  width: 36px; height: 36px; border-radius: 50%; color: white;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 14px; flex-shrink: 0;
+  width: 36px; 
+  height: 36px; 
+  border-radius: 50%; 
+  color: white;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  font-weight: 700; 
+  font-size: 14px; 
+  flex-shrink: 0;
   background: ${p => p.$female ? C.brown : C.black};
 `;
 
 const NameCell = styled.div`
-  display: flex; align-items: center; gap: 12px;
+  display: flex; 
+  align-items: center; 
+  gap: 12px;
   .meta { font-size: 12px; color: ${C.gray}; margin-top: 2px; }
 `;
 
-const Badge = styled.span`
-  padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;
-  text-transform: uppercase; white-space: nowrap;
-  background: ${p => p.$active ? C.warningBg : p.$released ? C.successBg : C.bgField};
-  color: ${p => p.$active ? C.warning : p.$released ? C.success : C.gray};
+const StatusBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+  white-space: nowrap;
+  background: ${p => p.$bg};
+  color: ${p => p.$color};
+  border: 1px solid ${p => p.$border};
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: ${p => p.$color};
+  }
 `;
 
 const EmptyRow = styled.td`
-  text-align: center; padding: 40px; color: ${C.gray};
+  text-align: center; 
+  padding: 40px; 
+  color: ${C.gray};
 `;
 
 const LoadingState = styled.div`
-  text-align: center; padding: 60px; color: ${C.gray};
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  text-align: center; 
+  padding: 60px; 
+  color: ${C.gray};
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 12px;
   .spinner {
-    width: 24px; height: 24px; border: 2px solid ${C.borderLight};
-    border-top-color: ${C.black}; border-radius: 50%;
+    width: 24px; 
+    height: 24px; 
+    border: 2px solid ${C.borderLight};
+    border-top-color: ${C.black}; 
+    border-radius: 50%;
     animation: spin 0.6s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -215,63 +446,230 @@ const LoadingState = styled.div`
 // ─── Modal Components ───────────────────────────────────────────────
 const ModalOverlay = styled.div`
   display: ${p => p.$open ? 'flex' : 'none'};
-  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000;
-  justify-content: center; align-items: center; padding: 20px;
+  position: fixed; 
+  inset: 0; 
+  background: rgba(0,0,0,0.5); 
+  z-index: 1000;
+  justify-content: center; 
+  align-items: center; 
+  padding: 20px;
+
+  @media (max-width: 900px) {
+    padding: 0;
+    align-items: flex-end; /* Bottom sheet style */
+  }
 `;
+
 const ModalContent = styled.div`
-  background: white; border-radius: 8px; width: 100%; max-width: 700px;
-  max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  background: white; 
+  border-radius: 8px; 
+  width: 100%; 
+  max-width: 700px;
+  max-height: 90dvh; /* Fixed mobile viewport issue */
+  overflow-y: auto; 
+  -webkit-overflow-scrolling: touch;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+
+  @media (max-width: 900px) {
+    max-width: 100%;
+    max-height: 90dvh;
+    border-radius: 16px 16px 0 0;
+    margin-top: auto;
+    margin-bottom: 0;
+  }
 `;
+
 const ModalHeader = styled.div`
-  padding: 20px 24px; border-bottom: 1px solid ${C.borderLight};
-  display: flex; justify-content: space-between; align-items: center;
-  h2 { font-family: 'Merriweather', serif; font-size: 18px; color: ${C.black}; margin: 0; }
+  padding: 20px 24px; 
+  border-bottom: 1px solid ${C.borderLight};
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+  box-sizing: border-box;
+  h2 { 
+    font-family: 'Merriweather', serif; 
+    font-size: 18px; 
+    color: ${C.black}; 
+    margin: 0; 
+  }
+
+  @media (max-width: 900px) {
+    padding: 16px;
+    h2 { font-size: 16px; }
+  }
 `;
-const ModalBody = styled.div`padding: 24px;`;
+
+const ModalBody = styled.div`
+  padding: 24px;
+  box-sizing: border-box;
+
+  @media (max-width: 900px) {
+    padding: 16px;
+  }
+`;
+
 const ModalFooter = styled.div`
-  padding: 16px 24px; border-top: 1px solid ${C.borderLight}; text-align: right; display: flex; gap: 8px; justify-content: flex-end;
+  padding: 16px 24px; 
+  border-top: 1px solid ${C.borderLight}; 
+  text-align: right; 
+  display: flex; 
+  gap: 8px; 
+  justify-content: flex-end;
+  position: sticky;
+  bottom: 0;
+  background: white;
+  box-sizing: border-box;
+
+  @media (max-width: 900px) {
+    padding: 16px;
+    flex-direction: column-reverse;
+    
+    button {
+      width: 100%;
+    }
+  }
 `;
+
 const CloseBtn = styled.button`
-  background: none; border: none; font-size: 24px; color: ${C.gray}; cursor: pointer; line-height: 1;
+  background: none; 
+  border: none; 
+  font-size: 24px; 
+  color: ${C.gray}; 
+  cursor: pointer; 
+  line-height: 1;
   &:hover { color: ${C.black}; }
 `;
+
 const SectionHead = styled.div`
-  background: ${C.black}; color: white; padding: 8px 16px;
-  font-size: 12px; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; margin-bottom: 24px; border-radius: 2px;
-  display: flex; align-items: center; gap: 8px;
+  background: ${C.black}; 
+  color: white; 
+  padding: 8px 16px;
+  font-size: 12px; 
+  font-weight: 700; 
+  letter-spacing: 0.1em;
+  text-transform: uppercase; 
+  margin-bottom: 24px; 
+  border-radius: 2px;
+  display: flex; 
+  align-items: center; 
+  gap: 8px;
   span { opacity: 0.5; font-size: 10px; }
   ${p => p.$mt0 && 'margin-top: 0;'}
   ${p => p.$mt4 && 'margin-top: 32px;'}
+
+  @media (max-width: 900px) {
+    padding: 8px 12px;
+    font-size: 11px;
+    margin-bottom: 16px;
+    ${p => p.$mt4 && 'margin-top: 24px;'}
+  }
 `;
+
 const FormRow = styled.div`
-  display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;
+  display: flex; 
+  gap: 16px; 
+  margin-bottom: 16px; 
+  flex-wrap: wrap;
+
+  @media (max-width: 900px) {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
 `;
-const FormGroup = styled.div`flex: 1; min-width: 150px;`;
+
+const FormGroup = styled.div`flex: 1; min-width: 150px; box-sizing: border-box;`;
+
 const FormLabel = styled.label`
-  display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
-  text-transform: uppercase; color: ${C.gray}; margin-bottom: 6px;
+  display: block; 
+  font-size: 10px; 
+  font-weight: 700; 
+  letter-spacing: 0.12em;
+  text-transform: uppercase; 
+  color: ${C.gray}; 
+  margin-bottom: 6px;
 `;
 
 const ModalInput = styled.input`
-  height: 38px; width: 100%; border: 1px solid ${C.border}; border-radius: 4px;
-  padding: 0 12px; font-family: 'Source Sans 3', sans-serif; font-size: 14px;
-  color: ${C.dark}; background: ${C.bgField}; box-sizing: border-box;
+  height: 38px; 
+  width: 100%; 
+  border: 1px solid ${C.border}; 
+  border-radius: 4px;
+  padding: 0 12px; 
+  font-family: 'Source Sans 3', sans-serif; 
+  font-size: 14px;
+  color: ${C.dark}; 
+  background: ${C.bgField}; 
+  box-sizing: border-box;
   &:focus { outline: none; border-color: ${C.black}; background: white; }
 `;
 
 const DataTable = styled.table`
-  width: 100%; border-collapse: collapse; margin-top: 0;
-  th { text-align: left; font-size: 11px; text-transform: uppercase; color: ${C.gray}; padding: 8px 12px; border-bottom: 2px solid ${C.borderLight}; white-space: nowrap; }
-  td { padding: 12px; font-size: 13px; border-bottom: 1px solid ${C.borderLight}; vertical-align: middle; }
+  width: 100%; 
+  border-collapse: collapse; 
+  margin-top: 0;
+  border: 1px solid ${C.borderLight};
+  border-radius: 6px;
+  overflow: hidden;
+  
+  th { 
+    text-align: left; 
+    font-size: 11px; 
+    text-transform: uppercase; 
+    color: ${C.gray}; 
+    padding: 8px 12px; 
+    border-bottom: 2px solid ${C.borderLight}; 
+    background: ${C.bgSection}; 
+    white-space: nowrap; 
+  }
+  td { 
+    padding: 12px; 
+    font-size: 13px; 
+    border-bottom: 1px solid ${C.borderLight}; 
+    vertical-align: middle; 
+  }
+  tr:last-child td { border-bottom: none; }
 `;
 
 const StatusTag = styled.span`
-  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
-  border-radius: 4px; font-size: 12px; font-weight: 700;
+  display: inline-flex; 
+  align-items: center; 
+  gap: 6px; 
+  padding: 6px 12px;
+  border-radius: 4px; 
+  font-size: 12px; 
+  font-weight: 700;
   background: ${p => p.$success ? C.successBg : p.$warning ? C.warningBg : p.$info ? C.infoBg : C.bgField};
   color: ${p => p.$success ? C.success : p.$warning ? C.warning : p.$info ? C.info : C.gray};
   border: 1px solid ${p => p.$success ? '#a7f3d0' : p.$warning ? '#fde68a' : p.$info ? '#bfdbfe' : C.borderLight};
+`;
+
+const ProgressWidget = styled.div`
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border: 1px solid ${C.borderLight};
+  z-index: 2000;
+  min-width: 320px;
+  animation: ${fadeIn} 0.3s ease-out;
+  box-sizing: border-box;
+
+  @media (max-width: 900px) {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    min-width: auto;
+    width: calc(100% - 32px);
+    padding: 16px;
+  }
 `;
 
 // ─── Main Component ─────────────────────────────────────────────────
@@ -283,6 +681,7 @@ const DeceasedListPage = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  
   const [showExport, setShowExport] = useState(false);
   const [exportStart, setExportStart] = useState('');
   const [exportEnd, setExportEnd] = useState('');
@@ -290,9 +689,12 @@ const DeceasedListPage = () => {
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStatus, setExportStatus] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [exportHistory, setExportHistory] = useState([]);
+  
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const [unavailableMessage, setUnavailableMessage] = useState('');
-  const exportCleanupRef = React.useRef(null);
+  
+  const exportCleanupRef = useRef(null);
 
   // ─── Fetch Deceased ──────────────────────────────────────────────
   const fetchDeceased = useCallback(async () => {
@@ -304,6 +706,7 @@ const DeceasedListPage = () => {
       const params = {};
       if (search) params.search = search;
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
+      
       const res = await axios.get(`${BASE_URL}/deceased-all`, {
         params,
         headers: {
@@ -311,12 +714,12 @@ const DeceasedListPage = () => {
           'x-tenant-slug': tenantSlug,
         },
       });
+      
       const data = res.data?.data || res.data || [];
       setRecords(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching deceased:', err);
       setRecords([]);
-      // Show friendly message if service is unavailable
       if (err.friendlyMessage) {
         setServiceUnavailable(true);
         setUnavailableMessage(err.friendlyMessage);
@@ -330,17 +733,11 @@ const DeceasedListPage = () => {
     fetchDeceased();
   }, [fetchDeceased]);
 
-  // Cleanup export state when component unmounts
   useEffect(() => {
     return () => {
       if (exportCleanupRef.current) {
         exportCleanupRef.current();
       }
-      setExporting(false);
-      setShowExport(false);
-      setExportStatus('');
-      setExportProgress(0);
-      setExportJobId(null);
     };
   }, []);
 
@@ -352,9 +749,9 @@ const DeceasedListPage = () => {
     const searchTerm = search.toLowerCase();
     if (search && !name.includes(searchTerm) && !id.includes(searchTerm) && !adm.includes(searchTerm)) return false;
     if (statusFilter) {
-      const status = (r.body_status || r.status || '').toLowerCase();
-      if (statusFilter === 'Active' && !['active', 'in morgue', 'pending'].includes(status)) return false;
-      if (statusFilter === 'Released' && !['released', 'transferred'].includes(status)) return false;
+      const statusInfo = getStatusInfo(r.body_status || r.status);
+      if (statusFilter === 'Active' && statusInfo.label !== 'Active' && statusInfo.label !== 'In Morgue') return false;
+      if (statusFilter === 'Released' && statusInfo.label !== 'Released' && statusInfo.label !== 'Transferred') return false;
     }
     if (genderFilter) {
       const sex = (r.sex || r.gender || '').toLowerCase();
@@ -380,12 +777,6 @@ const DeceasedListPage = () => {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const getStatus = (r) => {
-    const s = (r.body_status || r.status || '').toLowerCase();
-    if (s === 'released' || s === 'transferred') return 'Released';
-    return 'Active';
-  };
-
   const openProfile = (id) => {
     const tenantSlug = getTenantSlug();
     navigate(`/tenant/${tenantSlug}/deceased/${id}`);
@@ -393,7 +784,6 @@ const DeceasedListPage = () => {
 
   // ─── Export Functions ───────────────────────────────────────────
   const handleExport = async () => {
-    // Cleanup any previous export polling
     if (exportCleanupRef.current) {
       exportCleanupRef.current();
       exportCleanupRef.current = null;
@@ -438,8 +828,8 @@ const DeceasedListPage = () => {
   };
 
   const pollExportStatus = async (jobId) => {
-    const maxAttempts = 60; // 2 minutes max
-    const pollInterval = 2000; // 2 seconds
+    const maxAttempts = 60; 
+    const pollInterval = 2000; 
     let attempts = 0;
     let timeoutId;
 
@@ -462,17 +852,15 @@ const DeceasedListPage = () => {
               'Authorization': `Bearer ${token}`,
               'x-tenant-slug': tenantSlug,
             },
-            responseType: 'blob', // Important for file download
-            timeout: 10000, // 10 second timeout for each request
+            responseType: 'blob',
+            timeout: 10000,
           }
         );
 
-        // Check if we got a file (completed)
         const contentType = response.headers['content-type'];
         if (contentType && (contentType.includes('spreadsheetml') || contentType.includes('zip'))) {
           cleanup();
           
-          // Download the compressed file
           const blob = new Blob([response.data], { type: 'application/zip' });
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement('a');
@@ -485,7 +873,6 @@ const DeceasedListPage = () => {
           
           showToast('Export completed successfully! (Compressed ZIP file)', 'success');
           
-          // Close modal after short delay
           setTimeout(() => {
             setExporting(false);
             setShowExport(false);
@@ -497,7 +884,6 @@ const DeceasedListPage = () => {
           return;
         }
 
-        // Still processing
         const data = response.data;
         if (data?.success && data?.status) {
           setExportProgress(data.progress || 0);
@@ -518,7 +904,6 @@ const DeceasedListPage = () => {
         cleanup();
         console.error('Poll error:', err);
         
-        // Handle timeout errors
         if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
           showToast('Request timeout - retrying...', 'warning');
           attempts++;
@@ -536,7 +921,6 @@ const DeceasedListPage = () => {
           return;
         }
         
-        // Handle 202 (still processing)
         if (err.response?.status === 202) {
           attempts++;
           if (attempts < maxAttempts) {
@@ -553,7 +937,6 @@ const DeceasedListPage = () => {
           return;
         }
         
-        // Other errors
         showToast('Export failed. Please try again.', 'error');
         setTimeout(() => {
           setExporting(false);
@@ -565,15 +948,11 @@ const DeceasedListPage = () => {
     };
 
     poll();
-    
-    // Store cleanup function in ref
     exportCleanupRef.current = cleanup;
     return cleanup;
   };
 
   // ─── Export History ──────────────────────────────────────────────
-  const [exportHistory, setExportHistory] = useState([]);
-
   useEffect(() => {
     const fetchExportHistory = async () => {
       try {
@@ -607,7 +986,7 @@ const DeceasedListPage = () => {
     <>
       <GlobalFonts />
       <AppContainer>
-        <ToastContainer position="top-right" />
+        <ToastContainer position="top-right" autoClose={3000} />
 
         {/* Page Header */}
         <PageHeader>
@@ -616,18 +995,22 @@ const DeceasedListPage = () => {
             <p>Manage and track all deceased records across your facility</p>
           </div>
           <Actions>
-            <Btn $export onClick={() => setShowExport(true)}>⬇ Export Data to Excel</Btn>
+            <Btn $export onClick={() => setShowExport(true)}>
+              <i className="fas fa-file-export" style={{ fontSize: 12 }}></i> Export Data to Excel
+            </Btn>
             <Btn $primary onClick={() => {
               const slug = getTenantSlug();
               navigate(`/tenant/${slug}/deceased/register`);
-            }}>+ New Admission</Btn>
+            }}>
+              <i className="fas fa-plus" style={{ fontSize: 12 }}></i> New Admission
+            </Btn>
           </Actions>
         </PageHeader>
 
         {/* Main Card */}
         <ListCard>
           <ListHeader>
-            <h2>All Deceased (<span>{filteredRecords.length}</span>)</h2>
+            <h2>All Deceased ({filteredRecords.length})</h2>
           </ListHeader>
 
           {/* Filters */}
@@ -662,7 +1045,7 @@ const DeceasedListPage = () => {
           {/* Service Unavailable Message */}
           {serviceUnavailable && (
             <div style={{
-              padding: '40px 24px',
+              padding: '24px',
               textAlign: 'center',
               background: C.warningBg,
               borderBottom: `1px solid #fde68a`
@@ -674,7 +1057,9 @@ const DeceasedListPage = () => {
                 padding: '16px 24px',
                 background: 'white',
                 borderRadius: '8px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                maxWidth: '100%',
+                boxSizing: 'border-box'
               }}>
                 <div style={{
                   width: '40px',
@@ -686,9 +1071,10 @@ const DeceasedListPage = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '20px',
-                  fontWeight: '700'
+                  fontWeight: '700',
+                  flexShrink: 0
                 }}>
-                  ⚠
+                  <i className="fas fa-exclamation"></i>
                 </div>
                 <div style={{ textAlign: 'left' }}>
                   <div style={{ fontWeight: 600, color: C.dark, marginBottom: '4px' }}>
@@ -702,7 +1088,7 @@ const DeceasedListPage = () => {
             </div>
           )}
 
-          {/* Table */}
+          {/* Desktop Table Layout (Visible > 900px) */}
           <TableWrap>
             <StyledTable>
               <thead>
@@ -728,7 +1114,7 @@ const DeceasedListPage = () => {
                   const adm = r.admission_number || r.admission_no || '—';
                   const admitted = r.created_at || r.date_admitted || r.admission_date;
                   const days = getDaysInMorgue(admitted);
-                  const status = getStatus(r);
+                  const statusInfo = getStatusInfo(r.body_status || r.status);
                   const sex = r.sex || r.gender || '';
                   const isFemale = sex.toLowerCase() === 'female';
                   return (
@@ -745,7 +1131,15 @@ const DeceasedListPage = () => {
                       <td>{adm}</td>
                       <td>{formatDate(admitted)}</td>
                       <td>{days} days</td>
-                      <td><Badge $active={status === 'Active'} $released={status === 'Released'}>{status}</Badge></td>
+                      <td>
+                        <StatusBadge 
+                          $bg={statusInfo.bg} 
+                          $color={statusInfo.color} 
+                          $border={statusInfo.color + '40'}
+                        >
+                          {statusInfo.label}
+                        </StatusBadge>
+                      </td>
                       <td style={{ textAlign: 'right' }}>
                         <Btn $sm onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn>
                       </td>
@@ -755,29 +1149,100 @@ const DeceasedListPage = () => {
               </tbody>
             </StyledTable>
           </TableWrap>
+
+          {/* Mobile Sleek Card Layout (Visible <= 900px) */}
+          <MobileCardContainer>
+            {loading ? (
+              <LoadingState><div className="spinner" /> Loading records...</LoadingState>
+            ) : serviceUnavailable ? (
+              <MobileCard style={{ cursor: 'default', textAlign: 'center' }}>
+                Unable to load records at this time. Please try again later.
+              </MobileCard>
+            ) : filteredRecords.length === 0 ? (
+              <MobileCard style={{ cursor: 'default', textAlign: 'center' }}>
+                No records found matching your filters.
+              </MobileCard>
+            ) : (
+              filteredRecords.map(r => {
+                const name = r.full_name || r.name || 'Unknown';
+                const id = r.deceased_id || r.id;
+                const adm = r.admission_number || r.admission_no || '—';
+                const admitted = r.created_at || r.date_admitted || r.admission_date;
+                const days = getDaysInMorgue(admitted);
+                const statusInfo = getStatusInfo(r.body_status || r.status);
+                const sex = r.sex || r.gender || '';
+                const isFemale = sex.toLowerCase() === 'female';
+                
+                return (
+                  <MobileCard key={id} onClick={() => openProfile(id)}>
+                    <MobileCardHeader>
+                      <MobileCardNameWrap>
+                        <AvatarSm $female={isFemale}>{getInitials(name)}</AvatarSm>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 16, color: C.black }}>{name}</div>
+                          <div style={{ fontSize: 13, color: C.gray }}>
+                            {sex ? `${sex}, ` : ''}{r.age || '—'} yrs
+                          </div>
+                        </div>
+                      </MobileCardNameWrap>
+                      <StatusBadge 
+                        $bg={statusInfo.bg} 
+                        $color={statusInfo.color} 
+                        $border={statusInfo.color + '40'}
+                      >
+                        {statusInfo.label}
+                      </StatusBadge>
+                    </MobileCardHeader>
+                    
+                    <MobileCardDetails>
+                      <div>
+                        <span>Admission No.</span>
+                        <strong>{adm}</strong>
+                      </div>
+                      <div>
+                        <span>Days in Morgue</span>
+                        <strong>{days} days</strong>
+                      </div>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <span>Date Admitted</span>
+                        <strong>{formatDate(admitted)}</strong>
+                      </div>
+                    </MobileCardDetails>
+                    
+                    <MobileCardFooter>
+                      <Btn $sm onClick={(e) => { e.stopPropagation(); openProfile(id); }}>
+                        View Profile
+                      </Btn>
+                    </MobileCardFooter>
+                  </MobileCard>
+                );
+              })
+            )}
+          </MobileCardContainer>
         </ListCard>
 
         {/* ─── Export Modal ───────────────────────────────────────── */}
-        <ModalOverlay $open={showExport} onClick={() => setShowExport(false)}>
+        <ModalOverlay $open={showExport} onClick={() => !exporting && setShowExport(false)}>
           <ModalContent onClick={e => e.stopPropagation()}>
             <ModalHeader>
               <h2>Export Data to Excel</h2>
-              <CloseBtn onClick={() => setShowExport(false)}>&times;</CloseBtn>
+              <CloseBtn onClick={() => !exporting && setShowExport(false)}>&times;</CloseBtn>
             </ModalHeader>
             <ModalBody>
               <SectionHead $mt0><span>01</span> Select Time Range</SectionHead>
               <FormRow>
                 <FormGroup>
                   <FormLabel>Start Date</FormLabel>
-                  <ModalInput type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} />
+                  <ModalInput type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} disabled={exporting} />
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>End Date</FormLabel>
-                  <ModalInput type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} />
+                  <ModalInput type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} disabled={exporting} />
                 </FormGroup>
               </FormRow>
+              
               <SectionHead $mt4><span>02</span> Export History</SectionHead>
-              <div style={{ border: `1px solid ${C.borderLight}`, borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ border: `1px solid ${C.borderLight}`, borderRadius: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <DataTable>
                   <thead>
                     <tr>
@@ -789,21 +1254,29 @@ const DeceasedListPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {exportHistory.map((h, i) => (
-                      <tr key={i}>
-                        <td>{h.date}</td>
-                        <td>{h.range}</td>
-                        <td>{h.format}</td>
-                        <td><StatusTag $success>{h.status}</StatusTag></td>
-                        <td><Btn $sm>Download</Btn></td>
+                    {exportHistory.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', color: C.gray, padding: '24px' }}>
+                          No export history available.
+                        </td>
                       </tr>
-                    ))}
+                    ) : (
+                      exportHistory.map((h, i) => (
+                        <tr key={i}>
+                          <td>{h.date}</td>
+                          <td>{h.range}</td>
+                          <td>{h.format}</td>
+                          <td><StatusTag $success>{h.status}</StatusTag></td>
+                          <td><Btn $sm>Download</Btn></td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </DataTable>
               </div>
             </ModalBody>
             <ModalFooter>
-              <Btn onClick={() => setShowExport(false)}>Cancel</Btn>
+              <Btn onClick={() => setShowExport(false)} disabled={exporting}>Cancel</Btn>
               <Btn $export onClick={handleExport} disabled={exporting}>
                 {exporting ? 'Exporting...' : 'Generate Export'}
               </Btn>
@@ -811,27 +1284,36 @@ const DeceasedListPage = () => {
           </ModalContent>
         </ModalOverlay>
 
-        {/* Export Progress Toast */}
+        {/* Export Progress Widget */}
         {exporting && (
-          <div style={{
-            position: 'fixed',
-            bottom: '20px',
-            right: '20px',
-            background: 'white',
-            padding: '16px 20px',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            border: '1px solid #e0e0e0',
-            zIndex: 2000,
-            minWidth: '300px'
-          }}>
-            <div style={{ marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-              Export Progress
+          <ProgressWidget>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              marginBottom: '12px' 
+            }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                background: C.bgField,
+                color: C.exportBtn,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <i className="fas fa-file-export" style={{ fontSize: 14 }}></i>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: C.dark, fontFamily: 'Merriweather' }}>
+                Export Progress
+              </div>
             </div>
             <div style={{
               width: '100%',
-              height: '8px',
-              background: '#f0f0f0',
+              height: '6px',
+              background: C.bgField,
               borderRadius: '4px',
               overflow: 'hidden',
               marginBottom: '8px'
@@ -839,27 +1321,30 @@ const DeceasedListPage = () => {
               <div style={{
                 width: `${exportProgress}%`,
                 height: '100%',
-                background: exportStatus === 'Completed' ? '#059669' : '#0F3040',
+                background: exportStatus === 'Completed' ? C.success : C.exportBtn,
                 transition: 'width 0.3s ease'
               }} />
             </div>
-            <div style={{ fontSize: '12px', color: '#777', marginBottom: '4px' }}>
+            <div style={{ fontSize: 12, color: C.gray, marginBottom: '4px' }}>
               {exportStatus}
             </div>
-            <div style={{ fontSize: '11px', color: '#999' }}>
+            <div style={{ fontSize: 11, color: C.lightGray }}>
               {exportProgress < 100 ? `Attempt ${Math.ceil(exportProgress / 10)} of 10` : 'Complete'}
             </div>
             {exportProgress >= 80 && exportProgress < 100 && (
               <div style={{
-                fontSize: '11px',
-                color: '#d97706',
+                fontSize: 11,
+                color: C.warning,
                 marginTop: '8px',
-                fontStyle: 'italic'
+                fontStyle: 'italic',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
               }}>
-                ⚠ Taking longer than expected...
+                <i className="fas fa-exclamation-triangle"></i> Taking longer than expected...
               </div>
             )}
-          </div>
+          </ProgressWidget>
         )}
       </AppContainer>
     </>

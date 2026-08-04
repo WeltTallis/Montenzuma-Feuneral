@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, ArrowRight, ChevronDown, Menu, X, Users, Building2, Quote } from '../../utils/icons/icons';
+import { Check, ArrowRight, ChevronDown, Menu, X, Users, Building, Building2, Quote } from '../../utils/icons/icons';
 import Footer from '../../components/layout/Footer';
 import    C  from   '../../utils/colors/index'
 

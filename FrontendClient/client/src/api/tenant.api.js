@@ -2,6 +2,27 @@ import api from './axios';
 import { ENDPOINTS } from './endpoints';
 
 export const tenantApi = {
+  // ─── User Management (via auth service) ─────────────────────────────
+  getUsers: async (tenantSlug) => {
+    try {
+      const slug = tenantSlug || localStorage.getItem('tenantSlug');
+      const response = await api.get(ENDPOINTS.AUTH.USERS);
+      return response.data;
+    } catch (err) {
+      console.warn('⚠️ Fetch users API failed:', err.message);
+      return { success: false, users: [] };
+    }
+  },
+
+  createUser: async (userData) => {
+    try {
+      const response = await api.post(ENDPOINTS.AUTH.CREATE_USER, userData);
+      return response.data;
+    } catch (err) {
+      console.warn('⚠️ Create user API failed:', err.message);
+      throw err;
+    }
+  },
   getBranding: async (slug) => {
     try {
       // Try to fetch from the real backend first
@@ -118,5 +139,16 @@ export const tenantApi = {
   registerTenant: async (tenantData) => {
     const response = await api.post(ENDPOINTS.TENANT.REGISTER, tenantData);
     return response.data;
+  },
+
+  updateTenantSettings: async (tenantSlug, settings) => {
+    try {
+      const url = ENDPOINTS.TENANT.SETTINGS(tenantSlug);
+      const response = await api.put(url, settings);
+      return response.data;
+    } catch (err) {
+      console.warn('⚠️ Update tenant settings API failed:', err.message);
+      throw err;
+    }
   }
 };

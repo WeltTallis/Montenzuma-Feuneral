@@ -14,7 +14,7 @@
  * Graceful fallback: If RabbitMQ is unavailable, tasks are logged/queued in-memory
  */
 
-import amqp, { Connection, Channel, ConsumeMessage } from 'amqplib';
+import amqp, { Channel, ConsumeMessage } from 'amqplib';
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 const TASK_EXCHANGE = 'restpoint.tasks';
@@ -40,7 +40,7 @@ export type TaskHandler = (payload: TaskPayload, ack: () => void, nack: () => vo
 
 // ─── Connection State ──────────────────────────────────────────────────────
 
-let connection: Connection | null = null;
+let connection: any | null = null;
 let channel: Channel | null = null;
 let isConnecting = false;
 let connectionFailed = false;
@@ -271,7 +271,7 @@ export async function publishApiLog(
 
     return { queued: true, taskId };
   } catch (error: any) {
-    console.error(`[RabbitMQ] ❌ Failed to publish API log: ${error.message}`);
+    console.error(`[RabbitMQ]  Failed to publish API log: ${error.message}`);
     return { queued: false, taskId };
   }
 }

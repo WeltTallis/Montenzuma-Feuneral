@@ -1,3 +1,5 @@
+import { RowDataPacket } from 'mysql2';
+
 // Base interface for flower sample
 export interface FlowerSample {
   id: number;

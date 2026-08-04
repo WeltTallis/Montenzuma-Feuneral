@@ -40,8 +40,14 @@ export interface DeceasedCharge {
   tenantSlug: string;
   daysAdmitted: number;
   dailyRate: number;
+  embalmingRate: number;
+  storageRate: number;
+  taxRate: number;
   baseCharges: number;
-  additionalCharges: number;
+  embalmingCharges: number;
+  storageCharges: number;
+  taxAmount: number;
+  subtotal: number;
   totalDailyCharge: number;
   calculatedAt: string;
 }

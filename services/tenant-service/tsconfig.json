@@ -23,8 +23,13 @@
     "scripts/**/*.ts",
     "types/**/*.ts",
     "migrations/**/*.ts",
+    "middlewares/**/*.ts",
     "../../shared/**/*.ts",
-    "../../app-global/**/*.js"
+    "../../shared/**/*.js",
+    "../../app-global/**/*.js",
+    "../../packages/shared-services/src/**/*.ts",
+    "../../packages/shared-utils/src/**/*.ts",
+    "../../packages/shared-logger/src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

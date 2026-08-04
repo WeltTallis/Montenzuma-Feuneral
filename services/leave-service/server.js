@@ -55,7 +55,9 @@ io.on('connection', (socket) => {
   });
 });
 
-// Tenant middleware
+// ============================================
+// TENANT RESOLUTION MIDDLEWARE
+// ============================================
 app.use(async (req, res, next) => {
   try {
     const tenantSlug = req.headers['x-tenant-slug'] || req.headers['x-slug'] || 'system_shared';
@@ -72,24 +74,39 @@ app.use(async (req, res, next) => {
       return next();
     }
 
-    // Validate tenant
-    const { validateTenantActive } = require('../../shared/tenancy');
-    const tenantStatus = await validateTenantActive(tenantSlug);
+    // Resolve tenant database using shared dbConfig
+    try {
+      const dbConfig = require('../../shared/dbConfig.js');
+      const { resolveDatabase } = dbConfig;
 
-    if (!tenantStatus.active) {
-      return res.status(403).json({
-        status: 'error',
-        message: tenantStatus.reason || 'Tenant not active'
-      });
-    }
+      let dbName = await resolveDatabase(tenantSlug);
 
-    req.tenant = tenantStatus.tenant;
+      if (!dbName) {
+        // For multi-branch tenants, the database name is the tenant slug
+        // For single-branch tenants, also use the tenant slug
+        dbName = tenantSlug.replace(/-/g, '_');
+      }
 
-    // Auto-migrate: Ensure leave tables exist in this tenant's database
-    if (tenantStatus.tenant?.db_name) {
-      migrateTenantTables(tenantStatus.tenant.db_name).catch(err => {
-        console.warn(`[LEAVE] Auto-migration warning for ${tenantStatus.tenant.db_name}:`, err.message);
-      });
+      req.tenant = {
+        db_name: dbName,
+        tenant_slug: tenantSlug,
+        name: tenantSlug
+      };
+      console.log(`[LEAVE] Tenant resolved: ${dbName}`);
+
+      // Auto-migrate: Ensure leave tables exist in this tenant's database
+      if (dbName) {
+        migrateTenantTables(dbName).catch(err => {
+          console.warn(`[LEAVE] Auto-migration warning for ${dbName}:`, err.message);
+        });
+      }
+    } catch (dbErr) {
+      console.error('[LEAVE] Database resolution error:', dbErr.message);
+      req.tenant = {
+        db_name: process.env.DB_NAME || 'restpoint_main',
+        tenant_slug: tenantSlug,
+        name: tenantSlug
+      };
     }
 
     next();
@@ -116,14 +133,27 @@ app.get('/api/health', (req, res) => {
 // AUTO-MIGRATION: Ensure leave tables exist
 // ============================================
 async function ensureLeaveTables(dbName) {
-  let connection;
   try {
-    connection = await mysql.createConnection({
+    await migrateTenantTables(dbName);
+    console.log(`✅ Leave tables ensured in database: ${dbName}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Failed to ensure leave tables in ${dbName}:`, error.message);
+    return false;
+  }
+}
+
+// ============================================
+// MIGRATE ALL TENANT DATABASES
+// ============================================
+async function migrateAllTenantDatabases() {
+  try {
+    const connection = await mysql.createConnection({
       host: process.env.DB_HOST || 'localhost',
       port: parseInt(process.env.DB_PORT || '3306', 10),
       user: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || '',
-      database: dbName,
+      database: 'tenant_tracking',
       authPlugins: {
         auth_gssapi_client: function () {
           return function () {
@@ -131,18 +161,25 @@ async function ensureLeaveTables(dbName) {
           };
         },
       },
-      connectTimeout: 10000,
-      acquireTimeout: 10000,
     });
 
-    await migrateTenantTables(dbName);
-    console.log(`✅ Leave tables ensured in database: ${dbName}`);
-    return true;
+    // Get all active tenants
+    const [tenants] = await connection.query(
+      'SELECT db_name, tenant_name FROM tenants WHERE status = "active"'
+    );
+
+    console.log(`[LEAVE] Found ${tenants.length} active tenant(s) to migrate`);
+
+    for (const tenant of tenants) {
+      if (tenant.db_name) {
+        console.log(`[LEAVE] Migrating tenant: ${tenant.tenant_name} (${tenant.db_name})`);
+        await ensureLeaveTables(tenant.db_name);
+      }
+    }
+
+    await connection.end();
   } catch (error) {
-    console.error(`❌ Failed to ensure leave tables in ${dbName}:`, error.message);
-    return false;
-  } finally {
-    if (connection) await connection.end().catch(() => { });
+    console.error('[LEAVE] Error migrating tenant databases:', error.message);
   }
 }
 
@@ -155,12 +192,17 @@ async function startServer() {
   console.log(`🔧 Running auto-migration for leave tables in: ${mainDb}`);
   await ensureLeaveTables(mainDb);
 
+  // Migrate all tenant databases
+  console.log(`🔧 Migrating leave tables for all tenant databases...`);
+  await migrateAllTenantDatabases();
+
   const PORT = process.env.PORT || 5017;
   server.listen(PORT, () => {
     console.log('========================================');
     console.log(`📅 Leave Management Service`);
     console.log(`   Port: ${PORT}`);
     console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`   Default Leave Days: 26 per user per year`);
     console.log('========================================');
   });
 }

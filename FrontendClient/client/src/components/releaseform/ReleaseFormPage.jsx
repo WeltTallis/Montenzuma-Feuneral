@@ -794,7 +794,7 @@ const ReleaseFormPage = () => {
         const generatedReleaseId = response.data?.data?.release_id;
         setReleaseId(generatedReleaseId);
         toast.success('Deceased released successfully!');
-        setTimeout(() => navigate(-1), 2000);
+        setTimeout(() => navigate(`/tenant/${getTenantSlug()}/receptionist`), 2000);
       }
     } catch (error) {
       console.error('Error releasing deceased:', error);
@@ -1177,8 +1177,8 @@ const ReleaseFormPage = () => {
 
           {/* Actions */}
           <ActionsContainer>
-            <BackButton type="button" onClick={() => navigate(-1)}>
-              Cancel
+            <BackButton type="button" onClick={() => navigate(`/tenant/${getTenantSlug()}/receptionist`)}>
+              ← Back to Reception
             </BackButton>
             <PrimaryButton type="submit" disabled={isSubmitting}>
               {isSubmitting ? (

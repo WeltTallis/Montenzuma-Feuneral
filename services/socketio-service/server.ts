@@ -530,6 +530,10 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
       } else {
         throw new AppError('Target must be a string or array of strings', 400);
       }
+    } else if (tenantSlug === 'system' || tenantSlug === 'all') {
+      // Broadcast to ALL connected clients for system-wide notifications
+      io.emit(eventName, payload);
+      console.log(`📢 Broadcasted ${eventName} to all clients`);
     } else {
       // Emit to tenant room
       io.to(`tenant_${tenantSlug}`).emit(eventName, payload);
@@ -543,9 +547,9 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
        eventName.startsWith('new_booking') || eventName.startsWith('booking_'))
     ) {
       try {
-        const notifKey = `notifications:${tenantSlug}:socketio:${data.id || `notif-${Date.now()}`}`;
+        const notifId = data.id || `notif-${Date.now()}`;
         const notifValue = JSON.stringify({
-          id: data.id || `notif-${Date.now()}`,
+          id: notifId,
           title: data.title || eventName,
           message: data.message || `New event: ${eventName}`,
           type: data.type || 'info',
@@ -557,7 +561,36 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
           read: false,
           delivered: false,
         });
-        await pubClient.setEx(notifKey, 86400, notifValue); // 24h TTL
+
+        if (tenantSlug === 'system' || tenantSlug === 'all') {
+          // For system-wide notifications, store under common tenant slugs
+          // This ensures all tenants can see system notifications when they poll
+          const allTenants = new Set<string>([
+            'restpoint',
+            'default', 
+            'main',
+            'system',
+            'system_shared'
+          ]);
+
+          // Also add any active tenants from current connections
+          userRooms.forEach((userData) => {
+            allTenants.add(userData.tenantSlug);
+          });
+
+          // Store under each tenant
+          const storePromises = Array.from(allTenants).map(tenant => {
+            const key = `notifications:${tenant}:socketio:${notifId}`;
+            return pubClient.setEx(key, 86400, notifValue);
+          });
+
+          await Promise.all(storePromises);
+          console.log(`💾 Stored system notification under ${allTenants.size} tenants: ${Array.from(allTenants).join(', ')}`);
+        } else {
+          // Store under specific tenant
+          const notifKey = `notifications:${tenantSlug}:socketio:${notifId}`;
+          await pubClient.setEx(notifKey, 86400, notifValue); // 24h TTL
+        }
       } catch (err: any) {
         console.error('Failed to store notification in Redis:', err);
       }

@@ -254,22 +254,25 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
       images
     });
 
-    const sql = `
-      INSERT INTO flower_samples 
-      (arrangement_id, title, description, types, colors, sizes, images, tenant_slug, created_at, updated_at) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-    `;
+  const sql = `
+    INSERT INTO flower_samples 
+    (arrangement_id, title, description, types, colors, sizes, images, tenant_slug, created_at, updated_at) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+  `;
 
-    await execute(req, sql, [
-      arrangementId,
-      title,
-      description,
-      data.types,
-      data.colors,
-      data.sizes,
-      data.images,
-      tenantSlug
-    ]);
+  await execute(req, sql, [
+    arrangementId,
+    title,
+    description,
+    data.types,
+    data.colors,
+    data.sizes,
+    data.images,
+    tenantSlug
+  ]);
+
+  // Clear cache for this tenant
+  clearCache(tenantSlug);
 
     // Clear cache
     clearCache(tenantSlug);

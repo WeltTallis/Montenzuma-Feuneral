@@ -11,6 +11,8 @@
     "noImplicitAny": false,
     "noUncheckedIndexedAccess": false,
     "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false,
     "types": [
       "node"
     ]
@@ -30,8 +32,7 @@
     "../../packages/shared-logger/src/**/*.ts",
     "../../packages/shared-utils/src/**/*.ts",
     "../../packages/shared-services/src/**/*.ts",
-    "../../app-global/**/*.ts",
-    "../../app-global/**/*.js",
+    "../app-global/**/*",
     "../../configurations/**/*.ts",
     "migrate-tenant-tables.js"
   ],

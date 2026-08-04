@@ -378,6 +378,58 @@ const CloseButton = styled.button`
 `;
 
 // ============================================================
+// SINGLE TENANT COMPONENTS
+// ============================================================
+
+const SingleTenantMenuButton = styled.button`
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 60;
+  background: ${COLORS.white};
+  border: 1px solid ${COLORS.border};
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 12px ${COLORS.shadow};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${COLORS.textMain};
+  
+  &:hover {
+    background: ${COLORS.grayHover};
+  }
+`;
+
+const SingleTenantOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.2);
+  z-index: 65;
+`;
+
+const SingleTenantSidebar = styled.aside`
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 260px;
+  background: ${COLORS.white};
+  padding: 16px 8px;
+  display: flex;
+  flex-direction: column;
+  z-index: 70;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.05);
+  transition: transform 0.25s ease;
+  transform: ${(props) => (props.$isOpen ? 'translateX(0)' : 'translateX(-100%)')};
+  border-right: 1px solid ${COLORS.border};
+`;
+
+// ============================================================
 // MAIN COMPONENT
 // ============================================================
 
@@ -386,23 +438,38 @@ const ModernSidebar = ({
   onToggle,
   menuItems: customMenuItems,
   activePath: customActivePath,
-  tenantData
+  tenantData,
+  deploymentType = 'single'
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { slug } = useParams();
-  const [isOpen, setIsOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return false;
+    }
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [isMobile, setIsMobile] = useState(() => {
+    return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  });
+  const [singleTenantOpen, setSingleTenantOpen] = useState(false);
+  // Track whether the initial mount has completed so we don't overwrite the
+  // saved localStorage value with the default state before it's been applied.
+  const [hasMounted, setHasMounted] = useState(false);
+
+  const isSingleTenant = deploymentType === 'single';
 
   const checkMobile = useCallback(() => {
     const mobile = window.innerWidth < 768;
     setIsMobile(mobile);
     if (mobile) {
       setIsOpen(false);
-    } else {
-      const savedState = localStorage.getItem('sidebarOpen');
-      setIsOpen(savedState !== null ? savedState === 'true' : true);
     }
+    // NOTE: Do not re-read localStorage here on desktop. The lazy initializer
+    // already loaded the saved state, and re-reading would clobber any toggle
+    // the user made before a resize event fires.
   }, []);
 
   useEffect(() => {
@@ -425,11 +492,25 @@ const ModernSidebar = ({
     }
   }, [location.pathname, isMobile]);
 
+  // Mark mount complete after the first render so subsequent state changes
+  // are persisted to localStorage.
   useEffect(() => {
-    if (!isMobile) {
+    setHasMounted(true);
+  }, []);
+
+  // Persist the sidebar state to localStorage, but only after the initial
+  // mount has finished. This prevents overwriting the saved value with the
+  // default state on the very first render.
+  useEffect(() => {
+    if (hasMounted && !isMobile) {
       localStorage.setItem('sidebarOpen', isOpen.toString());
     }
-  }, [isOpen, isMobile]);
+  }, [isOpen, isMobile, hasMounted]);
+
+  // Close single tenant menu on route change
+  useEffect(() => {
+    setSingleTenantOpen(false);
+  }, [location.pathname]);
 
   const tenantSlug = slug || localStorage.getItem('tenantSlug') || 'default';
 
@@ -443,7 +524,6 @@ const ModernSidebar = ({
         { icon: Package, label: 'Coffins', path: `/tenant/${tenantSlug}/coffins` },
         { icon: Hammer, label: 'Workshop', path: `/tenant/${tenantSlug}/workshop` },
         { icon: ShoppingCart, label: 'Flower Bookings', path: `/tenant/${tenantSlug}/flowers` },
-        { icon: ShoppingCart, label: 'Catalogue', path: `/tenant/${tenantSlug}/catalogue` },
       ]
     },
     {
@@ -504,6 +584,7 @@ const ModernSidebar = ({
   const handleNavClick = (path) => {
     navigate(path);
     if (isMobile) setIsOpen(false);
+    setSingleTenantOpen(false);
   };
 
   const handleSwitchToTab = () => {
@@ -580,7 +661,47 @@ const ModernSidebar = ({
     ));
   };
 
-  // ─── MOBILE VIEW ─────────────────────────────────────────────
+  // ─── SINGLE TENANT VIEW ─────────────────────────────────────
+  // For single tenant: show a hamburger menu button, no persistent sidebar
+  if (isSingleTenant) {
+    return (
+      <>
+        <SingleTenantMenuButton onClick={() => setSingleTenantOpen(true)} aria-label="Open menu">
+          <Menu size={22} />
+        </SingleTenantMenuButton>
+
+        {singleTenantOpen && <SingleTenantOverlay onClick={() => setSingleTenantOpen(false)} aria-hidden="true" />}
+
+        <SingleTenantSidebar $isOpen={singleTenantOpen}>
+          <CloseButton onClick={() => setSingleTenantOpen(false)} aria-label="Close sidebar">
+            <X size={22} />
+          </CloseButton>
+
+          <SidebarNav $isOpen={true}>
+            {menuItems.map((section, idx) => (
+              <NavSection key={idx}>
+                {section.section && (
+                  <NavSectionTitle $isOpen={true}>
+                    {section.section}
+                  </NavSectionTitle>
+                )}
+                {renderMenuItems(section.items)}
+              </NavSection>
+            ))}
+          </SidebarNav>
+
+          <SidebarFooter $isOpen={true}>
+            <LogoutButton $collapsed={false} onClick={handleLogout}>
+              <LogOut size={18} />
+              <span>Sign Out</span>
+            </LogoutButton>
+          </SidebarFooter>
+        </SingleTenantSidebar>
+      </>
+    );
+  }
+
+  // ─── MOBILE VIEW (multi-branch) ─────────────────────────────
   if (isMobile) {
     return (
       <>
@@ -619,7 +740,7 @@ const ModernSidebar = ({
     );
   }
 
-  // ─── DESKTOP VIEW ────────────────────────────────────────────
+  // ─── DESKTOP VIEW (multi-branch) ────────────────────────────
   return (
     <SidebarWrapper>
       <SidebarContainer $isOpen={isOpen}>

@@ -48,6 +48,7 @@
     "jsonwebtoken": "^9.0.0",
     "knex": "^3.3.0",
     "mysql2": "^3.22.6",
+    "node-cron": "^4.6.0",
     "path-to-regexp": "^8.4.2",
     "pdfkit": "^0.19.1",
     "pino-loki": "^3.0.0",
@@ -62,7 +63,6 @@
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
     "@types/helmet": "^0.0.48",
     "@types/hpp": "^0.2.7",
     "@types/node": "^26.1.1",

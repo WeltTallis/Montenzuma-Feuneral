@@ -159,6 +159,10 @@ const COFFIN_SERVICE_MIGRATIONS: Migration[] = [
     name: '083_create_deceased_coffin_table',
     sql: `CREATE TABLE IF NOT EXISTS deceased_coffin (id INT NOT NULL AUTO_INCREMENT, deceased_id VARCHAR(100) NOT NULL, coffin_id VARCHAR(255) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, assigned_by_username VARCHAR(100) DEFAULT NULL, assigned_date DATE NOT NULL, rfid VARCHAR(100) UNIQUE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), INDEX idx_deceased_id (deceased_id), INDEX idx_coffin_id (coffin_id), INDEX idx_tenant_slug (tenant_slug), INDEX idx_assigned_date (assigned_date), UNIQUE KEY unique_deceased_coffin (deceased_id, coffin_id), FOREIGN KEY (coffin_id) REFERENCES coffins(coffin_id) ON DELETE RESTRICT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
+  {
+    name: '084_add_req_type_to_stock_requests',
+    sql: `ALTER TABLE stock_requests ADD COLUMN IF NOT EXISTS req_type ENUM('client', 'replenishment') DEFAULT 'replenishment' AFTER notes, ADD INDEX IF NOT EXISTS idx_req_type (req_type)`,
+  },
 ];
 
 // ─── Chemicals Service Migrations (UNIFIED - any unit type) ───────────────────
@@ -199,7 +203,7 @@ const HEARSE_SERVICE_MIGRATIONS: Migration[] = [
   },
   {
     name: '151_create_hearse_bookings_table',
-    sql: `CREATE TABLE IF NOT EXISTS hearse_bookings (id INT AUTO_INCREMENT PRIMARY KEY, booking_code VARCHAR(50) UNIQUE, booking_reference VARCHAR(100) UNIQUE, hearse_id INT, deceased_id VARCHAR(50), tenant_db_name VARCHAR(255), client_name VARCHAR(255) NOT NULL, client_phone VARCHAR(20) NOT NULL, client_email VARCHAR(255), destination VARCHAR(255), booking_date DATETIME, from_timestamp DATETIME, to_timestamp DATETIME, from_location VARCHAR(255), to_location VARCHAR(255), event_date DATE, event_time TIME, service_type VARCHAR(50) DEFAULT 'funeral', status VARCHAR(50) DEFAULT 'pending', driver_id INT, branch_id INT DEFAULT 1, branch_code VARCHAR(50), special_requests TEXT, total_charge DECIMAL(10,2), paid_amount DECIMAL(10,2), payment_status ENUM('unpaid', 'partial', 'paid') DEFAULT 'unpaid', booked_by VARCHAR(255) DEFAULT NULL COMMENT 'User who created the booking (name or slug)', booked_by_email VARCHAR(255) DEFAULT NULL COMMENT 'Email of user who created booking', accepted_by INT DEFAULT NULL COMMENT 'Driver who accepted the booking', accepted_by_email VARCHAR(255) DEFAULT NULL COMMENT 'Email of driver who accepted', created_by INT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_hearse_id (hearse_id), INDEX idx_driver_id (driver_id), INDEX idx_status (status), INDEX idx_booking_date (booking_date), INDEX idx_client_phone (client_phone), INDEX idx_branch_code (branch_code), INDEX idx_booking_code (booking_code), INDEX idx_tenant_db_name (tenant_db_name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    sql: `CREATE TABLE IF NOT EXISTS hearse_bookings (id INT AUTO_INCREMENT PRIMARY KEY, booking_code VARCHAR(50) UNIQUE, booking_reference VARCHAR(100) UNIQUE, hearse_id INT, deceased_id VARCHAR(50), tenant_db_name VARCHAR(255), client_name VARCHAR(255) NOT NULL, client_phone VARCHAR(20) NOT NULL, client_email VARCHAR(255), destination VARCHAR(255), booking_date DATETIME, from_timestamp DATETIME, to_timestamp DATETIME, pickup_location VARCHAR(255), dropoff_location VARCHAR(255), event_date DATE, event_time TIME, service_type VARCHAR(50) DEFAULT 'funeral', status VARCHAR(50) DEFAULT 'pending', driver_id INT, branch_id INT DEFAULT 1, branch_code VARCHAR(50), special_requests TEXT, total_charge DECIMAL(10,2), paid_amount DECIMAL(10,2), payment_status ENUM('unpaid', 'partial', 'paid') DEFAULT 'unpaid', booked_by VARCHAR(255) DEFAULT NULL COMMENT 'User who created the booking (name or slug)', booked_by_email VARCHAR(255) DEFAULT NULL COMMENT 'Email of user who created booking', accepted_by INT DEFAULT NULL COMMENT 'Driver who accepted the booking', accepted_by_email VARCHAR(255) DEFAULT NULL COMMENT 'Email of driver who accepted', created_by INT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_hearse_id (hearse_id), INDEX idx_driver_id (driver_id), INDEX idx_status (status), INDEX idx_booking_date (booking_date), INDEX idx_client_phone (client_phone), INDEX idx_branch_code (branch_code), INDEX idx_booking_code (booking_code), INDEX idx_tenant_db_name (tenant_db_name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
   {
     name: '151a_alter_hearse_bookings_add_booked_by',
@@ -208,6 +212,52 @@ const HEARSE_SERVICE_MIGRATIONS: Migration[] = [
   {
     name: '151b_alter_hearse_bookings_fix_status_column',
     sql: `ALTER TABLE hearse_bookings MODIFY COLUMN status VARCHAR(50) DEFAULT 'pending' COMMENT 'Booking status: pending, confirmed, booked, in_transit, completed, cancelled, postponed, maintenance, in_progress'`,
+  },
+];
+
+// ─── Leave Service Migrations ────────────────────────────────────────────────
+
+const LEAVE_SERVICE_MIGRATIONS: Migration[] = [
+  {
+    name: '170_create_leave_requests_table',
+    sql: `CREATE TABLE IF NOT EXISTS leave_requests (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, tenant_slug VARCHAR(100) NOT NULL, leave_type VARCHAR(50) NOT NULL, priority ENUM('low', 'medium', 'high', 'emergency') DEFAULT 'medium', start_date DATE NOT NULL, end_date DATE NOT NULL, days DECIMAL(5,2) NOT NULL, reason TEXT, supporting_document VARCHAR(500), is_half_day BOOLEAN DEFAULT FALSE, status VARCHAR(50) DEFAULT 'pending', rejection_reason TEXT, approved_by INT NULL, approved_at DATETIME NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_leave_user (user_id), INDEX idx_leave_tenant (tenant_slug), INDEX idx_leave_status (status), INDEX idx_leave_dates (start_date, end_date)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  },
+  {
+    name: '171_create_leave_day_additions_table',
+    sql: `CREATE TABLE IF NOT EXISTS leave_day_additions (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, tenant_slug VARCHAR(100) NOT NULL, days INT NOT NULL, reason TEXT, added_by INT NOT NULL, created_at DATE DEFAULT (CURRENT_DATE), INDEX idx_addition_user (user_id), INDEX idx_addition_tenant (tenant_slug), INDEX idx_addition_date (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  },
+  {
+    name: '172_create_holiday_compensations_table',
+    sql: `CREATE TABLE IF NOT EXISTS holiday_compensations (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, tenant_slug VARCHAR(100) NOT NULL, holiday_date DATE NOT NULL, holiday_name VARCHAR(255) NOT NULL, note TEXT, recorded_by INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_holiday_user (user_id), INDEX idx_holiday_tenant (tenant_slug), INDEX idx_holiday_date (holiday_date), UNIQUE KEY unique_user_holiday (user_id, holiday_date)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  },
+  {
+    name: '173_add_annual_leave_balance_to_users',
+    sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS annual_leave_balance DECIMAL(5,2) DEFAULT 26.00`,
+  },
+  {
+    name: '174_update_default_leave_balance',
+    sql: `UPDATE users SET annual_leave_balance = 26.00 WHERE annual_leave_balance IS NULL OR annual_leave_balance = 0`,
+  },
+];
+
+// ─── Florist Service Migrations ──────────────────────────────────────────────
+
+const FLORIST_SERVICE_MIGRATIONS: Migration[] = [
+  {
+    name: '160_create_flower_bookings_table',
+    sql: `CREATE TABLE IF NOT EXISTS flower_bookings (id INT AUTO_INCREMENT PRIMARY KEY, booking_id VARCHAR(100) UNIQUE NOT NULL, flower_type VARCHAR(255) NOT NULL, flower_description TEXT, service_type VARCHAR(100) DEFAULT 'funeral', customer VARCHAR(255) NOT NULL, customer_phone VARCHAR(50), customer_email VARCHAR(255), deceased_name VARCHAR(255), branch VARCHAR(255), delivery_date DATE NOT NULL, delivery_time TIME NOT NULL, delivery_address TEXT, invoice_number VARCHAR(100) UNIQUE, amount DECIMAL(10,2) DEFAULT 0, status ENUM('pending', 'confirmed', 'preparing', 'delivering', 'delivered', 'cancelled') DEFAULT 'pending', notes TEXT, urgent BOOLEAN DEFAULT FALSE, branch_id INT, created_by VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_booking_id (booking_id), INDEX idx_delivery_date (delivery_date), INDEX idx_status (status), INDEX idx_customer (customer), INDEX idx_branch (branch)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  },
+  {
+    name: '161_create_flower_customers_table',
+    sql: `CREATE TABLE IF NOT EXISTS flower_customers (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, phone VARCHAR(50), email VARCHAR(255), address TEXT, notes TEXT, total_orders INT DEFAULT 0, total_spent DECIMAL(10,2) DEFAULT 0, branch_id INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_phone (phone), INDEX idx_email (email), INDEX idx_name (name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  },
+  {
+    name: '162_create_flower_samples_table',
+    sql: `CREATE TABLE IF NOT EXISTS flower_samples (id INT AUTO_INCREMENT PRIMARY KEY, arrangement_id VARCHAR(100) UNIQUE NOT NULL, title VARCHAR(255) NOT NULL, description TEXT, types JSON, colors JSON, sizes JSON, images JSON, tenant_slug VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_arrangement_id (arrangement_id), INDEX idx_tenant_slug (tenant_slug)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  },
+  {
+    name: '163_add_flower_booking_extras',
+    sql: `ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 1 AFTER amount, ADD COLUMN IF NOT EXISTS arrangements TEXT AFTER quantity, ADD COLUMN IF NOT EXISTS primary_color VARCHAR(50) DEFAULT NULL AFTER arrangements, ADD COLUMN IF NOT EXISTS accent_color VARCHAR(50) DEFAULT NULL AFTER primary_color, ADD COLUMN IF NOT EXISTS ribbon_color VARCHAR(50) DEFAULT NULL AFTER accent_color`,
   },
 ];
 
@@ -239,10 +289,15 @@ export const ALL_TENANT_MIGRATIONS: Migration[] = [
   ...COFFIN_SERVICE_MIGRATIONS,
   ...CHEMICALS_SERVICE_MIGRATIONS,
   ...HEARSE_SERVICE_MIGRATIONS,
+  ...FLORIST_SERVICE_MIGRATIONS,
+  ...LEAVE_SERVICE_MIGRATIONS,
 
   ...EXTRA_SERVICES_MIGRATIONS,
   ...BILLING_SERVICE_MIGRATIONS,
 ];
+
+// Alias for backward compatibility
+export const ALL_SERVICE_MIGRATIONS = ALL_TENANT_MIGRATIONS;
 
 export const BRANCH_MIGRATIONS: Migration[] = [
   ...TENANT_SERVICE_MIGRATIONS,
@@ -267,6 +322,8 @@ export const SINGLE_TENANT_MIGRATIONS: Migration[] = [
   ...COFFIN_SERVICE_MIGRATIONS,
   ...CHEMICALS_SERVICE_MIGRATIONS,
   ...HEARSE_SERVICE_MIGRATIONS,
+  ...FLORIST_SERVICE_MIGRATIONS,
+  ...LEAVE_SERVICE_MIGRATIONS,
 
   ...EXTRA_SERVICES_MIGRATIONS,
   ...BILLING_SERVICE_MIGRATIONS,
@@ -283,6 +340,8 @@ export {
   COFFIN_SERVICE_MIGRATIONS,
   CHEMICALS_SERVICE_MIGRATIONS,
   HEARSE_SERVICE_MIGRATIONS,
+  FLORIST_SERVICE_MIGRATIONS,
+  LEAVE_SERVICE_MIGRATIONS,
   EXTRA_SERVICES_MIGRATIONS,
   BILLING_SERVICE_MIGRATIONS,
 };

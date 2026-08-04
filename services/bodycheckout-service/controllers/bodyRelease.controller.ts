@@ -4,6 +4,68 @@ import axios from 'axios';
 import Logger from '../../../packages/shared-logger/dist/index';
 import { generateDatedCheckoutId } from '../utilities/generateCheckoutId';
 import { getTenantDB } from '../../../shared/dbConfig';
+import { centralizedUploadService } from '../../../packages/shared-services/src/centralizedUploadService';
+import sharp from 'sharp';
+
+/**
+ * Process a base64 signature and upload it to the centralized uploads service.
+ * Returns the URL path of the uploaded signature, or the original data URL on failure.
+ */
+async function processAndUploadSignature(
+  signatureData: string,
+  tenantSlug: string,
+  filenamePrefix: string
+): Promise<string> {
+  if (!signatureData) return null;
+
+  // If it's already a URL path, return as-is
+  if (signatureData.startsWith('/uploads/') || signatureData.startsWith('http')) {
+    return signatureData;
+  }
+
+  // If it's a base64 data URL, process and upload it
+  if (signatureData.startsWith('data:image')) {
+    try {
+      const base64Data = signatureData.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // Compress with sharp first
+      const processedBuffer = await sharp(buffer)
+        .resize(800, 300, { fit: 'inside', withoutEnlargement: true })
+        .flatten({ background: '#ffffff' })
+        .png({ compressionLevel: 9, quality: 85 })
+        .toBuffer();
+
+      // Upload to centralized storage
+      Logger.info(`[RELEASE] Attempting to upload signature to uploads service at: ${process.env.UPLOADS_SERVICE_URL || 'http://localhost:5012'}`);
+      const result = await centralizedUploadService.uploadSignature(
+        processedBuffer,
+        `${filenamePrefix}_${Date.now()}.png`,
+        tenantSlug,
+        { quality: 85, maxWidth: 800, maxHeight: 300, format: 'png' }
+      );
+
+      if (!result.success) {
+        Logger.warn(`[RELEASE] Failed to upload signature to centralized service: ${result.error || 'Unknown error'}`);
+        Logger.warn(`[RELEASE] Upload result details: ${JSON.stringify(result)}`);
+        // Fallback: compress and store inline
+        const compressedBuffer = await sharp(buffer)
+          .resize(400, 200, { fit: 'inside', withoutEnlargement: true })
+          .png({ quality: 60, compressionLevel: 9 })
+          .toBuffer();
+        return `data:image/png;base64,${compressedBuffer.toString('base64')}`;
+      }
+
+      Logger.info(`[RELEASE] Signature uploaded to centralized storage: ${result.urlPath}`);
+      return result.urlPath;
+    } catch (error: any) {
+      Logger.warn(`[RELEASE] Failed to process signature: ${error.message}`);
+      return signatureData; // Fallback to raw data
+    }
+  }
+
+  return signatureData;
+}
 
 // Validation schema
 const releaseBodySchema = Zod.z.object({
@@ -93,6 +155,27 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
     // Get current datetime in MySQL format
     const currentDateTime = formatDateTimeForMySQL(new Date());
 
+    // Process signatures through centralized upload service
+    // This uploads signatures to /opt/storage/uploads/{tenant}/signatures/ instead of storing inline
+    let processedSignature = validatedData.signature || null;
+    let processedStaffSignature = validatedData.staff_signature || null;
+
+    if (validatedData.signature && validatedData.signature.startsWith('data:image')) {
+      processedSignature = await processAndUploadSignature(
+        validatedData.signature,
+        tenantSlug,
+        `release_${releaseId}_kin`
+      );
+    }
+
+    if (validatedData.staff_signature && validatedData.staff_signature.startsWith('data:image')) {
+      processedStaffSignature = await processAndUploadSignature(
+        validatedData.staff_signature,
+        tenantSlug,
+        `release_${releaseId}_staff`
+      );
+    }
+
     // Prepare data for insertion with properly formatted dates
     const releaseData = {
       release_id: releaseId,
@@ -109,9 +192,9 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
       mode_of_transport: validatedData.mode_of_transport || null,
       terms_accepted: validatedData.terms_accepted ? 1 : 0,
       everything_paid: validatedData.everything_paid ? 1 : 0,
-      signature: validatedData.signature || null,
+      signature: processedSignature,
       staff_name: validatedData.staff_name || null,
-      staff_signature: validatedData.staff_signature || null,
+      staff_signature: processedStaffSignature,
       received_by: validatedData.received_by || null,
       items_returned: validatedData.items_returned || null,
       notes: validatedData.notes || null,
@@ -232,6 +315,8 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
         mode_of_transport: releaseData.mode_of_transport,
         terms_accepted: !!releaseData.terms_accepted,
         everything_paid: !!releaseData.everything_paid,
+        signature: releaseData.signature,
+        staff_signature: releaseData.staff_signature,
         created_at: releaseData.created_at
       }
     });

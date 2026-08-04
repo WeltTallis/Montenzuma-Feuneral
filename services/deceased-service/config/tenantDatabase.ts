@@ -19,3 +19,11 @@ export const pool = {
         throw new Error('Direct pool.getConnection() not supported. Use safeTenantQuery() or safeTenantExecute() from dbConfig');
     }
 };
+
+// Compatibility wrapper for legacy code that uses tenantDB.getConnection(tenantSlug)
+export const tenantDB = {
+    getConnection: async (tenantSlug: string) => {
+        const pool = await getTenantDB(tenantSlug);
+        return pool.getConnection();
+    }
+};

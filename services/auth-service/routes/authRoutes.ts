@@ -11,6 +11,7 @@ import {
   refresh,
   logout,
   createUser,
+  listUsers,
   getMe,
   changePassword,
 } from '../controllers/authController';
@@ -60,6 +61,9 @@ router.post('/logout', protect, logout);
 
 // Create user (admin only)
 router.post('/users', protect, createUser);
+
+// List all users (admin only)
+router.get('/users', protect, listUsers);
 
 // ============================================
 // SESSION STATUS

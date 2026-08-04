@@ -28,13 +28,24 @@ export class BranchController {
    */
   async listBranches(req: Request, res: Response): Promise<void> {
     try {
-      const tenantSlug = req.headers['x-tenant-slug'] as string || req.query.slug as string;
+      // Use URL param first (parent slug), then header, then query - makes endpoint flexible
+      const urlSlug: string = (req.params.tenantSlug as string) || '';
+      const headerSlug: string = getHeader(req, 'x-tenant-slug');
+      const querySlug: string = (req.query.slug as string) || '';
+      const tenantSlug: string = urlSlug || headerSlug || querySlug;
+      
       if (!tenantSlug) {
         res.status(400).json({ success: false, message: 'Tenant slug required' });
         return;
       }
 
-      const tenant = await TenantModel.findBySubdomain(tenantSlug);
+      let tenant = await TenantModel.findBySubdomain(tenantSlug);
+      
+      // If not found and URL slug was used, try the header slug (might be a branch slug that maps to parent)
+      if (!tenant && urlSlug && headerSlug && headerSlug !== urlSlug) {
+        tenant = await TenantModel.findBySubdomain(headerSlug);
+      }
+
       if (!tenant) {
         res.status(404).json({ success: false, message: 'Tenant not found' });
         return;
@@ -131,7 +142,7 @@ export class BranchController {
   async listBranchConnections(req: Request, res: Response): Promise<void> {
     try {
       const tenantSlug = getHeader(req, 'x-tenant-slug');
-      const branchId = parseInt(req.params.branchId);
+      const branchId = parseInt(Array.isArray(req.params.branchId) ? req.params.branchId[0] : req.params.branchId);
 
       if (!tenantSlug) {
         res.status(400).json({ success: false, message: 'Tenant slug required' });
@@ -207,7 +218,7 @@ export class BranchController {
   async updateConnection(req: Request, res: Response): Promise<void> {
     try {
       const tenantSlug = getHeader(req, 'x-tenant-slug');
-      const connectionId = parseInt(req.params.connectionId);
+      const connectionId = parseInt(Array.isArray(req.params.connectionId) ? req.params.connectionId[0] : req.params.connectionId);
 
       if (!tenantSlug) {
         res.status(400).json({ success: false, message: 'Tenant slug required' });
@@ -239,7 +250,7 @@ export class BranchController {
   async deleteConnection(req: Request, res: Response): Promise<void> {
     try {
       const tenantSlug = getHeader(req, 'x-tenant-slug');
-      const connectionId = parseInt(req.params.connectionId);
+      const connectionId = parseInt(Array.isArray(req.params.connectionId) ? req.params.connectionId[0] : req.params.connectionId);
 
       if (!tenantSlug) {
         res.status(400).json({ success: false, message: 'Tenant slug required' });
@@ -290,8 +301,8 @@ export class BranchController {
   async checkConnection(req: Request, res: Response): Promise<void> {
     try {
       const tenantSlug = getHeader(req, 'x-tenant-slug');
-      const branchId = parseInt(req.params.branchId);
-      const connectedBranchId = parseInt(req.params.connectedBranchId);
+      const branchId = parseInt(Array.isArray(req.params.branchId) ? req.params.branchId[0] : req.params.branchId);
+      const connectedBranchId = parseInt(Array.isArray(req.params.connectedBranchId) ? req.params.connectedBranchId[0] : req.params.connectedBranchId);
 
       if (!tenantSlug) {
         res.status(400).json({ success: false, message: 'Tenant slug required' });

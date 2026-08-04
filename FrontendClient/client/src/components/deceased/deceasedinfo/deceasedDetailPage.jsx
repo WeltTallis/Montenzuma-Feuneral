@@ -35,8 +35,8 @@ const AppContainer = styled.div`
   line-height: 1.5;
   max-width: 1400px; 
   margin: 0 auto; 
-  padding: 3rem 1.5rem;
-  background: #ffffff;
+ 
+  background: rgb(255, 255, 255);
   animation: ${fadeIn} 0.25s ease-out;
 `;
 
@@ -55,6 +55,7 @@ const MainContent = styled.div`
   min-width: 0;
   display: flex;
   flex-direction: column;
+   padding: 3rem 2rem;
 `;
 
 const Tabs = styled.div`

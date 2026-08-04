@@ -11,7 +11,8 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import path from 'path';
-import { runTenantMigrations, runAllMigrations } from '../../../shared/migrations';
+import { MigrationService } from '../../../shared/services/migration-service';
+import { ALL_TENANT_MIGRATIONS } from '../../../shared/services/all-service-migrations';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
@@ -47,10 +48,23 @@ async function runMigrationsForAllTenants() {
   console.log('🚀 Running migrations for all tenants');
   console.log('========================================\n');
 
+  const migrationService = new MigrationService();
+  
   try {
-    // First run master migrations
-    console.log('📝 Running master database migrations...');
-    await runAllMigrations();
+    await migrationService.initializeMasterConnection({
+      host: config.host,
+      port: config.port,
+      user: config.user,
+      password: config.password,
+      database: process.env.MASTER_DB_NAME || 'master_db',
+    });
+
+    const tenantDbs = await getAllTenantDatabases();
+    console.log(`Found ${tenantDbs.length} tenant databases\n`);
+
+    for (const dbName of tenantDbs) {
+      await runMigrationsForSpecificTenant(dbName, migrationService);
+    }
     
     console.log('\n========================================');
     console.log('✅ All migrations completed successfully!');
@@ -58,18 +72,46 @@ async function runMigrationsForAllTenants() {
   } catch (error: any) {
     console.error('❌ Migration failed:', error.message);
     process.exit(1);
+  } finally {
+    await migrationService.close();
   }
 }
 
-async function runMigrationsForSpecificTenant(dbName: string) {
+async function runMigrationsForSpecificTenant(dbName: string, migrationService?: MigrationService) {
   console.log(`📝 Running migrations for tenant: ${dbName}`);
   
+  const svc = migrationService || new MigrationService();
+  
   try {
-    await runTenantMigrations(dbName);
-    console.log(`✅ Migrations completed for: ${dbName}`);
+    if (!migrationService) {
+      await svc.initializeMasterConnection({
+        host: config.host,
+        port: config.port,
+        user: config.user,
+        password: config.password,
+        database: process.env.MASTER_DB_NAME || 'master_db',
+      });
+    }
+
+    const result = await svc.runTenantMigrations(dbName, ALL_TENANT_MIGRATIONS, {
+      host: config.host,
+      port: config.port,
+      user: config.user,
+      password: config.password,
+    });
+
+    if (result.success) {
+      console.log(`✅ Migrations completed for: ${dbName} (${result.migrationsRun.length} migrations run)`);
+    } else {
+      console.error(`❌ Migration had errors for ${dbName}:`, result.errors);
+    }
   } catch (error: any) {
     console.error(`❌ Migration failed for ${dbName}:`, error.message);
     throw error;
+  } finally {
+    if (!migrationService) {
+      await svc.close();
+    }
   }
 }
 

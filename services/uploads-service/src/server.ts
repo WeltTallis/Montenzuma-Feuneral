@@ -17,9 +17,32 @@ const UPLOADS_BASE_DIR = process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
 
 // Middleware
 app.use(cors());
-app.use(helmet());
+// Configure helmet to allow image serving (CSP and cross-origin policies)
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginEmbedderPolicy: false,
+}));
 app.use(morgan('combined'));
 app.use(express.json());
+
+// ============================================
+// STATIC FILE SERVING - Serve uploaded files via HTTP
+// Files are accessible at: http://host:5012/uploads/{tenant-slug}/{category}/{filename}
+// ============================================
+app.use('/uploads', express.static(UPLOADS_BASE_DIR, {
+  fallthrough: true,
+  setHeaders: (res, filePath) => {
+    // Set appropriate content type for images
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.webp') res.setHeader('Content-Type', 'image/webp');
+    if (ext === '.png') res.setHeader('Content-Type', 'image/png');
+    if (ext === '.jpg' || ext === '.jpeg') res.setHeader('Content-Type', 'image/jpeg');
+    // Allow cross-origin access for images
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+  },
+}));
 
 // Ensure base directory exists
 fs.ensureDirSync(UPLOADS_BASE_DIR);
@@ -133,15 +156,29 @@ app.get('/api/tenants/:tenantSlug/folders/exists', async (req, res) => {
  */
 app.post('/api/upload/signature', upload.single('file'), async (req, res) => {
   try {
+    console.log('[UPLOADS-SERVICE] Received signature upload request');
+    console.log('[UPLOADS-SERVICE] Request body:', {
+      tenantSlug: req.body.tenantSlug,
+      category: req.body.category,
+      file: req.file ? {
+        originalname: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      } : null
+    });
+
     if (!req.file) {
+      console.warn('[UPLOADS-SERVICE] No file in request');
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
 
     const { tenantSlug, category = 'signatures' } = req.body;
     if (!tenantSlug) {
+      console.warn('[UPLOADS-SERVICE] Missing tenantSlug');
       return res.status(400).json({ success: false, message: 'tenantSlug is required' });
     }
 
+    console.log(`[UPLOADS-SERVICE] Processing signature for tenant: ${tenantSlug}, category: ${category}`);
     const result = await processAndSaveFile(
       req.file.buffer,
       req.file.originalname,
@@ -150,12 +187,13 @@ app.post('/api/upload/signature', upload.single('file'), async (req, res) => {
       { quality: 85, maxWidth: 800, maxHeight: 300, format: 'webp' }
     );
 
+    console.log(`[UPLOADS-SERVICE] Signature upload successful: ${result.urlPath}`);
     res.json({
       success: true,
       data: result
     });
   } catch (error: any) {
-    console.error('Signature upload error:', error);
+    console.error('[UPLOADS-SERVICE] Signature upload error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to upload signature',
