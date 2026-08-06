@@ -1,6 +1,6 @@
 {
   "name": "@montezuma/deceased-service",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Montezuma Mortuary SaaS deceased-service",
   "main": "dist/server.js",
   "scripts": {
