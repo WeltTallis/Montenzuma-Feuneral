@@ -85,7 +85,7 @@ const DeceasedList = lazy(() => import('../components/deceased/allDeceased/listD
 const NotFound = lazy(() => import('../components/layout/notFound'));
 const DeceasedDetails = lazy(() => import('../components/deceased/deceasedinfo/deceasedDetailPage'));
 const FinancialDetailsPage = lazy(() => import('../components/deceased/financialDetails/FinancialDetailsPage'));
-const DashboardPage = lazy(() => import('../pages/DashboardPage'));
+const DashboardPage = lazy(() => import('../components/pages/DashboardPage'));
 const DeceasedInfoSection = lazy(() => import('../components/deceased/deceasedInfoSection'));
 const DeceasedAnalytics = lazy(() => import('../components/deceased/deceasedAnalytics'));
 
@@ -150,9 +150,10 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-const DashboardLayout = ({ children, tenantData }) => {
+const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
   const navigate = useNavigate();
-  const { slug } = useParams();
+  const { slug: urlSlug } = useParams();
+  const slug = tenantSlug || urlSlug;
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       return false;
@@ -166,7 +167,7 @@ const DashboardLayout = ({ children, tenantData }) => {
   const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
   
   // Determine deployment type: single tenant vs multi-branch
-  const deploymentType = tenantData?.deploymentType || localStorage.getItem('deploymentType') || 'single';
+  const deploymentType = tenantData?.deploymentType || localStorage.getItem('deploymentType') || 'multi';
   const isSingleTenant = deploymentType === 'single';
   
   const handleLogout = () => {
@@ -180,7 +181,6 @@ const DashboardLayout = ({ children, tenantData }) => {
   
   const handleSidebarToggle = (isOpen) => setSidebarOpen(isOpen);
   
-  // Add resize listener to detect mobile/desktop changes
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
@@ -190,23 +190,22 @@ const DashboardLayout = ({ children, tenantData }) => {
       }
     };
     
-    handleResize(); // Check on mount
-    
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // For single tenant: no sidebar margin, just compact padding
-  // For multi-branch: sidebar with margin
   const marginLeft = isSingleTenant ? '0' : (isMobile ? '0' : (sidebarOpen ? '200px' : '60px'));
   const contentPadding = isMobile ? '0.5rem' : (isSingleTenant ? '0.5rem 0.75rem' : (sidebarOpen ? '0.75rem 1rem 0.75rem 0.25rem' : '0.75rem'));
   const footerMarginLeft = isSingleTenant ? '0' : (isMobile ? '0' : (sidebarOpen ? '200px' : '60px'));
+  
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F7F9FB', flexDirection: 'column' }}>
       <div style={{ display: 'flex', flex: 1, position: 'relative' }}>
         <ModernSidebar 
           tenantData={tenantData} 
           deploymentType={deploymentType}
+          tenantSlug={slug}
           userData={{ name: user?.full_name || user?.name, role: user?.role || 'Administrator' }} 
           onLogout={handleLogout} 
           onToggle={handleSidebarToggle} 
@@ -227,7 +226,27 @@ const TenantResolver = () => {
   const { setTenantData, setLoading, error, setError, tenantData } = useTenantStore();
   const token = localStorage.getItem('authToken');
   const navigate = useNavigate();
+  const location = useLocation();
   const cacheKey = `tenant_cache_${slug}`;
+
+  const resolveTenantSlug = () => {
+    let tenantSlug = slug;
+    if (!tenantSlug || tenantSlug === 'dashboard' || tenantSlug === 'default' || tenantSlug === 'undefined' || tenantSlug === 'null') {
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : {};
+      tenantSlug = user?.tenantSlug || user?.branchDbName || user?.branchSlug || user?.tenant_slug || user?.parentTenantSlug || localStorage.getItem('tenantSlug') || '';
+    }
+    return tenantSlug;
+  };
+
+  const resolvedSlug = resolveTenantSlug();
+
+  useEffect(() => {
+    if (slug && (slug === 'dashboard' || slug === 'default' || slug === 'undefined' || slug === 'null') && resolvedSlug && resolvedSlug !== slug) {
+      const restPath = location.pathname.replace(`/tenant/${slug}`, '') || '/all-deceased';
+      navigate(`/tenant/${resolvedSlug}${restPath}`, { replace: true });
+    }
+  }, [slug, resolvedSlug, location.pathname, navigate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -238,50 +257,46 @@ const TenantResolver = () => {
         if (!cancelled) {
           setTenantData(cached.data);
           document.documentElement.style.setProperty('--tenant-primary', cached.data.primaryColor || '#2b5a82');
-          document.title = `${cached.data.name || slug} | REST POINT`;
+          document.title = `${cached.data.name || resolvedSlug} | REST POINT`;
         }
         return;
       }
       try {
-        // CRITICAL: Use the URL slug parameter directly, not localStorage
-        // This ensures we always fetch the correct tenant data for the current URL
-        // Also, never use 'default' as a tenant slug - replace with system_shared
-        const tenantSlug = slug === 'default' ? 'system_shared' : slug;
+        let tenantSlug = resolvedSlug;
+        if (!tenantSlug || tenantSlug === 'dashboard' || tenantSlug === 'default' || tenantSlug === 'undefined' || tenantSlug === 'null') {
+          console.error('Invalid tenant slug in URL:', slug);
+          navigate('/login', { replace: true });
+          return;
+        }
 
-        // Save the correct tenantSlug to localStorage for future use
         localStorage.setItem('tenantSlug', tenantSlug);
 
-        // Fetch branding/config info using the URL slug
         const data = await tenantApi.getBranding(tenantSlug);
-
-        // Fetch deployment settings (deploymentType, branchCount, etc.)
         const settingsResult = await tenantApi.getTenantSettings();
         const settings = settingsResult?.data || {};
-
-        // Fetch branches to determine if multi-tenant
         const branchesResult = await tenantApi.getBranches();
         const branches = branchesResult?.data || branchesResult || [];
         const branchCount = Array.isArray(branches) ? branches.length : 0;
 
-        // CRITICAL: Trust the backend's deploymentType setting from the database
-        // The backend already knows if this is a multi-tenant deployment
-        // Only use branch detection as a fallback if backend doesn't provide deploymentType
         const userStr = localStorage.getItem('user');
         const user = userStr ? JSON.parse(userStr) : {};
         const hasBranchAssignment = user?.branchId !== null && user?.branchId !== undefined;
-        const isMultiBranch = hasBranchAssignment || branchCount > 1;
+        const hasParentTenant = !!user?.parentTenantSlug;
+        const hasBranchDbName = !!user?.branchDbName;
+        const isMultiBranch = hasBranchAssignment || hasParentTenant || hasBranchDbName || branchCount > 1;
+
+        const loginDeploymentType = localStorage.getItem('deploymentType');
+        const effectiveDeploymentType = (loginDeploymentType === 'multi' || isMultiBranch) ? 'multi' : (settings?.deploymentType || data?.deploymentType || 'single');
 
         if (!cancelled) {
-          // Merge branding data with deployment settings
-          // Priority: 1) Backend settings, 2) Backend branding data, 3) Branch detection fallback
           const safeData = {
             ...(data || {}),
-            name: data?.name || settings?.tenantName || slug,
-            deploymentType: settings?.deploymentType || data?.deploymentType || (isMultiBranch ? 'multi' : 'single'),
+            name: data?.name || settings?.tenantName || resolvedSlug,
+            deploymentType: effectiveDeploymentType,
             branchCount: branchCount,
-            branches: data?.branches || branches || (branchCount > 0 ? [{ name: settings?.tenantName || slug }] : []),
-            tenantName: settings?.tenantName || data?.name || slug,
-            tenantSlug: settings?.tenantSlug || slug,
+            branches: data?.branches || branches || (branchCount > 0 ? [{ name: settings?.tenantName || resolvedSlug }] : []),
+            tenantName: settings?.tenantName || data?.name || resolvedSlug,
+            tenantSlug: settings?.tenantSlug || resolvedSlug,
             country: settings?.country || data?.country,
             location: settings?.location || data?.location,
             email: settings?.email || data?.email
@@ -290,9 +305,8 @@ const TenantResolver = () => {
           memoryCache[cacheKey] = { data: safeData, timestamp: Date.now() };
           setTenantData(safeData);
           document.documentElement.style.setProperty('--tenant-primary', safeData.primaryColor || '#2b5a82');
-          document.title = `${safeData.name || slug} | REST POINT`;
+          document.title = `${safeData.name || resolvedSlug} | REST POINT`;
 
-          // Save deployment type to localStorage for sidebar to use
           if (safeData.deploymentType) {
             localStorage.setItem('deploymentType', safeData.deploymentType);
           }
@@ -307,35 +321,29 @@ const TenantResolver = () => {
     };
     if (slug && token) { fetchTenant(); } else if (!token) { navigate('/login', { replace: true }); }
     return () => { cancelled = true; };
-  }, [slug, setTenantData, setError, token, navigate, cacheKey]);
+  }, [slug, resolvedSlug, setTenantData, setError, token, navigate, cacheKey]);
 
   if (!token || token === 'undefined' || token === 'null') {
     return <Navigate to="/login" replace />;
   }
-  return <TenantDashboardRoutes tenantData={tenantData || {}} />;
+  return <TenantDashboardRoutes tenantData={tenantData || {}} tenantSlug={resolvedSlug} />;
 };
 
-// Role-based access control helper
-const RoleBasedRoute = ({ children, allowedRoles, userRole, tenantSlug }) => {
-  if (!allowedRoles.includes(userRole)) {
-    // Use tenantSlug from URL param, fallback to system_shared (not 'default')
-    const slug = tenantSlug || 'system_shared';
-    return <Navigate to={`/tenant/${slug}/dashboard`} replace />;
-  }
-  return children;
-};
+// ============================================================
+// REMOVED: RoleBasedRoute - Now allowing direct access to all pages
+// ============================================================
 
-const TenantDashboardRoutes = ({ tenantData }) => {
-  const { slug } = useParams();
-  const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : {};
-  const userRole = user?.role || 'user';
+const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
+  const { slug: urlSlug } = useParams();
   const location = useLocation();
+
+  // Use the resolved tenant slug from TenantResolver, falling back to URL slug
+  const slug = propTenantSlug || urlSlug;
 
   // Always use DashboardLayout with sidebar for all users
   const Layout = DashboardLayout;
 
-  // Hide notification bell on client-facing pages (receptionist, register, release)
+  // Hide notification bell on client-facing pages
   const isClientPage = location.pathname.includes('/receptionist') || 
                        location.pathname.includes('/deceased/register') ||
                        location.pathname.includes('/release-form');
@@ -345,223 +353,182 @@ const TenantDashboardRoutes = ({ tenantData }) => {
     <>
       {showNotificationBell && <NotificationBell />}
       <Routes>
-      <Route path="/" element={<Navigate to="all-deceased" replace />} />
+        <Route path="/" element={<Navigate to="all-deceased" replace />} />
 
-      {/* Dashboard - Available to all authenticated users */}
-      <Route path="dashboard" element={<Layout tenantData={tenantData}><DashboardPage /></Layout>} />
+        {/* Dashboard - All authenticated users */}
+        <Route path="dashboard" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><DashboardPage /></Layout>
+        } />
 
-      {/* Analytics - Available to all authenticated users */}
-      <Route path="analytics" element={<Layout tenantData={tenantData}><DashboardPage /></Layout>} />
+        {/* Analytics - All authenticated users */}
+        <Route path="analytics" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><DashboardPage /></Layout>
+        } />
 
-      {/* Deceased Analytics - Available to all authenticated users */}
-      <Route path="deceased/analytics" element={
-        <Layout tenantData={tenantData}><DeceasedAnalytics /></Layout>
-      } />
+        {/* Deceased Analytics - All authenticated users */}
+        <Route path="deceased/analytics" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedAnalytics /></Layout>
+        } />
 
-      {/* Deceased Management - Available to admin, manager, staff, user */}
-      <Route path="all-deceased" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user']} userRole={userRole} tenantSlug={slug}>
-          <Layout tenantData={tenantData}><DeceasedList /></Layout>
-        </RoleBasedRoute>
-      } />
-      <Route path="deceased" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user']} userRole={userRole}>
-          <Layout tenantData={tenantData}><DeceasedList /></Layout>
-        </RoleBasedRoute>
-      } />
-      <Route path="deceased/register" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
+        {/* Deceased Management - All authenticated users */}
+        <Route path="all-deceased" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedList /></Layout>
+        } />
+        
+        <Route path="deceased" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedList /></Layout>
+        } />
+        
+        <Route path="deceased/register" element={
           <DeceasedRegistrationForm />
-        </RoleBasedRoute>
-      } />
-      <Route path="deceased/:id" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user']} userRole={userRole}>
-          <Layout tenantData={tenantData}><DeceasedDetails /></Layout>
-        </RoleBasedRoute>
-      } />
-      <Route path="deceased-details/:id" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user']} userRole={userRole}>
-          <Layout tenantData={tenantData}><DeceasedDetails /></Layout>
-        </RoleBasedRoute>
-      } />
+        } />
+        
+        <Route path="deceased/:id" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedDetails /></Layout>
+        } />
+        
+        <Route path="deceased-details/:id" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedDetails /></Layout>
+        } />
 
-      {/* Financial Details - Standalone page for managing payments, charges, invoices */}
-      <Route path="financials/:id" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><FinancialDetailsPage /></Layout>
-        </RoleBasedRoute>
-      } />
+        {/* Financial Details */}
+        <Route path="financials/:id" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><FinancialDetailsPage /></Layout>
+        } />
 
-      {/* Legacy deceased routes - redirect to tenant slug format */}
-      <Route path="/deceased/:id" element={<LegacyDeceasedRedirect />} />
+        {/* Legacy deceased routes - redirect to tenant slug format */}
+        <Route path="/deceased/:id" element={<LegacyDeceasedRedirect />} />
 
-      {/* Coffins - Available to admin, manager, staff */}
-      <Route path="coffins" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><CoffinInventory /></Layout>
-        </RoleBasedRoute>
-      } />
-      <Route path="coffins/register" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><RegisterCoffin /></Layout>
-        </RoleBasedRoute>
-      } />
-      <Route path="coffins/:coffinId/details" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><CoffinDetails /></Layout>
-        </RoleBasedRoute>
-      } />
+        {/* Coffins - All authenticated users */}
+        <Route path="coffins" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><CoffinInventory /></Layout>
+        } />
+        
+        <Route path="coffins/register" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><RegisterCoffin /></Layout>
+        } />
+        
+        <Route path="coffins/:coffinId/details" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><CoffinDetails /></Layout>
+        } />
 
-      {/* Documents - Available to admin, manager, staff, user */}
-      <Route path="documents/:deceasedId" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user']} userRole={userRole}>
-          <Layout tenantData={tenantData}><DocumentsPage /></Layout>
-        </RoleBasedRoute>
-      } />
+        {/* Documents - All authenticated users */}
+        <Route path="documents/:deceasedId" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><DocumentsPage /></Layout>
+        } />
 
-      {/* Invoices - Available to admin, manager, staff */}
-      <Route path="invoices" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><InvoiceManager /></Layout>
-        </RoleBasedRoute>
-      } />
+        {/* Invoices - All authenticated users */}
+        <Route path="invoices" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><InvoiceManager /></Layout>
+        } />
 
-      {/* Chemicals - Analytics only, no inventory/usage tracking */}
-      <Route path="chemicals" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><ChemicalInventoryAnalytics /></Layout>
-        </RoleBasedRoute>
-      } />
-      <Route path="chemicals/analytics" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><ChemicalInventoryAnalytics /></Layout>
-        </RoleBasedRoute>
-      } />
+        {/* Chemicals - All authenticated users */}
+        <Route path="chemicals" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><ChemicalInventoryAnalytics /></Layout>
+        } />
+        
+        <Route path="chemicals/analytics" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><ChemicalInventoryAnalytics /></Layout>
+        } />
 
-      {/* Workshop - Available to admin, manager, staff */}
-      <Route path="workshop" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><WorkshopDashboard /></Layout>
-        </RoleBasedRoute>
-      } />
+        {/* Workshop - All authenticated users */}
+        <Route path="workshop" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><WorkshopDashboard /></Layout>
+        } />
 
-      {/* Settings - Available to admin and manager only */}
-      <Route path="settings" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager']} userRole={userRole}>
-          <Layout tenantData={tenantData}><SettingsPage /></Layout>
-        </RoleBasedRoute>
-      } />
+        {/* Settings - All authenticated users */}
+        <Route path="settings" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><SettingsPage /></Layout>
+        } />
 
-      {/* Release Form - Available to admin, manager, staff */}
-      <Route path="release-form/:id" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
+        {/* Release Form */}
+        <Route path="release-form/:id" element={
           <ReleaseFormPage />
-        </RoleBasedRoute>
-      } />
+        } />
 
-      {/* Postmortem Examination Form - Available to admin, manager, staff */}
-      <Route path="postmortem-form/:deceased_id" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
+        {/* Postmortem Examination Form */}
+        <Route path="postmortem-form/:deceased_id" element={
           <PostmortemFormPage />
-        </RoleBasedRoute>
-      } />
+        } />
 
-      {/* Memorial - Public access */}
-      <Route path="memorial/:tenantSlug/:deceasedId" element={<Layout tenantData={tenantData}><PublicMemorialPage /></Layout>} />
-      <Route path="memorial/:tenantSlug/:deceasedId/:token" element={<Layout tenantData={tenantData}><PublicMemorialPage /></Layout>} />
+        {/* Memorial - Public access */}
+        <Route path="memorial/:tenantSlug/:deceasedId" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><PublicMemorialPage /></Layout>
+        } />
+        <Route path="memorial/:tenantSlug/:deceasedId/:token" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><PublicMemorialPage /></Layout>
+        } />
 
-      {/* User Management - Available to admin and manager only */}
-      <Route path="users" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager']} userRole={userRole}>
-          <Layout tenantData={tenantData}><UserManagement /></Layout>
-        </RoleBasedRoute>
-      } />
+        {/* User Management - All authenticated users */}
+        <Route path="users" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><UserManagement /></Layout>
+        } />
 
-      {/* Flower Booking - Available to admin, manager, staff */}
-      <Route path="flowers" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><FlowerBookings /></Layout>
-        </RoleBasedRoute>
-      } />
-      <Route path="flowers/new" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
+        {/* Flower Booking - All authenticated users */}
+        <Route path="flowers" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><FlowerBookings /></Layout>
+        } />
+        
+        <Route path="flowers/new" element={
           <FlowerBookingForm />
-        </RoleBasedRoute>
-      } />
-      <Route path="flowers/order/:id" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><FlowerOrderDetail /></Layout>
-        </RoleBasedRoute>
-      } />
+        } />
+        
+        <Route path="flowers/order/:id" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><FlowerOrderDetail /></Layout>
+        } />
 
-      {/* Hearse - Available to admin, manager, staff */}
-      <Route path="hearse" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff']} userRole={userRole}>
-          <Layout tenantData={tenantData}><HearseBookings /></Layout>
-        </RoleBasedRoute>
-      } />
+        {/* Hearse - All authenticated users */}
+        <Route path="hearse" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><HearseBookings /></Layout>
+        } />
 
-      {/* Driver Portal - Only for drivers, standalone without sidebar */}
-      <Route path="driver-portal" element={
-        <RoleBasedRoute allowedRoles={['driver']} userRole={userRole}>
+        {/* Driver Portal - Standalone without sidebar */}
+        <Route path="driver-portal" element={
           <DriverPortal />
-        </RoleBasedRoute>
-      } />
+        } />
 
-      {/* Receptionist Portal - Standalone without sidebar */}
-      <Route path="receptionist" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user']} userRole={userRole}>
+        {/* Receptionist Portal - Standalone without sidebar */}
+        <Route path="receptionist" element={
           <ReceptionPortal />
-        </RoleBasedRoute>
-      } />
+        } />
 
-      {/* Postmortem Results - Standalone without sidebar */}
-      <Route path="postmortem-results" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user']} userRole={userRole}>
+        {/* Postmortem Results - Standalone without sidebar */}
+        <Route path="postmortem-results" element={
           <PostmortemResults />
-        </RoleBasedRoute>
-      } />
+        } />
 
-      {/* Postmortem QR Code Page - Standalone without sidebar */}
-      <Route path="postmortem-qr" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user']} userRole={userRole}>
+        {/* Postmortem QR Code Page - Standalone without sidebar */}
+        <Route path="postmortem-qr" element={
           <PostmortemQRPage />
-        </RoleBasedRoute>
-      } />
+        } />
 
-      {/* Leave Management */}
-      <Route path="leaves" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user', 'driver']} userRole={userRole}>
-          <Layout tenantData={tenantData}><LeaveDashboard /></Layout>
-        </RoleBasedRoute>
-      } />
-      <Route path="leaves/apply" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user', 'driver']} userRole={userRole}>
-          <Layout tenantData={tenantData}><ApplyLeave /></Layout>
-        </RoleBasedRoute>
-      } />
-      <Route path="leaves/my-leaves" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user', 'driver']} userRole={userRole}>
-          <Layout tenantData={tenantData}><MyLeaves /></Layout>
-        </RoleBasedRoute>
-      } />
+        {/* Leave Management - All authenticated users */}
+        <Route path="leaves" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><LeaveDashboard /></Layout>
+        } />
+        
+        <Route path="leaves/apply" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><ApplyLeave /></Layout>
+        } />
+        
+        <Route path="leaves/my-leaves" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><MyLeaves /></Layout>
+        } />
 
-      {/* Support - Available to all */}
-      <Route path="support" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager', 'staff', 'user']} userRole={userRole}>
-          <Layout tenantData={tenantData}><SupportPage /></Layout>
-        </RoleBasedRoute>
-      } />
+        {/* Support - All authenticated users */}
+        <Route path="support" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><SupportPage /></Layout>
+        } />
 
-      {/* Admin Support Dashboard - Available to admin and manager only */}
-      <Route path="support-dashboard" element={
-        <RoleBasedRoute allowedRoles={['admin', 'manager']} userRole={userRole}>
-          <Layout tenantData={tenantData}><AdminSupportDashboard /></Layout>
-        </RoleBasedRoute>
-      } />
+        {/* Admin Support Dashboard - All authenticated users */}
+        <Route path="support-dashboard" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><AdminSupportDashboard /></Layout>
+        } />
 
-      {/* 404 */}
-      <Route path="*" element={<Layout tenantData={tenantData}><NotFound /></Layout>} />
+        {/* 404 */}
+        <Route path="*" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><NotFound /></Layout>
+        } />
       </Routes>
     </>
   );
@@ -571,7 +538,7 @@ const TenantDashboardRoutes = ({ tenantData }) => {
 const SystemAdminRoute = () => {
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : {};
-  const tenantSlug = localStorage.getItem('tenantSlug') || user?.tenantSlug || 'system_shared';
+  const tenantSlug = localStorage.getItem('tenantSlug') || user?.tenantSlug || '';
 
   // Only allow systemadmin role
   if (user?.role !== 'systemadmin') {
@@ -588,8 +555,7 @@ const LegacyDeceasedRedirect = () => {
   const { id } = useParams();
 
   useEffect(() => {
-    // Get tenant slug from localStorage
-    const tenantSlug = localStorage.getItem('tenantSlug') || 'system_shared';
+    const tenantSlug = localStorage.getItem('tenantSlug') || '';
     navigate(`/tenant/${tenantSlug}/deceased/${id}`, { replace: true });
   }, [navigate, id]);
 
@@ -611,37 +577,28 @@ const DashboardRedirect = () => {
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : {};
 
-    // CRITICAL: Extract tenant slug from the current URL path
-    // This ensures we ALWAYS use the tenant slug from the URL, never a default value
     const urlSlug = location.pathname.match(/\/tenant\/([^\/]+)/)?.[1];
-
-    // Get tenantSlug from localStorage or user data as fallback ONLY if URL doesn't have it
     const storedTenantSlug = localStorage.getItem('tenantSlug');
     let userTenantSlug = '';
-    if (userStr) { try { const u = JSON.parse(userStr); userTenantSlug = u.tenantSlug || ''; } catch (e) { console.error('Error parsing user', e); } }
+    if (userStr) { try { const u = JSON.parse(userStr); userTenantSlug = u.tenantSlug || u.branchDbName || u.branchSlug || u.tenant_slug || u.parentTenantSlug || ''; } catch (e) { console.error('Error parsing user', e); } }
 
-    // Use URL slug if present and not 'default', otherwise use stored values
-    // This prevents using 'default' as a tenant slug - we prefer system_shared or actual tenant slugs
-    let finalSlug = (urlSlug && urlSlug !== 'default') ? urlSlug : (storedTenantSlug || userTenantSlug || 'system_shared');
+    let finalSlug = (urlSlug && urlSlug !== 'default' && urlSlug !== 'dashboard') ? urlSlug : (storedTenantSlug || userTenantSlug || '');
 
-    // CRITICAL: Never use 'default' as tenant slug - replace with system_shared
-    if (finalSlug === 'default') {
-      finalSlug = 'system_shared';
+    if (!finalSlug || finalSlug === 'dashboard' || finalSlug === 'default' || finalSlug === 'login') {
+      navigate('/login', { replace: true });
+      return;
     }
 
-    // Check if user is system admin - redirect to system admin dashboard
     if (user?.role === 'systemadmin') {
       navigate(`/tenant/${finalSlug}/system-admin`, { replace: true });
       return;
     }
 
-    // Check if user is driver - redirect to driver portal
     if (user?.role === 'driver') {
       navigate(`/tenant/${finalSlug}/driver-portal`, { replace: true });
       return;
     }
 
-    // Normal tenant flow for admin/manager/staff
     if (from && from !== '/login' && from !== '/') { navigate(`/tenant/${finalSlug}${from}`, { replace: true }); } else { navigate(`/tenant/${finalSlug}/all-deceased`, { replace: true }); }
   }, [navigate, location]);
   return (
@@ -723,17 +680,20 @@ const AppRouter = () => (
       // Location Routes
       <Route path="/locations/nairobi" element={<NairobiFuneralWelfare />} />
       <Route path="/locations/:city" element={<LocationPage />} />
+      
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
       <Route path="/dashboard/*" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
-      {/* Public Postmortem QR Code - shows QR code, scanning it leads to verify portal */}
+      
+      {/* Public Postmortem Routes */}
       <Route path="/tenant/:slug/postmortem-qr" element={<PostmortemQRPage />} />
-      {/* Public Postmortem Verify Portal - scanned QR code leads here instantly */}
       <Route path="/tenant/:slug/postmortem-verify" element={<PostmortemVerifyPage />} />
-      {/* Postmortem Results with session ID */}
       <Route path="/tenant/:slug/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
-      {/* New separate verification and results pages */}
       <Route path="/postmortem/verify" element={<PostmortemVerifyPage />} />
       <Route path="/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
+      
+      {/* Main Tenant Route - All authenticated routes */}
       <Route path="/tenant/:slug/*" element={<ProtectedRoute><TenantResolver /></ProtectedRoute>} />
+      
       <Route path="*" element={<LandingPage />} />
     </Routes>
   </Suspense>

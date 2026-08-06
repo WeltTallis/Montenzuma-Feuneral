@@ -6,7 +6,7 @@ import provisionQueue from '../scripts/provisionQueue';
 import { Request, Response } from 'express';
 import logger from '@montezuma/shared-logger';
 import * as fs from 'fs';
-import { centralizedUploadService } from '../../../packages/shared-services/src/centralizedUploadService';
+import * as path from 'path';
 
 /**
  * OnboardingController — handles tenant registration, login, logout, org info
@@ -90,23 +90,27 @@ export class OnboardingController {
         try {
           const tenantSlug = finalTenantName.replace(/\s+/g, '-').toLowerCase();
           
-          // Upload to centralized storage
+          // Save directly to global uploads folder
+          const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || 'C:\\Users\\User\\Downloads\\uploads';
+          const logoDir = path.join(globalUploadsDir, tenantSlug, 'logos');
+          
+          // Ensure directory exists
+          await fs.promises.mkdir(logoDir, { recursive: true });
+          
+          // Generate unique filename
+          const ext = path.extname(req.file.originalname) || '.png';
+          const logoFilename = `logo_${Date.now()}${ext}`;
+          const fullPath = path.join(logoDir, logoFilename);
+          
+          // Read and save the file
           const logoBuffer = fs.readFileSync(req.file.path);
-          const uploadResult = await centralizedUploadService.uploadTenantLogo(
-            logoBuffer,
-            req.file.originalname,
-            tenantSlug
-          );
-
+          await fs.promises.writeFile(fullPath, logoBuffer);
+          
           // Clean up the temp file
           try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
-
-          if (uploadResult.success) {
-            logoUrl = uploadResult.urlPath;
-            logger.info({ service: 'tenant-service', function: 'createOrganization', message: 'Logo uploaded to centralized storage', logoUrl });
-          } else {
-            logger.warn({ service: 'tenant-service', function: 'createOrganization', message: 'Logo upload failed', error: uploadResult.error });
-          }
+          
+          logoUrl = `/uploads/${tenantSlug}/logos/${logoFilename}`;
+          logger.info({ service: 'tenant-service', function: 'createOrganization', message: 'Logo saved to global uploads folder', logoUrl });
         } catch (logoErr: any) {
           logger.warn({ service: 'tenant-service', function: 'createOrganization', message: 'Logo upload failed', error: logoErr.message });
         }

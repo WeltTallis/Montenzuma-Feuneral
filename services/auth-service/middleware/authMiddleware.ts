@@ -40,8 +40,11 @@ const getTenantJwtSecret = async (
   tenantId: number
 ): Promise<{ jwtSecret: string; refreshSecret: string }> => {
   try {
+    // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`.
+    // Querying with `tenant_id` always fails and falls back to the global secret,
+    // which causes token verification failures and auto-logout.
     const [tenants]: any = await pool.query(
-      'SELECT jwt_secret, refresh_secret FROM tenant_tracking.tenants WHERE tenant_id = ?',
+      'SELECT jwt_secret, refresh_secret FROM tenant_tracking.tenants WHERE id = ?',
       [tenantId]
     );
     if (tenants.length > 0 && tenants[0].jwt_secret) {
@@ -94,8 +97,11 @@ export const protect = async (
     const verified: any = jwt.verify(token, jwtSecret);
 
     // Attach user info
+    // CRITICAL FIX: The JWT payload uses `userId`, NOT `id`.
+    // Using `verified.id` results in `undefined` for req.user.userId,
+    // which breaks downstream services that rely on the user ID.
     req.user = {
-      userId: verified.id,
+      userId: verified.userId ?? verified.id,
       email: verified.email,
       tenantId: decoded.tenantId,
       tenantName: decoded.tenantName || '',

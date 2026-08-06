@@ -114,8 +114,9 @@ export class SystemAdminController {
             const { tenantId } = req.params;
             const conn = await getServerConnection();
 
+            // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`
             const [tenants] = await conn.query(
-                'SELECT * FROM tenant_tracking.tenants WHERE tenant_id = ?',
+                'SELECT * FROM tenant_tracking.tenants WHERE id = ?',
                 [tenantId]
             );
 
@@ -193,8 +194,9 @@ export class SystemAdminController {
             const conn = await getServerConnection();
 
             // Get tenant slug before updating
+            // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`
             const [existingTenants] = await conn.query(
-                'SELECT tenant_slug, db_name FROM tenant_tracking.tenants WHERE tenant_id = ?',
+                'SELECT tenant_slug, db_name FROM tenant_tracking.tenants WHERE id = ?',
                 [tenantId]
             );
             const tenantInfo = Array.isArray(existingTenants) && existingTenants.length > 0 ? (existingTenants[0] as any) : null;
@@ -204,7 +206,7 @@ export class SystemAdminController {
             await conn.query(
                 `UPDATE tenant_tracking.tenants 
                  SET status = 'suspended', subscription_status = 'suspended', updated_at = NOW() 
-                 WHERE tenant_id = ?`,
+                 WHERE id = ?`,
                 [tenantId]
             );
 
@@ -280,8 +282,9 @@ export class SystemAdminController {
             const conn = await getServerConnection();
 
             // Get tenant slug before updating
+            // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`
             const [existingTenants] = await conn.query(
-                'SELECT tenant_slug, db_name FROM tenant_tracking.tenants WHERE tenant_id = ?',
+                'SELECT tenant_slug, db_name FROM tenant_tracking.tenants WHERE id = ?',
                 [tenantId]
             );
             const tenantInfo = Array.isArray(existingTenants) && existingTenants.length > 0 ? (existingTenants[0] as any) : null;
@@ -290,7 +293,7 @@ export class SystemAdminController {
             await conn.query(
                 `UPDATE tenant_tracking.tenants 
                  SET status = 'active', subscription_status = 'active', updated_at = NOW() 
-                 WHERE tenant_id = ?`,
+                 WHERE id = ?`,
                 [tenantId]
             );
 
@@ -345,8 +348,9 @@ export class SystemAdminController {
             const conn = await getServerConnection();
 
             // Get tenant slug before updating
+            // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`
             const [existingTenants] = await conn.query(
-                'SELECT tenant_slug, db_name FROM tenant_tracking.tenants WHERE tenant_id = ?',
+                'SELECT tenant_slug, db_name FROM tenant_tracking.tenants WHERE id = ?',
                 [tenantId]
             );
             const tenantInfo = Array.isArray(existingTenants) && existingTenants.length > 0 ? (existingTenants[0] as any) : null;
@@ -356,7 +360,7 @@ export class SystemAdminController {
             await conn.query(
                 `UPDATE tenant_tracking.tenants 
                  SET status = 'deleted', subscription_status = 'cancelled', updated_at = NOW() 
-                 WHERE tenant_id = ?`,
+                 WHERE id = ?`,
                 [tenantId]
             );
 
@@ -440,10 +444,11 @@ export class SystemAdminController {
                 });
             }
 
+            // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`
             await conn.query(
                 `UPDATE tenant_tracking.tenants 
                  SET subscription_status = ?, subscription_expires_at = ?, updated_at = NOW() 
-                 WHERE tenant_id = ?`,
+                 WHERE id = ?`,
                 [subscription_status, subscription_expires_at || null, tenantId]
             );
 

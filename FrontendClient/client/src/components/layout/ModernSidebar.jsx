@@ -430,7 +430,7 @@ const SingleTenantSidebar = styled.aside`
 `;
 
 // ============================================================
-// MAIN COMPONENT
+// MAIN COMPONENT - FIXED
 // ============================================================
 
 const ModernSidebar = ({
@@ -439,11 +439,12 @@ const ModernSidebar = ({
   menuItems: customMenuItems,
   activePath: customActivePath,
   tenantData,
-  deploymentType = 'single'
+  deploymentType = 'multi',
+  tenantSlug: propTenantSlug // CRITICAL: This comes from DashboardLayout
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { slug } = useParams();
+  const { slug: urlSlug } = useParams();
   const [isOpen, setIsOpen] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       return false;
@@ -455,11 +456,56 @@ const ModernSidebar = ({
     return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
   });
   const [singleTenantOpen, setSingleTenantOpen] = useState(false);
-  // Track whether the initial mount has completed so we don't overwrite the
-  // saved localStorage value with the default state before it's been applied.
   const [hasMounted, setHasMounted] = useState(false);
 
   const isSingleTenant = deploymentType === 'single';
+
+  // ============================================================
+  // CRITICAL FIX: Get tenant slug from props FIRST, then localStorage
+  // DO NOT rely on useParams() - it may not work correctly here
+  // ============================================================
+  const getTenantSlug = useCallback(() => {
+    // Priority 1: Prop from DashboardLayout (most reliable)
+    if (propTenantSlug && propTenantSlug !== 'undefined' && propTenantSlug !== 'null') {
+      console.log('[ModernSidebar] Using tenant slug from props:', propTenantSlug);
+      return propTenantSlug;
+    }
+    
+    // Priority 2: URL param from useParams()
+    if (urlSlug && urlSlug !== 'undefined' && urlSlug !== 'null') {
+      console.log('[ModernSidebar] Using tenant slug from URL params:', urlSlug);
+      return urlSlug;
+    }
+    
+    // Priority 3: localStorage
+    const stored = localStorage.getItem('tenantSlug');
+    if (stored && stored !== 'undefined' && stored !== 'null') {
+      console.log('[ModernSidebar] Using tenant slug from localStorage:', stored);
+      return stored;
+    }
+    
+    // Priority 4: user object
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      // tenantSlug = effective scope (branch for branch users). Prefer it over
+      // parentTenantSlug so branch users don't get bounced back to the main branch.
+      const userSlug = user?.tenantSlug || user?.branchDbName || user?.branchSlug || user?.tenant_slug || user?.parentTenantSlug || '';
+      if (userSlug) {
+        console.log('[ModernSidebar] Using tenant slug from user object:', userSlug);
+        return userSlug;
+      }
+    } catch (e) {
+      console.error('[ModernSidebar] Error parsing user:', e);
+    }
+    
+    console.warn('[ModernSidebar] No tenant slug found! This will cause navigation issues.');
+    return '';
+  }, [propTenantSlug, urlSlug]);
+
+  const tenantSlug = getTenantSlug();
+
+  // Debug log to show what slug we're using
+  console.log('[ModernSidebar] Final tenant slug:', tenantSlug);
 
   const checkMobile = useCallback(() => {
     const mobile = window.innerWidth < 768;
@@ -467,9 +513,6 @@ const ModernSidebar = ({
     if (mobile) {
       setIsOpen(false);
     }
-    // NOTE: Do not re-read localStorage here on desktop. The lazy initializer
-    // already loaded the saved state, and re-reading would clobber any toggle
-    // the user made before a resize event fires.
   }, []);
 
   useEffect(() => {
@@ -492,29 +535,23 @@ const ModernSidebar = ({
     }
   }, [location.pathname, isMobile]);
 
-  // Mark mount complete after the first render so subsequent state changes
-  // are persisted to localStorage.
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
-  // Persist the sidebar state to localStorage, but only after the initial
-  // mount has finished. This prevents overwriting the saved value with the
-  // default state on the very first render.
   useEffect(() => {
     if (hasMounted && !isMobile) {
       localStorage.setItem('sidebarOpen', isOpen.toString());
     }
   }, [isOpen, isMobile, hasMounted]);
 
-  // Close single tenant menu on route change
   useEffect(() => {
     setSingleTenantOpen(false);
   }, [location.pathname]);
 
-  const tenantSlug = slug || localStorage.getItem('tenantSlug') || 'default';
-
-  // Full menu items for all users (no single tenant restriction)
+  // ============================================================
+  // FIXED: Build paths with the correct tenant slug
+  // ============================================================
   const defaultMenuItems = [
     {
       section: 'Main',
@@ -556,40 +593,35 @@ const ModernSidebar = ({
 
     // Check if current path starts with this path
     if (location.pathname.startsWith(path + '/')) {
-      // Get the remaining path after the menu item's path
       const remainingPath = location.pathname.slice(path.length);
-
-      // List of child routes that should not activate parent
       const excludedChildRoutes = ['/apply', '/my-leaves', '/all', '/analytics'];
       const isExcludedChild = excludedChildRoutes.some(child => remainingPath === child || remainingPath.startsWith(child + '/'));
 
       if (isExcludedChild) {
-        // Check if there's an exact menu item for this child route
         const allMenuItems = menuItems.flatMap(section => section.items || []);
         const hasExactChildMatch = allMenuItems.some(item =>
           item.path !== path && location.pathname === item.path
         );
-
         if (hasExactChildMatch) {
           return false;
         }
       }
-
       return true;
     }
-
     return false;
   };
 
   const handleNavClick = (path) => {
+    console.log('[ModernSidebar] Navigating to:', path);
     navigate(path);
     if (isMobile) setIsOpen(false);
     setSingleTenantOpen(false);
   };
 
   const handleSwitchToTab = () => {
-    const tenantSlug = slug || localStorage.getItem('tenantSlug') || 'default';
-    navigate(`/tenant/${tenantSlug}/receptionist`, { replace: true });
+    const slug = getTenantSlug();
+    console.log('[ModernSidebar] Switching to tab with slug:', slug);
+    navigate(`/tenant/${slug}/receptionist`, { replace: true });
   };
 
   const toggleSidebar = useCallback(() => {
@@ -662,7 +694,6 @@ const ModernSidebar = ({
   };
 
   // ─── SINGLE TENANT VIEW ─────────────────────────────────────
-  // For single tenant: show a hamburger menu button, no persistent sidebar
   if (isSingleTenant) {
     return (
       <>

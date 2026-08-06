@@ -45,9 +45,8 @@ export const SocketProvider = ({ children }) => {
 
     useEffect(() => {
         const socketUrl = getSocketUrl();
-        const tenantSlug = localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug') || 'default';
 
-        console.log('[Socket] Connecting to:', socketUrl, 'tenant:', tenantSlug);
+        console.log('[Socket] Connecting to:', socketUrl);
 
         // Connect to Socket.IO server (central socketio-service)
         const socketInstance = io(socketUrl, {
@@ -63,66 +62,75 @@ export const SocketProvider = ({ children }) => {
                 token: localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '',
             },
             extraHeaders: {
-                'x-tenant-slug': tenantSlug,
-            }
+                'x-tenant-slug':
+                    localStorage.getItem('tenantSlug') ||
+                    localStorage.getItem('tenant_slug') ||
+                    'default',
+            },
         });
+
+        const emitJoinTenant = () => {
+            const currentTenantSlug =
+                localStorage.getItem('tenantSlug') ||
+                localStorage.getItem('tenant_slug') ||
+                'default';
+            const userStr = localStorage.getItem('user');
+            const user = userStr ? JSON.parse(userStr) : {};
+            const userId = user?.user_id || user?.userId || user?.id || null;
+            const userRole = user?.role || null;
+            const parentTenantSlug =
+                user?.parentTenantSlug || localStorage.getItem('parentTenantSlug') || null;
+
+            console.log('[Socket] Connection details:', {
+                socketId: socketInstance.id,
+                tenantSlug: currentTenantSlug,
+                userId,
+                userRole,
+                parentTenantSlug,
+                hasUser: !!userStr,
+            });
+
+            if (currentTenantSlug && userId) {
+                try {
+                    socketInstance.emit(
+                        'join-tenant',
+                        {
+                            tenantSlug: currentTenantSlug,
+                            userId,
+                            userRole,
+                            parentTenantSlug,
+                            timestamp: new Date().toISOString(),
+                        },
+                        (response) => {
+                            console.log('[Socket] Join tenant response:', response);
+                        }
+                    );
+                    console.log('[Socket] Emitted join-tenant:', {
+                        tenantSlug: currentTenantSlug,
+                        userId,
+                        userRole,
+                        parentTenantSlug,
+                    });
+                } catch (e) {
+                    console.warn('[Socket] Failed to emit join-tenant:', e);
+                }
+            } else {
+                console.warn(
+                    '[Socket] Cannot join tenant room - missing tenantSlug or userId:',
+                    {
+                        tenantSlug: currentTenantSlug,
+                        userId,
+                        hasUser: !!userStr,
+                    }
+                );
+            }
+        };
 
         socketInstance.on('connect', () => {
             console.log('✅ Socket connected:', socketInstance.id);
             setConnected(true);
             setReconnecting(false);
-
-            // Join tenant room for notifications
-            const userStr = localStorage.getItem('user');
-            const user = userStr ? JSON.parse(userStr) : {};
-            const userId = user?.user_id || user?.userId || user?.id || null;
-            const userRole = user?.role || null;
-
-            console.log('[Socket] Connection details:', { 
-                socketId: socketInstance.id, 
-                tenantSlug, 
-                userId, 
-                userRole,
-                hasUser: !!userStr 
-            });
-
-            // Primary join event (kebab-case for central socketio-service)
-            if (tenantSlug && userId) {
-                try {
-                    socketInstance.emit('join-tenant', { 
-                        tenantSlug, 
-                        userId, 
-                        userRole,
-                        timestamp: new Date().toISOString()
-                    }, (response) => {
-                        // Callback to confirm join
-                        console.log('[Socket] Join tenant response:', response);
-                    });
-                    console.log('[Socket] Emitted join-tenant:', { tenantSlug, userId, userRole });
-                } catch (e) { 
-                    console.warn('[Socket] Failed to emit join-tenant:', e); 
-                }
-            } else {
-                console.warn('[Socket] Cannot join tenant room - missing tenantSlug or userId:', { 
-                    tenantSlug, 
-                    userId,
-                    hasUser: !!userStr 
-                });
-            }
-
-            // Join branch rooms for scoped notifications
-            const branchId = localStorage.getItem('branchId') || localStorage.getItem('branch_id');
-            if (branchId) {
-                try {
-                    socketInstance.emit('join-branch', { tenantSlug, branchId });
-                    console.log('[Socket] Joined branch:', { branchId });
-                } catch (e) { 
-                    console.warn('[Socket] Failed to join branch:', e); 
-                }
-            }
-
-            // Fetch notifications after connecting
-            console.log('[Socket] Connection established, notifications should now work');
+            emitJoinTenant();
         });
 
         socketInstance.on('disconnect', (reason) => {
@@ -142,26 +150,7 @@ export const SocketProvider = ({ children }) => {
             console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
             setConnected(true);
             setReconnecting(false);
-
-            // Re-join tenant room after reconnection
-            const userStr = localStorage.getItem('user');
-            const user = userStr ? JSON.parse(userStr) : {};
-            const userId = user?.user_id || user?.userId || user?.id || null;
-            const userRole = user?.role || null;
-
-            if (tenantSlug && userId) {
-                try {
-                    socketInstance.emit('join-tenant', { 
-                        tenantSlug, 
-                        userId, 
-                        userRole,
-                        timestamp: new Date().toISOString()
-                    });
-                    console.log('[Socket] Re-joined tenant after reconnect:', { tenantSlug, userId });
-                } catch (e) { 
-                    console.warn('[Socket] Failed to re-join tenant:', e); 
-                }
-            }
+            emitJoinTenant();
         });
 
         socketInstance.on('reconnect_attempt', (attemptNumber) => {
@@ -184,11 +173,20 @@ export const SocketProvider = ({ children }) => {
             console.log('[Socket] Server welcome:', data);
         });
 
+        // Re-join tenant room when auth state changes (e.g. after login
+        // without a full page reload). AuthContext dispatches a custom event
+        // after it persists the new user + tenantSlug to localStorage.
+        const handleAuthChange = () => {
+            emitJoinTenant();
+        };
+        window.addEventListener('auth-state-changed', handleAuthChange);
+
         setSocket(socketInstance);
 
         // Cleanup on unmount
         return () => {
             console.log('[Socket] Disconnecting socket');
+            window.removeEventListener('auth-state-changed', handleAuthChange);
             if (socketInstance) {
                 socketInstance.removeAllListeners();
                 socketInstance.disconnect();
@@ -196,12 +194,16 @@ export const SocketProvider = ({ children }) => {
         };
     }, []);
 
-    const joinBranch = useCallback((branchId) => {
-        if (socket && branchId) {
-            const tenantSlug = localStorage.getItem('tenantSlug') || 'default';
-            socket.emit('join-branch', { tenantSlug, branchId });
-        }
-    }, [socket]);
+    const joinBranch = useCallback(
+        (branchId) => {
+            if (socket && branchId) {
+                const tenantSlug =
+                    localStorage.getItem('tenantSlug') || 'default';
+                socket.emit('join-branch', { tenantSlug, branchId });
+            }
+        },
+        [socket]
+    );
 
     const joinAdmin = useCallback(() => {
         if (socket) {

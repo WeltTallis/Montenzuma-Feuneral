@@ -6,7 +6,6 @@ import generateUniqueDeceasedId from "../utils/deceasedId";
 import generateAdmissionNumber from "../utils/generateAdmissionNumber";
 import { processSignature } from "../utils/uploadSignature";
 import * as z from "zod";
-import sharp from "sharp";
 import redisService from "../../../packages/shared-services/dist/redisService";
 import { NextOfKinModel } from "../models/NextOfKin";
 
@@ -19,7 +18,6 @@ const SERVICE_NAME = 'deceased-service';
 const registerDeceasedSchema = z.object({
     full_name: z.string().min(4, "Full name must have at least 4 characters"),
     cause_of_death: z.string().optional().nullable(),
-    date_of_birth: z.string().optional().nullable(),
     national_id: z.string().optional().nullable(),
     received_from: z.string().optional().nullable(),
     permit_no: z.string().optional().nullable(),
@@ -37,7 +35,6 @@ const registerDeceasedSchema = z.object({
     alternative_phone: z.string().optional().nullable(),
     email: z.string().optional().nullable(),
     receiving_officer: z.string().optional().nullable(),
-    verified_by: z.string().optional().nullable(),
     relationship: z.string().optional().nullable(),
 });
 
@@ -87,7 +84,9 @@ export const registerNewDeceased = async (
         // ==============================
         // CREATE ID
         // ==============================
-
+        Logger.info({
+            message: "Generating deceased system identification"
+        });
         deceased_id = generateUniqueDeceasedId(full_name, tenantSlug);
         const now = getKenyaTimeISO();
 
@@ -98,34 +97,59 @@ export const registerNewDeceased = async (
         let signaturePath = null;
         if (data.signature && data.signature.startsWith('data:image/png;base64,')) {
             try {
-                Logger.info({ message: "Saving signature as PNG file" });
+                Logger.info({ message: "Saving signature via centralized upload service" });
                 const base64Data = data.signature.replace(/^data:image\/png;base64,/, '');
                 const buffer = Buffer.from(base64Data, 'base64');
 
                 signaturePath = await processSignature(buffer, `sig_${deceased_id}`, tenantSlug);
                 Logger.info({
-                    message: "Signature saved as PNG file",
+                    message: "Signature saved successfully",
                     path: signaturePath,
                     size: `${(buffer.length / 1024).toFixed(2)} KB`
                 });
-            } catch (sigError) {
+            } catch (sigError: any) {
                 Logger.warn({
-                    message: "Failed to save signature as file, storing inline",
-                    error: sigError
+                    message: "Failed to save signature - signature will not be stored",
+                    error: sigError?.message || sigError,
+                    stack: sigError?.stack,
+                    errorType: sigError?.constructor?.name,
+                    fullError: JSON.stringify(sigError)
                 });
-                // Fallback: compress and store inline
-                try {
-                    const base64Data = data.signature.replace(/^data:image\/png;base64,/, '');
-                    const buffer = Buffer.from(base64Data, 'base64');
-                    const compressedBuffer = await sharp(buffer)
-                        .resize(400, 200, { fit: 'inside', withoutEnlargement: true })
-                        .png({ quality: 60, compressionLevel: 9 })
-                        .toBuffer();
-                    signaturePath = `data:image/png;base64,${compressedBuffer.toString('base64')}`;
-                } catch {
-                    signaturePath = data.signature;
-                }
+                signaturePath = null;
             }
+        }
+
+        // ==============================
+        // DUPLICATE REGISTRATION PROTECTION (Idempotency)
+        // ==============================
+        // REMOVED 'signature' from SELECT since it was causing issues
+        const duplicateCheckQuery = `SELECT deceased_id, admission_number, created_at FROM deceased WHERE deceased_id = ? AND (is_deleted = 0 OR is_deleted IS NULL)`;
+        const duplicateResult = await safeTenantQuery(dbName, duplicateCheckQuery, [deceased_id]);
+
+        if (duplicateResult && (duplicateResult as any[]).length > 0) {
+            const existing = (duplicateResult as any[])[0];
+            Logger.warn({
+                message: `Duplicate registration attempt blocked - deceased_id ${existing.deceased_id} already exists`,
+                deceased_id: existing.deceased_id,
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: "Deceased already registered (duplicate request detected)",
+                deceased_id: existing.deceased_id,
+                admission_number: existing.admission_number,
+                signature_path: null,
+                next_of_kin_registered: false,
+                duplicate: true,
+                data: {
+                    deceased_id: existing.deceased_id,
+                    admission_number: existing.admission_number,
+                    full_name: data.full_name,
+                    gender: data.gender,
+                    contact_person: data.contact_person,
+                    relationship: data.relationship,
+                }
+            });
         }
 
         // ==============================
@@ -139,73 +163,93 @@ export const registerNewDeceased = async (
         const admission_number = generateAdmissionNumber(data.gender || "M", nextSequence);
 
         // ==============================
-        // INSERT RECORD
+        // INSERT RECORD - MATCHING EXACT COLUMN ORDER FROM TABLE
         // ==============================
 
-        // Insert deceased with all fields
-        const insertQuery = `
-            INSERT INTO deceased
-            (
-                deceased_id,
-                admission_number,
-                full_name,
-                gender,
-                age,
-                date_of_birth,
-                date_of_death,
-                date_admitted,
-                time_received,
-                cause_of_death,
-                place_of_death,
-                physician,
-                body_status,
-                national_id,
-                id_type,
-                email,
-                phone_number,
-                alternative_phone,
-                received_from,
-                receiving_officer,
-                signature,
-                verified_by,
-                relationship,
-                permit_number,
-                created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+       // Updated INSERT query without county and currency
+const insertQuery = `
+    INSERT INTO deceased
+    (
+        deceased_id,
+        admission_number,
+        cause_of_death,
+        place_of_death,
+        physician,
+        body_status,
+        national_id,
+        id_type,
+        email,
+        phone_number,
+        alternative_phone,
+        received_from,
+        receiving_officer,
+        date_admitted,
+        time_received,
+        date_of_birth,
+        date_of_death,
+        date_registered,
+        full_name,
+        gender,
+        age,
+        location,
+        created_by,
+        status,
+        total_mortuary_charge,
+        burial_type,
+        dispatch_date,
+        extra_charges_amount,
+        next_of_kin_count,
+        is_deleted,
+        branch_code,
+        created_at,
+        signature,
+        relationship,
+        permit_number
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`;
 
-        await safeTenantExecute(
-            dbName,
-            insertQuery,
-            [
-                deceased_id,
-                admission_number,
-                data.full_name,
-                data.gender || null,
-                data.age || 0,
-                data.date_of_birth || null,
-                data.date_of_death || null,
-                now,
-                data.time_received || null,
-                data.cause_of_death || null,
-                data.place_of_death || null,
-                data.physician || null,
-                data.body_status || 'Normal Condition',
-                data.national_id || null,
-                data.id_type || null,
-                data.email || null,
-                data.tell_no || null,
-                data.alternative_phone || null,
-                data.received_from || null,
-                data.receiving_officer || null,
-                signaturePath,
-                data.verified_by || null,
-                data.relationship || null,
-                data.permit_no || null,
-                now
-            ]
-        );
+await safeTenantExecute(
+    dbName,
+    insertQuery,
+    [
+        deceased_id,
+        admission_number,
+        data.cause_of_death || null,
+        data.place_of_death || null,
+        data.physician || null,
+        data.body_status || 'Normal Condition',
+        data.national_id || null,
+        data.id_type || null,
+        data.email || null,
+        data.tell_no || null,
+        data.alternative_phone || null,
+        data.received_from || null,
+        data.receiving_officer || null,
+        now, // date_admitted
+        data.time_received || null,
+        null, // date_of_birth (now accepts NULL)
+        data.date_of_death || null,
+        now, // date_registered
+        data.full_name,
+        data.gender || null,
+        data.age || 0,
+        null, // location
+        null, // created_by
+        'active', // status
+        0.00, // total_mortuary_charge
+        null, // burial_type
+        null, // dispatch_date
+        0.00, // extra_charges_amount
+        0, // next_of_kin_count
+        0, // is_deleted
+        null, // branch_code
+        now, // created_at
+        signaturePath, // signature
+        data.relationship || null, // relationship
+        data.permit_no || null // permit_number
+    ]
+);
 
         Logger.info({ message: `Deceased registered ${deceased_id} - Admission: ${admission_number}` });
 
@@ -215,10 +259,12 @@ export const registerNewDeceased = async (
         if (tenantSlug && tenantId) {
             await redisService.serviceDel('deceased-service', tenantSlug, `deceased:detail:${deceased_id}`);
             await redisService.serviceDel('deceased-service', tenantSlug, `deceased:list:${tenantId}`);
-            Logger.info(`[Cache] 🧹 Deceased cache invalidated for ${tenantSlug}`);
+            Logger.info(`[Cache] Deceased cache invalidated for ${tenantSlug}`);
         }
 
-        // Auto-register next of kin if contact details provided
+        // ==============================
+        // AUTO-REGISTER NEXT OF KIN - REMOVED verified_by
+        // ==============================
         let nextOfKinRegistered = false;
         if (data.contact_person || data.tell_no) {
             try {
@@ -234,7 +280,7 @@ export const registerNewDeceased = async (
                     address: null,
                     signature: signaturePath,
                     is_primary: true,
-                    created_by: data.verified_by || null
+                    // REMOVED: created_by: data.verified_by || null
                 };
 
                 await NextOfKinModel.create(req, nextOfKinData);
@@ -259,7 +305,6 @@ export const registerNewDeceased = async (
         // ==============================
         try {
             const axios = require('axios');
-            // Try multiple socketio service URLs (Docker DNS, localhost fallback)
             const configuredUrl = process.env.SOCKETIO_SERVICE_URL || '';
             const candidateUrls = [
                 configuredUrl,

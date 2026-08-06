@@ -150,7 +150,10 @@ const forceLogout = (message = 'Your session has expired. Please log in again.')
   sessionStorage.removeItem('refreshToken');
   sessionStorage.removeItem('user');
   if (typeof window !== 'undefined') {
-    alert(message);
+    // Dispatch custom event instead of alert() for cleaner UX
+    window.dispatchEvent(new CustomEvent('auth-event', {
+      detail: { type: 'logout', reason: message }
+    }));
     window.location.href = '/login';
   }
 };

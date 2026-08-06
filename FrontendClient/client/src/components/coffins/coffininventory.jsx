@@ -953,7 +953,7 @@ const CoffinDashboard = () => {
   const filteredCoffins = branchCoffins.filter(c => {
     if (invQuery) {
       const ql = invQuery.toLowerCase();
-      if (!c.name?.toLowerCase().includes(ql) && !c.sku?.toLowerCase().includes(ql)) return false;
+      if (!c.name?.toLowerCase().includes(ql)) return false;
     }
     if (invFilter === 'available') return c.stock > 2;
     if (invFilter === 'low') return c.stock > 0 && c.stock <= 2;
@@ -1148,64 +1148,86 @@ const CoffinDashboard = () => {
   const [interSearch, setInterSearch] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
 
-  const openFindStock = (searchQuery = '') => {
+  const openFindStock = async (searchQuery = '') => {
     setInterSearch(searchQuery);
     setSelectedBranch('');
-    
-    console.log('[FindStock] Using local data. Current branch:', currentBranch, 'All branches:', branches);
-    console.log('[FindStock] Total coffins in state:', coffins.length);
-    
-    // Use branches from state (already fetched)
+
+    const parentSlug = getParentTenantSlug();
     const otherBranches = branches.filter(b => b.id != currentBranch);
-    console.log('[FindStock] Other branches:', otherBranches);
-    
-    // Use coffins from state - filter to show coffins from other branches
-    const allOtherCoffins = coffins
-      .filter(c => c.branch_id != currentBranch)
-      .map(c => ({
-        ...c,
-        branch_name: branches.find(b => b.id == c.branch_id)?.name || 'Unknown Branch'
-      }));
-    
-    console.log('[FindStock] Found', allOtherCoffins.length, 'coffins from other branches');
 
-    // Cache it globally for the render function
-    window.__interBranchCoffins = allOtherCoffins;
-    console.log('[FindStock] Cached coffins:', allOtherCoffins.length);
+    console.log('[FindStock] Current branch:', currentBranch, 'Other branches:', otherBranches.length, 'Parent slug:', parentSlug);
 
-    const content = `
-      <div style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px;">
-        <div style="position:relative;">
-          <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:16px; top:50%; transform:translateY(-50%); color:${S.textMuted};"></i>
-          <input id="interSearchInput" placeholder="Search coffin name..." 
-            style="width:100%; padding:12px 16px 12px 44px; border-radius:10px; border:1px solid ${S.border}; background:#fff; font-size:14px; font-family:inherit; outline:none; transition:all 0.2s; box-sizing:border-box;" 
-            value="${searchQuery}" oninput="window.__renderInterResults(this.value, document.getElementById('branchSelector').value)">
-        </div>
-        <select id="branchSelector" 
-          style="width:100%; padding:12px 16px; border-radius:10px; border:1px solid ${S.border}; background:#fff; font-size:14px; font-family:inherit; outline:none; cursor:pointer; appearance:none; background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2364748b%22 stroke-width=%222%22%3E%3Cpolyline points=%226 9 12 15 18 9%22%3E%3C/polyline%3E%3C/svg%3E'); background-repeat:no-repeat; background-position:right 16px center;" 
-          onchange="window.__onBranchChange(this.value)">
-          <option value="">All Branches (${otherBranches.length})</option>
-          ${otherBranches.map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
-        </select>
+    // Show loading state
+    openDrawer('Find Stock in Other Branches', `
+      <div style="text-align:center; padding:40px 20px;">
+        <i class="fa-solid fa-spinner fa-spin" style="font-size:32px; color:${S.primary};"></i>
+        <p style="margin-top:16px; color:${S.textMuted}; font-size:14px;">Loading inventory from all branches...</p>
       </div>
-      <div id="interResults" style="display:flex; flex-direction:column; gap:12px;"></div>
-      <div style="margin-top:24px;">
-        <button class="drawer-btn btn-g" onclick="window.__closeDrawer()">Close Search</button>
-      </div>`;
-    
-    // Show results or "no results" message
-    if (allOtherCoffins.length === 0) {
+    `);
+
+    try {
+      // Fetch coffins from ALL branch databases using parent slug
+      const res = await api.get('/coffins/all-branches', {
+        params: { parent_slug: parentSlug }
+      });
+
+      if (res.data?.success && res.data?.data) {
+        const allCoffins = res.data.data;
+        // Cache it globally for the render function
+        window.__interBranchCoffins = allCoffins;
+        console.log('[FindStock] Loaded', allCoffins.length, 'coffins from', res.data.branches, 'branches');
+
+        if (allCoffins.length === 0) {
+          openDrawer('Find Stock in Other Branches', `
+            <div style="text-align:center; padding:40px 20px;">
+              <i class="fa-solid fa-box-open" style="font-size:48px; color:${S.textMuted}; margin-bottom:16px; opacity:0.5;"></i>
+              <h3 style="font-size:16px; font-weight:700; color:${S.text}; margin:0 0 8px;">No Coffins Found</h3>
+              <p style="font-size:14px; color:${S.textMuted}; margin:0;">No coffins available in other branches.</p>
+              <p style="font-size:12px; color:${S.textMuted}; margin:8px 0 0;">Checked ${otherBranches.length} branches</p>
+            </div>
+          `);
+        } else {
+          const content = `
+            <div style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px;">
+              <div style="position:relative;">
+                <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:16px; top:50%; transform:translateY(-50%); color:${S.textMuted};"></i>
+                <input id="interSearchInput" placeholder="Search coffin name..."
+                  style="width:100%; padding:12px 16px 12px 44px; border-radius:10px; border:1px solid ${S.border}; background:#fff; font-size:14px; font-family:inherit; outline:none; transition:all 0.2s; box-sizing:border-box;"
+                  value="${searchQuery}" oninput="window.__renderInterResults(this.value, document.getElementById('branchSelector').value)">
+              </div>
+              <select id="branchSelector"
+                style="width:100%; padding:12px 16px; border-radius:10px; border:1px solid ${S.border}; background:#fff; font-size:14px; font-family:inherit; outline:none; cursor:pointer; appearance:none; background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2364748b%22 stroke-width=%222%22%3E%3Cpolyline points=%226 9 12 15 18 9%22%3E%3C/polyline%3E%3C/svg%3E'); background-repeat:no-repeat; background-position:right 16px center;"
+                onchange="window.__onBranchChange(this.value)">
+                <option value="">All Branches (${otherBranches.length})</option>
+                ${otherBranches.map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
+              </select>
+            </div>
+            <div id="interResults" style="display:flex; flex-direction:column; gap:12px;"></div>
+            <div style="margin-top:24px;">
+              <button class="drawer-btn btn-g" onclick="window.__closeDrawer()">Close Search</button>
+            </div>`;
+
+          openDrawer('Find Stock in Other Branches', content);
+          setTimeout(() => window.__renderInterResults(searchQuery, ''), 50);
+        }
+      } else {
+        openDrawer('Find Stock in Other Branches', `
+          <div style="text-align:center; padding:40px 20px;">
+            <i class="fa-solid fa-circle-exclamation" style="font-size:48px; color:${S.warning}; margin-bottom:16px;"></i>
+            <h3 style="font-size:16px; font-weight:700; color:${S.text}; margin:0 0 8px;">Unable to Load</h3>
+            <p style="font-size:14px; color:${S.textMuted}; margin:0;">Failed to load branch inventory. Please try again.</p>
+          </div>
+        `);
+      }
+    } catch (err) {
+      console.error('[FindStock] Error:', err);
       openDrawer('Find Stock in Other Branches', `
         <div style="text-align:center; padding:40px 20px;">
-          <i class="fa-solid fa-box-open" style="font-size:48px; color:${S.textMuted}; margin-bottom:16px; opacity:0.5;"></i>
-          <h3 style="font-size:16px; font-weight:700; color:${S.text}; margin:0 0 8px;">No Coffins Found</h3>
-          <p style="font-size:14px; color:${S.textMuted}; margin:0;">No coffins available in other branches.</p>
-          <p style="font-size:12px; color:${S.textMuted}; margin:8px 0 0;">Debug: Checked ${otherBranches.length} branches, ${coffins.length} total coffins</p>
+          <i class="fa-solid fa-circle-exclamation" style="font-size:48px; color:${S.danger}; margin-bottom:16px;"></i>
+          <h3 style="font-size:16px; font-weight:700; color:${S.text}; margin:0 0 8px;">Error Loading Inventory</h3>
+          <p style="font-size:14px; color:${S.textMuted}; margin:0;">${err.response?.data?.message || err.message || 'Please try again later.'}</p>
         </div>
       `);
-    } else {
-      openDrawer('Find Stock in Other Branches', content);
-      setTimeout(() => window.__renderInterResults(searchQuery, ''), 50);
     }
   };
 
@@ -1216,7 +1238,7 @@ const CoffinDashboard = () => {
       if (branchFilter && c.branch_id != parseInt(branchFilter)) return false;
       if (query) {
         const ql = query.toLowerCase();
-        if (!c.name?.toLowerCase().includes(ql) && !c.sku?.toLowerCase().includes(ql)) return false;
+        if (!c.name?.toLowerCase().includes(ql)) return false;
       }
       return true;
     });
@@ -1397,8 +1419,8 @@ const CoffinDashboard = () => {
         const toBranch = branches.find(b => b.id == c.branch_id);
         
         const res = await api.post('/coffins/stock-requests', {
-          from_branch_id: fromBranch?.branch_slug || currentUserBranchId,  // Use slug if available
-          to_branch_id: toBranch?.branch_slug || c.branch_id,              // Use slug if available
+          from_branch_id: fromBranch?.id || currentUserBranchId,  // Use branch ID (INT) for FK
+          to_branch_id: toBranch?.id || c.branch_id,              // Use branch ID (INT) for FK
           coffin_id: cid,
           quantity: parseInt(quantity) || 1,
           client_name: client,

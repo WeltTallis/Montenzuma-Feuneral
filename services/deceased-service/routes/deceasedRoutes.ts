@@ -46,7 +46,7 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
         }
 
         // Search by deceased_id, admission number, phone, or ID
-        let query = 'SELECT deceased_id, full_name, date_of_death, admission_number, date_of_birth, age, gender, place_of_death, national_id, phone_number, signature, pathologist_signature FROM deceased WHERE 1=1';
+        let query = 'SELECT deceased_id, full_name, date_of_death, admission_number, date_of_birth, age, gender, place_of_death, national_id, phone_number, signature FROM deceased WHERE 1=1';
         const params: any[] = [];
 
         if (deceased_id) {
@@ -72,7 +72,7 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
             try {
                 const nokQuery = `SELECT d.deceased_id, d.full_name, d.date_of_death, d.admission_number, 
                     d.date_of_birth, d.age, d.gender, d.place_of_death, d.national_id, 
-                    d.phone_number, d.signature, d.pathologist_signature,
+                    d.phone_number, d.signature,
                     nok.full_name as next_of_kin_name, nok.relationship as next_of_kin_relationship,
                     nok.contact as next_of_kin_phone, nok.email as next_of_kin_email,
                     nok.signature as next_of_kin_signature

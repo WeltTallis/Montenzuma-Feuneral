@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { query, execute, resolveDatabase, safeTenantExecute, safeTenantQuery } from '../../../shared/dbConfig';
-
+import Logger from '../../../packages/shared-logger/src/index';
 
 // Mock data for development - will be replaced with actual DB queries
 let mockCharges: any[] = [];
@@ -10,7 +10,6 @@ let mockPayments: any[] = [];
  * GET /charges/:deceased_id
  * Get all charges for a deceased
  */    
-
 
 export const getCharges = async (req: Request, res: Response) => {
   try {
@@ -42,12 +41,63 @@ export const getCharges = async (req: Request, res: Response) => {
 export const addCharge = async (req: Request, res: Response) => {
   try {
     const chargeData = req.body;
+    const tenantSlug = (req as any).headers['x-slug'] || (req as any).headers['x-tenant-slug'] || 'system_shared';
     const newCharge = {
       id: Date.now().toString(),
       ...chargeData,
       created_at: new Date().toISOString()
     };
     mockCharges.push(newCharge);
+    
+    // ==============================
+    // EMIT CHARGE NOTIFICATION
+    // ==============================
+    try {
+      const axios = require('axios');
+      const configuredUrl = process.env.SOCKETIO_SERVICE_URL || '';
+      const candidateUrls = [
+        configuredUrl,
+        'http://localhost:5018',
+        'http://127.0.0.1:5018',
+      ].filter(Boolean);
+
+      const emitPayload = {
+        tenantSlug,
+        data: {
+          id: `charge-${newCharge.id}-${Date.now()}`,
+          deceasedId: chargeData.deceased_id,
+          chargeId: newCharge.id,
+          amount: chargeData.amount,
+          chargeType: chargeData.charge_type || chargeData.type || 'General',
+          title: 'New Charge Added',
+          message: `New charge of ${chargeData.amount} added for deceased ${chargeData.deceased_id}`,
+          type: 'charge-added',
+          priority: 'medium',
+          fullContent: `Charge ID: ${newCharge.id}\nDeceased ID: ${chargeData.deceased_id}\nAmount: ${chargeData.amount}\nType: ${chargeData.charge_type || chargeData.type || 'General'}\nDate: ${newCharge.created_at}`,
+        }
+      };
+
+      let emitted = false;
+      for (const socketioServiceUrl of candidateUrls) {
+        try {
+          await axios.post(`${socketioServiceUrl}/emit/charge-added`, emitPayload, { timeout: 3000 });
+          emitted = true;
+          Logger.info({ message: `Emitted charge-added for ${chargeData.deceased_id} via ${socketioServiceUrl}` });
+          break;
+        } catch (urlError: any) {
+          Logger.warn({ message: `SocketIO URL failed: ${socketioServiceUrl}`, error: urlError.message });
+        }
+      }
+
+      if (!emitted) {
+        Logger.warn({ message: `All socketio URLs failed for charge ${newCharge.id}` });
+      }
+    } catch (emitError: any) {
+      Logger.warn({
+        message: `Failed to emit charge-added notification`,
+        error: emitError.message
+      });
+    }
     
     return res.status(201).json({
       success: true,
@@ -99,43 +149,6 @@ export const updateCharge = async (req: Request, res: Response) => {
     });
   }
 }; 
-
-
-
-
-
-
-
-/**
- * DELETE /charges/:id
- * Delete a charge
- */
-export const deleteCharge = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    
-    const index = mockCharges.findIndex(c => c.id === id);
-    if (index === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'Charge not found'
-      });
-    }
-    
-    mockCharges.splice(index, 1);
-    
-    return res.json({
-      success: true,
-      message: 'Charge deleted successfully'
-    });
-  } catch (error: any) {
-    console.error('Error deleting charge:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to delete charge'
-    });
-  }
-};
 
 /**
  * GET /payments/:deceased_id
@@ -223,18 +236,21 @@ export const recordPayment = async (req: Request, res: Response) => {
         try {
           await axios.post(`${socketioServiceUrl}/emit/payment-received`, emitPayload, { timeout: 3000 });
           emitted = true;
-          console.log(`[PAYMENT] Emitted payment-received notification via ${socketioServiceUrl}`);
+          Logger.info({ message: `Emitted payment-received for ${paymentData.deceased_id} via ${socketioServiceUrl}` });
           break;
         } catch (urlError: any) {
-          console.warn(`[PAYMENT] SocketIO URL failed: ${socketioServiceUrl} - ${urlError.message}`);
+          Logger.warn({ message: `SocketIO URL failed: ${socketioServiceUrl}`, error: urlError.message });
         }
       }
 
       if (!emitted) {
-        console.warn('[PAYMENT] All socketio URLs failed to emit payment notification');
+        Logger.warn({ message: `All socketio URLs failed for payment ${newPayment.id}` });
       }
     } catch (emitError: any) {
-      console.warn('[PAYMENT] Failed to emit payment notification:', emitError.message);
+      Logger.warn({
+        message: `Failed to emit payment-received notification`,
+        error: emitError.message
+      });
     }
     
     return res.status(201).json({

@@ -1,11 +1,14 @@
 const { safeQuery, safeQueryOne } = require('../config/database');
 
 class Tenant {
+  // All queries target the tenant_tracking database explicitly since
+  // safeQuery without a tenantSlug uses a root pool with no database selected
+
   // Find tenant by slug (tenant_slug)
   static async findBySlug(slug) {
     console.log('[Tenant.findBySlug] Searching for slug:', slug);
     const result = await safeQueryOne(
-      `SELECT * FROM tenants WHERE tenant_slug = ? AND status != 'deleted'`,
+      `SELECT * FROM tenant_tracking.tenants WHERE tenant_slug = ? AND status != 'deleted'`,
       [slug]
     );
     console.log('[Tenant.findBySlug] Result:', result);
@@ -17,7 +20,7 @@ class Tenant {
     console.log('[Tenant.findByEmail] Searching for email:', email);
     try {
       const result = await safeQueryOne(
-        `SELECT * FROM tenants WHERE email = ? AND status != 'deleted'`,
+        `SELECT * FROM tenant_tracking.tenants WHERE email = ? AND status != 'deleted'`,
         [email.toLowerCase()]
       );
       console.log('[Tenant.findByEmail] Result:', result);
@@ -31,8 +34,9 @@ class Tenant {
   // Find tenant by ID
   static async findById(tenantId) {
     console.log('[Tenant.findById] Searching for ID:', tenantId);
+    // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`
     const result = await safeQueryOne(
-      `SELECT * FROM tenants WHERE tenant_id = ? AND status != 'deleted'`,
+      `SELECT * FROM tenant_tracking.tenants WHERE id = ? AND status != 'deleted'`,
       [tenantId]
     );
     console.log('[Tenant.findById] Result:', result);
@@ -51,7 +55,7 @@ class Tenant {
     } = tenantData;
 
     const result = await safeQuery(
-      `INSERT INTO tenants (tenant_name, tenant_slug, email, phone, location, status) 
+      `INSERT INTO tenant_tracking.tenants (tenant_name, tenant_slug, email, phone, location, status) 
        VALUES (?, ?, ?, ?, ?, ?)`,
       [tenant_name, tenant_slug, email.toLowerCase(), phone, location, status]
     );
@@ -62,8 +66,8 @@ class Tenant {
   // Get all tenants
   static async getAll() {
     return await safeQuery(
-      `SELECT tenant_id, tenant_name, tenant_slug, email, status, created_at 
-       FROM tenants 
+      `SELECT id AS tenant_id, tenant_name, tenant_slug, email, status, created_at 
+       FROM tenant_tracking.tenants 
        WHERE status != 'deleted' 
        ORDER BY created_at DESC`
     );
@@ -71,16 +75,18 @@ class Tenant {
 
   // Update tenant status
   static async updateStatus(tenantId, status) {
+    // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`
     await safeQuery(
-      'UPDATE tenants SET status = ?, updated_at = NOW() WHERE tenant_id = ?',
+      'UPDATE tenant_tracking.tenants SET status = ?, updated_at = NOW() WHERE id = ?',
       [status, tenantId]
     );
   }
 
   // Update last login
   static async updateLastLogin(tenantId) {
+    // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`
     await safeQuery(
-      'UPDATE tenants SET last_login_at = NOW() WHERE tenant_id = ?',
+      'UPDATE tenant_tracking.tenants SET last_login_at = NOW() WHERE id = ?',
       [tenantId]
     );
   }

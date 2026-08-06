@@ -18,6 +18,17 @@ import path from 'path';
 const UPLOADS_SERVICE_URL = process.env.UPLOADS_SERVICE_URL || 'http://localhost:5012';
 const UPLOADS_SERVICE_API_KEY = process.env.UPLOADS_SERVICE_API_KEY;
 
+// Candidate URLs to try in order (Docker DNS, localhost, 127.0.0.1)
+const getCandidateUrls = (): string[] => {
+  const configured = process.env.UPLOADS_SERVICE_URL || '';
+  return [
+    configured,
+    'http://localhost:5012',
+    'http://127.0.0.1:5012',
+    'http://uploads-service:5012',
+  ].filter(Boolean);
+};
+
 export interface UploadResult {
   success: boolean;
   filename: string;
@@ -71,11 +82,15 @@ class CentralizedUploadService {
       options
     });
     
-    const result = await this.uploadFile(buffer, filename, tenantSlug, 'signatures', {
+    // Ensure tenant folders exist first
+    await this.createTenantFolders(tenantSlug);
+    
+    // Use the dedicated signature upload endpoint
+    const result = await this.uploadToSignatureEndpoint(buffer, filename, tenantSlug, {
       quality: 85,
       maxWidth: 800,
       maxHeight: 300,
-      format: 'webp',
+      format: 'png',
       ...options,
     });
     
@@ -169,6 +184,113 @@ class CentralizedUploadService {
   }
 
   /**
+   * Upload signature to the dedicated signature endpoint
+   * CRITICAL: Signatures are ALWAYS uploaded as PNG (never webp).
+   */
+  private async uploadToSignatureEndpoint(
+    buffer: Buffer,
+    originalName: string,
+    tenantSlug: string,
+    options: {
+      quality?: number;
+      maxWidth?: number;
+      maxHeight?: number;
+      format?: 'jpeg' | 'png' | 'webp';
+    }
+  ): Promise<UploadResult> {
+    const candidateUrls = getCandidateUrls();
+    
+    // CRITICAL: Always force PNG format for signatures regardless of what was passed
+    const signatureOptions = {
+      ...options,
+      format: 'png' as const, // Always PNG for signatures
+    };
+
+    // Ensure the filename has a .png extension
+    let pngFilename = originalName;
+    if (!pngFilename.toLowerCase().endsWith('.png')) {
+      // Replace any existing extension with .png, or append .png
+      pngFilename = pngFilename.replace(/\.[^.]+$/, '') + '.png';
+    }
+
+    for (const baseUrl of candidateUrls) {
+      try {
+        // Create a dedicated axios instance for this candidate URL
+        // (previously all iterations used the same fixed-baseURL instance, which was a bug)
+        const instance = axios.create({
+          baseURL: baseUrl,
+          timeout: 30000,
+          headers: {
+            ...(UPLOADS_SERVICE_API_KEY && { 'X-API-Key': UPLOADS_SERVICE_API_KEY }),
+          },
+        });
+
+        const form = new FormData();
+        form.append('file', buffer, {
+          filename: pngFilename,
+          contentType: 'image/png',
+        });
+        form.append('tenantSlug', tenantSlug);
+        form.append('category', 'signatures');
+        form.append('format', 'png'); // Always PNG for signatures
+        
+        if (signatureOptions.quality) form.append('quality', signatureOptions.quality.toString());
+        if (signatureOptions.maxWidth) form.append('maxWidth', signatureOptions.maxWidth.toString());
+        if (signatureOptions.maxHeight) form.append('maxHeight', signatureOptions.maxHeight.toString());
+
+        const response = await instance.post('/api/upload/signature', form, {
+          headers: form.getHeaders(),
+          timeout: 30000,
+        });
+
+        console.log('[UPLOAD] Signature upload response from', baseUrl, ':', {
+          status: response.status,
+          hasSuccess: response.data.hasOwnProperty('success'),
+          success: response.data.success,
+          hasData: response.data.hasOwnProperty('data'),
+          keys: Object.keys(response.data)
+        });
+
+        // Handle both response formats: {success: true, data: {...}} or just {...}
+        if (response.data.success && response.data.data) {
+          // Verify the uploaded file is actually PNG
+          const result = response.data.data;
+          if (result.filename && !result.filename.toLowerCase().endsWith('.png')) {
+            console.warn(`[UPLOAD] Signature was not saved as PNG! Got: ${result.filename}. Forcing mimeType to image/png.`);
+            result.mimeType = 'image/png';
+          }
+          return result;
+        } else if (response.data.urlPath) {
+          return response.data;
+        } else {
+          return {
+            success: false,
+            filename: '',
+            path: '',
+            urlPath: '',
+            size: 0,
+            mimeType: '',
+            error: response.data.message || response.data.error || 'Upload failed',
+          };
+        }
+      } catch (error: any) {
+        console.warn(`[UPLOAD] Signature upload failed for ${baseUrl}:`, error.message);
+        // Try next URL
+      }
+    }
+    
+    return {
+      success: false,
+      filename: '',
+      path: '',
+      urlPath: '',
+      size: 0,
+      mimeType: '',
+      error: 'All upload service URLs failed',
+    };
+  }
+
+  /**
    * Generic file upload with Sharp processing
    */
   private async uploadFile(
@@ -184,72 +306,88 @@ class CentralizedUploadService {
       format?: 'jpeg' | 'png' | 'webp';
     }
   ): Promise<UploadResult> {
-    try {
-      const form = new FormData();
-      form.append('file', buffer, {
-        filename: originalName,
-        contentType: 'application/octet-stream',
-      });
-      form.append('tenantSlug', tenantSlug);
-      form.append('category', category);
-      
-      if (options.subFolder) {
-        form.append('subFolder', options.subFolder);
-      }
-      if (options.quality) {
-        form.append('quality', options.quality.toString());
-      }
-      if (options.maxWidth) {
-        form.append('maxWidth', options.maxWidth.toString());
-      }
-      if (options.maxHeight) {
-        form.append('maxHeight', options.maxHeight.toString());
-      }
-      if (options.format) {
-        form.append('format', options.format);
-      }
+    const candidateUrls = getCandidateUrls();
+    
+    for (const baseUrl of candidateUrls) {
+      try {
+        const form = new FormData();
+        form.append('file', buffer, {
+          filename: originalName,
+          contentType: 'application/octet-stream',
+        });
+        form.append('tenantSlug', tenantSlug);
+        form.append('category', category);
+        
+        if (options.subFolder) {
+          form.append('subFolder', options.subFolder);
+        }
+        if (options.quality) {
+          form.append('quality', options.quality.toString());
+        }
+        if (options.maxWidth) {
+          form.append('maxWidth', options.maxWidth.toString());
+        }
+        if (options.maxHeight) {
+          form.append('maxHeight', options.maxHeight.toString());
+        }
+        if (options.format) {
+          form.append('format', options.format);
+        }
 
-      const response = await this.axiosInstance.post('/api/upload/image', form, {
-        headers: form.getHeaders(),
-      });
+        // Create a dedicated axios instance for this candidate URL
+        const instance = axios.create({
+          baseURL: baseUrl,
+          timeout: 30000,
+          headers: {
+            ...(UPLOADS_SERVICE_API_KEY && { 'X-API-Key': UPLOADS_SERVICE_API_KEY }),
+          },
+        });
 
-      console.log('[UPLOAD] Raw response:', {
-        hasSuccess: response.data.hasOwnProperty('success'),
-        success: response.data.success,
-        hasData: response.data.hasOwnProperty('data'),
-        keys: Object.keys(response.data)
-      });
+        const response = await instance.post('/api/upload/image', form, {
+          headers: form.getHeaders(),
+          timeout: 30000,
+        });
 
-      // Handle both response formats: {success: true, data: {...}} or just {...}
-      if (response.data.success && response.data.data) {
-        // Standard format: {success: true, data: result}
-        return response.data.data;
-      } else if (response.data.urlPath) {
-        // Direct format: the response IS the result object
-        return response.data;
-      } else {
-        return {
-          success: false,
-          filename: '',
-          path: '',
-          urlPath: '',
-          size: 0,
-          mimeType: '',
-          error: response.data.message || response.data.error || 'Upload failed',
-        };
+        console.log('[UPLOAD] Raw response from', baseUrl, ':', {
+          hasSuccess: response.data.hasOwnProperty('success'),
+          success: response.data.success,
+          hasData: response.data.hasOwnProperty('data'),
+          keys: Object.keys(response.data)
+        });
+
+        // Handle both response formats: {success: true, data: {...}} or just {...}
+        if (response.data.success && response.data.data) {
+          // Standard format: {success: true, data: result}
+          return response.data.data;
+        } else if (response.data.urlPath) {
+          // Direct format: the response IS the result object
+          return response.data;
+        } else {
+          return {
+            success: false,
+            filename: '',
+            path: '',
+            urlPath: '',
+            size: 0,
+            mimeType: '',
+            error: response.data.message || response.data.error || 'Upload failed',
+          };
+        }
+      } catch (error: any) {
+        console.warn(`[UPLOAD] Upload failed for ${baseUrl}:`, error.message);
+        // Try next URL
       }
-    } catch (error: any) {
-      console.error('Upload error:', error.message);
-      return {
-        success: false,
-        filename: '',
-        path: '',
-        urlPath: '',
-        size: 0,
-        mimeType: '',
-        error: error.message,
-      };
     }
+    
+    return {
+      success: false,
+      filename: '',
+      path: '',
+      urlPath: '',
+      size: 0,
+      mimeType: '',
+      error: 'All upload service URLs failed',
+    };
   }
 
   /**

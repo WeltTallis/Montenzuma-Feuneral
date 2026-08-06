@@ -4,7 +4,6 @@ import axios from 'axios';
 import Logger from '../../../packages/shared-logger/dist/index';
 import { generateDatedCheckoutId } from '../utilities/generateCheckoutId';
 import { getTenantDB } from '../../../shared/dbConfig';
-import { centralizedUploadService } from '../../../packages/shared-services/src/centralizedUploadService';
 import sharp from 'sharp';
 
 /**
@@ -23,7 +22,7 @@ async function processAndUploadSignature(
     return signatureData;
   }
 
-  // If it's a base64 data URL, process and upload it
+  // If it's a base64 data URL, process and save it
   if (signatureData.startsWith('data:image')) {
     try {
       const base64Data = signatureData.replace(/^data:image\/\w+;base64,/, '');
@@ -36,28 +35,25 @@ async function processAndUploadSignature(
         .png({ compressionLevel: 9, quality: 85 })
         .toBuffer();
 
-      // Upload to centralized storage
-      Logger.info(`[RELEASE] Attempting to upload signature to uploads service at: ${process.env.UPLOADS_SERVICE_URL || 'http://localhost:5012'}`);
-      const result = await centralizedUploadService.uploadSignature(
-        processedBuffer,
-        `${filenamePrefix}_${Date.now()}.png`,
-        tenantSlug,
-        { quality: 85, maxWidth: 800, maxHeight: 300, format: 'png' }
-      );
-
-      if (!result.success) {
-        Logger.warn(`[RELEASE] Failed to upload signature to centralized service: ${result.error || 'Unknown error'}`);
-        Logger.warn(`[RELEASE] Upload result details: ${JSON.stringify(result)}`);
-        // Fallback: compress and store inline
-        const compressedBuffer = await sharp(buffer)
-          .resize(400, 200, { fit: 'inside', withoutEnlargement: true })
-          .png({ quality: 60, compressionLevel: 9 })
-          .toBuffer();
-        return `data:image/png;base64,${compressedBuffer.toString('base64')}`;
-      }
-
-      Logger.info(`[RELEASE] Signature uploaded to centralized storage: ${result.urlPath}`);
-      return result.urlPath;
+      // Save directly to global uploads folder
+      const fs = await import('fs');
+      const path = await import('path');
+      const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || 'C:\\Users\\User\\Downloads\\uploads';
+      const signatureDir = path.join(globalUploadsDir, tenantSlug || 'system', 'signatures');
+      
+      // Ensure directory exists
+      await fs.promises.mkdir(signatureDir, { recursive: true });
+      
+      // Save the PNG file
+      const filename = `${filenamePrefix}_${Date.now()}.png`;
+      const fullPath = path.join(signatureDir, filename);
+      await fs.promises.writeFile(fullPath, processedBuffer);
+      
+      // Create URL path
+      const urlPath = `/uploads/${tenantSlug || 'system'}/signatures/${filename}`;
+      
+      Logger.info(`[RELEASE] Signature saved directly to disk: ${urlPath}`);
+      return urlPath;
     } catch (error: any) {
       Logger.warn(`[RELEASE] Failed to process signature: ${error.message}`);
       return signatureData; // Fallback to raw data

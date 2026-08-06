@@ -2,7 +2,7 @@
  * Coffin Controller - Uses global Redis cache, global uploader, and RabbitMQ for async image processing
  */
 const CoffinModel = require('../models/coffinModel.cjs');
-const { resolveDatabase, safeTenantQuery } = require('../../../shared/dbConfig');
+const { resolveDatabase,    lookupTenantDatabase   ,    safeTenantQuery } = require('../../../shared/dbConfig');
 const { serviceGet, serviceSet, serviceDel, clearServiceCache } = require('../../../packages/shared-services/src/redisService');
 const { publishTask } = require('../../../packages/shared-services/src/rabbitmqService');
 const { centralizedUploadService } = require('../../../packages/shared-services/src/centralizedUploadService');
@@ -215,8 +215,11 @@ exports.getAllCoffins = async (req, res) => {
       
       // Query the branch-specific database
       // IMPORTANT: Use branchSlug as tenant_slug since that's what's stored in the branch database
+      // Use only core columns to avoid errors on missing columns like sku, type, material, etc.
       const sql = `
-        SELECT c.*, c.created_by as created_by_name,
+        SELECT c.coffin_id, c.tenant_slug, COALESCE(c.custom_id, c.coffin_id) as name,
+          c.exact_price as price, c.quantity as stock,
+          c.is_deleted, c.created_at, c.updated_at,
           GROUP_CONCAT(ci.image_url) as image_urls
         FROM coffins c
         LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id AND c.tenant_slug = ci.tenant_slug
@@ -231,17 +234,17 @@ exports.getAllCoffins = async (req, res) => {
       const coffins = rows.map(coffin => ({
         coffin_id: coffin.coffin_id,
         name: coffin.name || 'Unnamed Coffin',
-        sku: coffin.sku || coffin.coffin_id,
+        sku: coffin.coffin_id,  // Use coffin_id as sku since sku column may not exist
         price: parseFloat(coffin.price || 0),
         stock: parseInt(coffin.stock || 0),
-        branch_id: coffin.branch_id || 1,
+        branch_id: branchResult[0].branch_id || 1,  // Use branch ID from branches table
         images: coffin.image_urls ? coffin.image_urls.split(',').slice(0, 10) : [],
         display_price: `Ksh ${parseFloat(coffin.price || 0).toLocaleString()}`,
-        type: coffin.type || 'Traditional',
-        color: coffin.color || '',
-        size: coffin.size || '',
-        category: coffin.category || 'standard',
-        is_active: coffin.is_active !== undefined ? coffin.is_active : 1,
+        type: 'Traditional',  // Default since column may not exist
+        color: '',
+        size: '',
+        category: 'standard',
+        is_active: coffin.is_deleted === false ? 1 : 0,
         tenant_slug: coffin.tenant_slug,
         created_at: coffin.created_at,
         updated_at: coffin.updated_at
@@ -266,9 +269,11 @@ exports.getAllCoffins = async (req, res) => {
         return res.status(200).json({ success: true, data: [], count: 0 });
       }
       
-      // Query the branch-specific database
+      // Query the branch-specific database with core columns only
       const sql = `
-        SELECT c.*, c.created_by as created_by_name,
+        SELECT c.coffin_id, c.tenant_slug, COALESCE(c.custom_id, c.coffin_id) as name,
+          c.exact_price as price, c.quantity as stock,
+          c.is_deleted, c.created_at, c.updated_at,
           GROUP_CONCAT(ci.image_url) as image_urls
         FROM coffins c
         LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id AND c.tenant_slug = ci.tenant_slug
@@ -276,28 +281,28 @@ exports.getAllCoffins = async (req, res) => {
         GROUP BY c.coffin_id
         ORDER BY c.created_at DESC
       `;
-      
-    const rows = await safeTenantQuery(branchDbName, sql, [tenantSlug]);
-    console.log('[COFFINS] Database returned', rows.length, 'coffins for branch', branchId);
-    
-    const coffins = rows.map(coffin => ({
-      coffin_id: coffin.coffin_id,
-      name: coffin.name || 'Unnamed Coffin',
-      sku: coffin.sku || coffin.coffin_id,
-      price: parseFloat(coffin.price || 0),
-      stock: parseInt(coffin.stock || 0),
-      branch_id: coffin.branch_id || 1,
-      images: coffin.image_urls ? coffin.image_urls.split(',').slice(0, 10) : [],
-      display_price: `Ksh ${parseFloat(coffin.price || 0).toLocaleString()}`,
-      type: coffin.type || 'Traditional',
-      color: coffin.color || '',
-      size: coffin.size || '',
-      category: coffin.category || 'standard',
-      is_active: coffin.is_active !== undefined ? coffin.is_active : 1,
-      tenant_slug: coffin.tenant_slug,
-      created_at: coffin.created_at,
-      updated_at: coffin.updated_at
-    }));
+
+      const rows = await safeTenantQuery(branchDbName, sql, [tenantSlug]);
+      console.log('[COFFINS] Database returned', rows.length, 'coffins for branch', branchId);
+
+      const coffins = rows.map(coffin => ({
+        coffin_id: coffin.coffin_id,
+        name: coffin.name || 'Unnamed Coffin',
+        sku: coffin.coffin_id,  // Use coffin_id as sku
+        price: parseFloat(coffin.price || 0),
+        stock: parseInt(coffin.stock || 0),
+        branch_id: 1,  // Default since we don't have branch info here
+        images: coffin.image_urls ? coffin.image_urls.split(',').slice(0, 10) : [],
+        display_price: `Ksh ${parseFloat(coffin.price || 0).toLocaleString()}`,
+        type: 'Traditional',
+        color: '',
+        size: '',
+        category: 'standard',
+        is_active: coffin.is_deleted === false ? 1 : 0,
+        tenant_slug: coffin.tenant_slug,
+        created_at: coffin.created_at,
+        updated_at: coffin.updated_at
+      }));
       
       console.log('[COFFINS] Sending response for branch', branchId, ':', coffins.length, 'coffins');
       return res.status(200).json({ success: true, data: coffins, count: coffins.length });
@@ -316,7 +321,7 @@ exports.getAllCoffins = async (req, res) => {
       coffins = rows.map(coffin => ({
         coffin_id: coffin.coffin_id,
         name: coffin.name || 'Unnamed Coffin',
-        sku: coffin.sku || coffin.coffin_id,
+        sku: coffin.coffin_id,  // Use coffin_id as sku since column may not exist
         price: parseFloat(coffin.price || 0),
         stock: parseInt(coffin.stock || 0),
         branch_id: coffin.branch_id || 1,
@@ -345,6 +350,105 @@ exports.getAllCoffins = async (req, res) => {
 };
 
 /**
+ * GET /coffins/all-branches - Get coffins from ALL branch databases
+ * Used for "Find in Other Branches" feature
+ * Query params: parent_slug (required) - the parent tenant slug
+ */
+exports.getAllCoffinsAllBranches = async (req, res) => {
+  const parentSlug = req.query.parent_slug;
+
+  console.log('[COFFINS] Fetching all branch coffins for parent slug:', parentSlug);
+
+  if (!parentSlug) {
+    return res.status(400).json({ success: false, message: 'parent_slug query parameter is required' });
+  }
+
+  try {
+    // Look up the parent tenant database
+    const parentDbName = await lookupTenantDatabase(parentSlug);
+    if (!parentDbName) {
+      console.warn('[COFFINS] Parent tenant database not found for:', parentSlug);
+      return res.status(200).json({ success: true, data: [], count: 0 });
+    }
+
+    // Get all active branches
+    const branches = await safeTenantQuery(parentDbName, `
+      SELECT branch_id, branch_name, branch_slug, branch_db_name
+      FROM branches
+      WHERE is_active = TRUE
+      ORDER BY branch_name
+    `);
+
+    console.log('[COFFINS] Found', branches.length, 'active branches');
+
+    // Query each branch database for coffins in parallel
+    const branchCoffinsPromises = branches.map(async (branch) => {
+      try {
+        const branchDbName = branch.branch_db_name;
+        if (!branchDbName) return [];
+
+        // Use only core columns that definitely exist in all branch databases
+        // Some branches may be missing optional columns like sku, type, material, etc.
+        const sql = `
+          SELECT c.coffin_id, c.tenant_slug, COALESCE(c.custom_id, c.coffin_id) as name,
+            c.exact_price as price, c.quantity as stock,
+            c.is_deleted, c.created_at, c.updated_at,
+            GROUP_CONCAT(ci.image_url) as image_urls
+          FROM coffins c
+          LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id AND c.tenant_slug = ci.tenant_slug
+          WHERE c.tenant_slug = ? AND c.is_deleted = FALSE
+          GROUP BY c.coffin_id
+          ORDER BY c.created_at DESC
+        `;
+
+        const rows = await safeTenantQuery(branchDbName, sql, [branch.branch_slug]);
+
+        return rows.map(coffin => ({
+          coffin_id: coffin.coffin_id,
+          name: coffin.name || 'Unnamed Coffin',
+          sku: coffin.coffin_id,  // Use coffin_id as sku since sku column may not exist
+          price: parseFloat(coffin.price || 0),
+          stock: parseInt(coffin.stock || 0),
+          branch_id: branch.branch_id,  // Use branch info from branches table
+          branch_name: branch.branch_name,
+          branch_slug: branch.branch_slug,
+          branch_db_name: branch.branch_db_name,
+          images: coffin.image_urls ? coffin.image_urls.split(',').slice(0, 10) : [],
+          display_price: `Ksh ${parseFloat(coffin.price || 0).toLocaleString()}`,
+          type: 'Traditional',  // Default since column may not exist
+          color: '',
+          size: '',
+          category: 'standard',
+          is_active: coffin.is_deleted === false ? 1 : 0,
+          tenant_slug: coffin.tenant_slug,
+          created_at: coffin.created_at,
+          updated_at: coffin.updated_at
+        }));
+      } catch (err) {
+        console.warn('[COFFINS] Error fetching coffins from branch', branch.branch_name, ':', err.message);
+        return [];
+      }
+    });
+
+    const allCoffinsArrays = await Promise.all(branchCoffinsPromises);
+    const allCoffins = allCoffinsArrays.flat();
+
+    console.log('[COFFINS] Total coffins from all branches:', allCoffins.length);
+
+    return res.status(200).json({
+      success: true,
+      data: allCoffins,
+      count: allCoffins.length,
+      branches: branches.length
+    });
+  } catch (error) {
+    console.error('[COFFINS] Error fetching all branch coffins:', error);
+    logger.error({ msg: 'Get all branch coffins error', parentSlug, error: error.message });
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
  * GET /coffins/:id - Get coffin by ID (cached)
  */
 exports.getCoffinById = async (req, res) => {
@@ -355,6 +459,11 @@ exports.getCoffinById = async (req, res) => {
 
   if (!tenantSlug) {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
+  }
+
+  // Prevent reserved route names from being treated as IDs
+  if (id === 'all-branches' || id === 'list' || id === 'health') {
+    return res.status(404).json({ success: false, message: 'Invalid coffin ID' });
   }
 
   try {
@@ -557,7 +666,7 @@ exports.getAllBookings = async (req, res) => {
     }
 
     const sql = `
-      SELECT b.*, c.name as coffin_name, c.price as coffin_price, c.coffin_id, c.custom_id
+      SELECT b.*, COALESCE(c.custom_id, c.coffin_id) as coffin_name, c.exact_price as coffin_price, c.coffin_id, c.custom_id
       FROM bookings b
       LEFT JOIN coffins c ON b.coffin_id = c.coffin_id AND b.tenant_slug = c.tenant_slug
       WHERE b.tenant_slug = ?
@@ -602,7 +711,7 @@ exports.getBookingById = async (req, res) => {
     if (!dbName) throw new Error('Tenant database not found');
 
     const sql = `
-      SELECT b.*, c.name as coffin_name, c.price as coffin_price
+      SELECT b.*, COALESCE(c.custom_id, c.coffin_id) as coffin_name, c.exact_price as coffin_price
       FROM bookings b
       LEFT JOIN coffins c ON b.coffin_id = c.coffin_id AND b.tenant_slug = c.tenant_slug
       WHERE b.id = ? AND b.tenant_slug = ?
@@ -787,7 +896,7 @@ exports.getAllStockRequests = async (req, res) => {
     }
 
     const sql = `
-      SELECT sr.*, c.name as coffin_name
+      SELECT sr.*, COALESCE(c.custom_id, c.coffin_id) as coffin_name
       FROM stock_requests sr
       LEFT JOIN coffins c ON sr.coffin_id = c.coffin_id AND sr.tenant_slug = c.tenant_slug
       WHERE sr.tenant_slug = ?
@@ -818,7 +927,7 @@ exports.getStockRequestById = async (req, res) => {
     if (!dbName) throw new Error('Tenant database not found');
 
     const sql = `
-      SELECT sr.*, c.name as coffin_name
+      SELECT sr.*, COALESCE(c.custom_id, c.coffin_id) as coffin_name
       FROM stock_requests sr
       LEFT JOIN coffins c ON sr.coffin_id = c.coffin_id AND sr.tenant_slug = c.tenant_slug
       WHERE sr.id = ? AND sr.tenant_slug = ?

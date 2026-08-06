@@ -3,7 +3,6 @@ import sharp from 'sharp';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { centralizedUploadService } from '../../../packages/shared-services/src/centralizedUploadService';
 import   Logger   from   '../../../packages/shared-logger/dist/index'
 
 
@@ -119,31 +118,25 @@ const processSignature = async (
         .digest('hex')
         .slice(0, 16);
 
-    // Upload to centralized storage
-    const uploadResult = await centralizedUploadService.uploadSignature(
-        processedBuffer,
-        filename,
-        'system', // TODO: Pass tenantSlug from request context
-        {
-            quality: 95,
-            maxWidth: 1500,
-            maxHeight: 1000,
-            format: 'png',
-        }
-    );
-
-    if (!uploadResult.success) {
-        throw new Error(uploadResult.error || 'Failed to upload signature');
-    }
-
+    // Save directly to global uploads folder
+    const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || 'C:\\Users\\User\\Downloads\\uploads';
+    const signatureDir = path.join(globalUploadsDir, 'system', 'signatures');
+    
+    // Ensure directory exists
+    await fs.promises.mkdir(signatureDir, { recursive: true });
+    
+    // Save the PNG file
+    const fullPath = path.join(signatureDir, filename);
+    await fs.promises.writeFile(fullPath, processedBuffer);
+    
     // Return file info
     return {
         filename,
-        path: uploadResult.path,
+        path: fullPath,
         size: processedBuffer.length,
         width: processedMetadata.width || 0,
         height: processedMetadata.height || 0,
-        format: processedMetadata.format || 'png',
+        format: 'png',
         hash,
     };
 };

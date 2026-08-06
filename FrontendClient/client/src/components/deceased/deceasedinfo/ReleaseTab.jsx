@@ -164,7 +164,12 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleFinalizeRelease = () => {
-    const slug = localStorage.getItem('tenantSlug') || 'system_shared';
+    let slug = localStorage.getItem('tenantSlug') || '';
+    if (!slug || slug === 'dashboard' || slug === 'default') {
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : {};
+      slug = user?.parentTenantSlug || user?.tenantSlug || slug;
+    }
     navigate(`/tenant/${slug}/release-form/${deceasedId}`, {
       state: { deceasedData: deceased }
     });

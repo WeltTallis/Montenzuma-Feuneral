@@ -52,8 +52,11 @@ class CoffinModel {
       return [];
     }
 
+    // Use only core columns that exist in all branch databases
     const sql = `
-      SELECT c.*, c.created_by as created_by_name,
+      SELECT c.coffin_id, c.tenant_slug, c.name,
+        c.price, c.stock,
+        c.is_deleted, c.created_at, c.updated_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id AND c.tenant_slug = ci.tenant_slug
@@ -74,17 +77,22 @@ class CoffinModel {
       return [];
     }
 
+    // Use only core columns that exist in all branch databases
     const sql = `
-      SELECT c.*, c.created_by as created_by_name,
+      SELECT c.coffin_id, c.tenant_slug, c.name,
+        c.price, c.stock,
+        c.is_deleted, c.created_at, c.updated_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id AND c.tenant_slug = ci.tenant_slug
-      WHERE c.tenant_slug = ? AND c.branch_id = ? AND c.is_deleted = FALSE
+      WHERE c.tenant_slug = ? AND c.is_deleted = FALSE
       GROUP BY c.coffin_id
       ORDER BY c.created_at DESC
     `;
 
-    return safeTenantQuery(dbName, sql, [tenantSlug, branchId]);
+    // Note: Not filtering by branch_id in SQL since column may not exist
+    // Filtering will be done in controller if needed
+    return safeTenantQuery(dbName, sql, [tenantSlug]);
   }
 
   /**
@@ -96,16 +104,33 @@ class CoffinModel {
       return null;
     }
 
-    const sql = `
-      SELECT c.*, c.created_by as created_by_name,
-        GROUP_CONCAT(ci.image_url) as image_urls
-      FROM coffins c
-      LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id AND c.tenant_slug = ci.tenant_slug
-      WHERE (c.coffin_id = ? OR c.sku = ?) AND c.tenant_slug = ? AND c.is_deleted = FALSE
-      GROUP BY c.coffin_id
-    `;
-
-    const rows = await safeTenantQuery(dbName, sql, [id, id, tenantSlug]);
+    // Try with sku first, fallback to coffin_id only if sku column is missing
+    let rows;
+    try {
+      const sql = `
+        SELECT c.*, c.created_by as created_by_name,
+          GROUP_CONCAT(ci.image_url) as image_urls
+        FROM coffins c
+        LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id AND c.tenant_slug = ci.tenant_slug
+        WHERE (c.coffin_id = ? OR c.sku = ?) AND c.tenant_slug = ? AND c.is_deleted = FALSE
+        GROUP BY c.coffin_id
+      `;
+      rows = await safeTenantQuery(dbName, sql, [id, id, tenantSlug]);
+    } catch (err) {
+      if (err.message && err.message.includes('sku')) {
+        const sql = `
+          SELECT c.*, c.created_by as created_by_name,
+            GROUP_CONCAT(ci.image_url) as image_urls
+          FROM coffins c
+          LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id AND c.tenant_slug = ci.tenant_slug
+          WHERE c.coffin_id = ? AND c.tenant_slug = ? AND c.is_deleted = FALSE
+          GROUP BY c.coffin_id
+        `;
+        rows = await safeTenantQuery(dbName, sql, [id, tenantSlug]);
+      } else {
+        throw err;
+      }
+    }
     return rows.length > 0 ? rows[0] : null;
   }
 
@@ -128,11 +153,22 @@ class CoffinModel {
     if (data.color !== undefined) { updateFields.push('color = ?'); updateValues.push(data.color?.trim() || null); }
 
     updateFields.push('updated_at = NOW()');
-    updateValues.push(id, id, tenantSlug);
 
     if (updateFields.length > 1) {
-      const sql = `UPDATE coffins SET ${updateFields.join(', ')} WHERE (coffin_id = ? OR sku = ?) AND tenant_slug = ? AND is_deleted = FALSE`;
-      await safeTenantQuery(dbName, sql, updateValues);
+      // Try with sku first, fallback to coffin_id only if sku column is missing
+      try {
+        const sql = `UPDATE coffins SET ${updateFields.join(', ')} WHERE (coffin_id = ? OR sku = ?) AND tenant_slug = ? AND is_deleted = FALSE`;
+        updateValues.push(id, id, tenantSlug);
+        await safeTenantQuery(dbName, sql, updateValues);
+      } catch (err) {
+        if (err.message && err.message.includes('sku')) {
+          const sql = `UPDATE coffins SET ${updateFields.join(', ')} WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE`;
+          updateValues.push(id, tenantSlug);
+          await safeTenantQuery(dbName, sql, updateValues);
+        } else {
+          throw err;
+        }
+      }
     }
 
     return true;

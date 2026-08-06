@@ -44,6 +44,9 @@ router.post('/assign', coffinController.assignCoffin);
 // Analytics
 router.get('/analytics/dashboard', coffinController.getCoffinAnalytics);
 
+// Cross-branch inventory search
+router.get('/all-branches', coffinController.getAllCoffinsAllBranches);
+
 // CRUD operations (/:id must be after specific routes)
 router.get('/detail/:id', coffinController.getCoffinById);
 router.get('/:id', coffinController.getCoffinById);

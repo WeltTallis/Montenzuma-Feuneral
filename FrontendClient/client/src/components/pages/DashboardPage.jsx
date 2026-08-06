@@ -1,5 +1,5 @@
 import React from 'react';
-import BeautifulMortuaryDashboard from '../components/analysis/comprehensivedashboard';
+import BeautifulMortuaryDashboard from '../analysis/comprehensivedashboard';
 
 const DashboardPage = () => {
     return <BeautifulMortuaryDashboard />;

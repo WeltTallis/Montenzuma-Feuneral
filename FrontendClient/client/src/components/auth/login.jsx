@@ -43,8 +43,8 @@ export default function LoginPage() {
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     const slug = localStorage.getItem('tenantSlug');
-    if (token && token !== 'undefined' && token !== 'null' && slug && slug !== 'default') {
-      navigate('/dashboard');
+    if (token && token !== 'undefined' && token !== 'null' && slug && slug !== 'default' && slug !== 'dashboard') {
+      navigate(`/tenant/${slug}/all-deceased`);
     } else if (!token || token === 'undefined' || token === 'null') {
       localStorage.removeItem('authToken');
       localStorage.removeItem('tenantSlug');
@@ -65,12 +65,13 @@ export default function LoginPage() {
     setMessage({ type: '', text: '' });
 
     try {
-      const result = await authLogin({
-        identifier: identifier.trim(),
-        password: password.trim(),
+      // Send credentials as JSON object
+      const response = await authLogin({
+        email: identifier.trim(),
+        password: password.trim()
       });
-
-      if (result && result.success) {
+      
+      if (response && response.success) {
         toast.success('Login successful! Welcome back.', {
           position: "top-right",
           autoClose: 5000,
@@ -82,47 +83,26 @@ export default function LoginPage() {
           theme: "light",
         });
 
-        const data = result;
-        const tenantSlug = data.tenant?.tenantSlug || data.user?.tenantSlug;
+        const userData = response.user || {};
+        const tenantSlug = response.tenant?.tenantSlug || userData.tenantSlug;
 
-        setSuccessName(data.user?.fullName || 'Director');
-        setShowSuccess(true);
+        if (tenantSlug) {
+          localStorage.setItem('tenantSlug', tenantSlug);
+          setSuccessName(userData.fullName || userData.username || 'User');
+          setShowSuccess(true);
 
-        setTimeout(() => {
-          if (data.user?.role === 'systemadmin') {
-            localStorage.setItem('systemAdmin', 'true');
-            navigate('/system-admin', { replace: true });
-          } else if (tenantSlug) {
-            localStorage.setItem('tenantSlug', tenantSlug);
-            const userRole = data.user?.role;
-            if (userRole === 'driver') {
-              navigate(`/tenant/${tenantSlug}/driver-portal`, { replace: true });
-            } else {
-              navigate(`/tenant/${tenantSlug}/all-deceased`, { replace: true });
-            }
-          } else {
-            console.error('No tenant slug in login response!', data);
-          }
-        }, 400);
+          setTimeout(() => {
+            navigate(`/tenant/${tenantSlug}/all-deceased`, { replace: true });
+          }, 400);
+        } else {
+          throw new Error('No tenant information available');
+        }
       } else {
-        toast.error(result?.message || 'Invalid credentials. Please try again.', {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "light",
-        });
-        setMessage({
-          type: 'error',
-          text: result?.message || 'Invalid credentials. Please try again.'
-        });
+        throw new Error(response?.message || 'Login failed. Please check your credentials.');
       }
     } catch (err) {
       console.error('Login error:', err);
-      toast.error(err.response?.data?.message || 'Connection error. Please try again.', {
+      toast.error(err.message || 'Connection error. Please try again.', {
         position: "top-right",
         autoClose: 5000,
         hideProgressBar: false,
@@ -134,7 +114,7 @@ export default function LoginPage() {
       });
       setMessage({
         type: 'error',
-        text: err.response?.data?.message || 'Connection error. Please try again.'
+        text: err.message || 'Connection error. Please try again.'
       });
     } finally {
       setLoading(false);
@@ -153,7 +133,7 @@ export default function LoginPage() {
         body{font-family:'Inter',sans-serif;color:${C.gray};background:${C.bone2};-webkit-font-smoothing:antialiased}
         h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-0.01em;color:${C.ink}}
         
-        .page-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background: ${C.bone2}; }
+        .page-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; background: ${C.bone2}; }
         
         /* Toast Container - Minimal padding */
         .Toastify__toast-container {
@@ -258,7 +238,7 @@ export default function LoginPage() {
         
         /* Responsive */
         @media (max-width: 768px) {
-          .login-container { flex-direction: column; max-width: 420px; }
+          .login-container { flex-direction: column; max-width: 820px; }
           .login-sidebar { width: 100%; padding: 2rem; min-height: auto; }
           .sidebar-logo { margin-bottom: 1.5rem; }
           .sidebar-headline { font-size: 1.4rem; }

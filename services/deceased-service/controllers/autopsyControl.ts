@@ -6,6 +6,7 @@ import PDFDocument from 'pdfkit';
 
 import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../shared/dbConfig';
 import { renderStampOnPDFKit } from '../../../packages/shared-stamps/dist/index';
+import Logger from '../../../packages/shared-logger/src/index';
 
 interface TenantRequest extends Request {
     tenantSlug?: string;
@@ -102,15 +103,81 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
             await safeTenantExecute(dbName, insertQuery, [deceased_id, requested_by, now, reason, reason, now, now]);
         }
         
-        // Emit socket event for real-time update
-        emitPostmortemUpdate(tenantSlug, deceased_id, { status: 'pending', requested_by, requested_at: now, requesting_authority: reason });
-        
-        return res.status(200).json({ success: true, message: 'Postmortem request submitted successfully', data: { requestId, deceased_id, status: 'pending' } });
+        // ==============================
+        // EMIT POSTMORTEM REQUEST NOTIFICATION
+        // ==============================
+        try {
+            const axios = require('axios');
+            const configuredUrl = process.env.SOCKETIO_SERVICE_URL || '';
+            const candidateUrls = [
+                configuredUrl,
+                'http://localhost:5018',
+                'http://127.0.0.1:5018',
+            ].filter(Boolean);
+
+            const emitPayload = {
+                tenantSlug,
+                data: {
+                    id: `postmortem-request-${deceased_id}-${Date.now()}`,
+                    deceasedId: deceased_id,
+                    requestId: requestId,
+                    requestedBy: requested_by,
+                    reason: reason,
+                    title: 'Postmortem Requested',
+                    message: `Postmortem examination requested for deceased ${deceased_id}`,
+                    type: 'postmortem_requested',
+                    priority: 'high',
+                    fullContent: `Request ID: ${requestId}\nDeceased ID: ${deceased_id}\nRequested By: ${requested_by}\nReason: ${reason}\nDate: ${now}`,
+                }
+            };
+
+            let emitted = false;
+            for (const socketioServiceUrl of candidateUrls) {
+                try {
+                    await axios.post(`${socketioServiceUrl}/emit/postmortem-requested`, emitPayload, { timeout: 3000 });
+                    emitted = true;
+                    Logger.info({ message: `Emitted postmortem-requested for ${deceased_id} via ${socketioServiceUrl}` });
+                    break;
+                } catch (urlError: any) {
+                    Logger.warn({ message: `SocketIO URL failed: ${socketioServiceUrl}`, error: urlError.message });
+                }
+            }
+
+            if (!emitted) {
+                Logger.warn({ message: `All socketio URLs failed for postmortem request ${deceased_id}` });
+            }
+        } catch (emitError: any) {
+            Logger.warn({
+                message: `Failed to emit postmortem-requested notification`,
+                error: emitError.message
+            });
+        }
+
+        return res.status(201).json({
+            success: true,
+            message: "Postmortem request submitted successfully",
+            data: {
+                requestId,
+                deceased_id,
+                status: 'pending'
+            }
+        });
+
     } catch (error: any) {
-        console.error('Error in requestPostmortem:', error);
-        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+        Logger.error({
+            message: "Error requesting postmortem",
+            error: error.message || error
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: error.sqlMessage || error.message || "Internal server error"
+        });
     }
 };
+
+
+
 
 export const savePostmortem = async (req: TenantRequest, res: Response): Promise<Response> => {
     const tenantSlug = req.headers['x-slug'] as string || req.headers['x-tenant-slug'] as string || req.tenantSlug;
@@ -626,8 +693,7 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
                 pathologist_name,
                 external_pathologist_id,
                 cause_of_death,
-                contributing_conditions,
-                completed_at
+                contributing_conditions
             FROM postmortem 
             WHERE deceased_id = ?
         `;
@@ -664,8 +730,7 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
             SELECT 
                 full_name,
                 relationship,
-                contact,
-                id_number
+                contact
             FROM next_of_kin 
             WHERE deceased_id = ? AND is_primary = 1 AND is_deleted = 0
             LIMIT 1
@@ -698,7 +763,7 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         const kinName = nextOfKin?.full_name || 'N/A';
         const kinRelationship = nextOfKin?.relationship || 'N/A';
         const kinPhone = nextOfKin?.contact || 'N/A';
-        const kinIdNumber = nextOfKin?.id_number || 'N/A';
+        const kinIdNumber = 'N/A';
 
         // Load Signature Image Buffer
         let signatureBuffer: Buffer | null = null;
@@ -711,8 +776,21 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
                     // Extract base64 data from data URL
                     const base64Data = signaturePath.split(',')[1];
                     signatureBuffer = Buffer.from(base64Data, 'base64');
+                } else if (signaturePath.startsWith('http') || signaturePath.startsWith('/uploads')) {
+                    // Load from centralized upload service via HTTP
+                    const axios = require('axios');
+                    const uploadsServiceUrl = process.env.UPLOADS_SERVICE_URL || 'http://localhost:5012';
+                    const fullUrl = signaturePath.startsWith('http') 
+                        ? signaturePath 
+                        : `${uploadsServiceUrl}${signaturePath}`;
+                    
+                    const response = await axios.get(fullUrl, { 
+                        responseType: 'arraybuffer',
+                        timeout: 10000 
+                    });
+                    signatureBuffer = Buffer.from(response.data);
                 } else {
-                    // Load from file system
+                    // Load from file system (legacy fallback)
                     const relativePath = signaturePath.replace(/^\/uploads\//, '');
                     const uploadsBase = process.env.UPLOADS_BASE_DIR || path.resolve(process.cwd(), 'uploads');
                     const fsPath = path.join(uploadsBase, relativePath);
@@ -839,9 +917,9 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         doc.text(deceasedIdStr, rightColX, y + 39, { width: colWidth, align: 'right' });
         doc.strokeColor('#d0d0d0').lineWidth(0.8)
            .moveTo(rightColX + colWidth - 200, y + 54)
-           .lineTo(rightColX + colWidth, y + 54).stroke();
+           .lineTo(rightColX + colWidth, y + 54).stroke();      
 
-        y += Math.max(facNameHeight + 38, 62) + (verticalGap / 2);
+        y += Math.max(facNameHeight + 38, 62) + (verticalGap / 2);              
 
         // ========== 2.5. DECEDENT DETAILS SECTION ==========
         doc.fillColor('#0a0a0a').rect(MARGIN, y, CONTENT_WIDTH, 18).fill();
@@ -1082,7 +1160,7 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
           color: '#170C79',
         });
 
-        // ========== 6. CLEAN FOOTER (NON-OVERLAPPING) ==========
+        // ========== 6. CLEAN FOOTER (NON-OVERLAPPING) ==========  
         const footerY = 754;
 
         doc.strokeColor('#e5e5e5').lineWidth(0.8)
@@ -1104,6 +1182,51 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         doc.font('Helvetica').fillColor('#aaaaaa').text(reportDate);
 
         doc.end();
+
+        // ==============================
+        // EMIT AUTOPSY PDF GENERATED NOTIFICATION
+        // ==============================
+        try {
+            const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+            const axios = require('axios');
+            
+            const notificationPayload = {
+                tenantSlug,
+                data: {
+                    id: `autopsy-pdf-${deceased_id}-${Date.now()}`,
+                    deceasedId: deceased_id,
+                    deceasedName: fullName,
+                    reportRef: reportRef,
+                    title: 'Autopsy PDF Generated',
+                    message: `Autopsy report PDF has been generated for ${fullName} (${deceased_id})`,
+                    type: 'autopsy_pdf_generated',
+                    priority: 'high',
+                    fullContent: `Autopsy Report PDF Generated\nDeceased ID: ${deceased_id}\nName: ${fullName}\nReport Reference: ${reportRef}\nPathologist: ${examinerName}\nCause of Death: ${postmortem.cause_of_death || 'Pending'}\nGenerated: ${fullTimestamp}`,
+                    data: {
+                        deceased_id: deceased_id,
+                        deceased_name: fullName,
+                        report_ref: reportRef,
+                        pathologist: examinerName,
+                        cause_of_death: postmortem.cause_of_death,
+                        manner_of_death: mannerOfDeath,
+                        generated_at: fullTimestamp
+                    },
+                    timestamp: new Date().toISOString(),
+                    expiresAt: Date.now() + (2 * 60 * 60 * 1000) // 2 hours TTL
+                }
+            };
+
+         
+
+            await axios.post(`${socketioServiceUrl}/emit/autopsy-pdf-generated`, notificationPayload, { 
+                timeout: 5000,
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+       
+        } catch (emitError: any) {
+         
+        }
 
     } catch (error: any) {
         console.error('Error in generatePostmortemPDF:', error);

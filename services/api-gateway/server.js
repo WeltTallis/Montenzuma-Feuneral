@@ -375,8 +375,8 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
       target: targetUrl,
       changeOrigin: true,
       secure: false,
-      proxyTimeout: 3000, // 3 seconds - fail fast
-      timeout: 3000, // 3 seconds - fail fast
+      proxyTimeout: 30000, // 30 seconds - allow time for file uploads and DB operations
+      timeout: 30000, // 30 seconds - allow time for file uploads and DB operations
       onProxyReq: (proxyReq, req, res) => {
         if (req.headers.authorization) proxyReq.setHeader('Authorization', req.headers.authorization);
         if (req.headers['x-tenant-slug']) proxyReq.setHeader('x-tenant-slug', req.headers['x-tenant-slug']);

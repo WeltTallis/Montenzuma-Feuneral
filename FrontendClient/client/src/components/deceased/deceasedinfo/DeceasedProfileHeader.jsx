@@ -50,7 +50,12 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
   const displayId = deceased?.deceased_id || deceased?.id;
   const admissionNo = deceased?.admission_number || deceased?.admission_no || '—';
   const navigateToReleaseForm = () => {
-    const slug = localStorage.getItem('tenantSlug') || 'system_shared';
+    let slug = localStorage.getItem('tenantSlug') || '';
+    if (!slug || slug === 'dashboard' || slug === 'default') {
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : {};
+      slug = user?.parentTenantSlug || user?.tenantSlug || slug;
+    }
     navigate(`/tenant/${slug}/release-form/${deceasedId || displayId}`, {
       state: { deceasedData: deceased }
     });

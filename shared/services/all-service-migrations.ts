@@ -163,6 +163,10 @@ const COFFIN_SERVICE_MIGRATIONS: Migration[] = [
     name: '084_add_req_type_to_stock_requests',
     sql: `ALTER TABLE stock_requests ADD COLUMN IF NOT EXISTS req_type ENUM('client', 'replenishment') DEFAULT 'replenishment' AFTER notes, ADD INDEX IF NOT EXISTS idx_req_type (req_type)`,
   },
+  {
+    name: '085_make_stock_requests_deceased_name_nullable',
+    sql: `ALTER TABLE stock_requests MODIFY COLUMN deceased_name VARCHAR(255) NULL`,
+  },
 ];
 
 // ─── Chemicals Service Migrations (UNIFIED - any unit type) ───────────────────

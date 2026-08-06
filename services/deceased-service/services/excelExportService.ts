@@ -1,8 +1,7 @@
 import ExcelJS from 'exceljs';
 import { DateTime } from 'luxon';
-import fs from 'fs';
-import path from 'path';
-import { fileStorageService, FolderCategory } from '@montezuma/shared-services';
+import * as fs from 'fs';
+import * as path from 'path';
 import { safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig';
 
 // Enhanced Professional Color Palette
@@ -469,15 +468,19 @@ export class ExcelExportService {
     const tenantSlug = theme.companyName.replace(/\s+/g, '-').toLowerCase();
     const fileName = `${tenantSlug}_Deceased_Report_${DateTime.now().toFormat('yyyyMMdd_HHmmss')}.xlsx`;
     
-    // Save the file using the fileStorageService
+    // Save the file directly to global uploads folder
     try {
-      const uploadPath = fileStorageService.getUploadPath({
-        tenantSlug,
-        category: FolderCategory.EXPORTS
-      });
-      const filePath = path.join(uploadPath, fileName);
-      await fs.promises.writeFile(filePath, fileBuffer);
-      console.log(`📊 Export saved to: ${filePath}`);
+      const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || 'C:\\Users\\User\\Downloads\\uploads';
+      const reportDir = path.join(globalUploadsDir, tenantSlug, 'deceased-reports');
+      
+      // Ensure directory exists
+      await fs.promises.mkdir(reportDir, { recursive: true });
+      
+      // Save the file
+      const fullPath = path.join(reportDir, fileName);
+      await fs.promises.writeFile(fullPath, fileBuffer);
+      
+      console.log(`📊 Export saved to: ${fullPath}`);
     } catch (error: any) {
       console.warn(`⚠️ Could not save file: ${error.message}`);
     }

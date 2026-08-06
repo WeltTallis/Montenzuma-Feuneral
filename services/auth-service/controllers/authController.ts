@@ -331,7 +331,33 @@ export const login = async (req: Request, res: Response): Promise<void> => {
           branchDbName = branches[0].branch_db_name;
           dbName = branchDbName || tenant.db_name;
         } else {
-          branchId = null;
+          // The resolved tenant does NOT own this branch.
+          // This usually means findTenantByUserEmail returned a branch tenant
+          // instead of the parent tenant. Find the real parent tenant.
+          const [allTenants]: any = await pool.query(
+            "SELECT * FROM tenant_tracking.tenants WHERE status = 'active'"
+          );
+          let parentTenant: Tenant | null = null;
+          for (const t of allTenants) {
+            if (t.tenant_id === tenant.tenant_id || t.id === tenant.id) continue;
+            try {
+              const [parentBranches]: any = await pool.query(
+                `SELECT branch_slug, branch_db_name FROM \`${t.db_name}\`.branches WHERE branch_id = ? AND is_active = 1 LIMIT 1`,
+                [branchId]
+              );
+              if (parentBranches.length > 0) {
+                parentTenant = t;
+                branchDbName = parentBranches[0].branch_db_name || parentBranches[0].branch_slug || null;
+                dbName = branchDbName || t.db_name;
+                break;
+              }
+            } catch { continue; }
+          }
+          if (parentTenant) {
+            tenant = parentTenant;
+          } else {
+            branchId = null;
+          }
         }
       } catch { /* non-critical */ }
     }
@@ -769,3 +795,4 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
     });
   }
 };
+

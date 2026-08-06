@@ -4,20 +4,29 @@
 
 /**
  * Get the current tenant slug from localStorage
+ * NO 'default' fallback - must always return the real tenant slug
+ * Falls back to parentTenantSlug since backend stores the real slug there
  */
 export const getTenantSlug = () => {
-  return (
-    localStorage.getItem('tenantSlug') ||
-    localStorage.getItem('tenant_slug') ||
-    (() => {
-      try {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        return user.tenantSlug || user.tenant?.slug || 'default';
-      } catch {
-        return 'default';
-      }
-    })()
-  );
+  // Priority: 1) tenantSlug key, 2) tenant_slug key, 3) parentTenantSlug key, 4) user object
+  const direct = localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug');
+  if (direct && direct !== 'default' && direct !== 'dashboard' && direct !== 'undefined' && direct !== 'null') {
+    return direct;
+  }
+  
+  const parent = localStorage.getItem('parentTenantSlug');
+  if (parent && parent !== 'default' && parent !== 'dashboard' && parent !== 'undefined' && parent !== 'null') {
+    return parent;
+  }
+  
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    // tenantSlug is the effective scope (branch for branch users); only fall back to
+    // parentTenantSlug when no branch/effective slug exists (e.g. legacy data).
+    return user.tenantSlug || user.tenant_slug || user.branchDbName || user.branchSlug || user.tenant?.slug || user.parentTenantSlug || '';
+  } catch {
+    return '';
+  }
 };
 
 /**

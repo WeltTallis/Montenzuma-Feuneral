@@ -9,11 +9,35 @@ import path from 'path';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 
-dotenv.config();
+// Load environment - try .env.uploads-service first (project root), then .env
+// The file is named .env.uploads-service, NOT .env, so dotenv.config() alone won't find it
+const envCandidates = [
+  path.resolve(process.cwd(), '.env.uploads-service'),
+  path.resolve(process.cwd(), '../../.env.uploads-service'),
+  path.resolve(__dirname, '../../.env.uploads-service'),
+  path.resolve(__dirname, '../../../.env.uploads-service'),
+  path.resolve(process.cwd(), '.env'),
+];
+for (const envPath of envCandidates) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    console.log(`[UPLOADS-SERVICE] Loaded environment from: ${envPath}`);
+    break;
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 5012;
-const UPLOADS_BASE_DIR = process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+
+// Resolve uploads base dir - handle both Docker path and localhost path
+// Default to a GLOBAL independent folder at the project root: <project-root>/uploads
+const UPLOADS_BASE_DIR = process.env.UPLOADS_BASE_DIR 
+  ? (process.env.UPLOADS_BASE_DIR.startsWith('/') || /^[a-zA-Z]:/.test(process.env.UPLOADS_BASE_DIR) 
+      ? process.env.UPLOADS_BASE_DIR 
+      : path.resolve(process.cwd(), process.env.UPLOADS_BASE_DIR))
+  : path.resolve(process.cwd(), '../../uploads');
+
+console.log(`[UPLOADS-SERVICE] Resolved UPLOADS_BASE_DIR: ${UPLOADS_BASE_DIR}`);
 
 // Middleware
 app.use(cors());
@@ -98,7 +122,7 @@ app.post('/api/tenants/:tenantSlug/folders', async (req, res) => {
       'reports',
       'contracts',
       'employees',
-      'chemicals'
+      'chemicals' 
     ];
 
     for (const subdir of subdirs) {
@@ -154,7 +178,7 @@ app.get('/api/tenants/:tenantSlug/folders/exists', async (req, res) => {
 /**
  * Upload signature
  */
-app.post('/api/upload/signature', upload.single('file'), async (req, res) => {
+app.post('/api/upload/signature', upload.single('file') as any, async (req, res) => {
   try {
     console.log('[UPLOADS-SERVICE] Received signature upload request');
     console.log('[UPLOADS-SERVICE] Request body:', {
@@ -179,15 +203,28 @@ app.post('/api/upload/signature', upload.single('file'), async (req, res) => {
     }
 
     console.log(`[UPLOADS-SERVICE] Processing signature for tenant: ${tenantSlug}, category: ${category}`);
+
+    // CRITICAL: Signatures MUST always be saved as PNG (never webp).
+    // Ignore any client-supplied format and force PNG here.
+    const requestedFormat = (req.body.format || 'png').toLowerCase();
+    const signatureFormat = requestedFormat === 'png' ? 'png' : 'png'; // always png
+
     const result = await processAndSaveFile(
       req.file.buffer,
       req.file.originalname,
       tenantSlug,
       category,
-      { quality: 85, maxWidth: 800, maxHeight: 300, format: 'webp' }
+      { quality: 85, maxWidth: 800, maxHeight: 300, format: signatureFormat as 'png' }
     );
 
-    console.log(`[UPLOADS-SERVICE] Signature upload successful: ${result.urlPath}`);
+    // Verify the saved file is actually PNG (defensive check)
+    if (!result.filename.toLowerCase().endsWith('.png')) {
+      console.error(`[UPLOADS-SERVICE] CRITICAL: Signature was not saved as PNG! Got: ${result.filename}`);
+      // Force the mimeType to reflect the actual format
+      result.mimeType = 'image/png';
+    }
+
+    console.log(`[UPLOADS-SERVICE] Signature upload successful: ${result.urlPath} (format: png)`);
     res.json({
       success: true,
       data: result
@@ -205,7 +242,7 @@ app.post('/api/upload/signature', upload.single('file'), async (req, res) => {
 /**
  * Upload document
  */
-app.post('/api/upload/document', upload.single('file'), async (req, res) => {
+app.post('/api/upload/document', upload.single('file') as any, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -242,7 +279,7 @@ app.post('/api/upload/document', upload.single('file'), async (req, res) => {
 /**
  * Upload image
  */
-app.post('/api/upload/image', upload.single('file'), async (req, res) => {
+app.post('/api/upload/image', upload.single('file') as any, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -279,7 +316,7 @@ app.post('/api/upload/image', upload.single('file'), async (req, res) => {
 /**
  * Upload multiple files
  */
-app.post('/api/upload/multiple', upload.array('files', 10), async (req, res) => {
+app.post('/api/upload/multiple', upload.array('files', 10) as any, async (req, res) => {
   try {
     const files = req.files as Express.Multer.File[];
     const { tenantSlug, category = 'general' } = req.body;
@@ -486,9 +523,8 @@ async function processAndSaveFile(
     case 'png':
       pipeline = pipeline.png({ 
         quality, 
-        compressionLevel: 9, 
-        palette: true, 
-        adaptiveFiltering: true 
+        compressionLevel: 9,
+        adaptiveFiltering: true
       });
       break;
   }

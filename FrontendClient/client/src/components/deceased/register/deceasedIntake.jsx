@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ENDPOINTS } from '../../../api/endpoints';
 import env from '../../../utils/config/env';
@@ -6,42 +6,41 @@ import { ToastContainer, toast } from 'react-toastify';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 import { IDScannerComponent } from '../../../utils/idScanner.jsx?t=20250620';
+import bwipjs from '@bwip-js/browser';
 import {
   Check, Loader2, CheckCircle, X, FileText, User,
-  RotateCcw, ShieldCheck, AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, ScanBarcode
+  RotateCcw, ShieldCheck, AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, ScanBarcode, MapPin
 } from '../../../utils/icons/icons';
-import styled, { keyframes, css } from 'styled-components';
+import styled, { keyframes } from 'styled-components';
+import OfficialStamp from '../../stamp/stamp';
+import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 
+// ─── Restored Login Color Palette ──────────────────────────────────
 const COLORS = {
-    black: '#0a0a0a',
-    dark: '#1a1a1a',
-    mid: '#444444',
-    gray: '#777777',
-    lightGray: '#ffffff',
-    border: '#c8c8c8',
-    borderLight: '#e0e0e0',
-    bgField: 'hsl(0, 0%, 100%)',
-    bgAccent: 'rgb(255, 255, 255)',
-    bgSection: 'rgb(255, 255, 255)',
-    red: '#c0392b',
-    white: '#FFFFFF',
-    bg: '#ffffff', // Changed from grey to white
-    surface: '#ffffff',
-    text: '#111827',
-    textSecondary: '#6b7280',
-    textMuted: '#9ca3af',
-    success: '#10b981',
-    successLight: '#d1fae5',
-    danger: '#ef4444',
-    dangerLight: '#fee2e2',
-    info: '#3b82f6',
-    infoLight: '#dbeafe',
-    infoDark: '#2563eb',
-    radius: '8px',
-    radiusSm: '6px',
-    shadowSm: '0 1px 2px rgba(0, 0, 0, 0.04)',
-    shadowMd: '0 4px 6px rgba(0, 0, 0, 0.06)',
-    transition: 'all 0.15s ease',
+  ink: '#15171A',
+  bone: '#FAF8F4',
+  bone2: '#F3EFE6',
+  brass: '#8B7355',
+  brassLight: '#A98F6E',
+  verdigris: '#3D4F47',
+  verdigrisDark: '#2E3F37',
+  verdigrisLight: '#4D6359',
+  verdigrisTint: '#EBEFEF',
+  line: '#E3DDD0',
+  lineDark: 'rgba(250,248,244,0.14)',
+  gray: '#6B6862',
+  grayLight: 'rgba(250,248,244,0.62)',
+  red: '#9B4A3F',
+  redBg: '#F7ECE9',
+  redLine: '#E8D2CC',
+  success: '#475A43',
+  successBg: '#EEF3EC',
+  white: '#FFFFFF',
+  inkBlue: '#1131db',
+  stampBlue: '#1e3a8a',
+  stampRed: '#dc2626',
+  gold: '#C9A227',
+  goldDark: '#A8851C',
 };
 
 const spin = keyframes`
@@ -49,652 +48,471 @@ const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
 
-/* ---------- Responsive helpers ---------- */
-const media = {
-  tablet: (...args) => css`@media (max-width: 1024px) { ${css(...args)} }`,
-  mobile: (...args) => css`@media (max-width: 768px) { ${css(...args)} }`,
-  small: (...args) => css`@media (max-width: 480px) { ${css(...args)} }`,
-};
-
 const Container = styled.div`
   min-height: 100vh;
-  background: #ffffff; /* Removed grey, now pure white */
-  font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: ${COLORS.dark};
-  font-size: 10.5px;
+  background: ${COLORS.bone2};
+  font-family: 'Inter', sans-serif;
+  color: ${COLORS.ink};
+  font-size: 15px;
   line-height: 1.5;
+  padding: 0;
 
-  ${media.tablet`
-    font-size: 12px;
-  `}
-  ${media.mobile`
-    font-size: 13px;
-    background: #ffffff; /* Removed grey here as well */
-  `}
+  .Toastify__toast-container { width: 380px !important; max-width: 90vw !important; padding: 0 !important; }
+  .Toastify__toast { border-radius: 8px !important; font-family: 'Inter', sans-serif !important; font-size: 0.85rem !important; padding: 10px 14px !important; min-height: 44px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; margin-bottom: 0.5rem !important; }
+  .Toastify__toast-body { padding: 0 !important; margin: 0 !important; font-size: 0.85rem !important; }
 `;
 
-const Page = styled.div`
-  max-width: 1400px;
-  margin: 0;
-  background: white;
+const FormSheet = styled.div`
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  background: ${COLORS.white};
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
+  overflow: hidden;
   position: relative;
-  padding: 1rem;
+`;
+
+const Watermark = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-35deg);
+  font-size: 8rem;
+  font-weight: 800;
+  color: rgba(21, 23, 26, 0.025);
+  font-family: 'Fraunces', serif;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 0;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+`;
+
+const ContentWrapper = styled.div`
+  position: relative;
+  z-index: 1;
+`;
+
+// ─── Compact Letterhead Layout ─────────────────────────────────────
+const Letterhead = styled.div`
   display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  padding: 1.5rem 3rem;
+  border-bottom: 1px solid ${COLORS.line};
+  background: ${COLORS.white};
+  position: relative;
+  overflow: hidden;
 
-  ${media.tablet`
-    padding: 0.75rem;
-  `}
-  ${media.mobile`
-    padding: 0.5rem;
-    margin: 0;
-  `}
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, ${COLORS.verdigris} 0%, ${COLORS.brass} 50%, ${COLORS.verdigris} 100%);
+  }
 
-  @media (min-width: 768px) {
-    margin: 0 auto;
+  @media (max-width: 480px) {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+    padding: 1.5rem 1rem;
   }
 `;
 
-const Header = styled.div`
-  background: ${COLORS.surface};
-  border-bottom: 2.5px solid ${COLORS.black};
-  padding: 1.25rem 2rem;
-  margin-bottom: 1rem;
-`;
-
-const HeaderContent = styled.div`
-  max-width: 1400px;
-  margin: 0 auto;
+const BrandLeftWrapper = styled.div`
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 1rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  
+  @media (max-width: 480px) {
+    align-items: center;
+  }
 `;
 
-const Title = styled.h1`
-  font-family: 'Merriweather', Georgia, serif;
-  font-size: 1.375rem;
+const LogoBox = styled.div`
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  
+  & > img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+`;
+
+const BrandDetails = styled.div`
+  min-width: 0;
+
+  @media (max-width: 480px) {
+    text-align: center;
+  }
+`;
+
+const BrandName = styled.h1`
+  font-family: 'Fraunces', serif;
+  font-size: 1.8rem;
   font-weight: 700;
   margin: 0;
-  color: ${COLORS.black};
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
-  line-height: 1.2;
+  color: ${COLORS.ink};
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 
-  ${media.tablet`
-    font-size: 1.25rem;
-  `}
-  ${media.mobile`
-    font-size: 1.1rem;
-  `}
-  ${media.small`
-    font-size: 1rem;
-  `}
+  @media (max-width: 480px) {
+    font-size: 1.5rem;
+  }
 `;
 
-const Subtitle = styled.p`
-  font-family: 'Merriweather', Georgia, serif;
-  font-size: 0.8125rem;
-  font-weight: 400;
-  font-style: italic;
-  color: ${COLORS.mid};
-  margin: 0.25rem 0 0;
-
-  ${media.mobile`
-    font-size: 0.75rem;
-  `}
-`;
-
-const SaasBrand = styled.div`
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+const BrandMeta = styled.div`
+  font-size: 0.8rem;
   color: ${COLORS.gray};
-  margin-bottom: 0.25rem;
-
-  ${media.mobile`
-    font-size: 0.625rem;
-    letter-spacing: 0.12em;
-  `}
-`;
-
-const TopBar = styled.div`
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+  font-weight: 500;
+  
+  svg { 
+    opacity: 0.8;
+    flex-shrink: 0;
+    color: ${COLORS.brass};
+  }
+
+  @media (max-width: 480px) {
+    justify-content: center;
+  }
+`;
+
+const BrandRightWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
   align-items: flex-end;
-  padding-bottom: 0.625rem;
-  border-bottom: 2.5px solid ${COLORS.black};
-  margin-bottom: 0.375rem;
-  gap: 1rem;
-
-  ${media.tablet`
-    flex-wrap: wrap;
-  `}
-  ${media.mobile`
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-  `}
+  gap: 0.5rem;
+  
+  @media (max-width: 480px) {
+    align-items: center;
+  }
 `;
 
-const TopBarLeft = styled.div`
-  flex: 1;
-  min-width: 0;
-`;
-
-const TopBarRight = styled.div`
-  text-align: right;
-  flex-shrink: 0;
-
-  ${media.mobile`
-    text-align: left;
-  `}
-`;
-
-const AdmissionIdBlock = styled.div`
-  text-align: right;
-  margin-bottom: 0.5rem;
-
-  ${media.mobile`
-    text-align: left;
-  `}
-`;
-
-const AdmissionIdLabel = styled.div`
-  font-size: 0.625rem;
+const DocTitle = styled.div`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: ${COLORS.gray};
-  margin-bottom: 0.125rem;
-`;
-
-const AdmissionIdValue = styled.div`
-  font-family: 'Source Sans 3', monospace;
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: ${COLORS.black};
-  letter-spacing: 0.08em;
-
-  ${media.mobile`
-    font-size: 1rem;
-  `}
-`;
-
-const TopMeta = styled.div`
+  color: ${COLORS.verdigris};
   display: flex;
-  gap: 1.5rem;
-  justify-content: flex-end;
-
-  ${media.mobile`
-    justify-content: flex-start;
-    gap: 1rem;
-  `}
-`;
-
-const TopMetaItem = styled.div`
-  text-align: right;
-
-  ${media.mobile`
-    text-align: left;
-  `}
-`;
-
-const TopMetaLabel = styled.div`
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: ${COLORS.lightGray};
-  margin-bottom: 0.125rem;
-`;
-
-const TopMetaValue = styled.div`
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: ${COLORS.dark};
-`;
-
-const SubLine = styled.div`
-  display: flex;
-  justify-content: space-between;
-  padding: 0.3125rem 0;
-  border-bottom: 0.5px solid ${COLORS.borderLight};
-  margin-bottom: 1rem;
-  font-size: 0.625rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: ${COLORS.lightGray};
+  align-items: center;
   gap: 0.5rem;
 
-  ${media.mobile`
-    flex-direction: column;
-    gap: 0.25rem;
-    font-size: 0.6rem;
-  `}
+  &::before {
+    content: '';
+    width: 8px;
+    height: 4px;
+    background: ${COLORS.brass};
+    display: inline-block;
+  }
+
+  @media (max-width: 480px) {
+    &::before { display: none; }
+  }
+`;
+
+const BarcodeWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
+const FileIdText = styled.div`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: ${COLORS.gray};
+  text-align: center;
+  
+  span {
+    font-weight: 700;
+    color: ${COLORS.ink};
+    letter-spacing: 0.05em;
+    margin-left: 0.25rem;
+  }
+`;
+
+// ─── Form Body ─────────────────────────────────────────────────────
+const FormBody = styled.div`
+  padding: 3rem 4rem;
+
+  @media (max-width: 768px) {
+    padding: 2rem 1.5rem;
+  }
 `;
 
 const Section = styled.div`
-  margin-bottom: 1rem;
+  margin-bottom: 4rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 `;
 
 const SectionHead = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.625rem;
-  padding: 0.375rem 0.625rem;
-  background: ${COLORS.black};
-  color: white;
-  border-radius: 2px;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  padding: 0.75rem 1.25rem;
+  background: ${COLORS.ink}; 
+  border-radius: 4px;
 `;
 
 const SectionNum = styled.span`
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  opacity: 0.5;
-`;
-
-const SectionTitle = styled.span`
   font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-
-  ${media.mobile`
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
-  `}
+  font-weight: 500;
+  color: rgba(250,248,244,0.4);
+  font-family: 'JetBrains Mono', monospace;
 `;
 
-const SectionBody = styled.div`
-  padding: 0 0.125rem;
+const SectionTitle = styled.h2`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: ${COLORS.bone};
+  margin: 0;
 `;
 
 const Row = styled.div`
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
 
-  ${media.tablet`
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 1024px) {
     flex-wrap: wrap;
-  `}
-  ${media.mobile`
+  }
+  @media (max-width: 768px) {
     flex-direction: column;
-    gap: 0.5rem;
-  `}
+    gap: 1.25rem;
+  }
 `;
 
 const Col = styled.div`
   flex: 1;
   min-width: 0;
 
-  ${media.tablet`
+  @media (max-width: 1024px) {
     flex: 1 1 45%;
     min-width: 200px;
-  `}
-  ${media.mobile`
+  }
+  @media (max-width: 768px) {
     flex: 1 1 100%;
-    min-width: 0;
-  `}
+  }
 `;
 
-const Col2 = styled.div`
-  flex: 2;
-  min-width: 0;
-
-  ${media.tablet`
-    flex: 1 1 100%;
-  `}
-  ${media.mobile`
-    flex: 1 1 100%;
-  `}
-`;
-
-const Col05 = styled.div`
-  flex: 0.5;
-  min-width: 0;
-
-  ${media.tablet`
-    flex: 1 1 30%;
-    min-width: 120px;
-  `}
-  ${media.mobile`
-    flex: 1 1 100%;
-  `}
-`;
-
-const Col06 = styled.div`
-  flex: 0.6;
-  min-width: 0;
-
-  ${media.tablet`
-    flex: 1 1 30%;
-    min-width: 140px;
-  `}
-  ${media.mobile`
-    flex: 1 1 100%;
-  `}
-`;
-
-const Col04 = styled.div`
-  flex: 0.4;
-  min-width: 0;
-
-  ${media.mobile`
-    flex: 1 1 100%;
-  `}
-`;
-
-const Col15 = styled.div`
-  flex: 1.5;
-  min-width: 0;
-
-  ${media.tablet`
-    flex: 1 1 60%;
-  `}
-  ${media.mobile`
-    flex: 1 1 100%;
-  `}
-`;
+const Col2 = styled(Col)` flex: 2; @media (max-width: 1024px) { flex: 1 1 100%; } `;
+const Col05 = styled(Col)` flex: 0.5; @media (max-width: 1024px) { flex: 1 1 30%; min-width: 120px; } `;
+const Col06 = styled(Col)` flex: 0.6; @media (max-width: 1024px) { flex: 1 1 30%; min-width: 140px; } `;
+const Col15 = styled(Col)` flex: 1.5; @media (max-width: 1024px) { flex: 1 1 60%; } `;
 
 const Label = styled.label`
   display: block;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: ${COLORS.gray};
-  margin-bottom: 0.1875rem;
-
-  ${media.mobile`
-    font-size: 0.7rem;
-  `}
+  color: ${COLORS.brass};
+  margin-bottom: 0.5rem;
+  font-family: 'Inter', sans-serif;
 `;
 
 const Input = styled.input`
   width: 100%;
-  height: 1.75rem;
-  border: 1px solid ${COLORS.border};
-  border-radius: 2px;
-  padding: 0 0.5rem;
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 0.6875rem;
-  color: ${COLORS.dark};
-  background: ${COLORS.bgField};
-  transition: border-color 0.15s;
+  height: 2.75rem;
+  border: 1px solid ${COLORS.line};
+  border-radius: 4px;
+  padding: 0 0.85rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: ${COLORS.ink};
+  background: ${COLORS.bone};
+  transition: all 0.2s ease;
   box-sizing: border-box;
+  box-shadow: inset 0 1px 2px rgba(21, 23, 26, 0.03);
 
   &:focus {
     outline: none;
-    border-color: ${COLORS.black};
-    box-shadow: 0 0 0 1.5px rgba(0,0,0,0.08);
+    border-color: ${COLORS.ink};
+    background: ${COLORS.white};
+    box-shadow: 0 0 0 3px rgba(21, 23, 26, 0.08), inset 0 1px 2px rgba(21, 23, 26, 0.03);
+  }
+
+  &:not(:placeholder-shown) {
+    border-color: ${COLORS.brassLight};
+    background: ${COLORS.white};
+    font-weight: 500;
+    color: ${COLORS.ink};
   }
 
   &:disabled {
-    background: #eeedeb;
+    background: ${COLORS.bone2};
     color: ${COLORS.gray};
     cursor: not-allowed;
+    opacity: 0.8;
+    box-shadow: none;
   }
 
-  ${media.mobile`
-    height: 2.25rem;
-    font-size: 0.8rem;
-    padding: 0 0.625rem;
-  `}
+  &::placeholder { color: #a8a29e; font-weight: 400; }
 `;
 
 const InputLg = styled(Input)`
-  height: 2rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-
-  ${media.mobile`
-    height: 2.4rem;
-    font-size: 0.85rem;
-  `}
+  height: 3rem;
+  font-size: 1.05rem;
+  font-weight: 500;
 `;
 
 const Select = styled.select`
   width: 100%;
-  height: 1.75rem;
-  border: 1px solid ${COLORS.border};
-  border-radius: 2px;
-  padding: 0 0.5rem;
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 0.6875rem;
-  color: ${COLORS.dark};
-  background: ${COLORS.bgField};
-  transition: border-color 0.15s;
+  height: 2.75rem;
+  border: 1px solid ${COLORS.line};
+  border-radius: 4px;
+  padding: 0 0.85rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  color: ${COLORS.ink};
+  background: ${COLORS.bone};
+  transition: all 0.2s ease;
   box-sizing: border-box;
+  cursor: pointer;
+  box-shadow: inset 0 1px 2px rgba(21, 23, 26, 0.03);
 
   &:focus {
     outline: none;
-    border-color: ${COLORS.black};
-    box-shadow: 0 0 0 1.5px rgba(0,0,0,0.08);
+    border-color: ${COLORS.ink};
+    background: ${COLORS.white};
+    box-shadow: 0 0 0 3px rgba(21, 23, 26, 0.08);
   }
-
-  ${media.mobile`
-    height: 2.25rem;
-    font-size: 0.8rem;
-    padding: 0 0.625rem;
-  `}
 `;
 
 const TextArea = styled.textarea`
   width: 100%;
-  min-height: 2.75rem;
-  border: 1px solid ${COLORS.border};
-  border-radius: 2px;
-  padding: 0.375rem 0.5rem;
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 0.625rem;
-  color: ${COLORS.dark};
-  background: ${COLORS.bgField};
+  min-height: 4.5rem;
+  border: 1px solid ${COLORS.line};
+  border-radius: 4px;
+  padding: 0.75rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  color: ${COLORS.ink};
+  background: ${COLORS.bone};
   resize: vertical;
   box-sizing: border-box;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 2px rgba(21, 23, 26, 0.03);
 
   &:focus {
     outline: none;
-    border-color: ${COLORS.black};
-    box-shadow: 0 0 0 1.5px rgba(0,0,0,0.08);
+    border-color: ${COLORS.ink};
+    background: ${COLORS.white};
+    box-shadow: 0 0 0 3px rgba(21, 23, 26, 0.08);
   }
-
-  ${media.mobile`
-    font-size: 0.8rem;
-    min-height: 3.5rem;
-    padding: 0.5rem;
-  `}
 `;
 
 const CheckGrid = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1.125rem;
-
-  ${media.tablet`
-    gap: 0.25rem 1rem;
-  `}
-  ${media.mobile`
-    gap: 0.4rem 1rem;
-  `}
+  gap: 0.75rem 2rem;
+  padding: 1rem 1.25rem;
+  background: ${COLORS.bone};
+  border: 1px solid ${COLORS.line};
+  border-radius: 4px;
+  box-shadow: inset 0 1px 2px rgba(21, 23, 26, 0.03);
+  
+  @media (max-width: 768px) {
+    gap: 0.75rem 1.5rem;
+  }
 `;
 
 const CheckItem = styled.label`
   display: flex;
   align-items: center;
-  gap: 0.3125rem;
-  font-size: 0.625rem;
-  color: ${COLORS.mid};
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: ${COLORS.ink};
   cursor: pointer;
-  padding: 0.1875rem 0;
-
-  ${media.mobile`
-    font-size: 0.75rem;
-    flex: 1 1 45%;
-  `}
-  ${media.small`
-    flex: 1 1 100%;
-  `}
+  font-weight: 400;
 `;
 
 const Checkbox = styled.input.attrs({ type: 'checkbox' })`
   appearance: none;
-  width: 0.875rem;
-  height: 0.875rem;
-  border: 1.5px solid ${COLORS.border};
-  background: white;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1px solid ${COLORS.brass};
+  background: ${COLORS.white};
   cursor: pointer;
   flex-shrink: 0;
   position: relative;
   border-radius: 2px;
+  transition: all 0.2s;
 
   &:checked {
-    background: ${COLORS.black};
-    border-color: ${COLORS.black};
+    background: ${COLORS.verdigris};
+    border-color: ${COLORS.verdigris};
   }
 
   &:checked::after {
     content: '';
     position: absolute;
-    top: 0.0625rem;
-    left: 0.25rem;
-    width: 0.25rem;
-    height: 0.5rem;
-    border: solid white;
-    border-width: 0 1.5px 1.5px 0;
+    top: 0.1rem;
+    left: 0.3rem;
+    width: 0.3rem;
+    height: 0.6rem;
+    border: solid ${COLORS.bone};
+    border-width: 0 2px 2px 0;
     transform: rotate(45deg);
   }
-
-  ${media.mobile`
-    width: 1.1rem;
-    height: 1.1rem;
-  `}
-`;
-
-const Radio = styled.input.attrs({ type: 'radio' })`
-  appearance: none;
-  width: 0.875rem;
-  height: 0.875rem;
-  border: 1.5px solid ${COLORS.border};
-  background: white;
-  cursor: pointer;
-  flex-shrink: 0;
-  position: relative;
-  border-radius: 50%;
-
-  &:checked {
-    border-color: ${COLORS.black};
-  }
-
-  &:checked::after {
-    content: '';
-    position: absolute;
-    top: 0.1875rem;
-    left: 0.1875rem;
-    width: 0.4375rem;
-    height: 0.4375rem;
-    border-radius: 50%;
-    background: ${COLORS.black};
-  }
-
-  ${media.mobile`
-    width: 1.1rem;
-    height: 1.1rem;
-  `}
 `;
 
 const ErrorMessage = styled.span`
-  color: ${COLORS.danger};
-  font-size: 0.6875rem;
-  margin-top: 0.25rem;
+  color: ${COLORS.red};
+  font-size: 0.75rem;
+  margin-top: 0.3rem;
   display: block;
-
-  ${media.mobile`
-    font-size: 0.75rem;
-  `}
+  font-family: 'Inter', sans-serif;
 `;
 
-const AlertBox = styled.div`
-  padding: 0.75rem 1rem;
-  border-radius: ${COLORS.radiusSm};
-  font-size: 0.8125rem;
-  font-weight: 500;
-  text-align: center;
-  margin-bottom: 1rem;
-  background: ${props => {
-    const type = props.type || 'info';
-    if (type === 'error') return COLORS.dangerLight;
-    if (type === 'success') return COLORS.successLight;
-    return COLORS.infoLight;
-  }};
-  color: ${props => {
-    const type = props.type || 'info';
-    if (type === 'error') return COLORS.danger;
-    if (type === 'success') return COLORS.success;
-    return COLORS.infoDark;
-  }};
-  border: 1px solid ${props => {
-    const type = props.type || 'info';
-    if (type === 'error') return 'rgba(239, 68, 68, 0.2)';
-    if (type === 'success') return 'rgba(16, 185, 129, 0.2)';
-    return 'rgba(59, 130, 246, 0.2)';
-  }};
-`;
-
-const SignatureWrapper = styled.div`
-  border: 1px solid ${COLORS.border};
-  border-radius: 2px;
-  padding: 1rem;
-  background: ${COLORS.bgField};
-
-  ${media.mobile`
-    padding: 0.625rem;
-  `}
-`;
-
-const SigCard = styled.div`
-  border: 1px solid ${COLORS.border};
-  border-radius: 3px;
-  overflow: hidden;
-`;
-
-const SigCardHead = styled.div`
-  background: ${COLORS.bgAccent};
-  padding: 0.3125rem 0.625rem;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: ${COLORS.gray};
-  border-bottom: 1px solid ${COLORS.borderLight};
-`;
-
-const SigCardBody = styled.div`
-  padding: 0.625rem;
-
-  ${media.mobile`
-    padding: 0.5rem;
-  `}
-`;
-
+// ─── Redesigned Signature Area Specifics ───
 const SigCanvasWrap = styled.div`
-  border: 1px dashed ${COLORS.border};
-  border-radius: 2px;
-  height: 5.625rem;
+  border: 1px solid ${COLORS.line};
+  border-bottom: 2px solid ${COLORS.ink};
+  border-radius: 4px 4px 0 0;
+  height: 12rem; 
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${COLORS.bgField};
+  background: ${COLORS.bone};
   cursor: crosshair;
   position: relative;
-  margin-bottom: 0.375rem;
+  margin-bottom: 0.5rem;
   overflow: hidden;
   width: 100%;
+  box-shadow: inset 0 1px 2px rgba(21, 23, 26, 0.03);
 
   & > canvas {
     width: 100% !important;
@@ -702,287 +520,344 @@ const SigCanvasWrap = styled.div`
     touch-action: none;
   }
 
-  ${media.mobile`
-    height: 9rem;
-  `}
+  @media (max-width: 1024px) {
+    height: 14rem; 
+  }
+  @media (max-width: 768px) {
+    height: 16rem; 
+  }
 `;
 
-const SigPlaceholder = styled.span`
+const SigGuideText = styled.div`
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 0.6875rem;
-  color: ${COLORS.lightGray};
-  font-style: italic;
+  bottom: 10px;
+  left: 15px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: ${COLORS.gray};
+  opacity: 0.4;
   pointer-events: none;
-  transition: opacity 0.2s;
+  user-select: none;
 `;
 
-const SigLine = styled.div`
-  border-bottom: 1px solid ${COLORS.dark};
-  height: 2.375rem;
-  margin-bottom: 0.25rem;
+const SignOffContainer = styled.div`
   position: relative;
+  margin-top: 2.5rem;
 `;
 
-const SigMetaRow = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.375rem;
+// ─── NEW Grid Layout: Signature on LEFT, Name/Date/Stamp on RIGHT ───
+const SignOffGrid = styled.div`
+  display: grid;
+  grid-template-columns: 2.5fr 1.5fr;
+  gap: 3rem;
+  align-items: end;
+  grid-template-areas: "sig right";
 
-  ${media.mobile`
-    flex-direction: column;
-    gap: 0.5rem;
-  `}
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "sig"
+      "right";
+    gap: 2.5rem;
+  }
+`;
+
+const GridSig = styled.div` grid-area: sig; min-width: 0; `;
+
+const GridRight = styled.div`
+  grid-area: right;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: relative; 
+  padding-bottom: 1.5rem;
+`;
+
+const GridName = styled.div` min-width: 0; position: relative; z-index: 1; `;
+const GridDate = styled.div` min-width: 0; position: relative; z-index: 1; `;
+
+// ─── Stamp Wrapper Overlapping Name & Date ───
+const StampWrapper = styled.div`
+  position: absolute;
+  bottom: 25px;
+  right: -15px;
+  width: 240px;
+  pointer-events: none;
+  transform: rotate(-12deg);
+  opacity: 0.92;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+  z-index: 10;
+
+  @media (max-width: 1024px) {
+    position: relative;
+    bottom: auto;
+    right: auto;
+    margin: 1rem auto 0;
+    transform: rotate(-6deg) scale(0.9);
+  }
 `;
 
 const ActionsContainer = styled.div`
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
   justify-content: flex-end;
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 0.5px solid ${COLORS.borderLight};
+  margin-top: 4rem;
+  padding-top: 2rem;
+  border-top: 1px solid ${COLORS.line};
   flex-wrap: wrap;
 
-  ${media.mobile`
+  @media (max-width: 768px) {
     flex-direction: column-reverse;
-    gap: 0.5rem;
-    margin-top: 1rem;
-    padding-top: 1rem;
-  `}
+    gap: 0.75rem;
+  }
 `;
 
 const PrimaryButton = styled.button`
-  background: ${COLORS.black};
-  color: ${COLORS.white};
+  background: ${COLORS.verdigris};
+  color: ${COLORS.bone};
   border: none;
-  border-radius: ${COLORS.radiusSm};
-  padding: 0.625rem 1.25rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
+  border-radius: 4px;
+  padding: 1rem 2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: ${COLORS.transition};
-  box-shadow: ${COLORS.shadowSm};
+  transition: all 0.2s ease;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 
   &:hover {
-    background: ${COLORS.dark};
+    background: ${COLORS.verdigrisDark};
     transform: translateY(-1px);
-    box-shadow: ${COLORS.shadowMd};
+    box-shadow: 0 4px 12px rgba(61, 79, 71, 0.2);
   }
 
   &:disabled {
-    background: ${COLORS.textMuted};
+    background: ${COLORS.gray};
     cursor: not-allowed;
+    opacity: 0.6;
     transform: none;
   }
 
-  ${media.mobile`
+  @media (max-width: 768px) {
     width: 100%;
-    padding: 0.85rem 1.25rem;
-    font-size: 0.9rem;
-  `}
+  }
 `;
 
-const SecondaryButton = styled.button`
-  background: ${COLORS.surface};
-  color: ${COLORS.text};
-  border: 1px solid ${COLORS.border};
-  border-radius: ${COLORS.radiusSm};
-  padding: 0.625rem 1.25rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
+// ─── Gold Button (Back to Reception) ───
+const GoldButton = styled.button`
+  background: linear-gradient(135deg, ${COLORS.gold} 0%, ${COLORS.goldDark} 100%);
+  color: ${COLORS.ink};
+  border: 1px solid ${COLORS.goldDark};
+  border-radius: 4px;
+  padding: 1rem 2rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: ${COLORS.transition};
+  transition: all 0.2s ease;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(201, 162, 39, 0.25);
 
   &:hover {
-    background: ${COLORS.bg};
-    border-color: ${COLORS.textSecondary};
+    background: linear-gradient(135deg, ${COLORS.goldDark} 0%, ${COLORS.gold} 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(201, 162, 39, 0.4);
+    color: ${COLORS.white};
   }
 
-  ${media.mobile`
+  &:disabled {
+    background: ${COLORS.gray};
+    color: ${COLORS.bone};
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+  }
+
+  @media (max-width: 768px) {
     width: 100%;
-    padding: 0.85rem 1.25rem;
-    font-size: 0.9rem;
-  `}
+  }
 `;
 
-const HighlightRow = styled.div`
-  background: ${COLORS.bgAccent};
-  padding: 0.5rem 0.625rem;
-  border-radius: 2px;
-  margin-bottom: 0.5rem;
+// ─── Black Button (Clear Form) ───
+const BlackButton = styled.button`
+  background: ${COLORS.ink};
+  color: ${COLORS.bone};
+  border: 1px solid ${COLORS.ink};
+  border-radius: 4px;
+  padding: 1rem 2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(21, 23, 26, 0.2);
+
+  &:hover {
+    background: #2a2d31;
+    border-color: #2a2d31;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(21, 23, 26, 0.35);
+  }
+
+  &:disabled {
+    background: ${COLORS.gray};
+    border-color: ${COLORS.gray};
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
+`;
+
+const SecondaryButton = styled.button`
+  background: transparent;
+  color: ${COLORS.ink};
+  border: 1px solid ${COLORS.lineDark};
+  border-radius: 4px;
+  padding: 1rem 2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  &:hover {
+    background: ${COLORS.ink};
+    color: ${COLORS.bone};
+    border-color: ${COLORS.ink};
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
 const LegalBlock = styled.div`
-  padding: 0.75rem 0.875rem;
-  background: ${COLORS.bgSection};
-  border: 1px solid ${COLORS.borderLight};
-  border-left: 3px solid ${COLORS.black};
-  border-radius: 0 3px 3px 0;
-  margin-bottom: 0.625rem;
-
-  ${media.mobile`
-    padding: 0.625rem 0.75rem;
-  `}
+  padding: 0;
+  margin-bottom: 2rem;
 `;
 
 const LegalText = styled.p`
-  font-size: 0.6875rem;
-  line-height: 1.65;
-  color: ${COLORS.mid};
-  margin-bottom: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: ${COLORS.gray};
+  margin-bottom: 1rem;
+  text-align: justify;
 
-  &:last-child {
-    margin-bottom: 0;
+  &:last-child { margin-bottom: 0; }
+  strong { color: ${COLORS.ink}; font-weight: 600; }
+`;
+
+// ─── ID Scan Row ────────────────────────────────────────────────────
+const ScanRow = styled.div`
+  display: flex;
+  width: 100%;
+  border: 1px solid ${COLORS.line};
+  border-radius: 4px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  background: ${COLORS.bone};
+  box-shadow: inset 0 1px 2px rgba(21, 23, 26, 0.03);
+  
+  &:focus-within {
+    border-color: ${COLORS.ink};
+    background: ${COLORS.white};
+    box-shadow: 0 0 0 3px rgba(21, 23, 26, 0.08), inset 0 1px 2px rgba(21, 23, 26, 0.03);
   }
 
-  ${media.mobile`
-    font-size: 0.8rem;
-    line-height: 1.6;
-  `}
-`;
+  &:has(input:not(:placeholder-shown)) {
+    border-color: ${COLORS.brassLight};
+    background: ${COLORS.white};
+  }
 
-const NoticeBar = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-  padding: 0.5rem 0.625rem;
-  background: #fff9f0;
-  border: 1px solid #f0e0c0;
-  border-radius: 2px;
-  margin-bottom: 0.75rem;
-
-  ${media.mobile`
-    padding: 0.625rem 0.75rem;
-  `}
-`;
-
-const NoticeBarText = styled.div`
-  font-size: 0.6875rem;
-  color: ${COLORS.mid};
-  line-height: 1.5;
-
-  ${media.mobile`
-    font-size: 0.8rem;
-    line-height: 1.55;
-  `}
-`;
-
-const Footer = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 0.5rem;
-  border-top: 0.5px solid ${COLORS.borderLight};
-  margin-top: auto;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-
-  ${media.mobile`
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-  `}
-`;
-
-const FooterLeft = styled.div`
-  font-size: 0.5625rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: ${COLORS.lightGray};
-
-  ${media.mobile`
-    font-size: 0.65rem;
-  `}
-`;
-
-const FooterRight = styled.div`
-  font-size: 0.5625rem;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: ${COLORS.lightGray};
-
-  ${media.mobile`
-    font-size: 0.65rem;
-  `}
+  input {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    flex: 1;
+    background: transparent;
+    
+    &:focus {
+      box-shadow: none;
+      background: transparent;
+    }
+    &:not(:placeholder-shown) {
+      border: none;
+      background: transparent;
+    }
+  }
 `;
 
 const ScanButton = styled.button`
-  height: 1.75rem;
-  padding: 0 0.75rem;
-  font-size: 0.6875rem;
+  height: auto;
+  padding: 0 1.25rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: ${COLORS.gray};
-  background: ${COLORS.bgField};
-  border: 1px solid ${COLORS.border};
-  border-radius: 2px;
+  color: ${COLORS.ink};
+  background: ${COLORS.bone2};
+  border: none;
+  border-left: 1px solid ${COLORS.line};
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.3125rem;
-  transition: all 0.15s;
-  font-family: 'Source Sans 3', sans-serif;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
   white-space: nowrap;
   flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 
   &:hover {
-    color: ${COLORS.dark};
-    border-color: ${COLORS.black};
+    background: ${COLORS.ink};
+    color: ${COLORS.bone};
   }
-
-  ${media.mobile`
-    height: 2.25rem;
-    font-size: 0.75rem;
-    padding: 0 0.875rem;
-  `}
-`;
-
-const ScanRow = styled.div`
-  display: flex;
-  gap: 0.5rem;
-
-  ${media.mobile`
-    flex-direction: column;
-    gap: 0.4rem;
-  `}
 `;
 
 const ClearSigButton = styled.button`
-  font-size: 0.6875rem;
+  font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: ${COLORS.gray};
   background: none;
-  border: 1px solid ${COLORS.borderLight};
-  border-radius: 2px;
-  padding: 0.125rem 0.5rem;
+  border: none;
+  padding: 0.25rem 0;
   cursor: pointer;
-  transition: all 0.15s;
-  font-family: 'Source Sans 3', sans-serif;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
 
   &:hover {
-    color: ${COLORS.dark};
-    border-color: ${COLORS.border};
+    color: ${COLORS.red};
   }
-
-  ${media.mobile`
-    font-size: 0.75rem;
-    padding: 0.25rem 0.75rem;
-  `}
 `;
 
 const IDScannerModalWrap = styled.div`
@@ -992,15 +867,130 @@ const IDScannerModalWrap = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.6);
+  background: rgba(21,23,26,0.8);
+  backdrop-filter: blur(4px);
   padding: 1rem;
 
-  & > * {
-    max-width: 100%;
-    max-height: 100%;
+  & > * { max-width: 100%; max-height: 100%; }
+`;
+
+// ─── Official Footer & Barcode Panel ───────────────────────────────
+const FooterPanel = styled.div`
+  background: ${COLORS.bone2};
+  border-top: 1px solid ${COLORS.line};
+  padding: 3rem 4rem; 
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    padding: 2rem 1.5rem;
+    text-align: center;
   }
 `;
 
+const FooterText = styled.div`
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: ${COLORS.gray};
+  font-family: 'JetBrains Mono', monospace;
+  text-align: left;
+  line-height: 1.6;
+  
+  @media (max-width: 768px) {
+    text-align: center;
+  }
+`;
+
+// ─── bwip-js Barcode Component ─────────────────────────────────────
+const Barcode = ({ value }) => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      try {
+        const text = value || 'AWAITING-ID';
+        bwipjs.toCanvas(canvasRef.current, {
+          bcid: 'code128',      
+          text: text,           
+          scale: 4,             
+          height: 10,           
+          includetext: true,    
+          textxalign: 'center', 
+          textsize: 13,         
+          paddingwidth: 10,
+          paddingheight: 5,
+        });
+      } catch (e) {
+        console.error("Barcode generation error:", e);
+      }
+    }
+  }, [value]);
+
+  return <canvas ref={canvasRef} style={{ width: '100%', maxWidth: '250px', height: 'auto' }} />;
+};
+
+// ─── Success Modal Components ──────────────────────────────────────
+const SuccessOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(21, 23, 26, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: ${keyframes`from { opacity: 0; } to { opacity: 1; }`} 0.2s ease-out;
+`;
+
+const SuccessCard = styled.div`
+  background: ${COLORS.white};
+  border-radius: 12px;
+  padding: 3rem;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  animation: ${keyframes`from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; }`} 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+`;
+
+const SuccessIconWrap = styled.div`
+  width: 80px;
+  height: 80px;
+  background: ${COLORS.bone2};
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  color: ${COLORS.verdigris};
+`;
+
+const SuccessTitle = styled.h2`
+  font-family: 'Fraunces', serif;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: ${COLORS.ink};
+  margin: 0 0 0.5rem;
+`;
+
+const SuccessText = styled.p`
+  font-size: 0.95rem;
+  color: ${COLORS.gray};
+  margin: 0 0 2rem;
+  line-height: 1.6;
+`;
+
+const SuccessActions = styled.div`
+  display: flex;
+  gap: 1rem;
+  flex-direction: column;
+`;
 
 const DeceasedRegistrationForm = () => {
     const navigate = useNavigate();
@@ -1025,9 +1015,24 @@ const DeceasedRegistrationForm = () => {
     const [errors, setErrors] = useState({});
     const [message, setMessage] = useState({ type: '', text: '' });
     const [showSuccess, setShowSuccess] = useState(false);
+    const [registeredName, setRegisteredName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showIdScanner, setShowIdScanner] = useState(false);
     const [admissionId, setAdmissionId] = useState('');
+
+    /* ---------- USE LOCALSTORAGE ONLY FOR TENANT BRANDING ---------- */
+    const branding = useMemo(() => resolveTenantBranding(), []);
+    
+    const {
+      name: tenantName,
+      displayPhone,
+      displayEmail,
+      displayLocation,
+      tenantCountry,
+      displayBranch,
+      tenantLogoUrl,
+      fallback
+    } = branding;
 
     /* ---------- Helpers ---------- */
     const getLoggedInUserEmail = () => {
@@ -1039,7 +1044,6 @@ const DeceasedRegistrationForm = () => {
         }
     };
 
-    // Auto-generate current time in HH:MM (24h) — hidden from UI
     const getCurrentTime = () => {
         const now = new Date();
         const hours = String(now.getHours()).padStart(2, '0');
@@ -1050,12 +1054,11 @@ const DeceasedRegistrationForm = () => {
     const initialFormData = {
         admission_number: location.state?.permitNumber || '',
         date_admitted: new Date().toISOString().split('T')[0],
-        // Auto-generated, hidden from UI
         time_received: getCurrentTime(),
         full_name: '',
         gender: '',
         age: '',
-        date_of_birth: '',
+        date_of_birth: '', 
         date_of_death: '',
         cause_of_death: '',
         body_status: '',
@@ -1069,7 +1072,6 @@ const DeceasedRegistrationForm = () => {
         received_from: '',
         receiving_officer: '',
         signature: '',
-        // Hidden from UI but still sent to backend
         verified_by: getLoggedInUserEmail(),
         permit_number: '',
         belongings_description: '',
@@ -1078,12 +1080,10 @@ const DeceasedRegistrationForm = () => {
 
     const [formData, setFormData] = useState(initialFormData);
 
-    // Refresh time_received right before submit to ensure freshness (still hidden)
     useEffect(() => {
         setFormData(prev => ({ ...prev, time_received: getCurrentTime() }));
     }, []);
 
-    // Fetch admission number when gender changes
     useEffect(() => {
         if (!formData.gender) return;
 
@@ -1133,12 +1133,10 @@ const DeceasedRegistrationForm = () => {
         if (!formData.gender) newErrors.gender = 'Gender is required';
         if (!formData.date_admitted) newErrors.date_admitted = 'Date admitted is required';
 
-        // Email validation
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
             newErrors.email = 'Please enter a valid email address';
         }
 
-        // Phone validation (Kenyan format)
         if (formData.tel_number && !/^(\+254|0)[17]\d{8}$/.test(formData.tel_number.replace(/\s/g, ''))) {
             newErrors.tel_number = 'Please enter a valid Kenyan phone number (e.g., +254712345678 or 0712345678)';
         }
@@ -1166,7 +1164,6 @@ const DeceasedRegistrationForm = () => {
             const token = getAuthToken();
             const signatureData = sigPadRef1.current?.toDataURL();
 
-            // Re-capture fresh time at submission moment (hidden from UI)
             const freshTime = getCurrentTime();
 
             const payload = {
@@ -1210,9 +1207,9 @@ const DeceasedRegistrationForm = () => {
                 throw new Error(result.message || 'Registration failed');
             }
 
-            toast.success(`Successfully registered: ${formData.full_name}`);
+            setRegisteredName(formData.full_name);
+            setShowSuccess(true);
 
-            // Reset form for next registration
             setFormData({
                 ...initialFormData,
                 verified_by: getLoggedInUserEmail(),
@@ -1270,8 +1267,8 @@ const DeceasedRegistrationForm = () => {
         return (
             <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <div style={{ textAlign: 'center' }}>
-                    <Loader2 size={48} color={COLORS.black} className="animate-spin" />
-                    <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: COLORS.gray }}>Registering deceased...</p>
+                    <Loader2 size={48} color={COLORS.ink} className="animate-spin" />
+                    <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Inter', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Processing Document...</p>
                 </div>
             </Container>
         );
@@ -1279,50 +1276,67 @@ const DeceasedRegistrationForm = () => {
 
     return (
         <Container>
-            <ToastContainer position="top-right" />
+            <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+                limit={3}
+            />
 
-            <Page>
-                {/* Top Bar */}
-                <TopBar>
-                    <TopBarLeft>
-                        <SaasBrand >Welcome &amp; We are deeply sorry for your loss.</SaasBrand>
-                        <Title>Admission Information</Title>
-                        <Subtitle>Please provide the information needed to begin the admission process.</Subtitle>
-                    </TopBarLeft>
-                    <TopBarRight>
-                        <AdmissionIdBlock>
-                            <AdmissionIdLabel>FILE ID / ADM </AdmissionIdLabel>
-                            <AdmissionIdValue>
-                                {loadingAdmission ? (
-                                    <span style={{ fontSize: '0.75rem', color: COLORS.gray }}>Generating...</span>
-                                ) : (
-                                    admissionId || 'Select gender to generate'
+            <FormSheet>
+                <Watermark>OFFICIAL RECORD</Watermark>
+
+                <ContentWrapper>
+                    <Letterhead>
+                        <BrandLeftWrapper>
+                            <LogoBox>
+                                {tenantLogoUrl && (
+                                    <img 
+                                        src={tenantLogoUrl} 
+                                        alt={tenantName} 
+                                        onError={(e) => { e.target.style.display = 'none'; }} 
+                                    />
                                 )}
-                            </AdmissionIdValue>
-                        </AdmissionIdBlock>
-                        <TopMeta>
-                            <TopMetaItem>
-                                <TopMetaLabel>Date</TopMetaLabel>
-                                <TopMetaValue>{formData.date_admitted}</TopMetaValue>
-                            </TopMetaItem>
-                        </TopMeta>
-                    </TopBarRight>
-                </TopBar>
+                            </LogoBox>
+                            <BrandDetails>
+                                <BrandName>{tenantName}</BrandName>
+                                {displayLocation && (
+                                    <BrandMeta><MapPin size={12} /> {displayBranch ? `${displayBranch} · ` : ''}{displayLocation}{tenantCountry ? `, ${tenantCountry}` : ''}</BrandMeta>
+                                )}
+                                <BrandMeta><Phone size={12} /> {displayPhone || fallback.phone}{displayEmail ? ` · ${displayEmail}` : fallback.email ? ` · ${fallback.email}` : ''}</BrandMeta>
+                            </BrandDetails>
+                        </BrandLeftWrapper>
+                        
+                        <BrandRightWrapper>
+                            <DocTitle>Intake Record</DocTitle>
+                            <BarcodeWrapper>
+                                <Barcode value={admissionId} />
+                                <FileIdText>
+                                    File ID: 
+                                    <span>
+                                        {loadingAdmission ? 'Generating...' : (admissionId || 'Select gender ')}
+                                    </span>
+                                </FileIdText>
+                            </BarcodeWrapper>
+                        </BrandRightWrapper>
+                    </Letterhead>
 
-                <SubLine>
-                    <span>Confidential Medical-Legal Record</span>
-                    <span>This document constitutes an official intake record</span>
-                </SubLine>
-
-                <form onSubmit={handleSubmit} noValidate>
-                    {/* Section 1: Admission Details */}
-                    <Section>
-                        <SectionHead>
-                            <SectionNum>01</SectionNum>
-                            <SectionTitle>Admission Details</SectionTitle>
-                        </SectionHead>
-                        <SectionBody>
-                            <HighlightRow>
+                    <FormBody>
+                        <form onSubmit={handleSubmit} noValidate>
+                            {/* Section 1 */}
+                            <Section>
+                                <SectionHead>
+                                    <SectionNum>01</SectionNum>
+                                    <SectionTitle>Admission Details</SectionTitle>
+                                </SectionHead>
+                                
                                 <Row>
                                     <Col2>
                                         <Label>Admission Number</Label>
@@ -1346,385 +1360,383 @@ const DeceasedRegistrationForm = () => {
                                         {errors.date_admitted && <ErrorMessage>{errors.date_admitted}</ErrorMessage>}
                                     </Col>
                                 </Row>
-                            </HighlightRow>
-                            <Row>
-                                <Col>
-                                    <Label>Permit Number</Label>
-                                    <Input
-                                        type="text"
-                                        name="permit_number"
-                                        value={formData.permit_number}
-                                        onChange={handleChange}
-                                        placeholder="Permit/Reference Number"
-                                    />
-                                </Col>
-                                <Col>
-                                    <Label>Received From (Facility Name / Person)</Label>
-                                    <Input
-                                        type="text"
-                                        name="received_from"
-                                        value={formData.received_from}
-                                        onChange={handleChange}
-                                        placeholder="Hospital, Home, Police, Other"
-                                    />
-                                </Col>
-                                <Col>
-                                    <Label>Admitting Officer</Label>
-                                    <Input
-                                        type="text"
-                                        name="receiving_officer"
-                                        value={formData.receiving_officer}
-                                        onChange={handleChange}
-                                        placeholder="Officer / Staff Name"
-                                    />
-                                </Col>
-                            </Row>
-                        </SectionBody>
-                    </Section>
-
-                    {/* Section 2: Deceased Information */}
-                    <Section>
-                        <SectionHead>
-                            <SectionNum>02</SectionNum>
-                            <SectionTitle>   About Your Loved One / Personal Information</SectionTitle>
-                        </SectionHead>
-                        <SectionBody>
-                            <Row>
-                                <Col2>
-                                    <Label>Full Legal Name of Deceased <span style={{ color: COLORS.red }}>*</span></Label>
-                                    <InputLg
-                                        type="text"
-                                        name="full_name"
-                                        value={formData.full_name}
-                                        onChange={handleChange}
-                                        placeholder="Last, First, Middle Name"
-                                    />
-                                    {errors.full_name && <ErrorMessage>{errors.full_name}</ErrorMessage>}
-                                </Col2>
-                                <Col05>
-                                    <Label>Age</Label>
-                                    <Input
-                                        type="number"
-                                        name="age"
-                                        value={formData.age}
-                                        onChange={handleChange}
-                                        placeholder="Yrs"
-                                        min="0"
-                                        max="150"
-                                    />
-                                </Col05>
-                                <Col05>
-                                    <Label>Sex <span style={{ color: COLORS.red }}>*</span></Label>
-                                    <Select
-                                        name="gender"
-                                        value={formData.gender}
-                                        onChange={handleChange}
-                                    >
-                                        <option value="" disabled>Select</option>
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                    </Select>
-                                    {errors.gender && <ErrorMessage>{errors.gender}</ErrorMessage>}
-                                </Col05>
-                            </Row>
-                            <Row>
-                                <Col>
-                                    <Label>Date of Birth</Label>
-                                    <Input
-                                        type="date"
-                                        name="date_of_birth"
-                                        value={formData.date_of_birth}
-                                        onChange={handleChange}
-                                    />
-                                </Col>
-                                <Col>
-                                    <Label>Date of Death</Label>
-                                    <Input
-                                        type="date"
-                                        name="date_of_death"
-                                        value={formData.date_of_death}
-                                        onChange={handleChange}
-                                    />
-                                </Col>
-                            </Row>
-                            <Row>
-                                <Col2>
-                                    <Label>Place of Death</Label>
-                                    <Input
-                                        type="text"
-                                        name="place_of_death"
-                                        value={formData.place_of_death}
-                                        onChange={handleChange}
-                                        placeholder="Facility Name, Address, or Residence"
-                                    />
-                                </Col2>
-                            </Row>
-                            <Row>
-                                <Col2>
-                                    <Label>Cause of Death</Label>
-                                    <TextArea
-                                        name="cause_of_death"
-                                        value={formData.cause_of_death}
-                                        onChange={handleChange}
-                                        placeholder="Preliminary cause if known — clinical notes, pending autopsy, etc."
-                                        rows="2"
-                                    />
-                                </Col2>
-                            </Row>
-                            <Row>
-                                <Col>
-                                    <Label>Body Status (Optional)</Label>
-                                    <Input
-                                        type="text"
-                                        name="body_status"
-                                        value={formData.body_status}
-                                        onChange={handleChange}
-                                        placeholder="e.g. In Morgue, Pending Autopsy, etc."
-                                    />
-                                </Col>
-                            </Row>
-                        </SectionBody>
-                    </Section>
-
-                    {/* Section 3: Contact & ID */}
-                    <Section>
-                        <SectionHead>
-                            <SectionNum>03</SectionNum>
-                            <SectionTitle>Next of Kin — Contact &amp; Identification</SectionTitle>
-                        </SectionHead>
-                        <SectionBody>
-                            <Row>
-                                <Col2>
-                                    <Label>Next of Kin Full Name</Label>
-                                    <Input
-                                        type="text"
-                                        name="contact_person"
-                                        value={formData.contact_person}
-                                        onChange={handleChange}
-                                        placeholder="Last, First, Middle"
-                                    />
-                                </Col2>
-                                <Col>
-                                    <Label>Relationship to Deceased</Label>
-                                    <Input
-                                        type="text"
-                                        name="relationship"
-                                        value={formData.relationship}
-                                        onChange={handleChange}
-                                        placeholder="Spouse, Child, Parent, Sibling, etc."
-                                    />
-                                </Col>
-                            </Row>
-                            <Row>
-                                <Col15>
-                                    <Label>ID Number (Government-Issued)</Label>
-                                    <ScanRow>
+                                <Row>
+                                    <Col>
+                                        <Label>Permit Number</Label>
                                         <Input
                                             type="text"
-                                            name="id_number"
-                                            value={formData.id_number}
+                                            name="permit_number"
+                                            value={formData.permit_number}
                                             onChange={handleChange}
-                                            placeholder="National ID / Passport / Driver's License No."
-                                            style={{ flex: 1 }}
+                                            placeholder="Permit/Reference Number"
                                         />
-                                        <ScanButton
-                                            type="button"
-                                            onClick={() => setShowIdScanner(true)}
-                                            disabled={loading}
-                                        >
-                                            <ScanBarcode size={13} />
-                                            Scan ID
-                                        </ScanButton>
-                                    </ScanRow>
-                                </Col15>
-                                <Col06>
-                                    <Label>ID Type</Label>
-                                    <Select
-                                        name="id_type"
-                                        value={formData.id_type}
-                                        onChange={handleChange}
-                                    >
-                                        <option value="" disabled>Select</option>
-                                        <option value="national-id">National ID</option>
-                                        <option value="passport">Passport</option>
-                                        <option value="voters-card">Voter's Card</option>
-                                        <option value="other">Other</option>
-                                    </Select>
-                                </Col06>
-                            </Row>
-                            <Row>
-                                <Col>
-                                    <Label>Telephone Number</Label>
-                                    <Input
-                                        type="tel"
-                                        name="tel_number"
-                                        value={formData.tel_number}
-                                        onChange={handleChange}
-                                        placeholder="+254 7XX XXX XXX"
-                                    />
-                                    {errors.tel_number && <ErrorMessage>{errors.tel_number}</ErrorMessage>}
-                                </Col>
-                                <Col>
-                                    <Label>Alternative Phone</Label>
-                                    <Input
-                                        type="tel"
-                                        name="alternative_phone"
-                                        value={formData.alternative_phone}
-                                        onChange={handleChange}
-                                        placeholder="+254 7XX XXX XXX"
-                                    />
-                                    {errors.alternative_phone && <ErrorMessage>{errors.alternative_phone}</ErrorMessage>}
-                                </Col>
-                                <Col06>
-                                    <Label>Email</Label>
-                                    <Input
-                                        type="email"
-                                        name="email"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        placeholder="email@example.com"
-                                    />
-                                    {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
-                                </Col06>
-                            </Row>
-                        </SectionBody>
-                    </Section>
-
-                    {/* Section 4: Belongings */}
-                    <Section>
-                        <SectionHead>
-                            <SectionNum>04</SectionNum>
-                            <SectionTitle>Personal Effects &amp; Valuables Inventory</SectionTitle>
-                        </SectionHead>
-                        <SectionBody>
-                            <CheckGrid style={{ marginBottom: '0.5rem' }}>
-                                <CheckItem><Checkbox type="checkbox" /> Wallet / Purse</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> Mobile Phone</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> Jewelry</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> Watch</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> Keys</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> Clothing</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> Eyewear</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> Dentures</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> Prosthetics</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> Medical Devices</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> Cash / Currency</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> Documents</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> None</CheckItem>
-                                <CheckItem><Checkbox type="checkbox" /> Other (specify below)</CheckItem>
-                            </CheckGrid>
-                            <Row>
-                                <Col2>
-                                    <Label>Detailed Description / Additional Items</Label>
-                                    <TextArea
-                                        name="belongings_description"
-                                        value={formData.belongings_description}
-                                        onChange={handleChange}
-                                        placeholder="List all items with description, quantity, and estimated value if applicable..."
-                                        rows="2"
-                                    />
-                                </Col2>
-                            </Row>
-                        </SectionBody>
-                    </Section>
-
-                    {/* Section 5: Declaration */}
-                    <Section>
-                        <SectionHead>
-                            <SectionNum>05</SectionNum>
-                            <SectionTitle>Declaration &amp; Authorization</SectionTitle>
-                        </SectionHead>
-                        <SectionBody>
-                            <LegalBlock>
-                                <LegalText>
-                                    <strong>DECLARATION:</strong> I, the undersigned, being the legally authorized next of kin or duly appointed representative of the above-named deceased, do hereby confirm that the information provided in this intake record is true, accurate, and complete to the best of my knowledge. I authorize the admission and temporary custody of the remains by this facility for the purpose of preparation, safekeeping, and eventual disposition in accordance with applicable laws.
-                                </LegalText>
-                                <LegalText>
-                                    <strong>LIABILITY:</strong> I understand that personal effects listed herein remain my responsibility to claim within thirty (30) days. Unclaimed items may be disposed of at the facility's discretion without further liability. I release the facility, its officers, employees, and agents from any claim arising from the handling, storage, or processing of the remains except in cases of proven gross negligence.
-                                </LegalText>
-                                <LegalText>
-                                    <strong>IDENTITY:</strong> I confirm that I have presented a valid government-issued identification document as noted in Section 03, and that I possess the legal authority to authorize this intake.
-                                </LegalText>
-                            </LegalBlock>
-                        </SectionBody>
-                    </Section>
-
-                    {/* Section 6: Signatures */}
-                    <Section>
-                        <SectionHead>
-                            <SectionNum>06</SectionNum>
-                            <SectionTitle>Signatures <span style={{ color: COLORS.red, fontWeight: 800 }}>*</span></SectionTitle>
-                        </SectionHead>
-                        <SectionBody>
-                            <SigCard>
-                                <SigCardHead>Authorized Signature</SigCardHead>
-                                <SigCardBody>
-                                    <SigCanvasWrap style={{ height: '8rem' }}>
-                                        <ReusableSignaturePad
-                                            ref={sigPadRef1}
-                                            penColor="#000080"
-                                            placeholder="Sign here"
-                                            showSave={false}
+                                    </Col>
+                                    <Col>
+                                        <Label>Received From</Label>
+                                        <Input
+                                            type="text"
+                                            name="received_from"
+                                            value={formData.received_from}
+                                            onChange={handleChange}
+                                            placeholder="Hospital, Home, Police, Other"
                                         />
-                                    </SigCanvasWrap>
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.375rem' }}>
-                                        <ClearSigButton
-                                            type="button"
-                                            onClick={() => sigPadRef1.current?.clear()}
+                                    </Col>
+                                    <Col>
+                                        <Label>Admitting Officer</Label>
+                                        <Input
+                                            type="text"
+                                            name="receiving_officer"
+                                            value={formData.receiving_officer}
+                                            onChange={handleChange}
+                                            placeholder="Officer / Staff Name"
+                                        />
+                                    </Col>
+                                </Row>
+                            </Section>
+
+                            {/* Section 2 */}
+                            <Section>
+                                <SectionHead>
+                                    <SectionNum>02</SectionNum>
+                                    <SectionTitle>Personal Information</SectionTitle>
+                                </SectionHead>
+                                
+                                <Row>
+                                    <Col2>
+                                        <Label>Full Legal Name of Deceased <span style={{ color: COLORS.red }}>*</span></Label>
+                                        <InputLg
+                                            type="text"
+                                            name="full_name"
+                                            value={formData.full_name}
+                                            onChange={handleChange}
+                                            placeholder="Last, First, Middle Name"
+                                        />
+                                        {errors.full_name && <ErrorMessage>{errors.full_name}</ErrorMessage>}
+                                    </Col2>
+                                    <Col05>
+                                        <Label>Age</Label>
+                                        <Input
+                                            type="number"
+                                            name="age"
+                                            value={formData.age}
+                                            onChange={handleChange}
+                                            placeholder="Yrs"
+                                            min="0"
+                                            max="150"
+                                        />
+                                    </Col05>
+                                    <Col05>
+                                        <Label>Sex <span style={{ color: COLORS.red }}>*</span></Label>
+                                        <Select
+                                            name="gender"
+                                            value={formData.gender}
+                                            onChange={handleChange}
                                         >
-                                            Clear
-                                        </ClearSigButton>
-                                    </div>
-                                </SigCardBody>
-                            </SigCard>
-                            {errors.signature && (
-                                <ErrorMessage style={{ marginTop: '0.5rem' }}>{errors.signature}</ErrorMessage>
-                            )}
-                        </SectionBody>
-                    </Section>
+                                            <option value="" disabled>Select</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                        </Select>
+                                        {errors.gender && <ErrorMessage>{errors.gender}</ErrorMessage>}
+                                    </Col05>
+                                </Row>
+                                <Row>
+                                    <Col2>
+                                        <Label>Date of Death</Label>
+                                        <Input
+                                            type="date"
+                                            name="date_of_death"
+                                            value={formData.date_of_death}
+                                            onChange={handleChange}
+                                        />
+                                    </Col2>
+                                </Row>
+                                <Row>
+                                    <Col2>
+                                        <Label>Place of Death</Label>
+                                        <Input
+                                            type="text"
+                                            name="place_of_death"
+                                            value={formData.place_of_death}
+                                            onChange={handleChange}
+                                            placeholder="Facility Name, Address, or Residence"
+                                        />
+                                    </Col2>
+                                </Row>
+                                <Row>
+                                    <Col2>
+                                        <Label>Cause of Death</Label>
+                                        <TextArea
+                                            name="cause_of_death"
+                                            value={formData.cause_of_death}
+                                            onChange={handleChange}
+                                            placeholder="Preliminary cause if known — clinical notes, pending autopsy, etc."
+                                            rows="2"
+                                        />
+                                    </Col2>
+                                </Row>
+                                <Row>
+                                    <Col>
+                                        <Label>Body Status (Optional)</Label>
+                                        <Input
+                                            type="text"
+                                            name="body_status"
+                                            value={formData.body_status}
+                                            onChange={handleChange}
+                                            placeholder="e.g. In Morgue, Pending Autopsy, etc."
+                                        />
+                                    </Col>
+                                </Row>
+                            </Section>
 
-                    {/* Notice */}
-                    <NoticeBar>
-                        <div style={{ flexShrink: 0, width: '0.875rem', height: '0.875rem', marginTop: '0.0625rem' }}>
-                            <AlertCircle size={14} />
-                        </div>
-                        <NoticeBarText>
-                            <strong>Notice:</strong> Signature is mandatory to complete intake. This document must be retained in the deceased's permanent file for a minimum of five (5) years as required by law. A copy shall be provided to the authorizing party upon request.
-                        </NoticeBarText>
-                    </NoticeBar>
+                            {/* Section 3 */}
+                            <Section>
+                                <SectionHead>
+                                    <SectionNum>03</SectionNum>
+                                    <SectionTitle>Next of Kin — Contact & Identification</SectionTitle>
+                                </SectionHead>
+                                
+                                <Row>
+                                    <Col2>
+                                        <Label>Next of Kin Full Name</Label>
+                                        <Input
+                                            type="text"
+                                            name="contact_person"
+                                            value={formData.contact_person}
+                                            onChange={handleChange}
+                                            placeholder="Last, First, Middle"
+                                        />
+                                    </Col2>
+                                    <Col>
+                                        <Label>Relationship to Deceased</Label>
+                                        <Input
+                                            type="text"
+                                            name="relationship"
+                                            value={formData.relationship}
+                                            onChange={handleChange}
+                                            placeholder="Spouse, Child, Parent, Sibling, etc."
+                                        />
+                                    </Col>
+                                </Row>
+                                <Row>
+                                    <Col15>
+                                        <Label>ID Number (Government-Issued)</Label>
+                                        <ScanRow>
+                                            <Input
+                                                type="text"
+                                                name="id_number"
+                                                value={formData.id_number}
+                                                onChange={handleChange}
+                                                placeholder="National ID / Passport / Driver's License No."
+                                            />
+                                            <ScanButton
+                                                type="button"
+                                                onClick={() => setShowIdScanner(true)}
+                                                disabled={loading}
+                                            >
+                                                <ScanBarcode size={14} />
+                                                Scan
+                                            </ScanButton>
+                                        </ScanRow>
+                                    </Col15>
+                                    <Col06>
+                                        <Label>ID Type</Label>
+                                        <Select
+                                            name="id_type"
+                                            value={formData.id_type}
+                                            onChange={handleChange}
+                                        >
+                                            <option value="" disabled>Select</option>
+                                            <option value="national-id">National ID</option>
+                                            <option value="passport">Passport</option>
+                                            <option value="voters-card">Voter's Card</option>
+                                            <option value="other">Other</option>
+                                        </Select>
+                                    </Col06>
+                                </Row>
+                                <Row>
+                                    <Col>
+                                        <Label>Telephone Number</Label>
+                                        <Input
+                                            type="tel"
+                                            name="tel_number"
+                                            value={formData.tel_number}
+                                            onChange={handleChange}
+                                            placeholder="+254 7XX XXX XXX"
+                                        />
+                                        {errors.tel_number && <ErrorMessage>{errors.tel_number}</ErrorMessage>}
+                                    </Col>
+                                    <Col>
+                                        <Label>Alternative Phone</Label>
+                                        <Input
+                                            type="tel"
+                                            name="alternative_phone"
+                                            value={formData.alternative_phone}
+                                            onChange={handleChange}
+                                            placeholder="+254 7XX XXX XXX"
+                                        />
+                                        {errors.alternative_phone && <ErrorMessage>{errors.alternative_phone}</ErrorMessage>}
+                                    </Col>
+                                    <Col06>
+                                        <Label>Email</Label>
+                                        <Input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            placeholder="email@example.com"
+                                        />
+                                        {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
+                                    </Col06>
+                                </Row>
+                            </Section>
 
-                    {/* Actions */}
-                    <ActionsContainer style={{ justifyContent: 'flex-end' }}>
-                        <SecondaryButton type="button" onClick={() => navigate(`/tenant/${getTenantSlug()}/receptionist`)}>
-                            ← Back to Reception
-                        </SecondaryButton>
-                        <SecondaryButton type="button" onClick={handleClear} disabled={isSubmitting}>
-                            <RotateCcw size={15} /> Clear Form
-                        </SecondaryButton>
-                        <PrimaryButton type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 size={15} className="animate-spin" />
-                                    Processing...
-                                </>
-                            ) : (
-                                <>
-                                    <Check size={15} />
-                                    Register Deceased
-                                </>
-                            )}
-                        </PrimaryButton>
-                    </ActionsContainer>
-                </form>
+                            {/* Section 4 */}
+                            <Section>
+                                <SectionHead>
+                                    <SectionNum>04</SectionNum>
+                                    <SectionTitle>Personal Effects Inventory</SectionTitle>
+                                </SectionHead>
+                                
+                                <CheckGrid>
+                                    <CheckItem><Checkbox type="checkbox" /> Wallet / Purse</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> Mobile Phone</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> Jewelry</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> Watch</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> Keys</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> Clothing</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> Eyewear</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> Dentures</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> Prosthetics</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> Medical Devices</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> Cash / Currency</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> Documents</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> None</CheckItem>
+                                    <CheckItem><Checkbox type="checkbox" /> Other (specify below)</CheckItem>
+                                </CheckGrid>
+                                
+                                <Row style={{ marginTop: '1.5rem' }}>
+                                    <Col2>
+                                        <Label>Detailed Description / Additional Items</Label>
+                                        <TextArea
+                                            name="belongings_description"
+                                            value={formData.belongings_description}
+                                            onChange={handleChange}
+                                            placeholder="List all items with description, quantity, and estimated value if applicable..."
+                                            rows="2"
+                                        />
+                                    </Col2>
+                                </Row>
+                            </Section>
 
-                {/* Footer */}
-                <Footer>
-                    <FooterLeft>FuneralOS Intake Record — Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</FooterLeft>
-                    <FooterRight>Page 1 of 1 — Original</FooterRight>
-                </Footer>
-            </Page>
+                            {/* Section 5: Declaration & Sign-off */}
+                            <Section>
+                                <SectionHead>
+                                    <SectionNum>05</SectionNum>
+                                    <SectionTitle>Declaration & Sign-off</SectionTitle>
+                                </SectionHead>
+                                
+                                <LegalBlock>
+                                    <LegalText>
+                                        I, the undersigned, hereby certify that the information provided herein is true and accurate to the best of my knowledge. I authorize the temporary custody and preparation of the remains by this facility. I understand that personal effects listed above remain my responsibility to claim within thirty (30) days.
+                                    </LegalText>
+                                </LegalBlock>
+                                
+                                <SignOffContainer>
+                                    <SignOffGrid>
+                                        {/* ─── SIGNATURE ALONE ON THE LEFT ─── */}
+                                        <GridSig>
+                                            <Label>Authorized Signature <span style={{ color: COLORS.red }}>*</span></Label>
+                                            <SigCanvasWrap>
+                                                <SigGuideText>✕ Authorized Signature</SigGuideText>
+                                                <ReusableSignaturePad
+                                                    ref={sigPadRef1}
+                                                    penColor={COLORS.inkBlue} 
+                                                    minWidth={1.5}          
+                                                    maxWidth={3.5}          
+                                                    velocityFilterWeight={0.6} 
+                                                    placeholder="Sign here"
+                                                    showSave={false}
+                                                />
+                                            </SigCanvasWrap>
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                <ClearSigButton
+                                                    type="button"
+                                                    onClick={() => sigPadRef1.current?.clear()}
+                                                >
+                                                    Clear Signature
+                                                </ClearSigButton>
+                                            </div>
+                                        </GridSig>
 
-            {/* ID Scanner Modal */}
+                                        {/* ─── NAME, DATE, AND STAMP ON THE RIGHT ─── */}
+                                        <GridRight>
+                                            <GridName>
+                                                <Label>Printed Name</Label>
+                                                <InputLg
+                                                    type="text"
+                                                    value={formData.contact_person}
+                                                    readOnly
+                                                    placeholder="Auto-filled from Next of Kin"
+                                                />
+                                            </GridName>
+
+                                            <GridDate>
+                                                <Label>Date</Label>
+                                                <InputLg
+                                                    type="text"
+                                                    value={new Date().toLocaleDateString()}
+                                                    readOnly
+                                                />
+                                            </GridDate>
+
+                                            {/* Stamp overlapping the Name and Date inputs */}
+                                            <StampWrapper>
+                                                <OfficialStamp 
+                                                    tenantName={tenantName} 
+                                                    tenantPhone={displayPhone || fallback.phone} 
+                                                    tenantLocation={displayLocation || fallback.location} 
+                                                />
+                                            </StampWrapper>
+                                        </GridRight>
+                                    </SignOffGrid>
+                                </SignOffContainer>
+                                {errors.signature && <ErrorMessage style={{ marginTop: '0.5rem' }}>{errors.signature}</ErrorMessage>}
+                            </Section>
+
+                            {/* Actions */}
+                            <ActionsContainer>
+                                <GoldButton type="button" onClick={() => navigate(`/tenant/${getTenantSlug()}/receptionist`)}>
+                                    ← Back to Reception
+                                </GoldButton>
+                                <BlackButton type="button" onClick={handleClear} disabled={isSubmitting}>
+                                    <RotateCcw size={15} /> Clear Form
+                                </BlackButton>
+                                <PrimaryButton type="submit" disabled={isSubmitting}>
+                                    {isSubmitting ? (
+                                        <>
+                                            <Loader2 size={16} className="animate-spin" />
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Check size={16} />
+                                            Submit Registration
+                                        </>
+                                    )}
+                                </PrimaryButton>
+                            </ActionsContainer>
+                        </form>
+                    </FormBody>
+
+                    <FooterPanel>
+                        <FooterText>
+                            {tenantName} Intake Record — Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}<br/>
+                            Page 1 of 1 — Original Document
+                        </FooterText>
+                    </FooterPanel>
+                </ContentWrapper>
+            </FormSheet>
+
             {showIdScanner && (
                 <IDScannerModalWrap>
                     <IDScannerComponent
@@ -1735,8 +1747,30 @@ const DeceasedRegistrationForm = () => {
                     />
                 </IDScannerModalWrap>
             )}
+
+            {showSuccess && (
+                <SuccessOverlay>
+                    <SuccessCard>
+                        <SuccessIconWrap>
+                            <CheckCircle size={48} strokeWidth={1.5} />
+                        </SuccessIconWrap>
+                        <SuccessTitle>Record Registered Successfully</SuccessTitle>
+                        <SuccessText>
+                            The intake record for <strong style={{ color: COLORS.ink }}>{registeredName}</strong> has been successfully registered and securely saved in the system.
+                        </SuccessText>
+                        <SuccessActions>
+                            <PrimaryButton onClick={() => setShowSuccess(false)}>
+                                <Check size={16} /> Register Another Record
+                            </PrimaryButton>
+                            <GoldButton onClick={() => navigate(`/tenant/${getTenantSlug()}/receptionist`)}>
+                                ← Back to Reception
+                            </GoldButton>
+                        </SuccessActions>
+                    </SuccessCard>
+                </SuccessOverlay>
+            )}
         </Container>
     );
-}
+};
 
 export default DeceasedRegistrationForm;

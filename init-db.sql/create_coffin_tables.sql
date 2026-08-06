@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS stock_requests (
     quantity INT NOT NULL DEFAULT 1,
     client_name VARCHAR(255),
     client_phone VARCHAR(50),
-    deceased_name VARCHAR(255) NOT NULL,
+    deceased_name VARCHAR(255),
     service_date DATE,
     notes TEXT,
     specifications JSON,

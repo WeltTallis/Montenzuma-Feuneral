@@ -84,7 +84,16 @@ const genId = (id, plateNumber) => {
   return `BK-${baseId}${timestamp}`;
 };
 
-const getTenantSlug = () => localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug') || 'default';
+const getTenantSlug = () => {
+  const direct = localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug');
+  if (direct && direct !== 'default' && direct !== 'dashboard' && direct !== 'undefined' && direct !== 'null') return direct;
+  const parent = localStorage.getItem('parentTenantSlug');
+  if (parent && parent !== 'default' && parent !== 'dashboard' && parent !== 'undefined' && parent !== 'null') return parent;
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user.parentTenantSlug || user.tenantSlug || user.tenant?.slug || '';
+  } catch { return ''; }
+};
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken') || '';
   const headers = { 'x-tenant-slug': getTenantSlug() };
@@ -154,7 +163,7 @@ const Header = styled.div`
 `;
 
 const HeaderContent = styled.div`
-  max-width: 1400px;
+
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
@@ -276,7 +285,7 @@ const SecondaryButton = styled.button`
 `;
 
 const MainContent = styled.div`
-  max-width: 1400px;
+
   margin: 0 auto;
   padding: 1rem;
 
@@ -378,7 +387,7 @@ const FilterRow = styled.div`
 
 const SearchInput = styled.input`
   flex: 1;
-  min-width: 150px; 
+  max-width: 50%; 
   padding: 0.5rem 0.75rem;
   border: 1px solid ${COLORS.border};
   border-radius: ${COLORS.radiusSm};
@@ -1235,44 +1244,71 @@ const HearseBookings = () => {
           </StatCard>
         </StatsGrid>
 
-        {/* Filters */}
-        <FilterCard>
-          <FilterRow>
-            <SearchInput
-              type="text"
-              placeholder="Search client, ID, destination..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-            <Select value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)}>
-              <option value="">All Branches</option>
-              {branchOptions.map((b) => (<option key={b.branch_id} value={b.branch_id}>{b.branch_name}</option>))}
-              {branchOptions.length === 0 && <option value="">No branches</option>}
-            </Select>
-            <div style={{ display: 'flex', gap: '0.25rem' }}>
-              <ActionButton onClick={() => setViewMode('table')} style={{ background: viewMode === 'table' ? COLORS.primary : COLORS.surface, color: viewMode === 'table' ? COLORS.white : COLORS.textSecondary }}>
-                {Icons.list}
-              </ActionButton>
-              <ActionButton onClick={() => setViewMode('calendar')} style={{ background: viewMode === 'calendar' ? COLORS.primary : COLORS.surface, color: viewMode === 'calendar' ? COLORS.white : COLORS.textSecondary }}>
-                {Icons.grid}
-              </ActionButton>
-            </div>
-          </FilterRow>
+     <FilterCard>
+  <FilterRow>
+    <SearchInput
+      style={{ width: 50 }}
+      type="text"
+      placeholder="Search client, ID, destination..."
+      value={searchInput}
+      onChange={(e) => setSearchInput(e.target.value)}
+    />
 
-          <FilterRow $marginBottom="0.5rem">
-            <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="">All Statuses</option>
-              {STATUS_LIST.map((status) => {
-                const cfg = STATUS_CONFIG[status];
-                return (
-                  <option key={status} value={status}>
-                    {cfg?.label || status}
-                  </option>
-                );
-              })}
-            </Select>
-          </FilterRow>
-        </FilterCard>
+    <Select
+      value={filterBranch}
+      onChange={(e) => setFilterBranch(e.target.value)}
+    >
+      <option value="">All Branches</option>
+      {branchOptions.map((b) => (
+        <option key={b.branch_id} value={b.branch_id}>
+          {b.branch_name}
+        </option>
+      ))}
+      {branchOptions.length === 0 && <option value="">No branches</option>}
+    </Select>
+
+    <Select
+      value={filterStatus}
+      onChange={(e) => setFilterStatus(e.target.value)}
+    >
+      <option value="">All Statuses</option>
+      {STATUS_LIST.map((status) => {
+        const cfg = STATUS_CONFIG[status];
+        return (
+          <option key={status} value={status}>
+            {cfg?.label || status}
+          </option>
+        );
+      })}
+    </Select>
+
+    <div style={{ display: "flex", gap: "0.25rem" }}>
+      <ActionButton
+        onClick={() => setViewMode("table")}
+        style={{
+          background:
+            viewMode === "table" ? COLORS.primary : COLORS.surface,
+          color:
+            viewMode === "table" ? COLORS.white : COLORS.textSecondary,
+        }}
+      >
+        {Icons.list}
+      </ActionButton>
+
+      <ActionButton
+        onClick={() => setViewMode("calendar")}
+        style={{
+          background:
+            viewMode === "calendar" ? COLORS.primary : COLORS.surface,
+          color:
+            viewMode === "calendar" ? COLORS.white : COLORS.textSecondary,
+        }}
+      >
+        {Icons.grid}
+      </ActionButton>
+    </div>
+  </FilterRow>
+</FilterCard>
 
         {/* Main Content */}
         <TableCard>
@@ -1957,7 +1993,7 @@ const HearseBookings = () => {
                         if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(p => p - 1); }
                         else setPickerMonth(p => p - 1);
                       }}>
-                        ‹
+                        
                       </button>
                       <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
                         {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][pickerMonth]} {pickerYear}
@@ -1970,7 +2006,7 @@ const HearseBookings = () => {
                         if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(p => p + 1); }
                         else setPickerMonth(p => p + 1);
                       }}>
-                        ›
+                        
                       </button>
                     </div>
                     <div style={{

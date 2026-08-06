@@ -1,5 +1,4 @@
 import sharp from 'sharp';
-import { centralizedUploadService } from '../../../packages/shared-services/src/centralizedUploadService';
 
 /**
  * Process and save a signature buffer as an optimized image.
@@ -30,18 +29,15 @@ export async function processSignature(
         maxWidth = 600,
         maxHeight = 250,
         compressionLevel = 9, // Max compression for PNG
-        format = 'png'
+        format = 'png' // Always use PNG for signatures
     } = options || {};
 
-    // Step 1: Pre-process to enhance signature
+    // Step 1: Pre-process - DO NOT change colors, just slightly enhance quality
     let processedBuffer = await sharp(inputBuffer)
-        // Remove background noise
-        .threshold(128) // Convert to pure black/white (reduces size dramatically)
-        .normalize()
         .sharpen({
-            sigma: 1.2,
-            m1: 1.0,
-            m2: 0.5,
+            sigma: 0.8,
+            m1: 0.5,
+            m2: 0.2,
         })
         .toBuffer();
 
@@ -59,8 +55,6 @@ export async function processSignature(
                 quality: quality,
                 compressionLevel: compressionLevel,
                 adaptiveFiltering: true,
-                palette: true, // Reduce colors for smaller size
-                colours: 2, // Black and white only
             })
             .toBuffer();
     } else if (format === 'jpeg') {
@@ -99,24 +93,36 @@ export async function processSignature(
             .toBuffer();
     }
 
-    // Step 3: Upload to centralized storage
-    const result = await centralizedUploadService.uploadSignature(
-        finalBuffer,
-        `${filename}.${finalFormat}`,
-        tenantSlug || 'system',
-        {
-            quality: quality,
-            maxWidth: maxWidth,
-            maxHeight: maxHeight,
-            format: finalFormat,
-        }
-    );
-
-    if (!result.success) {
-        throw new Error(result.error || 'Failed to upload signature');
-    }
-
-    return result.urlPath;
+    // Step 3: Save PNG directly to global uploads folder
+    // IMPORTANT: Always use PNG format for signatures
+    // We write directly to avoid the uploads-service converting to webp
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    // Get global uploads directory from environment or use default
+    const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || 'C:\\Users\\User\\Downloads\\uploads';
+    const signatureDir = path.join(globalUploadsDir, tenantSlug || 'system', 'signatures');
+    
+    // Ensure directory exists
+    await fs.promises.mkdir(signatureDir, { recursive: true });
+    
+    // Save the PNG file
+    const pngFilename = `${filename}.png`;
+    const fullPath = path.join(signatureDir, pngFilename);
+    await fs.promises.writeFile(fullPath, finalBuffer);
+    
+    // Create the URL path (relative path for database storage)
+    const urlPath = `/uploads/${tenantSlug || 'system'}/signatures/${pngFilename}`;
+    
+    console.log('[UPLOAD SIGNATURE] Saved PNG directly:', {
+        filename: pngFilename,
+        path: fullPath,
+        urlPath: urlPath,
+        size: finalBuffer.length,
+        mimeType: 'image/png'
+    });
+    
+    return urlPath;
 }
 
 /**

@@ -2,10 +2,53 @@ import axios from 'axios';
 import { ENDPOINTS } from './endpoints';
 import env from '../utils/config/env';
 
-// Base instance
+// ─── Refresh Queue ──────────────────────────────────────────────────────────
+// Prevents multiple concurrent refresh attempts when multiple requests fail
+// simultaneously with 401. All failed requests are queued and retried once
+// the refresh completes (or rejected if refresh fails).
+let isRefreshing = false;
+let refreshSubscribers = [];
+
+const subscribeTokenRefresh = (callback) => {
+  refreshSubscribers.push(callback);
+};
+
+const onTokenRefreshed = (token) => {
+  refreshSubscribers.map(callback => callback(token));
+  refreshSubscribers = [];
+};
+
+const onTokenRefreshFailed = () => {
+  refreshSubscribers = [];
+};
+
+// ─── Auth Event Dispatch ────────────────────────────────────────────────────
+// Dispatches a custom event that AuthContext listens for to trigger logout.
+// This avoids using alert() and provides a clean way to handle auth state.
+const dispatchAuthEvent = (eventType, detail = {}) => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('auth-event', {
+      detail: { type: eventType, ...detail }
+    }));
+  }
+};
+
+// ─── Clear Auth Storage ─────────────────────────────────────────────────────
+const clearAuthStorage = () => {
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('token');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  sessionStorage.removeItem('authToken');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('refreshToken');
+  sessionStorage.removeItem('user');
+};
+
+// ─── Base Instance ──────────────────────────────────────────────────────────
 const api = axios.create({
   baseURL: env.API_URL,
-  withCredentials: true, // Crucial for HTTP-only cookies & CSRF
+  withCredentials: true, // Crucial for HTTP-only cookies
   headers: {
     'Content-Type': 'application/json',
   },
@@ -21,7 +64,6 @@ api.interceptors.request.use((config) => {
   }
 
   // Attach tenant slug from active tenant store if available
-  // Check multiple possible keys for tenant slug
   let tenantSlug =
     localStorage.getItem('tenant_slug') ||
     localStorage.getItem('tenantSlug');
@@ -30,7 +72,6 @@ api.interceptors.request.use((config) => {
   if (!tenantSlug) {
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      // Check various possible fields in user data
       tenantSlug = userData.tenantSlug ||
         userData.tenant_slug ||
         userData.tenant?.slug ||
@@ -54,50 +95,85 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Don't attempt refresh for login/refresh endpoints to avoid loops
+    // Don't attempt refresh for auth endpoints to avoid loops
     const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
       originalRequest.url?.includes('/auth/refresh') ||
       originalRequest.url?.includes('/auth/logout');
 
+    // Handle 401 Unauthorized - try token refresh
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+      if (isRefreshing) {
+        // Queue the request - it will be retried when refresh completes
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh((token) => {
+            if (token) {
+              originalRequest.headers['Authorization'] = `Bearer ${token}`;
+              resolve(api(originalRequest));
+            } else {
+              reject(error);
+            }
+          });
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
+
       try {
         const refreshUrl = env.API_URL + ENDPOINTS.AUTH.REFRESH;
-        // Include refreshToken in request body
+        // The refresh token is sent via httpOnly cookie (withCredentials: true)
+        // We also send it from localStorage as a fallback for backward compatibility
         const refreshToken = localStorage.getItem('refreshToken');
 
-        if (!refreshToken) {
-          // No refresh token available, clear auth and reject
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('token');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('user');
-          return Promise.reject(error);
-        }
+        const response = await axios.post(
+          refreshUrl,
+          refreshToken ? { refreshToken } : {},
+          { withCredentials: true }
+        );
 
-        const response = await axios.post(refreshUrl, { refreshToken }, { withCredentials: true });
+        const newToken = response.data?.token || response.data?.accessToken;
+        const newRefreshToken = response.data?.refreshToken;
 
-        if (response.data?.token || response.data?.accessToken) {
-          const newToken = response.data.token || response.data.accessToken;
+        if (newToken) {
+          // Update token in localStorage
           localStorage.setItem('authToken', newToken);
+          if (newRefreshToken) {
+            localStorage.setItem('refreshToken', newRefreshToken);
+          }
+          // Retry all queued requests
+          onTokenRefreshed(newToken);
           originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+          return api(originalRequest);
+        } else {
+          // No token returned - refresh failed
+          throw new Error('No token in refresh response');
         }
-
-        return api(originalRequest);
       } catch (refreshError) {
-        // Clear auth details on failure
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-
-        // Optionally redirect to login here, but better handled by hooks/components
-        // window.location.href = '/login';
+        // Refresh failed - clear auth and redirect to login
+        onTokenRefreshFailed();
+        clearAuthStorage();
+        dispatchAuthEvent('logout', {
+          reason: 'Token refresh failed - session expired',
+          error: refreshError?.message || 'Unknown error'
+        });
+        // Redirect to login
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
+
+    // Handle 401 without retry (already retried or not eligible)
+    if (error.response?.status === 401) {
+      error.friendlyMessage = error.response?.data?.message || 'Your session has expired. Please log in again.';
+    }
+
     return Promise.reject(error);
   }
 );
 
+export { clearAuthStorage, dispatchAuthEvent };
 export default api;

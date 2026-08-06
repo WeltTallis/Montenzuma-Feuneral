@@ -156,6 +156,10 @@ const COFFIN_SERVICE_MIGRATIONS = [
         name: '083_create_deceased_coffin_table',
         sql: `CREATE TABLE IF NOT EXISTS deceased_coffin (id INT NOT NULL AUTO_INCREMENT, deceased_id VARCHAR(100) NOT NULL, coffin_id VARCHAR(255) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, assigned_by_username VARCHAR(100) DEFAULT NULL, assigned_date DATE NOT NULL, rfid VARCHAR(100) UNIQUE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), INDEX idx_deceased_id (deceased_id), INDEX idx_coffin_id (coffin_id), INDEX idx_tenant_slug (tenant_slug), INDEX idx_assigned_date (assigned_date), UNIQUE KEY unique_deceased_coffin (deceased_id, coffin_id), FOREIGN KEY (coffin_id) REFERENCES coffins(coffin_id) ON DELETE RESTRICT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
+    {
+        name: '085_make_stock_requests_deceased_name_nullable',
+        sql: `ALTER TABLE stock_requests MODIFY COLUMN deceased_name VARCHAR(255) NULL`,
+    },
 ];
 exports.COFFIN_SERVICE_MIGRATIONS = COFFIN_SERVICE_MIGRATIONS;
 // ─── Chemicals Service Migrations (UNIFIED - any unit type) ───────────────────

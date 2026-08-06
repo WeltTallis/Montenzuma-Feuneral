@@ -1,12 +1,12 @@
 {
   "name": "socketio-service",
   "version": "1.0.0",
-  "main": "dist/server.js",
+  "main": "dist/services/socketio-service/server.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js",
-    "dev": "tsc && node dist/server.js",
-    "start:dev": "tsc && node dist/server.js"
+    "start": "node dist/services/socketio-service/server.js",
+    "dev": "tsc && node dist/services/socketio-service/server.js",
+    "start:dev": "tsc && node dist/services/socketio-service/server.js"
   },
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",

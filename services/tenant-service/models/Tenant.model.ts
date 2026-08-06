@@ -694,7 +694,9 @@ export class TenantModel {
         }
 
         const tenant: Tenant = {
-            tenant_id: tenantRow.tenant_id,
+            // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`.
+            // Map `id` to `tenant_id` so downstream code that expects `tenant_id` works correctly.
+            tenant_id: tenantRow.tenant_id ?? tenantRow.id,
             tenant_name: tenantRow.tenant_name,
             tenant_slug: tenantRow.tenant_slug,
             db_name: tenantRow.db_name,
@@ -996,7 +998,8 @@ export class TenantModel {
         const tenantRow = Array.isArray(tenants) && tenants.length > 0 ? tenants[0] : null;
         if (!tenantRow) return null;
         return {
-            tenant_id: tenantRow.tenant_id,
+            // CRITICAL FIX: Map `id` to `tenant_id` since the tenants table uses `id` as PK
+            tenant_id: tenantRow.tenant_id ?? tenantRow.id,
             tenant_name: tenantRow.tenant_name,
             tenant_slug: tenantRow.tenant_slug,
             db_name: tenantRow.db_name,
@@ -1016,14 +1019,16 @@ export class TenantModel {
 
     static async findById(tenantId: number): Promise<Tenant | null> {
         const serverConn = await getServerPool();
+        // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`
         const [tenants] = await serverConn.query<mysql.RowDataPacket[]>(
-            'SELECT * FROM tenant_tracking.tenants WHERE tenant_id = ?',
+            'SELECT * FROM tenant_tracking.tenants WHERE id = ?',
             [tenantId]
         );
         const tenantRow = Array.isArray(tenants) && tenants.length > 0 ? tenants[0] : null;
         if (!tenantRow) return null;
         return {
-            tenant_id: tenantRow.tenant_id,
+            // CRITICAL FIX: Map `id` to `tenant_id` since the tenants table uses `id` as PK
+            tenant_id: tenantRow.tenant_id ?? tenantRow.id,
             tenant_name: tenantRow.tenant_name,
             tenant_slug: tenantRow.tenant_slug,
             db_name: tenantRow.db_name,
@@ -1050,7 +1055,8 @@ export class TenantModel {
         const tenantRow = Array.isArray(tenants) && tenants.length > 0 ? tenants[0] : null;
         if (!tenantRow) return null;
         return {
-            tenant_id: tenantRow.tenant_id,
+            // CRITICAL FIX: Map `id` to `tenant_id` since the tenants table uses `id` as PK
+            tenant_id: tenantRow.tenant_id ?? tenantRow.id,
             tenant_name: tenantRow.tenant_name,
             tenant_slug: tenantRow.tenant_slug,
             db_name: tenantRow.db_name,
@@ -1070,8 +1076,9 @@ export class TenantModel {
 
     static async updateStatus(tenantId: number, status: 'active' | 'suspended' | 'deleted'): Promise<void> {
         const serverConn = await getServerPool();
+        // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`
         await serverConn.query(
-            'UPDATE tenant_tracking.tenants SET status = ?, updated_at = NOW() WHERE tenant_id = ?',
+            'UPDATE tenant_tracking.tenants SET status = ?, updated_at = NOW() WHERE id = ?',
             [status, tenantId]
         );
     }
@@ -1082,7 +1089,8 @@ export class TenantModel {
             'SELECT * FROM tenant_tracking.tenants ORDER BY created_at DESC'
         );
         return (tenants || []).map((tenantRow: any) => ({
-            tenant_id: tenantRow.tenant_id,
+            // CRITICAL FIX: Map `id` to `tenant_id` since the tenants table uses `id` as PK
+            tenant_id: tenantRow.tenant_id ?? tenantRow.id,
             tenant_name: tenantRow.tenant_name,
             tenant_slug: tenantRow.tenant_slug,
             db_name: tenantRow.db_name,

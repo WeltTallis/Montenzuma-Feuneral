@@ -286,6 +286,38 @@ io.use((socket, next) => {
 // Store active user rooms
 const userRooms = new Map<string, { tenantSlug: string; userId: string; userRole: string; connectedAt: Date }>();
 const socketIdMap = new Map<string, Set<string>>(); // Track socket IDs by user
+// Track every tenant room a socket belongs to so a branch user can be a member of
+// BOTH their branch room and the org-wide (parent) tenant room at the same time.
+const socketTenantRooms = new Map<string, Set<string>>();
+
+// ─── Org (parent) relationship registry ──────────────────────────────────────
+// Branch sockets report their parent (organization) tenant slug on join-tenant.
+// We use this so a notification emitted to a SINGLE branch slug can be fanned out
+// to every branch of the same organization (per the user's request: "emit to everyone").
+const tenantParents = new Map<string, string>();          // branchSlug -> parentSlug
+const tenantBranches = new Map<string, Set<string>>();    // parentSlug -> Set<branchSlug>
+
+/**
+ * Expand a tenant slug into the set of rooms that should receive a notification.
+ * - If the slug is a branch, we also target its parent (org) room and every sibling branch.
+ * - If the slug is the org/parent, we target all of its branches too.
+ * This guarantees a notification reaches everyone in the organization, no matter
+ * which branch slug the emitting service happened to use.
+ */
+function resolveOrgRooms(tenantSlug: string): string[] {
+  const rooms = new Set<string>([`tenant_${tenantSlug}`]);
+  const parent = tenantParents.get(tenantSlug);
+  if (parent) {
+    rooms.add(`tenant_${parent}`);
+    const siblings = tenantBranches.get(parent);
+    if (siblings) siblings.forEach((b) => rooms.add(`tenant_${b}`));
+  } else {
+    const branches = tenantBranches.get(tenantSlug);
+    if (branches) branches.forEach((b) => rooms.add(`tenant_${b}`));
+  }
+  return Array.from(rooms);
+}
+
 
 io.on('connection', (socket) => {
   console.log(`👤 User connected: ${socket.id}`);
@@ -301,14 +333,14 @@ io.on('connection', (socket) => {
   // TENANT & USER ROOM MANAGEMENT
   // ============================================
 
-  socket.on('join-tenant', (data: { tenantSlug?: string; userId?: string; userRole?: string }, callback?: Function) => {
+  socket.on('join-tenant', (data: { tenantSlug?: string; userId?: string; userRole?: string; parentTenantSlug?: string }, callback?: Function) => {
     try {
       // Validate input
       if (!data || typeof data !== 'object') {
         throw new AppError('Invalid data format', 400);
       }
 
-      const { tenantSlug, userId, userRole } = data;
+      const { tenantSlug, userId, userRole, parentTenantSlug } = data;
 
       if (!tenantSlug) {
         throw new AppError('Tenant slug is required', 400);
@@ -324,18 +356,40 @@ io.on('connection', (socket) => {
       }
 
       const tenantRoom = `tenant_${tenantSlug}`;
+      const parentRoom = parentTenantSlug && parentTenantSlug !== tenantSlug && /^[a-z0-9-]+$/.test(parentTenantSlug)
+        ? `tenant_${parentTenantSlug}`
+        : null;
       const userRoom = `user_${userId}`;
 
-      // Leave existing rooms
+      // Leave the previous user room (in case the user changed) but KEEP existing
+      // tenant rooms so a branch user can belong to both their branch and the parent.
       const existing = userRooms.get(socket.id);
-      if (existing) {
-        socket.leave(`tenant_${existing.tenantSlug}`);
+      if (existing && existing.userId !== userId) {
         socket.leave(`user_${existing.userId}`);
       }
 
-      // Join new rooms
+      // Track rooms so re-joins don't drop previously joined tenant rooms
+      if (!socketTenantRooms.has(socket.id)) {
+        socketTenantRooms.set(socket.id, new Set());
+      }
+      const rooms = socketTenantRooms.get(socket.id)!;
+      rooms.add(tenantRoom);
+      if (parentRoom) rooms.add(parentRoom);
+
+      // Register the branch -> parent (org) relationship so /emit can fan out a
+      // notification to every branch of the same organization.
+      if (parentRoom) {
+        tenantParents.set(tenantSlug, parentTenantSlug!);
+        if (!tenantBranches.has(parentTenantSlug!)) {
+          tenantBranches.set(parentTenantSlug!, new Set());
+        }
+        tenantBranches.get(parentTenantSlug!)!.add(tenantSlug);
+      }
+
+      // Ensure membership in all tracked tenant rooms
       socket.join(tenantRoom);
       socket.join(userRoom);
+      if (parentRoom) socket.join(parentRoom);
 
       // Store user data
       userRooms.set(socket.id, {
@@ -351,13 +405,14 @@ io.on('connection', (socket) => {
       }
       socketIdMap.get(userId)!.add(socket.id);
 
-      console.log(`📎 Socket ${socket.id} joined tenant_${tenantSlug} as ${userRole || 'user'}`);
+      console.log(`📎 Socket ${socket.id} joined for user ${userId}: rooms=[${Array.from(rooms).join(', ')}]`);
 
       // Send success response
       if (typeof callback === 'function') {
         callback({
           success: true,
           room: tenantRoom,
+          parentRoom,
           userId,
           role: userRole || 'user',
           timestamp: new Date().toISOString()
@@ -366,6 +421,7 @@ io.on('connection', (socket) => {
 
       socket.emit('joined', {
         room: tenantRoom,
+        parentRoom,
         userId,
         role: userRole || 'user',
         timestamp: new Date().toISOString()
@@ -447,6 +503,7 @@ io.on('connection', (socket) => {
       }
     }
     userRooms.delete(socket.id);
+    socketTenantRooms.delete(socket.id);
     console.log(`👋 User disconnected: ${socket.id}`);
   });
 
@@ -535,8 +592,11 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
       io.emit(eventName, payload);
       console.log(`📢 Broadcasted ${eventName} to all clients`);
     } else {
-      // Emit to tenant room
-      io.to(`tenant_${tenantSlug}`).emit(eventName, payload);
+      // Fan out to the tenant room AND every branch of the same organization so
+      // that ALL branches receive the notification (not just the one in the slug).
+      const rooms = resolveOrgRooms(tenantSlug);
+      rooms.forEach((room) => io.to(room).emit(eventName, payload));
+      console.log(`[SocketIO] Emitted ${eventName} to [${rooms.join(', ')}]`);
     }
 
     // Store in Redis for real-time delivery (temporary cache - 24h TTL)
