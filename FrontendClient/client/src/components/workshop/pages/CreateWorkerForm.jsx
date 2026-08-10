@@ -7,7 +7,7 @@ const T = {
 };
 
 const CreateWorkerForm = ({ close, onSubmit }) => {
-  const [form, setForm] = useState({ full_name: '', role: 'Carpenter', email: '', phone: '' });
+  const [form, setForm] = useState({ full_name: '', role: '' });
 
   const submit = (e) => {
     e.preventDefault();
@@ -24,19 +24,7 @@ const CreateWorkerForm = ({ close, onSubmit }) => {
         </div>
         <div>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: T.text, marginBottom: 4 }}>Role</label>
-          <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} style={{ width: '100%', padding: '10px 12px', border: `1px solid ${T.bdr}`, borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }}>
-            <option>Carpenter</option><option>Senior Carpenter</option><option>Painter</option><option>Interior Finisher</option><option>All-rounder</option><option>Supervisor</option>
-          </select>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: T.text, marginBottom: 4 }}>Email</label>
-            <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} style={{ width: '100%', padding: '10px 12px', border: `1px solid ${T.bdr}`, borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: T.text, marginBottom: 4 }}>Phone</label>
-            <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={{ width: '100%', padding: '10px 12px', border: `1px solid ${T.bdr}`, borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
-          </div>
+          <input required value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} placeholder='e.g. Painter, Carpenter, Supervisor' style={{ width: '100%', padding: '10px 12px', border: `1px solid ${T.bdr}`, borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
           <button type="button" onClick={close} className="btn" style={{ padding: '10px 20px' }}>Cancel</button>

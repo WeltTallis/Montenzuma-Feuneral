@@ -59,7 +59,22 @@ export const validateOnboarding = (req: Request, res: Response, next: NextFuncti
     branch_email: b.branch_email || b.email || email
   })).filter((b: any) => b.branch_name.trim());
 
-  // Map to what controller.createOrganization expects
+  // Determine deployment type. Prefer the value sent by the frontend so a
+  // multi-branch tenant is ALWAYS provisioned as 'multi' (and every branch name
+  // — e.g. "macahakos", "Nairobi Main" — gets its own DB + branch row), even
+  // when only a single named branch was submitted or the branch count alone is
+  // ambiguous. Fall back to derivation from branch count for backwards
+  // compatibility with older clients that omit deploymentType.
+  let deploymentType = data.deploymentType || data.deployment_type || '';
+  if (deploymentType !== 'single' && deploymentType !== 'multi') {
+    deploymentType = mappedBranches.length > 1 ? 'multi' : 'single';
+  }
+
+  // Map to what controller.createOrganization expects.
+  // IMPORTANT: include `deploymentType` here — the controller reads it from
+  // req.body and previously re-derived it (always falling back to branch count)
+  // because the middleware dropped it, which silently collapsed some
+  // multi-branch tenants to single-tenant provisioning.
   req.body = {
     tenant_name: organizationName,
     email,
@@ -69,6 +84,7 @@ export const validateOnboarding = (req: Request, res: Response, next: NextFuncti
     phone: data.phone || '',
     country: data.country || 'Kenya',
     branches: mappedBranches,
+    deploymentType,
     termsAccepted
   };
 

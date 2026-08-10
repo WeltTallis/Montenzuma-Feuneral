@@ -21,8 +21,9 @@ const STAGES = [
 const OrdersTab = () => {
   const ctx = useContext(Ctx);
   if (!ctx) return null;
-  const { orders, workers, setModal, updateOrderStatus, deleteOrder } = ctx;
+  const { orders, workers, setModal, updateOrderStatus, deleteOrder, assignWorker } = ctx;
   const [filter, setFilter] = useState('all');
+  const [assigningOrderId, setAssigningOrderId] = useState(null);
 
   const filtered = useMemo(() => {
     let f = [...orders];
@@ -30,6 +31,8 @@ const OrdersTab = () => {
     else if (filter === 'completed') f = f.filter(o => o.status === 'completed' || o.status === 'delivered');
     return f.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [orders, filter]);
+
+  const assigningOrder = assigningOrderId != null ? orders.find(o => o.dbId === assigningOrderId) : null;
 
   return (
     <div>
@@ -62,7 +65,7 @@ const OrdersTab = () => {
             </thead>
             <tbody>
               {filtered.map(order => {
-                const assignee = workers.find(w => w.id === order.assignedTo) || { name: 'Unassigned', color: '#94A3B8' };
+                const assigneeName = order.assignedToName || 'Unassigned';
                 const stage = STAGES[order.stageIndex] || STAGES[0];
                 const daysInStage = order.stageIndex < 4 ? Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 86400000) : '—';
                 const isDone = order.stageIndex === 4;
@@ -74,12 +77,7 @@ const OrdersTab = () => {
                     <td style={{ padding: '10px 12px', fontSize: 11, color: T.textSec }}>{order.size || 'Standard'}</td>
                     <td><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: T.purpleBg, color: T.purple }}>{order.color || 'Natural'}</span></td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: assignee.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, flexShrink: 0 }}>
-                          {assignee.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                        </div>
-                        <span style={{ fontSize: 11, color: T.textSec, fontWeight: 500 }}>{assignee.name}</span>
-                      </div>
+                      <span style={{ fontSize: 11, color: T.textSec, fontWeight: 500 }}>{assigneeName}</span>
                     </td>
                     <td>
                       <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 5, background: stage.bg, color: stage.color, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
@@ -93,10 +91,20 @@ const OrdersTab = () => {
                     <td style={{ fontSize: 11, color: T.textSec }}>{new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                     <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        {!isDone && (
+                          <button
+                            onClick={() => setAssigningOrderId(order.dbId)}
+                            className="btn btn-sm"
+                            style={{ padding: '5px 10px', background: T.primaryBg, color: T.primary, border: `1px solid ${T.primary}40`, fontWeight: 700 }}
+                            title="Assign worker"
+                          >
+                            <i className="fas fa-user" style={{ fontSize: 9 }} />
+                          </button>
+                        )}
                         {!isDone ? (
-                          <button 
-                            onClick={() => updateOrderStatus(order.dbId, STAGES[Math.min(order.stageIndex + 1, 4)].name.toLowerCase().replace(' ', '_'))} 
-                            className="btn btn-sm" 
+                          <button
+                            onClick={() => updateOrderStatus(order.dbId, STAGES[Math.min(order.stageIndex + 1, 4)].name.toLowerCase().replace(' ', '_'))}
+                            className="btn btn-sm"
                             style={{ padding: '5px 10px', background: T.successBg, color: T.success, border: `1px solid ${T.success}40`, fontWeight: 700 }}
                             title="Advance"
                           >
@@ -126,6 +134,51 @@ const OrdersTab = () => {
           </table>
         </div>
       </div>
+
+      {/* Assign Worker Modal */}
+      {assigningOrder && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setAssigningOrderId(null)}>
+          <div style={{ background: T.surface, borderRadius: 14, width: '100%', maxWidth: 420, boxShadow: '0 25px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.bdr}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: T.text, margin: 0 }}>
+                <i className="fas fa-user" style={{ color: T.primary, marginRight: 8 }} />Assign Worker
+              </h3>
+              <button onClick={() => setAssigningOrderId(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: T.textMuted, cursor: 'pointer', lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ padding: 20 }}>
+              <div style={{ fontSize: 13, color: T.textSec, marginBottom: 12 }}>
+                Assigning to order <strong>{assigningOrder.id}</strong> — {assigningOrder.name}
+              </div>
+              <div style={{ display: 'grid', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
+                {workers.length === 0 && (
+                  <div style={{ padding: 16, textAlign: 'center', color: T.textMuted, fontSize: 13 }}>No workers available. Add workers first.</div>
+                )}
+                {workers.map(w => (
+                  <button
+                    key={w.id}
+                    onClick={async () => {
+                      await assignWorker(assigningOrder.dbId, w.id);
+                      setAssigningOrderId(null);
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1px solid ${T.bdr}`,
+                      background: T.surface, cursor: 'pointer', textAlign: 'left', width: '100%',
+                    }}
+                  >
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: w.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+                      {(w.name || 'W').split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{w.name}</div>
+                      <div style={{ fontSize: 11, color: T.textSec }}>{w.role}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

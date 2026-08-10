@@ -184,7 +184,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'QUERY', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-slug', 'x-tenant-slug', 'x-tenant-id', 'x-user-id', 'x-branch-id', 'x-branch-code', 'x-branch-slug', 'x-user-email', 'x-user-name', 'x-branch-slug', 'Origin', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization',  'x-branch-db'  , 'x-slug', 'x-tenant-slug', 'x-tenant-id', 'x-user-id', 'x-branch-id', 'x-branch-code', 'x-branch-slug', 'x-user-email', 'x-user-name', 'x-branch-slug', 'Origin', 'X-Requested-With', 'Accept'],
   preflightContinue: false,
   optionsSuccessStatus: 204
 }));

@@ -499,10 +499,10 @@ const ErrorMessage = styled.span`
 
 // ─── Redesigned Signature Area Specifics ───
 const SigCanvasWrap = styled.div`
-  border: 1px solid ${COLORS.line};
+s
   border-bottom: 2px solid ${COLORS.ink};
   border-radius: 4px 4px 0 0;
-  height: 12rem; 
+  height: 14rem; 
   display: flex;
   align-items: center;
   justify-content: center;
@@ -524,7 +524,7 @@ const SigCanvasWrap = styled.div`
     height: 14rem; 
   }
   @media (max-width: 768px) {
-    height: 16rem; 
+    height: 18rem; 
   }
 `;
 
@@ -532,13 +532,16 @@ const SigGuideText = styled.div`
   position: absolute;
   bottom: 10px;
   left: 15px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
+  font-family: 'Alex Brush', cursive; /* ← This is the key */
+  font-size: 1.2rem;
   color: ${COLORS.gray};
-  opacity: 0.4;
+  opacity: 0.3;
   pointer-events: none;
   user-select: none;
 `;
+
+
+/* In your component's CSS or a global CSS file */
 
 const SignOffContainer = styled.div`
   position: relative;

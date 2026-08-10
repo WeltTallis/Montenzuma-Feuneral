@@ -62,15 +62,22 @@ export class OnboardingController {
 
       let rawBranches = branches || [];
       if (branchName && !rawBranches.length) {
-        rawBranches = [{ name: branchName, location: location || '' }];
+        rawBranches = [{ name: branchName, location: location || '', phone: phone || '', email: email || '' }];
       }
 
-      const normalizedBranches = (rawBranches || []).map((branch: any) => ({
-        branch_name: branch.branch_name || branch.name,
-        branch_location: branch.branch_location || branch.location || '',
-        branch_phone: branch.branch_phone || branch.phone || '',
-        branch_email: branch.branch_email || branch.email || ''
-      }));
+      // Normalize & sanitize every branch so EACH branch name (e.g. "macahakos")
+      // is preserved and gets its own DB + branches-table row during provisioning.
+      // Empty/invalid entries are dropped here so they can't corrupt the derived
+      // branch DB name (`${tenantSlug}-${branchSlug}`) or shift the "first branch"
+      // vs "additional branches" indexing in createCompleteTenantDatabase.
+      const normalizedBranches = (rawBranches || [])
+        .map((branch: any) => ({
+          branch_name: (branch.branch_name || branch.name || '').trim(),
+          branch_location: (branch.branch_location || branch.location || location || '').trim(),
+          branch_phone: (branch.branch_phone || branch.phone || phone || '').trim(),
+          branch_email: (branch.branch_email || branch.email || email || '').trim()
+        }))
+        .filter((branch: any) => branch.branch_name);
 
       if (normalizedBranches && Array.isArray(normalizedBranches)) {
         for (const branch of normalizedBranches) {
@@ -81,6 +88,9 @@ export class OnboardingController {
         }
       }
 
+      // deploymentType is now explicitly forwarded by validationMiddleware for
+      // multi-branch tenants; fall back to branch-count derivation for older
+      // clients that don't send it.
       const finalDeploymentType = deploymentType || (normalizedBranches.length > 1 ? 'multi' : 'single');
 
     
@@ -109,7 +119,12 @@ export class OnboardingController {
           // Clean up the temp file
           try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
           
-          logoUrl = `/uploads/${tenantSlug}/logos/${logoFilename}`;
+                    // Store a COMPLETE URL (the gateway origin), not a relative path, so the
+          // frontend can display the logo directly. /uploads is served (and routed
+          // by the gateway) through the tenant-service static folder.
+          const uploadsBase = process.env.API_GATEWAY_URL || process.env.UPLOADS_SERVICE_URL ||
+            (process.env.NODE_ENV === 'production' ? 'https://restpoint.co.ke' : 'http://localhost:5000');
+          logoUrl = `${uploadsBase}/uploads/${tenantSlug}/logos/${logoFilename}`;
           logger.info({ service: 'tenant-service', function: 'createOrganization', message: 'Logo saved to global uploads folder', logoUrl });
         } catch (logoErr: any) {
           logger.warn({ service: 'tenant-service', function: 'createOrganization', message: 'Logo upload failed', error: logoErr.message });
@@ -194,7 +209,7 @@ export class OnboardingController {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
               `);
 
-              // Create branches table if it doesn't exist
+                            // Create branches table if it doesn't exist
               await serverConn.query(`
                 CREATE TABLE IF NOT EXISTS branches (
                   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -202,13 +217,16 @@ export class OnboardingController {
                   branch_slug VARCHAR(255) NOT NULL,
                   branch_name VARCHAR(255) NOT NULL,
                   branch_db_name VARCHAR(255) NOT NULL,
+                  parent_branch_id INT NULL,
                   is_active BOOLEAN DEFAULT TRUE,
                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                   FOREIGN KEY (tenant_slug) REFERENCES tenants(tenant_slug) ON DELETE CASCADE,
+                  FOREIGN KEY (parent_branch_id) REFERENCES branches(id) ON DELETE SET NULL,
                   UNIQUE KEY unique_branch (tenant_slug, branch_slug),
                   INDEX idx_tenant_slug (tenant_slug),
-                  INDEX idx_branch_slug (branch_slug)
+                  INDEX idx_branch_slug (branch_slug),
+                  INDEX idx_parent_branch_id (parent_branch_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
               `);
 

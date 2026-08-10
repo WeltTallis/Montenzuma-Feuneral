@@ -40,6 +40,11 @@ const DashboardTab = () => {
   const lowStock = materials.filter(m => m.quantity <= m.minLevel).length;
   const stageCounts = STAGES.map((_, i) => orders.filter(o => o.stageIndex === i).length);
 
+  // Orders already dispatched/picked up from the Store stage (status = delivered / dispatched / collected)
+  const dispatched = orders
+    .filter(o => ['delivered', 'dispatched', 'collected'].includes((o.status || '').toLowerCase()))
+    .map(o => o.dbId);
+
   const handleAdvanceClick = (order) => {
     setAdvancingOrder(order);
     setShowAdvanceModal(true);
@@ -104,116 +109,136 @@ const DashboardTab = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-        <div style={{ background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 10, padding: '16px 20px', position: 'relative', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Total Orders</div>
-          <div style={{ fontSize: 32, fontWeight: 900, color: T.primary, lineHeight: 1, letterSpacing: '-0.02em' }}>{totalOrders}</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: T.textSec, marginTop: 6 }}>All time</div>
-          <div style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 10, background: T.primaryBg, color: T.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}><i className="fas fa-box" /></div>
+      {/* Stats Grid (solid cards — matches Coffin Inventory) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        <div style={{ background: '#1e3a8a', borderRadius: 12, padding: '20px', height: 120, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.06)', transition: 'all 0.2s ease', position: 'relative', overflow: 'hidden' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255, 255, 255, 0.8)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Orders</span>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255, 255, 255, 0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}><i className="fas fa-box" /></div>
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{totalOrders}</div>
+          <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.7)', marginTop: 4, fontWeight: 500 }}>All time</div>
         </div>
-        <div style={{ background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 10, padding: '16px 20px', position: 'relative', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>In Progress</div>
-          <div style={{ fontSize: 32, fontWeight: 900, color: T.warning, lineHeight: 1, letterSpacing: '-0.02em' }}>{inProgress}</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: T.textSec, marginTop: 6 }}>{stageCounts[0]} building · {stageCounts[2]} painting</div>
-          <div style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 10, background: T.warningBg, color: T.warning, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}><i className="fas fa-spinner" /></div>
+        <div style={{ background: '#d97706', borderRadius: 12, padding: '20px', height: 120, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.06)', transition: 'all 0.2s ease', position: 'relative', overflow: 'hidden' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255, 255, 255, 0.8)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>In Progress</span>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255, 255, 255, 0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}><i className="fas fa-spinner" /></div>
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{inProgress}</div>
+          <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.7)', marginTop: 4, fontWeight: 500 }}>{stageCounts[0]} building · {stageCounts[2]} painting</div>
         </div>
-        <div style={{ background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 10, padding: '16px 20px', position: 'relative', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Low Stock</div>
-          <div style={{ fontSize: 32, fontWeight: 900, color: lowStock > 0 ? T.danger : T.success, lineHeight: 1, letterSpacing: '-0.02em' }}>{lowStock}</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: T.textSec, marginTop: 6 }}>{lowStock > 0 ? 'Needs restocking' : 'All good'}</div>
-          <div style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 10, background: lowStock > 0 ? T.dangerBg : T.successBg, color: lowStock > 0 ? T.danger : T.success, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}><i className="fas fa-triangle-exclamation" /></div>
+        <div style={{ background: lowStock > 0 ? '#b91c1c' : '#15803d', borderRadius: 12, padding: '20px', height: 120, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.06)', transition: 'all 0.2s ease', position: 'relative', overflow: 'hidden' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255, 255, 255, 0.8)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Low Stock</span>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255, 255, 255, 0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}><i className="fas fa-triangle-exclamation" /></div>
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{lowStock}</div>
+          <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.7)', marginTop: 4, fontWeight: 500 }}>{lowStock > 0 ? 'Needs restocking' : 'All good'}</div>
         </div>
       </div>
 
-      {/* Production Pipeline */}
-      <div style={{ background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 10, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: T.text, letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 8 }}><i className="fas fa-diagram-project" style={{ fontSize: 15 }} /> Production Pipeline</div>
-            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3 }}>Click Advance to move orders to next stage</div>
-          </div>
-          <button onClick={() => setModal('createOrder')} className="btn btn-primary" style={{ padding: '8px 18px', fontSize: 12, fontWeight: 700 }}>
-            <i className="fas fa-plus" style={{ fontSize: 10 }} /> New Order
-          </button>
-        </div>
-        <div style={{ padding: 16, overflowX: 'auto' }}>
-          <div style={{ display: 'flex', gap: 12, minWidth: 1100 }}>
-            {STAGES.map((stage, si) => {
-              const stageOrders = orders.filter(o => o.stageIndex === si);
-              return (
-                <div key={si} style={{ flex: 1, minWidth: 200, background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 9, display: 'flex', flexDirection: 'column', maxHeight: 500 }}>
-                  <div style={{ padding: '12px 14px', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: stage.bg }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                      <div style={{ width: 9, height: 9, borderRadius: '50%', background: stage.color }} />
-                      <span style={{ fontSize: 12, fontWeight: 800, color: stage.color, letterSpacing: '-0.01em' }}>{stage.name}</span>
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: stage.color, padding: '2px 9px', background: T.surface, borderRadius: 7, minWidth: 24, textAlign: 'center' }}>{stageOrders.length}</span>
-                  </div>
-                  <div style={{ padding: 8, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {stageOrders.length === 0 ? (
-                      <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: 28, fontStyle: 'italic' }}>Empty</div>
-                    ) : stageOrders.map(order => {
-                      const assignee = workers.find(w => w.id === order.assignedTo) || { name: 'Unassigned', color: '#94A3B8' };
-                      return (
-                        <div key={order.dbId} style={{ padding: 10, background: T.bg, border: `1px solid ${T.borderLight}`, borderRadius: 7, transition: 'all 0.15s' }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, color: T.textMuted, marginBottom: 3, letterSpacing: '0.04em' }}>{order.id}</div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 5, letterSpacing: '-0.01em' }}>{order.name}</div>
-                          <div style={{ display: 'flex', gap: 4, marginBottom: 5, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: T.primaryBg, color: T.primary }}>{order.type}</span>
-                            <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: T.purpleBg, color: T.purple }}>{order.color}</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-                            <div style={{ width: 18, height: 18, borderRadius: '50%', background: assignee.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, flexShrink: 0 }}>
-                              {assignee.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                            </div>
-                            <span style={{ fontSize: 10, color: T.textSec, fontWeight: 500 }}>{assignee.name}</span>
-                          </div>
-                          {si < 4 ? (
-                            <button 
-                              onClick={() => handleAdvanceClick(order)} 
-                              disabled={loading}
-                              className="btn btn-sm" 
-                              style={{ 
-                                width: '100%', 
-                                padding: '5px', 
-                                fontSize: 10, 
-                                background: T.successBg, 
-                                color: T.success, 
-                                border: `1px solid ${T.success}40`,
-                                fontWeight: 700,
-                                opacity: loading && advancingOrder?.dbId === order.dbId ? 0.6 : 1
-                              }}
-                            >
-                              <i className="fas fa-arrow-right" style={{ fontSize: 9 }} /> {loading && advancingOrder?.dbId === order.dbId ? 'Advancing...' : 'Advance'}
-                            </button>
-                          ) : (
-                            <button 
-                              onClick={() => handleStorePick(order)} 
-                              className="btn btn-sm" 
-                              style={{ 
-                                width: '100%', 
-                                padding: '5px', 
-                                fontSize: 10, 
-                                background: T.cyanBg, 
-                                color: T.cyan, 
-                                border: `1px solid ${T.cyan}40`,
-                                fontWeight: 700 
-                              }}
-                            >
-                              <i className="fas fa-hand-holding" style={{ fontSize: 9 }} /> Pick Up
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+  {/* Production Pipeline */}
+<div style={{ background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 10, overflow: 'hidden' }}>
+  <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div>
+      <div style={{ fontSize: 15, fontWeight: 800, color: T.text, letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <i className="fas fa-diagram-project" style={{ fontSize: 15 }} /> Production Pipeline
       </div>
+      <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3 }}>Click Advance to move orders to next stage</div>
+    </div>
+    <button onClick={() => setModal('createOrder')} className="btn btn-primary" style={{ padding: '8px 18px', fontSize: 12, fontWeight: 700 }}>
+      <i className="fas fa-plus" style={{ fontSize: 10 }} /> New Order
+    </button>
+  </div>
+  
+  <div style={{ padding: 16, overflowX: 'auto' }}>
+    <div style={{ display: 'flex', gap: 12, minWidth: 1100 }}>
+      {STAGES.map((stage, si) => {
+        const stageOrders = orders.filter(o => o.stageIndex === si && (si < 4 || !dispatched.includes(o.dbId)));
+        return (
+          <div key={si} style={{ flex: 1, minWidth: 200, background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 9, display: 'flex', flexDirection: 'column', maxHeight: 500 }}>
+            <div style={{ padding: '12px 14px', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: stage.bg }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <div style={{ width: 9, height: 9, borderRadius: '50%', background: stage.color }} />
+                <span style={{ fontSize: 12, fontWeight: 800, color: stage.color, letterSpacing: '-0.01em' }}>{stage.name}</span>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 800, color: stage.color, padding: '2px 9px', background: T.surface, borderRadius: 7, minWidth: 24, textAlign: 'center' }}>{stageOrders.length}</span>
+            </div>
+            
+            <div style={{ padding: 8, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {stageOrders.length === 0 ? (
+                <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: '36px 12px', fontStyle: 'italic', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <i className="fas fa-inbox" style={{ fontSize: 22, opacity: 0.4 }} /> Empty
+                </div>
+              ) : stageOrders.map(order => {
+                const assignee = workers.find(w => w.id === order.assignedTo) || { name: 'Unassigned', color: '#94A3B8' };
+                return (
+                  <div key={order.dbId} style={{ position: 'relative', padding: '12px 13px', background: '#ffffff', borderRadius: 10, border: `1px solid ${stage.color}30`, borderTop: `3px solid ${stage.color}`, boxShadow: '0 1px 3px rgba(15,23,42,0.07)', transition: 'transform 0.15s ease, box-shadow 0.15s ease', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.04em' }}>{order.id}</span>
+                      {order.priority === 'high' && <span style={{ fontSize: 8, fontWeight: 800, color: '#DC2626', background: '#FEF2F2', padding: '2px 6px', borderRadius: 99 }}>HIGH</span>}
+                    </div>
+                    
+                    <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' }}>{order.name}</div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 8, textTransform: 'uppercase', color: '#94A3B8', letterSpacing: '0.05em', marginBottom: 2, fontWeight: 700 }}>Type</div>
+                        <div style={{ fontSize: 11.5, fontWeight: 600, color: '#334155' }}>{order.type}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 8, textTransform: 'uppercase', color: '#94A3B8', letterSpacing: '0.05em', marginBottom: 2, fontWeight: 700 }}>Finish</div>
+                        <div style={{ fontSize: 11.5, fontWeight: 600, color: '#334155' }}>{order.color}</div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', background: assignee.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, flexShrink: 0, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.3)' }}>
+                        {assignee.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 8, textTransform: 'uppercase', color: '#94A3B8', letterSpacing: '0.05em', fontWeight: 700, marginBottom: 1 }}>Assigned to</div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>{assignee.name}</div>
+                      </div>
+                    </div>
+                    
+                    {si < 4 && (
+                      <button
+                        onClick={() => handleAdvanceClick(order)}
+                        disabled={loading}
+                        style={{ 
+                          marginTop: 3, 
+                          width: '100%', 
+                          padding: '8px 10px', 
+                          borderRadius: 8, 
+                          fontSize: 10.5, 
+                          fontWeight: 700, 
+                          border: 'none', 
+                          background: `linear-gradient(135deg, ${T.success}, #047857)`, 
+                          color: '#fff', 
+                          cursor: loading ? 'not-allowed' : 'pointer', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          gap: 6, 
+                          boxShadow: '0 2px 6px rgba(5,150,105,0.25)', 
+                          opacity: loading && advancingOrder?.dbId === order.dbId ? 0.6 : 1 
+                        }}
+                      >
+                        <i className="fas fa-arrow-right" style={{ fontSize: 9 }} /> 
+                        {loading && advancingOrder?.dbId === order.dbId ? 'Advancing...' : 'Advance'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</div>
 
       {/* Advance Modal */}
       {showAdvanceModal && advancingOrder && (
@@ -261,6 +286,8 @@ const DashboardTab = () => {
           </div>
         </div>
       )}
+
+      {/* Dispatch from Store Modal */}
 
       {/* Store Pickup Modal */}
       {showStoreModal && storeOrder && (
@@ -313,3 +340,5 @@ const DashboardTab = () => {
 };
 
 export default DashboardTab;
+
+

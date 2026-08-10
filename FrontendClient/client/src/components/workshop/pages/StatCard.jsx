@@ -1,23 +1,28 @@
 import React from 'react';
 
-const T = {
-  surface: '#FFFFFF', bdr: '#E2E8F0', borderLight: '#F1F5F9',
-  text: '#0F172A', textMuted: '#94A3B8',
-  primary: '#1E40AF', primaryBg: '#EFF6FF', primaryLight: '#93C5FD',
-  success: '#059669', successBg: '#ECFDF5', successLight: '#6EE7B7',
-  warning: '#D97706', warningBg: '#FFFBEB', warningLight: '#FCD34D',
-  danger: '#DC2626', dangerBg: '#FEF2F2', dangerLight: '#FCA5A5',
-  purple: '#7C3AED', purpleBg: '#F5F3FF', purpleLight: '#C4B5FD',
-  cyan: '#0891B2', cyanBg: '#ECFEFF', cyanLight: '#67E8F9',
-};
-
-const StatCard = ({ label, value, icon, color, bg }) => (
-  <div style={{ background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 10, padding: '14px 16px', position: 'relative', overflow: 'hidden' }}>
-    <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</div>
-    <div style={{ fontSize: 24, fontWeight: 900, color: T.text, lineHeight: 1, letterSpacing: '-0.02em' }}>{value}</div>
-    <div style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 8, background: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
-      <i className={`fas ${icon}`} />
+// ─── Solid stat cards (matches Coffin Inventory "Modern SaaS" look) ───
+const StatCard = ({ label, value, icon, color = '#1E40AF', sub }) => (
+  <div style={{
+    background: color,
+    borderRadius: 12,
+    padding: '20px',
+    height: 120,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.06)',
+    transition: 'all 0.2s ease',
+    position: 'relative',
+    overflow: 'hidden',
+  }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255, 255, 255, 0.8)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+      <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255, 255, 255, 0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+        <i className={`fas ${icon}`} />
+      </div>
     </div>
+    <div style={{ fontSize: 32, fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{value}</div>
+    {sub && <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.7)', marginTop: 4, fontWeight: 500 }}>{sub}</div>}
   </div>
 );
 

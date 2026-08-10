@@ -5,7 +5,7 @@ const T = {
   text: '#0F172A', textSec: '#64748B',
   success: '#059669', successBg: '#ECFDF5',
   danger: '#DC2626', dangerBg: '#FEF2F2',
-  primary: '#1E40AF',
+  primary: '#1E40AF', primaryBg: '#EFF6FF',
 };
 
 const WorkshopHeader = ({ connected, onRefresh }) => (
@@ -15,11 +15,11 @@ const WorkshopHeader = ({ connected, onRefresh }) => (
     alignItems: 'center', flexWrap: 'wrap', gap: 12
   }}>
     <div>
-      <h1 style={{ fontSize: 24, fontWeight: 800, color: T.text, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <i className="fas fa-industry" style={{ color: T.primary }} />
+      <h1 style={{ fontSize: 24, fontWeight: 800, color: T.text, margin: 0, display: 'flex', alignItems: 'center', gap: 14, letterSpacing: '-0.025em' }}>
+        <i className="fas fa-industry" style={{ color: T.primary, background: T.primaryBg, width: 48, height: 48, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }} />
         Workshop Dashboard
       </h1>
-      <p style={{ fontSize: 13, color: T.textSec, margin: '4px 0 0' }}>Coffin production pipeline, team analytics & material tracking</p>
+      <p style={{ fontSize: 13, color: T.textSec, margin: '8px 0 0 62px' }}>Coffin production pipeline, team analytics & material tracking</p>
     </div>
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
       <div style={{

@@ -172,11 +172,17 @@ api.interceptors.request.use((config) => {
   const slug = getSlug();
   const tenantId = localStorage.getItem('tenantId');
   const userId = getUserId();
+  const branchSlug = localStorage.getItem('branchSlug');
+  const branchDb = localStorage.getItem('branchDb');
+  const branchId = localStorage.getItem('branchId');
 
   if (token) config.headers['Authorization'] = `Bearer ${token}`;
   if (slug) config.headers['x-tenant-slug'] = slug;
   if (tenantId) config.headers['x-tenant-id'] = tenantId;
   if (userId) config.headers['x-user-id'] = userId.toString();
+  if (branchSlug) config.headers['x-branch-slug'] = branchSlug;
+  if (branchDb) config.headers['x-branch-db'] = branchDb;
+  if (branchId) config.headers['x-branch-id'] = branchId;
 
   return config;
 }, (error) => Promise.reject(error));

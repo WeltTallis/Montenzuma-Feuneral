@@ -879,16 +879,11 @@ const RegisterCoffin = () => {
   const webcamRef = useRef(null);
 
   const [coffinData, setCoffinData] = useState({
-    type: '',
-    material: '',
+    name: '',
+    price: '',
     size: '',
     color: '',
-    quantity: '',
-    exact_price: '',
-    currency: 'KES',
-    supplier: '',
-    origin: '',
-    category: 'locally_made'
+    quantity: ''
   });
 
   const [imageFiles, setImageFiles] = useState([]);
@@ -899,7 +894,6 @@ const RegisterCoffin = () => {
   const [showCamera, setShowCamera] = useState(false);
   const [uploadMethod, setUploadMethod] = useState('gallery');
   const [facingMode, setFacingMode] = useState('environment');
-  const [exchangeRate] = useState(150); // 1 USD = 150 KES
   const { slug } = useParams();
 
   // Get tenant slug from URL params or localStorage
@@ -1022,20 +1016,7 @@ const RegisterCoffin = () => {
   };
 
   // Calculate price conversion
-  const calculatePriceConversion = () => {
-    const price = parseFloat(coffinData.exact_price) || 0;
-    if (coffinData.currency === 'USD') {
-      return {
-        kes: price * exchangeRate,
-        usd: price
-      };
-    } else {
-      return {
-        kes: price,
-        usd: price / exchangeRate
-      };
-    }
-  };
+  // (Currency / USD conversion removed — coins are priced in KES only)
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -1044,13 +1025,13 @@ const RegisterCoffin = () => {
     setSuccessMessage(null);
 
     // Enhanced validation
-    if (!coffinData.type || !coffinData.material || !coffinData.exact_price || !coffinData.currency) {
-      setError('Model, Material, Price, and Currency are required fields.');
+    if (!coffinData.name) {
+      setError('Coffin Name is required.');
       setLoading(false);
       return;
     }
 
-    if (parseFloat(coffinData.exact_price) <= 0) {
+    if (!coffinData.price || parseFloat(coffinData.price) <= 0) {
       setError('Price must be greater than 0.');
       setLoading(false);
       return;
@@ -1101,16 +1082,11 @@ const RegisterCoffin = () => {
 
       // Reset form
       setCoffinData({
-        type: '',
-        material: '',
+        name: '',
+        price: '',
         size: '',
         color: '',
-        quantity: '',
-        exact_price: '',
-        currency: 'KES',
-        supplier: '',
-        origin: '',
-        category: 'locally_made'
+        quantity: ''
       });
       setImageFiles([]);
       setImagePreviews([]);
@@ -1137,7 +1113,7 @@ const RegisterCoffin = () => {
     }
   };
 
-  const priceConversion = calculatePriceConversion();
+  const priceConversion = null;
 
   return (
     <PageContainer>
@@ -1220,76 +1196,23 @@ const RegisterCoffin = () => {
           {/* Basic Information Section */}
           <FormSection>
             <div className="section-title">
-              <Box /> Basic Information
+              <Box /> Coffin Information
             </div>
             <Row>
-              <Col md={12} lg={6}>
-                <StyledFormGroup controlId="formType">
+              <Col md={12}>
+                <StyledFormGroup controlId="formName">
                   <Form.Label>
-                    <Box /> Model
+                    <Box /> Coffin Name
                     <span className="required-badge">REQUIRED</span>
                   </Form.Label>
                   <Form.Control
                     type="text"
-                    name="type"
-                    value={coffinData.type}
+                    name="name"
+                    value={coffinData.name}
                     onChange={handleInputChange}
-                    placeholder="e.g., Classic Mahogany"
+                    placeholder="e.g., Mahogany Heritage"
                     required
                   />
-                </StyledFormGroup>
-              </Col>
-              <Col md={12} lg={6}>
-                <StyledFormGroup controlId="formMaterial">
-                  <Form.Label>
-                    <Diamond /> Material
-                    <span className="required-badge">REQUIRED</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="material"
-                    value={coffinData.material}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Mahogany Wood"
-                    required
-                  />
-                </StyledFormGroup>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={12} lg={6}>
-                <StyledFormGroup controlId="formCategory">
-                  <Form.Label>
-                    <Globe /> Origin Type
-                    <span className="required-badge">REQUIRED</span>
-                  </Form.Label>
-                  <Form.Select
-                    name="category"
-                    value={coffinData.category}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="locally_made">Locally Made</option>
-                    <option value="imported">Imported</option>
-                  </Form.Select>
-                </StyledFormGroup>
-              </Col>
-              <Col md={12} lg={6}>
-                <StyledFormGroup controlId="formSupplier">
-                  <Form.Label>
-                    <Truck /> Supplier
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="supplier"
-                    value={coffinData.supplier}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Woodcraft Co."
-                  />
-                  <Form.Text>
-                    Optional - leave blank if not applicable
-                  </Form.Text>
                 </StyledFormGroup>
               </Col>
             </Row>
@@ -1343,64 +1266,23 @@ const RegisterCoffin = () => {
             </div>
             <Row>
               <Col md={12} lg={6}>
-                <StyledFormGroup controlId="formCurrency">
+                <StyledFormGroup controlId="formPrice">
                   <Form.Label>
-                    <DollarSign /> Currency
-                    <span className="required-badge">REQUIRED</span>
-                  </Form.Label>
-                  <Form.Select
-                    name="currency"
-                    value={coffinData.currency}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="KES">Kenyan Shilling (KES)</option>
-                    <option value="USD">US Dollar (USD)</option>
-                  </Form.Select>
-                </StyledFormGroup>
-              </Col>
-              <Col md={12} lg={6}>
-                <StyledFormGroup controlId="formExactPrice">
-                  <Form.Label>
-                    <DollarSign /> Price
+                    <DollarSign /> Price (KES)
                     <span className="required-badge">REQUIRED</span>
                   </Form.Label>
                   <Form.Control
                     type="number"
-                    name="exact_price"
-                    value={coffinData.exact_price}
+                    name="price"
+                    value={coffinData.price}
                     onChange={handleInputChange}
-                    placeholder={coffinData.currency === 'USD' ? "e.g., 250.00" : "e.g., 25000.00"}
+                    placeholder="e.g., 120000"
                     required
                     min="0"
                     step="0.01"
                   />
-                  <Form.Text>
-                    Enter price in {coffinData.currency}
-                  </Form.Text>
-
-                  {/* Price Conversion Display */}
-                  {coffinData.exact_price && (
-                    <CurrencyDisplay>
-                      <div className="currency-info">
-                        <span>Kenyan Shilling:</span>
-                        <span className="amount">Ksh {priceConversion.kes.toFixed(2)}</span>
-                      </div>
-                      <div className="currency-info">
-                        <span>US Dollar:</span>
-                        <span className="amount">${priceConversion.usd.toFixed(2)}</span>
-                      </div>
-                      <div className="currency-info">
-                        <span className="conversion">
-                          Exchange rate: 1 USD = {exchangeRate} KES
-                        </span>
-                      </div>
-                    </CurrencyDisplay>
-                  )}
                 </StyledFormGroup>
               </Col>
-            </Row>
-            <Row>
               <Col md={12} lg={6}>
                 <StyledFormGroup controlId="formQuantity">
                   <Form.Label>
@@ -1411,11 +1293,11 @@ const RegisterCoffin = () => {
                     name="quantity"
                     value={coffinData.quantity}
                     onChange={handleInputChange}
-                    placeholder="e.g., 5"
+                    placeholder="e.g., 6"
                     min="0"
                   />
                   <Form.Text>
-                    Defaults to 1 if not specified
+                    Defaults to 0 if not specified
                   </Form.Text>
                 </StyledFormGroup>
               </Col>

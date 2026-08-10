@@ -8,6 +8,14 @@ import {
     deleteFlowerArrangement,
     getAllFlowerArrangements
 } from '../controllers/flowerSamples.ts';
+const router = Router();
+// Import authentication middleware
+// @ts-ignore - authMiddleware is JavaScript, not TypeScript
+const { protect, authorizeAny } = require('../../../services/app-global/middlewares/authMiddleware');
+
+// All routes are protected with JWT authentication
+router.use(protect);
+router.use(authorizeAny as any);
 
 // Configure multer for file uploads (memory storage)
 const storage = multer.memoryStorage();

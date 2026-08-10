@@ -15,8 +15,12 @@ const getOrders = async (req: Request, res: Response) => {
         }
 
         let query = `
-            SELECT co.*, 
-                COALESCE((SELECT SUM(wa.hours_worked) FROM worker_assignments wa WHERE wa.coffin_order_id = co.id), 0) as total_labor_hours
+            SELECT co.*,
+                COALESCE((SELECT SUM(wa.hours_worked) FROM worker_assignments wa WHERE wa.coffin_order_id = co.id), 0) as total_labor_hours,
+                (SELECT w.full_name FROM worker_assignments wa
+                 JOIN workshop_workers w ON wa.user_id = w.id
+                 WHERE wa.coffin_order_id = co.id
+                 ORDER BY wa.assigned_at DESC LIMIT 1) as assigned_to_name
             FROM coffin_orders co
             WHERE 1=1
         `;
@@ -74,9 +78,9 @@ const getOrder = async (req: Request, res: Response) => {
 
         // Get worker assignments
         const assignments: any = await safeTenantQuery(tenantDb,
-            `SELECT wa.*, u.user_id, u.full_name
+            `SELECT wa.*, w.id AS user_id, w.full_name
              FROM worker_assignments wa 
-             JOIN users u ON wa.user_id = u.user_id 
+             JOIN workshop_workers w ON wa.user_id = w.id 
              WHERE wa.coffin_order_id = ?`,
             [req.params.id]
         );
@@ -119,11 +123,11 @@ const createOrder = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Tenant database not resolved' });
         }
 
-        const {
-            customer_name, customer_phone, customer_email,
-            deceased_name, coffin_type, dimensions,
+                const {
+            coffin_name, coffin_type, dimensions, size,
             color, interior_fabric, notes, instructions,
-            selling_price, delivery_date, due_date, priority, branch_id
+            delivery_date, due_date, priority, branch_id,
+            assigned_worker_id
         } = req.body;
 
         // Convert empty delivery_date to null to avoid MySQL date error
@@ -141,15 +145,13 @@ const createOrder = async (req: Request, res: Response) => {
         const seq = Math.floor(Math.random() * 90) + 10;
         const order_number = `CFN-${day}${month}-${seq}`;
 
-        const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO coffin_orders 
-            (order_number, customer_name, customer_phone, customer_email, deceased_name, 
-             coffin_type, dimensions, color, interior_fabric, notes, instructions,
-             selling_price, delivery_date, due_date, priority, branch_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [order_number, customer_name, customer_phone, customer_email, deceased_name,
-                coffin_type || 'standard', processedDimensions, color, interior_fabric, notes, instructions || '',
-                selling_price || 0, processedDeliveryDate, due_date || null, priority || 'normal', branch_id || 1]
+                const insertResult: any = await safeTenantExecute(tenantDb,
+            `INSERT INTO coffin_orders
+            (order_number, coffin_name, coffin_type, size, dimensions, color,
+             interior_fabric, notes, instructions, delivery_date, due_date, priority, branch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [order_number, coffin_name, coffin_type || 'standard', size || null, processedDimensions, color,
+                interior_fabric, notes, instructions || '', processedDeliveryDate, due_date || null, priority || 'normal', branch_id || 1]
         );
 
         const orderId = insertResult.insertId;
@@ -163,11 +165,14 @@ const createOrder = async (req: Request, res: Response) => {
             );
         }
 
-        // Create initial costing record
-        await safeTenantExecute(tenantDb,
-            'INSERT INTO costing (coffin_order_id, selling_price) VALUES (?, ?)',
-            [orderId, selling_price || 0]
-        );
+        // If a worker was selected on order creation, create the assignment
+        if (assigned_worker_id) {
+            await safeTenantExecute(tenantDb,
+                `INSERT INTO worker_assignments (coffin_order_id, user_id, stage, hours_worked, notes, assigned_at)
+                 VALUES (?, ?, 'design', 0, 'Assigned on order creation', NOW())`,
+                [orderId, assigned_worker_id]
+            );
+        }
 
         const newOrders: any = await safeTenantQuery(tenantDb, 'SELECT * FROM coffin_orders WHERE id = ?', [orderId]);
 
@@ -191,10 +196,9 @@ const updateOrder = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Tenant database not resolved' });
         }
 
-        const allowedFields = [
-            'customer_name', 'customer_phone', 'customer_email', 'deceased_name',
-            'coffin_type', 'dimensions', 'color', 'interior_fabric', 'notes',
-            'instructions', 'status', 'selling_price', 'delivery_date', 'due_date',
+                const allowedFields = [
+            'coffin_name', 'coffin_type', 'size', 'dimensions', 'color', 'interior_fabric',
+            'notes', 'instructions', 'status', 'delivery_date', 'due_date',
             'priority', 'branch_id', 'hold_reason', 'created_by'
         ];
 
@@ -228,12 +232,7 @@ const updateOrder = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Order not found' });
         }
 
-        // If status changed to completed, update costing
-        if (req.body.status === 'completed') {
-            await updateCosting(tenantDb, Number(req.params.id));
-        }
-
-        const updatedOrders: any = await safeTenantQuery(tenantDb, 'SELECT * FROM coffin_orders WHERE id = ?', [req.params.id]);
+                const updatedOrders: any = await safeTenantQuery(tenantDb, 'SELECT * FROM coffin_orders WHERE id = ?', [req.params.id]);
 
         const io = getIO();
         io.emit('order:updated', updatedOrders[0]);
@@ -269,7 +268,6 @@ const deleteOrder = async (req: Request, res: Response) => {
     }
 };
 
-// Helper: Update costing for an order
 async function updateCosting(tenantDb: string, orderId: number) {
     const materialsCost: any = await safeTenantQuery(tenantDb,
         'SELECT COALESCE(SUM(total_cost), 0) as total FROM material_usage WHERE coffin_order_id = ?',
@@ -286,16 +284,18 @@ async function updateCosting(tenantDb: string, orderId: number) {
 
     await safeTenantExecute(tenantDb,
         `UPDATE costing SET materials_cost = ?, labor_cost = ?, overhead_cost = ? WHERE coffin_order_id = ?`,
-        [materialsCost[0].total, laborCost[0].total, overheadCost, orderId]
+                [materialsCost[0].total, laborCost[0].total, overheadCost, orderId]
     );
 
-    // Update coffin_orders total_cost and profit
+    // Recalculate profit
     const costing: any = await safeTenantQuery(tenantDb, 'SELECT * FROM costing WHERE coffin_order_id = ?', [orderId]);
     if (costing.length) {
         const c = costing[0];
+        const totalCost = Number(c.total_cost);
+        const profit = Number(c.selling_price) - totalCost;
         await safeTenantExecute(tenantDb,
-            'UPDATE coffin_orders SET total_cost = ?, profit = ? WHERE id = ?',
-            [c.total_cost, c.profit, orderId]
+            'UPDATE costing SET total_cost = ?, profit = ? WHERE coffin_order_id = ?',
+            [totalCost, profit, orderId]
         );
     }
 }

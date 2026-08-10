@@ -55,13 +55,15 @@ CREATE TABLE IF NOT EXISTS branches (
     branch_slug VARCHAR(255) NOT NULL,
     branch_name VARCHAR(255) NOT NULL,
     branch_db_name VARCHAR(255) NOT NULL,
+    parent_branch_id INT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (tenant_slug) REFERENCES tenants(tenant_slug) ON DELETE CASCADE,
     UNIQUE KEY unique_branch (tenant_slug, branch_slug),
     INDEX idx_tenant_slug (tenant_slug),
-    INDEX idx_branch_slug (branch_slug)
+    INDEX idx_branch_slug (branch_slug),
+    INDEX idx_parent_branch_id (parent_branch_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================

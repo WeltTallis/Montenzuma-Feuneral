@@ -32,8 +32,7 @@
     "../../packages/shared-services/src/**/*.ts",
     "../../app-global/**/*.ts",
     "../../app-global/**/*.js",
-    "../../configurations/**/*.ts",
-    "migrate-tenant-tables.js"
+    "../../configurations/**/*.ts"
   ],
   "exclude": [
     "node_modules",

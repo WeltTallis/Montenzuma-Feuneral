@@ -1,7 +1,6 @@
 import { Request, Response } from "express"
 import { safeTenantQuery, safeTenantExecute } from '../database/db'
 import { getIO } from '../socket'
-import bcrypt from 'bcryptjs'
 
 /* 
     @route  GET /api/workshop/workers
@@ -14,8 +13,8 @@ const getWorkers = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Tenant database not resolved' });
         }
 
-        const [rows] = await safeTenantQuery(tenantDb,
-            "SELECT user_id, full_name, email, role, phone, created_at FROM users WHERE role IN ('worker', 'manager') ORDER BY full_name ASC"
+        const rows = await safeTenantQuery(tenantDb,
+            "SELECT id AS user_id, full_name, role, created_at FROM workshop_workers ORDER BY full_name ASC"
         );
         res.json(rows);
     } catch (error: any) {
@@ -34,19 +33,22 @@ const createWorker = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Tenant database not resolved' });
         }
 
-        const { full_name, email, password, role, phone } = req.body;
+        // Workshop workers are stored in their own table — name + free-text role only.
+        // No email, no password, no phone (the shared auth 'users' table is untouched).
+        const { full_name, name, role } = req.body;
 
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+        const workerName = String(full_name || name || '').trim();
+        if (!workerName) {
+            return res.status(400).json({ error: 'Worker name is required' });
+        }
 
         const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO users (full_name, email, password, role, phone)
-             VALUES (?, ?, ?, ?, ?)`,
-            [full_name, email, hashedPassword, role || 'worker', phone]
+            'INSERT INTO workshop_workers (full_name, role) VALUES (?, ?)',
+            [workerName, String(role || '').trim() || 'Worker']
         );
 
         const newWorker: any = await safeTenantQuery(tenantDb,
-            "SELECT user_id, full_name, email, role, phone, created_at FROM users WHERE user_id = ?",
+            "SELECT id AS user_id, full_name, role, created_at FROM workshop_workers WHERE id = ?",
             [insertResult.insertId]
         );
 
@@ -55,9 +57,6 @@ const createWorker = async (req: Request, res: Response) => {
 
         res.status(201).json(newWorker[0]);
     } catch (error: any) {
-        if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(400).json({ error: 'Email already exists' });
-        }
         res.status(500).json({ error: error.message });
     }
 };
@@ -73,7 +72,7 @@ const updateWorker = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Tenant database not resolved' });
         }
 
-        const allowedFields = ['full_name', 'email', 'role', 'phone'];
+        const allowedFields = ['full_name', 'role'];
         const updates: string[] = [];
         const values: any[] = [];
 
@@ -84,20 +83,13 @@ const updateWorker = async (req: Request, res: Response) => {
             }
         }
 
-        if (req.body.password) {
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(req.body.password, salt);
-            updates.push('password = ?');
-            values.push(hashedPassword);
-        }
-
         if (!updates.length) {
             return res.status(400).json({ error: 'No valid fields to update' });
         }
 
         values.push(req.params.id);
         const updateResult: any = await safeTenantExecute(tenantDb,
-            `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
+            `UPDATE workshop_workers SET ${updates.join(', ')} WHERE id = ?`,
             values
         );
 
@@ -105,8 +97,8 @@ const updateWorker = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Worker not found' });
         }
 
-        const [updated] = await safeTenantQuery(tenantDb,
-            "SELECT user_id, full_name, email, role, phone, created_at FROM users WHERE user_id = ?",
+        const updated = await safeTenantQuery(tenantDb,
+            "SELECT id AS user_id, full_name, role, created_at FROM workshop_workers WHERE id = ?",
             [req.params.id]
         );
 
@@ -130,7 +122,7 @@ const deleteWorker = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Tenant database not resolved' });
         }
 
-        const deleteResult: any = await safeTenantExecute(tenantDb, 'DELETE FROM users WHERE user_id = ? AND role IN ("worker", "manager")', [req.params.id]);
+        const deleteResult: any = await safeTenantExecute(tenantDb, 'DELETE FROM workshop_workers WHERE id = ?', [req.params.id]);
         if (!deleteResult.affectedRows) {
             return res.status(404).json({ error: 'Worker not found' });
         }

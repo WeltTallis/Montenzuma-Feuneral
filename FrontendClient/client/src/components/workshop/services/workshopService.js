@@ -134,6 +134,19 @@ export const workshopService = {
 
     getDesign: (id) =>
         handleResponse(workshopApi.get(ENDPOINTS.WORKSHOP.DESIGN.GET(id))),
+
+    // --- Store Management ---
+    getStoreInventory: (params = {}) =>
+        handleResponse(workshopApi.get('/workshop/store/inventory', { params })),
+
+    getStoreHistory: (params = {}) =>
+        handleResponse(workshopApi.get('/workshop/store/history', { params })),
+
+    dispatchStoreItem: (data) =>
+        handleResponse(workshopApi.post('/workshop/store/dispatch', data)),
+
+    restockStoreItem: (data) =>
+        handleResponse(workshopApi.post('/workshop/store/restock', data)),
 };
 
 export default workshopService;

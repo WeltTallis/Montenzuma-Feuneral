@@ -102,19 +102,14 @@ const getMortuaryAnalytics = asyncHandler(async (req, res) => {
           SELECT 
             c.coffin_id,
             c.type as name,
-            c.material,
-            c.category,
             COUNT(dc.coffin_id) as sold,
             COALESCE(c.exact_price, 0) as price,
             COALESCE(c.quantity, 0) as stock,
-            c.image_url as image,
-            c.status,
-            c.supplier,
             (COALESCE(c.quantity, 0) - COUNT(dc.coffin_id)) as available_stock,
             (COUNT(dc.coffin_id) * COALESCE(c.exact_price, 0)) as total_revenue
           FROM coffins c
           LEFT JOIN deceased_coffin dc ON c.coffin_id = dc.coffin_id
-          GROUP BY c.coffin_id, c.type, c.material, c.category, c.exact_price, c.quantity, c.image_url, c.status, c.supplier
+          GROUP BY c.coffin_id, c.type, c.exact_price, c.quantity
           ORDER BY sold DESC
           LIMIT 10
         `,
@@ -536,15 +531,10 @@ async function processQueryResult(queryName, data, responseData) {
         responseData.coffinSales = (data || []).slice(0, 10).map((coffin) => ({
           id: coffin.coffin_id || 'N/A',
           name: coffin.name || 'Unknown',
-          material: coffin.material || 'N/A',
-          category: coffin.category || 'standard',
           sold: safeParseInt(coffin.sold),
           price: safeFormatNumber(coffin.price, 0, 2),
           stock: safeParseInt(coffin.stock),
           availableStock: safeParseInt(coffin.available_stock),
-          image: coffin.image || null,
-          status: coffin.status || 'in-stock',
-          supplier: coffin.supplier || 'N/A',
           totalRevenue: safeFormatNumber(coffin.total_revenue, 0, 2),
         }));
         break;

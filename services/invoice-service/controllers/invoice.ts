@@ -430,7 +430,7 @@ export const getAllDeceasedWithFinancials = async (req: Request, res: Response, 
       d.id, d.deceased_id, d.full_name, d.date_of_death, d.cause_of_death, d.place_of_death,
       d.gender, d.county, d.location, d.billing, d.status, d.date_admitted, d.admission_number,
       nk.full_name as nok_name, nk.relationship as nok_relationship, nk.contact as nok_contact,
-      dc.coffin_id, c.custom_id AS coffin_custom_id, c.type AS coffin_type, c.exact_price AS coffin_price,
+            dc.coffin_id, c.type AS coffin_type, c.exact_price AS coffin_price,
       vd.dispatch_id, vd.vehicle_plate, vd.dispatch_date, vd.status AS vehicle_status,
       COALESCE(SUM(p.amount), 0) AS total_payments,
       COALESCE(SUM(ec.amount), 0) + COALESCE(c.exact_price, 0) + COALESCE(d.billing, 0) AS total_charges,
@@ -473,8 +473,7 @@ export const getDeceasedFinancialDetails = async (req: Request, res: Response, n
 
   let coffinInfo: any = null;
   const coffinDetails = await tenantQuery(req, `
-    SELECT dc.*, c.custom_id, c.type, c.category, c.material, c.exact_price,
-           c.currency, c.status AS coffin_status, c.color, c.size, c.supplier, c.origin
+        SELECT dc.*, c.type, c.exact_price, c.color, c.size
     FROM deceased_coffin dc
     LEFT JOIN coffins c ON dc.coffin_id = c.coffin_id
     WHERE dc.deceased_id = ?
@@ -486,8 +485,8 @@ export const getDeceasedFinancialDetails = async (req: Request, res: Response, n
   if (vehicleDetails && vehicleDetails.length > 0) vehicleDispatchInfo = vehicleDetails[0];
 
   const availableCoffins = await tenantQuery(req, `
-    SELECT coffin_id, custom_id, type, category, material, exact_price, currency, status
-    FROM coffins WHERE status = 'in-stock' ORDER BY created_at DESC
+        SELECT coffin_id, type, exact_price, color, size, quantity
+    FROM coffins WHERE is_deleted = FALSE ORDER BY created_at DESC
   `);
 
   const totalPayments = payments.reduce((sum: number, payment: any) => sum + parseFloat(String(payment.amount || 0)), 0);
@@ -630,7 +629,7 @@ export const createSystemInvoice = async (req: Request, res: Response, next: Nex
   });
 
   const coffinDetails = await tenantQuery(req, `
-    SELECT dc.*, c.type, c.category, c.exact_price
+    SELECT dc.*, c.type, c.exact_price
     FROM deceased_coffin dc
     LEFT JOIN coffins c ON dc.coffin_id = c.coffin_id
     WHERE dc.deceased_id = ?
@@ -641,7 +640,7 @@ export const createSystemInvoice = async (req: Request, res: Response, next: Nex
     const coffinPrice = parseFloat(String(coffin.exact_price || 0));
     if (coffinPrice > 0) {
       systemItems.push({
-        service: `Coffin: ${coffin.type} (${coffin.category})`,
+        service: `Coffin: ${coffin.type}`,
         qty: 1,
         amount: coffinPrice,
         description: 'Assigned coffin',

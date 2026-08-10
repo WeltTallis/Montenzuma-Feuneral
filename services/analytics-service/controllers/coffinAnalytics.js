@@ -24,12 +24,12 @@ const getCoffinInventorySummary = asyncHandler(async (req, res) => {
     `);
 
         const byStatus = await safeTenantQuery(dbName, `
-      SELECT 
-        COALESCE(status, 'unknown') as status,
+            SELECT 
+        CASE WHEN is_deleted THEN 'deleted' WHEN is_active THEN 'active' ELSE 'inactive' END as status,
         COUNT(*) as count,
         COALESCE(SUM(COALESCE(quantity, 0)), 0) as total_quantity
       FROM coffins
-      GROUP BY status
+      GROUP BY (CASE WHEN is_deleted THEN 'deleted' WHEN is_active THEN 'active' ELSE 'inactive' END)
     `);
 
         const byType = await safeTenantQuery(dbName, `
@@ -76,24 +76,22 @@ const getCoffinSales = asyncHandler(async (req, res) => {
 
     try {
         const results = await safeTenantQuery(dbName, `
-      SELECT 
+            SELECT 
         c.type,
-        c.material,
         COUNT(dc.coffin_id) as sold,
         COALESCE(SUM(c.exact_price), 0) as revenue,
         COALESCE(c.quantity, 0) as stock,
         (COALESCE(c.quantity, 0) - COUNT(dc.coffin_id)) as available
       FROM coffins c
       LEFT JOIN deceased_coffin dc ON c.coffin_id = dc.coffin_id
-      GROUP BY c.coffin_id, c.type, c.material, c.quantity
+      GROUP BY c.coffin_id, c.type, c.exact_price, c.quantity
       ORDER BY sold DESC
     `);
 
         res.status(200).json({
             success: true,
-            data: (results || []).map(r => ({
+                        data: (results || []).map(r => ({
                 type: r.type || 'Unknown',
-                material: r.material || 'N/A',
                 sold: r.sold || 0,
                 revenue: parseFloat(r.revenue || 0).toFixed(2),
                 stock: r.stock || 0,
