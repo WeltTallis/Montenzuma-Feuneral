@@ -9,6 +9,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 
 dotenv.config();
+
 // ============================================
 // ERROR HANDLING UTILITIES
 // ============================================
@@ -38,7 +39,6 @@ const errorHandler = (err: Error, req: Request, res: Response, _next: NextFuncti
   const statusCode = err instanceof AppError ? err.statusCode : 500;
   const isOperational = err instanceof AppError ? err.isOperational : false;
 
-
   const response: ErrorResponse = {
     success: false,
     message: isOperational ? err.message : 'Internal server error',
@@ -56,7 +56,6 @@ const errorHandler = (err: Error, req: Request, res: Response, _next: NextFuncti
 const app = express();
 const server = http.createServer(app);
 
-// Security Headers - Helmet
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
@@ -64,32 +63,27 @@ app.use(helmet({
   crossOriginResourcePolicy: false,
 }));
 
-// ─── CRITICAL FIX: Include ALL dev and production origins ───
 const ALLOWED_ORIGINS: string[] = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
   : [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:5173',  // Vite dev server
-      'http://localhost:5174',  // Vite alt port
-      'http://localhost:8080',  // Docker frontend
-      'https://restpoint.co.ke',
-    ];
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:8080',
+    'https://restpoint.co.ke',
+  ];
 
-// CORS Configuration - allow all common origins
 const corsOptions: cors.CorsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
-    // Allow if in allowed list or if SOCKETIO_CORS_ORIGIN is wildcard
     if (ALLOWED_ORIGINS.includes(origin) || process.env.SOCKETIO_CORS_ORIGIN === '*') {
       return callback(null, true);
     }
-    // In development, allow all origins
     if (process.env.NODE_ENV !== 'production') {
       return callback(null, true);
     }
-    callback(null, true); // Allow all for now
+    callback(null, true);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true,
@@ -107,21 +101,16 @@ const corsOptions: cors.CorsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Rate Limiting
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  skip: (req: any) => req.path === '/health' // Skip health checks
+  skip: (req: any) => req.path === '/health'
 } as any);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-app.use('/emit', limiter as any);
 
-// Body Parser with size limits
+app.use('/emit', limiter as any);
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
@@ -131,7 +120,6 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 const PORT = parseInt(process.env.PORT || process.env.SOCKET_PORT || '5018', 10);
 
-// Redis URL construction with error handling
 const getRedisUrl = (): string => {
   try {
     if (process.env.REDIS_URL) {
@@ -147,13 +135,12 @@ const getRedisUrl = (): string => {
     return 'redis://redis:6379';
   } catch (error) {
     console.error('Redis URL construction error:', error);
-    return 'redis://redis:6379'; // Fallback
+    return 'redis://redis:6379';
   }
 };
 
 const REDIS_URL = getRedisUrl();
 
-// ─── CRITICAL FIX: Socket.IO CORS must match Express CORS ───
 const SOCKET_CORS = {
   origin: process.env.NODE_ENV === 'production'
     ? ALLOWED_ORIGINS
@@ -168,8 +155,8 @@ const io = new SocketIOServer(server, {
   transports: ['websocket', 'polling'],
   pingTimeout: 60000,
   pingInterval: 25000,
-  maxHttpBufferSize: 1e6, // 1MB
-  serveClient: false // Disable serving socket.io client
+  maxHttpBufferSize: 1e6,
+  serveClient: false
 });
 
 // ============================================
@@ -223,13 +210,12 @@ const initializeRedis = async (): Promise<void> => {
 
     redisConnected = true;
     io.adapter(createAdapter(pubClient, subClient));
-    console.log(' Socket.IO Redis Adapter connected successfully');
+    console.log('Socket.IO Redis Adapter connected successfully');
 
   } catch (error: any) {
-    console.warn(' Redis connection failed, falling back to in-memory adapter:', error.message);
+    console.warn('Redis connection failed, falling back to in-memory adapter:', error.message);
     redisConnected = false;
 
-    // Clean up failed clients
     try {
       if (pubClient) await pubClient.disconnect();
       if (subClient) await subClient.disconnect();
@@ -237,11 +223,10 @@ const initializeRedis = async (): Promise<void> => {
       console.error('Redis cleanup error:', cleanupError.message);
     }
 
-    console.warn(' Socket.IO running in-memory mode - horizontal scaling unavailable');
+    console.warn('Socket.IO running in-memory mode - horizontal scaling unavailable');
   }
 };
 
-// Initialize Redis
 initializeRedis().catch(console.error);
 
 // ============================================
@@ -253,7 +238,6 @@ io.use((socket, next) => {
     const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
 
     if (!token) {
-      // Don't block connections without tokens in dev mode
       if (process.env.NODE_ENV === 'production') {
         const err = new AppError('Authentication required', 401);
         return next(err);
@@ -272,33 +256,20 @@ io.use((socket, next) => {
 });
 
 // ============================================
-// SOCKET.IO EVENT HANDLERS - NOTIFICATIONS ONLY
+// STATE & ORG REGISTRY TRACKING
 // ============================================
 
-// Store active user rooms
 const userRooms = new Map<string, { tenantSlug: string; userId: string; userRole: string; connectedAt: Date }>();
-const socketIdMap = new Map<string, Set<string>>(); // Track socket IDs by user
-// Track every tenant room a socket belongs to so a branch user can be a member of
-// BOTH their branch room and the org-wide (parent) tenant room at the same time.
+const socketIdMap = new Map<string, Set<string>>();
 const socketTenantRooms = new Map<string, Set<string>>();
 
-// ─── Org (parent) relationship registry ──────────────────────────────────────
-// Branch sockets report their parent (organization) tenant slug on join-tenant.
-// We use this so a notification emitted to a SINGLE branch slug can be fanned out
-// to every branch of the same organization (per the user's request: "emit to everyone").
-const tenantParents = new Map<string, string>();          // branchSlug -> parentSlug
-const tenantBranches = new Map<string, Set<string>>();    // parentSlug -> Set<branchSlug>
+const tenantParents = new Map<string, string>();      // branchSlug -> parentSlug
+const tenantBranches = new Map<string, Set<string>>(); // parentSlug -> Set<branchSlug>
 
-/**
- * Expand a tenant slug into the set of rooms that should receive a notification.
- * - If the slug is a branch, we also target its parent (org) room and every sibling branch.
- * - If the slug is the org/parent, we target all of its branches too.
- * This guarantees a notification reaches everyone in the organization, no matter
- * which branch slug the emitting service happened to use.
- */
 function resolveOrgRooms(tenantSlug: string): string[] {
   const rooms = new Set<string>([`tenant_${tenantSlug}`]);
   const parent = tenantParents.get(tenantSlug);
+
   if (parent) {
     rooms.add(`tenant_${parent}`);
     const siblings = tenantBranches.get(parent);
@@ -310,57 +281,48 @@ function resolveOrgRooms(tenantSlug: string): string[] {
   return Array.from(rooms);
 }
 
+// ============================================
+// SOCKET.IO EVENT HANDLERS
+// ============================================
 
 io.on('connection', (socket) => {
   console.log(`👤 User connected: ${socket.id}`);
 
-  // Welcome message
   socket.emit('connected', {
     socketId: socket.id,
     message: 'Connected to Socket.IO server',
     timestamp: new Date().toISOString()
   });
 
-  // ============================================
-  // TENANT & USER ROOM MANAGEMENT
-  // ============================================
-
   socket.on('join-tenant', (data: { tenantSlug?: string; userId?: string; userRole?: string; parentTenantSlug?: string }, callback?: Function) => {
     try {
-      // Validate input
       if (!data || typeof data !== 'object') {
         throw new AppError('Invalid data format', 400);
       }
 
       const { tenantSlug, userId, userRole, parentTenantSlug } = data;
 
-      if (!tenantSlug) {
-        throw new AppError('Tenant slug is required', 400);
-      }
-
-      if (!userId) {
-        throw new AppError('User ID is required', 400);
-      }
-
-      // Validate tenant slug format
-      if (!/^[a-z0-9-]+$/.test(tenantSlug)) {
-        throw new AppError('Invalid tenant slug format', 400);
-      }
+      if (!tenantSlug) throw new AppError('Tenant slug is required', 400);
+      if (!userId) throw new AppError('User ID is required', 400);
+      if (!/^[a-z0-9-]+$/.test(tenantSlug)) throw new AppError('Invalid tenant slug format', 400);
 
       const tenantRoom = `tenant_${tenantSlug}`;
-      const parentRoom = parentTenantSlug && parentTenantSlug !== tenantSlug && /^[a-z0-9-]+$/.test(parentTenantSlug)
-        ? `tenant_${parentTenantSlug}`
+
+      // Resolve hierarchy persistently
+      const effectiveParentSlug = parentTenantSlug || tenantParents.get(tenantSlug);
+      const parentRoom = effectiveParentSlug && effectiveParentSlug !== tenantSlug && /^[a-z0-9-]+$/.test(effectiveParentSlug)
+        ? `tenant_${effectiveParentSlug}`
         : null;
+
       const userRoom = `user_${userId}`;
 
-      // Leave the previous user room (in case the user changed) but KEEP existing
-      // tenant rooms so a branch user can belong to both their branch and the parent.
+      // Update socket metadata if user changed on same socket
       const existing = userRooms.get(socket.id);
       if (existing && existing.userId !== userId) {
         socket.leave(`user_${existing.userId}`);
       }
 
-      // Track rooms so re-joins don't drop previously joined tenant rooms
+      // Maintain user's active rooms
       if (!socketTenantRooms.has(socket.id)) {
         socketTenantRooms.set(socket.id, new Set());
       }
@@ -368,22 +330,19 @@ io.on('connection', (socket) => {
       rooms.add(tenantRoom);
       if (parentRoom) rooms.add(parentRoom);
 
-      // Register the branch -> parent (org) relationship so /emit can fan out a
-      // notification to every branch of the same organization.
-      if (parentRoom) {
-        tenantParents.set(tenantSlug, parentTenantSlug!);
-        if (!tenantBranches.has(parentTenantSlug!)) {
-          tenantBranches.set(parentTenantSlug!, new Set());
+      // Register or extend branch -> parent hierarchy mapping
+      if (effectiveParentSlug && effectiveParentSlug !== tenantSlug) {
+        tenantParents.set(tenantSlug, effectiveParentSlug);
+        if (!tenantBranches.has(effectiveParentSlug)) {
+          tenantBranches.set(effectiveParentSlug, new Set());
         }
-        tenantBranches.get(parentTenantSlug!)!.add(tenantSlug);
+        tenantBranches.get(effectiveParentSlug)!.add(tenantSlug);
       }
 
-      // Ensure membership in all tracked tenant rooms
-      socket.join(tenantRoom);
+      // Explicitly rejoin ALL tracked rooms on current socket connection
+      rooms.forEach((r) => socket.join(r));
       socket.join(userRoom);
-      if (parentRoom) socket.join(parentRoom);
 
-      // Store user data
       userRooms.set(socket.id, {
         tenantSlug,
         userId,
@@ -391,7 +350,6 @@ io.on('connection', (socket) => {
         connectedAt: new Date()
       });
 
-      // Map socket to user for tracking
       if (!socketIdMap.has(userId)) {
         socketIdMap.set(userId, new Set());
       }
@@ -399,7 +357,6 @@ io.on('connection', (socket) => {
 
       console.log(`📎 Socket ${socket.id} joined for user ${userId}: rooms=[${Array.from(rooms).join(', ')}]`);
 
-      // Send success response
       if (typeof callback === 'function') {
         callback({
           success: true,
@@ -434,9 +391,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  /**
-   * Join deceased record room
-   */
   socket.on('join-deceased', (data: { tenantSlug?: string; deceasedId?: string }, callback?: Function) => {
     try {
       const { tenantSlug, deceasedId } = data;
@@ -445,7 +399,6 @@ io.on('connection', (socket) => {
         throw new AppError('Tenant slug and deceased ID are required', 400);
       }
 
-      // Validate input
       if (!/^[a-z0-9-]+$/.test(tenantSlug)) {
         throw new AppError('Invalid tenant slug format', 400);
       }
@@ -478,10 +431,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ============================================
-  // DISCONNECT HANDLING
-  // ============================================
-
   socket.on('disconnect', () => {
     const userData = userRooms.get(socket.id);
     if (userData) {
@@ -499,7 +448,6 @@ io.on('connection', (socket) => {
     console.log(`👋 User disconnected: ${socket.id}`);
   });
 
-  // Global error handler for socket
   socket.on('error', (error: Error) => {
     console.error(`❌ Socket error (${socket.id}):`, error);
     socket.emit('error', {
@@ -509,19 +457,16 @@ io.on('connection', (socket) => {
   });
 });
 
-// Handle uncaught exceptions in socket handlers at process level
 process.on('uncaughtException', (error: Error) => {
   console.error('Uncaught Exception:', error);
-  // Don't crash the server - log and continue
 });
 
 process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Don't crash the server - log and continue
 });
 
 // ============================================
-// REST ENDPOINTS - NOTIFICATION EMIT ONLY
+// REST ENDPOINTS - NOTIFICATION EMIT
 // ============================================
 
 interface EmitBody {
@@ -530,47 +475,25 @@ interface EmitBody {
   target?: string | string[];
 }
 
-/**
- * Emit events via REST API
- * Other services call this endpoint to emit notifications to connected clients
- */
 app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { event } = req.params;
     const { tenantSlug, data, target } = req.body as EmitBody;
 
-    if (!event || typeof event !== 'string') {
-      throw new AppError('Invalid event name', 400);
-    }
-
-    if (!tenantSlug) {
-      throw new AppError('tenantSlug is required', 400);
-    }
-
-    if (!data || typeof data !== 'object') {
-      throw new AppError('Data must be a valid object', 400);
-    }
-
-    // Security: Validate event name (alphanumeric, dash, underscore only)
-    if (!/^[a-zA-Z0-9\-_]+$/.test(event)) {
-      throw new AppError('Invalid event name format', 400);
-    }
-
-    // Security: Validate tenant slug
-    if (!/^[a-z0-9-]+$/.test(tenantSlug)) {
-      throw new AppError('Invalid tenant slug format', 400);
-    }
+    if (!event || typeof event !== 'string') throw new AppError('Invalid event name', 400);
+    if (!tenantSlug) throw new AppError('tenantSlug is required', 400);
+    if (!data || typeof data !== 'object') throw new AppError('Data must be a valid object', 400);
+    if (!/^[a-zA-Z0-9\-_]+$/.test(event)) throw new AppError('Invalid event name format', 400);
+    if (!/^[a-z0-9-]+$/.test(tenantSlug)) throw new AppError('Invalid tenant slug format', 400);
 
     const payload = {
       ...data,
       timestamp: new Date().toISOString()
     };
 
-    // Special events that don't get prefix
     const noPrefixEvents = ['ticket_response', 'ticket_updated', 'onboarding-progress'];
     const eventName = noPrefixEvents.includes(event) ? event : `notification:${event}`;
 
-    // Emit to specific target if provided
     if (target) {
       if (typeof target === 'string') {
         io.to(target).emit(eventName, payload);
@@ -580,23 +503,19 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
         throw new AppError('Target must be a string or array of strings', 400);
       }
     } else if (tenantSlug === 'system' || tenantSlug === 'all') {
-      // Broadcast to ALL connected clients for system-wide notifications
       io.emit(eventName, payload);
       console.log(`📢 Broadcasted ${eventName} to all clients`);
     } else {
-      // Fan out to the tenant room AND every branch of the same organization so
-      // that ALL branches receive the notification (not just the one in the slug).
       const rooms = resolveOrgRooms(tenantSlug);
       rooms.forEach((room) => io.to(room).emit(eventName, payload));
       console.log(`[SocketIO] Emitted ${eventName} to [${rooms.join(', ')}]`);
     }
 
-    // Store in Redis for real-time delivery (temporary cache - 24h TTL)
     if (
       redisConnected &&
       pubClient &&
       (eventName.startsWith('notification:') || eventName.startsWith('alert:') ||
-       eventName.startsWith('new_booking') || eventName.startsWith('booking_'))
+        eventName.startsWith('new_booking') || eventName.startsWith('booking_'))
     ) {
       try {
         const notifId = data.id || `notif-${Date.now()}`;
@@ -615,22 +534,18 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
         });
 
         if (tenantSlug === 'system' || tenantSlug === 'all') {
-          // For system-wide notifications, store under common tenant slugs
-          // This ensures all tenants can see system notifications when they poll
           const allTenants = new Set<string>([
             'restpoint',
-            'default', 
+            'default',
             'main',
             'system',
             'system_shared'
           ]);
 
-          // Also add any active tenants from current connections
           userRooms.forEach((userData) => {
             allTenants.add(userData.tenantSlug);
           });
 
-          // Store under each tenant
           const storePromises = Array.from(allTenants).map(tenant => {
             const key = `notifications:${tenant}:socketio:${notifId}`;
             return pubClient.setEx(key, 86400, notifValue);
@@ -639,9 +554,8 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
           await Promise.all(storePromises);
           console.log(`💾 Stored system notification under ${allTenants.size} tenants: ${Array.from(allTenants).join(', ')}`);
         } else {
-          // Store under specific tenant
           const notifKey = `notifications:${tenantSlug}:socketio:${notifId}`;
-          await pubClient.setEx(notifKey, 86400, notifValue); // 24h TTL
+          await pubClient.setEx(notifKey, 86400, notifValue);
         }
       } catch (err: any) {
         console.error('Failed to store notification in Redis:', err);
@@ -662,16 +576,12 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
   }
 });
 
-/**
- * ─── Notification REST endpoints ───
- * The API Gateway routes /notification/* to this service
- */
+// REST API Notifications Management
 app.get(['/notification/notifications', '/notifications'], async (req: Request, res: Response, next: NextFunction) => {
   try {
     const tenantSlug = req.headers['x-tenant-slug'] as string;
     if (!tenantSlug) throw new AppError('tenantSlug is required', 400);
 
-    // Fetch notifications from Redis only (no database)
     if (!redisConnected || !pubClient) {
       res.json({ notifications: [], total: 0 });
       return;
@@ -692,9 +602,7 @@ app.get(['/notification/notifications', '/notifications'], async (req: Request, 
       if (value) {
         try {
           notifications.push(JSON.parse(value));
-        } catch {
-          // Skip invalid JSON
-        }
+        } catch { }
       }
     }
 
@@ -710,11 +618,10 @@ app.put(['/notification/notifications/:id/read', '/notifications/:id/read'], asy
     const { id } = req.params;
     if (!tenantSlug) throw new AppError('tenantSlug is required', 400);
 
-    // Delete notification from Redis when read (auto-delete on read)
     if (redisConnected && pubClient) {
       const key = `notifications:${tenantSlug}:socketio:${id}`;
       await pubClient.del(key);
-      console.log(`🗑️  Deleted notification ${id} from Redis (read by user)`);
+      console.log(`🗑️ Deleted notification ${id} from Redis (read by user)`);
     }
 
     res.json({ success: true, message: 'Notification marked as read and deleted' });
@@ -728,7 +635,6 @@ app.put(['/notification/notifications/mark-all-read', '/notifications/mark-all-r
     const tenantSlug = req.headers['x-tenant-slug'] as string;
     if (!tenantSlug) throw new AppError('tenantSlug is required', 400);
 
-    // Delete all notifications for this tenant from Redis (mark all as read)
     if (redisConnected && pubClient) {
       const pattern = `notifications:${tenantSlug}:*`;
       const keys: string[] = [];
@@ -739,10 +645,9 @@ app.put(['/notification/notifications/mark-all-read', '/notifications/mark-all-r
         keys.push(...result.keys);
       } while (cursor !== 0);
 
-      // Delete all keys
       if (keys.length > 0) {
         await pubClient.del(keys);
-        console.log(`🗑️  Deleted ${keys.length} notifications for tenant ${tenantSlug} (mark all as read)`);
+        console.log(`🗑️ Deleted ${keys.length} notifications for tenant ${tenantSlug}`);
       }
     }
 
@@ -769,9 +674,6 @@ app.delete(['/notification/notifications/:id', '/notifications/:id'], async (req
   }
 });
 
-/**
- * Health check endpoint
- */
 app.get('/health', (req: Request, res: Response) => {
   try {
     const health = {
@@ -791,8 +693,7 @@ app.get('/health', (req: Request, res: Response) => {
       environment: process.env.NODE_ENV || 'development'
     };
 
-    const statusCode = redisConnected ? 200 : 200; // Still healthy, just degraded
-    res.status(statusCode).json(health);
+    res.status(200).json(health);
 
   } catch (error) {
     console.error('Health check error:', error);
@@ -804,9 +705,6 @@ app.get('/health', (req: Request, res: Response) => {
   }
 });
 
-/**
- * Detailed stats endpoint (admin only)
- */
 app.get('/stats', (req: Request, res: Response, next: NextFunction) => {
   try {
     const stats = {
@@ -825,9 +723,6 @@ app.get('/stats', (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-/**
- * Room members endpoint
- */
 app.get('/rooms/:room/members', (req: Request, res: Response, next: NextFunction) => {
   try {
     const { room } = req.params;
@@ -850,11 +745,7 @@ app.get('/rooms/:room/members', (req: Request, res: Response, next: NextFunction
   }
 });
 
-// ============================================
-// GLOBAL ERROR HANDLING MIDDLEWARE
-// ============================================
-
-// 404 handler
+// Global 404 & Error Handler
 app.use((req, res) => {
   console.log(`[404] ${req.method} ${req.path}`);
   res.status(404).json({
@@ -865,23 +756,16 @@ app.use((req, res) => {
   });
 });
 
-// Global error handler
 app.use(errorHandler);
 
-// ============================================
-// PROCESS LEVEL ERROR HANDLING
-// ============================================
-
-// Graceful shutdown
+// Graceful Shutdown
 const gracefulShutdown = async (signal: string) => {
   console.log(`\n Received ${signal}, starting graceful shutdown...`);
 
-  // Close HTTP server
   server.close(() => {
     console.log('HTTP server closed');
   });
 
-  // Close Redis connections
   if (redisConnected) {
     try {
       await pubClient?.quit();
@@ -892,12 +776,10 @@ const gracefulShutdown = async (signal: string) => {
     }
   }
 
-  // Close socket connections
   io.close(() => {
     console.log('Socket.IO closed');
   });
 
-  // Force exit after timeout
   setTimeout(() => {
     console.log('Graceful shutdown timeout, forcing exit...');
     process.exit(1);
@@ -909,26 +791,20 @@ const gracefulShutdown = async (signal: string) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (error: Error) => {
   console.error('💥 Uncaught Exception:', error.message);
 });
 
-// Handle unhandled rejections
 process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
-  // Don't exit, just log and continue
 });
 
-// ============================================
-// START SERVER
-// ============================================
-
+// Start Server
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(` Socket.IO Server running on port ${PORT}`);
-  console.log(` Redis: ${redisConnected ? ' Connected' : ' Fallback mode'}`);
-  console.log(` Origins: ${ALLOWED_ORIGINS.join(', ')}`);
-  console.log(` Security: Helmet + CORS + Rate Limiting enabled`);
-  console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(` Health: http://localhost:${PORT}/health`);
+  console.log(`Socket.IO Server running on port ${PORT}`);
+  console.log(`Redis: ${redisConnected ? 'Connected' : 'Fallback mode'}`);
+  console.log(`Origins: ${ALLOWED_ORIGINS.join(', ')}`);
+  console.log(`Security: Helmet + CORS + Rate Limiting enabled`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Health: http://localhost:${PORT}/health`);
 });

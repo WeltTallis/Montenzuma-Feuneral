@@ -446,18 +446,31 @@ export const createOrder = async (req: Request, res: Response) => {
   }
 
   try {
-    const { coffin_name, color, size, quantity, booked_by, booked_for } = (req as any).body;
-
-    if (!coffin_name || !color || !size || !quantity || !booked_by || !booked_for) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields: coffin_name, color, size, quantity, booked_by, and booked_for are required'
-      });
-    }
+    // Accept both the legacy field set and the inventory booking field set.
+    // The inventory UI sends: { coffin_id, client_name, client_phone, deceased_name, service_date, notes, paid }
+    // The legacy clients send: { coffin_name, color, size, quantity, booked_by, booked_for }.
+    // color/size/booked_by/booked_for/deceased are all OPTIONAL — details are auto-filled
+    // from the selected coffin so users don't have to re-enter them.
+    const {
+      coffin_id, coffin_name, color, size, quantity,
+      booked_by, booked_for, client_name, deceased_name
+    } = (req as any).body;
 
     const parsedQuantity = parseInt(quantity);
-    if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+    if (quantity !== undefined && quantity !== '' && quantity !== null && (isNaN(parsedQuantity) || parsedQuantity <= 0)) {
       return res.status(400).json({ success: false, message: 'Invalid quantity' });
+    }
+    const finalQuantity = isNaN(parsedQuantity) || parsedQuantity <= 0 ? 1 : parsedQuantity;
+
+    const coffinIdRaw = (coffin_id || '').toString().trim();
+    const coffinNameRaw = (coffin_name || '').toString().trim();
+
+    // A coffin must be identifiable by id OR name. Everything else is optional.
+    if (!coffinIdRaw && !coffinNameRaw) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a coffin to book (coffin_id or coffin_name is required)'
+      });
     }
 
     const dbName = await resolveDatabase(tenantSlug);
@@ -465,63 +478,91 @@ export const createOrder = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Tenant database not found' });
     }
 
-    const stockCheck: any[] = await safeTenantQuery(dbName,
-      'SELECT coffin_id, quantity FROM coffins WHERE type = ? AND color = ? AND size = ? AND tenant_slug = ? AND is_deleted = FALSE FOR UPDATE',
-      [coffin_name.trim(), color.trim(), size.trim(), tenantSlug]
-    );
+    // Resolve the coffin: by id when available (its details auto-fill name/color/size),
+    // otherwise by name with optional color/size filters.
+    let coffin: any = null;
+    if (coffinIdRaw) {
+      const rows: any[] = await safeTenantQuery(dbName,
+        'SELECT coffin_id, type, color, size, quantity FROM coffins WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE FOR UPDATE',
+        [coffinIdRaw, tenantSlug]
+      );
+      if (rows.length > 0) coffin = rows[0];
+    } else {
+      let sql = 'SELECT coffin_id, type, color, size, quantity FROM coffins WHERE type = ?';
+      const params: any[] = [coffinNameRaw];
+      const colorTrim = (color || '').toString().trim();
+      const sizeTrim = (size || '').toString().trim();
+      if (colorTrim) { sql += ' AND color = ?'; params.push(colorTrim); }
+      if (sizeTrim) { sql += ' AND size = ?'; params.push(sizeTrim); }
+      sql += ' AND tenant_slug = ? AND is_deleted = FALSE FOR UPDATE';
+      params.push(tenantSlug);
+      const rows: any[] = await safeTenantQuery(dbName, sql, params);
+      if (rows.length > 0) coffin = rows[0];
+    }
 
-    if (stockCheck.length === 0) {
+    if (!coffin) {
       return res.status(404).json({
         success: false,
-        message: 'Coffin not found with the specified name, color, and size'
+        message: 'Coffin not found. Please select a valid coffin from the list.'
       });
     }
 
-    if (stockCheck[0].quantity < parsedQuantity) {
+    if (parseInt(coffin.quantity) < finalQuantity) {
       return res.status(409).json({
         success: false,
-        message: `Insufficient stock. Available: ${stockCheck[0].quantity}, Requested: ${parsedQuantity}`
+        message: `Insufficient stock. Available: ${coffin.quantity}, Requested: ${finalQuantity}`
       });
     }
 
-    const existingOrder: any[] = await safeTenantQuery(dbName,
-      `SELECT order_id FROM coffin_orders
-       WHERE coffin_name = ? AND color = ? AND size = ? AND tenant_slug = ?
-       AND status = 'active' AND booked_for = ?`,
-      [coffin_name.trim(), color.trim(), size.trim(), tenantSlug, booked_for.trim()]
-    );
+    // Auto-fill details from the selected coffin; let an explicit value override it.
+    const finalName = coffinNameRaw || coffin.type || 'Coffin';
+    const finalColor = (color || '').toString().trim() || coffin.color || null;
+    const finalSize = (size || '').toString().trim() || coffin.size || null;
+    const finalBookedBy = (booked_by || '').toString().trim() || (client_name || '').toString().trim() || null;
+    const finalBookedFor = (booked_for || '').toString().trim() || (deceased_name || '').toString().trim() || null;
 
-    if (existingOrder.length > 0) {
-      return res.status(409).json({
-        success: false,
-        message: `This coffin is already booked for "${booked_for}". Please check the booking.`
-      });
+    // Avoid double-booking the same coffin for the same person when booked_for is given.
+    if (finalBookedFor) {
+      const existingOrder: any[] = await safeTenantQuery(dbName,
+        `SELECT order_id FROM coffin_orders
+         WHERE coffin_id = ? AND tenant_slug = ?
+         AND status = 'active' AND booked_for = ?`,
+        [coffin.coffin_id, tenantSlug, finalBookedFor]
+      );
+
+      if (existingOrder.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: `This coffin is already booked for "${finalBookedFor}". Please check the booking.`
+        });
+      }
     }
 
     const result = await CoffinModel.createOrder(tenantSlug, {
-      coffin_name: coffin_name.trim(),
-      color: color.trim(),
-      size: size.trim(),
-      quantity: parsedQuantity,
-      booked_by: booked_by.trim(),
-      booked_for: booked_for.trim()
+      coffin_id: coffin.coffin_id,
+      coffin_name: finalName,
+      color: finalColor,
+      size: finalSize,
+      quantity: finalQuantity,
+      booked_by: finalBookedBy,
+      booked_for: finalBookedFor
     });
 
     await clearCoffinCache(tenantSlug);
 
-    logger.info({ msg: 'Coffin order created', tenantSlug, orderId: result.order_id, booked_for });
+    logger.info({ msg: 'Coffin order created', tenantSlug, orderId: result.order_id, booked_for: finalBookedFor });
 
     return res.status(201).json({
       success: true,
       message: 'Coffin order created successfully',
       data: {
         order_id: result.order_id,
-        coffin_name,
-        color,
-        size,
-        quantity: parsedQuantity,
-        booked_by,
-        booked_for,
+        coffin_name: finalName,
+        color: finalColor,
+        size: finalSize,
+        quantity: finalQuantity,
+        booked_by: finalBookedBy,
+        booked_for: finalBookedFor,
         status: 'active'
       }
     });
@@ -662,13 +703,35 @@ export const createStockRequest = async (req: Request, res: Response) => {
   }
 
   try {
-    const { coffin_name, color, size, requested_by, booked_for, requesting_branch } = (req as any).body;
+    const { coffin_id, coffin_name, color, size, requested_by, booked_for, requesting_branch, client_name, deceased_name } = (req as any).body;
 
-    if (!coffin_name || !color || !size || !requested_by || !booked_for || !requesting_branch) {
+    const coffinIdRaw = (coffin_id || '').toString().trim();
+    const coffinNameRaw = (coffin_name || '').toString().trim();
+
+    if (!coffinIdRaw && !coffinNameRaw) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: coffin_name, color, size, requested_by, booked_for, and requesting_branch are required'
+        message: 'Please select a coffin for the stock request (coffin_id or coffin_name is required)'
       });
+    }
+
+    // Auto-fill coffin details from the selected coffin when only an id is given.
+    let resolvedName = coffinNameRaw;
+    let resolvedColor = (color || '').toString().trim() || null;
+    let resolvedSize = (size || '').toString().trim() || null;
+    if (coffinIdRaw) {
+      const dbName = await resolveDatabase(tenantSlug);
+      if (dbName) {
+        const rows: any[] = await safeTenantQuery(dbName,
+          'SELECT type, color, size FROM coffins WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE LIMIT 1',
+          [coffinIdRaw, tenantSlug]
+        );
+        if (rows.length > 0) {
+          resolvedName = resolvedName || rows[0].type || 'Coffin';
+          resolvedColor = resolvedColor || rows[0].color || null;
+          resolvedSize = resolvedSize || rows[0].size || null;
+        }
+      }
     }
 
     let imageUrl: string | null = null;
@@ -691,12 +754,12 @@ export const createStockRequest = async (req: Request, res: Response) => {
     }
 
     const result = await CoffinModel.requestStock(tenantSlug, {
-      coffin_name: coffin_name.trim(),
-      color: color.trim(),
-      size: size.trim(),
-      requested_by: requested_by.trim(),
-      booked_for: booked_for.trim(),
-      requesting_branch: requesting_branch.trim(),
+      coffin_name: resolvedName || 'Coffin',
+      color: resolvedColor,
+      size: resolvedSize,
+      requested_by: (requested_by || '').toString().trim() || (client_name || '').toString().trim() || null,
+      booked_for: (booked_for || '').toString().trim() || (deceased_name || '').toString().trim() || null,
+      requesting_branch: (requesting_branch || '').toString().trim() || null,
       image_url: imageUrl
     });
 
@@ -707,12 +770,12 @@ export const createStockRequest = async (req: Request, res: Response) => {
       message: 'Stock request created successfully',
       data: {
         request_id: result.request_id,
-        coffin_name,
-        color,
-        size,
-        requested_by,
-        booked_for,
-        requesting_branch,
+        coffin_name: resolvedName,
+        color: resolvedColor,
+        size: resolvedSize,
+        requested_by: (requested_by || '').toString().trim() || (client_name || '').toString().trim() || null,
+        booked_for: (booked_for || '').toString().trim() || (deceased_name || '').toString().trim() || null,
+        requesting_branch: (requesting_branch || '').toString().trim() || null,
         image: imageUrl,
         status: 'pending'
       }

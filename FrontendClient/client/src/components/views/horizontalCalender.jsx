@@ -38,7 +38,7 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
 
     const days = React.useMemo(() => {
         const arr = [];
-        for (let i = 0; i < 21; i++) {
+        for (let i = 0; i < 30; i++) {
             const d = addDays(viewStart, i);
             const key = dk(d.getFullYear(), d.getMonth(), d.getDate());
             arr.push({
@@ -70,7 +70,7 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
         const measure = () => {
             const available = Math.max(el.clientWidth - 28, 40);
             const count = Math.max(1, Math.floor(available / 44));
-            setVisibleCount(Math.min(count, 21));
+            setVisibleCount(Math.min(count, 30));
         };
         measure();
         const ro = new ResizeObserver(measure);
@@ -80,7 +80,7 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
 
     const title = React.useMemo(() => {
         const s = addDays(viewStart, 0);
-        const e = addDays(viewStart, 41);
+        const e = addDays(viewStart, 29);
         const sm = s.getMonth(), sy = s.getFullYear();
         const em = e.getMonth(), ey = e.getFullYear();
         if (sm === em && sy === ey) return `${MOS_SHORT[sm]} ${sy}`;
@@ -110,82 +110,71 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
             maxWidth: 2200,
             margin: '0 auto',
         }}>
-            {/* Minimal Nav */}
+            {/* Sleek Nav */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '0 0 10px 0',
+                padding: '0 0 6px 0',
             }}>
                 <button
                     onClick={prevWeek}
                     style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#6b7280',
-
+                        width: 26,
+                        height: 26,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 7,
+                        background: '#fff',
+                        color: '#374151',
                         cursor: 'pointer',
-                        fontSize: '13px',
-                        padding: '4px 8px',
-                        borderRadius: 6,
+                        fontSize: '12px',
+                        lineHeight: 1,
                         transition: 'all 0.15s',
-                        fontWeight: 500,
+                        outline: 'none',
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#6b7280'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+                    title="Previous week"
                 >
                     ←
                 </button>
 
                 <span style={{
-                    fontSize: '13px',
+                    fontSize: '11px',
                     fontWeight: 600,
-                    color: '#111827',
+                    color: '#6b7280',
                     letterSpacing: '0.3px',
                 }}>
                     {title}
                 </span>
 
-                <div style={{ display: 'flex', gap: 4 }}>
-                    <button
-                        onClick={goToday}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#6b7280',
-
-
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            padding: '4px 8px',
-                            borderRadius: 6,
-                            transition: 'all 0.15s',
-                            fontWeight: 500,
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#111827'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#6b7280'; }}
-                    >
-                        Today
-                    </button>
-                    <button
-                        onClick={nextWeek}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#6b7280',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            padding: '4px 8px',
-                            borderRadius: 6,
-                            transition: 'all 0.15s',
-                            fontWeight: 500,
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#6b7280'; }}
-                    >
-                        →
-                    </button>
-                </div>
+                <button
+                    onClick={nextWeek}
+                    style={{
+                        width: 26,
+                        height: 26,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 7,
+                        background: '#fff',
+                        color: '#374151',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        lineHeight: 1,
+                        transition: 'all 0.15s',
+                        outline: 'none',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+                    title="Next week"
+                >
+                    →
+                </button>
             </div>
 
             {/* Compact Scrollable Strip */}
@@ -196,12 +185,12 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                     justifyContent: 'flex-start',
                     overflowX: 'hidden',
                     overflowY: 'hidden',
-                    padding: '4px 0',
-                    gap: 4,
+                    padding: '2px 0',
+                    gap: 3,
                     scrollBehavior: 'smooth',
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none',
-                    minHeight: 80,
+                    minHeight: 70,
                 }}
                 className="ds-scroll-hide"
             >
@@ -235,9 +224,9 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                             id={`dc-${day.key}`}
                             onClick={() => pickDate(day.date)}
                             style={{
-                                flex: '1 0 38px',
-                                padding: '6px 2px 4px',
-                                borderRadius: 8,
+                                flex: '1 0 36px',
+                                padding: '4px 2px 3px',
+                                borderRadius: 7,
                                 border,
                                 background: bg,
                                 textAlign: 'center',
@@ -246,7 +235,7 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                                 boxShadow: shadow,
                                 outline: 'none',
                                 position: 'relative',
-                                minWidth: 32,
+                                minWidth: 30,
                             }}
                             onMouseEnter={(e) => {
                                 if (!isSelected && !isToday) {
@@ -267,7 +256,7 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.05em',
                                 color: dayNameColor,
-                                marginBottom: 2,
+                                marginBottom: 1,
                                 opacity: isSelected ? 1 : 0.7,
                             }}>
                                 {day.dayName}
@@ -283,7 +272,7 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                             {day.count > 0 && (
                                 <div style={{
                                     display: 'inline-block',
-                                    marginTop: 2,
+                                    marginTop: 1,
                                     fontSize: '7px',
                                     fontWeight: 700,
                                     padding: '0px 4px',

@@ -218,6 +218,148 @@ async function ensureWorkshopTables(dbName: string) {
             console.log(`[WORKSHOP] ✅ Created workshop_workers table in: ${dbName}`);
         }
 
+        // ── Ensure workshop-only tables (safe: CREATE TABLE IF NOT EXISTS) ──
+        // The full workshop migration above only runs when coffin_orders does NOT
+        // already exist. When it *does* exist (e.g. it was created first by another
+        // module such as the coffin/front-desk flow), production_stages,
+        // worker_assignments, material_usage, costing, etc. are never created. That
+        // makes order creation fail (INSERT INTO production_stages) and order
+        // listing fail (subqueries on worker_assignments), showing an empty [].
+        const workshopOnlyTables: string[] = [
+            `CREATE TABLE IF NOT EXISTS materials (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                category VARCHAR(100) NOT NULL,
+                unit VARCHAR(50) NOT NULL DEFAULT 'pieces',
+                quantity DECIMAL(10,2) NOT NULL DEFAULT 0,
+                unit_price DECIMAL(10,2) DEFAULT 0,
+                min_stock_level DECIMAL(10,2) DEFAULT 0,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_materials_category (category)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+            `CREATE TABLE IF NOT EXISTS material_usage (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                coffin_order_id INT NOT NULL,
+                material_id INT NOT NULL,
+                quantity_used DECIMAL(10,2) NOT NULL,
+                unit_cost DECIMAL(10,2) DEFAULT 0,
+                notes TEXT,
+                used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
+                FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE,
+                INDEX idx_usage_order (coffin_order_id),
+                INDEX idx_usage_material (material_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+            `CREATE TABLE IF NOT EXISTS production_stages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                coffin_order_id INT NOT NULL,
+                stage VARCHAR(50) NOT NULL,
+                status VARCHAR(50) DEFAULT 'pending',
+                started_at DATETIME NULL,
+                completed_at DATETIME NULL,
+                notes TEXT,
+                FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
+                UNIQUE KEY uk_order_stage (coffin_order_id, stage),
+                INDEX idx_stages_order (coffin_order_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+            `CREATE TABLE IF NOT EXISTS worker_assignments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                coffin_order_id INT NOT NULL,
+                user_id INT NOT NULL,
+                stage VARCHAR(50) NOT NULL,
+                hours_worked DECIMAL(5,2) DEFAULT 0,
+                notes TEXT,
+                assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                completed_at DATETIME NULL,
+                FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
+                INDEX idx_assignments_order (coffin_order_id),
+                INDEX idx_assignments_user (user_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+            `CREATE TABLE IF NOT EXISTS costing (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                coffin_order_id INT NOT NULL UNIQUE,
+                materials_cost DECIMAL(10,2) DEFAULT 0,
+                labor_cost DECIMAL(10,2) DEFAULT 0,
+                overhead_cost DECIMAL(10,2) DEFAULT 0,
+                total_cost DECIMAL(10,2) DEFAULT 0,
+                selling_price DECIMAL(10,2) DEFAULT 0,
+                profit DECIMAL(10,2) DEFAULT 0,
+                profit_margin DECIMAL(5,2) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+            `CREATE TABLE IF NOT EXISTS design_specifications (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                coffin_order_id INT NOT NULL UNIQUE,
+                design_name VARCHAR(255),
+                description TEXT,
+                specifications JSON,
+                design_files JSON,
+                status VARCHAR(50) DEFAULT 'draft',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
+                INDEX idx_design_order (coffin_order_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+            `CREATE TABLE IF NOT EXISTS material_intake (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                material_id INT NOT NULL,
+                quantity DECIMAL(10,2) NOT NULL,
+                unit_cost DECIMAL(10,2) DEFAULT 0,
+                supplier VARCHAR(255),
+                invoice_number VARCHAR(100),
+                notes TEXT,
+                received_by VARCHAR(255),
+                received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE,
+                INDEX idx_intake_material (material_id),
+                INDEX idx_intake_date (received_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+        ];
+        for (const sql of workshopOnlyTables) {
+            try {
+                await tenantKnex.raw(sql);
+            } catch (e: any) {
+                console.warn(`[WORKSHOP] Could not ensure a workshop table in ${dbName}: ${e?.message}`);
+            }
+        }
+
+                        // ── Ensure the workshop columns coffin_orders needs ──────────────────────
+        // If coffin_orders was created by another module it may be missing the
+        // columns the workshop INSERT relies on. Add them idempotently.
+        const neededOrderColumns: [string, string][] = [
+            ['order_number', "VARCHAR(50) NULL"],
+            ['coffin_name', "VARCHAR(255) NULL"],
+            ['deceased_name', "VARCHAR(255) NULL"],
+            ['coffin_type', "VARCHAR(50) DEFAULT 'standard'"],
+            ['size', "VARCHAR(100) NULL"],
+            ['dimensions', "TEXT NULL"],
+            ['color', "VARCHAR(100) NULL"],
+            ['notes', "TEXT NULL"],
+            ['priority', "VARCHAR(20) DEFAULT 'normal'"],
+            ['due_date', "DATE NULL"],
+            ['branch_id', "INT DEFAULT 1"],
+            ['hold_reason', "TEXT NULL"],
+            ['created_by', "INT NULL"]
+        ];
+        for (const [col, def] of neededOrderColumns) {
+            const hasCol = await tenantKnex.schema.hasColumn('coffin_orders', col);
+            if (!hasCol) {
+                try {
+                    await tenantKnex.raw(`ALTER TABLE coffin_orders ADD COLUMN ${col} ${def}`);
+                    console.log(`[WORKSHOP] ✅ Added '${col}' to coffin_orders in: ${dbName}`);
+                } catch (e: any) {
+                    const msg = e?.message || '';
+                    if (!/Duplicate column/i.test(msg) && !/ER_DUP_FIELDNAME/i.test(msg)) {
+                        console.warn(`[WORKSHOP] Could not add column ${col} to coffin_orders in ${dbName}: ${msg}`);
+                    }
+                }
+            }
+        }
+
         await tenantKnex.destroy();
         return true;
     } catch (error: any) {

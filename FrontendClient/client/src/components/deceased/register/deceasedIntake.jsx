@@ -879,9 +879,9 @@ const IDScannerModalWrap = styled.div`
 
 // ─── Official Footer & Barcode Panel ───────────────────────────────
 const FooterPanel = styled.div`
-  background: ${COLORS.bone2};
-  border-top: 1px solid ${COLORS.line};
-  padding: 3rem 4rem; 
+  background: ${COLORS.white};
+
+  padding: 1rem 2rem; 
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1746,10 +1746,22 @@ const DeceasedRegistrationForm = () => {
 
           <FooterPanel>
             <FooterText>
-              {tenantName} Intake Record — Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}<br />
-              Page 1 of 1 — Original Document
+              {tenantName}  Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}<br />
+              - Official Intake Record —
             </FooterText>
+
+            <BarcodeWrapper>
+              <Barcode value={admissionId} />
+              <FileIdText>
+                File ID:
+                <span>
+                  {loadingAdmission ? 'Generating...' : (admissionId || 'Select gender ')}
+                </span>
+              </FileIdText>
+            </BarcodeWrapper>
           </FooterPanel>
+
+
         </ContentWrapper>
       </FormSheet>
 

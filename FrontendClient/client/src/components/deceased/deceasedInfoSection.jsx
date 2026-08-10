@@ -1,19 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import styled, { keyframes } from 'styled-components';
-
-import    THEME  from  '../../utils/colors/theme'
-import { toDateKey } from '../../utils/dates/parseDates';
-
-
-
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import api from '../../api/axios';
+import styled, { keyframes } from 'styled-components';
+
+import THEME from '../../utils/colors/theme'
+import { toDateKey } from '../../utils/dates/parseDates';
 import { ENDPOINTS } from '../../api/endpoints';
-
-// Simple Clean Color Palette
-
+import api from '../../api/axios';
 
 // Animations
 const fadeIn = keyframes`

@@ -45,10 +45,10 @@ class CoffinModel {
     const dbName = await resolveDatabase(tenantSlug);
     if (!dbName) throw new Error('Tenant database not found');
 
-    const type       = (data.type || data.name || '').toString().trim();
-    const color      = (data.color || '').toString().trim() || null;
-    const size       = (data.size || '').toString().trim() || null;
-    const quantity   = parseInt(data.quantity) || 0;
+    const type = (data.type || data.name || '').toString().trim();
+    const color = (data.color || '').toString().trim() || null;
+    const size = (data.size || '').toString().trim() || null;
+    const quantity = parseInt(data.quantity) || 0;
     const exactPrice = parseFloat(data.exact_price ?? data.price) || 0;
 
     const coffinId = `COF-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
@@ -219,13 +219,15 @@ class CoffinModel {
 
     const orderId = `ORD-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
+    // Look the coffin up by its id — the caller auto-fills name/color/size from
+    // the selected coffin, so we never require those fields for a booking.
     const coffin: any[] = await safeTenantQuery(dbName,
-      'SELECT coffin_id, quantity FROM coffins WHERE type = ? AND color = ? AND size = ? AND tenant_slug = ? AND is_deleted = FALSE',
-      [data.coffin_name, data.color, data.size, tenantSlug]
+      'SELECT coffin_id, quantity FROM coffins WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE',
+      [data.coffin_id, tenantSlug]
     );
 
     if (coffin.length === 0) {
-      throw new Error('Coffin not found with specified name, color, and size');
+      throw new Error('Coffin not found with the specified id');
     }
 
     if (coffin[0].quantity < parseInt(data.quantity)) {
@@ -243,9 +245,9 @@ class CoffinModel {
     `;
 
     const result: any = await safeTenantQuery(dbName, sql, [
-      orderId, tenantSlug, coffin[0].coffin_id, data.coffin_name?.trim(),
-      data.color?.trim(), data.size?.trim(), parseInt(data.quantity),
-      data.booked_by?.trim(), data.booked_for?.trim()
+      orderId, tenantSlug, coffin[0].coffin_id, data.coffin_name?.trim() || null,
+      data.color ?? null, data.size ?? null, parseInt(data.quantity),
+      data.booked_by?.trim() || null, data.booked_for?.trim() || null
     ]);
 
     return {

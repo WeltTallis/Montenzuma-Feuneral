@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { Ctx } from './WorkshopDashboard';
 import { getTenantSlug } from '../../../utils/globalAuth';
-import { formatDate } from '../../../utils/dates/parseDates';
+import { formatDate as fmtDate } from '../../../utils/dates/parseDates';
 import { workshopService } from '../services/workshopService';
 
 const T = {

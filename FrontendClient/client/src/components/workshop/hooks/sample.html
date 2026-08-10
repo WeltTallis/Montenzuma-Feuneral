@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coffin Production Pipeline</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #ffffff;
+            --fg: #111827;
+            --muted: #6b7280;
+            --faint: #9ca3af;
+            --border: #e5e7eb;
+            --light: #f3f4f6;
+            --accent: #0ea5e9;
+            --gold: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --sidebar-w: 240px;
+            --row-h: 78px;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'DM Sans', sans-serif;
+        }
+
+        html {
+            font-size: 14px;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg);
+            background-image: radial-gradient(circle, #f0f0f0 0.5px, transparent 0.5px);
+            background-size: 20px 20px;
+            color: var(--fg);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        /* ===== HEADER ===== */
+        .pl-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 28px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .pl-header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .pl-logo {
+            width: 38px;
+            height: 38px;
+            background: var(--fg);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pl-logo svg {
+            width: 22px;
+            height: 28px;
+        }
+
+        .pl-header h1 {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--fg);
+        }
+
+        .pl-subtitle {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        .pl-header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--success);
+            background: #ecfdf5;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(0.8);
+            }
+        }
+
+        .updated-text {
+            font-size: 0.72rem;
+            color: var(--faint);
+        }
+
+        /* ===== STATS ROW ===== */
+        .stats-row {
+            display: flex;
+            gap: 12px;
+            padding: 16px 28px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-card {
+            flex: 1;
+            padding: 14px 18px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            border-color: #d1d5db;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .stat-value {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            margin-top: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 500;
+        }
+
+        .stat-icon {
+            float: right;
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+
+        /* ===== FILTER ROW ===== */
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .filter-label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 600;
+            margin-right: 4px;
+            white-space: nowrap;
+        }
+
+        .filter-btn {
+            border: 1.5px solid var(--border);
+            border-radius: 20px;
+            padding: 5px 14px;
+            background: var(--bg);
+            color: var(--muted);
+            font-family: var(--font-body);
+            font-size: 0.78rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-btn:hover {
+            border-color: #d1d5db;
+            color: var(--fg);
+        }
+
+        .filter-btn.active {
+            color: #fff;
+            border-color: transparent;
+        }
+
+        .filter-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* ===== CHART LAYOUT ===== */
+        .chart {
+            display: flex;
+            height: calc(100vh - 230px);
+            min-height: 400px;
+        }
+
+        /* --- Sidebar --- */
+        .chart-sidebar {
+            width: var(--sidebar-w);
+            min-width: var(--sidebar-w);
+            border-right: 1px solid var(--border);
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-label {
+            padding: 12px 16px 8px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--faint);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid var(--border);
+            height: 48px;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .sidebar-rows {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .sb-row {
+            height: var(--row-h);
+            padding: 10px 16px;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 3px;
+            transition: background 0.15s;
+            cursor: default;
+        }
+
+        .sb-row:hover {
+            background: #fafbfc;
+        }
+
+        .sb-row.highlighted {
+            background: #f0f9ff;
+        }
+
+        .sb-worker {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sb-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .sb-worker-name {
+            font-size: 0.78rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sb-level {
+            font-size: 0.58rem;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 8px;
+        }
+
+        .sb-streak {
+            font-size: 0.62rem;
+            color: var(--gold);
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .sb-streak i {
+            font-size: 0.58rem;
+        }
+
+        .sb-order-id {
+            font-family: var(--font-display);
+            font-size: 0.82rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .sb-order-type {
+            font-size: 0.7rem;
+            color: var(--muted);
+        }
+
+        .sb-order-client {
+            font-size: 0.68rem;
+            color: var(--faint);
+        }
+
+        .sb-order-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 2px;
+        }
+
+        .stage-text {
+            font-size: 0.68rem;
+            font-weight: 600;
+        }
+
+        .pct-text {
+            font-family: var(--font-display);
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--fg);
+        }
+
+        .mini-bar {
+            height: 3px;
+            background: #f3f4f6;
+            border-radius: 2px;
+            margin-top: 3px;
+            overflow: hidden;
+        }
+
+        .mini-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* --- Main chart area --- */
+        .chart-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Stage headers */
+        .stage-headers {
+            height: 48px;
+            min-height: 48px;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            padding: 0 20px;
+        }
+
+        .stage-hdr {
+            position: absolute;
+            bottom: 8px;
+            transform: translateX(-50%);
+            text-align: center;
+            transition: opacity 0.2s;
+        }
+
+        .stage-hdr-name {
+            font-size: 0.62rem;
+            font-weight: 700;
+            color: var(--faint);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            white-space: nowrap;
+        }
+
+        .stage-hdr-pct {
+            font-family: var(--font-display);
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #d1d5db;
+        }
+
+        /* Tracks container */
+        .tracks-container {
+            flex: 1;
+            position: relative;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        /* Vertical stage lines */
+        .stage-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            border-left: 1.5px dashed #ebebeb;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .stage-line::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -3.5px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--bg);
+            border: 1.5px solid #e5e7eb;
+        }
+
+        .stage-line:first-child::before,
+        .stage-line:last-child::before {
+            border-color: #d1d5db;
+        }
+
+        /* Track rows */
+        .track-row {
+            height: var(--row-h);
+            position: relative;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .track-bg {
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            right: 20px;
+            height: 6px;
+            transform: translateY(-50%);
+            background: #f3f4f6;
+            border-radius: 3px;
+            z-index: 2;
+        }
+
+        .track-fill {
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            height: 6px;
+            transform: translateY(-50%);
+            border-radius: 3px;
+            z-index: 3;
+            transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .track-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.35) 50%, transparent 100%);
+            background-size: 200% 100%;
+            animation: shimmer 2.5s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        /* Completed row glow */
+        .track-row.completed .track-fill {
+            background: linear-gradient(90deg, var(--wc, #10b981), var(--gold)) !important;
+        }
+
+        .track-row.completed .track-fill::after {
+            display: none;
+        }
+
+        /* Coffin node (the moving icon) */
+        .coffin-node {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            transition: left 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .coffin-node:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 4px;
+            border-radius: 4px;
+        }
+
+        .coffin-icon {
+            width: 36px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+            transition: transform 0.15s, filter 0.15s;
+            animation: gentle-float 3s ease-in-out infinite;
+        }
+
+        .coffin-node:hover .coffin-icon {
+            transform: scale(1.15);
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.18));
+        }
+
+        @keyframes gentle-float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-2px);
+            }
+        }
+
+        .node-pct {
+            font-family: var(--font-display);
+            font-size: 0.6rem;
+            font-weight: 700;
+            opacity: 0.8;
+        }
+
+        /* Completed coffin golden glow */
+        .track-row.completed .coffin-icon {
+            filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.5));
+            animation: golden-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes golden-pulse {
+
+            0%,
+            100% {
+                filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.4));
+            }
+
+            50% {
+                filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.7));
+            }
+        }
+
+        /* ===== TOOLTIP ===== */
+        .tooltip {
+            position: fixed;
+            z-index: 200;
+            background: var(--fg);
+            color: #fff;
+            border-radius: 12px;
+            padding: 0;
+            width: 260px;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.2s, transform 0.2s;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .tt-accent {
+            height: 3px;
+            width: 100%;
+        }
+
+        .tt-header {
+            padding: 12px 16px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tt-id {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.92rem;
+            letter-spacing: -0.01em;
+        }
+
+        .tt-stage-badge {
+            font-size: 0.62rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .tt-body {
+            padding: 4px 16px 10px;
+        }
+
+        .tt-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .tt-row:last-child {
+            border-bottom: none;
+        }
+
+        .tt-row-label {
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        .tt-row-value {
+            font-weight: 600;
+            text-align: right;
+            max-width: 55%;
+        }
+
+        .tt-footer {
+            padding: 8px 16px 12px;
+        }
+
+        .tt-advance-btn {
+            width: 100%;
+            padding: 7px 0;
+            border: none;
+            border-radius: 8px;
+            font-family: var(--font-body);
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            transition: filter 0.15s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .tt-advance-btn:hover {
+            filter: brightness(1.15);
+        }
+
+        .tt-advance-btn:active {
+            transform: scale(0.97);
+        }
+
+        .tt-advance-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            filter: none;
+            transform: none;
+        }
+
+        .tt-progress {
+            margin: 6px 16px 0;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .tt-progress-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+
+        /* ===== FLOATING +1 TEXT ===== */
+        .floating-text {
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: var(--font-display);
+            font-size: 0.72rem;
+            font-weight: 800;
+            pointer-events: none;
+            white-space: nowrap;
+            animation: float-up 0.9s ease-out forwards;
+            z-index: 20;
+        }
+
+        @keyframes float-up {
+            0% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-28px) scale(0.7);
+            }
+        }
+
+        /* ===== BOUNCE ON ADVANCE ===== */
+        @keyframes bounce-advance {
+            0% {
+                transform: scale(1);
+            }
+
+            25% {
+                transform: scale(1.3);
+            }
+
+            50% {
+                transform: scale(0.92);
+            }
+
+            75% {
+                transform: scale(1.08);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* ===== CELEBRATION RING ===== */
+        .celebrate-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2.5px solid var(--gold);
+            transform: translate(-50%, -50%) scale(0.3);
+            animation: ring-burst 0.7s ease-out forwards;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        @keyframes ring-burst {
+            0% {
+                transform: translate(-50%, -50%) scale(0.3);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(2.8);
+                opacity: 0;
+            }
+        }
+
+        /* ===== CONFETTI PARTICLES ===== */
+        .confetti {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            border-radius: 1px;
+            pointer-events: none;
+            z-index: 16;
+            animation: confetti-fly 0.8s ease-out forwards;
+        }
+
+        @keyframes confetti-fly {
+            0% {
+                transform: translate(-50%, -50%) translate(0, 0) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) translate(var(--cx), var(--cy)) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--faint);
+        }
+
+        .empty-state i {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .empty-state p {
+            font-size: 0.85rem;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            .chart-sidebar {
+                width: 180px;
+                min-width: 180px;
+            }
+
+            .sb-order-client {
+                display: none;
+            }
+
+            .stats-row {
+                flex-wrap: wrap;
+            }
+
+            .stat-card {
+                min-width: calc(50% - 8px);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .chart-sidebar {
+                display: none;
+            }
+
+            .stats-row {
+                padding: 12px 16px;
+            }
+
+            .pl-header {
+                padding: 12px 16px;
+            }
+
+            .filter-row {
+                padding: 10px 16px;
+            }
+
+            .stat-card {
+                min-width: calc(50% - 8px);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ===== HEADER ===== -->
+    <header class="pl-header">
+        <div class="pl-header-left">
+            <div class="pl-logo">
+                <svg viewBox="0 0 40 50" fill="none">
+                    <path d="M10 2L30 2L38 14L34 48L6 48L2 14Z" fill="#fff" stroke="#fff" stroke-width="1.5"
+                        stroke-linejoin="round" />
+                    <line x1="20" y1="16" x2="20" y2="28" stroke="#111827" stroke-width="2" stroke-linecap="round" />
+                    <line x1="15" y1="22" x2="25" y2="22" stroke="#111827" stroke-width="2" stroke-linecap="round" />
+                </svg>
+            </div>
+            <div>
+                <h1>Production Pipeline</h1>
+                <p class="pl-subtitle">Real-time coffin manufacturing tracker</p>
+            </div>
+        </div>
+        <div class="pl-header-right">
+            <div class="live-indicator">
+                <span class="live-dot"></span>
+                <span>Live</span>
+            </div>
+            <span class="updated-text" id="updatedText">Updated just now</span>
+        </div>
+    </header>
+
+    <!-- ===== STATS ===== -->
+    <div class="stats-row" id="statsRow">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-boxes-stacked"></i>
+            </div>
+            <div class="stat-value" id="statActive">0</div>
+            <div class="stat-label">In Pipeline</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #fef3c7; color: #d97706;"><i class="fas fa-check-double"></i>
+            </div>
+            <div class="stat-value" id="statDone">0</div>
+            <div class="stat-label">Completed Today</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #f0fdf4; color: #16a34a;"><i class="fas fa-clock"></i></div>
+            <div class="stat-value" id="statAvg">0h</div>
+            <div class="stat-label">Avg. Cycle Time</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #fdf2f8; color: #db2777;"><i class="fas fa-users"></i></div>
+            <div class="stat-value" id="statWorkers">0</div>
+            <div class="stat-label">Active Workers</div>
+        </div>
+    </div>
+
+    <!-- ===== FILTERS ===== -->
+    <div class="filter-row" id="filterRow"></div>
+
+    <!-- ===== CHART ===== -->
+    <div class="chart">
+        <div class="chart-sidebar">
+            <div class="sidebar-label">Order Details</div>
+            <div class="sidebar-rows" id="sidebarRows"></div>
+        </div>
+        <div class="chart-main">
+            <div class="stage-headers" id="stageHeaders"></div>
+            <div class="tracks-container" id="tracksContainer">
+                <!-- Stage lines and track rows rendered by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TOOLTIP ===== -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        /* ==============================================
+           DATA
+           ============================================== */
+        const stages = [
+            { name: 'Order Placed', short: 'ORDER', pct: 0 },
+            { name: 'Wood Selection', short: 'WOOD', pct: 14.3 },
+            { name: 'Cutting', short: 'CUT', pct: 28.6 },
+            { name: 'Assembly', short: 'ASSEMBLE', pct: 42.9 },
+            { name: 'Upholstery', short: 'UPHOLST', pct: 57.1 },
+            { name: 'Finishing', short: 'FINISH', pct: 71.4 },
+            { name: 'Quality Check', short: 'QC', pct: 85.7 },
+            { name: 'Ready', short: 'READY', pct: 100 }
+        ];
+
+        const workers = [
+            { id: 'john', name: 'John K.', color: '#0ea5e9', level: 7, completed: 42, streak: 3 },
+            { id: 'mary', name: 'Mary W.', color: '#f59e0b', level: 9, completed: 58, streak: 5 },
+            { id: 'peter', name: 'Peter O.', color: '#8b5cf6', level: 5, completed: 31, streak: 1 },
+            { id: 'grace', name: 'Grace M.', color: '#ef4444', level: 6, completed: 37, streak: 2 },
+            { id: 'david', name: 'David N.', color: '#10b981', level: 4, completed: 22, streak: 0 }
+        ];
+
+        const orders = [
+            { id: 'CF-1041', client: 'James Mwangi', type: 'Premium Oak', worker: 'john', stage: 7, time: '0m' },
+            { id: 'CF-1042', client: 'Sarah Wanjiku', type: 'Standard Pine', worker: 'mary', stage: 5, time: '1h 20m' },
+            { id: 'CF-1043', client: 'Peter Odhiambo', type: 'Mahogany Elite', worker: 'peter', stage: 3, time: '3h 45m' },
+            { id: 'CF-1044', client: 'Agnes Njeri', type: 'Walnut Classic', worker: 'grace', stage: 6, time: '45m' },
+            { id: 'CF-1045', client: 'Joseph Kibet', type: 'Premium Oak', worker: 'david', stage: 2, time: '5h 10m' },
+            { id: 'CF-1046', client: 'Mary Achieng', type: 'Standard Pine', worker: 'john', stage: 4, time: '2h 30m' },
+            { id: 'CF-1047', client: 'Charles Maina', type: 'Ebony Deluxe', worker: 'mary', stage: 1, time: '6h 00m' },
+            { id: 'CF-1048', client: 'Hannah Wambui', type: 'Mahogany Elite', worker: 'peter', stage: 5, time: '1h 55m' },
+            { id: 'CF-1049', client: 'Samuel Karanja', type: 'Premium Oak', worker: 'grace', stage: 0, time: '0m' },
+            { id: 'CF-1050', client: 'Lucy Nyambura', type: 'Walnut Classic', worker: 'david', stage: 3, time: '4h 15m' },
+            { id: 'CF-1051', client: 'Thomas Gachagua', type: 'Standard Pine', worker: 'john', stage: 6, time: '35m' },
+            { id: 'CF-1052', client: 'Esther Muthoni', type: 'Ebony Deluxe', worker: 'mary', stage: 2, time: '7h 20m' },
+            { id: 'CF-1053', client: 'Daniel Kiprop', type: 'Premium Oak', worker: 'peter', stage: 4, time: '2h 50m' },
+            { id: 'CF-1054', client: 'Ruth Chebet', type: 'Standard Pine', worker: 'grace', stage: 1, time: '5h 40m' }
+        ];
+
+        let activeFilter = 'all';
+        let updateSeconds = 0;
+
+        /* ==============================================
+           HELPERS
+           ============================================== */
+        function getWorker(id) { return workers.find(w => w.id === id); }
+
+        function getFilteredOrders() {
+            if (activeFilter === 'all') return orders;
+            return orders.filter(o => o.worker === activeFilter);
+        }
+
+        /* ==============================================
+           RENDER: FILTERS
+           ============================================== */
+        function renderFilters() {
+            const row = document.getElementById('filterRow');
+            let html = `<span class="filter-label">Worker:</span>`;
+            html += `<button class="filter-btn ${activeFilter === 'all' ? 'active' : ''}" data-filter="all"
+                        style="${activeFilter === 'all' ? 'background: var(--fg);' : ''}"
+                        onclick="setFilter('all')">All Workers</button>`;
+            workers.forEach(w => {
+                const isActive = activeFilter === w.id;
+                html += `<button class="filter-btn ${isActive ? 'active' : ''}" data-filter="${w.id}"
+                            style="${isActive ? 'background:' + w.color + ';' : ''}"
+                            onclick="setFilter('${w.id}')">
+                            <span class="filter-dot" style="background:${w.color}"></span>
+                            ${w.name}
+                         </button>`;
+            });
+            row.innerHTML = html;
+        }
+
+        function setFilter(f) {
+            activeFilter = f;
+            renderFilters();
+            renderChart();
+        }
+
+        /* ==============================================
+           RENDER: STAGE HEADERS
+           ============================================== */
+        function renderStageHeaders() {
+            const container = document.getElementById('stageHeaders');
+            let html = '';
+            stages.forEach(s => {
+                html += `<div class="stage-hdr" style="left: calc(20px + (100% - 40px) * ${s.pct / 100})">
+                            <div class="stage-hdr-name">${s.short}</div>
+                            <div class="stage-hdr-pct">${Math.round(s.pct)}%</div>
+                         </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        /* ==============================================
+           RENDER: FULL CHART
+           ============================================== */
+        function renderChart() {
+            const sidebarRows = document.getElementById('sidebarRows');
+            const tracksContainer = document.getElementById('tracksContainer');
+            const filtered = getFilteredOrders();
+
+            /* -- Sidebar rows -- */
+            let sbHtml = '';
+            filtered.forEach(order => {
+                const w = getWorker(order.worker);
+                const s = stages[order.stage];
+                const pct = Math.round(s.pct);
+                const initials = w.name.split(' ').map(n => n[0]).join('');
+                sbHtml += `<div class="sb-row" data-sidebar="${order.id}">
+                    <div class="sb-worker">
+                        <div class="sb-avatar" style="background:${w.color}">${initials}</div>
+                        <div class="sb-worker-info">
+                            <div class="sb-worker-name">${w.name}
+                                <span class="sb-level" style="background:${w.color}18;color:${w.color}">Lv.${w.level}</span>
+                            </div>
+                            ${w.streak > 0 ? `<div class="sb-streak"><i class="fas fa-fire"></i> ${w.streak} streak</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="sb-order-id">${order.id}</div>
+                    <div class="sb-order-type">${order.type}</div>
+                    <div class="sb-order-client">${order.client}</div>
+                    <div class="sb-order-bottom">
+                        <span class="stage-text" style="color:${w.color}">${s.name}</span>
+                        <span class="pct-text">${pct}%</span>
+                    </div>
+                    <div class="mini-bar">
+                        <div class="mini-fill" style="width:${pct}%;background:${w.color}"></div>
+                    </div>
+                </div>`;
+            });
+            sidebarRows.innerHTML = sbHtml;
+
+            /* -- Track area -- */
+            let trkHtml = '';
+
+            /* Vertical stage lines */
+            stages.forEach(s => {
+                trkHtml += `<div class="stage-line" style="left: calc(20px + (100% - 40px) * ${s.pct / 100})"></div>`;
+            });
+
+            /* Track rows */
+            filtered.forEach(order => {
+                const w = getWorker(order.worker);
+                const s = stages[order.stage];
+                const pct = s.pct;
+                const isComplete = order.stage === stages.length - 1;
+
+                trkHtml += `<div class="track-row ${isComplete ? 'completed' : ''}" data-order="${order.id}" style="--wc:${w.color}">
+                    <div class="track-bg"></div>
+                    <div class="track-fill" style="width:calc((100% - 40px) * ${pct / 100});background:linear-gradient(90deg, ${w.color}25, ${w.color})"></div>
+                    <div class="coffin-node" style="left:calc(20px + (100% - 40px) * ${pct / 100})"
+                         data-order-id="${order.id}"
+                         onmouseenter="showTooltip('${order.id}', this)"
+                         onmouseleave="hideTooltip()"
+                         onclick="advanceStage('${order.id}')"
+                         onkeydown="if(event.key==='Enter')advanceStage('${order.id}')"
+                         tabindex="0"
+                         role="button"
+                         aria-label="Order ${order.id}, stage ${s.name}, click to advance">
+                        <div class="coffin-icon" style="color:${w.color}">
+                            <svg viewBox="0 0 40 50" width="30" height="37">
+                                <path d="M10 2L30 2L38 14L34 48L6 48L2 14Z" fill="currentColor" opacity="0.15"/>
+                                <path d="M10 2L30 2L38 14L34 48L6 48L2 14Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                                <line x1="20" y1="16" x2="20" y2="28" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <line x1="15" y1="22" x2="25" y2="22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div class="node-pct" style="color:${w.color}">${Math.round(pct)}%</div>
+                    </div>
+                </div>`;
+            });
+
+            if (filtered.length === 0) {
+                trkHtml += `<div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>No orders for this worker</p>
+                </div>`;
+            }
+
+            tracksContainer.innerHTML = trkHtml;
+        }
+
+        /* ==============================================
+           ADVANCE STAGE (targeted DOM update for smooth animation)
+           ============================================== */
+        function advanceStage(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order || order.stage >= stages.length - 1) return;
+
+            order.stage++;
+            const newStage = stages[order.stage];
+            const newPct = newStage.pct;
+            const w = getWorker(order.worker);
+
+            /* Update track node position */
+            const trackRow = document.querySelector(`.track-row[data-order="${orderId}"]`);
+            if (!trackRow) return;
+            const node = trackRow.querySelector('.coffin-node');
+            const fill = trackRow.querySelector('.track-fill');
+
+            node.style.left = `calc(20px + (100% - 40px) * ${newPct / 100})`;
+            fill.style.width = `calc((100% - 40px) * ${newPct / 100})`;
+            node.querySelector('.node-pct').textContent = Math.round(newPct) + '%';
+
+            /* Update sidebar */
+            const sbRow = document.querySelector(`.sb-row[data-sidebar="${orderId}"]`);
+            if (sbRow) {
+                sbRow.querySelector('.stage-text').textContent = newStage.name;
+                sbRow.querySelector('.pct-text').textContent = Math.round(newPct) + '%';
+                sbRow.querySelector('.mini-fill').style.width = Math.round(newPct) + '%';
+            }
+
+            /* Bounce animation on icon */
+            const icon = node.querySelector('.coffin-icon');
+            icon.style.animation = 'none';
+            icon.offsetHeight; // force reflow
+            icon.style.animation = 'bounce-advance 0.55s ease, gentle-float 3s ease-in-out 0.55s infinite';
+
+            /* Floating +1 */
+            showFloatingText(node, '+1 Stage', w.color);
+
+            /* Check completion */
+            if (order.stage === stages.length - 1) {
+                trackRow.classList.add('completed');
+                showCelebration(node);
+                w.completed++;
+                if (w.completed % 10 === 0) w.level++;
+            }
+
+            /* Update stats & hide tooltip */
+            updateStats();
+            hideTooltip();
+        }
+
+        /* ==============================================
+           TOOLTIP
+           ============================================== */
+        function showTooltip(orderId, anchorEl) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return;
+            const w = getWorker(order.worker);
+            const s = stages[order.stage];
+            const pct = Math.round(s.pct);
+            const isComplete = order.stage === stages.length - 1;
+
+            const tt = document.getElementById('tooltip');
+            tt.innerHTML = `
+                <div class="tt-accent" style="background:linear-gradient(90deg, ${w.color}, ${w.color}88)"></div>
+                <div class="tt-header">
+                    <span class="tt-id">${order.id}</span>
+                    <span class="tt-stage-badge" style="background:${w.color}22;color:${w.color}">${s.short}</span>
+                </div>
+                <div class="tt-body">
+                    <div class="tt-row"><span class="tt-row-label">Client</span><span class="tt-row-value">${order.client}</span></div>
+                    <div class="tt-row"><span class="tt-row-label">Type</span><span class="tt-row-value">${order.type}</span></div>
+                    <div class="tt-row"><span class="tt-row-label">Worker</span><span class="tt-row-value">${w.name}</span></div>
+                    <div class="tt-row"><span class="tt-row-label">Stage</span><span class="tt-row-value" style="color:${w.color}">${s.name}</span></div>
+                    <div class="tt-row"><span class="tt-row-label">Time in Stage</span><span class="tt-row-value">${order.time}</span></div>
+                </div>
+                <div class="tt-progress">
+                    <div class="tt-progress-fill" style="width:${pct}%;background:${w.color}"></div>
+                </div>
+                <div class="tt-footer">
+                    <button class="tt-advance-btn"
+                            style="background:${isComplete ? '#374151' : w.color}"
+                            ${isComplete ? 'disabled' : ''}
+                            onclick="advanceStage('${orderId}')">
+                        <i class="fas ${isComplete ? 'fa-check-circle' : 'fa-arrow-right'}"></i>
+                        ${isComplete ? 'Completed' : 'Advance to Next Stage'}
+                    </button>
+                </div>`;
+
+            /* Position */
+            const rect = anchorEl.getBoundingClientRect();
+            const ttW = 260;
+            let left = rect.left + rect.width / 2 - ttW / 2;
+            let top = rect.top - 10;
+
+            /* Show temporarily to measure height */
+            tt.style.visibility = 'hidden';
+            tt.classList.add('visible');
+            const ttH = tt.offsetHeight;
+            tt.style.visibility = '';
+
+            /* Prefer above the node, fall below if no space */
+            if (top - ttH < 10) {
+                top = rect.bottom + 10;
+            } else {
+                top = top - ttH;
+            }
+
+            /* Clamp horizontal */
+            left = Math.max(8, Math.min(left, window.innerWidth - ttW - 8));
+
+            tt.style.left = left + 'px';
+            tt.style.top = top + 'px';
+            tt.classList.add('visible');
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').classList.remove('visible');
+        }
+
+        /* ==============================================
+           FLOATING TEXT
+           ============================================== */
+        function showFloatingText(anchorEl, text, color) {
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.textContent = text;
+            el.style.color = color;
+            anchorEl.appendChild(el);
+            setTimeout(() => el.remove(), 950);
+        }
+
+        /* ==============================================
+           CELEBRATION EFFECT
+           ============================================== */
+        function showCelebration(anchorEl) {
+            /* Ring burst */
+            const ring = document.createElement('div');
+            ring.className = 'celebrate-ring';
+            anchorEl.appendChild(ring);
+            setTimeout(() => ring.remove(), 750);
+
+            /* Confetti particles */
+            const colors = ['#f59e0b', '#ef4444', '#0ea5e9', '#10b981', '#8b5cf6', '#f97316'];
+            for (let i = 0; i < 10; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                const angle = (Math.PI * 2 / 10) * i + (Math.random() - 0.5) * 0.5;
+                const dist = 30 + Math.random() * 40;
+                c.style.setProperty('--cx', Math.cos(angle) * dist + 'px');
+                c.style.setProperty('--cy', Math.sin(angle) * dist + 'px');
+                c.style.background = colors[i % colors.length];
+                c.style.width = (3 + Math.random() * 4) + 'px';
+                c.style.height = (3 + Math.random() * 4) + 'px';
+                c.style.borderRadius = Math.random() > 0.5 ? '50%' : '1px';
+                anchorEl.appendChild(c);
+                setTimeout(() => c.remove(), 850);
+            }
+        }
+
+        /* ==============================================
+           STATS
+           ============================================== */
+        function updateStats() {
+            const active = orders.filter(o => o.stage < stages.length - 1).length;
+            const done = orders.filter(o => o.stage === stages.length - 1).length;
+            const uniqueWorkers = new Set(orders.map(o => o.worker)).size;
+
+            document.getElementById('statActive').textContent = active;
+            document.getElementById('statDone').textContent = done;
+            document.getElementById('statWorkers').textContent = uniqueWorkers;
+
+            /* Calculate average progress of active orders for "avg cycle" display */
+            const activeOrders = orders.filter(o => o.stage < stages.length - 1);
+            if (activeOrders.length > 0) {
+                const avgPct = activeOrders.reduce((sum, o) => sum + stages[o.stage].pct, 0) / activeOrders.length;
+                /* Map 0-100% to estimated 0-8h range */
+                const estHours = (avgPct / 100) * 8;
+                document.getElementById('statAvg').textContent = estHours.toFixed(1) + 'h';
+            } else {
+                document.getElementById('statAvg').textContent = '—';
+            }
+        }
+
+        /* ==============================================
+           "UPDATED" TICKER
+           ============================================== */
+        function startUpdateTicker() {
+            setInterval(() => {
+                updateSeconds++;
+                const el = document.getElementById('updatedText');
+                if (updateSeconds < 5) el.textContent = 'Updated just now';
+                else if (updateSeconds < 60) el.textContent = `Updated ${updateSeconds}s ago`;
+                else el.textContent = `Updated ${Math.floor(updateSeconds / 60)}m ago`;
+            }, 1000);
+
+            /* Reset on any interaction */
+            document.addEventListener('click', () => { updateSeconds = 0; });
+        }
+
+        /* ==============================================
+           INIT
+           ============================================== */
+        function init() {
+            renderFilters();
+            renderStageHeaders();
+            renderChart();
+            updateStats();
+            startUpdateTicker();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

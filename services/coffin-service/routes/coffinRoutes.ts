@@ -51,6 +51,7 @@ router.delete('/delete/:id', coffinController.deleteCoffin);
 // ============================================================
 
 router.post('/orders', coffinController.createOrder);
+router.post('/bookings', coffinController.createOrder);
 router.post('/orders/create', coffinController.createOrder);
 
 router.get('/orders', coffinController.getAllOrders);

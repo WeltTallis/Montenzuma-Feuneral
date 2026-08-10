@@ -1,13 +1,15 @@
-import { Request, Response } from "express";
 import { safeTenantExecute, safeTenantQuery } from "../../../shared/dbConfig";
-import Logger from "../../../packages/shared-logger/src/index";
 import { getKenyaTimeISO } from "../../../packages/shared-utils/dist/timestamps";
-import generateUniqueDeceasedId from "../utils/deceasedId";
-import generateAdmissionNumber from "../utils/generateAdmissionNumber";
-import { processSignature } from "../utils/uploadSignature";
-import * as z from "zod";
 import redisService from "../../../packages/shared-services/dist/redisService";
+import generateAdmissionNumber from "../utils/generateAdmissionNumber";
+import Logger from "../../../packages/shared-logger/src/index";
+import generateUniqueDeceasedId from "../utils/deceasedId";
+import { processSignature } from "../utils/uploadSignature";
 import { NextOfKinModel } from "../models/NextOfKin";
+import { Request, Response } from "express";
+import * as z from "zod";
+
+
 
 const SERVICE_NAME = 'deceased-service';
 
@@ -30,7 +32,6 @@ const registerDeceasedSchema = z.object({
     date_of_death: z.string().optional().nullable(),
     signature: z.string().optional().nullable(),
     place_of_death: z.string().optional().nullable(),
-    physician: z.string().optional().nullable(),
     id_type: z.string().optional().nullable(),
     alternative_phone: z.string().optional().nullable(),
     email: z.string().optional().nullable(),
@@ -166,18 +167,16 @@ export const registerNewDeceased = async (
         // INSERT RECORD - MATCHING EXACT COLUMN ORDER FROM TABLE
         // ==============================
 
-       // Updated INSERT query without county and currency
-const insertQuery = `
+        // Updated INSERT query without county and currency
+        const insertQuery = `
     INSERT INTO deceased
     (
         deceased_id,
         admission_number,
         cause_of_death,
         place_of_death,
-        physician,
         body_status,
         national_id,
-        id_type,
         email,
         phone_number,
         alternative_phone,
@@ -185,17 +184,14 @@ const insertQuery = `
         receiving_officer,
         date_admitted,
         time_received,
-        date_of_birth,
         date_of_death,
         date_registered,
         full_name,
         gender,
         age,
-        location,
         created_by,
         status,
         total_mortuary_charge,
-        burial_type,
         dispatch_date,
         extra_charges_amount,
         next_of_kin_count,
@@ -206,50 +202,46 @@ const insertQuery = `
         relationship,
         permit_number
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?,  ?,  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
-await safeTenantExecute(
-    dbName,
-    insertQuery,
-    [
-        deceased_id,
-        admission_number,
-        data.cause_of_death || null,
-        data.place_of_death || null,
-        data.physician || null,
-        data.body_status || 'Normal Condition',
-        data.national_id || null,
-        data.id_type || null,
-        data.email || null,
-        data.tell_no || null,
-        data.alternative_phone || null,
-        data.received_from || null,
-        data.receiving_officer || null,
-        now, // date_admitted
-        data.time_received || null,
-        null, // date_of_birth (now accepts NULL)
-        data.date_of_death || null,
-        now, // date_registered
-        data.full_name,
-        data.gender || null,
-        data.age || 0,
-        null, // location
-        null, // created_by
-        'active', // status
-        0.00, // total_mortuary_charge
-        null, // burial_type
-        null, // dispatch_date
-        0.00, // extra_charges_amount
-        0, // next_of_kin_count
-        0, // is_deleted
-        null, // branch_code
-        now, // created_at
-        signaturePath, // signature
-        data.relationship || null, // relationship
-        data.permit_no || null // permit_number
-    ]
-);
+        await safeTenantExecute(
+            dbName,
+            insertQuery,
+            [
+                deceased_id,
+                admission_number,
+                data.cause_of_death || null,
+                data.place_of_death || null,
+                data.body_status || 'Normal Condition',
+                data.national_id || null,
+                data.email || null,
+                data.tell_no || null,
+                data.alternative_phone || null,
+                data.received_from || null,
+                data.receiving_officer || null,
+                now, // date_admitted
+                data.time_received || null,
+                null, // date_of_birth (now accepts NULL)
+                data.date_of_death || null,
+                now, // date_registered
+                data.full_name,
+                data.gender || null,
+                data.age || 0,
+                null, // created_by
+                'active', // status
+                0.00, // total_mortuary_charge
+                null, // dispatch_date
+                0.00, // extra_charges_amount
+                0, // next_of_kin_count
+                0, // is_deleted
+                null, // branch_code
+                now, // created_at
+                signaturePath, // signature
+                data.relationship || null, // relationship
+                data.permit_no || null // permit_number
+            ]
+        );
 
         Logger.info({ message: `Deceased registered ${deceased_id} - Admission: ${admission_number}` });
 

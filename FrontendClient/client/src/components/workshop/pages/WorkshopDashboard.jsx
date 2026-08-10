@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo, createContext, useCon
 import { useSocket } from '../../../utils/context/socketContext';
 import { workshopService } from '../services/workshopService';
 
-import WorkshopHeader from './WorkshopHeader';
 import WorkshopTabs from './WorkshopTabs';
 import DashboardTab from './DashboardTab';
 import OrdersTab from './OrdersTab';
@@ -216,7 +215,13 @@ useEffect(() => {
         addToast('Coffin name is required', 'error');
         return;
       }
-      await workshopService.createOrder(orderData); addToast('Order created successfully', 'success'); setModal(null); loadData(); }
+      const result = await workshopService.createOrder(orderData);
+      if (!result || !result.success) {
+        const msg = result?.error || result?.status || 'Failed to create order';
+        addToast('Failed to create order: ' + msg, 'error');
+        return;
+      }
+      addToast('Order created successfully', 'success'); setModal(null); loadData(); }
     catch (err) { addToast('Failed to create order: ' + (err.message || 'Unknown error'), 'error'); }
   };
 
@@ -422,17 +427,16 @@ const emitSocketEvent = useCallback((event, data) => {
   // ─── Main Render ────────────────────────────────────────────────────
   return (
     <Ctx.Provider value={value}>
-      <style>{`
+            <style>{`
         body { font-family: ${S.font}; background-color: ${S.bg}; }
         * { box-sizing: border-box; }
       `}</style>
-      <div style={{ 
+      <div style={{  
         minHeight: '100vh', 
         background: S.bg,
         color: S.text,
         WebkitFontSmoothing: 'antialiased'
       }}>
-        <WorkshopHeader connected={connected} onRefresh={loadData} />
         <div style={{ maxWidth: 1480, margin: '0 auto', padding: '24px 24px 48px' }}>
           <WorkshopTabs activeTab={tab} onTabChange={setTab} />
           <div style={{ marginTop: 24 }}>

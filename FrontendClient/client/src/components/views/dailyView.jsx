@@ -7,12 +7,12 @@ import { BR, HH, MAX_H, SC, SM, VIEWER_CSS, dk, ft, layout } from './viewerShare
 const DF = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-// Full 24-hour range — always show 0 to 24
-const START_HOUR = 0;
-const END_HOUR = 24;
+// Full 24-hour range starting from 7 AM
+const START_HOUR = 7;
+const END_HOUR = 31; // 24 hours: 7,8,9,...,30 (wraps to 7 AM next day)
 
 // Default operational window shown for date-only (untimed / all-day) bookings.
-const START_DEFAULT = 6;
+const START_DEFAULT = 7;
 const END_DEFAULT = 22;
 
 // --- Main Component ---
@@ -330,9 +330,9 @@ export default function DispatchBoard({
         if (isToday && gridWrapRef.current) {
             gridWrapRef.current.scrollTo({ top: Math.max(0, (nh - START_HOUR - 1.5) * HH), behavior: 'smooth' });
         } else {
-            // Scroll to 6 AM (start of typical business day) for non-today dates
+            // Scroll to 7 AM (start of day view) for non-today dates
             if (gridWrapRef.current) {
-                gridWrapRef.current.scrollTo({ top: Math.max(0, 6 * HH), behavior: 'smooth' });
+                gridWrapRef.current.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }
     }, [curDay]);
@@ -392,12 +392,19 @@ export default function DispatchBoard({
         return () => document.removeEventListener('keydown', handler);
     }, [modalOpen, saveBooking]);
 
-    // Generate time label for each hour
+    // Generate time label for each hour (handles 24+ hour values for 7 AM start)
     const getTimeLabel = (h) => {
-        if (h === 0) return '12 AM';
-        if (h < 12) return `${h} AM`;
-        if (h === 12) return '12 PM';
-        return `${h - 12} PM`;
+        const hr = h % 24;
+        if (hr === 0) return '12 AM';
+        if (hr < 12) return `${hr} AM`;
+        if (hr === 12) return '12 PM';
+        return `${hr - 12} PM`;
+    };
+
+    // Convert any hour (0-48+) to visual offset in the 7 AM - 7 AM grid
+    const toVisualOffset = (h) => {
+        if (h >= 7) return h - 7;
+        return h + 17; // 0→17, 1→18, ..., 6→23
     };
 
     return (
@@ -511,10 +518,11 @@ export default function DispatchBoard({
                                     const l = getTimeLabel(h);
 
                                     // Determine breakpoint style based on hour
+                                    const hr24 = h % 24;
                                     let bpClass = 'hour-breakpoint';
-                                    if (h === 0) {
+                                    if (hr24 === 0) {
                                         bpClass += ' midnight-top';
-                                    } else if (h % 6 === 0) {
+                                    } else if (hr24 % 6 === 0) {
                                         bpClass += ' major';
                                     }
 
@@ -540,8 +548,15 @@ export default function DispatchBoard({
                                 let bookingElements = [];
                                 if (laid.length) {
                                     laid.forEach((b, i) => {
-                                        const top = Math.min((b.start - sh) * HH, eh * HH - MAX_H);
-                                        const height = Math.min(MAX_H, Math.max(HH * 0.2, (Math.min(b.end, eh) - Math.max(b.start, sh)) * HH));
+                                        const startOff = toVisualOffset(b.start);
+                                        let endOff = toVisualOffset(b.end);
+                                        if (endOff <= startOff) {
+                                            // Booking crosses the 7 AM boundary — show visible portion from 7 AM
+                                            startOff = 0;
+                                            endOff = Math.min(24, endOff);
+                                        }
+                                        const top = Math.min(startOff * HH, 24 * HH - MAX_H);
+                                        const height = Math.min(MAX_H, Math.max(HH * 0.2, (endOff - startOff) * HH));
                                         const wp = 100 / b._t;
                                         const lp = b._c * wp;
                                         const br = BR[b.branch] || BR.nairobi;
@@ -581,25 +596,25 @@ export default function DispatchBoard({
                                 }
 
                                 // Zone overlays for visual context
-                                const nightTopHeight = 6 * HH;  // 12 AM to 6 AM
-                                const nightBottomTop = 22 * HH; // 10 PM onwards
-                                const nightBottomHeight = 2 * HH;
-                                const bizTop = 6 * HH;
-                                const bizHeight = 16 * HH; // 6 AM to 10 PM
+                                const nightTopHeight = 0; // No night zone at top (view starts at 7 AM)
+                                const nightBottomTop = 15 * HH; // 10 PM onwards
+                                const nightBottomHeight = 9 * HH; // 10 PM to 7 AM
+                                const bizTop = 0; // Business starts at 7 AM
+                                const bizHeight = 15 * HH; // 7 AM to 10 PM
 
                                 return (
                                     <>
                                         {rows}
                                         <div className="tg-ov">
-                                            {/* Night zone: midnight to 6 AM */}
+                                            {/* Night zone at top: none (view starts at 7 AM) */}
                                             <div className="night-zone-top" style={{ top: 0, height: `${nightTopHeight}px` }}></div>
 
-                                            {/* Business hours zone: 6 AM to 10 PM */}
+                                            {/* Business hours zone: 7 AM to 10 PM */}
                                             <div className="biz-zone" style={{ top: `${bizTop}px`, height: `${bizHeight}px` }}>
                                                 <span className="biz-label">Business Hours</span>
                                             </div>
 
-                                            {/* Night zone: 10 PM to midnight */}
+                                            {/* Night zone: 10 PM to 7 AM */}
                                             <div className="night-zone-bottom" style={{ top: `${nightBottomTop}px`, height: `${nightBottomHeight}px` }}></div>
 
                                             {bookingElements}

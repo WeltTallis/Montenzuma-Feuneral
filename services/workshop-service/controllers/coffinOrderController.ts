@@ -123,15 +123,12 @@ const createOrder = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Tenant database not resolved' });
         }
 
-                const {
+                        const {
             coffin_name, coffin_type, dimensions, size,
-            color, interior_fabric, notes, instructions,
-            delivery_date, due_date, priority, branch_id,
+            color, notes,
+            due_date, priority, branch_id,
             assigned_worker_id
         } = req.body;
-
-        // Convert empty delivery_date to null to avoid MySQL date error
-        const processedDeliveryDate = delivery_date === '' ? null : delivery_date;
 
         // Convert dimensions object to JSON string for TEXT column
         const processedDimensions = typeof dimensions === 'object' && dimensions !== null
@@ -145,33 +142,53 @@ const createOrder = async (req: Request, res: Response) => {
         const seq = Math.floor(Math.random() * 90) + 10;
         const order_number = `CFN-${day}${month}-${seq}`;
 
-                const insertResult: any = await safeTenantExecute(tenantDb,
+        // deceased_name is a legacy NOT NULL column on coffin_orders schemas that
+        // were originally created by the front-desk/coffin module. The workshop
+        // form does not collect it, so mirror coffin_name here (kept in sync with
+        // the ensure-migration which makes the column nullable) so the INSERT
+        // succeeds regardless of which module created the table.
+        const deceasedValue = coffin_name || 'Coffin Order';
+
+        const insertResult: any = await safeTenantExecute(tenantDb,
             `INSERT INTO coffin_orders
-            (order_number, coffin_name, coffin_type, size, dimensions, color,
-             interior_fabric, notes, instructions, delivery_date, due_date, priority, branch_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [order_number, coffin_name, coffin_type || 'standard', size || null, processedDimensions, color,
-                interior_fabric, notes, instructions || '', processedDeliveryDate, due_date || null, priority || 'normal', branch_id || 1]
+            (order_number, coffin_name, deceased_name, coffin_type, size, dimensions, color,
+             notes, due_date, priority, branch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [order_number, coffin_name, deceasedValue, coffin_type || 'standard', size || null,
+                processedDimensions, color, notes, due_date || null, priority || 'normal', branch_id || 1]
         );
 
         const orderId = insertResult.insertId;
 
         // Create initial production stages
+        // Best-effort: a stage-table issue must NOT prevent the order from being
+        // created and shown to production. The ensure-workshop-tables migration
+        // creates the table when missing; if it still fails, log and continue so
+        // the order stays visible.
         const stages = ['design', 'cutting', 'assembly', 'polishing', 'finishing'];
         for (const stage of stages) {
-            await safeTenantExecute(tenantDb,
-                'INSERT INTO production_stages (coffin_order_id, stage) VALUES (?, ?)',
-                [orderId, stage]
-            );
+            try {
+                await safeTenantExecute(tenantDb,
+                    'INSERT INTO production_stages (coffin_order_id, stage) VALUES (?, ?)',
+                    [orderId, stage]
+                );
+            } catch (stageError: any) {
+                console.error(`[WORKSHOP] Could not create stage ${stage} for order ${orderId}:`, stageError.message);
+            }
         }
 
         // If a worker was selected on order creation, create the assignment
+        // (best-effort — assignment failure must not roll back the order).
         if (assigned_worker_id) {
-            await safeTenantExecute(tenantDb,
-                `INSERT INTO worker_assignments (coffin_order_id, user_id, stage, hours_worked, notes, assigned_at)
-                 VALUES (?, ?, 'design', 0, 'Assigned on order creation', NOW())`,
-                [orderId, assigned_worker_id]
-            );
+            try {
+                await safeTenantExecute(tenantDb,
+                    `INSERT INTO worker_assignments (coffin_order_id, user_id, stage, hours_worked, notes, assigned_at)
+                     VALUES (?, ?, 'design', 0, 'Assigned on order creation', NOW())`,
+                    [orderId, assigned_worker_id]
+                );
+            } catch (assignError: any) {
+                console.error(`[WORKSHOP] Could not assign worker ${assigned_worker_id} to order ${orderId}:`, assignError.message);
+            }
         }
 
         const newOrders: any = await safeTenantQuery(tenantDb, 'SELECT * FROM coffin_orders WHERE id = ?', [orderId]);
