@@ -84,7 +84,7 @@ export class NotificationCronService {
 
             const bookings = await safeQuery(
                 `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, 
-                        hb.destination, hb.booking_dates, hb.tenant_db_name,
+                        hb.destination, hb.from_location, hb.to_location, hb.booking_dates, hb.tenant_db_name,
                         h.hearse_name, h.plate_number, h.branch_id, h.branch_code
                  FROM hearse_bookings hb
                  LEFT JOIN hearses h ON hb.hearse_id = h.id
@@ -133,7 +133,7 @@ export class NotificationCronService {
 
             const bookings = await safeQuery(
                 `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone,
-                        hb.destination, hb.booking_dates, hb.tenant_db_name,
+                        hb.destination, hb.from_location, hb.to_location, hb.booking_dates, hb.tenant_db_name,
                         h.hearse_name, h.plate_number, h.branch_id, h.branch_code
                  FROM hearse_bookings hb
                  LEFT JOIN hearses h ON hb.hearse_id = h.id
@@ -182,7 +182,7 @@ export class NotificationCronService {
 
             const bookings = await safeQuery(
                 `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone,
-                        hb.destination, hb.booking_dates, hb.tenant_db_name,
+                        hb.destination, hb.from_location, hb.to_location, hb.booking_dates, hb.tenant_db_name,
                         h.hearse_name, h.plate_number, h.branch_id, h.branch_code
                  FROM hearse_bookings hb
                  LEFT JOIN hearses h ON hb.hearse_id = h.id

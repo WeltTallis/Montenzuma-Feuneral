@@ -277,7 +277,40 @@ export const getAllHearses = asyncHandler(async (req: Request, res: Response) =>
 export const getAvailableHearses = asyncHandler(async (req: Request, res: Response) => {
     try {
         const pool = await getHearsePool();
-        const [hearses] = await pool.query(`SELECT h.*, h.branch_name, h.branch_code FROM hearses h WHERE h.status = 'available' AND h.id NOT IN (SELECT hearse_id FROM hearse_bookings WHERE hearse_id IS NOT NULL AND status NOT IN ('completed', 'cancelled')) ORDER BY h.created_at DESC`) as any;
+        const { date } = req.query;
+
+        // Availability is DATE-BASED, not a global status flag. A hearse that is
+        // 'booked' for one date is still free on other dates, so we must NOT filter
+        // on h.status = 'available'. Only hearses out of service are excluded outright.
+        const notServicing = "h.status NOT IN ('maintenance', 'out_of_service', 'disabled', 'pending_inspection')";
+
+        let hearses: any;
+        if (date) {
+            const key = String(date).slice(0, 10);
+            const [rows] = await pool.query(
+                `SELECT h.*, h.branch_name, h.branch_code
+                 FROM hearses h
+                 WHERE ${notServicing}
+                   AND NOT EXISTS (
+                       SELECT 1 FROM hearse_bookings hb
+                       WHERE hb.hearse_id = h.id
+                         AND hb.status NOT IN ('completed', 'cancelled')
+                         AND (hb.booking_dates LIKE ? OR hb.booking_dates LIKE ?)
+                   )
+                 ORDER BY h.created_at DESC`,
+                [`%"${key} %"`, `%"${key}"%`]
+            );
+            hearses = rows;
+        } else {
+            const [rows] = await pool.query(
+                `SELECT h.*, h.branch_name, h.branch_code
+                 FROM hearses h
+                 WHERE ${notServicing}
+                 ORDER BY h.created_at DESC`
+            );
+            hearses = rows;
+        }
+
         res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.set('Pragma', 'no-cache');
         res.set('Expires', '0');

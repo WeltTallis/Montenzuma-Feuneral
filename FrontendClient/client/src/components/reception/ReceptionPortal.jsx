@@ -121,19 +121,35 @@ export default function App() {
 
   return (
     <>
-      <div style={{ background: "#050507", minHeight: 1100, maxWidth: 1440, margin: "0 auto", width: "100%", fontFamily: BODY }}>
+      <div style={{ background: "#050507", maxWidth: 1440, margin: "0 auto", width: "100%", fontFamily: BODY }}>
         {/* ── Hero ── */}
-        <div className="rp-hero" style={{ position: "relative", overflow: "hidden", height: 320 }}>
+        <div className="rp-hero" style={{ position: "relative", overflow: "hidden", height: "100vh", minHeight: 700, maxHeight: 1200 }}>
           <div style={{ position: "absolute", inset: 0 }}>
-            <img
-              src="https://storage.googleapis.com/banani-generated-images/generated-images/913b17cd-4eec-4aa5-9807-da8e838ce6ec.jpg"
-              alt="Montezuma Funeral Home chapel"
-              style={{ width: "100%", height: "100%", objectFit: "cover", aspectRatio: "16/6" }}
-            />
+            {/* Desktop: local image, Mobile/Tablet: online image */}
+            <picture>
+              <source 
+                media="(max-width: 880px)" 
+                srcSet="https://i.pinimg.com/1200x/0c/a4/a7/0ca4a7d20d613be880a90ba0701acf26.jpg" 
+              />
+              <source 
+                media="(max-width: 1100px)" 
+                srcSet="https://i.pinimg.com/1200x/0c/a4/a7/0ca4a7d20d613be880a90ba0701acf26.jpg" 
+              />
+              <img
+                src="/flower.webp"
+                alt="Montezuma Funeral Home chapel"
+                style={{ 
+                  width: "100%", 
+                  height: "100%", 
+                  objectFit: "cover",
+                  objectPosition: "center 30%"
+                }}
+              />
+            </picture>
           </div>
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.85) 45%, rgba(5,5,7,0.4) 100%)" }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(5,5,7,1) 0%, rgba(5,5,7,0) 55%)" }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(0,217,255,0.08) 0%, transparent 60%)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, rgba(14, 14, 25, 0.95) 0%, rgba(5,5,7,0.85) 15%, rgba(5,5,7,0.4) 90%)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(5,5,7,1) 0%, rgba(5,5,7,0) 25%)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(0,217,255,0.08) 0%, transparent 10%)" }} />
 
           <div className="rp-top" style={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "40px 48px 0" }}>
             <button
@@ -149,7 +165,7 @@ export default function App() {
             <div className="rp-wordmark" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
               <div className="rp-name" style={{ fontSize: 18, letterSpacing: 6, textTransform: "uppercase", color: "#e8e8eb", fontWeight: 600, fontFamily: HEAD }}>Montezuma Funeral Home</div>
               <div style={{ width: 128, height: 1, background: "linear-gradient(to right, transparent, rgba(0,217,255,0.5), transparent)" }} />
-              <div className="rp-tag" style={{ fontSize: 9, letterSpacing: 4, textTransform: "uppercase", color: "#8a8a95", fontWeight: 500, fontFamily: BODY }}>Receptionist Portal</div>
+              <div className="rp-tag" style={{ fontSize: 9, letterSpacing: 4, textTransform: "uppercase", color: "#8a8a95", fontWeight: 500, fontFamily: BODY }}>Reception Portal</div>
             </div>
 
             <div className="rp-time" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
@@ -231,7 +247,7 @@ export default function App() {
         @keyframes reception-spin { to { transform: rotate(360deg); } }
 
         @media (max-width: 1100px) {
-          .rp-hero { height: 280px !important; }
+          .rp-hero { height: 60vh !important; min-height: 500px !important; max-height: 800px !important; }
           .rp-top { padding: 28px 32px 0 !important; }
           .rp-bottom { padding: 0 32px 40px !important; }
           .rp-body { padding: 0 32px 56px !important; }
@@ -241,7 +257,7 @@ export default function App() {
         }
 
         @media (max-width: 880px) {
-          .rp-hero { height: 260px !important; }
+          .rp-hero { height: 50vh !important; min-height: 400px !important; max-height: 700px !important; }
           .rp-top { flex-wrap: wrap !important; row-gap: 12px !important; padding: 22px 24px 0 !important; }
           .rp-back { flex: 1 !important; }
           .rp-time { flex: 1 !important; align-items: flex-end !important; }
@@ -255,7 +271,7 @@ export default function App() {
         }
 
         @media (max-width: 720px) {
-          .rp-hero { height: 240px !important; }
+          .rp-hero { height: 40vh !important; min-height: 350px !important; max-height: 600px !important; }
           .rp-top { padding: 20px 20px 0 !important; }
           .rp-bottom { padding: 0 20px 32px !important; }
           .rp-body { padding: 0 20px 48px !important; }
@@ -267,7 +283,7 @@ export default function App() {
         }
 
         @media (max-width: 480px) {
-          .rp-hero { height: 200px !important; }
+          .rp-hero { height: 35vh !important; min-height: 300px !important; max-height: 500px !important; }
           .rp-top { flex-wrap: wrap !important; row-gap: 12px !important; padding: 16px 16px 0 !important; }
           .rp-back { flex: 1 !important; }
           .rp-time { flex: 1 !important; align-items: flex-end !important; }

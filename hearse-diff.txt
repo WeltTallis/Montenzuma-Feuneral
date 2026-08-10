@@ -1,0 +1,236 @@
+diff --git a/FrontendClient/client/src/components/hearse/hearseBookings.jsx b/FrontendClient/client/src/components/hearse/hearseBookings.jsx
+index f479fb9d..c3935ff7 100644
+--- a/FrontendClient/client/src/components/hearse/hearseBookings.jsx
++++ b/FrontendClient/client/src/components/hearse/hearseBookings.jsx
+@@ -70,6 +70,30 @@ const formatDateStr = (d) => {
+ };
+ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+ const fmtDateOnly = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
++// Parse booking_dates (JSON array string or array) into a compact display, e.g.
++// "Aug 10, 2026" for a single date or "Aug 10 – Aug 12, 2026" for multi-day.
++const fmtBookingDates = (b) => {
++  let dates = [];
++  try {
++    dates = typeof b?.booking_dates === 'string' ? JSON.parse(b.booking_dates) : (b?.booking_dates || []);
++  } catch { dates = []; }
++  if (!Array.isArray(dates) || dates.length === 0) {
++    const fallback = b?.booking_date || b?.estimated_departure_time || b?.date;
++    return fmtDateOnly(fallback);
++  }
++  const clean = dates.map(d => String(d).slice(0, 10)).sort();
++  const first = new Date(clean[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
++  const last = new Date(clean[clean.length - 1] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
++  if (clean.length === 1) return first;
++  return `${first} – ${last}`;
++};
++// Route display: "Nairobi → Karen Memorial Park" (from / to separate fields).
++const fmtRoute = (b) => {
++  if (b?.from_location && (b?.to_location || b?.destination)) {
++    return `${b.from_location} → ${b.to_location || b.destination}`;
++  }
++  return b?.to_location || b?.destination || 'N/A';
++};
+ const genId = (id, plateNumber) => {
+   if (!id) return 'N/A';
+   const idStr = id.toString();
+@@ -812,12 +836,15 @@ const HearseBookings = () => {
+   const [newForm, setNewForm] = useState({
+     hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: [], branch_id: '', booking_date: ''
+   });
+-  const [selectedBookingDates, setSelectedBookingDates] = useState([]);
++    const [selectedBookingDates, setSelectedBookingDates] = useState([]);
+   const [datePickerOpen, setDatePickerOpen] = useState(false);
+   const [tempDateSelection, setTempDateSelection] = useState([]);
+   const [pickerMonth, setPickerMonth] = useState(() => new Date().getMonth());
+   const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
+   const [submitLoading, setSubmitLoading] = useState(false);
++  const [hearseAvailable, setHearseAvailable] = useState(null);
++  const [availabilityConflict, setAvailabilityConflict] = useState(null);
++  const [checkingAvailability, setCheckingAvailability] = useState(false);
+ 
+   const [registerHearseOpen, setRegisterHearseOpen] = useState(false);
+   const [hearseForm, setHearseForm] = useState({
+@@ -862,6 +889,64 @@ const HearseBookings = () => {
+ 
+   useEffect(() => { loadData(); }, [loadData]);
+ 
++  // Pre-check hearse availability while the user fills the form.
++  // When a hearse and one or more dates are selected, immediately warn if the
++  // hearse is already booked on any selected date. NOTE: this is a UX hint only —
++  // the backend re-checks atomically on submit, so a last-second conflict still
++  // returns 409. We never trust the pre-check alone.
++  const checkAvailability = useCallback(async (hearseId, dates) => {
++          if (!hearseId || !dates || dates.length === 0) {
++      setHearseAvailable(null);
++      setAvailabilityConflict(null);
++      return;
++    }
++    setCheckingAvailability(true);
++    setHearseAvailable(null);
++    try {
++      const headers = getAuthHeaders();
++      headers['Content-Type'] = 'application/json';
++      const userStr = localStorage.getItem('user');
++      const user = userStr ? JSON.parse(userStr) : {};
++      if (user?.branch_id) headers['x-branch-id'] = user.branch_id;
++      if (user?.email) headers['x-user-email'] = user.email;
++      headers['x-user-name'] = user?.full_name || user?.username || user?.name || 'System';
++
++      const response = await fetch(`${API_BASE_URL}/hearse-bookings/check-availability`, {
++        method: 'POST',
++        headers,
++        body: JSON.stringify({ hearse_id: hearseId, booking_dates: dates })
++      });
++      const data = await response.json();
++      if (response.ok) {
++        setHearseAvailable(data.available);
++        setAvailabilityConflict(data.conflicts && data.conflicts.length ? data.conflicts : null);
++      } else {
++        // Treat non-OK as "unknown" availability; the submit-time check is authoritative
++        setHearseAvailable(null);
++        setAvailabilityConflict(null);
++      }
++    } catch {
++      setHearseAvailable(null);
++      setAvailabilityConflict(null);
++    } finally {
++      setCheckingAvailability(false);
++    }
++  }, []);
++
++  useEffect(() => {
++    if (!newBookingOpen) return;
++    if (!newForm.hearse_id || selectedBookingDates.length === 0) {
++      setHearseAvailable(null);
++      setAvailabilityConflict(null);
++      return;
++    }
++    // debounce to avoid hammering the API while picking dates
++    const t = setTimeout(() => {
++      checkAvailability(newForm.hearse_id, selectedBookingDates);
++    }, 500);
++    return () => clearTimeout(t);
++  }, [newBookingOpen, newForm.hearse_id, selectedBookingDates, checkAvailability]);
++
+   useEffect(() => {
+     if (!socket) return;
+     socket.on('new_booking', (d) => {
+@@ -892,8 +977,13 @@ const HearseBookings = () => {
+       const range = getDateRange(dateFilter);
+       if (range.start && range.end) {
+         result = result.filter(b => {
+-          const d = b.booking_date || b.estimated_departure_time || '';
+-          return d >= range.start && d <= range.end;
++          let dates = [];
++          try {
++            dates = typeof b.booking_dates === 'string' ? JSON.parse(b.booking_dates) : (b.booking_dates || []);
++          } catch { dates = []; }
++          if (dates.length === 0 && b.booking_date) dates = [String(b.booking_date).slice(0, 10)];
++          if (dates.length === 0 && b.estimated_departure_time) dates = [String(b.estimated_departure_time).slice(0, 10)];
++          return dates.some(d => d >= range.start && d <= range.end);
+         });
+       }
+     }
+@@ -1034,6 +1124,17 @@ const HearseBookings = () => {
+     if (!newForm.hearse_id || !newForm.client_name || !newForm.from_location || !newForm.to_location || selectedBookingDates.length === 0) {
+       showToast('Please fill all required fields and select at least one date', 'error'); return;
+     }
++
++    // Pre-check: if we've already determined the hearse is unavailable for the
++    // selected dates, stop early and surface the conflict. The backend re-checks
++    // atomically on submit anyway, so a race between this pre-check and submit
++    // is still safely rejected by the server with a 409.
++    if (hearseAvailable === false && availabilityConflict) {
++      const conflictList = availabilityConflict.map(c => `${c.date || 'selected date'} (${c.reason})`).join(', ');
++      showToast(`This hearse is already booked for: ${conflictList}. Please choose another date or vehicle.`, 'error');
++      return;
++    }
++
+     setSubmitLoading(true);
+     try {
+       const headers = getAuthHeaders();
+@@ -1051,6 +1152,7 @@ const HearseBookings = () => {
+         client_name: newForm.client_name,
+         client_phone: newForm.client_phone || '',
+         from_location: newForm.from_location,
++        to_location: newForm.to_location,
+         destination: newForm.to_location,
+         from_timestamp: firstBookingDate,
+         booking_date: firstBookingDate,
+@@ -1068,17 +1170,24 @@ const HearseBookings = () => {
+ 
+       if (!response.ok) {
+         const errorData = await response.json().catch(() => ({}));
++        // 409 = atomic server-side conflict: the hearse was booked between the
++        // pre-check and this submit. Surface the existing booking to the user.
++        if (response.status === 409) {
++          throw new Error(errorData.message || 'This hearse was just booked on the same date by another user. Please choose another date or vehicle.');
++        }
+         throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+       }
+ 
+       showToast('Booking created successfully!');
++      setHearseAvailable(null);
++      setAvailabilityConflict(null);
+       closeNewBooking();
+       await loadData();
+     } catch (e) {
+       showToast('Failed to create booking: ' + e.message, 'error');
+     }
+     setSubmitLoading(false);
+-  }, [newForm, showToast, closeNewBooking, loadData]);
++  }, [newForm, selectedBookingDates, showToast, closeNewBooking, loadData, hearseAvailable, availabilityConflict]);
+ 
+   const calendarItems = useMemo(() => {
+     const items = [];
+@@ -1341,8 +1450,8 @@ const HearseBookings = () => {
+                           {b.client_phone && <div style={{ fontSize: '0.72rem', color: COLORS.textMuted, marginTop: '0.15rem' }}>{b.client_phone}</div>}
+                         </TableCell>
+                         <TableCell>
+-                          <div style={{ fontSize: '0.8125rem' }}>{b.destination || 'N/A'}</div>
+-                          {b.end_date && <div style={{ fontSize: '0.72rem', color: '#8b5cf6', marginTop: '0.15rem' }}>Multi-day → {fmtDateOnly(b.end_date)}</div>}
++                          <div style={{ fontSize: '0.8125rem', fontWeight: 500 }}>{fmtRoute(b)}</div>
++                          {b.booking_dates && <div style={{ fontSize: '0.72rem', color: COLORS.textMuted, marginTop: '0.15rem' }}>{fmtBookingDates(b)}</div>}
+                         </TableCell>
+                         <TableCell>
+                           <span style={{ fontWeight: 500, fontSize: '0.75rem' }}>{b.plate_number || b.number_plate || 'N/A'}</span>
+@@ -1354,7 +1463,7 @@ const HearseBookings = () => {
+                           </span>
+                         </TableCell>
+                         <TableCell>
+-                          <div>{fmtDateOnly(b.booking_date || b.estimated_departure_time)}</div>
++                          <div>{fmtBookingDates(b)}</div>
+                           {b.delivery_time && <div style={{ fontSize: '0.72rem', color: COLORS.textMuted, marginTop: '0.15rem' }}>{b.delivery_time}</div>}
+                         </TableCell>
+                         <TableCell>
+@@ -1626,7 +1735,7 @@ const HearseBookings = () => {
+                       Booking Date
+                     </div>
+                     <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: COLORS.text }}>
+-                      {fmtDateOnly(selectedBooking.booking_date || selectedBooking.estimated_departure_time)}
++                      {fmtBookingDates(selectedBooking)}
+                     </div>
+                   </div>
+                   {selectedBooking.delivery_time && (
+@@ -1891,7 +2000,20 @@ const HearseBookings = () => {
+                       {h.hearse_name || 'N/A'} — {h.plate_number || h.number_plate} {h.branch_name ? `(${h.branch_name})` : ''}
+                     </option>
+                   ))}
+-                </select>
++                                </select>
++                {newForm.hearse_id && (hearseAvailable === false || checkingAvailability) && (
++                  <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600, background: hearseAvailable === false ? COLORS.dangerLight : COLORS.warningLight, color: hearseAvailable === false ? COLORS.danger : COLORS.warningDark }}>
++                    {checkingAvailability
++                      ? 'Checking availability...'
++                      : (availabilityConflict?.map(c => `${c.date || 'date'} (${c.reason})`).join(', '))}
++                    {hearseAvailable === false && ' — Hearse is already booked on the selected date(s).'}
++                  </div>
++                )}
++                {newForm.hearse_id && hearseAvailable === true && !checkingAvailability && (
++                  <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600, background: COLORS.successLight, color: COLORS.successDark }}>
++                    ✓ Hearse is available for all selected dates
++                  </div>
++                )}
+               </div>
+               <div>
+                 <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.375rem', fontSize: '0.8125rem', color: COLORS.text }}>

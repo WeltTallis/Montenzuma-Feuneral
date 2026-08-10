@@ -33,6 +33,26 @@ filesToCopy.forEach(file => {
     }
 });
 
+// ============================================
+// Copy knex migration files into dist so the built server can run them
+// ============================================
+const migrationsSourceDir = path.join(__dirname, 'migrations');
+const migrationsTargetDir = path.join(__dirname, 'dist/services/hearse-service/migrations');
+
+if (fs.existsSync(migrationsSourceDir)) {
+    if (!fs.existsSync(migrationsTargetDir)) {
+        fs.mkdirSync(migrationsTargetDir, { recursive: true });
+    }
+    fs.readdirSync(migrationsSourceDir)
+        .filter(f => f.endsWith('.js'))
+        .forEach(file => {
+            fs.copyFileSync(path.join(migrationsSourceDir, file), path.join(migrationsTargetDir, file));
+            console.log(`Copied migration: ${file}`);
+        });
+} else {
+    console.warn('Warning: migrations directory not found in source');
+}
+
 // Copy .d.ts files if they exist
 const dtsFiles = fs.readdirSync(sourceDir).filter(file => file.endsWith('.d.ts'));
 dtsFiles.forEach(file => {

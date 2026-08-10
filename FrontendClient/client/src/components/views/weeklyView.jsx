@@ -1,218 +1,442 @@
-import React from 'react';
-import { BR, HH, MAX_H, SM, VIEWER_CSS, WEEK_CSS, dk, ft, layout } from './viewerShared';
+import React, { useMemo, useRef, useEffect } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
 
-// --- Weekly grid constants (match daily view: HH row height, operational window) ---
 const SH = 5;
 const EH = 22;
 const DS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const dk = (d) => {
+  const date = d instanceof Date ? d : new Date(d);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const ft = (h) => {
+  const hour = Math.floor(h);
+  const min = Math.round((h % 1) * 60);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return min === 0 ? `${h12} ${ampm}` : `${h12}:${String(min).padStart(2, '0')} ${ampm}`;
+};
+
 const wsOf = d => { const t = new Date(d); t.setHours(0, 0, 0, 0); t.setDate(t.getDate() - t.getDay()); return t; };
 
-// --- Weekly View (same styling + data contract as the daily view) ---
 export default function WeeklyView({
-    currentDate,
-    bookings = {},
-    getEvents,
-    openDay,
-    openBookingDetails,
-    onRefresh
+  currentDate,
+  bookings = {},
+  getEvents,
+  openDay,
+  openBookingDetails,
+  onRefresh
 }) {
-    const dayOfWeek = currentDate.getDay();
-    const startOfWeek = new Date(currentDate);
-    startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek);
-    startOfWeek.setHours(0, 0, 0, 0);
+  const calendarRef = useRef(null);
+  
+  const dayOfWeek = currentDate.getDay();
+  const startOfWeek = new Date(currentDate);
+  startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek);
+  startOfWeek.setHours(0, 0, 0, 0);
 
-    const weekDays = [];
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(startOfWeek);
-        d.setDate(d.getDate() + i);
-        weekDays.push(d);
-    }
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startOfWeek);
+    d.setDate(d.getDate() + i);
+    weekDays.push(d);
+  }
 
-    const todayStr = dk(new Date());
+  const todayStr = dk(new Date());
 
-    // Resolve bookings for every day of the week (pre-normalised by HearseCalendar).
-    const weekBookings = {};
-    weekDays.forEach(day => {
-        const ds = dk(day);
-        weekBookings[ds] = getEvents ? getEvents(ds) : (bookings[ds] || []);
-    });
+  // Resolve bookings for every day of the week
+  const weekBookings = {};
+  weekDays.forEach(day => {
+    const ds = dk(day);
+    weekBookings[ds] = getEvents ? getEvents(ds) : (bookings[ds] || []);
+  });
 
-    const allBookings = Object.values(weekBookings).flat();
-    const tr = allBookings.filter(b => b.status === 'transit' || b.status === 'in_transit').length;
-    const pn = allBookings.filter(b => b.status === 'pending').length;
+  const allBookings = Object.values(weekBookings).flat();
+  const tr = allBookings.filter(b => b.status === 'transit' || b.status === 'in_transit').length;
+  const pn = allBookings.filter(b => b.status === 'pending').length;
 
-    // Now line (only shown when the week being viewed is the current one)
-    const now = new Date();
-    const nws = wsOf(now);
-    const sn = nws.getTime() === startOfWeek.getTime();
-    const nh = now.getHours() + now.getMinutes() / 60;
-
-    // Time grid rows: time gutter + 7 day columns
-    const rows = [];
-    for (let h = SH; h < EH; h++) {
-        const l = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
-        const cells = [];
-        cells.push(<div className="tl" key={`t${h}`}>{l}</div>);
-        for (let d = 0; d < 7; d++) {
-            const dd = new Date(startOfWeek);
-            dd.setDate(dd.getDate() + d);
-            cells.push(
-                <div className="dc" key={`c${h}${d}`}>
-                    <div
-                        className="hc"
-                        data-hour={h}
-                        style={{ position: 'relative' }}
-                        onClick={(e) => { e.stopPropagation(); if (openDay) openDay(dk(dd), h); }}
-                    ></div>
-                </div>
-            );
+  // Convert bookings to FullCalendar events
+  const events = useMemo(() => {
+    const eventList = [];
+    
+    weekDays.forEach((day, dayIndex) => {
+      const ds = dk(day);
+      const dayBookings = weekBookings[ds] || [];
+      
+      dayBookings.forEach((booking) => {
+        const start = booking.start || 9;
+        const end = booking.end || 10;
+        
+        const startDate = new Date(day);
+        startDate.setHours(Math.floor(start), (start % 1) * 60, 0, 0);
+        
+        const endDate = new Date(day);
+        endDate.setHours(Math.floor(end), (end % 1) * 60, 0, 0);
+        
+        // If end time is before start time, add a day
+        if (endDate < startDate) {
+          endDate.setDate(endDate.getDate() + 1);
         }
-        rows.push(<React.Fragment key={`row${h}`}>{cells}</React.Fragment>);
-    }
-    // Booking blocks (same .bb styling as the daily view) - grouped per day column
-    const blocks = [];
-    const dayW = 100 / 7;
-    for (let d = 0; d < 7; d++) {
-        const dd = new Date(startOfWeek);
-        dd.setDate(dd.getDate() + d);
-        const ds = dk(dd);
-        const laid = layout(weekBookings[ds] || []);
-        const colBlocks = [];
-        laid.forEach((b, i) => {
-            const top = Math.max(0, Math.min((b.start - SH) * HH, (EH - SH) * HH - MAX_H));
-            const height = Math.min(MAX_H, Math.max(HH * 0.2, (Math.min(b.end, EH) - Math.max(b.start, SH)) * HH));
-            const wp = 100 / b._t;
-            const lp = b._c * wp;
-            const br = BR[b.branch] || BR.nairobi;
-            const showTm = height > 30;
-            const showDs = height > 48;
-            const showFrom = height > 66;
-            const showPlate = height > 42;
-            colBlocks.push(
-                <div
-                    key={`${ds}-${b.id}`}
-                    className="bb"
-                    style={{
-                        top: `${top}px`,
-                        height: `${height}px`,
-                        left: `calc(${lp}% + 2px)`,
-                        width: `calc(${wp}% - 4px)`,
-                        background: br.color,
-                        animationDelay: `${i * 0.04}s`
-                    }}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if (openBookingDetails) openBookingDetails(b);
-                    }}
-                >
-                    <div className="bb-sp">{SM[b.status] || b.status}</div>
-                    <div className="bb-br">{b.branchName || br.name}</div>
-                    <div className="bb-cl">{b.client}</div>
-                    {showTm && <div className="bb-tm">{b.allDay ? 'All Day' : `${ft(b.start)} – ${ft(b.end)}`}</div>}
-                    {showDs && <div className="bb-ds">{b.dest}</div>}
-                    {showFrom && <div className="bb-dt">{b.from}</div>}
-                    {showPlate && <div className="bb-pl">{b.plate}</div>}
-                </div>
-            );
+        
+        // Status colors
+        const statusColors = {
+          pending: '#F59E0B',
+          booked: '#2563EB',
+          in_transit: '#D32F2F',
+          transit: '#D32F2F',
+          completed: '#2E7D32',
+          cancelled: '#ef4444',
+          confirmed: '#2563EB',
+        };
+        
+        const color = statusColors[booking.status?.toLowerCase()] || '#2563EB';
+        
+        eventList.push({
+          id: booking.id || `${ds}-${Math.random()}`,
+          title: booking.client || 'Unknown Client',
+          start: startDate,
+          end: endDate,
+          allDay: booking.allDay || false,
+          backgroundColor: color,
+          borderColor: color,
+          textColor: '#FFFFFF',
+          extendedProps: {
+            ...booking,
+            status: booking.status,
+            statusColor: color,
+            dest: booking.dest || '—',
+            from: booking.from || '—',
+            plate: booking.plate || '—',
+            branchName: booking.branchName || '',
+            branch: booking.branch || 'nairobi',
+            phone: booking.phone || '',
+            clientName: booking.client || 'Unknown Client',
+            dayIndex: dayIndex,
+          }
         });
-        if (colBlocks.length) {
-            blocks.push(
-                <div
-                    key={`col-${ds}`}
-                    className="wkcol"
-                    style={{
-                        position: 'absolute',
-                        left: `calc(${d * dayW}% + 3px)`,
-                        width: `calc(${dayW}% - 6px)`,
-                        top: 0,
-                        bottom: 0,
-                        pointerEvents: 'none'
-                    }}
-                >
-                    {colBlocks}
-                </div>
-            );
-        }
+      });
+    });
+    
+    return eventList;
+  }, [weekBookings, weekDays]);
+
+  // Handle date click - opens day view
+  const handleDateClick = (info) => {
+    if (openDay) {
+      const dateStr = info.dateStr.split('T')[0];
+      openDay(dateStr);
     }
+  };
 
+  // Handle event click - shows booking details
+  const handleEventClick = (info) => {
+    if (openBookingDetails) {
+      openBookingDetails(info.event.extendedProps);
+    }
+  };
+
+  // Custom event renderer
+  const renderEventContent = (eventInfo) => {
+    const props = eventInfo.event.extendedProps;
+    const isAllDay = eventInfo.event.allDay;
+    
     return (
-        <div className="dispatch-board">
-            <style>{VIEWER_CSS + WEEK_CSS}</style>
-
-            <div className="main">
-                <div className="cal">
-                    <div className="gw">
-                        {/* Floating stats — real counts only */}
-                        <div className="fl">
-                            {allBookings.length > 0 && (
-                                <div className="fb" style={{ animationDelay: '0s' }}>
-                                    <div className="fp" style={{ background: '#2563EB', color: '#2563EB' }}></div>
-                                    <span style={{ color: '#2563EB' }}>{allBookings.length} Booking{allBookings.length !== 1 ? 's' : ''} This Week</span>
-                                </div>
-                            )}
-                            {tr > 0 && (
-                                <div className="fb" style={{ animationDelay: '0.1s' }}>
-                                    <div className="fp" style={{ background: '#DC2626', color: '#DC2626' }}></div>
-                                    <span style={{ color: '#DC2626' }}>{tr} In Transit</span>
-                                </div>
-                            )}
-                            {pn > 0 && (
-                                <div className="fb" style={{ animationDelay: '0.2s' }}>
-                                    <div className="fp" style={{ background: '#D97706', color: '#D97706' }}></div>
-                                    <span style={{ color: '#D97706' }}>{pn} Pending</span>
-                                </div>
-                            )}
-                            {allBookings.length === 0 && (
-                                <div className="fb" style={{ animationDelay: '0s' }}>
-                                    <div className="fp" style={{ background: '#2563EB', color: '#2563EB' }}></div>
-                                    <span style={{ color: '#2563EB' }}>All Clear This Week</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Day headers (Sun..Sat) */}
-                        <div className="wkdh">
-                            <div className="dhs"></div>
-                            {weekDays.map((day, i) => {
-                                const isToday = dk(day) === todayStr;
-                                return (
-                                    <div className="wkc" key={i}>
-                                        <div className={`wkn ${isToday ? 'td' : ''}`}>{DS[i]}</div>
-                                        <div className={`wknm ${isToday ? 'td' : ''}`}>{day.getDate()}</div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Time grid + overlay */}
-                        <div className="tg tg-wk" id="weekGrid">
-                            {rows}
-                            <div className="tg-ov">
-                                {blocks}
-                                {sn && nh >= SH && nh < EH && (
-                                    <div className="nl" style={{ top: (nh - SH) * HH + 'px' }}>
-                                        <span className="nl-l">{ft(nh)}</span>
-                                    </div>
-                                )}
-                                {allBookings.length === 0 && (
-                                    <div className="empty-ctr">
-                                        <div style={{ textAlign: 'center' }}>
-                                            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                                                <rect x="3" y="4" width="18" height="18" rx="2" />
-                                                <line x1="16" y1="2" x2="16" y2="6" />
-                                                <line x1="8" y1="2" x2="8" y2="6" />
-                                                <line x1="3" y1="10" x2="21" y2="10" />
-                                            </svg>
-                                            <p style={{ marginTop: '8px' }}>No bookings for this week</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+      <div style={{
+        padding: isAllDay ? '2px 6px' : '4px 6px',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        fontSize: '11px',
+        fontWeight: 600,
+      }}>
+        {!isAllDay && (
+          <span style={{ fontSize: '9px', opacity: 0.8 }}>
+            {eventInfo.timeText}
+          </span>
+        )}
+        <span style={{
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          fontWeight: 700,
+        }}>
+          {eventInfo.event.title}
+        </span>
+        {props.dest && props.dest !== '—' && !isAllDay && (
+          <span style={{
+            fontSize: '9px',
+            opacity: 0.7,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            {props.dest}
+          </span>
+        )}
+      </div>
     );
+  };
+
+  // Sync calendar with currentDate
+  useEffect(() => {
+    if (calendarRef.current) {
+      const api = calendarRef.current.getApi();
+      api.gotoDate(currentDate);
+    }
+  }, [currentDate]);
+
+  // Stats bar component
+  const StatsBar = () => (
+    <div style={{
+      display: 'flex',
+      gap: '16px',
+      padding: '8px 16px',
+      marginBottom: '12px',
+      background: '#FAFAFA',
+      borderRadius: '8px',
+      flexWrap: 'wrap',
+      border: '1px solid #EEEEEE',
+    }}>
+      {allBookings.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#2563EB' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2563EB' }}></span>
+          {allBookings.length} Booking{allBookings.length !== 1 ? 's' : ''} This Week
+        </div>
+      )}
+      {tr > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#D32F2F' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#D32F2F' }}></span>
+          {tr} In Transit
+        </div>
+      )}
+      {pn > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#D97706' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#D97706' }}></span>
+          {pn} Pending
+        </div>
+      )}
+      {allBookings.length === 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#2563EB' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2563EB' }}></span>
+          All Clear This Week
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{
+      height: '100%',
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      background: '#FFFFFF',
+    }}>
+      <StatsBar />
+      
+      <div style={{ flex: 1, minHeight: '400px', position: 'relative' }}>
+        <FullCalendar
+          ref={calendarRef}
+          plugins={[timeGridPlugin, interactionPlugin]}
+          initialView="timeGridWeek"
+          headerToolbar={false}
+          events={events}
+          dateClick={handleDateClick}
+          eventClick={handleEventClick}
+          eventContent={renderEventContent}
+          height="100%"
+          contentHeight="100%"
+          firstDay={0}
+          weekends={true}
+          nowIndicator={true}
+          selectable={true}
+          unselectAuto={true}
+          slotMinTime="05:00:00"
+          slotMaxTime="23:00:00"
+          slotDuration="01:00:00"
+          allDaySlot={true}
+          dayHeaders={true}
+          weekNumbers={false}
+          eventTimeFormat={{
+            hour: 'numeric',
+            minute: '2-digit',
+            meridiem: 'short'
+          }}
+          slotLabelFormat={{
+            hour: 'numeric',
+            minute: '2-digit',
+            meridiem: 'short'
+          }}
+          views={{
+            timeGridWeek: {
+              titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+              dayHeaderFormat: { weekday: 'short', month: 'short', day: 'numeric' }
+            }
+          }}
+          eventMinHeight={20}
+          eventMaxStack={5}
+          moreLinkContent="+%d more"
+          nowIndicatorClassNames={['fc-timegrid-now-indicator']}
+          viewClassNames={['fc-week-view']}
+          eventOverlap={true}
+          slotEventOverlap={true}
+          expandRows={true}
+          stickyHeaderDates={true}
+          dayMaxEvents={true}
+          // Custom styling via CSS
+          dayHeaderClassNames={['fc-week-day-header']}
+          eventClassNames={['fc-week-event']}
+        />
+      </div>
+      
+      {/* Custom styles to match your design */}
+      <style>{`
+        .fc-week-view .fc-timegrid-event {
+          border-radius: 6px !important;
+          border: none !important;
+          cursor: pointer !important;
+          transition: all 0.2s ease !important;
+          padding: 2px 6px !important;
+          margin: 1px 2px !important;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+        }
+        
+        .fc-week-view .fc-timegrid-event:hover {
+          transform: scale(1.02) !important;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+          z-index: 10 !important;
+        }
+        
+        .fc-week-view .fc-timegrid-event .fc-event-time {
+          font-size: 9px !important;
+          font-weight: 600 !important;
+          opacity: 0.8 !important;
+        }
+        
+        .fc-week-view .fc-timegrid-event .fc-event-title {
+          font-weight: 700 !important;
+          font-size: 11px !important;
+        }
+        
+        .fc-week-view .fc-timegrid-col.fc-day-today {
+          background: #FAFAFA !important;
+        }
+        
+        .fc-week-view .fc-col-header-cell {
+          padding: 8px 0 !important;
+          background: #FFFFFF !important;
+          border-bottom: 2px solid #EEEEEE !important;
+        }
+        
+        .fc-week-view .fc-col-header-cell-cushion {
+          font-size: 11px !important;
+          font-weight: 700 !important;
+          color: #999999 !important;
+          text-transform: uppercase !important;
+          text-decoration: none !important;
+        }
+        
+        .fc-week-view .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+          color: #2E7D32 !important;
+        }
+        
+        .fc-week-view .fc-timegrid-axis-cushion,
+        .fc-week-view .fc-timegrid-slot-label-cushion {
+          font-size: 11px !important;
+          font-weight: 600 !important;
+          color: #999999 !important;
+        }
+        
+        .fc-week-view .fc-timegrid-now-indicator-line {
+          border-color: #D32F2F !important;
+          border-width: 2px !important;
+        }
+        
+        .fc-week-view .fc-timegrid-now-indicator-arrow {
+          border-color: #D32F2F !important;
+          border-width: 5px !important;
+        }
+        
+        .fc-week-view .fc-timegrid-all-day-events {
+          min-height: 30px !important;
+          background: #FFFFFF !important;
+        }
+        
+        .fc-week-view .fc-timegrid-all-day-event {
+          border-radius: 4px !important;
+          border: none !important;
+          padding: 2px 6px !important;
+          margin: 1px 2px !important;
+          font-size: 10px !important;
+          font-weight: 600 !important;
+        }
+        
+        .fc-week-view .fc-daygrid-more-link {
+          font-size: 10px !important;
+          font-weight: 600 !important;
+          color: #2563EB !important;
+          cursor: pointer !important;
+          padding: 2px 4px !important;
+          border-radius: 4px !important;
+        }
+        
+        .fc-week-view .fc-daygrid-more-link:hover {
+          background: #EFF6FF !important;
+        }
+        
+        .fc-week-view .fc-popover {
+          border-radius: 12px !important;
+          border: 1px solid #EEEEEE !important;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.08) !important;
+          background: #FFFFFF !important;
+        }
+        
+        .fc-week-view .fc-popover-header {
+          padding: 12px 16px !important;
+          background: #FAFAFA !important;
+          border-bottom: 1px solid #EEEEEE !important;
+          border-radius: 12px 12px 0 0 !important;
+        }
+        
+        .fc-week-view .fc-popover-title {
+          font-size: 14px !important;
+          font-weight: 700 !important;
+          color: #000000 !important;
+        }
+        
+        .fc-week-view .fc-popover-body {
+          padding: 8px 12px !important;
+        }
+        
+        .fc-week-view .fc-popover-body .fc-event {
+          border-radius: 6px !important;
+          padding: 6px 10px !important;
+          margin: 4px 0 !important;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 640px) {
+          .fc-week-view .fc-col-header-cell-cushion {
+            font-size: 9px !important;
+          }
+          
+          .fc-week-view .fc-timegrid-event .fc-event-title {
+            font-size: 9px !important;
+          }
+          
+          .fc-week-view .fc-timegrid-event {
+            padding: 1px 4px !important;
+          }
+        }
+      `}</style>
+    </div>
+  );
 }

@@ -1,4 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import interactionPlugin from '@fullcalendar/interaction';
 
 const DOWS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const MOS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -24,11 +27,13 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
     const [viewStart, setViewStart] = useState(() => toMonday(new Date()));
     const stripRef = useRef(null);
     const [visibleCount, setVisibleCount] = useState(7);
+    const calendarRef = useRef(null);
 
-    const eventCounts = React.useMemo(() => {
+    const eventCounts = useMemo(() => {
         const map = {};
         eventsData.forEach((ev) => {
-            const key = dk(new Date(ev.date).getFullYear(), new Date(ev.date).getMonth(), new Date(ev.date).getDate());
+            const date = new Date(ev.date);
+            const key = dk(date.getFullYear(), date.getMonth(), date.getDate());
             map[key] = (map[key] || 0) + 1;
         });
         return map;
@@ -36,7 +41,27 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
 
     const todayKey = dk(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
 
-    const days = React.useMemo(() => {
+    // Convert events to FullCalendar format
+    const events = useMemo(() => {
+        return eventsData.map((ev) => {
+            const date = new Date(ev.date);
+            return {
+                id: ev.id || `ev-${Math.random()}`,
+                title: ev.title || 'Event',
+                start: date,
+                allDay: true,
+                backgroundColor: ev.color || '#2563EB',
+                borderColor: ev.color || '#2563EB',
+                textColor: '#FFFFFF',
+                extendedProps: {
+                    ...ev,
+                    count: 1
+                }
+            };
+        });
+    }, [eventsData]);
+
+    const days = useMemo(() => {
         const arr = [];
         for (let i = 0; i < 30; i++) {
             const d = addDays(viewStart, i);
@@ -78,7 +103,7 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
         return () => ro.disconnect();
     }, []);
 
-    const title = React.useMemo(() => {
+    const title = useMemo(() => {
         const s = addDays(viewStart, 0);
         const e = addDays(viewStart, 29);
         const sm = s.getMonth(), sy = s.getFullYear();
@@ -88,16 +113,69 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
         return `${MOS_SHORT[sm]} ${sy}–${MOS_SHORT[em]} ${ey}`;
     }, [viewStart]);
 
-    const prevWeek = () => setViewStart((v) => addDays(v, -7));
-    const nextWeek = () => setViewStart((v) => addDays(v, 7));
+    const prevWeek = () => {
+        setViewStart((v) => addDays(v, -7));
+        if (calendarRef.current) {
+            const api = calendarRef.current.getApi();
+            api.prev();
+        }
+    };
+    
+    const nextWeek = () => {
+        setViewStart((v) => addDays(v, 7));
+        if (calendarRef.current) {
+            const api = calendarRef.current.getApi();
+            api.next();
+        }
+    };
+    
     const goToday = () => {
         const now = new Date();
         setViewStart(toMonday(now));
         if (onDateSelect) onDateSelect(now);
+        if (calendarRef.current) {
+            const api = calendarRef.current.getApi();
+            api.today();
+        }
     };
 
     const pickDate = (date) => {
         if (onDateSelect) onDateSelect(date);
+        if (calendarRef.current) {
+            const api = calendarRef.current.getApi();
+            api.gotoDate(date);
+        }
+    };
+
+    // Custom event renderer for FullCalendar
+    const renderEventContent = (eventInfo) => {
+        return (
+            <div style={{
+                fontSize: '8px',
+                fontWeight: 600,
+                padding: '1px 3px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '100%'
+            }}>
+                {eventInfo.event.title}
+            </div>
+        );
+    };
+
+    // Handle date click in FullCalendar
+    const handleDateClick = (info) => {
+        const date = info.date;
+        pickDate(date);
+    };
+
+    // Handle event click in FullCalendar
+    const handleEventClick = (info) => {
+        const event = info.event.extendedProps;
+        if (onDateSelect) {
+            onDateSelect(event.date);
+        }
     };
 
     return (
@@ -177,7 +255,21 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                 </button>
             </div>
 
-            {/* Compact Scrollable Strip */}
+            {/* FullCalendar Hidden - Used for data management */}
+            <div style={{ display: 'none' }}>
+                <FullCalendar
+                    ref={calendarRef}
+                    plugins={[dayGridPlugin, interactionPlugin]}
+                    initialView="dayGridMonth"
+                    events={events}
+                    dateClick={handleDateClick}
+                    eventClick={handleEventClick}
+                    eventContent={renderEventContent}
+                    height="auto"
+                />
+            </div>
+
+            {/* Compact Scrollable Strip - Same as before */}
             <div
                 ref={stripRef}
                 style={{
@@ -211,7 +303,6 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                     }
                     if (isSelected) {
                         bg = 'rgb(244, 0, 0)';
-
                         textColor = '#fff';
                         dayNameColor = 'rgba(255,255,255,0.8)';
                         badgeBg = 'rgba(255,255,255,0.2)';

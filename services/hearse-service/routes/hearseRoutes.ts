@@ -1,6 +1,6 @@
 import express from 'express';
 import { registerHearse, updateHearse, deleteHearse, getAllHearses, getAvailableHearses, upload } from '../controllers/registerHearse';
-import { makeHearseBooking, getAllHearseBookings, assignDriverToBooking, updateBookingStatus, postponeHearseBooking, getAllDrivers, getBookingsByDriver, getDriverDashboard, getAvailabilityAcrossBranches, checkAvailabilityByDate } from '../controllers/bookHerse';
+import { makeHearseBooking, checkHearseAvailability, getAllHearseBookings, assignDriverToBooking, updateBookingStatus, postponeHearseBooking, getAllDrivers, getBookingsByDriver, getDriverDashboard, getAvailabilityAcrossBranches, checkAvailabilityByDate } from '../controllers/bookHerse';
 import { getHearseFleetAnalytics, getHearsePeriodAnalytics } from '../controllers/hearseAnalytics';
 // @ts-ignore - authMiddleware is JavaScript, not TypeScript
 import { protect } from '../../app-global/middlewares/authMiddleware';
@@ -16,6 +16,7 @@ router.get('/hearses/available', getAvailableHearses);
 
 // Hearse Bookings
 router.post('/hearse-bookings', protect, makeHearseBooking);
+router.post('/hearse-bookings/check-availability', protect, checkHearseAvailability);
 router.get('/hearse-bookings', protect, getAllHearseBookings);
 router.put('/hearse-bookings/:booking_id/status', protect, updateBookingStatus);
 router.put('/hearse-bookings/:booking_id/assign-driver', protect, assignDriverToBooking);

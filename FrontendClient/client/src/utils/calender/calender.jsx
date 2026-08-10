@@ -1,6 +1,9 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
 import './ReusableCalendar.css';
-
 
 /* ═══════════════════════════════════════════════════════════════
    HELPERS
@@ -53,18 +56,6 @@ const getWeekMonday = (date) => {
   return d;
 };
 
-/* Get all days in a week */
-const getWeekDays = (date) => {
-  const monday = getWeekMonday(date);
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    days.push(d);
-  }
-  return days;
-};
-
 const ReusableCalendar = ({
   items = [],
   dateKey = 'date',
@@ -86,7 +77,10 @@ const ReusableCalendar = ({
   getItemAmount,
   getItemStatus,
   getItemImage,
-  accentColor = '#2563eb',
+  getItemTime,
+  getItemDestination,
+  getItemPlate,
+  accentColor = '#0f172a',
   locale = 'en-US',
   className = '',
 }) => {
@@ -96,9 +90,10 @@ const ReusableCalendar = ({
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [showWeekView, setShowWeekView] = useState(false);
+  const [calendarView, setCalendarView] = useState('dayGridMonth');
   
-  // Mobile date strip ref
   const dateStripRef = useRef(null);
+  const calendarRef = useRef(null);
 
   const isControlled = controlledDate !== undefined;
   const selectedDate = isControlled ? controlledDate : internalDate;
@@ -119,6 +114,76 @@ const ReusableCalendar = ({
     });
     return map;
   }, [items, dateKey]);
+
+  /* Convert items to FullCalendar events */
+  const events = useMemo(() => {
+    return items
+      .map((item) => {
+        const dateStr = item[dateKey];
+        if (!dateStr) return null;
+        
+        const status = getItemStatus ? getItemStatus(item) : null;
+        const statusColors = {
+          pending: '#F59E0B',
+          booked: '#2563EB',
+          'in_transit': '#D32F2F',
+          transit: '#D32F2F',
+          completed: '#2E7D32',
+          cancelled: '#ef4444',
+          confirmed: '#2563EB',
+        };
+        const color = statusColors[status?.toLowerCase()] || getStatusColor?.(item) || accentColor;
+        const title = getItemTitle ? getItemTitle(item) : 'Item';
+        const time = getItemTime ? getItemTime(item) : null;
+
+        let startDate = new Date(dateStr + 'T00:00:00');
+        let endDate = new Date(dateStr + 'T23:59:59');
+        
+        // If time is provided, use it
+        if (time) {
+          const timeMatch = time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+          if (timeMatch) {
+            let hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const meridiem = timeMatch[3]?.toUpperCase();
+            
+            if (meridiem === 'PM' && hours < 12) hours += 12;
+            if (meridiem === 'AM' && hours === 12) hours = 0;
+            
+            startDate = new Date(dateStr);
+            startDate.setHours(hours, minutes, 0, 0);
+            
+            endDate = new Date(startDate);
+            endDate.setHours(hours + 1, minutes, 0, 0);
+          }
+        }
+
+        return {
+          id: item[idKey] || `item-${Math.random()}`,
+          title: title,
+          start: startDate,
+          end: endDate,
+          allDay: !time,
+          backgroundColor: color,
+          borderColor: color,
+          textColor: '#FFFFFF',
+          extendedProps: {
+            ...item,
+            status: status,
+            statusColor: color,
+            time: time,
+            destination: getItemDestination ? getItemDestination(item) : null,
+            plate: getItemPlate ? getItemPlate(item) : null,
+            amount: getItemAmount ? getItemAmount(item) : null,
+            subtitle: getItemSubtitle ? getItemSubtitle(item) : '',
+            meta: getItemMeta ? getItemMeta(item) : '',
+            urgent: getIsUrgent ? getIsUrgent(item) : false,
+          }
+        };
+      })
+      .filter(e => e !== null);
+  }, [items, dateKey, getItemStatus, getStatusColor, getItemTitle, getItemTime, 
+      getItemDestination, getItemPlate, getItemAmount, getItemSubtitle, getItemMeta, getIsUrgent, accentColor, idKey]);
 
   /* Upcoming Bookings (Next 5) */
   const upcomingItems = useMemo(() => {
@@ -145,47 +210,7 @@ const ReusableCalendar = ({
     return { count, total };
   }, [viewYear, viewMonth, itemsByDate, getItemAmount]);
 
-  /* Build calendar cells for DESKTOP GRID */
-  const cells = useMemo(() => {
-    const dim = new Date(viewYear, viewMonth + 1, 0).getDate();
-    const fdow = new Date(viewYear, viewMonth, 1).getDay();
-    const pmd = new Date(viewYear, viewMonth, 0).getDate();
-    const total = Math.ceil((fdow + dim) / 7) * 7;
-    const out = [];
-    for (let i = 0; i < total; i++) {
-      let day, mo = viewMonth, yr = viewYear, other = false;
-      if (i < fdow) {
-        day = pmd - fdow + 1 + i; mo = viewMonth - 1;
-        if (mo < 0) { mo = 11; yr--; }
-        other = true;
-      } else if (i >= fdow + dim) {
-        day = i - fdow - dim + 1; mo = viewMonth + 1;
-        if (mo > 11) { mo = 0; yr++; }
-        other = true;
-      } else {
-        day = i - fdow + 1;
-      }
-      const ds = `${yr}-${String(mo + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const arr = itemsByDate[ds] || [];
-      const colors = getStatusColor
-        ? [...new Set(arr.map(getStatusColor).filter(Boolean))]
-        : [];
-      out.push({
-        day, mo, yr, other, ds,
-        isToday: ds === todayStr,
-        isSelected: ds === selectedDate,
-        isPast: new Date(ds + 'T23:59:59') < today,
-        isWeekend: (i % 7 === 0) || (i % 7 === 6),
-        items: arr,
-        count: arr.length,
-        hasUrgent: getIsUrgent ? arr.some(getIsUrgent) : false,
-        colors,
-      });
-    }
-    return out;
-  }, [viewYear, viewMonth, itemsByDate, todayStr, selectedDate, today, getStatusColor, getIsUrgent]);
-
-  /* Mobile date strip data - ALL days in current month */
+  /* Mobile date strip data */
   const mobileDateStrip = useMemo(() => {
     const dim = new Date(viewYear, viewMonth + 1, 0).getDate();
     const strip = [];
@@ -208,29 +233,6 @@ const ReusableCalendar = ({
     return strip;
   }, [viewYear, viewMonth, itemsByDate, todayStr, selectedDate, getIsUrgent]);
 
-  /* Week days data for "This Week" view */
-  const weekDaysData = useMemo(() => {
-    const baseDate = selectedDate ? new Date(selectedDate + 'T12:00:00') : today;
-    return getWeekDays(baseDate).map(dateObj => {
-      const ds = toDateString(dateObj);
-      const arr = itemsByDate[ds] || [];
-      return {
-        date: dateObj,
-        ds,
-        dayName: WEEKDAY_FULL[dateObj.getDay()],
-        dayShort: WEEKDAY_SHORT[dateObj.getDay()],
-        dayNum: dateObj.getDate(),
-        month: MONTH_NAMES[dateObj.getMonth()],
-        isToday: ds === todayStr,
-        isSelected: ds === selectedDate,
-        isWeekend: dateObj.getDay() === 0 || dateObj.getDay() === 6,
-        items: arr,
-        count: arr.length,
-        hasUrgent: getIsUrgent ? arr.some(getIsUrgent) : false,
-      };
-    });
-  }, [selectedDate, today, todayStr, itemsByDate, getIsUrgent]);
-
   /* Auto-scroll to selected/today date on mobile */
   useEffect(() => {
     if (dateStripRef.current && !showWeekView && window.innerWidth < 768) {
@@ -246,28 +248,6 @@ const ReusableCalendar = ({
     }
   }, [mobileDateStrip, selectedDate, showWeekView]);
 
-  const goPrev = () => {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
-    else setViewMonth((m) => m - 1);
-    setShowWeekView(false);
-  };
-  const goNext = () => {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
-    else setViewMonth((m) => m + 1);
-    setShowWeekView(false);
-  };
-
-  /* Handle This Week button click */
-  const handleThisWeekClick = () => {
-    setShowWeekView(true);
-    const monday = getWeekMonday(today);
-    setViewMonth(monday.getMonth());
-    setViewYear(monday.getFullYear());
-  };
-
-  const monthLabel = `${MONTH_NAMES[viewMonth]} ${viewYear}`;
-  const hasAmount = getItemAmount != null;
-
   /* Selected date items */
   const selItems = selectedDate
     ? [...(itemsByDate[selectedDate] || [])].sort((a, b) => {
@@ -280,6 +260,7 @@ const ReusableCalendar = ({
       })
     : [];
 
+  /* Google Calendar-like rich item renderer */
   const defaultRenderItem = (item, idx) => {
     const title = getItemTitle ? getItemTitle(item) : 'Item';
     const subtitle = getItemSubtitle ? getItemSubtitle(item) : '';
@@ -287,43 +268,101 @@ const ReusableCalendar = ({
     const amount = getItemAmount ? getItemAmount(item) : null;
     const status = getItemStatus ? getItemStatus(item) : null;
     const urgent = getIsUrgent ? getIsUrgent(item) : false;
-    const statusColor = getStatusColor ? getStatusColor(item) : null;
+    const statusColor = getStatusColor ? getStatusColor(item) : accentColor;
+    const time = getItemTime ? getItemTime(item) : null;
+    const destination = getItemDestination ? getItemDestination(item) : null;
+    const plate = getItemPlate ? getItemPlate(item) : null;
 
-    const cardStyle = statusColor 
-      ? { borderLeft: `3px solid ${statusColor}` } 
-      : { borderLeft: `3px solid var(--rc-border)` };
+    const statusColors = {
+      pending: '#F59E0B',
+      booked: '#2563EB',
+      'in_transit': '#D32F2F',
+      transit: '#D32F2F',
+      completed: '#2E7D32',
+      cancelled: '#ef4444',
+      confirmed: '#2563EB',
+    };
+
+    const finalColor = statusColors[status?.toLowerCase()] || statusColor || accentColor;
 
     return (
       <div 
         key={item[idKey] ?? idx} 
-        className="rc-day-card" 
+        className="rc-day-card rc-day-card-google" 
         onClick={() => onItemClick?.(item)}
-        style={cardStyle}
+        style={{ 
+          borderLeft: `4px solid ${finalColor}`,
+          background: '#FFFFFF',
+          borderRadius: '8px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          padding: '12px 16px',
+          marginBottom: '8px',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
+          e.currentTarget.style.transform = 'translateY(-2px)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
+          e.currentTarget.style.transform = 'translateY(0)';
+        }}
       >
-        <div style={{
-          width: 36, height: 36, borderRadius: '8px', flexShrink: 0,
-          background: statusColor ? `${statusColor}15` : 'var(--rc-bg-soft)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: statusColor || 'var(--rc-text-muted)'
-        }}>
-          {I('road', 18)}
-        </div>
-        <div className="rc-day-card-body">
-          <div className="rc-day-card-top">
-            <span className="rc-day-card-title">{title}</span>
-            {urgent && <span className="rc-urgent-tag" style={statusColor ? { background: `${statusColor}15`, color: statusColor } : undefined}>Urgent</span>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            {time && (
+              <span style={{ fontSize: '11px', fontWeight: 600, color: '#666', marginBottom: '2px' }}>
+                🕐 {time}
+              </span>
+            )}
+            <span style={{ fontWeight: 700, fontSize: '15px', color: '#000000', marginBottom: '2px' }}>
+              {title}
+            </span>
+            {destination && (
+              <span style={{ fontSize: '12px', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                📍 {destination}
+              </span>
+            )}
+            {subtitle && (
+              <span style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{subtitle}</span>
+            )}
           </div>
-          {subtitle && <div className="rc-day-card-sub">{subtitle}</div>}
-          {meta && <div className="rc-day-card-meta">{meta}</div>}
-          <div className="rc-day-card-bot">
-            {status && <span className="rc-day-card-status">{status}</span>}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            {status && (
+              <span style={{ 
+                fontSize: '10px', fontWeight: 700, padding: '2px 10px', borderRadius: '12px',
+                background: `${finalColor}15`, color: finalColor, textTransform: 'uppercase', letterSpacing: '0.3px'
+              }}>
+                {status}
+              </span>
+            )}
             {amount != null && (
-              <span className="rc-day-card-amt">
+              <span style={{ fontWeight: 700, fontSize: '14px', color: '#000000' }}>
                 {typeof amount === 'number' ? `$${amount.toFixed(2)}` : amount}
               </span>
             )}
           </div>
         </div>
+        {plate && (
+          <div style={{ fontSize: '10px', color: '#999', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+            🚗 {plate}
+          </div>
+        )}
+        {urgent && (
+          <div style={{ 
+            fontSize: '10px', fontWeight: 700, color: '#D32F2F', background: '#FFEBEE',
+            padding: '1px 8px', borderRadius: '4px', alignSelf: 'flex-start'
+          }}>
+            ⚠️ URGENT
+          </div>
+        )}
+        {meta && (
+          <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>{meta}</div>
+        )}
       </div>
     );
   };
@@ -344,16 +383,61 @@ const ReusableCalendar = ({
     return `${monStr} - ${sunStr}`;
   };
 
+  // FullCalendar event renderer
+  const renderEventContent = (eventInfo) => {
+    const props = eventInfo.event.extendedProps;
+    const isMonthView = calendarView === 'dayGridMonth';
+    
+    if (isMonthView) {
+      return null;
+    }
+
+    return (
+      <div style={{ 
+        padding: '2px 6px', 
+        fontSize: '11px',
+        fontWeight: 600,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        width: '100%'
+      }}>
+        <span className="fc-event-time" style={{ fontSize: '10px', opacity: 0.8, marginRight: '4px' }}>
+          {eventInfo.timeText}
+        </span>
+        <span className="fc-event-title">{eventInfo.event.title}</span>
+      </div>
+    );
+  };
+
+  // FullCalendar date click handler
+  const handleDateClick = (info) => {
+    const dateStr = info.dateStr.split('T')[0];
+    setSelectedDate(dateStr);
+  };
+
+  // FullCalendar event click handler
+  const handleEventClick = (info) => {
+    const item = info.event.extendedProps;
+    if (onItemClick) onItemClick(item);
+  };
+
+  // FullCalendar view change handler
+  const handleViewChange = (view) => {
+    setCalendarView(view.type);
+  };
+
+  const monthLabel = `${MONTH_NAMES[viewMonth]} ${viewYear}`;
+  const hasAmount = getItemAmount != null;
+
   return (
     <div className={`rc-root ${className}`} style={{ '--rc-accent': accentColor }}>
       
       {/* ══════════════════════════════════════════
           MOBILE VIEW (< 768px)
-          Shows: This Week Button + Date Strip + Details
           ══════════════════════════════════════════ */}
       <div className="rc-mobile-view">
         
-        {/* ─── MOBILE HEADER ─── */}
         <div className="rc-mobile-header">
           <button 
             className={`rc-this-week-btn ${showWeekView ? 'rc-week-active' : ''}`}
@@ -370,7 +454,6 @@ const ReusableCalendar = ({
           </div>
         </div>
 
-        {/* ─── WEEK VIEW (when This Week clicked) ─── */}
         {showWeekView ? (
           <div className="rc-week-container">
             <div className="rc-week-header">
@@ -405,7 +488,7 @@ const ReusableCalendar = ({
                   <div className="rc-day-list">
                     {selItems.map((item, idx) => renderItem(item, idx))}
                     {hasAmount && (
-                      <div className="rc-day-total">
+                      <div className="rc-day-total-google">
                         <span>Total</span>
                         <strong>${selItems.reduce((s, item) => {
                           const a = getItemAmount(item);
@@ -415,18 +498,18 @@ const ReusableCalendar = ({
                     )}
                   </div>
                 ) : (
-                  <div className="rc-day-empty">
+                  <div className="rc-day-empty-google">
                     <span className="rc-day-empty-icon">{I('calendar', 32)}</span>
                     <p>No items for this day</p>
                     {showAddButton && onAddForDate && (
-                      <button className="rc-add-btn rc-add-btn-outline" onClick={() => onAddForDate(selectedDate)}>
+                      <button className="rc-add-btn-google" onClick={() => onAddForDate(selectedDate)}>
                         {I('plus', 14)} {addButtonText}
                       </button>
                     )}
                   </div>
                 )
               ) : (
-                <div className="rc-day-empty rc-day-prompt">
+                <div className="rc-day-empty-google rc-day-prompt">
                   <p className="rc-day-prompt-title">Tap a day above</p>
                   <p className="rc-day-prompt-sub">to see its items</p>
                 </div>
@@ -435,7 +518,6 @@ const ReusableCalendar = ({
           </div>
         ) : (
           <>
-            {/* ─── DATE STRIP (default mobile view) ─── */}
             <div className="rc-date-strip-container" ref={dateStripRef}>
               <div className="rc-date-strip">
                 {mobileDateStrip.map((d) => (
@@ -463,14 +545,13 @@ const ReusableCalendar = ({
               </div>
             </div>
 
-            {/* ─── SELECTED DATE DETAILS ─── */}
             <div className="rc-mobile-details">
               {selectedDate ? (
                 <>
                   <div className="rc-mobile-detail-hdr">
                     <h3>{toDisplayDate(selectedDate)}</h3>
                     {showAddButton && onAddForDate && (
-                      <button className="rc-add-btn" onClick={() => onAddForDate(selectedDate)}>
+                      <button className="rc-add-btn-google" onClick={() => onAddForDate(selectedDate)}>
                         {I('plus', 14)} {addButtonText}
                       </button>
                     )}
@@ -480,7 +561,7 @@ const ReusableCalendar = ({
                     <div className="rc-day-list">
                       {selItems.map((item, idx) => renderItem(item, idx))}
                       {hasAmount && (
-                        <div className="rc-day-total">
+                        <div className="rc-day-total-google">
                           <span>Total</span>
                           <strong>${selItems.reduce((s, item) => {
                             const a = getItemAmount(item);
@@ -490,11 +571,11 @@ const ReusableCalendar = ({
                       )}
                     </div>
                   ) : (
-                    <div className="rc-day-empty">
+                    <div className="rc-day-empty-google">
                       <span className="rc-day-empty-icon">{I('calendar', 28)}</span>
                       <p>No items for this date</p>
                       {showAddButton && onAddForDate && (
-                        <button className="rc-add-btn rc-add-btn-outline" onClick={() => onAddForDate(selectedDate)}>
+                        <button className="rc-add-btn-google" onClick={() => onAddForDate(selectedDate)}>
                           {I('plus', 14)} {addButtonText}
                         </button>
                       )}
@@ -502,7 +583,7 @@ const ReusableCalendar = ({
                   )}
                 </>
               ) : (
-                <div className="rc-day-empty rc-day-prompt">
+                <div className="rc-day-empty-google rc-day-prompt">
                   <span className="rc-day-prompt-icon">{I('calendar', 36)}</span>
                   <p className="rc-day-prompt-title">Select a date</p>
                   <p className="rc-day-prompt-sub">Scroll and tap any date above</p>
@@ -514,14 +595,11 @@ const ReusableCalendar = ({
       </div>
 
       {/* ══════════════════════════════════════════
-          DESKTOP VIEW (>= 768px)
-          Full Month Calendar Grid + Sidebar
+          DESKTOP VIEW (>= 768px) - FullCalendar
           ══════════════════════════════════════════ */}
       <div className="rc-desktop-view">
-        {/* LEFT: Calendar Grid Panel */}
         <div className="rc-left">
           
-          {/* Upcoming Bookings Strip */}
           {upcomingItems.length > 0 && (
             <div className="rc-upcoming-section">
               <div className="rc-upcoming-hdr">
@@ -552,91 +630,76 @@ const ReusableCalendar = ({
             </div>
           )}
 
-          {/* Month Navigation */}
-          <div className="rc-nav-row">
-            <div className="rc-nav-arrows">
-              <button className="rc-arrow-btn" onClick={goPrev} aria-label="Previous month">{I('chevL', 18)}</button>
-              <h3 className="rc-month-label">{monthLabel}</h3>
-              <button className="rc-arrow-btn" onClick={goNext} aria-label="Next month">{I('chevR', 18)}</button>
-            </div>
-            <div className="rc-month-summary">
-              <span><strong>{monthSummary.count}</strong> {monthSummary.count === 1 ? 'item' : 'items'}</span>
-              {hasAmount && monthSummary.total > 0 && (
-                <>
-                  <span className="rc-sep">·</span>
-                  <span><strong>${monthSummary.total.toLocaleString()}</strong></span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* This Week Button (Desktop) */}
-          <div className="rc-desktop-week-btn">
-            <button 
-              className={`rc-this-week-btn ${showWeekView ? 'rc-week-active' : ''}`}
-              onClick={handleThisWeekClick}
-            >
-              📅 This Week
-            </button>
-          </div>
-
-          {/* Weekday Headers */}
-          <div className="rc-weekday-row">
-            {WEEKDAY_SHORT.map((w, i) => (
-              <div key={w} className="rc-weekday-hdr">{w}</div>
-            ))}
-          </div>
-
-          {/* CALENDAR GRID - Full Month View */}
-          <div className="rc-grid">
-            {cells.map((c, i) => (
-              <div
-                key={i}
-                className={[
-                  'rc-cell',
-                  c.other && 'rc-cell-other',
-                  c.isToday && 'rc-cell-today',
-                  c.isSelected && 'rc-cell-sel',
-                  c.count > 0 && 'rc-cell-has',
-                  c.isWeekend && !c.other && 'rc-cell-we',
-                ].filter(Boolean).join(' ')}
-                onClick={() => setSelectedDate(c.ds)}
-                role="button"
-                tabIndex={0}
-                aria-label={`${c.ds}, ${c.count} items`}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDate(c.ds); } }}
-              >
-                <div className="rc-cell-top">
-                  <span className="rc-cell-num">{c.day}</span>
-                  {c.hasUrgent && !c.other && <span className="rc-urgent-badge">!</span>}
-                </div>
-                {c.count > 0 && !c.other && (
-                  <>
-                    <div className="rc-cell-dots">
-                      {c.colors.slice(0, 4).map((col, j) => (
-                        <span key={j} className="rc-dot" style={{ background: col }} />
-                      ))}
-                      {c.count > 4 && <span className="rc-dot-more">+{c.count - 4}</span>}
-                    </div>
-                    <span className="rc-cell-count">{c.count}</span>
-                  </>
-                )}
-              </div>
-            ))}
+          {/* FullCalendar */}
+          <div className="rc-fullcalendar-wrapper">
+            <FullCalendar
+              ref={calendarRef}
+              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+              initialView="dayGridMonth"
+              headerToolbar={{
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek'
+              }}
+              views={{
+                dayGridMonth: {
+                  titleFormat: { year: 'numeric', month: 'long' },
+                  dayHeaderFormat: { weekday: 'short' },
+                  dayMaxEvents: 3,
+                },
+                timeGridWeek: {
+                  titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+                  dayHeaderFormat: { weekday: 'short', month: 'short', day: 'numeric' },
+                  slotMinTime: '05:00:00',
+                  slotMaxTime: '23:00:00',
+                }
+              }}
+              events={events}
+              dateClick={handleDateClick}
+              eventClick={handleEventClick}
+              viewDidMount={handleViewChange}
+              eventContent={renderEventContent}
+              height="100%"
+              contentHeight="100%"
+              firstDay={0}
+              weekends={true}
+              nowIndicator={true}
+              selectable={true}
+              dayMaxEvents={3}
+              moreLinkText="+%d more"
+              eventTimeFormat={{
+                hour: 'numeric',
+                minute: '2-digit',
+                meridiem: 'short'
+              }}
+              slotLabelFormat={{
+                hour: 'numeric',
+                minute: '2-digit',
+                meridiem: 'short'
+              }}
+              buttonText={{
+                today: 'Today',
+                month: 'Month',
+                week: 'Week'
+              }}
+              eventMinHeight={20}
+              expandRows={true}
+              stickyHeaderDates={true}
+              weekNumbers={false}
+            />
           </div>
         </div>
 
-        {/* RIGHT: Day Detail Panel */}
         <div className="rc-right">
           {selectedDate ? (
             <>
-              <div className="rc-day-hdr">
+              <div className="rc-day-hdr-google">
                 <div className="rc-day-hdr-text">
-                  <h3 className="rc-day-title">{toDisplayDate(selectedDate)}</h3>
-                  <p className="rc-day-sub">{selItems.length} {selItems.length === 1 ? 'item' : 'items'}</p>
+                  <h3 className="rc-day-title-google">{toDisplayDate(selectedDate)}</h3>
+                  <p className="rc-day-sub-google">{selItems.length} {selItems.length === 1 ? 'item' : 'items'}</p>
                 </div>
                 {showAddButton && onAddForDate && (
-                  <button className="rc-add-btn" onClick={() => onAddForDate(selectedDate)}>
+                  <button className="rc-add-btn-google" onClick={() => onAddForDate(selectedDate)}>
                     {I('plus', 14)} {addButtonText}
                   </button>
                 )}
@@ -644,21 +707,21 @@ const ReusableCalendar = ({
 
               {selItems.length === 0 ? (
                 renderDayEmpty ? renderDayEmpty(selectedDate) : (
-                  <div className="rc-day-empty">
+                  <div className="rc-day-empty-google">
                     <span className="rc-day-empty-icon">{I('calendar', 28)}</span>
                     <p>No items for this date</p>
                     {showAddButton && onAddForDate && (
-                      <button className="rc-add-btn rc-add-btn-outline" onClick={() => onAddForDate(selectedDate)}>
+                      <button className="rc-add-btn-google" onClick={() => onAddForDate(selectedDate)}>
                         {I('plus', 14)} {addButtonText}
                       </button>
                     )}
                   </div>
                 )
               ) : (
-                <div className="rc-day-list">
+                <div className="rc-day-list-google">
                   {selItems.map((item, idx) => renderItem(item, idx))}
                   {hasAmount && (
-                    <div className="rc-day-total">
+                    <div className="rc-day-total-google">
                       <span>Total</span>
                       <strong>${selItems.reduce((s, item) => {
                         const a = getItemAmount(item);
@@ -671,7 +734,7 @@ const ReusableCalendar = ({
             </>
           ) : (
             renderDayEmpty?.(null) || (
-              <div className="rc-day-empty rc-day-prompt">
+              <div className="rc-day-empty-google rc-day-prompt">
                 <span className="rc-day-prompt-icon">{I('calendar', 36)}</span>
                 <p className="rc-day-prompt-title">Select a date</p>
                 <p className="rc-day-prompt-sub">Click any day to view items</p>

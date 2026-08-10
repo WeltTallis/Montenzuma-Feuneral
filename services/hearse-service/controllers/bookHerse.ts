@@ -3,6 +3,14 @@ import { getKenyaTimeISO, getKenyaDate } from '@montezuma/shared-utils';
 import asyncHandler from 'express-async-handler';
 import axios from 'axios';
 import { Request, Response } from 'express';
+import {
+    validateRequestedDates,
+    normalizeBookingDates,
+    extractRowDates,
+    computeDateConflicts,
+    toDateKey,
+    attemptHearseReservation
+} from '../utilities/hearseAvailability';
 
 // Types
 interface HearseBooking {
@@ -38,6 +46,121 @@ interface Hearse {
 }
 
 /**
+ * Check hearse availability for specific dates (pre-check during form filling)
+ */
+export const checkHearseAvailability = asyncHandler(async (req: Request, res: Response) => {
+    try {
+        const { hearse_id, booking_dates } = req.body;
+
+        if (!hearse_id) {
+            res.status(400).json({
+                status: 'error',
+                message: 'hearse_id is required',
+                available: false,
+                conflicts: []
+            });
+            return;
+        }
+
+        const [hearse] = await safeQuery(
+            'SELECT id, status, hearse_name, plate_number FROM hearses WHERE id = ?',
+            [hearse_id]
+        ) as [any];
+
+        if (!hearse) {
+            res.status(404).json({
+                status: 'error',
+                message: 'Hearse not found',
+                available: false,
+                conflicts: []
+            });
+            return;
+        }
+
+        // Hearses under maintenance are never bookable regardless of the date.
+        if (['maintenance', 'out_of_service', 'disabled', 'pending_inspection'].includes(hearse.status)) {
+            res.status(200).json({
+                status: 'success',
+                available: false,
+                hearse_id: hearse.id,
+                hearse_name: hearse.hearse_name || hearse.plate_number,
+                message: `Hearse is currently ${hearse.status}`,
+                conflicts: [{ date: null, reason: hearse.status, message: `Hearse is currently ${hearse.status}` }]
+            });
+            return;
+        }
+
+        // Validate every requested date is a real calendar date AND not in the past.
+        const { dates: requestedDates, conflicts: dateConflicts } = validateRequestedDates(booking_dates);
+
+        if (dateConflicts.length > 0) {
+            res.status(200).json({
+                status: 'success',
+                available: false,
+                hearse_id: hearse.id,
+                hearse_name: hearse.hearse_name || hearse.plate_number,
+                conflicts: dateConflicts,
+                message: 'One or more selected dates are invalid or in the past.'
+            });
+            return;
+        }
+
+        if (requestedDates.length === 0) {
+            res.status(200).json({
+                status: 'success',
+                available: true,
+                message: 'No dates to check',
+                conflicts: []
+            });
+            return;
+        }
+
+        // Fetch ALL active bookings for this hearse in ONE query, then compare
+        // the normalized DATE SETS (every date inside an existing booking counts).
+        // NOTE: SELECT * keeps this schema-agnostic — the live table stores dates in
+        // booking_dates (JSON) while older/fresh schemas use booking_date/from_timestamp.
+        const existingBookings = await safeQuery(
+            `SELECT * FROM hearse_bookings
+             WHERE hearse_id = ?
+               AND status NOT IN ('completed', 'cancelled')`,
+            [hearse_id]
+        );
+
+        const bookedSet = new Set<string>();
+        for (const booking of (existingBookings as any[])) {
+            for (const d of extractRowDates(booking)) bookedSet.add(d);
+        }
+
+        const conflictDates = computeDateConflicts(requestedDates, [...bookedSet]);
+        const conflicts = conflictDates.map((date) => ({
+            date,
+            reason: 'already_booked',
+            message: `Hearse is already booked on ${date}`
+        }));
+
+        const available = conflicts.length === 0;
+
+        res.status(200).json({
+            status: 'success',
+            available,
+            hearse_id: hearse.id,
+            hearse_name: hearse.hearse_name || hearse.plate_number,
+            conflicts,
+            message: available
+                ? 'Hearse is available for all selected dates'
+                : `Found ${conflicts.length} date conflict(s)`
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to check availability',
+            available: false,
+            conflicts: []
+        });
+    }
+});
+
+/**
  * Create a new hearse booking
  */
 export const makeHearseBooking = asyncHandler(async (req: Request, res: Response) => {
@@ -53,10 +176,22 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
             from_timestamp
         } = req.body;
 
-        if (!destination) {
+        // ===== From / To route: two separate fields (e.g. "from NAIROBI to MASSI") =====
+        const fromLocation = (req.body.from_location || '').toString().trim();
+        const toLocation = (req.body.to_location || '').toString().trim();
+        const destinationValue = (destination || '').toString().trim();
+
+        // Backward compatibility: older clients may send only `destination`.
+        const finalFrom = fromLocation || null;
+        const finalTo = toLocation || destinationValue;
+        const derivedDestination = fromLocation && finalTo
+            ? `${fromLocation} → ${finalTo}`
+            : (finalTo || destinationValue);
+
+        if (!derivedDestination) {
             res.status(400).json({
                 status: 'error',
-                message: 'Missing required field: destination.'
+                message: 'Missing required field: destination (or to_location).'
             });
             return;
         }
@@ -69,80 +204,29 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
             return;
         }
 
-        if (hearse_id) {
-            const bookingDate = from_timestamp ? new Date(from_timestamp) : new Date();
-            const bookingDateStr = bookingDate.toISOString().split('T')[0];
-
-            const connection = await getHearseConnection();
-            try {
-                await connection.beginTransaction();
-                const [hearseRows] = await connection.query(
-                    'SELECT id, status FROM hearses WHERE id = ? FOR UPDATE',
-                    [hearse_id]
-                );
-                const hearse = hearseRows[0] as Hearse;
-
-                if (!hearse) {
-                    await connection.rollback();
-                    connection.release();
-                    res.status(404).json({
-                        status: 'error',
-                        message: 'The selected hearse does not exist.'
-                    });
-                    return;
-                }
-
-                // CRITICAL: Check if this hearse is already booked for the SAME DAY
-                // A hearse can only have ONE booking per day, but can be booked on different days
-                const sameDayBookingRows: any[] = await connection.query(
-                    `SELECT id, booking_code, booking_dates FROM hearse_bookings 
-                     WHERE hearse_id = ? 
-                     AND status NOT IN ('completed', 'cancelled') 
-                     LIMIT 10`,
-                    [hearse_id]
-                );
-                
-                // Check if any existing booking contains the requested date
-                const requestedDate = from_timestamp ? from_timestamp.split('T')[0] : bookingDateStr;
-                let sameDayBooking: any = null;
-                for (const row of sameDayBookingRows) {
-                    try {
-                        const bookingDates = JSON.parse(row.booking_dates || '[]');
-                        if (bookingDates.includes(requestedDate)) {
-                            sameDayBooking = row;
-                            break;
-                        }
-                    } catch {
-                        // Skip invalid JSON
-                    }
-                }
-
-                if (sameDayBooking) {
-                    await connection.rollback();
-                    connection.release();
-                    res.status(409).json({
-                        status: 'error',
-                        message: 'This hearse is already booked for this date. A hearse can only have one booking per day. Please choose another date or vehicle.',
-                        existing_booking_id: sameDayBooking.id,
-                        existing_booking_code: sameDayBooking.booking_code,
-                        conflict_date: from_timestamp || bookingDateStr
-                    });
-                    return;
-                }
-
-                await connection.commit();
-                connection.release();
-            } catch (txError) {
-                await connection.rollback();
-                connection.release();
-                res.status(500).json({
-                    status: 'error',
-                    message: 'Failed to verify hearse availability. Please try again.'
-                });
-                return;
-            }
+        // ===== Multi-day date validation =====
+        // Every date in booking_dates must be a valid calendar date and must not be
+        // in the past. The whole multi-day booking is treated as ONE atomic unit.
+        const { dates: finalBookingDates, conflicts: dateValidationConflicts } = validateRequestedDates(req.body.booking_dates);
+        if (dateValidationConflicts.length > 0) {
+            res.status(400).json({
+                status: 'error',
+                message: 'One or more selected dates are invalid or in the past.',
+                available: false,
+                conflicts: dateValidationConflicts
+            });
+            return;
         }
+        if (finalBookingDates.length === 0) {
+            res.status(400).json({
+                status: 'error',
+                message: 'At least one valid booking date is required (booking_dates is empty).'
+            });
+            return;
+        }
+        const bookingDatesJson = JSON.stringify(finalBookingDates);
 
+        // ===== Shared booking preparation (used by both hearse / non-hearse paths) =====
         let deceasedNote = '';
         if (deceased_id && deceased_id.trim() !== '') {
             try {
@@ -160,21 +244,16 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
             deceasedNote = 'No deceased ID provided — booking saved without deceased record.';
         }
 
-        const remarks = special_remarks
-            ? `${special_remarks.trim()} ${deceasedNote ? `(${deceasedNote})` : ''}`
-            : deceasedNote || null;
-
         const now = getKenyaTimeISO();
 
+        // Generate a booking code
+        let booking_code: string;
         try {
-            const [idResult] = await safeQuery(
-                'SELECT COUNT(*) as count FROM hearse_bookings',
-                []
-            );
+            const [idResult] = await safeQuery('SELECT COUNT(*) as count FROM hearse_bookings', []);
             const bookingNumber = String((idResult.count || 0) + 1).padStart(3, '0');
-            var booking_code = `BK-${bookingNumber}`;
+            booking_code = `BK-${bookingNumber}`;
         } catch (err) {
-            var booking_code = `BK-${Date.now().toString().slice(-6)}`;
+            booking_code = `BK-${Date.now().toString().slice(-6)}`;
         }
 
         // Use simple text input for created_by - no user table references
@@ -185,9 +264,10 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
         const insertQuery = `
             INSERT INTO hearse_bookings
             (booking_code, hearse_id, tenant_db_name, client_name, client_phone, destination,
+             from_location, to_location,
              booking_dates, status, created_at, updated_at,
              booked_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const insertParams = [
@@ -196,65 +276,186 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
             tenantDbName,
             client_name.trim(),
             client_phone.trim(),
-            destination.trim(),
-            req.body.booking_dates ? JSON.stringify(req.body.booking_dates) : null,
+            derivedDestination,
+            finalFrom,
+            finalTo,
+            bookingDatesJson,
             bookingStatus,
             now,
             now,
             createdByName
         ];
 
-        const result = await safeQuery(insertQuery, insertParams);
-        const bookingDbId = result.insertId;
+        const selectBookingQuery = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`;
+
+        let bookingDbId: number;
+        let booking: any;
 
         if (hearse_id) {
-            await safeQuery(
-                'UPDATE hearses SET status = ?, updated_at = ? WHERE id = ?',
-                ['booked', now, hearse_id]
+            const connection = await getHearseConnection();
+            try {
+                await connection.beginTransaction();
+
+                // ===== ATOMIC multi-day check-and-reserve =====
+                // attemptHearseReservation locks the hearse row (SELECT ... FOR UPDATE)
+                // for the WHOLE transaction, reads every active booking with a CURRENT
+                // READ, normalizes each stored date set and returns the exact overlap.
+                // Concurrent requests for the same hearse serialize on the row lock,
+                // so a request that waits behind another commit ALWAYS sees its insert.
+                const reservation = await attemptHearseReservation(connection, hearse_id, finalBookingDates);
+
+                if (reservation.ok === false && reservation.notFound) {
+                    await connection.rollback();
+                    connection.release();
+                    res.status(404).json({
+                        status: 'error',
+                        message: 'The selected hearse does not exist.'
+                    });
+                    return;
+                }
+
+                if (reservation.ok === false) {
+                    const conflictDates = reservation.conflicts.map((c) => c.date);
+                    await connection.rollback();
+                    connection.release();
+                    res.status(409).json({
+                        status: 'error',
+                        available: false,
+                        message: `This hearse is already booked on ${conflictDates.join(', ')}. A hearse can only be booked once per date. Please choose another date or vehicle.`,
+                        conflicts: reservation.conflicts,
+                        conflict_dates: conflictDates,
+                        conflict_date: reservation.conflictDate
+                    });
+                    return;
+                }
+
+                // No conflict found — INSERT the booking INSIDE the transaction while
+                // the hearse row is still locked. This makes check-and-reserve ATOMIC:
+                // all requested dates are created together or none at all.
+                const [insertTxResult] = await connection.query(insertQuery, insertParams);
+                const newBookingId = (insertTxResult as any).insertId;
+
+                // Keep the hearse fleet `status` field MEANINGFUL without making it the
+                // availability source of truth. Availability is ALWAYS decided by the
+                // date-set overlap above (date-based), NOT by a global status flag.
+                const [activeRows] = await connection.query(
+                    `SELECT COUNT(*) AS cnt FROM hearse_bookings WHERE hearse_id = ? AND status NOT IN ('completed', 'cancelled')`,
+                    [hearse_id]
+                );
+                const activeCount = Number((activeRows as any[])[0]?.cnt) || 0;
+                await connection.query(
+                    'UPDATE hearses SET status = ?, active_bookings = ?, updated_at = ? WHERE id = ?',
+                    [activeCount > 0 ? 'booked' : 'available', activeCount, now, hearse_id]
+                );
+
+                // Fetch the created booking inside the transaction
+                const [bookingTxRows] = await connection.query(
+                    selectBookingQuery,
+                    [newBookingId]
+                );
+                const bookedRow = (bookingTxRows as any[])[0];
+
+                await connection.commit();
+                connection.release();
+
+                if (io && bookedRow) {
+                    io.emit('new_booking', {
+                        type: 'NEW_BOOKING',
+                        booking_id: bookedRow.booking_id,
+                        booking: bookedRow,
+                        timestamp: now,
+                        message: `New booking created for ${bookedRow.client_name}`
+                    });
+                }
+
+                try {
+                    const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+                    await axios.post(`${socketioServiceUrl}/emit/hearse-booking-created`, {
+                        tenantSlug: tenantDbName || 'system',
+                        data: {
+                            id: `hearse-booking-${booking_code}-${Date.now()}`,
+                            bookingId: booking_code,
+                            clientName: client_name,
+                            destination: derivedDestination,
+                            fromLocation: finalFrom,
+                            toLocation: finalTo,
+                            hearseId: hearse_id || '',
+                            title: 'New Hearse Booking',
+                            message: `New hearse booking: ${client_name} — ${derivedDestination}`,
+                            type: 'new_booking',
+                            priority: 'high',
+                            fullContent: `Booking Code: ${booking_code}\nClient: ${client_name}\nPhone: ${client_phone}\nRoute: ${derivedDestination}\nHearse: ${hearse_id || 'Not assigned'}`,
+                        }
+                    }, { timeout: 5000 });
+                } catch (emitError) {
+                    // Notification emit failure is non-critical
+                }
+
+                res.status(201).json({
+                    status: 'success',
+                    message: 'Hearse booking created successfully and hearse status updated.',
+                    booking: { ...bookedRow, booking_code: booking_code, status: bookingStatus }
+                });
+                return;
+            } catch (txError) {
+                await connection.rollback();
+                connection.release();
+                res.status(500).json({
+                    status: 'error',
+                    message: 'Failed to verify hearse availability. Please try again.'
+                });
+                return;
+            }
+        } else {
+            // ---- No hearse assigned: plain insert (no conflict possible) ----
+            const result = await safeQuery(insertQuery, insertParams);
+            bookingDbId = result.insertId;
+
+                        const bookingRows = await safeQuery(
+                `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`,
+                [bookingDbId]
             );
-        }
+            booking = (bookingRows as any[])[0];
 
-        const [booking] = await safeQuery(
-            `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`,
-            [bookingDbId]
-        );
+            if (io && booking) {
+                io.emit('new_booking', {
+                    type: 'NEW_BOOKING',
+                    booking_id: booking.booking_id,
+                    booking: booking,
+                    timestamp: now,
+                    message: `New booking created for ${booking.client_name}`
+                });
+            }
 
-        if (io && booking) {
-            io.emit('new_booking', {
-                type: 'NEW_BOOKING',
-                booking_id: booking.booking_id,
-                booking: booking,
-                timestamp: now,
-                message: `New booking created for ${booking.client_name}`
+            try {
+                const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+                await axios.post(`${socketioServiceUrl}/emit/hearse-booking-created`, {
+                    tenantSlug: tenantDbName || 'system',
+                    data: {
+                        id: `hearse-booking-${booking_code}-${Date.now()}`,
+                        bookingId: booking_code,
+                        clientName: client_name,
+                        destination: derivedDestination,
+                        fromLocation: finalFrom,
+                        toLocation: finalTo,
+                        hearseId: hearse_id || '',
+                        title: 'New Hearse Booking',
+                        message: `New hearse booking: ${client_name} — ${derivedDestination}`,
+                        type: 'new_booking',
+                        priority: 'high',
+                        fullContent: `Booking Code: ${booking_code}\nClient: ${client_name}\nPhone: ${client_phone}\nRoute: ${derivedDestination}\nHearse: ${hearse_id || 'Not assigned'}`,
+                    }
+                }, { timeout: 5000 });
+            } catch (emitError) {
+                // Notification emit failure is non-critical
+            }
+
+            res.status(201).json({
+                status: 'success',
+                message: 'Hearse booking created successfully.',
+                booking: { ...booking, booking_code: booking_code, status: bookingStatus }
             });
         }
-
-        try {
-            const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
-            await axios.post(`${socketioServiceUrl}/emit/hearse-booking-created`, {
-                tenantSlug: tenantDbName || 'system',
-                data: {
-                    id: `hearse-booking-${booking_code}-${Date.now()}`,
-                    bookingId: booking_code,
-                    clientName: client_name,
-                    destination: destination,
-                    hearseId: hearse_id || '',
-                    title: 'New Hearse Booking',
-                    message: `New hearse booking: ${client_name} to ${destination}`,
-                    type: 'new_booking',
-                    priority: 'high',
-                    fullContent: `Booking Code: ${booking_code}\nClient: ${client_name}\nPhone: ${client_phone}\nDestination: ${destination}\nHearse: ${hearse_id || 'Not assigned'}`,
-                }
-            }, { timeout: 5000 });
-        } catch (emitError) {
-            // Notification emit failure is non-critical
-        }
-
-        res.status(201).json({
-            status: 'success',
-            message: 'Hearse booking created successfully and hearse status updated.',
-            booking: { ...booking, booking_code: booking_code, status: bookingStatus }
-        });
 
     } catch (error) {
         res.status(500).json({
@@ -270,21 +471,19 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
  */
 export const getAllHearseBookings = asyncHandler(async (req: Request, res: Response) => {
     try {
-        const { branch_id, status } = req.query;
+        const { status } = req.query;
         const whereClauses: string[] = [];
         const params: any[] = [];
 
-        if (branch_id && branch_id !== 'all') {
-            whereClauses.push('h.branch_id = ?');
-            params.push(branch_id);
-        }
+        // NOTE: Do NOT filter by branch_id - hearses are in a SHARED database across all branches
+        // This ensures all branches can see all bookings and prevents double-booking
         if (status && status !== 'all') {
             whereClauses.push('hb.status = ?');
             params.push(status);
         }
 
         const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id ${whereSQL} ORDER BY hb.created_at DESC`;
+        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id ${whereSQL} ORDER BY hb.created_at DESC`;
 
         const bookings = await safeQuery(query, params);
         const allBranches = await safeQuery(`SELECT DISTINCT branch_id, branch_code, branch_name FROM hearses WHERE branch_id IS NOT NULL ORDER BY branch_name ASC`);
@@ -358,11 +557,23 @@ export const updateBookingStatus = asyncHandler(async (req: Request, res: Respon
         const now = getKenyaTimeISO();
         await safeQuery('UPDATE hearse_bookings SET status = ?, updated_at = ? WHERE id = ?', [status, now, booking_id]);
 
-        if (['completed', 'cancelled'].includes(status) && booking.hearse_id) {
-            await safeQuery('UPDATE hearses SET status = ?, updated_at = ? WHERE id = ?', ['available', now, booking.hearse_id]);
+        // Keep the hearse fleet `status` meaningful WITHOUT making it the source of
+        // truth. When a booking completes/cancels, recompute from the bookings that
+        // are still active instead of blindly setting the hearse to 'available'
+        // (other date bookings may still be active for that hearse).
+        if (booking.hearse_id) {
+            const [activeRows] = await safeQuery(
+                `SELECT COUNT(*) AS cnt FROM hearse_bookings WHERE hearse_id = ? AND status NOT IN ('completed', 'cancelled')`,
+                [booking.hearse_id]
+            );
+            const remaining = Number((activeRows as any[])[0]?.cnt) || 0;
+            await safeQuery(
+                'UPDATE hearses SET status = ?, active_bookings = ?, updated_at = ? WHERE id = ?',
+                [remaining > 0 ? 'booked' : 'available', remaining, now, booking.hearse_id]
+            );
         }
 
-        const [updatedBooking] = await safeQuery(`SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`, [booking_id]);
+        const [updatedBooking] = await safeQuery(`SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`, [booking_id]);
 
         if (io && updatedBooking) {
             io.emit('booking_status_updated', { type: 'STATUS_UPDATE', booking_id: parseInt(booking_id as string), status, booking: updatedBooking, timestamp: now, message: `Booking status updated to ${status}` });
@@ -415,10 +626,28 @@ export const postponeHearseBooking = asyncHandler(async (req: Request, res: Resp
         }
 
         const now = getKenyaTimeISO();
-        await safeQuery(`UPDATE hearse_bookings SET booking_dates = ?, status = ?, updated_at = ? WHERE id = ?`, [JSON.stringify([new_departure_time]), 'pending', now, booking_id]);
+        // Persist the new date as a normalized calendar key (never a raw datetime).
+        const postponedDates = normalizeBookingDates(new_departure_time);
+        const postponedKey = toDateKey(new_departure_time);
+        const storedDates = postponedKey
+            ? [postponedKey]
+            : (postponedDates.length > 0 ? postponedDates : []);
+        await safeQuery(
+            `UPDATE hearse_bookings SET booking_dates = ?, status = ?, updated_at = ? WHERE id = ?`,
+            [JSON.stringify(storedDates), storedDates.length ? 'pending' : 'postponed', now, booking_id]
+        );
 
+        // Recompute the hearse fleet status from still-active bookings.
         if (booking.hearse_id) {
-            await safeQuery('UPDATE hearses SET status = ?, updated_at = ? WHERE id = ?', ['available', now, booking.hearse_id]);
+            const [activeRows] = await safeQuery(
+                `SELECT COUNT(*) AS cnt FROM hearse_bookings WHERE hearse_id = ? AND status NOT IN ('completed', 'cancelled')`,
+                [booking.hearse_id]
+            );
+            const remaining = Number((activeRows as any[])[0]?.cnt) || 0;
+            await safeQuery(
+                'UPDATE hearses SET status = ?, active_bookings = ?, updated_at = ? WHERE id = ?',
+                [remaining > 0 ? 'booked' : 'available', remaining, now, booking.hearse_id]
+            );
         }
 
         if (io) {
@@ -479,7 +708,7 @@ export const getBookingsByDriver = asyncHandler(async (req: Request, res: Respon
             return;
         }
 
-        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.status AS booking_status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.model, h.status AS hearse_status FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE h.driver_id = ? ORDER BY hb.created_at DESC`;
+        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status AS booking_status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.model, h.status AS hearse_status FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE h.driver_id = ? ORDER BY hb.created_at DESC`;
         const bookings = await safeQuery(query, [driver_id]);
         res.status(200).json({ status: 'success', total: bookings.length, bookings });
     } catch (error) {
@@ -492,7 +721,7 @@ export const getBookingsByDriver = asyncHandler(async (req: Request, res: Respon
  */
 export const getAvailabilityAcrossBranches = asyncHandler(async (req: Request, res: Response) => {
     try {
-        const bookings = await safeQuery(`SELECT hb.id AS booking_id, hb.status, hb.destination, hb.booking_dates, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.status NOT IN ('completed', 'cancelled') ORDER BY hb.created_at DESC`, []);
+        const bookings = await safeQuery(`SELECT hb.id AS booking_id, hb.status, hb.destination, hb.from_location, hb.to_location, hb.booking_dates, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.status NOT IN ('completed', 'cancelled') ORDER BY hb.created_at DESC`, []);
         res.status(200).json({ status: 'success', total: bookings.length, bookings });
     } catch (error) {
         res.status(500).json({ status: 'error', message: 'Failed to fetch availability across branches.', error: process.env.NODE_ENV === 'development' ? (error as any).message : undefined });
@@ -514,7 +743,14 @@ export const checkAvailabilityByDate = asyncHandler(async (req: Request, res: Re
         const bookings = await safeQuery(`SELECT hb.id, hb.booking_code, hb.status, hb.booking_dates, h.id AS hearse_id, h.plate_number, h.hearse_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.status NOT IN ('cancelled', 'completed') AND hb.booking_dates LIKE ?`, [`%"${date}"%`]);
 
         const bookedHearseIds = [...new Set(bookings.map((b: any) => b.hearse_id).filter(Boolean))];
-        const availableHearses = allHearses.filter((h: any) => !bookedHearseIds.includes(h.id) && h.status === 'available');
+        // Date-based availability: DO NOT rely on the global hearse status flag.
+        // A hearse may be 'booked' for one date but free on another; only
+        // maintenance/out-of-service hearses are excluded outright.
+        const availableHearses = allHearses.filter(
+            (h: any) =>
+                !bookedHearseIds.includes(h.id) &&
+                !['maintenance', 'out_of_service', 'disabled', 'pending_inspection'].includes(h.status)
+        );
 
         res.status(200).json({ status: 'success', date: date, available_hearses: availableHearses, booked_hearses: bookings, total_available: availableHearses.length, total_booked: bookings.length });
     } catch (error) {
@@ -532,7 +768,7 @@ export const getUpcomingBookings = asyncHandler(async (req: Request, res: Respon
         
         const bookings = await safeQuery(`
             SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, 
-                   hb.destination, hb.booking_dates, hb.status, h.hearse_name, h.plate_number, h.model,
+                   hb.destination, hb.from_location, hb.to_location, hb.booking_dates, hb.status, h.hearse_name, h.plate_number, h.model,
                    hb.created_at
             FROM hearse_bookings hb
             LEFT JOIN hearses h ON hb.hearse_id = h.id

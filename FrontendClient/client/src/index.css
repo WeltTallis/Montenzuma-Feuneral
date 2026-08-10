@@ -26,8 +26,6 @@ html {
     margin: 0;
     padding: 0;
 
-
-
     /* Prevent browsers from automatically enlarging text */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
@@ -62,8 +60,8 @@ body {
         Arial,
         sans-serif;
 
-
-    line-height: 0.5;
+    /* FIXED: Changed from 0.5 to 1.5 for proper text spacing */
+    line-height: 1.5;
 
     color: #111827;
     background: #ffffff;
