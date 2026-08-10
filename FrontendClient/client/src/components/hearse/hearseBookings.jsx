@@ -967,22 +967,22 @@ const HearseBookings = () => {
     const userBranchCode = user?.branch_code || '';
     const dbName = user?.dbName || user?.branchDbName || '';
     const branchName = dbName.split('-').pop() || '';
-    
-    setNewForm({ 
-      hearse_id: '', 
-      client_name: '', 
-      client_phone: '', 
-      from_location: '', 
-      to_location: '', 
-      destination: '', 
-      booking_dates: initialDates, 
-      branch_id: userBranchId, 
+
+    setNewForm({
+      hearse_id: '',
+      client_name: '',
+      client_phone: '',
+      from_location: '',
+      to_location: '',
+      destination: '',
+      booking_dates: initialDates,
+      branch_id: userBranchId,
       branch_code: branchName,
-      booking_date: dateStr || '' 
+      booking_date: dateStr || ''
     });
     setNewBookingOpen(true);
   }, []);
-  
+
   const closeNewBooking = useCallback(() => {
     setNewBookingOpen(false);
     setPrefillDate('');
@@ -1013,18 +1013,18 @@ const HearseBookings = () => {
     const userBranchId = user?.branch_id || '';
     const dbName = user?.dbName || user?.branchDbName || '';
     const branchName = dbName.split('-').pop() || '';
-    
-    setNewForm({ 
-      hearse_id: '', 
-      client_name: '', 
-      client_phone: '', 
-      from_location: '', 
-      to_location: '', 
-      destination: '', 
-      booking_dates: dates, 
-      branch_id: userBranchId, 
+
+    setNewForm({
+      hearse_id: '',
+      client_name: '',
+      client_phone: '',
+      from_location: '',
+      to_location: '',
+      destination: '',
+      booking_dates: dates,
+      branch_id: userBranchId,
       branch_code: branchName,
-      booking_date: dateStr || '' 
+      booking_date: dateStr || ''
     });
     setNewBookingOpen(true);
   }, []);
@@ -1244,71 +1244,71 @@ const HearseBookings = () => {
           </StatCard>
         </StatsGrid>
 
-     <FilterCard>
-  <FilterRow>
-    <SearchInput
-      style={{ width: 50 }}
-      type="text"
-      placeholder="Search client, ID, destination..."
-      value={searchInput}
-      onChange={(e) => setSearchInput(e.target.value)}
-    />
+        <FilterCard>
+          <FilterRow>
+            <SearchInput
+              style={{ width: 50 }}
+              type="text"
+              placeholder="Search client, ID, destination..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
 
-    <Select
-      value={filterBranch}
-      onChange={(e) => setFilterBranch(e.target.value)}
-    >
-      <option value="">All Branches</option>
-      {branchOptions.map((b) => (
-        <option key={b.branch_id} value={b.branch_id}>
-          {b.branch_name}
-        </option>
-      ))}
-      {branchOptions.length === 0 && <option value="">No branches</option>}
-    </Select>
+            <Select
+              value={filterBranch}
+              onChange={(e) => setFilterBranch(e.target.value)}
+            >
+              <option value="">All Branches</option>
+              {branchOptions.map((b) => (
+                <option key={b.branch_id} value={b.branch_id}>
+                  {b.branch_name}
+                </option>
+              ))}
+              {branchOptions.length === 0 && <option value="">No branches</option>}
+            </Select>
 
-    <Select
-      value={filterStatus}
-      onChange={(e) => setFilterStatus(e.target.value)}
-    >
-      <option value="">All Statuses</option>
-      {STATUS_LIST.map((status) => {
-        const cfg = STATUS_CONFIG[status];
-        return (
-          <option key={status} value={status}>
-            {cfg?.label || status}
-          </option>
-        );
-      })}
-    </Select>
+            <Select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              {STATUS_LIST.map((status) => {
+                const cfg = STATUS_CONFIG[status];
+                return (
+                  <option key={status} value={status}>
+                    {cfg?.label || status}
+                  </option>
+                );
+              })}
+            </Select>
 
-    <div style={{ display: "flex", gap: "0.25rem" }}>
-      <ActionButton
-        onClick={() => setViewMode("table")}
-        style={{
-          background:
-            viewMode === "table" ? COLORS.primary : COLORS.surface,
-          color:
-            viewMode === "table" ? COLORS.white : COLORS.textSecondary,
-        }}
-      >
-        {Icons.list}
-      </ActionButton>
+            <div style={{ display: "flex", gap: "0.25rem" }}>
+              <ActionButton
+                onClick={() => setViewMode("table")}
+                style={{
+                  background:
+                    viewMode === "table" ? COLORS.primary : COLORS.surface,
+                  color:
+                    viewMode === "table" ? COLORS.white : COLORS.textSecondary,
+                }}
+              >
+                {Icons.list}
+              </ActionButton>
 
-      <ActionButton
-        onClick={() => setViewMode("calendar")}
-        style={{
-          background:
-            viewMode === "calendar" ? COLORS.primary : COLORS.surface,
-          color:
-            viewMode === "calendar" ? COLORS.white : COLORS.textSecondary,
-        }}
-      >
-        {Icons.grid}
-      </ActionButton>
-    </div>
-  </FilterRow>
-</FilterCard>
+              <ActionButton
+                onClick={() => setViewMode("calendar")}
+                style={{
+                  background:
+                    viewMode === "calendar" ? COLORS.primary : COLORS.surface,
+                  color:
+                    viewMode === "calendar" ? COLORS.white : COLORS.textSecondary,
+                }}
+              >
+                {Icons.grid}
+              </ActionButton>
+            </div>
+          </FilterRow>
+        </FilterCard>
 
         {/* Main Content */}
         <TableCard>
@@ -1479,9 +1479,9 @@ const HearseBookings = () => {
                   ID: {selectedBooking.booking_code || genId(selectedBooking.booking_id, selectedBooking.plate_number || selectedBooking.number_plate)}
                 </DrawerSubtitle>
               </div>
-              <ActionButton 
+              <ActionButton
                 onClick={closeDrawer}
-                style={{ 
+                style={{
                   background: COLORS.danger,
                   color: COLORS.white,
                   padding: '0.5rem 1rem',
@@ -1496,10 +1496,10 @@ const HearseBookings = () => {
             <DrawerBody>
               {/* Client Information */}
               <div style={{ marginBottom: '1.5rem' }}>
-                <div style={{ 
-                  fontSize: '0.75rem', 
-                  fontWeight: 700, 
-                  color: COLORS.textSecondary, 
+                <div style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: COLORS.textSecondary,
                   marginBottom: '0.75rem',
                   textTransform: 'uppercase',
                   letterSpacing: '0.04em'
@@ -1993,7 +1993,7 @@ const HearseBookings = () => {
                         if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(p => p - 1); }
                         else setPickerMonth(p => p - 1);
                       }}>
-                        
+
                       </button>
                       <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
                         {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][pickerMonth]} {pickerYear}
@@ -2006,7 +2006,7 @@ const HearseBookings = () => {
                         if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(p => p + 1); }
                         else setPickerMonth(p => p + 1);
                       }}>
-                        
+
                       </button>
                     </div>
                     <div style={{

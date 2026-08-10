@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Chart, registerables } from 'chart.js';
+import { formatDate } from '../../../utils/dates/parseDates';
 Chart.register(...registerables);
 const ChartJS = Chart;
 
@@ -141,7 +142,7 @@ const ALL_RECORDS = generateMockData();
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 function dateKey(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
-function formatDisplayDate(dateStr) { if (!dateStr) return '—'; const d = new Date(dateStr + 'T00:00:00'); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+const formatDisplayDate = formatDate; // centralized: no UTC shift, consistent style
 
 function getStatusStyle(status) {
   switch (status) {

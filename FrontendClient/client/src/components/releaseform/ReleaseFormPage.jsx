@@ -13,6 +13,7 @@ import OfficialStamp, { StampWrapper } from '../stamp/stamp';
 import { resolveTenantBranding } from '../../utils/tenantResolver/tenantBranding';
 import api from '../../api/axios';
 import { ENDPOINTS } from '../../api/endpoints';
+import { todayKey } from '../../utils/dates/parseDates';
 
 // Dynamically import signature pad to avoid SSR issues
 const ReusableSignaturePad = React.lazy(() => import('../../utils/signature/signaturepad'));
@@ -1034,7 +1035,7 @@ const ReleaseFormPage = () => {
     relationship: '',
     idNumber: '',
     phoneNumber: '',
-    releaseDate: new Date().toISOString().split('T')[0],
+    releaseDate: todayKey(),
     releaseTime: '',
     permitNumber: '',
     itemsReturned: '',

@@ -6,8 +6,10 @@ import { ENDPOINTS } from '../../api/endpoints';
 import env from '../../utils/config/env';
 import { getTenantSlug, getParentTenantSlug } from '../../utils/globalAuth';
 import ReusableCalendar from '../../utils/calender/calender';
-import HorizontalCalendar from './horizontalCalendar';
-import WeekView from './weekView';
+import HorizontalCalendar from '../views/horizontalCalender';
+import WeeklyView from '../views/weeklyView';
+import DailyView from '../views/dailyView';
+import { formatDate, toDateKey, todayKey } from '../../../utils/dates/parseDates';
 
 const API = env.FULL_API_URL;
 
@@ -19,7 +21,7 @@ const S = {
   bg: '#f8fafc',
   cardBg: '#ffffff',
   text: '#0f172a',
-    textMuted: '#64748b',
+  textMuted: '#64748b',
   textLight: '#94a3b8',
   border: '#e2e8f0',
   borderLight: '#f1f5f9',
@@ -83,8 +85,8 @@ const getBookingDotColor = (b) => {
   }
 };
 
-const getCoffinName = (coffinId) => {
-  const c = coffins.find(x => (x.coffin_id || x.id) == coffinId);
+const getCoffinName = (coffinId, coffinsList = []) => {
+  const c = coffinsList.find(x => (x.coffin_id || x.id) == coffinId);
   return c ? c.name : 'Coffin';
 };
 
@@ -102,10 +104,9 @@ const getStatusColor = (status) => {
   return map[status] || S.primary;
 };
 
-const formatDate = (d) => {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-};
+import { formatDate } from '../../../utils/dates/parseDates';
+
+// formatDate is now imported from utils/dates/parseDates (single source of truth)
 
 const formatKES = (n) => 'KES ' + parseFloat(n || 0).toLocaleString();
 
@@ -115,7 +116,7 @@ const styles = {
   W: {
     maxWidth: 2200,
     margin: '0 auto',
-  
+
     fontFamily: S.font,
     color: S.text,
     background: S.bg,
@@ -153,7 +154,7 @@ const styles = {
     fontSize: 22,
   },
   hdInfoP: { color: S.text, fontSize: 13, marginTop: 4, margin: 0 },
-  
+
   // Stats Cards
   statsGrid: {
     display: 'grid',
@@ -279,7 +280,7 @@ const styles = {
     fontSize: 14,
     flexShrink: 0,
   },
-  
+
   // Modern Tabs (Segmented Control)
   tabs: {
     display: 'inline-flex',
@@ -320,7 +321,7 @@ const styles = {
     borderRadius: 8,
   },
   badgeActive: { background: 'rgba(255,255,255,0.2)', color: '#fff' },
-  
+
   // Tables
   tw: {
     background: '#fff',
@@ -733,6 +734,7 @@ const CoffinDashboard = () => {
   const [bkQuery, setBkQuery] = useState('');
   // Reservations view: 'calendar' (default monthly view) or 'list'
   const [bkView, setBkView] = useState('calendar');
+  const [calendarMode, setCalendarMode] = useState('week');
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -753,7 +755,7 @@ const CoffinDashboard = () => {
 
 
 
-   useEffect(() => {
+  useEffect(() => {
     const faId = 'font-awesome-cdn-inject';
     if (!document.getElementById(faId)) {
       const link = document.createElement('link');
@@ -772,7 +774,7 @@ const CoffinDashboard = () => {
       const tenantSlug = getTenantSlug();
       const userStr = localStorage.getItem('user');
       const user = userStr ? JSON.parse(userStr) : {};
-            // Fix: Use logged-in user's actual branch ID instead of defaulting to branchList[0]
+      // Fix: Use logged-in user's actual branch ID instead of defaulting to branchList[0]
       const userBranchId = user?.branchId || user?.branch_id;
 
       // Fetch branches using PARENT tenant slug ONLY (never branch slug)
@@ -781,18 +783,18 @@ const CoffinDashboard = () => {
       try {
         const userObj = JSON.parse(userStr || '{}');
         const parentTenantSlug = userObj.parentTenantSlug;
-        
+
         console.log('[COFFIN UI] Branch slug (current):', tenantSlug);
         console.log('[COFFIN UI] Parent slug (from user object):', parentTenantSlug);
-        
+
         if (!parentTenantSlug) {
           console.error('[COFFIN UI] No parentTenantSlug in user object! User must log out and log back in.');
           throw new Error('No parentTenantSlug found. Please log out and log back in.');
         }
-        
+
         // Use parentTenantSlug - NEVER use branch slug for fetching branches
         console.log('[COFFIN UI] Fetching branches from:', `/tenant/${parentTenantSlug}/branches`);
-        
+
         const branchesRes = await api.get(`/tenant/${parentTenantSlug}/branches`);
         if (branchesRes.data?.success && branchesRes.data?.data) {
           const rawBranches = Array.isArray(branchesRes.data.data) ? branchesRes.data.data : [];
@@ -804,22 +806,22 @@ const CoffinDashboard = () => {
           }));
           console.log('[COFFIN UI] Fetched branches from API:', branchList.length);
         }
-      } catch (e) { 
-        console.error('[COFFIN UI] Error fetching branches:', e); 
+      } catch (e) {
+        console.error('[COFFIN UI] Error fetching branches:', e);
       }
 
       if (branchList.length === 0) {
         // Fallback: create a default main branch
-        branchList = [{ 
-          id: 1, 
-          name: 'Main Branch', 
-          branch_slug: tenantSlug, 
-          branch_db_name: tenantSlug 
+        branchList = [{
+          id: 1,
+          name: 'Main Branch',
+          branch_slug: tenantSlug,
+          branch_db_name: tenantSlug
         }];
         console.log('[COFFIN UI] Using fallback branch:', branchList[0]);
       }
-      
-                  const defaultBranch = branchList.find(b => b.id == userBranchId)?.id || branchList[0]?.id || 1;
+
+      const defaultBranch = branchList.find(b => b.id == userBranchId)?.id || branchList[0]?.id || 1;
 
       setBranches(branchList);
       setCurrentBranch(defaultBranch);
@@ -871,8 +873,8 @@ const CoffinDashboard = () => {
 
 
 
-    // ─── Inject Font Awesome CDN (Fix for missing icons) ──────────────────
- 
+  // ─── Inject Font Awesome CDN (Fix for missing icons) ──────────────────
+
   // ─── CRUD Handlers ──────────────────────────────────────────────────
   const handleCreateCoffin = async (e) => {
     e.preventDefault();
@@ -1027,14 +1029,14 @@ const CoffinDashboard = () => {
   const branchCoffins = coffins.filter(c => !currentBranch || !c.branch_id || c.branch_id === currentBranch || c.branch_id == currentBranch);
   const branchBookings = bookings.filter(b => !currentBranch || b.branch_id === currentBranch || b.branch_id == currentBranch);
 
-    const filteredCoffins = branchCoffins.filter(c => {
+  const filteredCoffins = branchCoffins.filter(c => {
     if (invQuery) {
       const ql = invQuery.toLowerCase();
       if (!c.name?.toLowerCase().includes(ql) &&
-          !(c.custom_id || c.coffin_id)?.toLowerCase().includes(ql) &&
-          !c.size?.toLowerCase().includes(ql) &&
-          !c.color?.toLowerCase().includes(ql) &&
-          !c.material?.toLowerCase().includes(ql)) return false;
+        !(c.custom_id || c.coffin_id)?.toLowerCase().includes(ql) &&
+        !c.size?.toLowerCase().includes(ql) &&
+        !c.color?.toLowerCase().includes(ql) &&
+        !c.material?.toLowerCase().includes(ql)) return false;
     }
     if (invFilter === 'available') return c.stock > 2;
     if (invFilter === 'low') return c.stock > 0 && c.stock <= 2;
@@ -1051,7 +1053,7 @@ const CoffinDashboard = () => {
     if (bkFilter === 'unpaid') return !b.paid;
     if (bkFilter !== 'all') return b.status === bkFilter;
     return true;
-    
+
   });
 
   const incomingRequests = stockRequests.filter(r => r.to_branch_id == currentBranch);
@@ -1109,13 +1111,13 @@ const CoffinDashboard = () => {
           <h4 style="${objToStr(styles.detailSectionH4)}"><i class="fa-solid fa-building"></i> Other Branches</h4>
           <div style="${objToStr(styles.otherBranchesList)}">
             ${branches.filter(b => b.id != currentBranch).map(b => {
-              const stock = coffins.filter(co => co.branch_id == b.id && co.name === c.name).reduce((sum, co) => sum + (parseInt(co.stock) || 0), 0);
-              const color = stock > 2 ? S.success : stock > 0 ? S.warning : S.danger;
-              return `<div style="${objToStr(styles.otherBranchItem)}">
+      const stock = coffins.filter(co => co.branch_id == b.id && co.name === c.name).reduce((sum, co) => sum + (parseInt(co.stock) || 0), 0);
+      const color = stock > 2 ? S.success : stock > 0 ? S.warning : S.danger;
+      return `<div style="${objToStr(styles.otherBranchItem)}">
                 <span style="${objToStr(styles.branchTag)}"><span style="width:8px; height:8px; border-radius:50%; background:${color}; display:inline-block"></span>${b.name}</span>
                 <strong>${stock} Available</strong>
               </div>`;
-            }).join('')}
+    }).join('')}
           </div>
         </div>
         <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-top:24px;">
@@ -1131,7 +1133,7 @@ const CoffinDashboard = () => {
   const viewBooking = (id) => {
     const b = bookings.find(x => x.id === id);
     if (!b) return;
-    
+
     const c = b.coffin_id ? coffins.find(x => (x.coffin_id || x.id) == b.coffin_id) : null;
     const bs = getBookingStatus(b.status);
 
@@ -1321,7 +1323,7 @@ const CoffinDashboard = () => {
 
   const renderInterResults = (query, branchFilter) => {
     const coffinsToSearch = window.__interBranchCoffins || [];
-    
+
     const results = coffinsToSearch.filter(c => {
       if (branchFilter && c.branch_id != parseInt(branchFilter)) return false;
       if (query) {
@@ -1351,7 +1353,7 @@ const CoffinDashboard = () => {
         const stockColor = stock > 2 ? S.success : stock > 0 ? S.warning : S.danger;
         const stockBg = stock > 2 ? S.successLight : stock > 0 ? S.warningLight : S.dangerLight;
         const stockLabel = stock > 2 ? 'Available' : stock > 0 ? 'Low Stock' : 'Out of Stock';
-        
+
         return `
           <div style="display:flex; justify-content:space-between; align-items:center; padding:16px; border:1px solid ${S.border}; border-radius:12px; background:#fff; transition:all 0.2s; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
             <div style="display:flex; gap:16px; align-items:center;">
@@ -1373,19 +1375,19 @@ const CoffinDashboard = () => {
               <span style="display:inline-flex; align-items:center; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; background:${stockBg}; color:${stockColor};">
                 ${stock} ${stockLabel}
               </span>
-              ${stock > 0 ? 
-                `<button class="drawer-btn btn-p btn-sm" style="width:auto; padding:8px 14px;" onclick="window.__reserveInterBranch(${c.coffin_id || c.id})">
+              ${stock > 0 ?
+            `<button class="drawer-btn btn-p btn-sm" style="width:auto; padding:8px 14px;" onclick="window.__reserveInterBranch(${c.coffin_id || c.id})">
                   <i class="fa-solid fa-paper-plane"></i> Request
-                </button>` 
-                : 
-                `<span style="font-size:12px; color:${S.textMuted}; font-weight:600;">Unavailable</span>`
-              }
+                </button>`
+            :
+            `<span style="font-size:12px; color:${S.textMuted}; font-weight:600;">Unavailable</span>`
+          }
             </div>
           </div>
         `;
       }).join('');
     }
-    
+
     const el = document.getElementById('interResults');
     if (el) el.innerHTML = html;
   };
@@ -1395,7 +1397,7 @@ const CoffinDashboard = () => {
     window.__closeDrawer = closeDrawer;
     window.__openBookingModal = (coffinId) => {
       closeDrawer();
-      setModal({ open: true, type: 'booking', data: { coffin_id: coffinId, service_date: new Date().toISOString().split('T')[0] } });
+      setModal({ open: true, type: 'booking', data: { coffin_id: coffinId, service_date: todayKey() } });
     };
     window.__openFindStock = (query) => {
       closeDrawer();
@@ -1424,7 +1426,7 @@ const CoffinDashboard = () => {
       const searchQuery = document.getElementById('interSearchInput')?.value || '';
       window.__renderInterResults(searchQuery, branchId);
     };
-    
+
     window.__reserveInterBranch = (cid) => {
       const c = (window.__interBranchCoffins || []).find(x => (x.coffin_id || x.id) == cid);
       if (!c) return;
@@ -1487,7 +1489,7 @@ const CoffinDashboard = () => {
       `;
       openDrawer('Request Coffin Transfer', content);
     };
-    
+
     window.__submitInterReserve = async (cid) => {
       const c = (window.__interBranchCoffins || []).find(x => (x.coffin_id || x.id) == cid);
       if (!c) return;
@@ -1496,23 +1498,23 @@ const CoffinDashboard = () => {
       const phone = document.getElementById('ir-phone')?.value;
       const reason = document.getElementById('ir-reason')?.value;
       const expectedDate = document.getElementById('ir-date')?.value;
-      
+
       if (!client || !quantity) {
         toast.error('Client name and quantity are required');
         return;
       }
-      
+
       try {
         // Get current user's info from localStorage
         const userStr = localStorage.getItem('user');
         const user = userStr ? JSON.parse(userStr) : {};
         const currentUserBranchId = user?.branchId || currentBranch;
         const userEmail = user?.email || null;
-        
+
         // Get branch slugs for both branches
         const fromBranch = branches.find(b => b.id == currentUserBranchId);
         const toBranch = branches.find(b => b.id == c.branch_id);
-        
+
         const res = await api.post('/coffins/stock-requests', {
           from_branch_id: fromBranch?.id || currentUserBranchId,  // Use branch ID (INT) for FK
           to_branch_id: toBranch?.id || c.branch_id,              // Use branch ID (INT) for FK
@@ -1574,7 +1576,7 @@ const CoffinDashboard = () => {
       </div>
     );
   }
-  
+
   // ─── Error State ────────────────────────────────────────────────────
   if (error) {
     return (
@@ -1594,7 +1596,7 @@ const CoffinDashboard = () => {
   // ─── Render Inventory Tab ───────────────────────────────────────────
   const renderInventory = () => (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap',  }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
           Inventory <span style={{ color: S.textMuted, fontWeight: 400 }}>({branchCoffins.length} items)</span>
         </h3>
@@ -1602,7 +1604,7 @@ const CoffinDashboard = () => {
           <i className="fa-solid fa-plus"></i> Add Coffin
         </button>
       </div>
-      
+
       {branchCoffins.length === 0 && coffins.length > 0 && (
         <div style={{ background: S.warningLight, border: '1px solid #fcd34d', color: '#92400e', padding: 16, borderRadius: 12, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
           <i className="fa-solid fa-info-circle" style={{ fontSize: 20 }}></i>
@@ -1610,7 +1612,7 @@ const CoffinDashboard = () => {
             <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>No coffins in {branches.find(b => b.id == currentBranch)?.name || 'this branch'}</p>
             <p style={{ margin: '4px 0 0', fontSize: 13 }}>There are {coffins.length} coffins in other branches. Use "Find in Other Branches" to search and request stock.</p>
           </div>
-          <button 
+          <button
             style={{ ...styles.btn, ...styles.btnP, ...styles.btnSm, whiteSpace: 'nowrap' }}
             onClick={() => openFindStock()}
           >
@@ -1645,7 +1647,7 @@ const CoffinDashboard = () => {
           <table style={styles.table}>
             <thead>
               <tr>
-                                <th style={styles.th}>Coffin</th>
+                <th style={styles.th}>Coffin</th>
                 <th style={styles.th}>ID</th>
                 <th style={styles.th}>Details</th>
                 <th style={styles.th}>Price</th>
@@ -1678,7 +1680,7 @@ const CoffinDashboard = () => {
                   const id = coffin.coffin_id || coffin.id;
                   return (
                     <tr key={id}>
-                                            <td style={styles.td}>
+                      <td style={styles.td}>
                         <div style={styles.ci}>
                           <div style={styles.thumb}>{coffin.name?.charAt(0) || '?'}</div>
                           <div>
@@ -1709,7 +1711,7 @@ const CoffinDashboard = () => {
                           {coffin.stock > 0 ? (
                             <button
                               style={{ ...styles.btn, ...styles.btnS, ...styles.btnSm }}
-                              onClick={() => setModal({ open: true, type: 'booking', data: { coffin_id: id, service_date: new Date().toISOString().split('T')[0] } })}
+                              onClick={() => setModal({ open: true, type: 'booking', data: { coffin_id: id, service_date: todayKey() } })}
                             >
                               Book
                             </button>
@@ -1786,7 +1788,7 @@ const CoffinDashboard = () => {
             </div>
             <button
               style={{ ...styles.btn, ...styles.btnP }}
-              onClick={() => setModal({ open: true, type: 'booking', data: { service_date: new Date().toISOString().split('T')[0] } })}
+              onClick={() => setModal({ open: true, type: 'booking', data: { service_date: todayKey() } })}
             >
               <i className="fa-solid fa-plus"></i> New Reservation
             </button>
@@ -1794,158 +1796,207 @@ const CoffinDashboard = () => {
         </div>
 
         <div style={styles.tw}>
-        <div style={styles.tt}>
-          <div style={styles.sbox}>
-            <i className="fa-solid fa-magnifying-glass" style={{ color: S.textMuted }}></i>
-            <input
-              style={styles.sboxInput}
-              placeholder="Search client..."
-              value={bkQuery}
-              onChange={e => setBkQuery(e.target.value)}
-            />
+          <div style={styles.tt}>
+            <div style={styles.sbox}>
+              <i className="fa-solid fa-magnifying-glass" style={{ color: S.textMuted }}></i>
+              <input
+                style={styles.sboxInput}
+                placeholder="Search client..."
+                value={bkQuery}
+                onChange={e => setBkQuery(e.target.value)}
+              />
+            </div>
+            <div style={styles.ff}>
+              {[['all', 'All'], ['pending', 'Pending'], ['booked', 'Approved'], ['completed', 'Completed'], ['unpaid', 'Unpaid']].map(f => (
+                <button
+                  key={f[0]}
+                  style={{ ...styles.fn, ...(bkFilter === f[0] ? styles.fnActive : {}) }}
+                  onClick={() => setBkFilter(f[0])}
+                >
+                  {f[1]}
+                </button>
+              ))}
+            </div>
           </div>
-          <div style={styles.ff}>
-            {[['all', 'All'], ['pending', 'Pending'], ['booked', 'Approved'], ['completed', 'Completed'], ['unpaid', 'Unpaid']].map(f => (
-              <button
-                key={f[0]}
-                style={{ ...styles.fn, ...(bkFilter === f[0] ? styles.fnActive : {}) }}
-                onClick={() => setBkFilter(f[0])}
-              >
-                {f[1]}
-              </button>
-            ))}
-          </div>
-        </div>
-        {bkView === 'calendar' ? (
-          <div>
-            <HorizontalCalendar
-              eventsData={filteredBookings}
-              selectedDate={selectedDate}
-              onDateSelect={handleDateSelect}
-              dateKey="service_date"
-            />
+          {bkView === 'calendar' ? (
+            <div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12, padding: '0 16px' }}>
+                <button
+                  style={{ ...styles.fn, ...(calendarMode === 'day' ? styles.fnActive : {}) }}
+                  onClick={() => setCalendarMode('day')}
+                >
+                  <i className="fa-solid fa-calendar-day" style={{ marginRight: 6 }}></i>Day
+                </button>
+                <button
+                  style={{ ...styles.fn, ...(calendarMode === 'week' ? styles.fnActive : {}) }}
+                  onClick={() => setCalendarMode('week')}
+                >
+                  <i className="fa-solid fa-calendar-week" style={{ marginRight: 6 }}></i>Week
+                </button>
+              </div>
 
-            <WeekView
-              currentDate={selectedDate}
-              bookings={filteredBookings}
-              onBookingClick={handleWeekBookingClick}
-              getCoffinName={getCoffinName}
-              selectedDate={selectedDate}
-            />
+              <HorizontalCalendar
+                eventsData={filteredBookings}
+                selectedDate={selectedDate}
+                onDateSelect={handleDateSelect}
+                dateKey="service_date"
+              />
 
-            {detailDate && (
-              <div className="coffin-detail-panel">
-                <div className="coffin-detail-title">
-                  <span>
-                    <i className="fa-solid fa-calendar-day" style={{ marginRight: 8, color: S.primary }}></i>
-                    {formatDate(detailDate.toISOString().split('T')[0])} � Bookings
-                  </span>
-                  <button
-                    onClick={closeDetail}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: S.textMuted,
-                      cursor: 'pointer',
-                      fontSize: '16px',
-                    }}
-                  >
-                    <i className="fa-solid fa-times"></i>
-                  </button>
+              {calendarMode === 'week' ? (
+                <WeeklyView
+                  currentDate={selectedDate}
+                  bookings={filteredBookings}
+                  getEvents={(ds) => filteredBookings.filter(b => toDateKey(b.service_date) === ds).map(b => ({
+                    id: b.id,
+                    client: b.client_name || '—',
+                    dest: b.deceased_name || '—',
+                    from: getCoffinName(b.coffin_id, coffins) || '—',
+                    start: 6,
+                    end: 22,
+                    allDay: true,
+                    status: b.status || 'booked',
+                    branch: 'nairobi',
+                    branchName: branches.find(br => br.id == b.branch_id)?.name || 'Main Branch'
+                  }))}
+                  openBookingDetails={(b) => viewBooking(b.id)}
+                />
+              ) : (
+                <DailyView
+                  selectedDate={selectedDate}
+                  onDateChange={(d) => handleDateSelect(d)}
+                  bookings={{
+                    [toDateKey(selectedDate)]: filteredBookings
+                      .filter(b => toDateKey(b.service_date) === toDateKey(selectedDate))
+                      .map(b => ({
+                        id: b.id,
+                        client: b.client_name || '—',
+                        dest: b.deceased_name || '—',
+                        from: getCoffinName(b.coffin_id, coffins) || '—',
+                        start: 6,
+                        end: 22,
+                        allDay: true,
+                        status: b.status || 'booked',
+                        branch: 'nairobi',
+                        branchName: branches.find(br => br.id == b.branch_id)?.name || 'Main Branch'
+                      }))
+                  }}
+                  onBookingClick={(b) => viewBooking(b.id)}
+                />
+              )}
+
+              {detailDate && (
+                <div className="coffin-detail-panel">
+                  <div className="coffin-detail-title">
+                    <span>
+                      <i className="fa-solid fa-calendar-day" style={{ marginRight: 8, color: S.primary }}></i>
+                      {formatDate(toDateKey(detailDate))} — Bookings
+                    </span>
+                    <button
+                      onClick={closeDetail}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: S.textMuted,
+                        cursor: 'pointer',
+                        fontSize: '16px',
+                      }}
+                    >
+                      <i className="fa-solid fa-times"></i>
+                    </button>
+                  </div>
+                  <div className="coffin-detail-grid">
+                    {filteredBookings
+                      .filter(b => toDateKey(b.service_date) === toDateKey(detailDate))
+                      .map(b => {
+                        const bs = getBookingStatus(b.status);
+                        const coffin = coffins.find(c => (c.coffin_id || c.id) == b.coffin_id);
+                        return (
+                          <div
+                            key={b.id}
+                            className="coffin-detail-card"
+                            onClick={() => viewBooking(b.id)}
+                          >
+                            <div className="coffin-detail-card-head">
+                              <span className="coffin-detail-card-client">{b.client_name}</span>
+                              <span className="coffin-bcard-status" style={{ background: getStatusColor(b.status) }}>{bs.label}</span>
+                            </div>
+                            <div className="coffin-detail-card-meta">
+                              <div><strong>Deceased:</strong> {b.deceased_name || 'N/A'}</div>
+                              <div><strong>Coffin:</strong> {coffin?.name || 'N/A'}</div>
+                              <div><strong>Price:</strong> {formatKES(b.coffin_price || b.price)}</div>
+                              <div><strong>Payment:</strong> <span className={b.paid ? 'coffin-bcard-pay paid' : 'coffin-bcard-pay unpaid'}>{b.paid ? 'Paid' : 'Unpaid'}</span></div>
+                              {b.notes && <div><strong>Notes:</strong> {b.notes}</div>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {filteredBookings.filter(b => toDateKey(b.service_date) === toDateKey(detailDate)).length === 0 && (
+                      <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: S.textMuted, padding: 20 }}>
+                        <i className="fa-solid fa-calendar-check" style={{ fontSize: 24, opacity: 0.3, marginBottom: 8 }}></i>
+                        <p>No bookings on this day</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="coffin-detail-grid">
-                  {filteredBookings
-                    .filter(b => toDateKey(b.service_date) === toDateKey(detailDate))
-                    .map(b => {
+              )}
+            </div>
+          ) : (
+
+            <div style={styles.tableWrap}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>ID</th>
+                    <th style={styles.th}>Client</th>
+                    <th style={styles.th}>Deceased</th>
+                    <th style={styles.th}>Coffin</th>
+                    <th style={styles.th}>Date</th>
+                    <th style={styles.th}>Payment</th>
+                    <th style={styles.th}>Status</th>
+                    <th style={styles.th}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredBookings.length === 0 ? (
+                    <tr>
+                      <td colSpan={8}>
+                        <div style={styles.es}>
+                          <i className="fa-solid fa-calendar-xmark" style={styles.esIcon}></i>
+                          <p style={styles.esP}>No reservations found</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredBookings.map(b => {
                       const bs = getBookingStatus(b.status);
                       const coffin = coffins.find(c => (c.coffin_id || c.id) == b.coffin_id);
                       return (
-                        <div
-                          key={b.id}
-                          className="coffin-detail-card"
-                          onClick={() => viewBooking(b.id)}
-                        >
-                          <div className="coffin-detail-card-head">
-                            <span className="coffin-detail-card-client">{b.client_name}</span>
-                            <span className="coffin-bcard-status" style={{ background: getStatusColor(b.status) }}>{bs.label}</span>
-                          </div>
-                          <div className="coffin-detail-card-meta">
-                            <div><strong>Deceased:</strong> {b.deceased_name || 'N/A'}</div>
-                            <div><strong>Coffin:</strong> {coffin?.name || 'N/A'}</div>
-                            <div><strong>Price:</strong> {formatKES(b.coffin_price || b.price)}</div>
-                            <div><strong>Payment:</strong> <span className={b.paid ? 'coffin-bcard-pay paid' : 'coffin-bcard-pay unpaid'}>{b.paid ? 'Paid' : 'Unpaid'}</span></div>
-                            {b.notes && <div><strong>Notes:</strong> {b.notes}</div>}
-                          </div>
-                        </div>
+                        <tr key={b.id}>
+                          <td style={{ ...styles.td, fontWeight: 600 }}>#{b.id}</td>
+                          <td style={{ ...styles.td, fontWeight: 600 }}>{b.client_name}</td>
+                          <td style={styles.td}>{b.deceased_name}</td>
+                          <td style={styles.td}>{coffin?.name || 'N/A'}</td>
+                          <td style={styles.td}>{formatDate(b.service_date)}</td>
+                          <td style={styles.td}>
+                            <Tag cls={b.paid ? 'tag-ok' : 'tag-ou'}>{b.paid ? 'Paid' : 'Unpaid'}</Tag>
+                          </td>
+                          <td style={styles.td}><Tag cls={bs.cls}>{bs.label}</Tag></td>
+                          <td style={styles.td}>
+                            <button style={styles.ib} onClick={() => viewBooking(b.id)} title="View Details">
+                              <i className="fa-solid fa-eye"></i>
+                            </button>
+                          </td>
+                        </tr>
                       );
-                    })}
-                  {filteredBookings.filter(b => toDateKey(b.service_date) === toDateKey(detailDate)).length === 0 && (
-                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: S.textMuted, padding: 20 }}>
-                      <i className="fa-solid fa-calendar-check" style={{ fontSize: 24, opacity: 0.3, marginBottom: 8 }}></i>
-                      <p>No bookings on this day</p>
-                    </div>
+                    })
                   )}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-
-        <div style={styles.tableWrap}>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>ID</th>
-                <th style={styles.th}>Client</th>
-                <th style={styles.th}>Deceased</th>
-                <th style={styles.th}>Coffin</th>
-                <th style={styles.th}>Date</th>
-                <th style={styles.th}>Payment</th>
-                <th style={styles.th}>Status</th>
-                <th style={styles.th}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBookings.length === 0 ? (
-                <tr>
-                  <td colSpan={8}>
-                    <div style={styles.es}>
-                      <i className="fa-solid fa-calendar-xmark" style={styles.esIcon}></i>
-                      <p style={styles.esP}>No reservations found</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredBookings.map(b => {
-                  const bs = getBookingStatus(b.status);
-                  const coffin = coffins.find(c => (c.coffin_id || c.id) == b.coffin_id);
-                  return (
-                    <tr key={b.id}>
-                      <td style={{ ...styles.td, fontWeight: 600 }}>#{b.id}</td>
-                      <td style={{ ...styles.td, fontWeight: 600 }}>{b.client_name}</td>
-                      <td style={styles.td}>{b.deceased_name}</td>
-                      <td style={styles.td}>{coffin?.name || 'N/A'}</td>
-                      <td style={styles.td}>{formatDate(b.service_date)}</td>
-                      <td style={styles.td}>
-                        <Tag cls={b.paid ? 'tag-ok' : 'tag-ou'}>{b.paid ? 'Paid' : 'Unpaid'}</Tag>
-                      </td>
-                      <td style={styles.td}><Tag cls={bs.cls}>{bs.label}</Tag></td>
-                      <td style={styles.td}>
-                        <button style={styles.ib} onClick={() => viewBooking(b.id)} title="View Details">
-                          <i className="fa-solid fa-eye"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-                        </tbody>
-          </table>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-        )}
-      </div>
-    </>
-  );
+      </>
+    );
   };
 
   // ─── Render Transfers Tab ───────────────────────────────────────────
@@ -2306,7 +2357,7 @@ const CoffinDashboard = () => {
             </p>
           </div>
         </div>
-        
+
         {/* Branch Selector */}
         {branches.length > 1 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

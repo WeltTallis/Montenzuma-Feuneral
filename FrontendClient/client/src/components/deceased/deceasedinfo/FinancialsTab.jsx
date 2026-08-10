@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { C, formatDate } from './theme';
+import { todayKey } from '../../../utils/dates/parseDates';
 import axios from 'axios';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import { showToast } from '../../../utils/toast';
@@ -206,7 +207,7 @@ const FinancialsTab = ({ charges, payments: initialPayments, deceasedId }) => {
   const [payments, setPayments] = useState(initialPayments || []);
   const [isRecording, setIsRecording] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: todayKey(),
     payment_method: 'M-Pesa',
     reference: '',
     amount: '',
@@ -296,7 +297,7 @@ const FinancialsTab = ({ charges, payments: initialPayments, deceasedId }) => {
       if (response.data?.success) {
         showToast.success('Payment recorded successfully');
         setPaymentForm({
-          date: new Date().toISOString().split('T')[0],
+          date: todayKey(),
           payment_method: 'M-Pesa',
           reference: '',
           amount: '',

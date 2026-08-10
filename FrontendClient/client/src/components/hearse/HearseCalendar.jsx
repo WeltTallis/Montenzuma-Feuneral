@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
+import { toDateKey, formatTimeAmPm } from '../../utils/dates/parseDates';
 
 // ===== IMPORT EXTERNAL VIEW COMPONENTS =====
 import DailyView from './dailyView';
 import WeeklyView from './weeklyView';
- 
+
 // ===== SHARED CONSTANTS =====
-export const COLORS = {    
+export const COLORS = {
   primary: '#1a5f7a', primaryLight: '#2c8ac9', primaryDark: '#134b5f',
   white: '#FFFFFF', bg: '#f5f7fa', surface: '#ffffff',
   border: '#d1d5db', borderLight: '#e5e7eb',
@@ -38,10 +39,10 @@ export const TIME_W = 65;
 
 // ===== SHARED HELPERS =====
 export const pad = n => String(n).padStart(2, '0');
-export const fmtDS = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+// fmtDS / fmtDStr / fmtTime now imported from utils/dates/parseDates (no UTC shift)
+export const fmtDS = toDateKey; // Date -> 'YYYY-MM-DD' key
 export const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
 export const getInitials = n => { if (!n) return '?'; const p = n.split(' '); return p.length === 1 ? p[0].charAt(0).toUpperCase() : (p[0].charAt(0) + p[p.length - 1].charAt(0)).toUpperCase(); };
-export const fmtTime = s => { if (!s) return ''; try { return new Date(s).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }); } catch (e) { return ''; } };
 export const fmtHour = h => h === 0 ? '12 AM' : h < 12 ? h + ' AM' : h === 12 ? '12 PM' : (h - 12) + ' PM';
 
 export const getTimeInfo = b => {
@@ -54,7 +55,7 @@ export const getTimeInfo = b => {
   if (e) { try { ed = new Date(e); if (isNaN(ed.getTime())) ed = null; } catch (x) { ed = null; } }
   let dur = 60; if (sd && ed) dur = Math.max(15, (ed - sd) / 60000);
   let sm = 0; if (sd && !allDay) sm = sd.getHours() * 60 + sd.getMinutes();
-  const fs = fmtTime(s), fe = fmtTime(e);
+  const fs = formatTimeAmPm(s), fe = formatTimeAmPm(e);
   return { sd, ed, allDay, sm, dur, fs, fe, range: allDay ? 'All Day' : (fe ? fs + ' – ' + fe : fs) };
 };
 
@@ -206,7 +207,7 @@ const Bar = styled.div`
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  padding: 1rem 1.5rem;
+
   flex-wrap: wrap;
   background: ${COLORS.surface};
   border-bottom: 1px solid ${COLORS.borderLight};
@@ -220,7 +221,7 @@ const Bar = styled.div`
 const TGrp = styled.div`
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: .1rem;
   flex-wrap: wrap;
   justify-content: center;
 `;
@@ -231,7 +232,7 @@ const Ttl = styled.h2`
   margin: 0;
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: .1rem;
   color: ${COLORS.text};
 `;
 
@@ -489,11 +490,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
-  const fmtDStr = useCallback((d) => {
-    if (!d) return '';
-    const dt = new Date(d);
-    return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
-  }, []);
+  // fmtDStr replaced with toDateKey (centralized, no UTC shift)
+  const fmtDStr = useCallback((d) => toDateKey(d), []);
 
   // Normalized, date-keyed bookings for the external Daily + Weekly viewer components.
   // Each viewer record uses the shape those components expect (numeric hours, display fields).
@@ -527,7 +525,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           if (Array.isArray(dates)) {
             return dates.some(d => fmtDStr(d) === dateStr);
           }
-        } catch (e) {}
+        } catch (e) { }
       }
       const bd = b.booking_date || b.estimated_departure_time || b.date || '';
       return fmtDStr(bd) === dateStr;
@@ -606,7 +604,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
               <DrwTt>{b.booking_code || ('BK-' + String(1000 + (b.booking_id || b.id || 0)).padStart(4, '0'))}</DrwTt>
             </div>
             <ClsBtn onClick={closeDrawer}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
             </ClsBtn>
           </DrwH>
           <DrwB>
@@ -737,10 +735,10 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 };
 
 // ===== SIMPLE ICON HELPERS FOR DRAWER =====
-const TruckIco = ({ size }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>;
-const PinIco = ({ size }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
-const ClockIco = ({ size }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
-const PhoneIco = ({ size }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.574 2.81.7A2 2 0 0 1 22 16.92z"/></svg>;
+const TruckIco = ({ size }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" /><path d="M15 18H9" /><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14" /><circle cx="17" cy="18" r="2" /><circle cx="7" cy="18" r="2" /></svg>;
+const PinIco = ({ size }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>;
+const ClockIco = ({ size }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>;
+const PhoneIco = ({ size }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.574 2.81.7A2 2 0 0 1 22 16.92z" /></svg>;
 
 // ===== VIEW COMPONENTS =====
 // Week + Day views come from the external ./weeklyView and ./dailyView components.
@@ -804,7 +802,7 @@ const MonthView = ({ currentDate, bookings, getEvents, openDay, openBookingDetai
 };
 
 // Styled components for MonthView
-const MWrap = styled.div`padding: 1.25rem; @media (max-width: 640px) { padding: 0.75rem; }`;
+const MWrap = styled.div`padding: 1rem; @media (max-width: 640px) { padding: 0.75rem; }`;
 const WkRow = styled.div`display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 6px;`;
 const WkCell = styled.div`text-align: center; font-size: .65rem; font-weight: 600; color: ${COLORS.textMuted}; text-transform: uppercase; letter-spacing: .04em; padding: 6px 0;`;
 const DGrid = styled.div`display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;`;

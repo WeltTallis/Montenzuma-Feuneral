@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Ctx } from './WorkshopDashboard';
+import { todayKey } from '../../utils/dates/parseDates';
 
 const T = {
   bg: '#F4F6F8', surface: '#FFFFFF', bdr: '#E2E8F0', borderLight: '#F1F5F9',
@@ -32,7 +33,7 @@ const DashboardTab = () => {
   const [showStoreModal, setShowStoreModal] = useState(false);
   const [storeOrder, setStoreOrder] = useState(null);
   const [pickedQuantity, setPickedQuantity] = useState(1);
-  const [pickDate, setPickDate] = useState(new Date().toISOString().split('T')[0]);
+  const [pickDate, setPickDate] = useState(todayKey());
 
   const totalOrders = orders.length;
   const inProgress = orders.filter(o => o.stageIndex < 4).length;
@@ -86,7 +87,7 @@ const DashboardTab = () => {
     setStoreOrder(order);
     setShowStoreModal(true);
     setPickedQuantity(1);
-    setPickDate(new Date().toISOString().split('T')[0]);
+    setPickDate(todayKey());
   };
 
   const confirmStorePick = async () => {

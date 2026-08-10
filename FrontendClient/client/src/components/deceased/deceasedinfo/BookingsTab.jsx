@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { C, formatDate } from './theme';
+import { todayKey } from '../../../utils/dates/parseDates';
 import axios from 'axios';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import env from '../../../utils/config/env';
@@ -317,7 +318,7 @@ const BookingsTab = ({ deceased }) => {
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
       const res = await axios.post(`${env.FULL_API_URL}/deceased/${d.id || d.deceased_id}/clothing`, {
         ...clothForm,
-        date: clothForm.date || new Date().toISOString().split('T')[0]
+        date: clothForm.date || todayKey()
       }, {
         headers: { 'x-tenant-slug': slug, 'Authorization': `Bearer ${token}` }
       });

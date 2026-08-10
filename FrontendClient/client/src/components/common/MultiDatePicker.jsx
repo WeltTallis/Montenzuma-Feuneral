@@ -3,9 +3,12 @@ import React, { useState, useMemo, useCallback } from 'react';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+import { parseDate as parseDateSafe, toDateKey, todayKey } from '../../../utils/dates/parseDates';
+
 const pad = n => String(n).padStart(2, '0');
 const fmtDateStr = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const parseDate = s => { const d = new Date(s); return isNaN(d) ? null : d; };
+// parseDate now imported from utils/dates/parseDates (fixes UTC shift bug)
+const parseDate = parseDateSafe;
 const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
 
 const MultiDatePicker = ({

@@ -57,7 +57,7 @@ export const VIEWER_CSS = `
           --sh:0 4px 16px rgba(0,0,0,.06);--sh-lg:0 12px 40px rgba(0,0,0,.1);
         }
         .dispatch-board *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
-        .dispatch-board{height:72vh;min-height:440px;max-height:780px;display:flex;flex-direction:column;overflow:hidden}
+        .dispatch-board{height:100vh;min-height: 100vh;max-height:100vh;display:flex;flex-direction:column;overflow:hidden}
         @media (max-width:640px){.dispatch-board{height:62vh;min-height:380px}}
         
         .main{flex:1;display:flex;overflow:hidden;position:relative}

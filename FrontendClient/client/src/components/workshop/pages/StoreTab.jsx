@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { Ctx } from './WorkshopDashboard';
 import { getTenantSlug } from '../../../utils/globalAuth';
+import { formatDate } from '../../../utils/dates/parseDates';
 import { workshopService } from '../services/workshopService';
 
 const T = {
@@ -14,7 +15,7 @@ const T = {
 
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const toKey = (d) => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
-const fmtDate = (ky) => { if (!ky) return '—'; const p = ky.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+// fmtDate is now imported from utils/dates/parseDates (single source of truth, no UTC shift)
 const load = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 

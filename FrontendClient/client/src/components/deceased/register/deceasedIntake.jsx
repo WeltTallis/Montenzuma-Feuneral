@@ -918,13 +918,13 @@ const Barcode = ({ value }) => {
       try {
         const text = value || 'AWAITING-ID';
         bwipjs.toCanvas(canvasRef.current, {
-          bcid: 'code128',      
-          text: text,           
-          scale: 4,             
-          height: 10,           
-          includetext: true,    
-          textxalign: 'center', 
-          textsize: 13,         
+          bcid: 'code128',
+          text: text,
+          scale: 4,
+          height: 10,
+          includetext: true,
+          textxalign: 'center',
+          textsize: 13,
           paddingwidth: 10,
           paddingheight: 5,
         });
@@ -995,785 +995,798 @@ const SuccessActions = styled.div`
   flex-direction: column;
 `;
 
+
+const TextBold = styled.div`
+  font-size: 1rem;
+  color: ${COLORS.gray};
+  text-decoration:   underline;
+  font-weight:     800;
+  text-underline-offset: 6px;
+`
+
 const DeceasedRegistrationForm = () => {
-    const navigate = useNavigate();
-    const location = useLocation();
-    
-    const getTenantSlug = () => {
-      return localStorage.getItem('tenantSlug') ||
-        localStorage.getItem('tenant_slug') ||
-        (() => {
-          try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            return user.tenantSlug || user.tenant?.slug || 'default';
-          } catch {
-            return 'default';
-          }
-        })();
-    };
-    const sigPadRef1 = useRef(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    const [loading, setLoading] = useState(false);
-    const [loadingAdmission, setLoadingAdmission] = useState(false);
-    const [errors, setErrors] = useState({});
-    const [message, setMessage] = useState({ type: '', text: '' });
-    const [showSuccess, setShowSuccess] = useState(false);
-    const [registeredName, setRegisteredName] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showIdScanner, setShowIdScanner] = useState(false);
-    const [admissionId, setAdmissionId] = useState('');
-
-    /* ---------- USE LOCALSTORAGE ONLY FOR TENANT BRANDING ---------- */
-    const branding = useMemo(() => resolveTenantBranding(), []);
-    
-    const {
-      name: tenantName,
-      displayPhone,
-      displayEmail,
-      displayLocation,
-      tenantCountry,
-      displayBranch,
-      tenantLogoUrl,
-      fallback
-    } = branding;
-
-    /* ---------- Helpers ---------- */
-    const getLoggedInUserEmail = () => {
+  const getTenantSlug = () => {
+    return localStorage.getItem('tenantSlug') ||
+      localStorage.getItem('tenant_slug') ||
+      (() => {
         try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            return user.email || user.userEmail || '';
+          const user = JSON.parse(localStorage.getItem('user') || '{}');
+          return user.tenantSlug || user.tenant?.slug || 'default';
         } catch {
-            return '';
+          return 'default';
         }
-    };
+      })();
+  };
+  const sigPadRef1 = useRef(null);
 
-    const getCurrentTime = () => {
-        const now = new Date();
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        return `${hours}:${minutes}`;
-    };
+  const [loading, setLoading] = useState(false);
+  const [loadingAdmission, setLoadingAdmission] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState({ type: '', text: '' });
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [registeredName, setRegisteredName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showIdScanner, setShowIdScanner] = useState(false);
+  const [admissionId, setAdmissionId] = useState('');
 
-    const initialFormData = {
-        admission_number: location.state?.permitNumber || '',
-        date_admitted: new Date().toISOString().split('T')[0],
-        time_received: getCurrentTime(),
-        full_name: '',
-        gender: '',
-        age: '',
-        date_of_birth: '', 
-        date_of_death: '',
-        cause_of_death: '',
-        body_status: '',
-        place_of_death: '',
-        contact_person: '',
-        id_number: '',
-        id_type: '',
-        tel_number: '',
-        alternative_phone: '',
-        email: '',
-        received_from: '',
-        receiving_officer: '',
-        signature: '',
-        verified_by: getLoggedInUserEmail(),
-        permit_number: '',
-        belongings_description: '',
-        relationship: '',
-    };
+  /* ---------- USE LOCALSTORAGE ONLY FOR TENANT BRANDING ---------- */
+  const branding = useMemo(() => resolveTenantBranding(), []);
 
-    const [formData, setFormData] = useState(initialFormData);
+  const {
+    name: tenantName,
+    displayPhone,
+    displayEmail,
+    displayLocation,
+    tenantCountry,
+    displayBranch,
+    tenantLogoUrl,
+    fallback
+  } = branding;
 
-    useEffect(() => {
-        setFormData(prev => ({ ...prev, time_received: getCurrentTime() }));
-    }, []);
+  /* ---------- Helpers ---------- */
+  const getLoggedInUserEmail = () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      return user.email || user.userEmail || '';
+    } catch {
+      return '';
+    }
+  };
 
-    useEffect(() => {
-        if (!formData.gender) return;
+  const getCurrentTime = () => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
 
-        const fetchAdmissionNumber = async () => {
-            setLoadingAdmission(true);
-            try {
-                const tenantSlug = getTenantSlug();
-                const token = getAuthToken();
-                const response = await fetch(
-                    `${env.FULL_API_URL}${ENDPOINTS.DECEASED.ADMISSION_NUMBER(formData.gender)}`,
-                    {
-                        headers: {
-                            'x-tenant-slug': tenantSlug,
-                            'Authorization': `Bearer ${token}`,
-                        },
-                    }
-                );
+  const initialFormData = {
+    admission_number: location.state?.permitNumber || '',
+    date_admitted: new Date().toISOString().split('T')[0],
+    time_received: getCurrentTime(),
+    full_name: '',
+    gender: '',
+    age: '',
+    date_of_birth: '',
+    date_of_death: '',
+    cause_of_death: '',
+    body_status: '',
+    place_of_death: '',
+    contact_person: '',
+    id_number: '',
+    id_type: '',
+    tel_number: '',
+    alternative_phone: '',
+    email: '',
+    received_from: '',
+    receiving_officer: '',
+    signature: '',
+    verified_by: getLoggedInUserEmail(),
+    permit_number: '',
+    belongings_description: '',
+    relationship: '',
+  };
 
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data?.admission_number) {
-                        setAdmissionId(result.data.admission_number);
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to fetch admission number:', error);
-            } finally {
-                setLoadingAdmission(false);
-            }
-        };
+  const [formData, setFormData] = useState(initialFormData);
 
-        fetchAdmissionNumber();
-    }, [formData.gender]);
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, time_received: getCurrentTime() }));
+  }, []);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-        if (errors[name]) {
-            setErrors(prev => ({ ...prev, [name]: '' }));
-        }
-        if (message.text) setMessage({ type: '', text: '' });
-    };
+  useEffect(() => {
+    if (!formData.gender) return;
 
-    const validateForm = () => {
-        const newErrors = {};
-        if (!formData.full_name.trim()) newErrors.full_name = 'Full name is required';
-        if (!formData.gender) newErrors.gender = 'Gender is required';
-        if (!formData.date_admitted) newErrors.date_admitted = 'Date admitted is required';
-
-        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = 'Please enter a valid email address';
-        }
-
-        if (formData.tel_number && !/^(\+254|0)[17]\d{8}$/.test(formData.tel_number.replace(/\s/g, ''))) {
-            newErrors.tel_number = 'Please enter a valid Kenyan phone number (e.g., +254712345678 or 0712345678)';
-        }
-
-        if (formData.alternative_phone && !/^(\+254|0)[17]\d{8}$/.test(formData.alternative_phone.replace(/\s/g, ''))) {
-            newErrors.alternative_phone = 'Please enter a valid Kenyan phone number';
-        }
-
-        if (sigPadRef1.current?.isEmpty()) {
-            newErrors.signature = 'Signature is required to proceed';
-        }
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!validateForm()) return;
-
-        setIsSubmitting(true);
-        setMessage({ type: '', text: '' });
-
-        try {
-            const tenantSlug = getTenantSlug();
-            const token = getAuthToken();
-            const signatureData = sigPadRef1.current?.toDataURL();
-
-            const freshTime = getCurrentTime();
-
-            const payload = {
-                full_name: formData.full_name,
-                cause_of_death: formData.cause_of_death,
-                date_of_birth: formData.date_of_birth || null,
-                national_id: formData.id_number,
-                received_from: formData.received_from,
-                age: formData.age ? parseInt(formData.age, 10) : 0,
-                time_received: freshTime,
-                body_status: formData.body_status || 'Normal Condition',
-                contact_person: formData.contact_person,
-                tell_no: formData.tel_number,
-                gender: formData.gender,
-                date_of_death: formData.date_of_death || null,
-                place_of_death: formData.place_of_death || null,
-                id_type: formData.id_type || null,
-                alternative_phone: formData.alternative_phone || null,
-                email: formData.email || null,
-                receiving_officer: formData.receiving_officer || null,
-                verified_by: formData.verified_by || getLoggedInUserEmail() || null,
-                relationship: formData.relationship || null,
-                permit_no: formData.permit_number || null,
-                date_admitted: formData.date_admitted,
-                signature: signatureData,
-            };
-
-            const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.CREATE}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-tenant-slug': tenantSlug,
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.message || 'Registration failed');
-            }
-
-            setRegisteredName(formData.full_name);
-            setShowSuccess(true);
-
-            setFormData({
-                ...initialFormData,
-                verified_by: getLoggedInUserEmail(),
-                time_received: getCurrentTime(),
-                date_admitted: new Date().toISOString().split('T')[0],
-            });
-            setAdmissionId('');
-            sigPadRef1.current?.clear();
-            setErrors({});
-
-        } catch (error) {
-            toast.error(error.message || 'Registration failed. Please try again.');
-            setMessage({
-                type: 'error',
-                text: error.message || 'Something went wrong. Please try again.',
-            });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleClear = () => {
-        setFormData({
-            ...initialFormData,
-            verified_by: getLoggedInUserEmail(),
-            time_received: getCurrentTime(),
-            date_admitted: new Date().toISOString().split('T')[0],
-        });
-        setErrors({});
-        setMessage({ type: '', text: '' });
-        setAdmissionId('');
-        sigPadRef1.current?.clear();
-    };
-
-    const handleIdScanComplete = (scanResult) => {
-        if (scanResult.success && scanResult.parsedFields) {
-            const { idNumber, fullName, dateOfBirth, gender } = scanResult.parsedFields;
-
-            setFormData(prev => ({
-                ...prev,
-                id_number: idNumber || prev.id_number,
-                full_name: fullName || prev.full_name,
-                date_of_birth: dateOfBirth || prev.date_of_birth,
-                gender: gender || prev.gender,
-            }));
-
-            toast.success('ID card scanned successfully!');
-        } else {
-            toast.error('Failed to scan ID card. Please try again.');
-        }
-        setShowIdScanner(false);
-    };
-
-    if (loading && !showSuccess) {
-        return (
-            <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <div style={{ textAlign: 'center' }}>
-                    <Loader2 size={48} color={COLORS.ink} className="animate-spin" />
-                    <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Inter', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Processing Document...</p>
-                </div>
-            </Container>
+    const fetchAdmissionNumber = async () => {
+      setLoadingAdmission(true);
+      try {
+        const tenantSlug = getTenantSlug();
+        const token = getAuthToken();
+        const response = await fetch(
+          `${env.FULL_API_URL}${ENDPOINTS.DECEASED.ADMISSION_NUMBER(formData.gender)}`,
+          {
+            headers: {
+              'x-tenant-slug': tenantSlug,
+              'Authorization': `Bearer ${token}`,
+            },
+          }
         );
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data?.admission_number) {
+            setAdmissionId(result.data.admission_number);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch admission number:', error);
+      } finally {
+        setLoadingAdmission(false);
+      }
+    };
+
+    fetchAdmissionNumber();
+  }, [formData.gender]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    if (message.text) setMessage({ type: '', text: '' });
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.full_name.trim()) newErrors.full_name = 'Full name is required';
+    if (!formData.gender) newErrors.gender = 'Gender is required';
+    if (!formData.date_admitted) newErrors.date_admitted = 'Date admitted is required';
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
+    if (formData.tel_number && !/^(\+254|0)[17]\d{8}$/.test(formData.tel_number.replace(/\s/g, ''))) {
+      newErrors.tel_number = 'Please enter a valid Kenyan phone number (e.g., +254712345678 or 0712345678)';
+    }
+
+    if (formData.alternative_phone && !/^(\+254|0)[17]\d{8}$/.test(formData.alternative_phone.replace(/\s/g, ''))) {
+      newErrors.alternative_phone = 'Please enter a valid Kenyan phone number';
+    }
+
+    if (sigPadRef1.current?.isEmpty()) {
+      newErrors.signature = 'Signature is required to proceed';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const tenantSlug = getTenantSlug();
+      const token = getAuthToken();
+      const signatureData = sigPadRef1.current?.toDataURL();
+
+      const freshTime = getCurrentTime();
+
+      const payload = {
+        full_name: formData.full_name,
+        cause_of_death: formData.cause_of_death,
+        date_of_birth: formData.date_of_birth || null,
+        national_id: formData.id_number,
+        received_from: formData.received_from,
+        age: formData.age ? parseInt(formData.age, 10) : 0,
+        time_received: freshTime,
+        body_status: formData.body_status || 'Normal Condition',
+        contact_person: formData.contact_person,
+        tell_no: formData.tel_number,
+        gender: formData.gender,
+        date_of_death: formData.date_of_death || null,
+        place_of_death: formData.place_of_death || null,
+        id_type: formData.id_type || null,
+        alternative_phone: formData.alternative_phone || null,
+        email: formData.email || null,
+        receiving_officer: formData.receiving_officer || null,
+        verified_by: formData.verified_by || getLoggedInUserEmail() || null,
+        relationship: formData.relationship || null,
+        permit_no: formData.permit_number || null,
+        date_admitted: formData.date_admitted,
+        signature: signatureData,
+      };
+
+      const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.CREATE}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-slug': tenantSlug,
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Registration failed');
+      }
+
+      setRegisteredName(formData.full_name);
+      setShowSuccess(true);
+
+      setFormData({
+        ...initialFormData,
+        verified_by: getLoggedInUserEmail(),
+        time_received: getCurrentTime(),
+        date_admitted: new Date().toISOString().split('T')[0],
+      });
+      setAdmissionId('');
+      sigPadRef1.current?.clear();
+      setErrors({});
+
+    } catch (error) {
+      toast.error(error.message || 'Registration failed. Please try again.');
+      setMessage({
+        type: 'error',
+        text: error.message || 'Something went wrong. Please try again.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClear = () => {
+    setFormData({
+      ...initialFormData,
+      verified_by: getLoggedInUserEmail(),
+      time_received: getCurrentTime(),
+      date_admitted: new Date().toISOString().split('T')[0],
+    });
+    setErrors({});
+    setMessage({ type: '', text: '' });
+    setAdmissionId('');
+    sigPadRef1.current?.clear();
+  };
+
+  const handleIdScanComplete = (scanResult) => {
+    if (scanResult.success && scanResult.parsedFields) {
+      const { idNumber, fullName, dateOfBirth, gender } = scanResult.parsedFields;
+
+      setFormData(prev => ({
+        ...prev,
+        id_number: idNumber || prev.id_number,
+        full_name: fullName || prev.full_name,
+        date_of_birth: dateOfBirth || prev.date_of_birth,
+        gender: gender || prev.gender,
+      }));
+
+      toast.success('ID card scanned successfully!');
+    } else {
+      toast.error('Failed to scan ID card. Please try again.');
+    }
+    setShowIdScanner(false);
+  };
+
+  if (loading && !showSuccess) {
     return (
-        <Container>
-            <ToastContainer
-                position="top-right"
-                autoClose={5000}
-                hideProgressBar={false}
-                newestOnTop
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="light"
-                limit={3}
-            />
-
-            <FormSheet>
-                <Watermark>OFFICIAL RECORD</Watermark>
-
-                <ContentWrapper>
-                    <Letterhead>
-                        <BrandLeftWrapper>
-                            <LogoBox>
-                                {tenantLogoUrl && (
-                                    <img 
-                                        src={tenantLogoUrl} 
-                                        alt={tenantName} 
-                                        onError={(e) => { e.target.style.display = 'none'; }} 
-                                    />
-                                )}
-                            </LogoBox>
-                            <BrandDetails>
-                                <BrandName>{tenantName}</BrandName>
-                                {displayLocation && (
-                                    <BrandMeta><MapPin size={12} /> {displayBranch ? `${displayBranch} · ` : ''}{displayLocation}{tenantCountry ? `, ${tenantCountry}` : ''}</BrandMeta>
-                                )}
-                                <BrandMeta><Phone size={12} /> {displayPhone || fallback.phone}{displayEmail ? ` · ${displayEmail}` : fallback.email ? ` · ${fallback.email}` : ''}</BrandMeta>
-                            </BrandDetails>
-                        </BrandLeftWrapper>
-                        
-                        <BrandRightWrapper>
-                            <DocTitle>Intake Record</DocTitle>
-                            <BarcodeWrapper>
-                                <Barcode value={admissionId} />
-                                <FileIdText>
-                                    File ID: 
-                                    <span>
-                                        {loadingAdmission ? 'Generating...' : (admissionId || 'Select gender ')}
-                                    </span>
-                                </FileIdText>
-                            </BarcodeWrapper>
-                        </BrandRightWrapper>
-                    </Letterhead>
-
-                    <FormBody>
-                        <form onSubmit={handleSubmit} noValidate>
-                            {/* Section 1 */}
-                            <Section>
-                                <SectionHead>
-                                    <SectionNum>01</SectionNum>
-                                    <SectionTitle>Admission Details</SectionTitle>
-                                </SectionHead>
-                                
-                                <Row>
-                                    <Col2>
-                                        <Label>Admission Number</Label>
-                                        <InputLg
-                                            type="text"
-                                            name="admission_number"
-                                            value={admissionId || formData.admission_number}
-                                            placeholder="Auto-generated from gender"
-                                            readOnly
-                                            disabled
-                                        />
-                                    </Col2>
-                                    <Col>
-                                        <Label>Date Admitted <span style={{ color: COLORS.red }}>*</span></Label>
-                                        <InputLg
-                                            type="date"
-                                            name="date_admitted"
-                                            value={formData.date_admitted}
-                                            onChange={handleChange}
-                                        />
-                                        {errors.date_admitted && <ErrorMessage>{errors.date_admitted}</ErrorMessage>}
-                                    </Col>
-                                </Row>
-                                <Row>
-                                    <Col>
-                                        <Label>Permit Number</Label>
-                                        <Input
-                                            type="text"
-                                            name="permit_number"
-                                            value={formData.permit_number}
-                                            onChange={handleChange}
-                                            placeholder="Permit/Reference Number"
-                                        />
-                                    </Col>
-                                    <Col>
-                                        <Label>Received From</Label>
-                                        <Input
-                                            type="text"
-                                            name="received_from"
-                                            value={formData.received_from}
-                                            onChange={handleChange}
-                                            placeholder="Hospital, Home, Police, Other"
-                                        />
-                                    </Col>
-                                    <Col>
-                                        <Label>Admitting Officer</Label>
-                                        <Input
-                                            type="text"
-                                            name="receiving_officer"
-                                            value={formData.receiving_officer}
-                                            onChange={handleChange}
-                                            placeholder="Officer / Staff Name"
-                                        />
-                                    </Col>
-                                </Row>
-                            </Section>
-
-                            {/* Section 2 */}
-                            <Section>
-                                <SectionHead>
-                                    <SectionNum>02</SectionNum>
-                                    <SectionTitle>Personal Information</SectionTitle>
-                                </SectionHead>
-                                
-                                <Row>
-                                    <Col2>
-                                        <Label>Full Legal Name of Deceased <span style={{ color: COLORS.red }}>*</span></Label>
-                                        <InputLg
-                                            type="text"
-                                            name="full_name"
-                                            value={formData.full_name}
-                                            onChange={handleChange}
-                                            placeholder="Last, First, Middle Name"
-                                        />
-                                        {errors.full_name && <ErrorMessage>{errors.full_name}</ErrorMessage>}
-                                    </Col2>
-                                    <Col05>
-                                        <Label>Age</Label>
-                                        <Input
-                                            type="number"
-                                            name="age"
-                                            value={formData.age}
-                                            onChange={handleChange}
-                                            placeholder="Yrs"
-                                            min="0"
-                                            max="150"
-                                        />
-                                    </Col05>
-                                    <Col05>
-                                        <Label>Sex <span style={{ color: COLORS.red }}>*</span></Label>
-                                        <Select
-                                            name="gender"
-                                            value={formData.gender}
-                                            onChange={handleChange}
-                                        >
-                                            <option value="" disabled>Select</option>
-                                            <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
-                                        </Select>
-                                        {errors.gender && <ErrorMessage>{errors.gender}</ErrorMessage>}
-                                    </Col05>
-                                </Row>
-                                <Row>
-                                    <Col2>
-                                        <Label>Date of Death</Label>
-                                        <Input
-                                            type="date"
-                                            name="date_of_death"
-                                            value={formData.date_of_death}
-                                            onChange={handleChange}
-                                        />
-                                    </Col2>
-                                </Row>
-                                <Row>
-                                    <Col2>
-                                        <Label>Place of Death</Label>
-                                        <Input
-                                            type="text"
-                                            name="place_of_death"
-                                            value={formData.place_of_death}
-                                            onChange={handleChange}
-                                            placeholder="Facility Name, Address, or Residence"
-                                        />
-                                    </Col2>
-                                </Row>
-                                <Row>
-                                    <Col2>
-                                        <Label>Cause of Death</Label>
-                                        <TextArea
-                                            name="cause_of_death"
-                                            value={formData.cause_of_death}
-                                            onChange={handleChange}
-                                            placeholder="Preliminary cause if known — clinical notes, pending autopsy, etc."
-                                            rows="2"
-                                        />
-                                    </Col2>
-                                </Row>
-                                <Row>
-                                    <Col>
-                                        <Label>Body Status (Optional)</Label>
-                                        <Input
-                                            type="text"
-                                            name="body_status"
-                                            value={formData.body_status}
-                                            onChange={handleChange}
-                                            placeholder="e.g. In Morgue, Pending Autopsy, etc."
-                                        />
-                                    </Col>
-                                </Row>
-                            </Section>
-
-                            {/* Section 3 */}
-                            <Section>
-                                <SectionHead>
-                                    <SectionNum>03</SectionNum>
-                                    <SectionTitle>Next of Kin — Contact & Identification</SectionTitle>
-                                </SectionHead>
-                                
-                                <Row>
-                                    <Col2>
-                                        <Label>Next of Kin Full Name</Label>
-                                        <Input
-                                            type="text"
-                                            name="contact_person"
-                                            value={formData.contact_person}
-                                            onChange={handleChange}
-                                            placeholder="Last, First, Middle"
-                                        />
-                                    </Col2>
-                                    <Col>
-                                        <Label>Relationship to Deceased</Label>
-                                        <Input
-                                            type="text"
-                                            name="relationship"
-                                            value={formData.relationship}
-                                            onChange={handleChange}
-                                            placeholder="Spouse, Child, Parent, Sibling, etc."
-                                        />
-                                    </Col>
-                                </Row>
-                                <Row>
-                                    <Col15>
-                                        <Label>ID Number (Government-Issued)</Label>
-                                        <ScanRow>
-                                            <Input
-                                                type="text"
-                                                name="id_number"
-                                                value={formData.id_number}
-                                                onChange={handleChange}
-                                                placeholder="National ID / Passport / Driver's License No."
-                                            />
-                                            <ScanButton
-                                                type="button"
-                                                onClick={() => setShowIdScanner(true)}
-                                                disabled={loading}
-                                            >
-                                                <ScanBarcode size={14} />
-                                                Scan
-                                            </ScanButton>
-                                        </ScanRow>
-                                    </Col15>
-                                    <Col06>
-                                        <Label>ID Type</Label>
-                                        <Select
-                                            name="id_type"
-                                            value={formData.id_type}
-                                            onChange={handleChange}
-                                        >
-                                            <option value="" disabled>Select</option>
-                                            <option value="national-id">National ID</option>
-                                            <option value="passport">Passport</option>
-                                            <option value="voters-card">Voter's Card</option>
-                                            <option value="other">Other</option>
-                                        </Select>
-                                    </Col06>
-                                </Row>
-                                <Row>
-                                    <Col>
-                                        <Label>Telephone Number</Label>
-                                        <Input
-                                            type="tel"
-                                            name="tel_number"
-                                            value={formData.tel_number}
-                                            onChange={handleChange}
-                                            placeholder="+254 7XX XXX XXX"
-                                        />
-                                        {errors.tel_number && <ErrorMessage>{errors.tel_number}</ErrorMessage>}
-                                    </Col>
-                                    <Col>
-                                        <Label>Alternative Phone</Label>
-                                        <Input
-                                            type="tel"
-                                            name="alternative_phone"
-                                            value={formData.alternative_phone}
-                                            onChange={handleChange}
-                                            placeholder="+254 7XX XXX XXX"
-                                        />
-                                        {errors.alternative_phone && <ErrorMessage>{errors.alternative_phone}</ErrorMessage>}
-                                    </Col>
-                                    <Col06>
-                                        <Label>Email</Label>
-                                        <Input
-                                            type="email"
-                                            name="email"
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                            placeholder="email@example.com"
-                                        />
-                                        {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
-                                    </Col06>
-                                </Row>
-                            </Section>
-
-                            {/* Section 4 */}
-                            <Section>
-                                <SectionHead>
-                                    <SectionNum>04</SectionNum>
-                                    <SectionTitle>Personal Effects Inventory</SectionTitle>
-                                </SectionHead>
-                                
-                                <CheckGrid>
-                                    <CheckItem><Checkbox type="checkbox" /> Wallet / Purse</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> Mobile Phone</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> Jewelry</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> Watch</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> Keys</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> Clothing</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> Eyewear</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> Dentures</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> Prosthetics</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> Medical Devices</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> Cash / Currency</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> Documents</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> None</CheckItem>
-                                    <CheckItem><Checkbox type="checkbox" /> Other (specify below)</CheckItem>
-                                </CheckGrid>
-                                
-                                <Row style={{ marginTop: '1.5rem' }}>
-                                    <Col2>
-                                        <Label>Detailed Description / Additional Items</Label>
-                                        <TextArea
-                                            name="belongings_description"
-                                            value={formData.belongings_description}
-                                            onChange={handleChange}
-                                            placeholder="List all items with description, quantity, and estimated value if applicable..."
-                                            rows="2"
-                                        />
-                                    </Col2>
-                                </Row>
-                            </Section>
-
-                            {/* Section 5: Declaration & Sign-off */}
-                            <Section>
-                                <SectionHead>
-                                    <SectionNum>05</SectionNum>
-                                    <SectionTitle>Declaration & Sign-off</SectionTitle>
-                                </SectionHead>
-                                
-                                <LegalBlock>
-                                    <LegalText>
-                                        I, the undersigned, hereby certify that the information provided herein is true and accurate to the best of my knowledge. I authorize the temporary custody and preparation of the remains by this facility. I understand that personal effects listed above remain my responsibility to claim within thirty (30) days.
-                                    </LegalText>
-                                </LegalBlock>
-                                
-                                <SignOffContainer>
-                                    <SignOffGrid>
-                                        {/* ─── SIGNATURE ALONE ON THE LEFT ─── */}
-                                        <GridSig>
-                                            <Label>Authorized Signature <span style={{ color: COLORS.red }}>*</span></Label>
-                                            <SigCanvasWrap>
-                                                <SigGuideText>✕ Authorized Signature</SigGuideText>
-                                                <ReusableSignaturePad
-                                                    ref={sigPadRef1}
-                                                    penColor={COLORS.inkBlue} 
-                                                    minWidth={1.5}          
-                                                    maxWidth={3.5}          
-                                                    velocityFilterWeight={0.6} 
-                                                    placeholder="Sign here"
-                                                    showSave={false}
-                                                />
-                                            </SigCanvasWrap>
-                                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                                <ClearSigButton
-                                                    type="button"
-                                                    onClick={() => sigPadRef1.current?.clear()}
-                                                >
-                                                    Clear Signature
-                                                </ClearSigButton>
-                                            </div>
-                                        </GridSig>
-
-                                        {/* ─── NAME, DATE, AND STAMP ON THE RIGHT ─── */}
-                                        <GridRight>
-                                            <GridName>
-                                                <Label>Printed Name</Label>
-                                                <InputLg
-                                                    type="text"
-                                                    value={formData.contact_person}
-                                                    readOnly
-                                                    placeholder="Auto-filled from Next of Kin"
-                                                />
-                                            </GridName>
-
-                                            <GridDate>
-                                                <Label>Date</Label>
-                                                <InputLg
-                                                    type="text"
-                                                    value={new Date().toLocaleDateString()}
-                                                    readOnly
-                                                />
-                                            </GridDate>
-
-                                            {/* Stamp overlapping the Name and Date inputs */}
-                                            <StampWrapper>
-                                                <OfficialStamp 
-                                                    tenantName={tenantName} 
-                                                    tenantPhone={displayPhone || fallback.phone} 
-                                                    tenantLocation={displayLocation || fallback.location} 
-                                                />
-                                            </StampWrapper>
-                                        </GridRight>
-                                    </SignOffGrid>
-                                </SignOffContainer>
-                                {errors.signature && <ErrorMessage style={{ marginTop: '0.5rem' }}>{errors.signature}</ErrorMessage>}
-                            </Section>
-
-                            {/* Actions */}
-                            <ActionsContainer>
-                                <GoldButton type="button" onClick={() => navigate(`/tenant/${getTenantSlug()}/receptionist`)}>
-                                    ← Back to Reception
-                                </GoldButton>
-                                <BlackButton type="button" onClick={handleClear} disabled={isSubmitting}>
-                                    <RotateCcw size={15} /> Clear Form
-                                </BlackButton>
-                                <PrimaryButton type="submit" disabled={isSubmitting}>
-                                    {isSubmitting ? (
-                                        <>
-                                            <Loader2 size={16} className="animate-spin" />
-                                            Processing...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Check size={16} />
-                                            Submit Registration
-                                        </>
-                                    )}
-                                </PrimaryButton>
-                            </ActionsContainer>
-                        </form>
-                    </FormBody>
-
-                    <FooterPanel>
-                        <FooterText>
-                            {tenantName} Intake Record — Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}<br/>
-                            Page 1 of 1 — Original Document
-                        </FooterText>
-                    </FooterPanel>
-                </ContentWrapper>
-            </FormSheet>
-
-            {showIdScanner && (
-                <IDScannerModalWrap>
-                    <IDScannerComponent
-                        onScanComplete={handleIdScanComplete}
-                        onClose={() => setShowIdScanner(false)}
-                        autoCapture={true}
-                        captureDelay={3000}
-                    />
-                </IDScannerModalWrap>
-            )}
-
-            {showSuccess && (
-                <SuccessOverlay>
-                    <SuccessCard>
-                        <SuccessIconWrap>
-                            <CheckCircle size={48} strokeWidth={1.5} />
-                        </SuccessIconWrap>
-                        <SuccessTitle>Record Registered Successfully</SuccessTitle>
-                        <SuccessText>
-                            The intake record for <strong style={{ color: COLORS.ink }}>{registeredName}</strong> has been successfully registered and securely saved in the system.
-                        </SuccessText>
-                        <SuccessActions>
-                            <PrimaryButton onClick={() => setShowSuccess(false)}>
-                                <Check size={16} /> Register Another Record
-                            </PrimaryButton>
-                            <GoldButton onClick={() => navigate(`/tenant/${getTenantSlug()}/receptionist`)}>
-                                ← Back to Reception
-                            </GoldButton>
-                        </SuccessActions>
-                    </SuccessCard>
-                </SuccessOverlay>
-            )}
-        </Container>
+      <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Loader2 size={48} color={COLORS.ink} className="animate-spin" />
+          <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Inter', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Processing Document...</p>
+        </div>
+      </Container>
     );
+  }
+
+  return (
+    <Container>
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        limit={3}
+      />
+
+      <FormSheet>
+        <Watermark>OFFICIAL RECORD</Watermark>
+
+        <ContentWrapper>
+          <Letterhead>
+            <BrandLeftWrapper>
+              <LogoBox>
+                {tenantLogoUrl && (
+                  <img
+                    src={tenantLogoUrl}
+                    alt={tenantName}
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                )}
+              </LogoBox>
+              <BrandDetails>
+                <BrandName>{tenantName}</BrandName>
+                {displayLocation && (
+                  <BrandMeta><MapPin size={12} /> {displayBranch ? `${displayBranch} · ` : ''}{displayLocation}{tenantCountry ? `, ${tenantCountry}` : ''}</BrandMeta>
+                )}
+                <BrandMeta><Phone size={12} /> {displayPhone || fallback.phone}{displayEmail ? ` · ${displayEmail}` : fallback.email ? ` · ${fallback.email}` : ''}</BrandMeta>
+              </BrandDetails>
+            </BrandLeftWrapper>
+
+            <BrandRightWrapper>
+              <DocTitle>Intake Record</DocTitle>
+              <BarcodeWrapper>
+                <Barcode value={admissionId} />
+                <FileIdText>
+                  File ID:
+                  <span>
+                    {loadingAdmission ? 'Generating...' : (admissionId || 'Select gender ')}
+                  </span>
+                </FileIdText>
+              </BarcodeWrapper>
+            </BrandRightWrapper>
+          </Letterhead>
+
+          <FormBody>
+            <form onSubmit={handleSubmit} noValidate>
+              {/* Section 1 */}
+              <Section>
+                <SectionHead>
+                  <SectionNum>01</SectionNum>
+                  <SectionTitle>  Receiving & Facility Information  </SectionTitle>
+                </SectionHead>
+
+                <Row>
+                  <Col2>
+                    <Label>Admission Number</Label>
+                    <InputLg
+                      type="text"
+                      name="admission_number"
+                      value={admissionId || formData.admission_number}
+                      placeholder="Auto-generated from gender"
+                      readOnly
+                      disabled
+                    />
+                  </Col2>
+                  <Col>
+                    <Label>Date Admitted <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputLg
+                      type="date"
+                      name="date_admitted"
+                      value={formData.date_admitted}
+                      onChange={handleChange}
+                    />
+                    {errors.date_admitted && <ErrorMessage>{errors.date_admitted}</ErrorMessage>}
+                  </Col>
+                </Row>
+                <Row>
+                  <Col>
+                    <Label>Permit Number</Label>
+                    <Input
+                      type="text"
+                      name="permit_number"
+                      value={formData.permit_number}
+                      onChange={handleChange}
+                      placeholder="Permit/Reference Number"
+                    />
+                  </Col>
+                  <Col>
+                    <Label>Received From</Label>
+                    <Input
+                      type="text"
+                      name="received_from"
+                      value={formData.received_from}
+                      onChange={handleChange}
+                      placeholder="Hospital, Home, Police, Other"
+                    />
+                  </Col>
+                  <Col>
+                    <Label>Admitting Officer</Label>
+                    <Input
+                      type="text"
+                      name="receiving_officer"
+                      value={formData.receiving_officer}
+                      onChange={handleChange}
+                      placeholder="Officer / Staff Name"
+                    />
+                  </Col>
+                </Row>
+              </Section>
+
+              {/* Section 2 */}
+              <Section>
+                <SectionHead>
+                  <SectionNum>02</SectionNum>
+                  <SectionTitle> Information About Your Loved One  </SectionTitle>
+                </SectionHead>
+
+                <Row>
+                  <Col2>
+                    <Label>Full Legal Name of Deceased <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputLg
+                      type="text"
+                      name="full_name"
+                      value={formData.full_name}
+                      onChange={handleChange}
+                      placeholder="Last, First, Middle Name"
+                    />
+                    {errors.full_name && <ErrorMessage>{errors.full_name}</ErrorMessage>}
+                  </Col2>
+                  <Col05>
+                    <Label>Age</Label>
+                    <Input
+                      type="number"
+                      name="age"
+                      value={formData.age}
+                      onChange={handleChange}
+                      placeholder="Yrs"
+                      min="0"
+                      max="150"
+                    />
+                  </Col05>
+                  <Col05>
+                    <Label>Sex <span style={{ color: COLORS.red }}>*</span></Label>
+                    <Select
+                      name="gender"
+                      value={formData.gender}
+                      onChange={handleChange}
+                    >
+                      <option value="" disabled>Select</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </Select>
+                    {errors.gender && <ErrorMessage>{errors.gender}</ErrorMessage>}
+                  </Col05>
+                </Row>
+                <Row>
+                  <Col2>
+                    <Label>Date of Death</Label>
+                    <Input
+                      type="date"
+                      name="date_of_death"
+                      value={formData.date_of_death}
+                      onChange={handleChange}
+                    />
+                  </Col2>
+                </Row>
+                <Row>
+                  <Col2>
+                    <Label>Place of Death</Label>
+                    <Input
+                      type="text"
+                      name="place_of_death"
+                      value={formData.place_of_death}
+                      onChange={handleChange}
+                      placeholder="Facility Name, Address, or Residence"
+                    />
+                  </Col2>
+                </Row>
+                <Row>
+                  <Col2>
+                    <Label>Cause of Death</Label>
+                    <TextArea
+                      name="cause_of_death"
+                      value={formData.cause_of_death}
+                      onChange={handleChange}
+                      placeholder="Preliminary cause if known — clinical notes, pending autopsy, etc."
+                      rows="2"
+                    />
+                  </Col2>
+                </Row>
+                <Row>
+                  <Col>
+                    <Label>Body Status (Optional)</Label>
+                    <Input
+                      type="text"
+                      name="body_status"
+                      value={formData.body_status}
+                      onChange={handleChange}
+                      placeholder="e.g. In Morgue, Pending Autopsy, etc."
+                    />
+                  </Col>
+                </Row>
+              </Section>
+
+              {/* Section 3 */}
+              <Section>
+                <SectionHead>
+                  <SectionNum>03</SectionNum>
+                  <SectionTitle>Next of Kin — Contact & Identification</SectionTitle>
+                </SectionHead>
+
+                <Row>
+                  <Col2>
+                    <Label>Next of Kin Full Name</Label>
+                    <Input
+                      type="text"
+                      name="contact_person"
+                      value={formData.contact_person}
+                      onChange={handleChange}
+                      placeholder="Last, First, Middle"
+                    />
+                  </Col2>
+                  <Col>
+                    <Label>Relationship to Deceased</Label>
+                    <Input
+                      type="text"
+                      name="relationship"
+                      value={formData.relationship}
+                      onChange={handleChange}
+                      placeholder="Spouse, Child, Parent, Sibling, etc."
+                    />
+                  </Col>
+                </Row>
+                <Row>
+                  <Col15>
+                    <Label>ID Number (Government-Issued)</Label>
+                    <ScanRow>
+                      <Input
+                        type="text"
+                        name="id_number"
+                        value={formData.id_number}
+                        onChange={handleChange}
+                        placeholder="National ID / Passport / Driver's License No."
+                      />
+                      <ScanButton
+                        type="button"
+                        onClick={() => setShowIdScanner(true)}
+                        disabled={loading}
+                      >
+                        <ScanBarcode size={14} />
+                        Scan
+                      </ScanButton>
+                    </ScanRow>
+                  </Col15>
+                  <Col06>
+                    <Label>ID Type</Label>
+                    <Select
+                      name="id_type"
+                      value={formData.id_type}
+                      onChange={handleChange}
+                    >
+                      <option value="" disabled>Select</option>
+                      <option value="national-id">National ID</option>
+                      <option value="passport">Passport</option>
+                      <option value="voters-card">Voter's Card</option>
+                      <option value="other">Other</option>
+                    </Select>
+                  </Col06>
+                </Row>
+                <Row>
+                  <Col>
+                    <Label>Telephone Number</Label>
+                    <Input
+                      type="tel"
+                      name="tel_number"
+                      value={formData.tel_number}
+                      onChange={handleChange}
+                      placeholder="+254 7XX XXX XXX"
+                    />
+                    {errors.tel_number && <ErrorMessage>{errors.tel_number}</ErrorMessage>}
+                  </Col>
+                  <Col>
+                    <Label>Alternative Phone</Label>
+                    <Input
+                      type="tel"
+                      name="alternative_phone"
+                      value={formData.alternative_phone}
+                      onChange={handleChange}
+                      placeholder="+254 7XX XXX XXX"
+                    />
+                    {errors.alternative_phone && <ErrorMessage>{errors.alternative_phone}</ErrorMessage>}
+                  </Col>
+                  <Col06>
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="email@example.com"
+                    />
+                    {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
+                  </Col06>
+                </Row>
+              </Section>
+
+              {/* Section 4 */}
+              <Section>
+                <SectionHead>
+                  <SectionNum>04</SectionNum>
+                  <SectionTitle>Personal Effects Inventory</SectionTitle>
+                </SectionHead>
+
+                <CheckGrid>
+                  <CheckItem><Checkbox type="checkbox" /> Wallet / Purse</CheckItem>
+                  <CheckItem><Checkbox type="checkbox" /> Mobile Phone</CheckItem>
+                  <CheckItem><Checkbox type="checkbox" /> Jewelry</CheckItem>
+                  <CheckItem><Checkbox type="checkbox" /> Watch</CheckItem>
+
+                  <CheckItem><Checkbox type="checkbox" /> Clothing</CheckItem>
+                  <CheckItem><Checkbox type="checkbox" /> Eyewear</CheckItem>
+
+
+
+                  <CheckItem><Checkbox type="checkbox" /> Cash / Currency</CheckItem>
+
+                  <CheckItem><Checkbox type="checkbox" /> None</CheckItem>
+                  <CheckItem><Checkbox type="checkbox" /> Other (specify below)</CheckItem>
+                </CheckGrid>
+
+                <Row style={{ marginTop: '1.5rem' }}>
+                  <Col2>
+                    <Label>Detailed Description / Additional Items</Label>
+                    <TextArea
+                      name="belongings_description"
+                      value={formData.belongings_description}
+                      onChange={handleChange}
+                      placeholder="List all items with description, quantity, and estimated value if applicable..."
+                      rows="2"
+                    />
+                  </Col2>
+                </Row>
+              </Section>
+
+              {/* Section 5: Declaration & Sign-off */}
+              <Section>
+                <SectionHead>
+                  <SectionNum>05</SectionNum>
+                  <SectionTitle>Declaration & Sign-off</SectionTitle>
+                </SectionHead>
+
+                <LegalBlock>
+                  <LegalText>
+                    <TextBold>   By signing below, I confirm that:   </TextBold>
+                    <br />
+                    The information provided is true and accurate to the best of my knowledge.
+                    <br />
+                    I authorize this facility to take temporary custody of and prepare the remains.
+                  </LegalText>
+                </LegalBlock>
+
+                <SignOffContainer>
+                  <SignOffGrid>
+                    {/* ─── SIGNATURE ALONE ON THE LEFT ─── */}
+                    <GridSig>
+                      <Label>Authorized Signature <span style={{ color: COLORS.red }}>*</span></Label>
+                      <SigCanvasWrap>
+                        <SigGuideText>✕ Authorized Signature</SigGuideText>
+                        <ReusableSignaturePad
+                          ref={sigPadRef1}
+                          penColor={COLORS.inkBlue}
+                          minWidth={1.5}
+                          maxWidth={3.5}
+                          velocityFilterWeight={0.6}
+                          placeholder="Sign here"
+                          showSave={false}
+                        />
+                      </SigCanvasWrap>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <ClearSigButton
+                          type="button"
+                          onClick={() => sigPadRef1.current?.clear()}
+                        >
+                          Clear Signature
+                        </ClearSigButton>
+                      </div>
+                    </GridSig>
+
+                    {/* ─── NAME, DATE, AND STAMP ON THE RIGHT ─── */}
+                    <GridRight>
+                      <GridName>
+                        <Label>Printed Name</Label>
+                        <InputLg
+                          type="text"
+                          value={formData.contact_person}
+                          readOnly
+                          placeholder="Auto-filled from Next of Kin"
+                        />
+                      </GridName>
+
+                      <GridDate>
+                        <Label>Date</Label>
+                        <InputLg
+                          type="text"
+                          value={new Date().toLocaleDateString()}
+                          readOnly
+                        />
+                      </GridDate>
+
+                      {/* Stamp overlapping the Name and Date inputs */}
+                      <StampWrapper>
+                        <OfficialStamp
+                          tenantName={tenantName}
+                          tenantPhone={displayPhone || fallback.phone}
+                          tenantLocation={displayLocation || fallback.location}
+                        />
+                      </StampWrapper>
+                    </GridRight>
+                  </SignOffGrid>
+                </SignOffContainer>
+                {errors.signature && <ErrorMessage style={{ marginTop: '0.5rem' }}>{errors.signature}</ErrorMessage>}
+              </Section>
+
+              {/* Actions */}
+              <ActionsContainer>
+                <GoldButton type="button" onClick={() => navigate(`/tenant/${getTenantSlug()}/receptionist`)}>
+                  ← Back to Reception
+                </GoldButton>
+                <BlackButton type="button" onClick={handleClear} disabled={isSubmitting}>
+                  <RotateCcw size={15} /> Clear Form
+                </BlackButton>
+                <PrimaryButton type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      Submit Registration
+                    </>
+                  )}
+                </PrimaryButton>
+              </ActionsContainer>
+            </form>
+          </FormBody>
+
+          <FooterPanel>
+            <FooterText>
+              {tenantName} Intake Record — Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}<br />
+              Page 1 of 1 — Original Document
+            </FooterText>
+          </FooterPanel>
+        </ContentWrapper>
+      </FormSheet>
+
+      {showIdScanner && (
+        <IDScannerModalWrap>
+          <IDScannerComponent
+            onScanComplete={handleIdScanComplete}
+            onClose={() => setShowIdScanner(false)}
+            autoCapture={true}
+            captureDelay={3000}
+          />
+        </IDScannerModalWrap>
+      )}
+
+      {showSuccess && (
+        <SuccessOverlay>
+          <SuccessCard>
+            <SuccessIconWrap>
+              <CheckCircle size={48} strokeWidth={1.5} />
+            </SuccessIconWrap>
+            <SuccessTitle>Record Registered Successfully</SuccessTitle>
+            <SuccessText>
+              The intake record for <strong style={{ color: COLORS.ink }}>{registeredName}</strong> has been successfully registered and securely saved in the system.
+            </SuccessText>
+            <SuccessActions>
+              <PrimaryButton onClick={() => setShowSuccess(false)}>
+                <Check size={16} /> Register Another Record
+              </PrimaryButton>
+              <GoldButton onClick={() => navigate(`/tenant/${getTenantSlug()}/receptionist`)}>
+                ← Back to Reception
+              </GoldButton>
+            </SuccessActions>
+          </SuccessCard>
+        </SuccessOverlay>
+      )}
+    </Container>
+  );
 };
 
 export default DeceasedRegistrationForm;

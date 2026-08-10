@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 
 import    THEME  from  '../../utils/colors/theme'
+import { toDateKey } from '../../utils/dates/parseDates';
 
 
 
@@ -397,10 +398,10 @@ const DeceasedInfoSection = ({ deceasedId: propDeceasedId, deceased: propDecease
         const cleanedData = {
           ...deceasedData,
           date_of_birth: deceasedData.date_of_birth
-            ? new Date(deceasedData.date_of_birth).toISOString().split('T')[0]
+            ? toDateKey(deceasedData.date_of_birth)
             : '',
           date_of_death: deceasedData.date_of_death
-            ? new Date(deceasedData.date_of_death).toISOString().split('T')[0]
+            ? toDateKey(deceasedData.date_of_death)
             : '',
           date_admitted: deceasedData.date_admitted
             ? new Date(deceasedData.date_admitted).toISOString().split('T')[0]

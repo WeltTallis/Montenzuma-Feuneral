@@ -5,6 +5,10 @@ import axios from 'axios';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
+import {
+  formatDate,
+  daysFromNow,
+} from '../../../utils/dates/parseDates';
 import 'react-toastify/dist/ReactToastify.css';
 
 const API_GATEWAY_URL = import.meta.env.VITE_API_URL || '/api/v1/restpoint';
@@ -767,15 +771,12 @@ const DeceasedListPage = () => {
 
   const getDaysInMorgue = (admittedDate) => {
     if (!admittedDate) return 0;
-    const admitted = new Date(admittedDate);
-    const now = new Date();
-    return Math.floor((now - admitted) / (1000 * 60 * 60 * 24));
+    // Use daysFromNow for correct local-date math (no UTC shift bug)
+    const days = daysFromNow(admittedDate);
+    return days != null ? Math.abs(days) : 0;
   };
 
-  const formatDate = (d) => {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  // formatDate is now imported from utils/dates/parseDates (single source of truth)
 
   const openProfile = (id) => {
     const tenantSlug = getTenantSlug();
@@ -865,7 +866,7 @@ const DeceasedListPage = () => {
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `Deceased_Records_${new Date().toISOString().split('T')[0]}.zip`;
+          link.download = `Deceased_Records_${todayKey()}.zip`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);

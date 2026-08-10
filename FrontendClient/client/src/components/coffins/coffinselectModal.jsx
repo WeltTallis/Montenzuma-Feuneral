@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { X, Search, Package, Check, Loader2, ChevronLeft, ChevronRight, Image, User, Calendar } from '../../utils/icons/icons';
+import { todayKey } from '../../utils/dates/parseDates';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -451,7 +452,7 @@ const CoffinSelectionModal = ({ onClose, onSelectCoffin, deceasedId, deceasedDat
 
   // Assignment form fields
   const [assignedBy, setAssignedBy] = useState('');
-  const [assignedDate, setAssignedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [assignedDate, setAssignedDate] = useState(todayKey());
 
   // Image preview state
   const [previewImages, setPreviewImages] = useState([]);

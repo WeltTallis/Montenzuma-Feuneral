@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { User, Calendar, Clock, Info, Phone, BookText, PlusCircle, Trash2, X, Loader2, Users, Eye, Search, Filter, Mail, MapPin, UserPlus, UserCheck, UserMinus } from '../../utils/icons/icons';
+import { formatDate, formatTime } from '../../utils/dates/parseDates';
 import api from '../../api/axios';
 
 // Modern, softer color palette
@@ -933,12 +934,11 @@ const VisitorsSection = ({ visitors = [], onAdd, onDelete, isLoading, error, api
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return {
-      date: date.toLocaleDateString(),
-      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
+  // formatDate + formatTime are now imported from utils/dates/parseDates (single source of truth)
+  const formatVisitorDateTime = (dateString) => {
+    const d = formatDate(dateString);
+    const t = formatTime(dateString);
+    return { date: d, time: t };
   };
 
   const getRelationshipType = (relationship) => {
