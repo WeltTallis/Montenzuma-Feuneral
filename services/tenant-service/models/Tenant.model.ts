@@ -53,6 +53,7 @@ export interface BranchInfo {
     branch_name: string;
     branch_slug: string;
     branch_db_name: string;
+    parent_branch_id: number | null;
     branch_location: string | null;
     branch_phone: string | null;
     branch_email: string | null;
@@ -277,7 +278,7 @@ async function createCompleteTenantDatabase(
     location: string | null,
     branches: Array<{ branch_name: string; branch_location: string; branch_phone: string; branch_email: string }> | undefined,
     deploymentType: 'single' | 'multi'
-): Promise<{ dbName: string; branches: Array<{ branch_name: string; branch_slug: string; branch_db_name: string }>; sharedHearseDbName?: string | null }> {
+): Promise<{ dbName: string; branches: Array<{ branch_name: string; branch_slug: string; branch_db_name: string; parent_branch_id: number | null }>; sharedHearseDbName?: string | null }> {
     const serverConn = await getServerPool();
     const migrationService = new MigrationService();
 
@@ -297,7 +298,7 @@ async function createCompleteTenantDatabase(
 
     const subdomain = dbName;
     const firstBranch = branchList[0];
-    const branchData: Array<{ branch_name: string; branch_slug: string; branch_db_name: string }> = [];
+    const branchData: Array<{ branch_name: string; branch_slug: string; branch_db_name: string; parent_branch_id: number | null }> = [];
 
     console.log(`📦 Creating primary database: ${dbName}`);
     await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
@@ -368,12 +369,15 @@ async function createCompleteTenantDatabase(
 
         // Use INSERT IGNORE to prevent duplicate branch_slug errors
         await tenantConn.query(
-            `INSERT IGNORE INTO branches (branch_name, branch_slug, branch_db_name, branch_location, branch_phone, branch_email, is_active) 
-             VALUES (?, ?, ?, ?, ?, ?, 1)`,
+            `INSERT IGNORE INTO branches (branch_name, branch_slug, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
+             VALUES (?, ?, ?, NULL, ?, ?, ?, 1)
+            `,
             [firstBranch.branch_name, firstBranchSlugFull, dbName, firstBranch.branch_location || '', firstBranch.branch_phone || '', firstBranch.branch_email || '']
         );
 
-        // Verify the branch was created or already exists
+                // Verify the branch was created or already exists
+        // Track the first branch's ID for parent_branch_id on additional branches
+        let firstBranchId: number | null = null;
         const [existingBranch] = await tenantConn.query(
             'SELECT branch_id, branch_name, branch_slug, branch_db_name FROM branches WHERE branch_slug = ? LIMIT 1',
             [firstBranchSlugFull]
@@ -381,24 +385,35 @@ async function createCompleteTenantDatabase(
 
         if (existingBranch && Array.isArray(existingBranch) && existingBranch.length > 0) {
             const branch = existingBranch[0] as any;
+            firstBranchId = branch.branch_id;
             branchData.push({
                 branch_name: branch.branch_name,
                 branch_slug: branch.branch_slug,
                 branch_db_name: branch.branch_db_name,
+                parent_branch_id: null,
             });
             console.log(`✅ Primary branch "${branch.branch_name}" → DB: ${dbName} (slug: ${firstBranchSlugFull})`);
         } else {
             // Fallback: create with a unique slug
             const uniqueSlug = `${firstBranchSlugFull}-${Date.now()}`;
             await tenantConn.query(
-                `INSERT INTO branches (branch_name, branch_slug, branch_db_name, branch_location, branch_phone, branch_email, is_active) 
-                 VALUES (?, ?, ?, ?, ?, ?, 1)`,
+                `INSERT INTO branches (branch_name, branch_slug, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
+                 VALUES (?, ?, ?, NULL, ?, ?, ?, 1)`,
                 [firstBranch.branch_name, uniqueSlug, dbName, firstBranch.branch_location || '', firstBranch.branch_phone || '', firstBranch.branch_email || '']
             );
+            // Retrieve the branch_id of the newly inserted first branch
+            const [fallbackResult] = await tenantConn.query(
+                'SELECT branch_id FROM branches WHERE branch_slug = ? LIMIT 1',
+                [uniqueSlug]
+            );
+            if (fallbackResult && Array.isArray(fallbackResult) && fallbackResult.length > 0) {
+                firstBranchId = (fallbackResult[0] as any).branch_id;
+            }
             branchData.push({
                 branch_name: firstBranch.branch_name,
                 branch_slug: uniqueSlug,
                 branch_db_name: dbName,
+                parent_branch_id: null,
             });
             console.log(`✅ Primary branch "${firstBranch.branch_name}" → DB: ${dbName} (slug: ${uniqueSlug})`);
         }
@@ -446,19 +461,20 @@ async function createCompleteTenantDatabase(
             }
             console.log(`✅ Branch migrations completed: ${branchResult.migrationsRun.length} migrations executed for ${branchDbName}`);
 
-            await tenantConn.query(
-                `INSERT INTO branches (branch_name, branch_slug, branch_db_name, branch_location, branch_phone, branch_email, is_active) 
-                 VALUES (?, ?, ?, ?, ?, ?, 1)`,
-                [branch.branch_name, branchSlug, branchDbName, branch.branch_location || '', branch.branch_phone || '', branch.branch_email || '']
+                        await tenantConn.query(
+                `INSERT INTO branches (branch_name, branch_slug, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+                [branch.branch_name, branchSlug, branchDbName, firstBranchId, branch.branch_location || '', branch.branch_phone || '', branch.branch_email || '']
             );
 
             branchData.push({
                 branch_name: branch.branch_name,
                 branch_slug: branchSlug,
                 branch_db_name: branchDbName,
+                parent_branch_id: firstBranchId,
             });
 
-            console.log(`✅ Branch "${branch.branch_name}" created (db: ${branchDbName}, slug: ${branchSlug})`);
+            console.log(`✅ Branch "${branch.branch_name}" created (db: ${branchDbName}, slug: ${branchSlug}, parent: ${firstBranchId})`);
         }
 
         await tenantConn.query(`
@@ -824,17 +840,18 @@ export class TenantModel {
 
     // ─── Branch Operations ──────────────────────────────────────────────
 
-    static async getBranches(tenantDbName: string): Promise<BranchInfo[]> {
+        static async getBranches(tenantDbName: string): Promise<BranchInfo[]> {
         const conn = await getTenantConnection(tenantDbName);
         try {
             const [rows] = await conn.query(
-                'SELECT branch_id, branch_name, branch_slug, branch_db_name, branch_location, branch_phone, branch_email, is_active, created_at FROM branches WHERE is_active = TRUE ORDER BY branch_name'
+                'SELECT branch_id, branch_name, branch_slug, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active, created_at FROM branches WHERE is_active = TRUE ORDER BY branch_name'
             );
             return (rows as any[]).map((r: any) => ({
                 branch_id: r.branch_id,
                 branch_name: r.branch_name,
                 branch_slug: r.branch_slug,
                 branch_db_name: r.branch_db_name,
+                parent_branch_id: r.parent_branch_id ?? null,
                 branch_location: r.branch_location || null,
                 branch_phone: r.branch_phone || null,
                 branch_email: r.branch_email || null,
@@ -846,11 +863,12 @@ export class TenantModel {
         }
     }
 
-    static async addBranch(tenantDbName: string, branch: {
+        static async addBranch(tenantDbName: string, branch: {
         branch_name: string;
         branch_location: string;
         branch_phone: string;
         branch_email: string;
+        parent_branch_id?: number | null;
     }): Promise<{ branch_id: number; branch_db_name: string }> {
         const serverConn = await getServerPool();
         const migrationService = new MigrationService();
@@ -893,12 +911,22 @@ export class TenantModel {
         }
         console.log(`✅ Branch migrations completed: ${branchResult.migrationsRun.length} migrations executed for ${branchDbName}`);
 
-        const conn = await getTenantConnection(tenantDbName);
+                const conn = await getTenantConnection(tenantDbName);
         try {
+            // If no parent_branch_id provided, use the first (main) branch as parent
+            let resolvedParentId = branch.parent_branch_id ?? null;
+            if (resolvedParentId === null) {
+                const [mainBranch] = await conn.query(
+                    'SELECT branch_id FROM branches WHERE parent_branch_id IS NULL ORDER BY branch_id ASC LIMIT 1'
+                );
+                if (Array.isArray(mainBranch) && mainBranch.length > 0) {
+                    resolvedParentId = (mainBranch[0] as any).branch_id;
+                }
+            }
             const [result] = await conn.query(
-                `INSERT INTO branches (branch_name, branch_slug, branch_db_name, branch_location, branch_phone, branch_email, is_active) 
-                 VALUES (?, ?, ?, ?, ?, ?, 1)`,
-                [branch.branch_name, branchSlug, branchDbName, branch.branch_location || '', branch.branch_phone || '', branch.branch_email || '']
+                `INSERT INTO branches (branch_name, branch_slug, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+                [branch.branch_name, branchSlug, branchDbName, resolvedParentId, branch.branch_location || '', branch.branch_phone || '', branch.branch_email || '']
             );
             return { branch_id: (result as any).insertId, branch_db_name: branchDbName };
         } finally {
@@ -1233,8 +1261,10 @@ export class TenantModel {
                         b.branch_name as connected_branch_name,
                         b.branch_slug as connected_branch_slug,
                         b.branch_db_name as connected_branch_db_name,
+                        b.parent_branch_id as connected_branch_parent_id,
                         b.branch_location as connected_branch_location,
-                        b.branch_phone as connected_branch_phone
+                        b.branch_phone as connected_branch_phone,
+                        b.branch_email as connected_branch_email
                  FROM branch_connections bc
                  INNER JOIN branches b ON bc.connected_branch_id = b.branch_id
                  WHERE bc.branch_id = ? AND bc.status = 'active'
@@ -1259,8 +1289,10 @@ export class TenantModel {
                 `SELECT bc.*, 
                         b1.branch_name as branch_name,
                         b1.branch_slug as branch_slug,
+                        b1.parent_branch_id as branch_parent_id,
                         b2.branch_name as connected_branch_name,
-                        b2.branch_slug as connected_branch_slug
+                        b2.branch_slug as connected_branch_slug,
+                        b2.parent_branch_id as connected_branch_parent_id
                  FROM branch_connections bc
                  INNER JOIN branches b1 ON bc.branch_id = b1.branch_id
                  INNER JOIN branches b2 ON bc.connected_branch_id = b2.branch_id
@@ -1348,14 +1380,54 @@ export class TenantModel {
     static async autoConnectBranches(tenantDbName: string, tenantSlug: string): Promise<void> {
         await this.ensureBranchConnectionsTable(tenantDbName);
 
-        const conn = await getTenantConnection(tenantDbName);
+                const conn = await getTenantConnection(tenantDbName);
         try {
+            // Get all active branches with their parent_branch_id
             const [branches] = await conn.query(
-                'SELECT branch_id FROM branches WHERE is_active = TRUE ORDER BY branch_id'
+                'SELECT branch_id, parent_branch_id FROM branches WHERE is_active = TRUE ORDER BY branch_id'
             );
             const branchList = branches as any[];
 
-            // Create connections between all pairs of branches
+            // Identify the parent (main) branch — the one with parent_branch_id IS NULL
+            let parentBranchId: number | null = null;
+            const childBranchIds: number[] = [];
+            for (const b of branchList) {
+                if (b.parent_branch_id === null || b.parent_branch_id === undefined) {
+                    if (parentBranchId === null) {
+                        parentBranchId = b.branch_id;
+                    }
+                } else {
+                    childBranchIds.push(b.branch_id);
+                }
+            }
+
+            // Create parent-child connections (bidirectional)
+            if (parentBranchId !== null && childBranchIds.length > 0) {
+                for (const childId of childBranchIds) {
+                    const [existing] = await conn.query(
+                        'SELECT id FROM branch_connections WHERE branch_id = ? AND connected_branch_id = ? LIMIT 1',
+                        [parentBranchId, childId]
+                    );
+                    if ((existing as any[]).length === 0) {
+                        // Parent → Child
+                        await conn.query(
+                            `INSERT INTO branch_connections (tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+                             VALUES (?, ?, ?, 'parent_child', 'active', 'Parent-child hierarchy')`,
+                            [tenantSlug, parentBranchId, childId]
+                        );
+                        // Child → Parent
+                        await conn.query(
+                            `INSERT INTO branch_connections (tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+                             VALUES (?, ?, ?, 'parent_child', 'active', 'Parent-child hierarchy')`,
+                            [tenantSlug, childId, parentBranchId]
+                        );
+                    }
+                }
+            }
+
+            // Create partnership connections between ALL pairs of branches
+            // (siblings communicate with each other; parent-child pairs already
+            //  connected above so the existing-connection check skips them)
             for (let i = 0; i < branchList.length; i++) {
                 for (let j = i + 1; j < branchList.length; j++) {
                     const branchA = branchList[i].branch_id;

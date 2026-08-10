@@ -11,6 +11,7 @@ const TABS = [
   { id: 'orders', label: 'Orders', icon: 'fa-clipboard-list' },
   { id: 'workers', label: 'Workers', icon: 'fa-users-gear' },
   { id: 'materials', label: 'Materials', icon: 'fa-boxes-stacked' },
+  { id: 'store', label: 'Store', icon: 'fa-warehouse' },
   { id: 'analytics', label: 'Analytics', icon: 'fa-chart-column' },
 ];
 

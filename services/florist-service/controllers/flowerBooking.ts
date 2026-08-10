@@ -1,47 +1,27 @@
 /**
  * Flower Booking Controller
- * Handles CRUD operations for flower bookings and customers
+ * Handles CRUD operations for flower bookings only (no customer management)
  */
 
 // @ts-ignore
 import { getTenantDB, safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig.js';
-import axios from 'axios';
 
 interface Booking {
     id?: number;
     booking_id: string;
     flower_type: string;
     flower_description?: string;
-    service_type: string;
     customer: string;
     customer_phone?: string;
     customer_email?: string;
     deceased_name?: string;
     branch: string;
-    delivery_date: string;
-    delivery_time: string;
-    delivery_address?: string;
-    invoice_number?: string;
-    amount: number;
+    arrangement_id?: string;
+    date: string;
+    time: string;
     status: string;
     notes?: string;
-    urgent?: boolean | number;
-    branch_id?: number;
     created_by?: string;
-    created_at?: string;
-    updated_at?: string;
-}
-
-interface Customer {
-    id?: number;
-    name: string;
-    phone?: string;
-    email?: string;
-    address?: string;
-    notes?: string;
-    total_orders?: number;
-    total_spent?: number;
-    branch_id?: number;
     created_at?: string;
     updated_at?: string;
 }
@@ -82,17 +62,17 @@ export const getBookings = async (req: any, res: any) => {
             params.push(flower_type);
         }
         if (date_from) {
-            whereClause += ' AND delivery_date >= ?';
+            whereClause += ' AND date >= ?';
             params.push(date_from);
         }
         if (date_to) {
-            whereClause += ' AND delivery_date <= ?';
+            whereClause += ' AND date <= ?';
             params.push(date_to);
         }
         if (search) {
-            whereClause += ' AND (customer LIKE ? OR booking_id LIKE ? OR invoice_number LIKE ? OR deceased_name LIKE ?)';
+            whereClause += ' AND (customer LIKE ? OR booking_id LIKE ? OR deceased_name LIKE ?)';
             const searchTerm = `%${search}%`;
-            params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+            params.push(searchTerm, searchTerm, searchTerm);
         }
 
         // Count total
@@ -110,7 +90,7 @@ export const getBookings = async (req: any, res: any) => {
 
         const bookings = await safeTenantQuery(
             dbName,
-            `SELECT * FROM flower_bookings ${whereClause} ORDER BY delivery_date DESC, delivery_time ASC LIMIT ? OFFSET ?`,
+            `SELECT * FROM flower_bookings ${whereClause} ORDER BY date DESC, time ASC LIMIT ? OFFSET ?`,
             [...params, limitNum, offset]
         );
 
@@ -118,8 +98,8 @@ export const getBookings = async (req: any, res: any) => {
         const enrichedBookings = await Promise.all(
             bookings.map(async (booking: any) => {
                 try {
-                    const arrangementQuery = `SELECT title, types, images FROM flower_samples WHERE title = ? AND tenant_slug = ? LIMIT 1`;
-                    const arrangements = await safeTenantQuery(dbName, arrangementQuery, [booking.flower_type, tenantSlug]);
+                    const arrangementQuery = `SELECT title, types, images FROM flower_samples WHERE arrangement_id = ? AND tenant_slug = ? LIMIT 1`;
+                    const arrangements = await safeTenantQuery(dbName, arrangementQuery, [booking.arrangement_id, tenantSlug]);
                     
                     if (arrangements && arrangements.length > 0) {
                         return {
@@ -184,28 +164,20 @@ export const createBooking = async (req: any, res: any) => {
     try {
         const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
         const {
-            arrangement_name, arrangement_price, deceased_name, booked_by,
-            funeral_home, date, time, priority, card_message, phone, email,
-            quantity, arrangements, special_instructions, colors, primary_color, accent_color, ribbon_color
+            arrangement_name, arrangement_id, deceased_name, booked_by,
+            funeral_home, date, time, notes, phone, email
         } = req.body;
 
         // Map frontend fields to backend schema
         const flower_type = arrangement_name || 'Custom Arrangement';
-        const flower_description = arrangements || '';
-        const service_type = 'funeral';
+        const flower_description = notes || '';
         const customer = booked_by || 'Guest';
         const customer_phone = phone || '';
         const customer_email = email || '';
         const branch = funeral_home || 'Not specified';
-        const delivery_date = date;
-        const delivery_time = time || '10:00';
-        const delivery_address = funeral_home || '';
-        const amount = parseFloat(arrangement_price) || 0;
-        const notes = [card_message, special_instructions, colors].filter(Boolean).join('\n');
-        const urgent = priority === 'High' ? 1 : 0;
 
         // Validation
-        if (!delivery_date || !delivery_time || !customer) {
+        if (!date || !time || !customer) {
             return res.status(400).json({
                 success: false,
                 error: 'Missing required fields: date, time, and customer name are required'
@@ -219,81 +191,26 @@ export const createBooking = async (req: any, res: any) => {
         );
         const count = countResult[0]?.total || 0;
         const booking_id = `FLW-${24000 + count + 1}`;
-        const invoice_number = `INV-${24000 + count + 1}`;
 
         const result = await safeTenantQuery(
             dbName,
             `INSERT INTO flower_bookings 
-            (booking_id, flower_type, flower_description, service_type, customer, 
+            (booking_id, flower_type, flower_description, customer, 
              customer_phone, customer_email, deceased_name, branch, 
-             delivery_date, delivery_time, delivery_address, invoice_number, 
-             amount, status, notes, urgent, created_by, quantity, arrangements, 
-             primary_color, accent_color, ribbon_color)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)`,
+             arrangement_id, date, time, status, notes, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
             [
-                booking_id, flower_type, flower_description || '', service_type, customer,
+                booking_id, flower_type, flower_description, customer,
                 customer_phone || '', customer_email || '', deceased_name || '', branch,
-                delivery_date, delivery_time, delivery_address || '', invoice_number,
-                amount || 0, notes || '', urgent ? 1 : 0, req.tenantSlug || 'system',
-                quantity || 1, arrangements || '', primary_color || '', accent_color || '', ribbon_color || ''
+                arrangement_id || null, date, time || '10:00', notes || '', req.tenantSlug || 'system'
             ]
         );
-
-        // Update customer stats if customer exists
-        try {
-            const existingCustomers = await safeTenantQuery(
-                dbName,
-                'SELECT id FROM flower_customers WHERE name = ? AND phone = ? LIMIT 1',
-                [customer, customer_phone || '']
-            );
-
-            if (existingCustomers.length > 0) {
-                await safeTenantQuery(
-                    dbName,
-                    'UPDATE flower_customers SET total_orders = total_orders + 1, total_spent = total_spent + ?, email = ? WHERE id = ?',
-                    [amount || 0, customer_email || '', existingCustomers[0].id]
-                );
-            } else {
-                await safeTenantQuery(
-                    dbName,
-                    'INSERT INTO flower_customers (name, phone, email, total_orders, total_spent) VALUES (?, ?, ?, 1, ?)',
-                    [customer, customer_phone || '', customer_email || '', amount || 0]
-                );
-            }
-        } catch (e) {
-            console.log('[FLORIST] Customer stats update skipped:', (e as Error).message);
-        }
 
         const newBooking = await safeTenantQuery(
             dbName,
             'SELECT * FROM flower_bookings WHERE booking_id = ? LIMIT 1',
             [booking_id]
         );
-
-        // Emit notification for new flower booking
-        try {
-            const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
-            await axios.post(`${socketioServiceUrl}/emit/flower-booking-created`, {
-                tenantSlug: req.tenantSlug || 'system',
-                data: {
-                    id: `flower-booking-${booking_id}-${Date.now()}`,
-                    bookingId: booking_id,
-                    customer: customer,
-                    deceasedName: deceased_name || '',
-                    flowerType: flower_type,
-                    deliveryDate: delivery_date,
-                    amount: amount,
-                    title: 'New Flower Booking',
-                    message: `New flower booking: ${flower_type} for ${deceased_name || customer}`,
-                    type: 'new_booking',
-                    priority: urgent ? 'high' : 'medium',
-                    fullContent: `Booking ID: ${booking_id}\nCustomer: ${customer}\nFlower: ${flower_type}\nDelivery: ${delivery_date}\nAmount: ${amount}`,
-                }
-            }, { timeout: 5000 });
-            console.log(`[FLORIST] Emitted flower-booking-created for ${booking_id}`);
-        } catch (emitError: any) {
-            console.warn('[FLORIST] Failed to emit flower-booking-created notification:', emitError.message);
-        }
 
         res.status(201).json({ success: true, data: newBooking[0], message: 'Booking created successfully' });
     } catch (error: any) {
@@ -325,11 +242,9 @@ export const updateBooking = async (req: any, res: any) => {
 
         // Build SET clause dynamically
         const allowedFields = [
-            'flower_type', 'flower_description', 'service_type', 'customer',
+            'flower_type', 'flower_description', 'customer',
             'customer_phone', 'customer_email', 'deceased_name', 'branch',
-            'delivery_date', 'delivery_time', 'delivery_address', 'amount',
-            'status', 'notes', 'urgent', 'quantity', 'arrangements',
-            'primary_color', 'accent_color', 'ribbon_color'
+            'arrangement_id', 'date', 'time', 'status', 'notes'
         ];
 
         const setClauses: string[] = [];
@@ -338,7 +253,7 @@ export const updateBooking = async (req: any, res: any) => {
         for (const field of allowedFields) {
             if (updates[field] !== undefined) {
                 setClauses.push(`${field} = ?`);
-                params.push(field === 'urgent' ? (updates[field] ? 1 : 0) : updates[field]);
+                params.push(updates[field]);
             }
         }
 
@@ -377,7 +292,7 @@ export const updateBookingStatus = async (req: any, res: any) => {
         const { id } = req.params;
         const { status } = req.body;
 
-        const validStatuses = ['pending', 'confirmed', 'preparing', 'delivering', 'delivered', 'cancelled'];
+        const validStatuses = ['pending', 'confirmed', 'preparing', 'completed', 'cancelled'];
         if (!status || !validStatuses.includes(status)) {
             return res.status(400).json({
                 success: false,
@@ -499,43 +414,6 @@ export const getStats = async (req: any, res: any) => {
         const statusMap: Record<string, number> = {};
         statusCounts.forEach((row: any) => { statusMap[row.status] = row.count; });
 
-        const revenueResult = await safeTenantQuery(
-            dbName,
-            'SELECT COALESCE(SUM(amount), 0) as total_revenue FROM flower_bookings WHERE status != "cancelled"'
-        );
-        const totalRevenue = revenueResult[0]?.total_revenue || 0;
-
-        // Upcoming (future deliveries, not delivered/cancelled)
-        const upcomingResult = await safeTenantQuery(
-            dbName,
-            `SELECT COUNT(*) as count FROM flower_bookings 
-             WHERE delivery_date >= CURDATE() AND status NOT IN ('delivered', 'cancelled')`
-        );
-        const upcoming = upcomingResult[0]?.count || 0;
-
-        // Today's deliveries
-        const todayResult = await safeTenantQuery(
-            dbName,
-            `SELECT COUNT(*) as count FROM flower_bookings WHERE delivery_date = CURDATE()`
-        );
-        const todayDeliveries = todayResult[0]?.count || 0;
-
-        // Monthly revenue (current month)
-        const monthlyResult = await safeTenantQuery(
-            dbName,
-            `SELECT COALESCE(SUM(amount), 0) as revenue FROM flower_bookings 
-             WHERE MONTH(delivery_date) = MONTH(CURDATE()) AND YEAR(delivery_date) = YEAR(CURDATE())
-             AND status != 'cancelled'`
-        );
-        const monthlyRevenue = monthlyResult[0]?.revenue || 0;
-
-        // Urgent bookings
-        const urgentResult = await safeTenantQuery(
-            dbName,
-            `SELECT COUNT(*) as count FROM flower_bookings WHERE urgent = 1 AND status NOT IN ('delivered', 'cancelled')`
-        );
-        const urgent = urgentResult[0]?.count || 0;
-
         res.json({
             success: true,
             data: {
@@ -543,15 +421,9 @@ export const getStats = async (req: any, res: any) => {
                 pending: statusMap['pending'] || 0,
                 confirmed: statusMap['confirmed'] || 0,
                 preparing: statusMap['preparing'] || 0,
-                delivering: statusMap['delivering'] || 0,
-                delivered: statusMap['delivered'] || 0,
+                completed: statusMap['completed'] || 0,
                 cancelled: statusMap['cancelled'] || 0,
-                inProgress: (statusMap['confirmed'] || 0) + (statusMap['preparing'] || 0) + (statusMap['delivering'] || 0),
-                totalRevenue,
-                monthlyRevenue,
-                upcoming,
-                todayDeliveries,
-                urgent
+                inProgress: (statusMap['confirmed'] || 0) + (statusMap['preparing'] || 0)
             }
         });
     } catch (error: any) {
@@ -571,12 +443,11 @@ export const getMonthlyTrend = async (req: any, res: any) => {
         const trend = await safeTenantQuery(
             dbName,
             `SELECT 
-                DATE_FORMAT(delivery_date, '%Y-%m') as month,
-                COUNT(*) as count,
-                COALESCE(SUM(amount), 0) as revenue
+                DATE_FORMAT(date, '%Y-%m') as month,
+                COUNT(*) as count
              FROM flower_bookings
-             WHERE delivery_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-             GROUP BY DATE_FORMAT(delivery_date, '%Y-%m')
+             WHERE date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+             GROUP BY DATE_FORMAT(date, '%Y-%m')
              ORDER BY month ASC`
         );
 
@@ -588,84 +459,16 @@ export const getMonthlyTrend = async (req: any, res: any) => {
 };
 
 // ============================================
-// CUSTOMERS
+// EXPORTED ROUTES (for Express router)
 // ============================================
 
-/**
- * GET /florist/customers
- * List all flower customers
- */
-export const getCustomers = async (req: any, res: any) => {
-    try {
-        const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
-        const { search, page = '1', limit = '20' } = req.query;
-
-        let whereClause = 'WHERE 1=1';
-        const params: any[] = [];
-
-        if (search) {
-            whereClause += ' AND (name LIKE ? OR phone LIKE ? OR email LIKE ?)';
-            const searchTerm = `%${search}%`;
-            params.push(searchTerm, searchTerm, searchTerm);
-        }
-
-        const countResult = await safeTenantQuery(
-            dbName,
-            `SELECT COUNT(*) as total FROM flower_customers ${whereClause}`,
-            params
-        );
-        const total = countResult[0]?.total || 0;
-
-        const pageNum = Math.max(1, parseInt(page));
-        const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
-        const offset = (pageNum - 1) * limitNum;
-
-        const customers = await safeTenantQuery(
-            dbName,
-            `SELECT * FROM flower_customers ${whereClause} ORDER BY total_orders DESC, name ASC LIMIT ? OFFSET ?`,
-            [...params, limitNum, offset]
-        );
-
-        res.json({
-            success: true,
-            data: customers,
-            pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) }
-        });
-    } catch (error: any) {
-        console.error('[FLORIST] Error fetching customers:', error.message);
-        res.status(500).json({ success: false, error: 'Failed to fetch customers', message: error.message });
-    }
-};
-
-/**
- * GET /florist/customers/:id
- * Get a single customer with their bookings
- */
-export const getCustomerById = async (req: any, res: any) => {
-    try {
-        const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
-        const { id } = req.params;
-
-        const customers = await safeTenantQuery(
-            dbName,
-            'SELECT * FROM flower_customers WHERE id = ? LIMIT 1',
-            [id]
-        );
-
-        if (customers.length === 0) {
-            return res.status(404).json({ success: false, error: 'Customer not found' });
-        }
-
-        // Get customer's bookings
-        const bookings = await safeTenantQuery(
-            dbName,
-            'SELECT * FROM flower_bookings WHERE customer = ? ORDER BY delivery_date DESC LIMIT 50',
-            [customers[0].name]
-        );
-
-        res.json({ success: true, data: { ...customers[0], bookings } });
-    } catch (error: any) {
-        console.error('[FLORIST] Error fetching customer:', error.message);
-        res.status(500).json({ success: false, error: 'Failed to fetch customer', message: error.message });
-    }
+export default {
+    getBookings,
+    getBookingById,
+    createBooking,
+    updateBooking,
+    updateBookingStatus,
+    deleteBooking,
+    getStats,
+    getMonthlyTrend
 };

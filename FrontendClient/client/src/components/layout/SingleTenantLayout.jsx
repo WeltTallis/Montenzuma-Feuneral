@@ -6,7 +6,7 @@ const menuItems = [
     { path: '/all-deceased', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
     { path: '/deceased', label: 'Deceased', icon: Users },
-    { path: '/coffins', label: 'Coffins', icon: Package },
+        { path: '/coffins', label: 'Coffins', icon: Package },
 ];
 
 export default function SingleTenantLayout({ children }) {

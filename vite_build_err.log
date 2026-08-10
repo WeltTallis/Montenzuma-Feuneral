@@ -1,0 +1,28 @@
+[33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.js:27:25). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/api/axios.js is dynamically imported by src/api/authApi.js but also statically imported by src/api/analyticsApi.js, src/api/authApi.js, src/api/calendarApi.js, src/api/dashboardDataApi.js, src/api/index.js, ..., dynamic import will not move module into another chunk.
+[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/components/analysis/coffinRequests.jsx is dynamically imported by src/routes/AppRouter.jsx but also statically imported by src/components/analysis/compDashboardLive.jsx, dynamic import will not move module into another chunk.
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/utils/signature/signaturepad.jsx is dynamically imported by src/components/releaseform/ReleaseFormPage.jsx but also statically imported by src/components/deceased/register/deceasedIntake.jsx, dynamic import will not move module into another chunk.
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/components/workshop/pages/WorkshopDashboard.jsx is dynamically imported by src/routes/AppRouter.jsx but also statically imported by src/components/workshop/pages/AnalyticsTab.jsx, src/components/workshop/pages/DashboardTab.jsx, src/components/workshop/pages/MaterialsTab.jsx, src/components/workshop/pages/OrdersTab.jsx, src/components/workshop/pages/StoreTab.jsx, ..., dynamic import will not move module into another chunk.
+[39m
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent 100% of 77.3s inside plugin hooks (89.5s).
+Measured inside the callback, so queue time is excluded and time the callback itself awaited is not:
+  - vite:build-import-analysis generateBundle (80%, 62.0s, 1 call)
+  - vite-plugin-compression closeBundle (12%, 9.2s, 1 call)
+  - vite-plugin-compression closeBundle (12%, 9.2s, 1 call)
+  - vite:prepare-out-dir renderStart (3%, 2.4s, 1 call)
+  - vite:css transform (3%, 2.3s, 10 calls)
+Those rows are 100% of the build; the rest of the 100% is below.
+Not measurable — 1 hook whose calls overlap, so elapsed time covers work other calls were doing. Profile with `node --cpu-prof`:
+  - vite:esbuild-transpile renderChunk (10 calls)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m

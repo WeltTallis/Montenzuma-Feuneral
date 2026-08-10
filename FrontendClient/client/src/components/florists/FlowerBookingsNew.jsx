@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { Flower2, MapPin, User, Calendar, Clock, ChevronLeft, ChevronRight, X, Check, Truck, Home, Package, AlertTriangle } from '../../utils/icons/icons';
 import api from '../../api/axios'
 import { useSocket } from '../../utils/context/socketContext'
+import ReusableCalendar from '../../utils/calender/calender';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -124,6 +125,28 @@ const FlowerBookingsNew = () => {
     return bookings.filter(b => b.delivery_date === dateStr);
   }, [bookings]);
 
+  const getBookingDotColor = (b) => {
+    switch (b.status) {
+      case 'pending': return '#d97706';
+      case 'confirmed': return '#0284c7';
+      case 'preparing': return '#6366f1';
+      case 'completed': return '#059669';
+      case 'cancelled': return '#dc2626';
+      default: return '#1d4ed8';
+    }
+  };
+
+  const calendarItems = useMemo(() => {
+    return bookings.map(b => {
+      let ds = b.delivery_date;
+      if (!ds) return { ...b, _calDate: null };
+      if (ds instanceof Date) {
+        ds = `${ds.getFullYear()}-${String(ds.getMonth() + 1).padStart(2, '0')}-${String(ds.getDate()).padStart(2, '0')}`;
+      }
+      return { ...b, _calDate: ds };
+    });
+  }, [bookings]);
+
   const calNav = useCallback((dir) => {
     const d = new Date(calDate.getTime());
     d.setMonth(d.getMonth() + dir);
@@ -227,7 +250,7 @@ const FlowerBookingsNew = () => {
     const formData = new FormData(form);
     
     try {
-      const res = await api.post('/florist/flower-arrangements', formData, {
+      const res = await api.post('/florist/flower-samples', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       

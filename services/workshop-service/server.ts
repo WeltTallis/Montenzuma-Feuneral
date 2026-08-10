@@ -195,6 +195,29 @@ async function ensureWorkshopTables(dbName: string) {
             console.log(`[WORKSHOP] ✓ Workshop tables already exist in: ${dbName}`);
         }
 
+        // ── Incremental, knex-run migrations for existing tables ──────────
+        // Runs each pending schema change (via knex schema builder) so new
+        // columns/tables are applied without dropping or touching existing data.
+        if (await tenantKnex.schema.hasColumn('coffin_orders', 'size') === false) {
+            const sizeMigration = await import('./migrations/20240701000001_add_size_to_coffin_orders.js');
+            await sizeMigration.up(tenantKnex);
+            console.log(`[WORKSHOP] ✅ Added 'size' column to coffin_orders in: ${dbName}`);
+        }
+
+        // -- Simplify coffin_orders: add coffin_name, drop customer/deceased & costs
+        const hasCoffinNameCol = await tenantKnex.schema.hasColumn('coffin_orders', 'coffin_name');
+        if (!hasCoffinNameCol) {
+            const simplifyMig = await import('./migrations/20240703000001_simplify_coffin_orders.js');
+            await simplifyMig.up(tenantKnex);
+            console.log(`[WORKSHOP] Added coffin_name, removed obsolete columns in: ${dbName}`);
+        }
+
+        if (await tenantKnex.schema.hasTable('workshop_workers') === false) {
+            const workersMigration = await import('./migrations/20240702000001_create_workshop_workers.js');
+            await workersMigration.up(tenantKnex);
+            console.log(`[WORKSHOP] ✅ Created workshop_workers table in: ${dbName}`);
+        }
+
         await tenantKnex.destroy();
         return true;
     } catch (error: any) {

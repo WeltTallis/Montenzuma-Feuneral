@@ -1,0 +1,147 @@
+    const toDateKey = (raw) => {
+      if (!raw) return '';
+      const s = String(raw);
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return '';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const handleDateSelect = (date) => {
+      setSelectedDate(date);
+      setDetailDate(date);
+    };
+
+    const closeDetail = () => setDetailDate(null);
+
+    const handleWeekBookingClick = (b) => {
+      viewBooking(b.id);
+    };
+
+    return (
+      <>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 16 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+            Reservations <span style={{ color: S.textMuted, fontWeight: 400 }}>({filteredBookings.length})</span>
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={styles.ff}>
+              <button
+                style={{ ...styles.fn, ...(bkView === 'calendar' ? styles.fnActive : {}) }}
+                onClick={() => setBkView('calendar')}
+              >
+                <i className="fa-solid fa-calendar-days" style={{ marginRight: 6 }}></i>Calendar
+              </button>
+              <button
+                style={{ ...styles.fn, ...(bkView === 'list' ? styles.fnActive : {}) }}
+                onClick={() => setBkView('list')}
+              >
+                <i className="fa-solid fa-list" style={{ marginRight: 6 }}></i>List
+              </button>
+            </div>
+            <button
+              style={{ ...styles.btn, ...styles.btnP }}
+              onClick={() => setModal({ open: true, type: 'booking', data: { service_date: new Date().toISOString().split('T')[0] } })}
+            >
+              <i className="fa-solid fa-plus"></i> New Reservation
+            </button>
+          </div>
+        </div>
+
+        <div style={styles.tw}>
+        <div style={styles.tt}>
+          <div style={styles.sbox}>
+            <i className="fa-solid fa-magnifying-glass" style={{ color: S.textMuted }}></i>
+            <input
+              style={styles.sboxInput}
+              placeholder="Search client..."
+              value={bkQuery}
+              onChange={e => setBkQuery(e.target.value)}
+            />
+          </div>
+          <div style={styles.ff}>
+            {[['all', 'All'], ['pending', 'Pending'], ['booked', 'Approved'], ['completed', 'Completed'], ['unpaid', 'Unpaid']].map(f => (
+              <button
+                key={f[0]}
+                style={{ ...styles.fn, ...(bkFilter === f[0] ? styles.fnActive : {}) }}
+                onClick={() => setBkFilter(f[0])}
+              >
+                {f[1]}
+              </button>
+            ))}
+          </div>
+        </div>
+        {bkView === 'calendar' ? (
+          <div>
+            <HorizontalCalendar
+              eventsData={filteredBookings}
+              selectedDate={selectedDate}
+              onDateSelect={handleDateSelect}
+              dateKey="service_date"
+            />
+
+            <WeekView
+              currentDate={selectedDate}
+              bookings={filteredBookings}
+              onBookingClick={handleWeekBookingClick}
+              getCoffinName={getCoffinName}
+              selectedDate={selectedDate}
+            />
+
+            {detailDate && (
+              <div className="coffin-detail-panel">
+                <div className="coffin-detail-title">
+                  <span>
+                    <i className="fa-solid fa-calendar-day" style={{ marginRight: 8, color: S.primary }}></i>
+                    {formatDate(detailDate.toISOString().split('T')[0])} — Bookings
+                  </span>
+                  <button
+                    onClick={closeDetail}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: S.textMuted,
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                    }}
+                  >
+                    <i className="fa-solid fa-times"></i>
+                  </button>
+                </div>
+                <div className="coffin-detail-grid">
+                  {filteredBookings
+                    .filter(b => toDateKey(b.service_date) === toDateKey(detailDate))
+                    .map(b => {
+                      const bs = getBookingStatus(b.status);
+                      const coffin = coffins.find(c => (c.coffin_id || c.id) == b.coffin_id);
+                      return (
+                        <div
+                          key={b.id}
+                          className="coffin-detail-card"
+                          onClick={() => viewBooking(b.id)}
+                        >
+                          <div className="coffin-detail-card-head">
+                            <span className="coffin-detail-card-client">{b.client_name}</span>
+                            <span className="coffin-bcard-status" style={{ background: getStatusColor(b.status) }}>{bs.label}</span>
+                          </div>
+                          <div className="coffin-detail-card-meta">
+                            <div><strong>Deceased:</strong> {b.deceased_name || 'N/A'}</div>
+                            <div><strong>Coffin:</strong> {coffin?.name || 'N/A'}</div>
+                            <div><strong>Price:</strong> {formatKES(b.coffin_price || b.price)}</div>
+                            <div><strong>Payment:</strong> <span className={b.paid ? 'coffin-bcard-pay paid' : 'coffin-bcard-pay unpaid'}>{b.paid ? 'Paid' : 'Unpaid'}</span></div>
+                            {b.notes && <div><strong>Notes:</strong> {b.notes}</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {filteredBookings.filter(b => toDateKey(b.service_date) === toDateKey(detailDate)).length === 0 && (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: S.textMuted, padding: 20 }}>
+                      <i className="fa-solid fa-calendar-check" style={{ fontSize: 24, opacity: 0.3, marginBottom: 8 }}></i>
+                      <p>No bookings on this day</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (

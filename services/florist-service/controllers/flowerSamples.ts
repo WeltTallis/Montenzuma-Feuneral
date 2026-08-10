@@ -13,9 +13,13 @@ import type {
 import { query, execute } from '../../../shared/dbConfig.js';
 import crypto from 'crypto';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
 import sharp from 'sharp';
 import os from 'os';
+
+// Fix __dirname for ES modules
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ============================================
 // CONFIGURATION
@@ -166,6 +170,28 @@ const stringifyJSONFields = (data: Partial<CreateFlowerSampleDTO>): any => {
   return result;
 };
 
+// ─── Helper to normalize comma-separated / JSON strings into arrays ───
+// Multipart/form-data delivers fields as strings, so a value like
+// "Wreath, Spray, Bouquet" must become ["Wreath","Spray","Bouquet"].
+const toArray = (value: any): any[] => {
+  if (Array.isArray(value)) return value;
+  if (value == null) return [];
+  if (typeof value === 'string' && value.trim()) {
+    const trimmed = value.trim();
+    // Accept a JSON array like '["Wreath","Spray"]'
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) { /* not JSON — fall through */ }
+    // Otherwise treat as comma-separated
+    return trimmed
+      .split(',')
+      .map((s: string) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
 // ============================================
 // CONTROLLER FUNCTIONS
 // ============================================
@@ -184,11 +210,14 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
     const { 
       title, 
       description, 
-      types, 
-      colors, 
-      sizes, 
       images: providedImages 
     }: CreateFlowerSampleDTO = req.body;
+
+    // Multipart form fields arrive as comma-separated (or JSON) strings —
+    // normalize them into the arrays the table expects.
+    const types = toArray(req.body.types);
+    const colors = toArray(req.body.colors);
+    const sizes = toArray(req.body.sizes);
 
     // Validate required fields
     if (!title || !description || !types || !colors || !sizes) {
@@ -372,13 +401,16 @@ export const updateFlowerArrangement = async (req: any, res: any): Promise<any> 
     }
 
     const updates: any = {};
-    const { title, description, types, colors, sizes, images: providedImages } = req.body;
+    const { title, description, images: providedImages } = req.body;
 
     if (title) updates.title = title;
     if (description) updates.description = description;
-    if (types && Array.isArray(types)) updates.types = JSON.stringify(types);
-    if (colors && Array.isArray(colors)) updates.colors = JSON.stringify(colors);
-    if (sizes && Array.isArray(sizes)) updates.sizes = JSON.stringify(sizes);
+    const types = toArray(req.body.types);
+    const colors = toArray(req.body.colors);
+    const sizes = toArray(req.body.sizes);
+    if (types.length) updates.types = JSON.stringify(types);
+    if (colors.length) updates.colors = JSON.stringify(colors);
+    if (sizes.length) updates.sizes = JSON.stringify(sizes);
 
     // Handle image updates
     let images = [...existingArrangement.images];

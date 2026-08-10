@@ -87,7 +87,6 @@ const getComprehensiveDashboard = asyncHandler(async (req, res) => {
             deceasedCount,
             caseStatus,
             deceasedTrends,
-            bookingCounts,
             coffinInventory,
             coffinSales,
             chemicalStock,
@@ -138,7 +137,6 @@ const getComprehensiveDashboard = asyncHandler(async (req, res) => {
         const dc = extractValue(deceasedCount, 0);
         const cs = extractArray(caseStatus);
         const dt = extractArray(deceasedTrends);
-        const bc = extractValue(bookingCounts, 0);
         const ci = extractValue(coffinInventory, 0);
         const csl = extractArray(coffinSales);
         const chs = extractArray(chemicalStock);
@@ -153,6 +151,8 @@ const getComprehensiveDashboard = asyncHandler(async (req, res) => {
         const fleetMap = hearseAnalytics.fleet || {};
         const hearseStats = hearseAnalytics.fleetStats || [];
         const hearseRevenue = hearseAnalytics.revenue || { total30d: 0, collected30d: 0, outstanding30d: 0 };
+        // Use booking stats from hearse-service (it has the real booking counts)
+        const hearseBookings = hearseAnalytics.bookings || {};
 
         // Build response
         const data = {
@@ -167,11 +167,11 @@ const getComprehensiveDashboard = asyncHandler(async (req, res) => {
                 monthlyTrends: Array.isArray(dt) ? dt.map(r => ({ month: r.month_label || 'Unknown', count: r.count || 0 })) : []
             },
             bookings: {
-                total: bc?.total || 0,
-                thisWeek: bc?.this_week || 0,
-                today: bc?.today || 0,
-                booked: bc?.booked || 0,
-                completed: bc?.completed || 0,
+                total: hearseBookings.total || 0,
+                thisWeek: hearseBookings.thisWeek || 0,
+                today: hearseBookings.today || 0,
+                booked: hearseBookings.active || 0,
+                completed: hearseBookings.completed || 0,
                 fleet: {
                     available: fleetMap['available'] || 0,
                     booked: fleetMap['booked'] || 0,

@@ -5,6 +5,9 @@ import api from '../../api/axios';
 import { ENDPOINTS } from '../../api/endpoints';
 import env from '../../utils/config/env';
 import { getTenantSlug, getParentTenantSlug } from '../../utils/globalAuth';
+import ReusableCalendar from '../../utils/calender/calender';
+import HorizontalCalendar from './horizontalCalendar';
+import WeekView from './weekView';
 
 const API = env.FULL_API_URL;
 
@@ -16,7 +19,8 @@ const S = {
   bg: '#f8fafc',
   cardBg: '#ffffff',
   text: '#0f172a',
-  textMuted: '#64748b',
+    textMuted: '#64748b',
+  textLight: '#94a3b8',
   border: '#e2e8f0',
   borderLight: '#f1f5f9',
   success: '#059669',
@@ -67,6 +71,37 @@ const getReqStatus = (status) => {
   return map[status] || map.pending;
 };
 
+const getBookingDotColor = (b) => {
+  switch (b.status) {
+    case 'pending': return S.warning;
+    case 'booked':
+    case 'approved': return S.info;
+    case 'completed': return S.success;
+    case 'cancelled':
+    case 'rejected': return S.danger;
+    default: return S.primary;
+  }
+};
+
+const getCoffinName = (coffinId) => {
+  const c = coffins.find(x => (x.coffin_id || x.id) == coffinId);
+  return c ? c.name : 'Coffin';
+};
+
+const getStatusColor = (status) => {
+  const map = {
+    pending: S.warning,
+    booked: S.info,
+    approved: S.info,
+    completed: S.success,
+    cancelled: S.danger,
+    rejected: S.danger,
+    transferring: '#7C3AED',
+    delivered: '#0D9488',
+  };
+  return map[status] || S.primary;
+};
+
 const formatDate = (d) => {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -78,9 +113,9 @@ const formatKES = (n) => 'KES ' + parseFloat(n || 0).toLocaleString();
 // ─── Inline Styles Object ────────────────────────────────────────────
 const styles = {
   W: {
-    maxWidth: 1400,
+    maxWidth: 2200,
     margin: '0 auto',
-    padding: '32px 24px',
+  
     fontFamily: S.font,
     color: S.text,
     background: S.bg,
@@ -107,7 +142,7 @@ const styles = {
     margin: 0,
   },
   hdH1Icon: {
-    color: S.primary,
+    color: S.text,
     background: S.primaryLight,
     width: 48,
     height: 48,
@@ -117,7 +152,7 @@ const styles = {
     justifyContent: 'center',
     fontSize: 22,
   },
-  hdInfoP: { color: S.textMuted, fontSize: 13, marginTop: 4, margin: 0 },
+  hdInfoP: { color: S.text, fontSize: 13, marginTop: 4, margin: 0 },
   
   // Stats Cards
   statsGrid: {
@@ -144,7 +179,7 @@ const styles = {
   statLabel: {
     fontSize: '12px',
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.71)',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
@@ -696,11 +731,38 @@ const CoffinDashboard = () => {
   const [bkFilter, setBkFilter] = useState('all');
   const [invQuery, setInvQuery] = useState('');
   const [bkQuery, setBkQuery] = useState('');
+  // Reservations view: 'calendar' (default monthly view) or 'list'
+  const [bkView, setBkView] = useState('calendar');
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return now;
+  });
+  const [detailDate, setDetailDate] = useState(null);
+
+  // Transfers tab state (lifted from renderTransfers to avoid conditional hooks)
+  const [transferTab, setTransferTab] = useState('incoming');
+  const [expandedTransferId, setExpandedTransferId] = useState(null);
+  const [transferQuery, setTransferQuery] = useState('');
 
   // Drawer / Modal
   const [drawer, setDrawer] = useState({ open: false, title: '', content: '' });
   const [modal, setModal] = useState({ open: false, type: '', data: {} });
   const [submitLoading, setSubmitLoading] = useState(false);
+
+
+
+
+   useEffect(() => {
+    const faId = 'font-awesome-cdn-inject';
+    if (!document.getElementById(faId)) {
+      const link = document.createElement('link');
+      link.id = faId;
+      link.rel = 'stylesheet';
+      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css';
+      document.head.appendChild(link);
+    }
+  }, []);
 
   // ─── API Calls ──────────────────────────────────────────────────────
   const fetchAllData = useCallback(async () => {
@@ -710,7 +772,8 @@ const CoffinDashboard = () => {
       const tenantSlug = getTenantSlug();
       const userStr = localStorage.getItem('user');
       const user = userStr ? JSON.parse(userStr) : {};
-      const userBranchId = user?.branchId;
+            // Fix: Use logged-in user's actual branch ID instead of defaulting to branchList[0]
+      const userBranchId = user?.branchId || user?.branch_id;
 
       // Fetch branches using PARENT tenant slug ONLY (never branch slug)
       // Read parentTenantSlug DIRECTLY from user object in localStorage
@@ -746,20 +809,28 @@ const CoffinDashboard = () => {
       }
 
       if (branchList.length === 0) {
-        // Fallback: create branch from user data
+        // Fallback: create a default main branch
         branchList = [{ 
-          id: userBranchId || 1, 
-          name: user.fullName || 'My Branch', 
+          id: 1, 
+          name: 'Main Branch', 
           branch_slug: tenantSlug, 
           branch_db_name: tenantSlug 
         }];
         console.log('[COFFIN UI] Using fallback branch:', branchList[0]);
       }
       
-      const defaultBranch = branchList[0]?.id || 1;
-      
+                  const defaultBranch = branchList.find(b => b.id == userBranchId)?.id || branchList[0]?.id || 1;
+
       setBranches(branchList);
       setCurrentBranch(defaultBranch);
+
+      // Persist branch info to localStorage so axios interceptor sends correct x-branch-* headers
+      const resolvedBranch = branchList.find(b => b.id == defaultBranch);
+      if (resolvedBranch) {
+        localStorage.setItem('branchId', String(resolvedBranch.id));
+        localStorage.setItem('branchSlug', resolvedBranch.branch_slug || '');
+        localStorage.setItem('branchDb', resolvedBranch.branch_db_name || '');
+      }
 
       try {
         const coffinRes = await api.get('/coffins/list');
@@ -798,6 +869,10 @@ const CoffinDashboard = () => {
 
   useEffect(() => { fetchAllData(); }, [fetchAllData]);
 
+
+
+    // ─── Inject Font Awesome CDN (Fix for missing icons) ──────────────────
+ 
   // ─── CRUD Handlers ──────────────────────────────────────────────────
   const handleCreateCoffin = async (e) => {
     e.preventDefault();
@@ -947,18 +1022,25 @@ const CoffinDashboard = () => {
   };
 
   // ─── Filtered Data ──────────────────────────────────────────────────
-  const branchCoffins = coffins.filter(c => !currentBranch || c.branch_id === currentBranch || c.branch_id == currentBranch);
+  // Coffins registered without a per-branch id (branch_id undefined) belong to the
+  // current branch, so keep them visible. Otherwise match the selected branch.
+  const branchCoffins = coffins.filter(c => !currentBranch || !c.branch_id || c.branch_id === currentBranch || c.branch_id == currentBranch);
   const branchBookings = bookings.filter(b => !currentBranch || b.branch_id === currentBranch || b.branch_id == currentBranch);
 
-  const filteredCoffins = branchCoffins.filter(c => {
+    const filteredCoffins = branchCoffins.filter(c => {
     if (invQuery) {
       const ql = invQuery.toLowerCase();
-      if (!c.name?.toLowerCase().includes(ql)) return false;
+      if (!c.name?.toLowerCase().includes(ql) &&
+          !(c.custom_id || c.coffin_id)?.toLowerCase().includes(ql) &&
+          !c.size?.toLowerCase().includes(ql) &&
+          !c.color?.toLowerCase().includes(ql) &&
+          !c.material?.toLowerCase().includes(ql)) return false;
     }
     if (invFilter === 'available') return c.stock > 2;
     if (invFilter === 'low') return c.stock > 0 && c.stock <= 2;
     if (invFilter === 'out') return c.stock <= 0;
     return true;
+
   });
 
   const filteredBookings = branchBookings.filter(b => {
@@ -969,6 +1051,7 @@ const CoffinDashboard = () => {
     if (bkFilter === 'unpaid') return !b.paid;
     if (bkFilter !== 'all') return b.status === bkFilter;
     return true;
+    
   });
 
   const incomingRequests = stockRequests.filter(r => r.to_branch_id == currentBranch);
@@ -1009,9 +1092,14 @@ const CoffinDashboard = () => {
         </div>
         <div style="${objToStr(styles.detailSection)}">
           <h4 style="${objToStr(styles.detailSectionH4)}"><i class="fa-solid fa-info-circle"></i> Information</h4>
+          <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Coffin ID</span><strong style="${objToStr(styles.detailRowStrong)}">${c.coffin_id || c.custom_id || 'N/A'}</strong></div>
+          <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Custom ID</span><strong style="${objToStr(styles.detailRowStrong)}">${c.custom_id || 'N/A'}</strong></div>
           <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">SKU</span><strong style="${objToStr(styles.detailRowStrong)}">${c.sku || 'N/A'}</strong></div>
+          <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Material</span><strong style="${objToStr(styles.detailRowStrong)}">${c.material || 'N/A'}</strong></div>
           <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Size</span><strong style="${objToStr(styles.detailRowStrong)}">${c.size || 'N/A'}</strong></div>
           <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Color</span><strong style="${objToStr(styles.detailRowStrong)}">${c.color || 'N/A'}</strong></div>
+          <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Category</span><strong style="${objToStr(styles.detailRowStrong)}">${c.category || 'N/A'}</strong></div>
+          <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Type</span><strong style="${objToStr(styles.detailRowStrong)}">${c.type || 'N/A'}</strong></div>
         </div>
         <div style="${objToStr(styles.detailSection)}">
           <h4 style="${objToStr(styles.detailSectionH4)}"><i class="fa-solid fa-tag"></i> Pricing</h4>
@@ -1179,7 +1267,7 @@ const CoffinDashboard = () => {
 
         if (allCoffins.length === 0) {
           openDrawer('Find Stock in Other Branches', `
-            <div style="text-align:center; padding:40px 20px;">
+            <div style="text-align:center; padding: 0px;">
               <i class="fa-solid fa-box-open" style="font-size:48px; color:${S.textMuted}; margin-bottom:16px; opacity:0.5;"></i>
               <h3 style="font-size:16px; font-weight:700; color:${S.text}; margin:0 0 8px;">No Coffins Found</h3>
               <p style="font-size:14px; color:${S.textMuted}; margin:0;">No coffins available in other branches.</p>
@@ -1251,7 +1339,7 @@ const CoffinDashboard = () => {
 
     if (results.length === 0) {
       html += `
-        <div style="text-align:center; padding:40px 20px; background:#fff; border-radius:12px; border:1px dashed ${S.border};">
+        <div style="text-align:center; padding:10px 20px; background:#fff; border-radius:12px; border:1px dashed ${S.border};">
           <i class="fa-solid fa-box-open" style="font-size:24px; color:${S.textMuted}; margin-bottom:12px; opacity:0.5;"></i>
           <p style="font-size:14px; font-weight:600; color:${S.text}; margin:0 0 4px;">No Coffins Found</p>
           <p style="font-size:13px; color:${S.textMuted}; margin:0;">Try adjusting your search or branch filter.</p>
@@ -1272,10 +1360,12 @@ const CoffinDashboard = () => {
               </div>
               <div>
                 <div style="font-weight:700; color:${S.text}; font-size:15px; margin-bottom:4px;">${c.name}</div>
-                <div style="font-size:13px; color:${S.textMuted}; display:flex; align-items:center; gap:8px;">
+                <div style="font-size:13px; color:${S.textMuted}; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                   <span style="display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-building" style="font-size:11px;"></i> ${c.branch_name || 'Unknown'}</span>
                   <span style="color:${S.border};">|</span>
                   <span style="font-weight:600; color:${S.text};">${formatKES(c.price)}</span>
+                  ${c.color ? `<span style="color:${S.border};">|</span><span><i class="fa-solid fa-palette" style="font-size:11px;"></i> Color: ${c.color}</span>` : ''}
+                  ${c.size ? `<span style="color:${S.border};">|</span><span><i class="fa-solid fa-ruler" style="font-size:11px;"></i> Size: ${c.size}</span>` : ''}
                 </div>
               </div>
             </div>
@@ -1339,7 +1429,7 @@ const CoffinDashboard = () => {
       const c = (window.__interBranchCoffins || []).find(x => (x.coffin_id || x.id) == cid);
       if (!c) return;
       const content = `
-        <button class="drawer-btn btn-g btn-sm" style="width:auto; margin-bottom:24px; padding:8px 14px;" onclick="window.__openFindStock('')">
+        <button class="drawer-btn btn-g btn-sm" style="width:auto;  onclick="window.__openFindStock('')">
           <i class="fa-solid fa-arrow-left"></i> Back to Search
         </button>
         
@@ -1382,6 +1472,10 @@ const CoffinDashboard = () => {
             <input class="drawer-input" id="ir-phone" placeholder="0712-345-678">
           </div>
           <div style="${objToStr(styles.fg)}">
+            <label style="${objToStr(styles.fl)}">Expected By</label>
+            <input type="date" class="drawer-input" id="ir-date">
+          </div>
+          <div style="${objToStr(styles.fg)}">
             <label style="${objToStr(styles.fl)}">Notes / Reason</label>
             <textarea class="drawer-textarea" id="ir-reason" placeholder="Purpose for this request..." style="min-height:80px;"></textarea>
           </div>
@@ -1401,6 +1495,7 @@ const CoffinDashboard = () => {
       const client = document.getElementById('ir-client')?.value;
       const phone = document.getElementById('ir-phone')?.value;
       const reason = document.getElementById('ir-reason')?.value;
+      const expectedDate = document.getElementById('ir-date')?.value;
       
       if (!client || !quantity) {
         toast.error('Client name and quantity are required');
@@ -1425,6 +1520,7 @@ const CoffinDashboard = () => {
           quantity: parseInt(quantity) || 1,
           client_name: client,
           client_phone: phone,
+          service_date: expectedDate || null,
           notes: reason || 'Inter-branch stock request',
           req_type: 'client',
           requested_by: userEmail,  // Auto-populate from logged-in user
@@ -1498,7 +1594,7 @@ const CoffinDashboard = () => {
   // ─── Render Inventory Tab ───────────────────────────────────────────
   const renderInventory = () => (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap',  }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
           Inventory <span style={{ color: S.textMuted, fontWeight: 400 }}>({branchCoffins.length} items)</span>
         </h3>
@@ -1549,7 +1645,9 @@ const CoffinDashboard = () => {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={styles.th}>Coffin</th>
+                                <th style={styles.th}>Coffin</th>
+                <th style={styles.th}>ID</th>
+                <th style={styles.th}>Details</th>
                 <th style={styles.th}>Price</th>
                 <th style={styles.th}>Stock</th>
                 <th style={styles.th}>Status</th>
@@ -1559,7 +1657,7 @@ const CoffinDashboard = () => {
             <tbody>
               {filteredCoffins.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={7}>
                     <div style={styles.es}>
                       <i className="fa-solid fa-box-open" style={styles.esIcon}></i>
                       <p style={styles.esP}>No coffins found locally.</p>
@@ -1580,13 +1678,25 @@ const CoffinDashboard = () => {
                   const id = coffin.coffin_id || coffin.id;
                   return (
                     <tr key={id}>
-                      <td style={styles.td}>
+                                            <td style={styles.td}>
                         <div style={styles.ci}>
                           <div style={styles.thumb}>{coffin.name?.charAt(0) || '?'}</div>
                           <div>
                             <div style={styles.cname}>{coffin.name}</div>
                             <div style={styles.sku}>{coffin.sku}</div>
                           </div>
+                        </div>
+                      </td>
+                      <td style={{ ...styles.td, fontSize: 12, fontWeight: 600, color: S.textMuted, fontFamily: 'monospace' }}>{coffin.custom_id || coffin.coffin_id || '—'}</td>
+                      <td style={styles.td}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12 }}>
+                          {coffin.size && <span style={{ color: S.text, fontWeight: 600 }}>Size: {coffin.size}</span>}
+                          {coffin.color && <span style={{ color: S.text, fontWeight: 600 }}>Color: {coffin.color}</span>}
+                          {coffin.material && <span style={{ color: S.textMuted }}>Material: {coffin.material}</span>}
+                          {coffin.category && <span style={{ color: S.textMuted }}>Category: {coffin.category}</span>}
+                          {!coffin.size && !coffin.color && !coffin.material && !coffin.category && (
+                            <span style={{ color: S.textLight, fontStyle: 'italic' }}>No additional details</span>
+                          )}
                         </div>
                       </td>
                       <td style={{ ...styles.td, fontWeight: 600 }}>{formatKES(coffin.price)}</td>
@@ -1632,18 +1742,58 @@ const CoffinDashboard = () => {
   );
 
   // ─── Render Bookings Tab ────────────────────────────────────────────
-  const renderBookings = () => (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 16 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Reservations</h3>
-        <button
-          style={{ ...styles.btn, ...styles.btnP }}
-          onClick={() => setModal({ open: true, type: 'booking', data: { service_date: new Date().toISOString().split('T')[0] } })}
-        >
-          <i className="fa-solid fa-plus"></i> New Reservation
-        </button>
-      </div>
-      <div style={styles.tw}>
+  const renderBookings = () => {
+    const toDateKey = (raw) => {
+      if (!raw) return '';
+      const s = String(raw);
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return '';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const handleDateSelect = (date) => {
+      setSelectedDate(date);
+      setDetailDate(date);
+    };
+
+    const closeDetail = () => setDetailDate(null);
+
+    const handleWeekBookingClick = (b) => {
+      viewBooking(b.id);
+    };
+
+    return (
+      <>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 16 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+            Reservations <span style={{ color: S.textMuted, fontWeight: 400 }}>({filteredBookings.length})</span>
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={styles.ff}>
+              <button
+                style={{ ...styles.fn, ...(bkView === 'calendar' ? styles.fnActive : {}) }}
+                onClick={() => setBkView('calendar')}
+              >
+                <i className="fa-solid fa-calendar-days" style={{ marginRight: 6 }}></i>Calendar
+              </button>
+              <button
+                style={{ ...styles.fn, ...(bkView === 'list' ? styles.fnActive : {}) }}
+                onClick={() => setBkView('list')}
+              >
+                <i className="fa-solid fa-list" style={{ marginRight: 6 }}></i>List
+              </button>
+            </div>
+            <button
+              style={{ ...styles.btn, ...styles.btnP }}
+              onClick={() => setModal({ open: true, type: 'booking', data: { service_date: new Date().toISOString().split('T')[0] } })}
+            >
+              <i className="fa-solid fa-plus"></i> New Reservation
+            </button>
+          </div>
+        </div>
+
+        <div style={styles.tw}>
         <div style={styles.tt}>
           <div style={styles.sbox}>
             <i className="fa-solid fa-magnifying-glass" style={{ color: S.textMuted }}></i>
@@ -1666,6 +1816,81 @@ const CoffinDashboard = () => {
             ))}
           </div>
         </div>
+        {bkView === 'calendar' ? (
+          <div>
+            <HorizontalCalendar
+              eventsData={filteredBookings}
+              selectedDate={selectedDate}
+              onDateSelect={handleDateSelect}
+              dateKey="service_date"
+            />
+
+            <WeekView
+              currentDate={selectedDate}
+              bookings={filteredBookings}
+              onBookingClick={handleWeekBookingClick}
+              getCoffinName={getCoffinName}
+              selectedDate={selectedDate}
+            />
+
+            {detailDate && (
+              <div className="coffin-detail-panel">
+                <div className="coffin-detail-title">
+                  <span>
+                    <i className="fa-solid fa-calendar-day" style={{ marginRight: 8, color: S.primary }}></i>
+                    {formatDate(detailDate.toISOString().split('T')[0])} � Bookings
+                  </span>
+                  <button
+                    onClick={closeDetail}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: S.textMuted,
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                    }}
+                  >
+                    <i className="fa-solid fa-times"></i>
+                  </button>
+                </div>
+                <div className="coffin-detail-grid">
+                  {filteredBookings
+                    .filter(b => toDateKey(b.service_date) === toDateKey(detailDate))
+                    .map(b => {
+                      const bs = getBookingStatus(b.status);
+                      const coffin = coffins.find(c => (c.coffin_id || c.id) == b.coffin_id);
+                      return (
+                        <div
+                          key={b.id}
+                          className="coffin-detail-card"
+                          onClick={() => viewBooking(b.id)}
+                        >
+                          <div className="coffin-detail-card-head">
+                            <span className="coffin-detail-card-client">{b.client_name}</span>
+                            <span className="coffin-bcard-status" style={{ background: getStatusColor(b.status) }}>{bs.label}</span>
+                          </div>
+                          <div className="coffin-detail-card-meta">
+                            <div><strong>Deceased:</strong> {b.deceased_name || 'N/A'}</div>
+                            <div><strong>Coffin:</strong> {coffin?.name || 'N/A'}</div>
+                            <div><strong>Price:</strong> {formatKES(b.coffin_price || b.price)}</div>
+                            <div><strong>Payment:</strong> <span className={b.paid ? 'coffin-bcard-pay paid' : 'coffin-bcard-pay unpaid'}>{b.paid ? 'Paid' : 'Unpaid'}</span></div>
+                            {b.notes && <div><strong>Notes:</strong> {b.notes}</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {filteredBookings.filter(b => toDateKey(b.service_date) === toDateKey(detailDate)).length === 0 && (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: S.textMuted, padding: 20 }}>
+                      <i className="fa-solid fa-calendar-check" style={{ fontSize: 24, opacity: 0.3, marginBottom: 8 }}></i>
+                      <p>No bookings on this day</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+
         <div style={styles.tableWrap}>
           <table style={styles.table}>
             <thead>
@@ -1714,158 +1939,300 @@ const CoffinDashboard = () => {
                   );
                 })
               )}
-            </tbody>
+                        </tbody>
           </table>
         </div>
+        )}
       </div>
     </>
   );
+  };
 
   // ─── Render Transfers Tab ───────────────────────────────────────────
-  const renderTransfers = () => (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 16 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Transfers</h3>
-        <button style={{ ...styles.btn, ...styles.btnP }} onClick={() => openFindStock()}>
-          <i className="fa-solid fa-network-wired"></i> Find in Other Branches
-        </button>
-      </div>
-      <div style={styles.rg}>
-        <div style={styles.tw}>
-          <div style={styles.tt}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <i className="fa-solid fa-arrow-down" style={{ color: S.success }}></i> Incoming ({incomingRequests.length})
-            </h4>
+  const renderTransfers = () => {
+    const pendingCount = stockRequests.filter(r => r.status === 'pending').length;
+    const totalIncoming = incomingRequests.length;
+    const totalOutgoing = outgoingRequests.length;
+
+    const filteredIncoming = incomingRequests.filter(r => {
+      if (!transferQuery) return true;
+      const q = transferQuery.toLowerCase();
+      const coffin = coffins.find(c => (c.coffin_id || c.id) == r.coffin_id);
+      const branch = branches.find(b => b.id == r.from_branch_id);
+      return String(r.id).includes(q) || coffin?.name?.toLowerCase().includes(q) || branch?.name?.toLowerCase().includes(q);
+    });
+    const filteredOutgoing = outgoingRequests.filter(r => {
+      if (!transferQuery) return true;
+      const q = transferQuery.toLowerCase();
+      const coffin = coffins.find(c => (c.coffin_id || c.id) == r.coffin_id);
+      const branch = branches.find(b => b.id == r.to_branch_id);
+      return String(r.id).includes(q) || coffin?.name?.toLowerCase().includes(q) || branch?.name?.toLowerCase().includes(q);
+    });
+
+    const toggleExpand = (id) => setExpandedTransferId(expandedTransferId === id ? null : id);
+
+    const getStatusBadge = (status) => {
+      const cfg = getReqStatus(status);
+      const map = {
+        'tag-pe': { bg: S.warningLight, color: S.warning },
+        'tag-ar': { bg: '#e0e7ff', color: S.primaryDark },
+        'tag-tr': { bg: S.infoLight, color: S.info },
+        'tag-de': { bg: S.successLight, color: S.success },
+      };
+      const c = map[cfg.cls] || { bg: S.warningLight, color: S.warning };
+      return <span style={{ padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.03em', background: c.bg, color: c.color }}>{cfg.label}</span>;
+    };
+
+    const timelineSteps = (status) => {
+      const steps = [
+        { key: 'pending', label: 'Request Initiated', icon: 'fa-solid fa-circle-check', done: true },
+        { key: 'approved', label: 'Approved', icon: 'fa-solid fa-check', done: status === 'approved' || status === 'transferring' || status === 'delivered' },
+        { key: 'transferring', label: 'In Transit', icon: 'fa-solid fa-truck', done: status === 'transferring' || status === 'delivered' },
+        { key: 'delivered', label: 'Delivered', icon: 'fa-solid fa-flag-checkered', done: status === 'delivered' },
+      ];
+      return steps;
+    };
+
+    const Timeline = ({ status }) => {
+      const steps = timelineSteps(status);
+      const completedCount = steps.filter(s => s.done).length;
+      const progressPct = ((completedCount - 1) / (steps.length - 1)) * 100;
+      return (
+        <div style={{ position: 'relative', padding: '0 4px', marginTop: 8 }}>
+          <div style={{ position: 'absolute', top: 14, left: 28, right: 28, height: 2, background: S.border, zIndex: 0 }}></div>
+          <div style={{ position: 'absolute', top: 14, left: 28, height: 2, background: S.success, zIndex: 1, width: `calc(${progressPct}% - 20px)` }}></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', zIndex: 2 }}>
+            {steps.map((s, i) => (
+              <div key={s.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '25%', textAlign: 'center' }}>
+                <div style={{
+                  width: 30, height: 30, borderRadius: '50%', background: '#fff',
+                  border: `3px solid ${s.done ? S.success : S.border}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, color: s.done ? '#fff' : S.textLight, transition: 'all 0.3s',
+                }}><i className={s.icon}></i></div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: s.done ? S.text : S.textLight }}>{s.label}</div>
+                </div>
+              </div>
+            ))}
           </div>
-          <div style={styles.tableWrap}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>ID</th>
-                  <th style={styles.th}>From</th>
-                  <th style={styles.th}>Coffin</th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {incomingRequests.length === 0 ? (
-                  <tr>
-                    <td colSpan={5}>
-                      <div style={styles.es}>
-                        <i className="fa-solid fa-check-double" style={styles.esIcon}></i>
-                        <p style={styles.esP}>No incoming requests</p>
+        </div>
+      );
+    };
+
+    const TransferRow = ({ r, type }) => {
+      const coffin = coffins.find(c => (c.coffin_id || c.id) == r.coffin_id);
+      const fromBranch = branches.find(b => b.id == r.from_branch_id);
+      const toBranch = branches.find(b => b.id == r.to_branch_id);
+      const isExpanded = expandedTransferId === r.id;
+      const origin = type === 'incoming' ? fromBranch : toBranch;
+      const dest = type === 'incoming' ? toBranch : fromBranch;
+
+      const actionButtons = [];
+      if (type === 'incoming') {
+        if (r.status === 'pending') {
+          actionButtons.push(<button key="a" style={{ ...styles.ib, color: S.success, borderColor: 'transparent', background: S.successLight }} onClick={(e) => { e.stopPropagation(); handleStockAction(r.id, 'approve'); }} title="Approve"><i className="fa-solid fa-check"></i></button>);
+        }
+        if (r.status === 'approved') {
+          actionButtons.push(<button key="b" style={{ ...styles.ib, color: S.warning, borderColor: 'transparent', background: S.warningLight }} onClick={(e) => { e.stopPropagation(); handleStockAction(r.id, 'transferring'); }} title="Send"><i className="fa-solid fa-truck"></i></button>);
+        }
+        if (r.status === 'transferring') {
+          actionButtons.push(<button key="c" style={{ ...styles.ib, color: S.success, borderColor: 'transparent', background: S.successLight }} onClick={(e) => { e.stopPropagation(); handleStockAction(r.id, 'delivered'); }} title="Receive"><i className="fa-solid fa-circle-check"></i></button>);
+        }
+      }
+
+      return (
+        <>
+          <div style={{ borderBottom: isExpanded ? 'none' : `1px solid ${S.borderLight}`, background: isExpanded ? '#fbfcfd' : '#fff', cursor: 'pointer', transition: 'background 0.15s' }} onClick={() => toggleExpand(r.id)}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 2fr 1.5fr 40px', gap: 24, padding: '18px 24px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: S.bg, border: `1px solid ${S.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: S.text, fontSize: 16, flexShrink: 0 }}>
+                  <i className="fa-solid fa-box"></i>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: S.textLight, textTransform: 'uppercase', marginBottom: 2 }}>#{r.id} · {type === 'incoming' ? 'INC' : 'OUT'}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{coffin?.name || 'Unknown Coffin'}</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: S.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0f172a', display: 'inline-block' }}></span>
+                    {origin?.name || 'N/A'}
+                  </div>
+                  <div style={{ fontSize: 11, color: S.textMuted, fontWeight: 500 }}>Origin</div>
+                </div>
+                <div style={{ flex: 1, height: 2, borderTop: '2px dotted', borderColor: S.border, position: 'relative' }}>
+                  <i className="fa-solid fa-truck" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: '#fbfcfd', padding: '0 4px', color: S.textLight, fontSize: 10 }}></i>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: S.text, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                    {dest?.name || 'N/A'}
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: S.success, boxShadow: `0 0 0 3px ${S.successLight}`, display: 'inline-block' }}></span>
+                  </div>
+                  <div style={{ fontSize: 11, color: S.textMuted, fontWeight: 500 }}>Destination</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: S.textMuted, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <i className="fa-regular fa-clock" style={{ fontSize: 11 }}></i> {r.transfer_date ? formatDate(r.transfer_date) : '—'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{getStatusBadge(r.status)}</div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', color: S.textLight, transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                <i className="fas fa-chevron-down"></i>
+              </div>
+            </div>
+          </div>
+
+          {isExpanded && (
+            <div style={{ background: S.bg, borderBottom: `1px solid ${S.border}`, padding: '28px 24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 40 }}>
+                <div>
+                  <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: S.textMuted, marginBottom: 16 }}>Shipment Details</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div style={{ background: '#fff', padding: '12px 16px', borderRadius: 8, border: `1px solid ${S.borderLight}` }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: S.textLight, marginBottom: 4 }}>Quantity</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: S.text }}>{r.quantity || 1} Unit{r.quantity > 1 ? 's' : ''}</div>
+                    </div>
+                    <div style={{ background: '#fff', padding: '12px 16px', borderRadius: 8, border: `1px solid ${S.borderLight}` }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: S.textLight, marginBottom: 4 }}>Coffin</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: S.text }}>{coffin?.name || 'N/A'}</div>
+                    </div>
+                    <div style={{ background: '#fff', padding: '12px 16px', borderRadius: 8, border: `1px solid ${S.borderLight}` }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: S.textLight, marginBottom: 4 }}>From</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: S.text }}>{fromBranch?.name || 'N/A'}</div>
+                    </div>
+                    <div style={{ background: '#fff', padding: '12px 16px', borderRadius: 8, border: `1px solid ${S.borderLight}` }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: S.textLight, marginBottom: 4 }}>To</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: S.text }}>{toBranch?.name || 'N/A'}</div>
+                    </div>
+                    {r.notes && (
+                      <div style={{ background: '#fff', padding: '12px 16px', borderRadius: 8, border: `1px solid ${S.borderLight}`, gridColumn: '1 / -1' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: S.textLight, marginBottom: 4 }}>Notes</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: S.textMuted }}>{r.notes}</div>
                       </div>
-                    </td>
-                  </tr>
-                ) : (
-                  incomingRequests.map(r => {
-                    const coffin = coffins.find(c => (c.coffin_id || c.id) == r.coffin_id);
-                    const rs = getReqStatus(r.status);
-                    const fromBranch = branches.find(b => b.id == r.from_branch_id);
-                    return (
-                      <tr key={r.id}>
-                        <td style={{ ...styles.td, fontWeight: 600 }}>#{r.id}</td>
-                        <td style={styles.td}>{fromBranch?.name || 'N/A'}</td>
-                        <td style={styles.td}>{coffin?.name || 'N/A'}</td>
-                        <td style={styles.td}><Tag cls={rs.cls}>{rs.label}</Tag></td>
-                        <td style={styles.td}>
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button style={styles.ib} onClick={() => viewRequest(r.id)} title="View Progress">
-                              <i className="fa-solid fa-eye"></i>
-                            </button>
-                            {r.status === 'pending' && (
-                              <button
-                                style={{ ...styles.ib, color: S.success, borderColor: 'transparent' }}
-                                onClick={() => handleStockAction(r.id, 'approve')}
-                                title="Approve"
-                              >
-                                <i className="fa-solid fa-check"></i>
-                              </button>
-                            )}
-                            {r.status === 'approved' && (
-                              <button
-                                style={{ ...styles.ib, color: S.warning, borderColor: 'transparent' }}
-                                onClick={() => handleStockAction(r.id, 'transferring')}
-                                title="Send"
-                              >
-                                <i className="fa-solid fa-truck"></i>
-                              </button>
-                            )}
-                            {r.status === 'transferring' && (
-                              <button
-                                style={{ ...styles.ib, color: S.success, borderColor: 'transparent' }}
-                                onClick={() => handleStockAction(r.id, 'delivered')}
-                                title="Receive"
-                              >
-                                <i className="fa-solid fa-circle-check"></i>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: S.textMuted, marginBottom: 8 }}>Processing Timeline</h3>
+                  <Timeline status={r.status} />
+
+                  {type === 'incoming' && actionButtons.length > 0 && (
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 28, paddingTop: 20, borderTop: `1px solid ${S.border}` }}>
+                      {r.status === 'pending' && (
+                        <button style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: S.dangerLight, color: S.danger, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => { e.stopPropagation(); handleStockAction(r.id, 'rejected'); }}>
+                          <i className="fa-solid fa-times"></i> Reject
+                        </button>
+                      )}
+                      {r.status === 'pending' && (
+                        <button style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: S.success, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => { e.stopPropagation(); handleStockAction(r.id, 'approve'); }}>
+                          <i className="fa-solid fa-check"></i> Approve & Dispatch
+                        </button>
+                      )}
+                      {r.status === 'approved' && (
+                        <button style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: S.infoLight, color: S.info, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => { e.stopPropagation(); handleStockAction(r.id, 'transferring'); }}>
+                          <i className="fa-solid fa-truck"></i> Mark In Transit
+                        </button>
+                      )}
+                      {r.status === 'transferring' && (
+                        <button style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: S.success, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => { e.stopPropagation(); handleStockAction(r.id, 'delivered'); }}>
+                          <i className="fa-solid fa-circle-check"></i> Confirm Delivered
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {type === 'outgoing' && (
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 28, paddingTop: 20, borderTop: `1px solid ${S.border}` }}>
+                      <button style={{ padding: '10px 18px', borderRadius: 8, border: `1px solid ${S.border}`, background: '#fff', color: S.danger, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => { e.stopPropagation(); handleStockAction(r.id, 'rejected'); }}>
+                        <i className="fa-solid fa-times"></i> Cancel Request
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      );
+    };
+
+    return (
+      <>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 28, paddingBottom: 20, borderBottom: `1px solid ${S.borderLight}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: S.primaryLight, display: 'flex', alignItems: 'center', justifyContent: 'center', color: S.primary, fontSize: 20 }}>
+              <i className="fa-solid fa-route"></i>
+            </div>
+            <div>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: S.text, margin: 0, letterSpacing: '-0.02em' }}>Logistics & Transfers</h1>
+              <p style={{ fontSize: 13, color: S.textMuted, fontWeight: 500, margin: '4px 0 0' }}>{pendingCount} pending · {totalIncoming} incoming · {totalOutgoing} outgoing</p>
+            </div>
+          </div>
+          <button style={{ padding: '10px 16px', border: `1px solid ${S.border}`, borderRadius: 10, background: '#fff', fontSize: 13, fontWeight: 600, color: S.text, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: S.transition }} onClick={fetchAllData}>
+            <i className="fa-solid fa-arrows-rotate" style={{ fontSize: 12 }}></i> Refresh
+          </button>
+        </div>
+
+        {/* Controls */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 4, background: S.bg, padding: 4, borderRadius: 12, border: `1px solid ${S.borderLight}` }}>
+            <button style={{ padding: '9px 18px', border: 'none', borderRadius: 8, background: transferTab === 'incoming' ? '#fff' : 'transparent', color: transferTab === 'incoming' ? S.text : S.textMuted, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: transferTab === 'incoming' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s' }} onClick={() => setTransferTab('incoming')}>
+              <i className="fa-solid fa-arrow-down" style={{ color: transferTab === 'incoming' ? S.info : 'inherit', fontSize: 13 }}></i> Incoming
+              <span style={{ background: transferTab === 'incoming' ? '#0f172a' : S.border, color: transferTab === 'incoming' ? '#fff' : S.textMuted, padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700 }}>{totalIncoming}</span>
+            </button>
+            <button style={{ padding: '9px 18px', border: 'none', borderRadius: 8, background: transferTab === 'outgoing' ? '#fff' : 'transparent', color: transferTab === 'outgoing' ? S.text : S.textMuted, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: transferTab === 'outgoing' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s' }} onClick={() => setTransferTab('outgoing')}>
+              <i className="fa-solid fa-arrow-up-right" style={{ color: transferTab === 'outgoing' ? S.purple : 'inherit', fontSize: 13 }}></i> Outgoing
+              <span style={{ background: transferTab === 'outgoing' ? '#0f172a' : S.border, color: transferTab === 'outgoing' ? '#fff' : S.textMuted, padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700 }}>{totalOutgoing}</span>
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ position: 'relative', width: 260 }}>
+              <i className="fa-solid fa-search" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: S.textLight, fontSize: 12 }}></i>
+              <input type="text" placeholder="Search ID, coffin, or branch..." value={transferQuery} onChange={e => setTransferQuery(e.target.value)} style={{ width: '100%', padding: '9px 14px 9px 36px', border: `1px solid ${S.border}`, borderRadius: 10, background: '#fff', fontSize: 13, fontWeight: 500, outline: 'none', fontFamily: 'inherit', transition: S.transition }} />
+            </div>
           </div>
         </div>
 
-        <div style={styles.tw}>
-          <div style={styles.tt}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <i className="fa-solid fa-arrow-up" style={{ color: S.warning }}></i> Outgoing ({outgoingRequests.length})
-            </h4>
+        {/* Transfer List */}
+        <div style={{ borderTop: `1px solid ${S.border}` }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 2fr 1.5fr 40px', gap: 24, padding: '12px 24px', background: S.bg, borderBottom: `1px solid ${S.borderLight}`, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: S.textMuted }}>
+            <div>Asset Details</div>
+            <div>Route</div>
+            <div>Timeline</div>
+            <div style={{ textAlign: 'right' }}>Status</div>
+            <div></div>
           </div>
-          <div style={styles.tableWrap}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>ID</th>
-                  <th style={styles.th}>To</th>
-                  <th style={styles.th}>Coffin</th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {outgoingRequests.length === 0 ? (
-                  <tr>
-                    <td colSpan={5}>
-                      <div style={styles.es}>
-                        <i className="fa-solid fa-paper-plane" style={styles.esIcon}></i>
-                        <p style={styles.esP}>No outgoing requests</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  outgoingRequests.map(r => {
-                    const coffin = coffins.find(c => (c.coffin_id || c.id) == r.coffin_id);
-                    const rs = getReqStatus(r.status);
-                    const toBranch = branches.find(b => b.id == r.to_branch_id);
-                    return (
-                      <tr key={r.id}>
-                        <td style={{ ...styles.td, fontWeight: 600 }}>#{r.id}</td>
-                        <td style={styles.td}>{toBranch?.name || 'N/A'}</td>
-                        <td style={styles.td}>{coffin?.name || 'N/A'}</td>
-                        <td style={styles.td}><Tag cls={rs.cls}>{rs.label}</Tag></td>
-                        <td style={styles.td}>
-                          <button style={styles.ib} onClick={() => viewRequest(r.id)} title="View Progress">
-                            <i className="fa-solid fa-eye"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+
+          {transferTab === 'incoming' && filteredIncoming.length === 0 && (
+            <div style={{ padding: '60px 24px', textAlign: 'center', color: S.textMuted }}>
+              <div style={{ width: 56, height: 56, borderRadius: 14, background: S.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', fontSize: 22, color: S.textLight }}><i className="fa-solid fa-inbox"></i></div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: S.text }}>No incoming requests</p>
+              <p style={{ margin: '4px 0 0', fontSize: 12 }}>Requests from other branches will appear here</p>
+            </div>
+          )}
+          {transferTab === 'incoming' && filteredIncoming.map(r => <TransferRow key={r.id} r={r} type="incoming" />)}
+
+          {transferTab === 'outgoing' && filteredOutgoing.length === 0 && (
+            <div style={{ padding: '60px 24px', textAlign: 'center', color: S.textMuted }}>
+              <div style={{ width: 56, height: 56, borderRadius: 14, background: S.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', fontSize: 22, color: S.textLight }}><i className="fa-solid fa-paper-plane"></i></div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: S.text }}>No outgoing requests</p>
+              <p style={{ margin: '4px 0 0', fontSize: 12 }}>Requests sent to other branches will appear here</p>
+            </div>
+          )}
+          {transferTab === 'outgoing' && filteredOutgoing.map(r => <TransferRow key={r.id} r={r} type="outgoing" />)}
         </div>
-      </div>
-    </>
-  );
+      </>
+    );
+  };
 
   // ─── Main Render ────────────────────────────────────────────────────
   return (

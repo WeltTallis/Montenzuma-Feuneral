@@ -36,7 +36,11 @@ const env = {
   // WebSocket URL for real-time features
   // Development: connects directly to socketio-service on port 5018
   // Production: connects to the main domain, nginx proxies /socket.io/ to socketio-service
-  SOCKET_URL: import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_SOCKETIO_URL || (import.meta.env.PROD ? 'https://restpoint.co.ke' : 'http://localhost:5018'),
+    SOCKET_URL: import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_SOCKETIO_URL || (import.meta.env.PROD ? 'https://restpoint.co.ke' : 'http://localhost:5018'),
+
+  // Centralized uploads folder - served by the API gateway (same-origin /uploads)
+  // via the tenant-service static mount. NOT a separate uploads-service.
+  UPLOADS_URL: import.meta.env.VITE_UPLOADS_URL || (import.meta.env.PROD ? 'https://restpoint.co.ke' : 'http://localhost:5000'),
 
   // Feature flags
   FEATURES: {

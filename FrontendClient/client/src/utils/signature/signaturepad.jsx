@@ -3,37 +3,61 @@ import ReactSignatureCanvas from 'react-signature-canvas';
 import './SignaturePad.css';
 
 /* ═══════════════════════════════════════════════════════════════
-   MINI INLINE ICONS (zero dependencies)
+   PROFESSIONAL SVG ICONS
    ════════════════════════════════════════════════════════════════ */
+
 const Ic = ({ children, s = 16 }) => (
-  <svg width={s} height={s} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg 
+    width={s} 
+    height={s} 
+    viewBox="0 0 24 24" 
+    fill="none"
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+  >
     {children}
   </svg>
 );
+
 const Icons = {
-  undo: <Ic><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></Ic>,
-  clear: <Ic><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></Ic>,
-  save: <Ic><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></Ic>,
-  pen: <Ic><path d="M12 19l7-7 3 3-7 7-3-3z" /><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" /><path d="M2 2l7.586 7.586" /><circle cx="11" cy="11" r="2" /></Ic>,
+  pen: (
+    <Ic s={18}>
+      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+      <path d="M15 5l4 4" />
+    </Ic>
+  ),
+  undo: (
+    <Ic>
+      <path d="M3 7v6h6" />
+      <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13" />
+    </Ic>
+  ),
+  clear: (
+    <Ic>
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </Ic>
+  ),
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   COMPONENT
+   EXECUTIVE-LEVEL SIGNATURE PAD - ULTRA SMOOTH
    ════════════════════════════════════════════════════════════════ */
 
 const ReusableSignaturePad = forwardRef((props, ref) => {
   const {
-    penColor = '#0a0a0a',
-    penWidth = 2.5, 
-    backgroundColor = 'transparent',
+    penColor = '#1a3a6b',
+    penWidth = 2.5,
+    backgroundColor = '#ffffff',
     placeholder = 'Sign here',
     disabled = false,
     showControls = true,
     showUndo = true,
     showClear = true,
-    showSave = true,
-    onSave,
     onChange,
     canvasProps = {},
     className = '',
@@ -41,38 +65,37 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
   } = props;
 
   const wrapperRef = useRef(null);
-  const canvasContainerRef = useRef(null); // Dedicated ref for the drawing area
+  const canvasContainerRef = useRef(null);
   const sigCanvas = useRef(null);
   const [isClient, setIsClient] = useState(false);
-  
-  // Ensure we're on the client side before using refs
+
   useEffect(() => {
     setIsClient(true);
   }, []);
+
   const historyRef = useRef([]);
   const [hasContent, setHasContent] = useState(false);
-  const [canvasSize, setCanvasSize] = useState({ width: 600, height: 250 });
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 400 });
 
-  // Dynamically measure ONLY the canvas container to get exact drawing pixels
   useEffect(() => {
     if (!isClient) return;
-    
+
     const measure = () => {
       if (!canvasContainerRef.current) return;
-      
-      // Get the exact width and height of the drawing area only
       const rect = canvasContainerRef.current.getBoundingClientRect();
-      const w = Math.floor(rect.width);
-      const h = Math.floor(rect.height) || 250; // Fallback to 250
-      
+      const w = Math.floor(rect.width) || 800;
+      const h = Math.floor(rect.height) || 400;
+
       if (w > 0 && h > 0 && (w !== canvasSize.width || h !== canvasSize.height)) {
         let existingData = null;
         if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
-          try { existingData = sigCanvas.current.toDataURL(); } catch (e) { /* ignore */ }
+          try {
+            existingData = sigCanvas.current.toDataURL();
+          } catch (e) { /* ignore */ }
         }
-        
+
         setCanvasSize({ width: w, height: h });
-        
+
         if (existingData) {
           requestAnimationFrame(() => {
             try {
@@ -92,7 +115,9 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
     let observer = null;
     if (typeof ResizeObserver !== 'undefined') {
       observer = new ResizeObserver(() => measure());
-      observer.observe(canvasContainerRef.current);
+      if (canvasContainerRef.current) {
+        observer.observe(canvasContainerRef.current);
+      }
     }
 
     window.addEventListener('resize', measure);
@@ -174,26 +199,6 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
     }
   }, [handleClear, onChange, isClient]);
 
-  const handleSave = useCallback(() => {
-    if (!isClient || !sigCanvas.current || sigCanvas.current.isEmpty()) return;
-
-    try {
-      const trimmedCanvas = sigCanvas.current.getTrimmedCanvas();
-      const trimmedDataUrl = trimmedCanvas.toDataURL('image/png');
-
-      if (onSave) onSave(trimmedDataUrl);
-
-      if (!onSave) {
-        const link = document.createElement('a');
-        link.download = `signature_${Date.now()}.png`;
-        link.href = trimmedDataUrl;
-        link.click();
-      }
-    } catch (e) {
-      console.error('Signature Pad: Error saving signature', e);
-    }
-  }, [onSave, isClient]);
-
   if (!isClient) {
     return (
       <div
@@ -217,7 +222,16 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
       className={`sp-wrapper ${disabled ? 'sp-disabled' : ''} ${className}`}
       style={style}
     >
-      {/* Applied the dedicated ref here */}
+      {/* Header */}
+      <div className="sp-header">
+        <div className="sp-header-label">
+          {Icons.pen}
+          <span>Signature</span>
+        </div>
+        <div className="sp-header-hint">Draw above</div>
+      </div>
+
+      {/* Canvas Area - ULTRA SMOOTH EXECUTIVE SETTINGS */}
       <div className="sp-canvas-container" ref={canvasContainerRef}>
         {!hasContent && (
           <div className="sp-placeholder">
@@ -235,25 +249,35 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
             ...canvasProps,
           }}
           penColor={penColor}
-          dotSize={penWidth} 
-          minWidth={penWidth * 0.8} 
-          maxWidth={penWidth * 1.5} 
-          velocityFilterWeight={0.7}
+          dotSize={penWidth}
+          // ─── ULTRA SMOOTH EXECUTIVE SETTINGS ───
+          minWidth={penWidth * 0.3}       // Very thin at high speed
+          maxWidth={penWidth * 2.0}       // Thick at slow speed (executive feel)
+          velocityFilterWeight={0.35}     // Highly responsive = buttery smooth
           backgroundColor={backgroundColor}
           onBegin={handleBegin}
           onEnd={handleEnd}
+          throttle={5}                   // Maximum smoothness
+          clearOnResize={false}
         />
       </div>
 
+      {/* Bottom Label */}
+      <div className="sp-line-label">
+        <span>Signature</span>
+        <span>—</span>
+      </div>
+
+      {/* Controls */}
       {showControls && (
         <div className="sp-controls">
           {showUndo && (
             <button
               type="button"
-              className="sp-btn"
+              className="sp-btn sp-btn-secondary"
               onClick={handleUndo}
               disabled={!hasContent}
-              title="Undo last stroke"
+              title="Undo last stroke (Ctrl+Z)"
             >
               {Icons.undo} Undo
             </button>
@@ -267,18 +291,6 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
               title="Clear signature"
             >
               {Icons.clear} Clear
-            </button>
-          )}
-          <div className="sp-spacer" />
-          {showSave && (
-            <button
-              type="button"
-              className="sp-btn sp-btn-primary"
-              onClick={handleSave}
-              disabled={!hasContent}
-              title="Save signature"
-            >
-              {Icons.save} Save Signature
             </button>
           )}
         </div>

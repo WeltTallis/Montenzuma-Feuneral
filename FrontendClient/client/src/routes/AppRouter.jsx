@@ -7,11 +7,7 @@ import { useAuth } from '../utils/context/AuthContext';
 import ModernSidebar from '../components/layout/ModernSidebar';
 import NotificationBell from '../components/notifications/NotificationBell';
 import FooterComponent from '../components/layout/globalFooter';
-
 import Loader from '../components/loader/loader';
-
-
-
 
 const LandingPage = lazy(() => import('../modules/landing/LandingPage'));
 const ChurchFuneralWelfare = lazy(() => import('../modules/landing/ChurchFuneralWelfare'));
@@ -81,6 +77,7 @@ const DeceasedRegistrationForm = lazy(() => import('../components/deceased/regis
 const RegisterCoffin = lazy(() => import('../components/coffins/registerCoffin'));
 const CoffinInventory = lazy(() => import('../components/coffins/coffininventory'));
 const CoffinDetails = lazy(() => import('../components/coffins/coffinDetails'));
+const CoffinRequests = lazy(() => import('../components/analysis/coffinRequests'));
 const DeceasedList = lazy(() => import('../components/deceased/allDeceased/listDeceased'));
 const NotFound = lazy(() => import('../components/layout/notFound'));
 const DeceasedDetails = lazy(() => import('../components/deceased/deceasedinfo/deceasedDetailPage'));
@@ -100,11 +97,11 @@ const PublicMemorialPage = lazy(() => import('../components/memorial/PublicMemor
 const ChemicalManagementDashboard = lazy(() => import('../components/chemicals/chemicals'));
 const ChemicalInventoryAnalytics = lazy(() => import('../components/chemicals/chemicalAnalytics'));
 const WorkshopDashboard = lazy(() => import('../components/workshop/pages/WorkshopDashboard'));
-
 // Flower Booking System
 const FlowerBookings = lazy(() => import('../components/florists/FlowerBookingsNew'));
 const FlowerBookingForm = lazy(() => import('../components/florists/FlowerBookingForm'));
 const FlowerOrderDetail = lazy(() => import('../components/florists/FlowerOrderDetail'));
+const RequestDetail = lazy(() => import('../components/analysis/RequestDetail'));
 
 const HearseBookings = lazy(() => import('../components/hearse/hearseBookings'));
 const DriverPortal = lazy(() => import('../components/hearse/DriverPortal'));
@@ -408,8 +405,16 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           <Layout tenantData={tenantData} tenantSlug={slug}><RegisterCoffin /></Layout>
         } />
         
-        <Route path="coffins/:coffinId/details" element={
+                 <Route path="coffins/:coffinId/details" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><CoffinDetails /></Layout>
+        } />
+
+        {/* Branch Requests - All authenticated users */}
+        <Route path="requests" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><CoffinRequests /></Layout>
+        } />
+        <Route path="requests/:id" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><RequestDetail /></Layout>
         } />
 
         {/* Documents - All authenticated users */}

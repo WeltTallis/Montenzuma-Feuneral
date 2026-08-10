@@ -3,31 +3,20 @@
 
 CREATE TABLE IF NOT EXISTS coffins (
   coffin_id VARCHAR(255) NOT NULL,
-  custom_id VARCHAR(255) DEFAULT NULL,
   tenant_slug VARCHAR(100) NOT NULL,
   type VARCHAR(255) NOT NULL,
-  material VARCHAR(255) NOT NULL,
   exact_price DECIMAL(15,2) NOT NULL DEFAULT 0,
-  currency VARCHAR(10) DEFAULT 'KES',
-  price_usd DECIMAL(15,2) DEFAULT 0,
-  exchange_rate DECIMAL(10,2) DEFAULT 150,
   quantity INT NOT NULL DEFAULT 1,
-  supplier VARCHAR(255) DEFAULT NULL,
-  origin VARCHAR(255) DEFAULT NULL,
   color VARCHAR(255) DEFAULT NULL,
   size VARCHAR(255) DEFAULT NULL,
-  category VARCHAR(255) DEFAULT 'locally_made',
-  created_by VARCHAR(255) DEFAULT NULL,
   is_active BOOLEAN DEFAULT TRUE,
   is_deleted BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   
   PRIMARY KEY (coffin_id),
-  UNIQUE KEY unique_custom_id_per_tenant (tenant_slug, custom_id),
   INDEX idx_tenant_slug (tenant_slug),
   INDEX idx_type (type),
-  INDEX idx_category (category),
   INDEX idx_quantity (quantity),
   INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Coffins with tenant isolation';

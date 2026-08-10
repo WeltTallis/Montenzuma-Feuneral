@@ -38,14 +38,6 @@ const errorHandler = (err: Error, req: Request, res: Response, _next: NextFuncti
   const statusCode = err instanceof AppError ? err.statusCode : 500;
   const isOperational = err instanceof AppError ? err.isOperational : false;
 
-  console.error('❌ Error:', {
-    message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-    statusCode,
-    path: req.path,
-    method: req.method,
-    ip: req.ip
-  });
 
   const response: ErrorResponse = {
     success: false,

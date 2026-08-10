@@ -1,55 +1,173 @@
-/* Remove browser/page scrolling */
+/* ==========================================================
+   Global Reset
+   ========================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&display=swap');
+/* index.css - at the VERY TOP */
+@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+/* rest of your CSS */
+
+.sp-placeholder {
+  font-family: 'Alex Brush', cursive !important;
+  font-size: 18px !important;
+  color: #b8c4d0 !important;
+}
 html,
 body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;
 }
 
-/* Hide default scrollbars while maintaining scroll functionality */
-html {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
-}
-
-html::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
-}
-
+/* Older browser fallback */
 body {
-  flex: 1;
   min-width: 0;
-  height: 100vh; /* Fallback for older browsers */
-  height: 100dvh; /* Dynamic viewport height - handles mobile browser address bars */
-  overflow-y: auto;
+  min-height: 100vh;
   overflow-x: hidden;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  overflow-y: auto;
+
+  /* Dynamic viewport support */
+  height: 100vh;
 }
 
+/* Modern browsers */
+@supports (height: 100dvh) {
+  body {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+}
+
+/* iOS Safari fallback */
+@supports (-webkit-touch-callout: none) {
+  body {
+    min-height: -webkit-fill-available;
+  }
+
+  html {
+    height: -webkit-fill-available;
+  }
+}
+
+/* ==========================================================
+   Hide Scrollbars
+   ========================================================== */
+
+/* Firefox */
+html,
+body {
+    scrollbar-width: none;
+}
+
+/* Internet Explorer / Legacy Edge */
+html,
+body {
+    -ms-overflow-style: none;
+}
+
+/* Chrome, Edge Chromium, Safari, Opera, Brave, Silk */
+html::-webkit-scrollbar,
 body::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+    width: 0;
+    height: 0;
+    display: none;
 }
 
-/* Ensure all scrollable containers hide scrollbars */
+/* Any scrollable element */
+
 * {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
+    box-sizing: border-box;
 }
 
-/* Hide scrollbars for all elements */
 *::-webkit-scrollbar {
-  width: 0px;
-  height: 0px;
-  background: transparent;
+    width: 0;
+    height: 0;
 }
 
 *::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }
 
 *::-webkit-scrollbar-thumb {
-  background: transparent;
+    background: transparent;
+}
+
+/* Firefox scrollbars */
+* {
+    scrollbar-width: none;
+}
+
+/* ==========================================================
+   Backdrop Blur Compatibility
+   ========================================================== */
+
+.card {
+
+    /* Fallback background */
+    background: rgba(255,255,255,0.90);
+
+    /* Safari */
+    -webkit-backdrop-filter: blur(10px);
+
+    /* Chrome / Edge / Opera */
+    backdrop-filter: blur(10px);
+}
+
+/* If backdrop-filter isn't supported */
+
+@supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+
+    .card {
+        background: rgba(255,255,255,0.96);
+    }
+
+}
+
+/* ==========================================================
+   Better Image Rendering
+   ========================================================== */
+
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ==========================================================
+   Prevent Mobile Tap Highlight
+   ========================================================== */
+
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ==========================================================
+   Font Rendering
+   ========================================================== */
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==========================================================
+   Safe Word Wrapping
+   ========================================================== */
+
+* {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* ==========================================================
+   Hardware Acceleration
+   ========================================================== */
+
+.card {
+    transform: translateZ(0);
+    will-change: transform;
 }

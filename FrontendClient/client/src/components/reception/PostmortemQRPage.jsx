@@ -28,7 +28,7 @@ const PostmortemQRPage = () => {
               <div className="qr-code-container">
                 <QRCodeSVG
                   value={qrValue}
-                  size={200}
+                  size={400}
                   level="H"
                   includeMargin
                   bgColor="#FFFFFF"

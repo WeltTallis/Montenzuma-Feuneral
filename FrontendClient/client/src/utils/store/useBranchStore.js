@@ -12,10 +12,13 @@ const useBranchStore = create((set, get) => ({
     error: null,
 
     setCurrentBranch: (branch) => {
-        // Persist branch slug to localStorage for API calls
+        // Persist branch info to localStorage for API calls
         if (branch?.slug) {
             localStorage.setItem('branchSlug', branch.slug);
             localStorage.setItem('branchDb', branch.database || '');
+        }
+        if (branch?.id) {
+            localStorage.setItem('branchId', String(branch.id));
         }
         set({ currentBranch: branch, error: null });
     },

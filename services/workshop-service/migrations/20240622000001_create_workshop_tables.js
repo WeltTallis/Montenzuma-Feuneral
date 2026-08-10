@@ -23,19 +23,13 @@ export async function up(knex) {
   await knex.schema.createTable('coffin_orders', (table) => {
     table.increments('id').primary();
     table.string('order_number', 50).unique().notNullable();
-    table.string('customer_name', 255).notNullable();
-    table.string('customer_phone', 20);
-    table.string('customer_email', 255);
-    table.string('deceased_name', 255).notNullable();
+    table.string('coffin_name', 255).notNullable();
     table.string('coffin_type', 50).defaultTo('standard');
     table.text('dimensions');
     table.string('color', 100);
     table.string('interior_fabric', 100);
     table.text('notes');
     table.text('instructions');
-    table.decimal('selling_price', 10, 2).defaultTo(0);
-    table.decimal('total_cost', 10, 2).defaultTo(0);
-    table.decimal('profit', 10, 2).defaultTo(0);
     table.date('due_date');
     table.string('priority', 20).defaultTo('normal');
     table.integer('branch_id');
@@ -126,20 +120,7 @@ export async function up(knex) {
     table.foreign('coffin_order_id').references('coffin_orders.id').onDelete('CASCADE');
   });
 
-  // Design specifications
-  await knex.schema.createTable('design_specifications', (table) => {
-    table.increments('id').primary();
-    table.integer('coffin_order_id').unsigned().unique().notNullable();
-    table.string('design_name', 255);
-    table.text('description');
-    table.json('specifications');
-    table.json('design_files');
-    table.string('status', 50).defaultTo('draft');
-    table.timestamp('created_at').defaultTo(knex.fn.now());
-    table.timestamp('updated_at').defaultTo(knex.fn.now());
-    table.foreign('coffin_order_id').references('coffin_orders.id').onDelete('CASCADE');
-    table.index(['coffin_order_id'], 'idx_design_order');
-  });
+
 
   // Material intake
   await knex.schema.createTable('material_intake', (table) => {

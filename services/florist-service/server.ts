@@ -5,7 +5,7 @@
 
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 // Fix __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -19,8 +19,9 @@ dotenv.config({ path: envPath });
 import express from 'express';
 import cors from 'cors';
 import knex from 'knex';
-import { flowerBookingRouter } from './routes/flowerBookingRoutes.ts';
-import flowerSampleRoutes from './routes/flowerSampleRoutes.ts';
+import { getRootPool } from '../../shared/dbConfig.js';
+import { flowerBookingRouter } from './routes/flowerBookingRoutes.js';
+import flowerSampleRoutes from './routes/flowerSampleRoutes.js';
 
 const app = express();
 
@@ -72,7 +73,7 @@ const runMigrations = async () => {
         console.log(`[FLORIST] Loading knexfile from: ${knexfilePath}`);
         
         // Dynamic import for knexfile
-        const knexConfig = await import(knexfilePath);
+        const knexConfig = await import(pathToFileURL(knexfilePath).href);
         const migrationKnex = knex(knexConfig.default?.development || knexConfig.development);
         
         // Check if migrations table exists
@@ -105,6 +106,102 @@ const runMigrations = async () => {
 };
 
 // ============================================
+// FLOWER DATABASE RESOLUTION
+//   * single-branch tenant  → main database (restpoint_main)
+//   * multi-branch tenant   → one dedicated flower database per tenant
+//                             shared by ALL of that tenant's branches
+// ============================================
+const FLOWER_MAIN_DB = (): string => process.env.DB_NAME || 'restpoint_main';
+
+async function getTenantRecord(tenantSlug: string): Promise<any> {
+    try {
+        const pool = await getRootPool(); // connects to tenant_tracking
+        const [rows]: any = await pool.query(
+            'SELECT tenant_slug, db_name, tenant_name, deployment_type, status FROM tenants WHERE tenant_slug = ? LIMIT 1',
+            [tenantSlug]
+        );
+        return rows && rows[0] ? rows[0] : null;
+    } catch (e: any) {
+        // deployment_type column may not exist in every tenants schema — retry without it
+        try {
+            const pool = await getRootPool();
+            const [rows]: any = await pool.query(
+                'SELECT tenant_slug, db_name, tenant_name, status FROM tenants WHERE tenant_slug = ? LIMIT 1',
+                [tenantSlug]
+            );
+            const rec = rows && rows[0] ? rows[0] : null;
+            if (rec) rec.deployment_type = null;
+            return rec;
+        } catch (e2: any) {
+            console.error('[FLORIST] getTenantRecord error:', e2.message);
+            return null;
+        }
+    }
+}
+
+async function countTenantBranches(tenantSlug: string): Promise<number> {
+    try {
+        const pool = await getRootPool();
+        const [rows]: any = await pool.query('SELECT COUNT(*) AS c FROM branches WHERE tenant_slug = ?', [tenantSlug]);
+        return rows && rows[0] ? Number(rows[0].c) : 0;
+    } catch (e) { return 0; }
+}
+
+// A tenant is multi-branch when deployment_type = 'multi', or (fallback)
+// when more than one branch row exists in the registry (handles schemas
+// without the deployment_type column).
+async function isMultiBranchTenant(tenantSlug: string, tenant: any): Promise<boolean> {
+    if (tenant?.deployment_type === 'multi') return true;
+    const branchCount = await countTenantBranches(tenantSlug);
+    return branchCount > 1;
+}
+
+async function createFlowerDatabaseIfMissing(dbName: string) {
+    const pool = await getRootPool();
+    try {
+        await pool.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+        console.log(`[FLORIST] ✅ Dedicated flower database ready: ${dbName}`);
+    } catch (e: any) {
+        console.error(`[FLORIST] Failed to create flower database ${dbName}:`, e.message);
+    }
+    try {
+        const dbUser = process.env.DB_USER || 'restpoint_user';
+        await pool.query(`GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${dbUser}'@'%'`);
+        await pool.query('FLUSH PRIVILEGES').catch(() => { });
+    } catch (e) { /* optional privileges, ignore */ }
+}
+
+// Resolves the database that stores flower data for a tenant.
+//   * single-branch tenant → main database (restpoint_main)
+//   * multi-branch tenant  → one dedicated flower database per tenant
+async function resolveFlowerDatabase(tenantSlug: string): Promise<{ dbName: string; deploymentType: string }> {
+    const mainDb = FLOWER_MAIN_DB();
+    if (!tenantSlug || tenantSlug === 'system_shared') {
+        return { dbName: mainDb, deploymentType: 'single' };
+    }
+
+    try {
+        const tenant = await getTenantRecord(tenantSlug);
+        const multi = await isMultiBranchTenant(tenantSlug, tenant);
+        const deploymentType = multi ? 'multi' : 'single';
+
+        if (multi) {
+            const tenantDb = tenant?.db_name || tenantSlug.replace(/-/g, '_');
+            const dbName = `${tenantDb}_flowers`;
+            await createFlowerDatabaseIfMissing(dbName);
+            console.log(`[FLORIST] Multi-branch tenant → dedicated flower DB: ${dbName}`);
+            return { dbName, deploymentType };
+        }
+
+        console.log(`[FLORIST] Single-branch tenant → main DB: ${mainDb}`);
+        return { dbName: mainDb, deploymentType };
+    } catch (e: any) {
+        console.error('[FLORIST] resolveFlowerDatabase error, falling back to main DB:', e.message);
+        return { dbName: mainDb, deploymentType: 'single' };
+    }
+}
+
+// ============================================
 // TENANT RESOLUTION MIDDLEWARE
 // ============================================
 app.use(async (req: any, res: any, next: any) => {
@@ -128,49 +225,21 @@ app.use(async (req: any, res: any, next: any) => {
   }
 
   try {
-    // @ts-ignore - Dynamic import for shared dbConfig
-    const dbConfigPath = path.resolve(__dirname, '../../shared/dbConfig.js');
-    console.log(`[FLORIST] Loading dbConfig from: ${dbConfigPath}`);
-    
-    const dbConfig = await import(dbConfigPath);
-    const { resolveDatabase, safeTenantQuery } = dbConfig;
-
-    let dbName = await resolveDatabase(tenantSlug);
-
-    if (!dbName) {
-      // For multi-branch tenants, the database name is the tenant slug
-      // For single-branch tenants, also use the tenant slug
-      dbName = tenantSlug.replace(/-/g, '_');
-    }
+    // Resolve the flower database based on deployment type:
+    //   single-branch tenant → main database (restpoint_main)
+    //   multi-branch tenant  → one dedicated flower database per tenant
+    //                          (all branches of that tenant share this single DB)
+    const { dbName, deploymentType } = await resolveFlowerDatabase(tenantSlug);
 
     req.tenant = {
       db_name: dbName,
       tenant_slug: tenantSlug,
-      name: tenantSlug
+      name: tenantSlug,
+      deployment_type: deploymentType
     };
-    console.log(`[FLORIST] Tenant resolved: ${dbName}`);
+    console.log(`[FLORIST] Tenant resolved → db: ${dbName} [${deploymentType}]`);
 
-    if (!req.branchId && dbName) {
-      const lastDash = tenantSlug.lastIndexOf('-');
-      if (lastDash > 0) {
-        const branchPart = tenantSlug.substring(lastDash + 1);
-        try {
-          const branches = await safeTenantQuery(
-            dbName,
-            'SELECT branch_id FROM branches WHERE branch_slug LIKE ? OR branch_name LIKE ? LIMIT 1',
-            [`%${branchPart}%`, `%${branchPart}%`]
-          );
-          if (branches.length > 0) {
-            req.branchId = branches[0].branch_id.toString();
-            console.log(`[FLORIST] Branch resolved: ${req.branchId}`);
-          }
-        } catch (e) {
-          console.log('[FLORIST] Branch resolution skipped:', (e as Error).message);
-        }
-      }
-    }
-
-    // Ensure florist tables exist in tenant database
+    // Ensure florist tables exist in the flower database
     if (dbName) {
       try {
         await ensureFloristTables(dbName);
@@ -183,7 +252,8 @@ app.use(async (req: any, res: any, next: any) => {
     req.tenant = {
       db_name: process.env.DB_NAME || 'restpoint_main',
       tenant_slug: tenantSlug,
-      name: tenantSlug
+      name: tenantSlug,
+      deployment_type: 'single'
     };
   }
 
@@ -196,6 +266,8 @@ app.use(async (req: any, res: any, next: any) => {
 console.log('[FLORIST] Registering routes...');
 app.use('/florist', flowerBookingRouter);
 app.use('/florist/flower-samples', flowerSampleRoutes);
+// Alias so the classic "flower-arrangements" path also works
+app.use('/florist/flower-arrangements', flowerSampleRoutes);
 
 // Health check
 app.get('/health', (_req: any, res: any) => {
@@ -225,10 +297,27 @@ app.get('/florist/test-config', (_req: any, res: any) => {
 // ============================================
 // AUTO-MIGRATION: Ensure florist tables exist in tenant databases
 // ============================================
-async function ensureFloristTables(dbName: string) {
+// knex 3.x removed createTableIfNotExists — use hasTable + createTable with
+// race-tolerant handling (concurrent init on this same DB is safe).
+async function ensureFloristTable(tenantKnex: any, name: string, build: (t: any) => void) {
+    const exists = await tenantKnex.schema.hasTable(name);
+    if (exists) return;
     try {
-        // Create a knex instance for the tenant database
-        const tenantKnex = knex({
+        await tenantKnex.schema.createTable(name, build);
+        console.log(`[FLORIST] ✅ table created: ${name}`);
+    } catch (e: any) {
+        const msg = String(e.message || '');
+        // Ignore if a concurrent initializer already created it
+        if (!msg.includes('ER_TABLE_EXISTS_ERROR') && !msg.toLowerCase().includes('already exists')) {
+            throw e;
+        }
+    }
+}
+
+async function ensureFloristTables(dbName: string) {
+    let tenantKnex: any = null;
+    try {
+        tenantKnex = knex({
             client: 'mysql2',
             connection: {
                 host: process.env.DB_HOST || 'localhost',
@@ -241,62 +330,83 @@ async function ensureFloristTables(dbName: string) {
 
         console.log(`[FLORIST] Ensuring florist tables in: ${dbName}`);
 
-        // Check if tables already exist
-        const hasFlowerBookings = await tenantKnex.schema.hasTable('flower_bookings');
-        const hasFlowerCustomers = await tenantKnex.schema.hasTable('flower_customers');
-        const hasFlowerPackages = await tenantKnex.schema.hasTable('flower_packages');
-        const hasDeliveryZones = await tenantKnex.schema.hasTable('delivery_zones');
-        const hasFlowerSamples = await tenantKnex.schema.hasTable('flower_samples');
+        // flower_bookings (simplified: arrangements + orders only, no delivery/e-commerce)
+        await ensureFloristTable(tenantKnex, 'flower_bookings', (table) => {
+            table.increments('id').primary();
+            table.string('booking_id', 50).unique().notNullable();
+            table.string('flower_type', 100).notNullable();
+            table.text('flower_description');
+            table.string('customer', 255).notNullable();
+            table.string('customer_phone', 20);
+            table.string('customer_email', 255);
+            table.string('deceased_name', 255);
+            table.string('branch', 100).notNullable();
+            table.string('arrangement_id', 50);
+            table.date('date').notNullable();
+            table.time('time').notNullable();
+            table.string('status', 50).defaultTo('pending');
+            table.text('notes');
+            table.string('created_by', 255);
+            table.timestamp('created_at').defaultTo(tenantKnex.fn.now());
+            table.timestamp('updated_at').defaultTo(tenantKnex.fn.now());
 
-        if (!hasFlowerBookings || !hasFlowerCustomers || !hasFlowerPackages || !hasDeliveryZones || !hasFlowerSamples) {
-            // Ensure flower_samples table exists
-            if (!hasFlowerSamples) {
-                try {
-                    const migrationsPath = path.resolve(__dirname, './migrations/20240625000001_add_flower_samples.js');
-                    const migration = await import(migrationsPath);
-                    await migration.up(tenantKnex);
-                    console.log(`[FLORIST] ✅ flower_samples table created in: ${dbName}`);
-                } catch (e) {
-                    console.log(`[FLORIST] Creating flower_samples table directly...`);
-                    const exists = await tenantKnex.schema.hasTable('flower_samples');
-                    if (!exists) {
-                        await tenantKnex.schema.createTable('flower_samples', (table) => {
-                            table.increments('id').primary();
-                            table.string('sample_id', 50).unique();
-                            table.string('title', 255).notNullable();
-                            table.text('description');
-                            table.json('types');
-                            table.json('colors');
-                            table.json('sizes');
-                            table.json('images');
-                            table.string('tenant_slug', 100);
-                            table.timestamps(true, true);
-                        });
-                        console.log(`[FLORIST] ✅ flower_samples table created in: ${dbName}`);
-                    }
-                }
+            table.index(['booking_id'], 'idx_booking_id');
+            table.index(['status'], 'idx_status');
+            table.index(['date'], 'idx_date');
+            table.index(['customer'], 'idx_customer');
+            table.index(['branch'], 'idx_branch');
+            table.index(['created_at'], 'idx_created_at');
+        });
+
+        // flower_samples — must expose `arrangement_id` (used by controllers)
+        await ensureFloristTable(tenantKnex, 'flower_samples', (table) => {
+            table.increments('id').primary();
+            table.string('arrangement_id', 50);
+            table.string('title', 255).notNullable();
+            table.text('description');
+            table.json('types');
+            table.json('colors');
+            table.json('sizes');
+            table.json('images');
+            table.string('tenant_slug', 100).index();
+            table.timestamp('created_at').defaultTo(tenantKnex.fn.now());
+            table.timestamp('updated_at').defaultTo(tenantKnex.fn.now());
+        });
+
+        // If flower_samples pre-existed with an old schema (sample_id), migrate to arrangement_id
+        if (await tenantKnex.schema.hasColumn('flower_samples', 'sample_id')) {
+            if (!await tenantKnex.schema.hasColumn('flower_samples', 'arrangement_id')) {
+                await tenantKnex.schema.alterTable('flower_samples', (table) => {
+                    table.string('arrangement_id', 50).after('id');
+                });
             }
-            
-            // Run the main migration for other tables
-            if (!hasFlowerBookings || !hasFlowerCustomers || !hasFlowerPackages || !hasDeliveryZones) {
-                try {
-                    const migrationsPath = path.resolve(__dirname, './migrations/20240622000001_create_flower_bookings_tables.js');
-                    const migration = await import(migrationsPath);
-                    await migration.up(tenantKnex);
-                    console.log(`[FLORIST] ✅ Florist tables created in: ${dbName}`);
-                } catch (e) {
-                    console.error(`[FLORIST] Failed to run main migration:`, e);
-                }
+            // Copy data from sample_id to arrangement_id if arrangement_id is null
+            await tenantKnex('flower_samples')
+                .whereNull('arrangement_id')
+                .update({ arrangement_id: tenantKnex.raw('sample_id') });
+            // Make arrangement_id unique and not nullable
+            try {
+                await tenantKnex.schema.alterTable('flower_samples', (table) => {
+                    table.string('arrangement_id', 50).notNullable().unique().alter();
+                });
+            } catch (e) {
+                // Index might already exist, continue
             }
-        } else {
-            console.log(`[FLORIST] ✓ Florist tables already exist in: ${dbName}`);
+        } else if (!await tenantKnex.schema.hasColumn('flower_samples', 'arrangement_id')) {
+            await tenantKnex.schema.alterTable('flower_samples', (table) => {
+                table.string('arrangement_id', 50).after('id');
+            });
         }
 
-        await tenantKnex.destroy();
+        console.log(`[FLORIST] ✓ Florist tables ready in: ${dbName}`);
         return true;
     } catch (error: any) {
-        console.error(`[FLORIST] ❌ Failed to ensure florist tables in ${dbName}:`, error.message);
+        console.error(`[FLORIST] ⚠ Failed to ensure florist tables in ${dbName}:`, error.message);
         return false;
+    } finally {
+        if (tenantKnex) {
+            try { await tenantKnex.destroy(); } catch (e) { /* ignore */ }
+        }
     }
 }
 
@@ -331,17 +441,19 @@ async function startServer() {
         if (hasTenants) {
             const tenants = await tempKnex('tenants')
                 .where({ status: 'active' })
-                .select('db_name', 'name');
+                .select('tenant_slug', 'db_name', 'tenant_name', 'deployment_type');
 
             console.log(`[FLORIST] Found ${tenants.length} active tenant(s)`);
 
             for (const tenant of tenants) {
-                console.log(`[FLORIST] Migrating tenant: ${tenant.name} (${tenant.db_name})`);
-                const success = await ensureFloristTables(tenant.db_name);
+                console.log(`[FLORIST] Migrating tenant: ${tenant.tenant_name || tenant.tenant_slug}`);
+                // Resolve the flower database (single → main DB, multi → dedicated flower DB)
+                const { dbName } = await resolveFlowerDatabase(tenant.tenant_slug);
+                const success = await ensureFloristTables(dbName);
                 if (success) {
-                    console.log(`[FLORIST] ✅ Successfully migrated: ${tenant.name}`);
+                    console.log(`[FLORIST] ✅ Successfully migrated flower DB: ${dbName} (${tenant.tenant_name || tenant.tenant_slug})`);
                 } else {
-                    console.error(`[FLORIST] ❌ Failed to migrate: ${tenant.name}`);
+                    console.error(`[FLORIST] ❌ Failed to migrate: ${dbName} (${tenant.tenant_name || tenant.tenant_slug})`);
                 }
             }
         } else {
@@ -349,8 +461,8 @@ async function startServer() {
         }
 
         await tempKnex.destroy();
-    } catch (error) {
-        console.error('[FLORIST] Tenant migration error:', error);
+    } catch (error: any) {
+        console.error('[FLORIST] Tenant migration error:', error.message);
     }
 
     const PORT = Number(process.env.FLORIST_PORT) || Number(process.env.PORT) || 7070;

@@ -3,6 +3,15 @@ const router = express.Router();
 const chemicalController = require('../controllers/chemicalController');
 const usageController = require('../controllers/usageController');
 
+// Import authentication middleware
+// @ts-ignore - authMiddleware is JavaScript, not TypeScript
+const { protect, authorizeAny } = require('../../../services/app-global/middlewares/authMiddleware');
+
+// All routes are protected with JWT authentication
+router.use(protect);
+router.use(authorizeAny);
+
+
 // Optional auth middleware (chemical service works with tenant header, not JWT)
 const optionalAuth = (req, res, next) => {
     // If Authorization header exists, try to decode user info

@@ -8,6 +8,7 @@ import DashboardTab from './DashboardTab';
 import OrdersTab from './OrdersTab';
 import WorkersTab from './WorkersTab';
 import MaterialsTab from './MaterialsTab';
+import StoreTab from './StoreTab';
 import AnalyticsTab from './AnalyticsTab';
 import ModalRouter from './ModalRouter';
 import Toasts from './Toasts';
@@ -48,17 +49,15 @@ const transformOrder = (o) => {
   return {
     id: o.order_number || `CF-${o.id}`,
     dbId: o.id,
-    name: o.deceased_name || 'Unnamed',
-    customer: o.customer_name,
+    name: o.coffin_name || o.deceased_name || 'Unnamed',
     type: o.coffin_type || 'Standard',
-    size: 'Standard',
+    size: o.size || 'Standard',
     color: o.color || 'Natural',
     status: o.status || 'pending',
     stageIndex: stageIdx,
     priority: o.priority || 'normal',
-    price: parseFloat(o.selling_price) || 0,
-    cost: parseFloat(o.total_cost) || 0,
-    profit: parseFloat(o.profit) || 0,
+    assignedTo: o.assigned_to,
+    assignedToName: o.assigned_to_name,
     createdAt: o.order_date ? new Date(o.order_date) : new Date(),
     updatedAt: o.updated_at ? new Date(o.updated_at) : new Date(),
     dueDate: o.due_date ? new Date(o.due_date) : null,
@@ -141,30 +140,138 @@ const WorkshopDashboard = () => {
   }, [addToast]);
 
   useEffect(() => { loadData(); }, [loadData]);
+// ============================================
+// FIXED: Socket.io Event Handlers with Error Handling
+// ============================================
+useEffect(() => {
+  if (!socket) {
+    console.warn('Socket not available - events not registered');
+    return;
+  }
 
-  useEffect(() => {
-    if (!socket) return;
-    const handlers = {
-      'worker:created': () => { addToast('Worker created', 'success'); loadData(); },
-      'worker:deleted': () => { addToast('Worker removed', 'info'); loadData(); },
-      'order:created': () => { addToast('Order created', 'success'); loadData(); },
-      'order:deleted': () => { addToast('Order deleted', 'info'); loadData(); },
-      'order:status:changed': () => { addToast('Order status updated', 'success'); loadData(); },
-      'production:stage:updated': () => loadData(),
-      'production:stage:done': () => { addToast('Stage completed', 'success'); loadData(); },
-      'material:used': () => loadData(),
-    };
-    Object.entries(handlers).forEach(([event, handler]) => { socket.on(event, handler); });
-    return () => { Object.entries(handlers).forEach(([event, handler]) => { socket.off(event, handler); }); };
-  }, [socket, addToast, loadData]);
+  // Check if socket is connected
+  if (!socket.connected) {
+    console.warn('Socket not connected - events may not work');
+  }
 
-  const createOrder = async (orderData) => {
-    try { await workshopService.createOrder(orderData); addToast('Order created successfully', 'success'); setModal(null); loadData(); }
-    catch (err) { addToast('Failed to create order: ' + err.message, 'error'); }
+  // Event handlers with error handling
+  const handlers = {
+    'worker:created': () => {
+      addToast('Worker created successfully', 'success');
+      loadData();
+    },
+    'worker:deleted': () => {
+      addToast('Worker removed successfully', 'info');
+      loadData();
+    },
+    'order:created': () => {
+      addToast('New order created', 'success');
+      loadData();
+    },
+    'order:deleted': () => {
+      addToast('Order deleted', 'info');
+      loadData();
+    },
+    'order:status:changed': (data) => {
+      addToast(`Order status updated to: ${data?.status || 'new status'}`, 'success');
+      loadData();
+    },
+    'production:stage:updated': (data) => {
+      loadData();
+    },
+    'production:stage:done': (data) => {
+      addToast(`Stage ${data?.stage || ''} completed`, 'success');
+      loadData();
+    },
+    'material:used': (data) => {
+      addToast(`Material ${data?.material || ''} used`, 'info');
+      loadData();
+    },
+    // Error handler for socket events
+    'error': (error) => {
+      console.error('Socket error:', error);
+      addToast(`Socket error: ${error?.message || 'Unknown error'}`, 'error');
+    }
   };
 
+  // Register all event listeners
+  Object.entries(handlers).forEach(([event, handler]) => {
+    socket.on(event, handler);
+  });
+
+  // Cleanup function
+  return () => {
+    Object.entries(handlers).forEach(([event, handler]) => {
+      socket.off(event, handler);
+    });
+  };
+}, [socket, addToast, loadData]);
+
+// ============================================
+// Create Order Function
+// ============================================
+  const createOrder = async (orderData) => {
+    try {
+      if (!orderData.coffin_name) {
+        addToast('Coffin name is required', 'error');
+        return;
+      }
+      await workshopService.createOrder(orderData); addToast('Order created successfully', 'success'); setModal(null); loadData(); }
+    catch (err) { addToast('Failed to create order: ' + (err.message || 'Unknown error'), 'error'); }
+  };
+
+// FIXED: Optional - Add Socket Connection Status
+// ============================================
+useEffect(() => {
+  if (!socket) return;
+
+  // Handle connection status
+  const onConnect = () => {
+    console.log('Socket connected - real-time updates active');
+    addToast('Connected to real-time updates', 'info');
+  };
+
+  const onDisconnect = () => {
+    console.warn('Socket disconnected - real-time updates paused');
+    addToast('Disconnected from real-time updates', 'warning');
+  };
+
+  const onConnectError = (error) => {
+    console.error('Socket connection error:', error);
+    addToast('Real-time updates unavailable', 'warning');
+  };
+
+  socket.on('connect', onConnect);
+  socket.on('disconnect', onDisconnect);
+  socket.on('connect_error', onConnectError);
+
+  return () => {
+    socket.off('connect', onConnect);
+    socket.off('disconnect', onDisconnect);
+    socket.off('connect_error', onConnectError);
+  };
+}, [socket, addToast]);
+
+// ============================================
+// OPTIONAL: Add a check if socket is connected before sending
+// ============================================
+const emitSocketEvent = useCallback((event, data) => {
+  if (!socket) {
+    console.warn('Socket not available');
+    return false;
+  }
+  if (!socket.connected) {
+    console.warn('Socket not connected');
+    return false;
+  }
+  
+  socket.emit(event, data);
+  
+  return true;
+}, [socket]);
+
   const updateOrderStatus = async (orderId, status) => {
-    const result = await workshopService.updateOrderStatus(orderId, { status });
+    const result = await workshopService.updateOrderStatus(orderId, status);
     if (result && result.success) {
       addToast('Order status updated', 'success');
       await loadData();
@@ -179,6 +286,16 @@ const WorkshopDashboard = () => {
   const createWorker = async (workerData) => {
     try { await workshopService.createWorker(workerData); addToast('Worker created', 'success'); setModal(null); loadData(); }
     catch (err) { addToast('Failed to create worker: ' + err.message, 'error'); }
+  };
+
+  const assignWorker = async (orderId, workerId) => {
+    try {
+      await workshopService.assignWorkerToOrder(orderId, { user_id: workerId });
+      addToast('Worker assigned', 'success');
+      await loadData();
+    } catch (err) {
+      addToast('Failed to assign worker: ' + err.message, 'error');
+    }
   };
 
   const deleteWorker = async (id) => {
@@ -202,7 +319,8 @@ const WorkshopDashboard = () => {
     orders, workers, materials, reports, loading, error, connected,
     toasts, modal, setModal, addToast, createOrder, updateOrderStatus,
     createWorker, deleteWorker, addMaterial, deleteOrder, loadData, tab, setTab,
-  }), [orders, workers, materials, reports, loading, error, connected, toasts, modal, tab, createOrder, updateOrderStatus, createWorker, deleteWorker, addMaterial, deleteOrder, loadData]);
+    assignWorker,
+  }), [orders, workers, materials, reports, loading, error, connected, toasts, modal, tab, createOrder, updateOrderStatus, createWorker, deleteWorker, addMaterial, deleteOrder, loadData, assignWorker]);
 
   // ─── Loading State ──────────────────────────────────────────────────
   if (loading && !orders.length) {
@@ -322,6 +440,7 @@ const WorkshopDashboard = () => {
             {tab === 'orders' && <OrdersTab />}
             {tab === 'workers' && <WorkersTab />}
             {tab === 'materials' && <MaterialsTab />}
+            {tab === 'store' && <StoreTab />}
             {tab === 'analytics' && <AnalyticsTab />}
           </div>
         </div>
@@ -329,6 +448,7 @@ const WorkshopDashboard = () => {
           type={modal} 
           onClose={() => setModal(null)}
           onSubmit={modal === 'createWorker' ? createWorker : modal === 'createMaterial' ? addMaterial : modal === 'createOrder' ? createOrder : undefined}
+          workers={workers}
         />}
         <Toasts toasts={toasts} />
       </div>

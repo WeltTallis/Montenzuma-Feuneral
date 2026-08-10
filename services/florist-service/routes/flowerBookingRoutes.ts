@@ -12,24 +12,24 @@ import {
     updateBookingStatus,
     deleteBooking,
     getStats,
-    getMonthlyTrend,
-    getCustomers,
-    getCustomerById
+    getMonthlyTrend
 } from '../controllers/flowerBooking.ts';
-
+const router = Router();
 export const flowerBookingRouter = Router();
+// Import authentication middleware
+// @ts-ignore - authMiddleware is JavaScript, not TypeScript
+const { protect, authorizeAny } = require('../../../services/app-global/middlewares/authMiddleware');
+
+// All routes are protected with JWT authentication
+router.use(protect);
+router.use(authorizeAny as any);
+
 
 // ============================================
 // STATS & DASHBOARD
 // ============================================
 flowerBookingRouter.get('/stats', getStats);
 flowerBookingRouter.get('/stats/monthly-trend', getMonthlyTrend);
-
-// ============================================
-// CUSTOMERS
-// ============================================
-flowerBookingRouter.get('/customers', getCustomers);
-flowerBookingRouter.get('/customers/:id', getCustomerById);
 
 // ============================================
 // BOOKINGS

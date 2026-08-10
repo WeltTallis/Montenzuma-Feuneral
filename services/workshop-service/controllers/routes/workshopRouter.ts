@@ -1,6 +1,6 @@
 import express from 'express'
 // @ts-ignore - authMiddleware is JavaScript, not TypeScript
-const { protect, authorizeAny } = require('../../services/app-global/middlewares/authMiddleware')
+const { protect, authorizeAny } = require('../../../app-global/middlewares/authMiddleware')
 import {
     getOrders,
     getOrder,
@@ -53,6 +53,12 @@ import {
     getOrderTimeline,
     completeProductionStage
 } from '../productionWorkflowController'
+import {
+    getInventory,
+    dispatchItem,
+    restockItem,
+    getHistory
+} from '../storeController'
 
 const workshopRouter = express.Router()
 
@@ -114,5 +120,11 @@ workshopRouter.patch('/orders/:orderId/status', updateOrderStatus)
 workshopRouter.get('/orders/today/completed', getTodayCompletedOrders)
 workshopRouter.get('/orders/:orderId/timeline', getOrderTimeline)
 workshopRouter.post('/orders/:orderId/complete-stage', completeProductionStage)
+
+// ============ STORE MANAGEMENT ============
+workshopRouter.get('/store/inventory', getInventory)
+workshopRouter.get('/store/history', getHistory)
+workshopRouter.post('/store/dispatch', dispatchItem)
+workshopRouter.post('/store/restock', restockItem)
 
 export { workshopRouter }

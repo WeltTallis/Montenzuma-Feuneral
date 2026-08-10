@@ -134,10 +134,12 @@ export const ENDPOINTS = {
     BASE: '/notification',
     SEND: '/notification/send',
   },
-  ANALYTICS: {
+    ANALYTICS: {
     BASE: '/analytics',
     DASHBOARD: '/analytics/dashboard',
     PERFORMANCE: '/analytics/performance',
+    COMPREHENSIVE: '/analytics/dashboard/comprehensive',
+    COMPARE: '/analytics/dashboard/compare',
   },
   VISITORS: {
     BASE: '/visitors',

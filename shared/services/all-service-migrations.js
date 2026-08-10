@@ -15,7 +15,7 @@
  * NOTE: JWT secrets managed in tenant_tracking DB by Tenant.model.ts.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BILLING_SERVICE_MIGRATIONS = exports.EXTRA_SERVICES_MIGRATIONS = exports.WORKSHOP_SERVICE_MIGRATIONS = exports.HEARSE_SERVICE_MIGRATIONS = exports.CHEMICALS_SERVICE_MIGRATIONS = exports.COFFIN_SERVICE_MIGRATIONS = exports.BODY_CHECKOUT_SERVICE_MIGRATIONS = exports.NOTIFICATIONS_SERVICE_MIGRATIONS = exports.INVOICE_SERVICE_MIGRATIONS = exports.DECEASED_SERVICE_MIGRATIONS = exports.TENANT_SERVICE_MIGRATIONS = exports.SINGLE_TENANT_MIGRATIONS = exports.BRANCH_MIGRATIONS = exports.ALL_TENANT_MIGRATIONS = void 0;
+exports.BILLING_SERVICE_MIGRATIONS = exports.EXTRA_SERVICES_MIGRATIONS = exports.WORKSHOP_SERVICE_MIGRATIONS = exports.HEARSE_SERVICE_MIGRATIONS = exports.CHEMICALS_SERVICE_MIGRATIONS = exports.COFFIN_SERVICE_MIGRATIONS = exports.BODY_CHECKOUT_SERVICE_MIGRATIONS = exports.INVOICE_SERVICE_MIGRATIONS = exports.DECEASED_SERVICE_MIGRATIONS = exports.TENANT_SERVICE_MIGRATIONS = exports.SINGLE_TENANT_MIGRATIONS = exports.BRANCH_MIGRATIONS = exports.ALL_TENANT_MIGRATIONS = void 0;
 exports.getCoreMigrations = getCoreMigrations;
 exports.getOptionalMigrations = getOptionalMigrations;
 exports.getMainTenantMigrations = getMainTenantMigrations;
@@ -32,13 +32,17 @@ const TENANT_SERVICE_MIGRATIONS = [
         name: '001a_create_tenants_table',
         sql: `CREATE TABLE IF NOT EXISTS tenants (tenant_id INT PRIMARY KEY AUTO_INCREMENT, tenant_name VARCHAR(255) NOT NULL, tenant_slug VARCHAR(255) UNIQUE NOT NULL, db_name VARCHAR(255) UNIQUE NOT NULL, email VARCHAR(255) NOT NULL, phone VARCHAR(50), location TEXT, country VARCHAR(100), logo_url VARCHAR(500), status ENUM('active', 'suspended', 'deleted') DEFAULT 'active', subscription_status ENUM('active', 'trial', 'suspended', 'cancelled') DEFAULT 'trial', subscription_expires_at TIMESTAMP NULL, deployment_type ENUM('single', 'multi') DEFAULT 'single', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_deployment_type (deployment_type)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
-    {
+        {
         name: '002_create_branches_table',
-        sql: `CREATE TABLE IF NOT EXISTS branches (branch_id INT PRIMARY KEY AUTO_INCREMENT, branch_name VARCHAR(255) NOT NULL, branch_slug VARCHAR(255) UNIQUE NOT NULL, branch_code VARCHAR(50), branch_db_name VARCHAR(255), branch_location TEXT, branch_phone VARCHAR(50), branch_email VARCHAR(255), is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_branch_slug (branch_slug), INDEX idx_branch_code (branch_code), INDEX idx_is_active (is_active)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+        sql: `CREATE TABLE IF NOT EXISTS branches (branch_id INT PRIMARY KEY AUTO_INCREMENT, parent_branch_id INT NULL, branch_name VARCHAR(255) NOT NULL, branch_slug VARCHAR(255) UNIQUE NOT NULL, branch_code VARCHAR(50), branch_db_name VARCHAR(255), branch_location TEXT, branch_phone VARCHAR(50), branch_email VARCHAR(255), is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_branch_slug (branch_slug), INDEX idx_branch_code (branch_code), INDEX idx_is_active (is_active), INDEX idx_parent_branch_id (parent_branch_id), FOREIGN KEY (parent_branch_id) REFERENCES branches(branch_id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
     {
         name: '002a_add_branch_code_column',
         sql: `ALTER TABLE branches ADD COLUMN IF NOT EXISTS branch_code VARCHAR(50) NULL AFTER branch_slug, ADD INDEX IF NOT EXISTS idx_branch_code (branch_code)`,
+    },
+    {
+        name: '002b_add_parent_branch_id_to_branches',
+        sql: `ALTER TABLE branches ADD COLUMN IF NOT EXISTS parent_branch_id INT NULL AFTER branch_id, ADD INDEX IF NOT EXISTS idx_parent_branch_id (parent_branch_id), ADD CONSTRAINT fk_branch_parent FOREIGN KEY (parent_branch_id) REFERENCES branches(branch_id) ON DELETE SET NULL`,
     },
     {
         name: '003_create_users_table',
@@ -66,7 +70,7 @@ exports.TENANT_SERVICE_MIGRATIONS = TENANT_SERVICE_MIGRATIONS;
 const DECEASED_SERVICE_MIGRATIONS = [
     {
         name: '010_create_deceased_table',
-        sql: `CREATE TABLE IF NOT EXISTS deceased (id INT NOT NULL AUTO_INCREMENT, deceased_id VARCHAR(100) NOT NULL COMMENT 'Unique identifier', admission_number VARCHAR(100) NOT NULL UNIQUE, cause_of_death TEXT, date_admitted DATETIME NULL, date_of_birth DATE NOT NULL, date_of_death DATE NULL, date_registered DATETIME NULL, full_name VARCHAR(255) NOT NULL, gender ENUM('Male', 'Female', 'Other') NOT NULL DEFAULT 'Other', county VARCHAR(100) NOT NULL DEFAULT 'Unknown', location VARCHAR(255), created_by INT, status VARCHAR(50) DEFAULT 'active', total_mortuary_charge DECIMAL(10,2) DEFAULT 0.00, currency VARCHAR(3) DEFAULT 'KES', burial_type VARCHAR(50), dispatch_date DATE, extra_charges_amount DECIMAL(10,2) DEFAULT 0, next_of_kin_count INT DEFAULT 0, is_deleted BOOLEAN DEFAULT FALSE, branch_code VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (id), UNIQUE KEY unique_deceased_id (deceased_id), UNIQUE KEY unique_admission_number (admission_number), INDEX idx_deceased_id (deceased_id), INDEX idx_date_of_death (date_of_death), INDEX idx_created_at (created_at), INDEX idx_full_name (full_name), INDEX idx_status (status), INDEX idx_is_deleted (is_deleted), INDEX idx_branch_code (branch_code), FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Deceased persons'`,
+        sql: `CREATE TABLE IF NOT EXISTS deceased (id INT NOT NULL AUTO_INCREMENT, deceased_id VARCHAR(100) NOT NULL COMMENT 'Unique identifier', admission_number VARCHAR(100) NOT NULL UNIQUE, cause_of_death TEXT, date_admitted DATETIME NULL, date_of_birth DATE NOT NULL, date_of_death DATE NULL, date_registered DATETIME NULL, full_name VARCHAR(255) NOT NULL, gender ENUM('Male', 'Female', 'Other') NOT NULL DEFAULT 'Other',  status VARCHAR(50) DEFAULT 'active', total_mortuary_charge DECIMAL(10,2) DEFAULT 0.00, currency VARCHAR(3) DEFAULT 'KES', burial_type VARCHAR(50), dispatch_date DATE, extra_charges_amount DECIMAL(10,2) DEFAULT 0, next_of_kin_count INT DEFAULT 0, is_deleted BOOLEAN DEFAULT FALSE, branch_code VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (id), UNIQUE KEY unique_deceased_id (deceased_id), UNIQUE KEY unique_admission_number (admission_number), INDEX idx_deceased_id (deceased_id), INDEX idx_date_of_death (date_of_death), INDEX idx_created_at (created_at), INDEX idx_full_name (full_name), INDEX idx_status (status), INDEX idx_is_deleted (is_deleted), INDEX idx_branch_code (branch_code), FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Deceased persons'`,
     },
     {
         name: '010a_alter_deceased_table_add_missing_columns',
@@ -117,16 +121,10 @@ const INVOICE_SERVICE_MIGRATIONS = [
         sql: `CREATE TABLE IF NOT EXISTS payments (payment_id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(50) NOT NULL, invoice_id INT, transaction_id VARCHAR(255) UNIQUE, phone_number VARCHAR(20), amount DECIMAL(15, 2) NOT NULL, payment_method ENUM('cash', 'card', 'bank_transfer', 'mobile_money', 'check') DEFAULT 'cash', payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reference_number VARCHAR(100), receipt_number VARCHAR(100), status ENUM('pending', 'confirmed', 'completed', 'failed', 'refunded') DEFAULT 'pending', message TEXT, notes TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE, FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id), INDEX idx_deceased_id (deceased_id), INDEX idx_invoice_id (invoice_id), INDEX idx_transaction_id (transaction_id), INDEX idx_payment_date (payment_date), INDEX idx_reference_number (reference_number), INDEX idx_status (status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
 ];
+
+
 exports.INVOICE_SERVICE_MIGRATIONS = INVOICE_SERVICE_MIGRATIONS;
-// ─── Notifications Service Migrations ────────────────────────────────────────
-const NOTIFICATIONS_SERVICE_MIGRATIONS = [
-    {
-        name: '050_create_notifications_table',
-        sql: `CREATE TABLE IF NOT EXISTS notifications (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(50) NOT NULL, type VARCHAR(50) NOT NULL, message TEXT NOT NULL, is_read BOOLEAN DEFAULT FALSE, read_at TIMESTAMP NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE, INDEX idx_deceased_id (deceased_id), INDEX idx_type (type), INDEX idx_is_read (is_read), INDEX idx_created_at (created_at), INDEX idx_deceased_read (deceased_id, is_read)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
-    },
-];
-exports.NOTIFICATIONS_SERVICE_MIGRATIONS = NOTIFICATIONS_SERVICE_MIGRATIONS;
-// ─── Body Checkout Service Migrations ────────────────────────────────────────
+// ─── Body Checkout Service Migrations ───────────────────────────────────────
 const BODY_CHECKOUT_SERVICE_MIGRATIONS = [
     {
         name: '070_create_body_checkout_table',
@@ -142,7 +140,7 @@ exports.BODY_CHECKOUT_SERVICE_MIGRATIONS = BODY_CHECKOUT_SERVICE_MIGRATIONS;
 const COFFIN_SERVICE_MIGRATIONS = [
     {
         name: '080_create_coffins_table',
-        sql: `CREATE TABLE IF NOT EXISTS coffins (coffin_id VARCHAR(255) NOT NULL, custom_id VARCHAR(255) DEFAULT NULL, tenant_slug VARCHAR(100) NOT NULL, type VARCHAR(255) NOT NULL, material VARCHAR(255) NOT NULL, exact_price DECIMAL(15, 2) NOT NULL DEFAULT 0, currency VARCHAR(10) DEFAULT 'KES', price_usd DECIMAL(15, 2) DEFAULT 0, exchange_rate DECIMAL(10, 2) DEFAULT 150, quantity INT DEFAULT 1, supplier VARCHAR(255) DEFAULT NULL, origin VARCHAR(255) DEFAULT NULL, color VARCHAR(100) DEFAULT NULL, size VARCHAR(100) DEFAULT NULL, category VARCHAR(255) DEFAULT 'locally_made', is_active BOOLEAN DEFAULT TRUE, created_by VARCHAR(255) DEFAULT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, is_deleted BOOLEAN DEFAULT FALSE, PRIMARY KEY (coffin_id), UNIQUE KEY unique_custom_id_per_tenant (tenant_slug, custom_id), INDEX idx_tenant_slug (tenant_slug), INDEX idx_type (type), INDEX idx_category (category), INDEX idx_quantity (quantity), INDEX idx_is_active (is_active), INDEX idx_created_at (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+        sql: `CREATE TABLE IF NOT EXISTS coffins (coffin_id VARCHAR(255) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, type VARCHAR(255) NOT NULL, exact_price DECIMAL(15, 2) NOT NULL DEFAULT 0, quantity INT DEFAULT 1, color VARCHAR(100) DEFAULT NULL, size VARCHAR(100) DEFAULT NULL, is_active BOOLEAN DEFAULT TRUE, is_deleted BOOLEAN DEFAULT FALSE, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (coffin_id), INDEX idx_tenant_slug (tenant_slug), INDEX idx_type (type), INDEX idx_quantity (quantity), INDEX idx_is_active (is_active), INDEX idx_created_at (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
     {
         name: '081_create_coffin_images_table',
@@ -245,8 +243,9 @@ const WORKSHOP_SERVICE_MIGRATIONS = [
         sql: `CREATE TABLE IF NOT EXISTS material_intake (id INT AUTO_INCREMENT PRIMARY KEY, material_id INT NOT NULL, quantity DECIMAL(10,2) NOT NULL, unit_cost DECIMAL(10,2) DEFAULT 0, supplier VARCHAR(255), invoice_number VARCHAR(100), notes TEXT, received_by VARCHAR(255), received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE, INDEX idx_intake_material (material_id), INDEX idx_intake_date (received_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
 ];
-exports.WORKSHOP_SERVICE_MIGRATIONS = WORKSHOP_SERVICE_MIGRATIONS;
-// ─── Extra Services Migrations ───────────────────────────────────────────────
+
+
+
 const EXTRA_SERVICES_MIGRATIONS = [
     {
         name: '200_create_extra_charges_table',
@@ -261,30 +260,25 @@ const EXTRA_SERVICES_MIGRATIONS = [
         sql: `CREATE TABLE IF NOT EXISTS charge_approvals (approval_id INT NOT NULL AUTO_INCREMENT, charge_id INT NOT NULL, tenant_slug VARCHAR(100) NOT NULL, approved_by INT NOT NULL COMMENT 'Manager user ID', approval_status ENUM('approved', 'rejected', 'pending_review') NOT NULL, comments TEXT, approval_date TIMESTAMP NULL, PRIMARY KEY (approval_id), INDEX idx_charge_id (charge_id), INDEX idx_tenant_slug (tenant_slug), INDEX idx_approval_date (approval_date), FOREIGN KEY (charge_id) REFERENCES extra_charges(charge_id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
 ];
+
 exports.EXTRA_SERVICES_MIGRATIONS = EXTRA_SERVICES_MIGRATIONS;
 // ─── Combined Migration Lists ──────────────────────────────────────────────
 exports.ALL_TENANT_MIGRATIONS = [
     ...TENANT_SERVICE_MIGRATIONS,
     ...DECEASED_SERVICE_MIGRATIONS,
-    ...INVOICE_SERVICE_MIGRATIONS,
-    ...NOTIFICATIONS_SERVICE_MIGRATIONS,
     ...BODY_CHECKOUT_SERVICE_MIGRATIONS,
     ...COFFIN_SERVICE_MIGRATIONS,
     ...CHEMICALS_SERVICE_MIGRATIONS,
     ...HEARSE_SERVICE_MIGRATIONS,
-    ...WORKSHOP_SERVICE_MIGRATIONS,
     ...EXTRA_SERVICES_MIGRATIONS,
     ...BILLING_SERVICE_MIGRATIONS,
 ];
 exports.BRANCH_MIGRATIONS = [
     ...TENANT_SERVICE_MIGRATIONS,
     ...DECEASED_SERVICE_MIGRATIONS,
-    ...INVOICE_SERVICE_MIGRATIONS,
-    ...NOTIFICATIONS_SERVICE_MIGRATIONS,
     ...BODY_CHECKOUT_SERVICE_MIGRATIONS,
     ...COFFIN_SERVICE_MIGRATIONS,
     ...CHEMICALS_SERVICE_MIGRATIONS,
-    ...HEARSE_SERVICE_MIGRATIONS,
     ...EXTRA_SERVICES_MIGRATIONS,
     ...BILLING_SERVICE_MIGRATIONS,
 ];
@@ -292,7 +286,6 @@ exports.SINGLE_TENANT_MIGRATIONS = [
     ...TENANT_SERVICE_MIGRATIONS,
     ...DECEASED_SERVICE_MIGRATIONS,
     ...INVOICE_SERVICE_MIGRATIONS,
-    ...NOTIFICATIONS_SERVICE_MIGRATIONS,
     ...BODY_CHECKOUT_SERVICE_MIGRATIONS,
     ...COFFIN_SERVICE_MIGRATIONS,
     ...CHEMICALS_SERVICE_MIGRATIONS,
@@ -310,6 +303,8 @@ const CORE_MIGRATION_NAMES = [
     '001_create_organizations_table',
     '001a_create_tenants_table',
     '002_create_branches_table',
+    '002a_add_branch_code_column',
+    '002b_add_parent_branch_id_to_branches',
     '003_create_users_table',
     '003_create_refresh_tokens_table',
     '004_create_mortuary_settings_table',

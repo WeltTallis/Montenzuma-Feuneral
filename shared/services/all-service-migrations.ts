@@ -29,13 +29,17 @@ const TENANT_SERVICE_MIGRATIONS: Migration[] = [
     name: '001a_create_tenants_table',
     sql: `CREATE TABLE IF NOT EXISTS tenants (tenant_id INT PRIMARY KEY AUTO_INCREMENT, tenant_name VARCHAR(255) NOT NULL, tenant_slug VARCHAR(255) UNIQUE NOT NULL, db_name VARCHAR(255) UNIQUE NOT NULL, email VARCHAR(255) NOT NULL, phone VARCHAR(50), location TEXT, country VARCHAR(100), logo_url VARCHAR(500), status ENUM('active', 'suspended', 'deleted') DEFAULT 'active', subscription_status ENUM('active', 'trial', 'suspended', 'cancelled') DEFAULT 'trial', subscription_expires_at TIMESTAMP NULL, deployment_type ENUM('single', 'multi') DEFAULT 'single', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_deployment_type (deployment_type)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
-  {
+    {
     name: '002_create_branches_table',
-    sql: `CREATE TABLE IF NOT EXISTS branches (branch_id INT PRIMARY KEY AUTO_INCREMENT, branch_name VARCHAR(255) NOT NULL, branch_slug VARCHAR(255) UNIQUE NOT NULL, branch_code VARCHAR(50), branch_db_name VARCHAR(255), branch_location TEXT, branch_phone VARCHAR(50), branch_email VARCHAR(255), is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_branch_slug (branch_slug), INDEX idx_branch_code (branch_code), INDEX idx_is_active (is_active)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    sql: `CREATE TABLE IF NOT EXISTS branches (branch_id INT PRIMARY KEY AUTO_INCREMENT, parent_branch_id INT NULL, branch_name VARCHAR(255) NOT NULL, branch_slug VARCHAR(255) UNIQUE NOT NULL, branch_code VARCHAR(50), branch_db_name VARCHAR(255), branch_location TEXT, branch_phone VARCHAR(50), branch_email VARCHAR(255), is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_branch_slug (branch_slug), INDEX idx_branch_code (branch_code), INDEX idx_is_active (is_active), INDEX idx_parent_branch_id (parent_branch_id), FOREIGN KEY (parent_branch_id) REFERENCES branches(branch_id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
   {
     name: '002a_add_branch_code_column',
     sql: `ALTER TABLE branches ADD COLUMN IF NOT EXISTS branch_code VARCHAR(50) NULL AFTER branch_slug, ADD INDEX IF NOT EXISTS idx_branch_code (branch_code)`,
+  },
+  {
+    name: '002b_add_parent_branch_id_to_branches',
+    sql: `ALTER TABLE branches ADD COLUMN IF NOT EXISTS parent_branch_id INT NULL AFTER branch_id, ADD INDEX IF NOT EXISTS idx_parent_branch_id (parent_branch_id), ADD CONSTRAINT fk_branch_parent FOREIGN KEY (parent_branch_id) REFERENCES branches(branch_id) ON DELETE SET NULL`,
   },
   {
     name: '003_create_users_table',
@@ -118,15 +122,6 @@ const INVOICE_SERVICE_MIGRATIONS: Migration[] = [
   },
 ];
 
-// ─── Notifications Service Migrations ────────────────────────────────────────
-
-const NOTIFICATIONS_SERVICE_MIGRATIONS: Migration[] = [
-  {
-    name: '050_create_notifications_table',
-    sql: `CREATE TABLE IF NOT EXISTS notifications (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(50) NOT NULL, type VARCHAR(50) NOT NULL, message TEXT NOT NULL, is_read BOOLEAN DEFAULT FALSE, read_at TIMESTAMP NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE, INDEX idx_deceased_id (deceased_id), INDEX idx_type (type), INDEX idx_is_read (is_read), INDEX idx_created_at (created_at), INDEX idx_deceased_read (deceased_id, is_read)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
-  },
-];
-
 // ─── Body Checkout Service Migrations ────────────────────────────────────────
 
 const BODY_CHECKOUT_SERVICE_MIGRATIONS: Migration[] = [
@@ -145,7 +140,7 @@ const BODY_CHECKOUT_SERVICE_MIGRATIONS: Migration[] = [
 const COFFIN_SERVICE_MIGRATIONS: Migration[] = [
   {
     name: '080_create_coffins_table',
-    sql: `CREATE TABLE IF NOT EXISTS coffins (coffin_id VARCHAR(255) NOT NULL, custom_id VARCHAR(255) DEFAULT NULL, tenant_slug VARCHAR(100) NOT NULL, type VARCHAR(255) NOT NULL, material VARCHAR(255) NOT NULL, exact_price DECIMAL(15, 2) NOT NULL DEFAULT 0, currency VARCHAR(10) DEFAULT 'KES', price_usd DECIMAL(15, 2) DEFAULT 0, exchange_rate DECIMAL(10, 2) DEFAULT 150, quantity INT DEFAULT 1, supplier VARCHAR(255) DEFAULT NULL, origin VARCHAR(255) DEFAULT NULL, color VARCHAR(100) DEFAULT NULL, size VARCHAR(100) DEFAULT NULL, category VARCHAR(255) DEFAULT 'locally_made', is_active BOOLEAN DEFAULT TRUE, created_by VARCHAR(255) DEFAULT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, is_deleted BOOLEAN DEFAULT FALSE, PRIMARY KEY (coffin_id), UNIQUE KEY unique_custom_id_per_tenant (tenant_slug, custom_id), INDEX idx_tenant_slug (tenant_slug), INDEX idx_type (type), INDEX idx_category (category), INDEX idx_quantity (quantity), INDEX idx_is_active (is_active), INDEX idx_created_at (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    sql: `CREATE TABLE IF NOT EXISTS coffins (coffin_id VARCHAR(255) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, type VARCHAR(255) NOT NULL, exact_price DECIMAL(15, 2) NOT NULL DEFAULT 0, quantity INT DEFAULT 1, color VARCHAR(100) DEFAULT NULL, size VARCHAR(100) DEFAULT NULL, is_active BOOLEAN DEFAULT TRUE, is_deleted BOOLEAN DEFAULT FALSE, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (coffin_id), INDEX idx_tenant_slug (tenant_slug), INDEX idx_type (type), INDEX idx_quantity (quantity), INDEX idx_is_active (is_active), INDEX idx_created_at (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
   {
     name: '081_create_coffin_images_table',
@@ -288,7 +283,6 @@ export const ALL_TENANT_MIGRATIONS: Migration[] = [
   ...TENANT_SERVICE_MIGRATIONS,
   ...DECEASED_SERVICE_MIGRATIONS,
   ...INVOICE_SERVICE_MIGRATIONS,
-  ...NOTIFICATIONS_SERVICE_MIGRATIONS,
   ...BODY_CHECKOUT_SERVICE_MIGRATIONS,
   ...COFFIN_SERVICE_MIGRATIONS,
   ...CHEMICALS_SERVICE_MIGRATIONS,
@@ -307,7 +301,6 @@ export const BRANCH_MIGRATIONS: Migration[] = [
   ...TENANT_SERVICE_MIGRATIONS,
   ...DECEASED_SERVICE_MIGRATIONS,
   ...INVOICE_SERVICE_MIGRATIONS,
-  ...NOTIFICATIONS_SERVICE_MIGRATIONS,
   ...BODY_CHECKOUT_SERVICE_MIGRATIONS,
   ...COFFIN_SERVICE_MIGRATIONS,
   ...CHEMICALS_SERVICE_MIGRATIONS,
@@ -321,7 +314,6 @@ export const SINGLE_TENANT_MIGRATIONS: Migration[] = [
   ...TENANT_SERVICE_MIGRATIONS,
   ...DECEASED_SERVICE_MIGRATIONS,
   ...INVOICE_SERVICE_MIGRATIONS,
-  ...NOTIFICATIONS_SERVICE_MIGRATIONS,
   ...BODY_CHECKOUT_SERVICE_MIGRATIONS,
   ...COFFIN_SERVICE_MIGRATIONS,
   ...CHEMICALS_SERVICE_MIGRATIONS,
@@ -339,7 +331,6 @@ export {
   TENANT_SERVICE_MIGRATIONS,
   DECEASED_SERVICE_MIGRATIONS,
   INVOICE_SERVICE_MIGRATIONS,
-  NOTIFICATIONS_SERVICE_MIGRATIONS,
   BODY_CHECKOUT_SERVICE_MIGRATIONS,
   COFFIN_SERVICE_MIGRATIONS,
   CHEMICALS_SERVICE_MIGRATIONS,
@@ -361,6 +352,8 @@ const CORE_MIGRATION_NAMES = [
   '001_create_organizations_table',
   '001a_create_tenants_table',
   '002_create_branches_table',
+  '002a_add_branch_code_column',
+  '002b_add_parent_branch_id_to_branches',
   '003_create_users_table',
   '003_create_refresh_tokens_table',
   '004_create_mortuary_settings_table',
