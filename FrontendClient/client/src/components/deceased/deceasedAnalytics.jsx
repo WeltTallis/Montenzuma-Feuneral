@@ -551,9 +551,9 @@ const DeceasedAnalytics = () => {
           <span>Fetching live deceased records from the backend…</span>
         </div>
       )}
-      {recordsError && !recordsLoading && (
+            {recordsError && !recordsLoading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', borderRadius: '8px', background: T.dangerBg, color: T.danger, fontSize: '0.82rem', animation: 'fadeUp 0.3s ease both' }}>
-          {I.alertTriangle}
+          <span role="img" aria-label="warning">⚠️</span>
           <span>{recordsError}</span>
         </div>
       )}
