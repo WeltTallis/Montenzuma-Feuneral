@@ -5,7 +5,7 @@ import { logger } from '@montezuma/shared-logger';
 /**
  * Get workshop production summary - orders, revenue, materials
  */
-const getWorkshopSummary = export const handler = async (req: any, res: any): Promise<void> => {
+export const getWorkshopSummary = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const dbName = await resolveDatabase(tenantSlug) || await lookupTenantDatabase(tenantSlug);
@@ -65,17 +65,17 @@ const getWorkshopSummary = export const handler = async (req: any, res: any): Pr
                 workers: workerCount?.count || 0
             },
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Workshop summary error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 /**
  * Get workshop production stages status
  */
-const getWorkshopProductionStatus = export const handler = async (req: any, res: any): Promise<void> => {
+export const getWorkshopProductionStatus = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const dbName = await resolveDatabase(tenantSlug) || await lookupTenantDatabase(tenantSlug);
@@ -106,11 +106,11 @@ const getWorkshopProductionStatus = export const handler = async (req: any, res:
                 pending: s.pending || 0
             })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Workshop production error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 export { getWorkshopSummary, getWorkshopProductionStatus };

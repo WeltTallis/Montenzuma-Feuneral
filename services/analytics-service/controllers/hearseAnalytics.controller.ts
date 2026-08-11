@@ -53,7 +53,7 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
       success: true,
       data: getEmptyAnalyticsData(requestId, tenantSlug),
       metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime, tenantSlug }
-    });
+}
     return;
   }
 
@@ -343,7 +343,7 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
         timestamp: new Date().toISOString(),
         executionTime: Date.now() - startTime
       }
-    });
+}
 
   } catch (error: any) {
     (logger as any).error(`[${requestId}] Hearse analytics error:`, error.message || error);
@@ -352,7 +352,7 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
       message: error.message,
       data: getEmptyAnalyticsData(requestId, tenantSlug),
       metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime }
-    });
+}
   }
 };
 
@@ -417,7 +417,7 @@ const getEmptyAnalyticsData = (requestId: string, tenantSlug: string): HearseAna
     executionTime: 0,
     tenantSlug
   }
-});
+}
 
 export default {
   getHearseAnalytics

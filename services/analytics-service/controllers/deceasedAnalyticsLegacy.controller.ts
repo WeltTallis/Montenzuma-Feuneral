@@ -5,7 +5,7 @@ import { logger } from '@montezuma/shared-logger';
 /**
  * Get simple deceased count - total, this month, this week, today
  */
-const getDeceasedCount = export const handler = async (req: any, res: any): Promise<void> => {
+export const getDeceasedCount = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const branchId = (req as any).headers['x-branch-id'] || (req as any).query.branchId || null;
@@ -41,17 +41,17 @@ const getDeceasedCount = export const handler = async (req: any, res: any): Prom
                 released: result?.released || 0
             },
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Deceased count error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 /**
  * Get case status distribution - simple counts by status
  */
-const getCaseStatusDistribution = export const handler = async (req: any, res: any): Promise<void> => {
+export const getCaseStatusDistribution = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const dbName = await resolveDatabase(tenantSlug) || await lookupTenantDatabase(tenantSlug);
@@ -74,17 +74,17 @@ const getCaseStatusDistribution = export const handler = async (req: any, res: a
             success: true,
             data: (results || []).map(r => ({ status: r.status, count: r.count })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Case status error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 /**
  * Get deceased trends - monthly counts for last 12 months
  */
-const getDeceasedTrends = export const handler = async (req: any, res: any): Promise<void> => {
+export const getDeceasedTrends = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const dbName = await resolveDatabase(tenantSlug) || await lookupTenantDatabase(tenantSlug);
@@ -112,11 +112,11 @@ const getDeceasedTrends = export const handler = async (req: any, res: any): Pro
                 count: r.count
             })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Deceased trends error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 export { getDeceasedCount, getCaseStatusDistribution, getDeceasedTrends };

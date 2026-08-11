@@ -5,7 +5,7 @@ import { logger } from '@montezuma/shared-logger';
 /**
  * Get revenue summary - total, collected, outstanding, current month
  */
-const getRevenueSummary = export const handler = async (req: any, res: any): Promise<void> => {
+export const getRevenueSummary = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const dbName = await resolveDatabase(tenantSlug) || await lookupTenantDatabase(tenantSlug);
@@ -38,17 +38,17 @@ const getRevenueSummary = export const handler = async (req: any, res: any): Pro
                     : 0
             },
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Revenue summary error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 /**
  * Get monthly revenue trends - last 12 months
  */
-const getMonthlyRevenueTrends = export const handler = async (req: any, res: any): Promise<void> => {
+export const getMonthlyRevenueTrends = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const dbName = await resolveDatabase(tenantSlug) || await lookupTenantDatabase(tenantSlug);
@@ -80,11 +80,11 @@ const getMonthlyRevenueTrends = export const handler = async (req: any, res: any
                 outstanding: parseFloat(r.outstanding || 0).toFixed(2)
             })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Revenue trends error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 export { getRevenueSummary, getMonthlyRevenueTrends };

@@ -5,7 +5,7 @@ import { logger } from '@montezuma/shared-logger';
 /**
  * Get coffin inventory summary - total stock, sold, by type
  */
-const getCoffinInventorySummary = export const handler = async (req: any, res: any): Promise<void> => {
+export const getCoffinInventorySummary = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const dbName = await resolveDatabase(tenantSlug) || await lookupTenantDatabase(tenantSlug);
@@ -55,17 +55,17 @@ const getCoffinInventorySummary = export const handler = async (req: any, res: a
                 byType: (byType || []).map(t => ({ type: t.type, count: t.count, stock: t.stock, avgPrice: parseFloat(t.avg_price || 0).toFixed(2) }))
             },
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Coffin inventory error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 /**
  * Get coffin sales data
  */
-const getCoffinSales = export const handler = async (req: any, res: any): Promise<void> => {
+export const getCoffinSales = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const dbName = await resolveDatabase(tenantSlug) || await lookupTenantDatabase(tenantSlug);
@@ -98,11 +98,11 @@ const getCoffinSales = export const handler = async (req: any, res: any): Promis
                 available: Math.max(0, r.available || 0)
             })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Coffin sales error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 export { getCoffinInventorySummary, getCoffinSales };

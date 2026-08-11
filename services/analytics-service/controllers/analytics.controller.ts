@@ -3,7 +3,7 @@ import { lookupTenantDatabase, safeTenantQuery } from '../../../shared/dbConfig'
 import { logger } from '@montezuma/shared-logger';
 
 // === Advanced Analytics Controller ===
-const getMortuaryAnalytics = export const handler = async (req: any, res: any): Promise<void> => {
+export const getMortuaryAnalytics = async (req: any, res: any): Promise<void> => {
   const requestId = Math.random().toString(36).substring(7);
   (logger as any).info(`[${requestId}] Fetching comprehensive mortuary analytics...`);
 
@@ -361,7 +361,7 @@ const getMortuaryAnalytics = export const handler = async (req: any, res: any): 
           failedQueries++;
           return { name: queryDef.name, success: false, error: error.message };
         }
-      });
+}
 
       await Promise.allSettled(batchPromises);
     }
@@ -427,7 +427,7 @@ const getMortuaryAnalytics = export const handler = async (req: any, res: any): 
       },
     });
   }
-});
+}
 
 // Safe data processing functions
 function safeFormatNumber(value, defaultValue = 0, decimals = 1) {
@@ -694,7 +694,7 @@ async function processQueryResult(queryName, data, responseData) {
           if (month >= 0 && month < 12) {
             chemicalsData[chemical].monthly[month] = safeFormatNumber(item.quantity, 0, 1);
           }
-        });
+}
         responseData.chemicalsData = chemicalsData;
         break;
 
@@ -989,7 +989,7 @@ function getFallbackDataStructure() {
 }
 
 // Vehicle Analytics Controller
-const getComprehensiveVehicleAnalytics = export const handler = async (req: any, res: any): Promise<void> => {
+export const getComprehensiveVehicleAnalytics = async (req: any, res: any): Promise<void> => {
   const requestId = Math.random().toString(36).substring(7);
   (logger as any).info(`[${requestId}] Fetching vehicle analytics...`);
 
@@ -1124,6 +1124,6 @@ const getComprehensiveVehicleAnalytics = export const handler = async (req: any,
       },
     });
   }
-});
+}
 
 export { getMortuaryAnalytics, getComprehensiveVehicleAnalytics };

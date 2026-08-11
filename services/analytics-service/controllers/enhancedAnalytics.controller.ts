@@ -4,7 +4,7 @@ import AnalyticsModel from '../models/analyticsModel';
 import { Logger } from '../../../packages/shared-logger/src/logger';
 
 // Get dashboard overview
-export const getDashboard = export const handler = async (req: any, res: any): Promise<void> => {
+export export const getDashboard = async (req: any, res: any): Promise<void> => {
   const { startDate, endDate } = req.query;
   const tenantId = (req as any).tenant?.id || 'default';
 
@@ -18,11 +18,11 @@ export const getDashboard = export const handler = async (req: any, res: any): P
     message: 'Dashboard data retrieved successfully',
     data: dashboardData,
     period: { startDate: start, endDate: end }
-  });
+}
 });
 
 // Get monthly analytics
-export const getMonthlyAnalytics = export const handler = async (req: any, res: any): Promise<void> => {
+export export const getMonthlyAnalytics = async (req: any, res: any): Promise<void> => {
   const { month, year } = req.query;
   const tenantId = (req as any).tenant?.id || 'default';
 
@@ -45,11 +45,11 @@ export const getMonthlyAnalytics = export const handler = async (req: any, res: 
       month: currentMonth,
       year: currentYear
     }
-  });
+}
 });
 
 // Get yearly analytics
-export const getYearlyAnalytics = export const handler = async (req: any, res: any): Promise<void> => {
+export export const getYearlyAnalytics = async (req: any, res: any): Promise<void> => {
   const { year } = req.query;
   const tenantId = (req as any).tenant?.id || 'default';
 
@@ -66,11 +66,11 @@ export const getYearlyAnalytics = export const handler = async (req: any, res: a
       monthlyBreakdown: safeMonthlyBreakdown,
       year: currentYear
     }
-  });
+}
 });
 
 // Get comprehensive report
-export const getComprehensiveReport = export const handler = async (req: any, res: any): Promise<void> => {
+export export const getComprehensiveReport = async (req: any, res: any): Promise<void> => {
   const { startDate, endDate, format = 'json' } = req.query;
   const tenantId = (req as any).tenant?.id || 'default';
 
@@ -100,12 +100,12 @@ export const getComprehensiveReport = export const handler = async (req: any, re
       message: 'Comprehensive report retrieved successfully',
       data: dashboardData,
       period: { startDate: start, endDate: end }
-    });
+}
   }
-});
+}
 
 // Export to PDF
-export const exportPDF = export const handler = async (req: any, res: any): Promise<void> => {
+export export const exportPDF = async (req: any, res: any): Promise<void> => {
   const { startDate, endDate, title } = (req as any).body;
   const tenantId = (req as any).tenant?.id || 'default';
 
@@ -121,7 +121,7 @@ export const exportPDF = export const handler = async (req: any, res: any): Prom
 });
 
 // Export to Excel
-export const exportExcel = export const handler = async (req: any, res: any): Promise<void> => {
+export export const exportExcel = async (req: any, res: any): Promise<void> => {
   const { startDate, endDate, title } = (req as any).body;
   const tenantId = (req as any).tenant?.id || 'default';
 
@@ -137,7 +137,7 @@ export const exportExcel = export const handler = async (req: any, res: any): Pr
 });
 
 // Export to CSV
-export const exportCSV = export const handler = async (req: any, res: any): Promise<void> => {
+export export const exportCSV = async (req: any, res: any): Promise<void> => {
   const { startDate, endDate, title } = (req as any).body;
   const tenantId = (req as any).tenant?.id || 'default';
 
@@ -153,7 +153,7 @@ export const exportCSV = export const handler = async (req: any, res: any): Prom
 });
 
 // Save report
-export const saveReport = export const handler = async (req: any, res: any): Promise<void> => {
+export export const saveReport = async (req: any, res: any): Promise<void> => {
   const { title, type, startDate, endDate } = (req as any).body;
   const tenantId = (req as any).tenant?.id || 'default';
   const userId = req.user?.id || 'system';
@@ -178,7 +178,7 @@ export const saveReport = export const handler = async (req: any, res: any): Pro
 });
 
 // Get saved reports
-export const getSavedReports = export const handler = async (req: any, res: any): Promise<void> => {
+export export const getSavedReports = async (req: any, res: any): Promise<void> => {
   const { limit = 10, offset = 0 } = req.query;
   const tenantId = (req as any).tenant?.id || 'default';
 
@@ -189,7 +189,7 @@ export const getSavedReports = export const handler = async (req: any, res: any)
     message: 'Saved reports retrieved successfully',
     data: reports,
     pagination: { limit: parseInt(limit), offset: parseInt(offset) }
-  });
+}
 });
 
 module.exports = exports;

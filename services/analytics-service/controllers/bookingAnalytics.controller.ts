@@ -5,7 +5,7 @@ import { logger } from '@montezuma/shared-logger';
 /**
  * Get booking counts - total, this week, today, by status
  */
-const getBookingCounts = export const handler = async (req: any, res: any): Promise<void> => {
+export const getBookingCounts = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const branchId = (req as any).headers['x-branch-id'] || (req as any).query.branchId || null;
@@ -41,17 +41,17 @@ const getBookingCounts = export const handler = async (req: any, res: any): Prom
                 inProgress: result?.in_progress || 0
             },
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Booking counts error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 /**
  * Get hearse fleet status - available, booked, maintenance counts
  */
-const getHearseFleetStatus = export const handler = async (req: any, res: any): Promise<void> => {
+export const getHearseFleetStatus = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const dbName = await resolveDatabase(tenantSlug) || await lookupTenantDatabase(tenantSlug);
@@ -81,11 +81,11 @@ const getHearseFleetStatus = export const handler = async (req: any, res: any): 
                 total: Object.values(statusMap).reduce((a, b) => a + b, 0)
             },
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Hearse fleet error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 export { getBookingCounts, getHearseFleetStatus };

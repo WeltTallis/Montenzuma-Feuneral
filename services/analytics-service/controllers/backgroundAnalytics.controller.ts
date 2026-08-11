@@ -4,7 +4,7 @@ import backgroundJob from '../services/backgroundJob';
 import { logger } from '@montezuma/shared-logger';
 
 // Start a background dashboard job
-export const startDashboardBackground = export const handler = async (req: any, res: any): Promise<void> => {
+export export const startDashboardBackground = async (req: any, res: any): Promise<void> => {
   try {
     const { startDate, endDate } = (req as any).body || req.query || {};
     const tenantId = (req as any).tenant?.id || 'default';
@@ -30,10 +30,10 @@ export const startDashboardBackground = export const handler = async (req: any, 
     logger.error('Error enqueuing analytics job', error);
     res.status(500).json({ success: false, message: 'Failed to enqueue job', error: error.message });
   }
-});
+}
 
 // Get job status/result
-export const getJobStatus = export const handler = async (req: any, res: any): Promise<void> => {
+export export const getJobStatus = async (req: any, res: any): Promise<void> => {
   try {
     const jobId = (req as any).params.id;
     const job = await backgroundJob.getJob(jobId);
@@ -55,4 +55,4 @@ export const getJobStatus = export const handler = async (req: any, res: any): P
     logger.error('Error fetching job status', error);
     res.status(500).json({ success: false, message: 'Failed to fetch job status', error: error.message });
   }
-});
+}

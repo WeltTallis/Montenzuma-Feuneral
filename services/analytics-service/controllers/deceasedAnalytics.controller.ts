@@ -78,7 +78,7 @@ export const getDeceasedAnalytics = async (req: any, res: any): Promise<void> =>
       success: true,
       data: getEmptyAnalyticsData(requestId),
       metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime, timeRange: query.timeRange }
-    });
+}
     return;
   }
 
@@ -427,7 +427,7 @@ export const getDeceasedAnalytics = async (req: any, res: any): Promise<void> =>
         timestamp: new Date().toISOString(),
         executionTime: Date.now() - startTime
       }
-    });
+}
 
   } catch (error: any) {
     (logger as any).error(`[${requestId}] Deceased analytics error:`, error.message || error);
@@ -436,7 +436,7 @@ export const getDeceasedAnalytics = async (req: any, res: any): Promise<void> =>
       message: error.message,
       data: getEmptyAnalyticsData(requestId),
       metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime }
-    });
+}
   }
 };
 
@@ -471,7 +471,7 @@ const getEmptyAnalyticsData = (requestId: string): DeceasedAnalyticsData => ({
     executionTime: 0,
     timeRange: '3m'
   }
-});
+}
 
 /**
  * Background task: Pre-compute and cache analytics data

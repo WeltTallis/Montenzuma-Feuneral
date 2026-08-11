@@ -5,7 +5,7 @@ import { logger } from '@montezuma/shared-logger';
 /**
  * Get chemical stock levels - current stock, usage rates, low stock alerts
  */
-const getChemicalStockSummary = export const handler = async (req: any, res: any): Promise<void> => {
+export const getChemicalStockSummary = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const dbName = await resolveDatabase(tenantSlug) || await lookupTenantDatabase(tenantSlug);
@@ -38,17 +38,17 @@ const getChemicalStockSummary = export const handler = async (req: any, res: any
                 lastUsed: r.last_used || null
             })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Chemical stock error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 /**
  * Get chemical usage trends - monthly usage for last 12 months
  */
-const getChemicalUsageTrends = export const handler = async (req: any, res: any): Promise<void> => {
+export const getChemicalUsageTrends = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const dbName = await resolveDatabase(tenantSlug) || await lookupTenantDatabase(tenantSlug);
@@ -80,11 +80,11 @@ const getChemicalUsageTrends = export const handler = async (req: any, res: any)
                 unit: r.unit
             })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Chemical trends error:`, error);
         res.status(500).json({ success: false, message: error.message });
     }
-});
+}
 
 export { getChemicalStockSummary, getChemicalUsageTrends };

@@ -34,7 +34,7 @@ const logger = { error: (...args) => console.error('[Dashboard]', ...args), warn
 /**
  * Aggregated comprehensive dashboard - calls all small controllers internally
  */
-const getComprehensiveDashboard = export const handler = async (req: any, res: any): Promise<void> => {
+export const getComprehensiveDashboard = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     const branchId = (req as any).headers['x-branch-id'] || (req as any).headers['x-branch-slug'] || (req as any).query.branchId || (req as any).query.branchSlug || null;
@@ -67,7 +67,7 @@ const getComprehensiveDashboard = export const handler = async (req: any, res: a
                 metadata: { currency: 'KES', executionTime: 0, timestamp: new Date().toISOString(), note: 'Database unavailable - Docker not running' }
             },
             metadata: { requestId, timestamp: new Date().toISOString(), executionTime: 0 }
-        });
+}
     }
 
     try {
@@ -245,7 +245,7 @@ const getComprehensiveDashboard = export const handler = async (req: any, res: a
             success: true,
             data,
             metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime }
-        });
+}
     } catch (error) {
         (logger as any).error(`[${requestId}] Comprehensive dashboard error:`, error);
         res.status(200).json({
@@ -262,15 +262,15 @@ const getComprehensiveDashboard = export const handler = async (req: any, res: a
                 metadata: { currency: 'KES', executionTime: Date.now() - startTime, timestamp: new Date().toISOString(), error: error.message }
             },
             metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime }
-        });
+}
     }
-});
+}
 
 /**
  * Fetch comparative data between N branches dynamically
  * Compares: deceased, hearses, bookings, chemicals, coffins across branches
  */
-const getComparisonDashboard = export const handler = async (req: any, res: any): Promise<void> => {
+export const getComparisonDashboard = async (req: any, res: any): Promise<void> => {
     const requestId = Math.random().toString(36).substring(7);
     const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
     let { branches } = req.query;
@@ -460,7 +460,7 @@ const getComparisonDashboard = export const handler = async (req: any, res: any)
                 maxHearseBookings = h.totalBookings;
                 mostBookedHearseOverall = { ...h, branchName: b.branchName };
             }
-        });
+}
 
         if (b.hearses?.available === 0 && b.hearses?.total > 0) {
             recommendations.push(`⚠️ ${b.branchName}: All hearses are currently booked. Consider fleet expansion.`);
@@ -471,7 +471,7 @@ const getComparisonDashboard = export const handler = async (req: any, res: any)
         if (b.deceased?.thisMonth > (b.deceased?.total / 12) * 1.5) {
             recommendations.push(`📈 ${b.branchName}: Deceased cases this month (${b.deceased.thisMonth}) are significantly above average.`);
         }
-    });
+}
 
     // Build comparison metrics
     const comparison = {
@@ -521,7 +521,7 @@ const getComparisonDashboard = export const handler = async (req: any, res: any)
             }
         },
         metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime }
-    });
+}
 });
 
 export { getComprehensiveDashboard, getComparisonDashboard };
