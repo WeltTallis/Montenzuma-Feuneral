@@ -1,4 +1,4 @@
-const { safeQuery } = require('../../../shared/config/db');
+import { safeQuery } from '../../../shared/config/db';
 
 class AnalyticsModel {
   // Get monthly analytics summary
@@ -161,4 +161,4 @@ class AnalyticsModel {
   }
 }
 
-module.exports = AnalyticsModel;
+export default AnalyticsModel;

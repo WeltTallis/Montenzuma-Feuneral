@@ -27,22 +27,22 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
  * Get comprehensive hearse analytics data
  * Matches the frontend HearseBookings component requirements
  */
-export const getHearseAnalytics = async (req: Request, res: Response): Promise<void> => {
+export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
   const requestId = Math.random().toString(36).substring(7);
   const startTime = Date.now();
   
   // Extract query parameters
   const query: HearseAnalyticsQuery = {
-    timeRange: (req.query.timeRange as 'today' | 'tomorrow' | 'thisWeek' | 'nextWeek' | 'thisMonth' | 'nextMonth' | 'all') || 'all',
-    startDate: req.query.startDate as string | undefined,
-    endDate: req.query.endDate as string | undefined,
-    branchId: req.query.branchId ? parseInt(req.query.branchId as string) : undefined,
-    status: req.query.status as string | undefined,
-    searchQuery: req.query.searchQuery as string | undefined
+    timeRange: ((req as any).query.timeRange as 'today' | 'tomorrow' | 'thisWeek' | 'nextWeek' | 'thisMonth' | 'nextMonth' | 'all') || 'all',
+    startDate: (req as any).query.startDate as string | undefined,
+    endDate: (req as any).query.endDate as string | undefined,
+    branchId: (req as any).query.branchId ? parseInt((req as any).query.branchId as string) : undefined,
+    status: (req as any).query.status as string | undefined,
+    searchQuery: (req as any).query.searchQuery as string | undefined
   };
 
-  const tenantSlug = req.headers['x-tenant-slug'] as string || req.headers['x-tenant-id'] as string || 'system_shared';
-  const branchId = req.headers['x-branch-id'] as string || req.query.branchId as string || null;
+  const tenantSlug = (req as any).headers['x-tenant-slug'] as string || (req as any).headers['x-tenant-id'] as string || 'system_shared';
+  const branchId = (req as any).headers['x-branch-id'] as string || (req as any).query.branchId as string || null;
   
   // Resolve database
   const resolveSlug = branchId ? `${tenantSlug}-${branchId}` : tenantSlug;
@@ -58,7 +58,7 @@ export const getHearseAnalytics = async (req: Request, res: Response): Promise<v
   }
 
   try {
-    logger.info(`[${requestId}] Fetching hearse analytics for tenant: ${tenantSlug}, branch: ${branchId}`);
+    (logger as any).info(`[${requestId}] Fetching hearse analytics for tenant: ${tenantSlug}, branch: ${branchId}`);
 
     // Build date filter
     const dateFilter = buildDateFilter(query);
@@ -319,7 +319,7 @@ export const getHearseAnalytics = async (req: Request, res: Response): Promise<v
     };
 
     // Emit real-time update via Socket.IO
-    const io = req.app?.get('io');
+    const io = (req as any).app?.get('io');
     if (io) {
       (io as any).to('dashboard').emit('hearse_analytics_update', {
         type: 'ANALYTICS_UPDATE',
@@ -346,7 +346,7 @@ export const getHearseAnalytics = async (req: Request, res: Response): Promise<v
     });
 
   } catch (error: any) {
-    logger.error(`[${requestId}] Hearse analytics error:`, error.message || error);
+    (logger as any).error(`[${requestId}] Hearse analytics error:`, error.message || error);
     res.status(500).json({
       success: false,
       message: error.message,

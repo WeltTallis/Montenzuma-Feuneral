@@ -1,5 +1,5 @@
-const client = require('prom-client');
-const { logger } = require('@montezuma/shared-logger');
+import * as client from 'prom-client';
+import { logger } from '@montezuma/shared-logger';
 
 // Create a registry specific to this service (default registry can also be used)
 const register = new client.Registry();
@@ -96,11 +96,4 @@ async function metricsEndpoint(req, res) {
   }
 }
 
-module.exports = {
-  init,
-  observeJobDuration,
-  incrementSuccess,
-  incrementFailure,
-  metricsEndpoint,
-  _register: register,
-};
+export { init, observeJobDuration, incrementSuccess, incrementFailure, metricsEndpoint, register as _register };

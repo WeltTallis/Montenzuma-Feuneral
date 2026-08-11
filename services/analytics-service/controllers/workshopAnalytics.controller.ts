@@ -27,24 +27,24 @@ const STAGES = [
  * Get comprehensive workshop analytics data
  * Matches the frontend WorkshopDashboard component requirements
  */
-export const getWorkshopAnalytics = async (req: Request, res: Response): Promise<void> => {
+export const getWorkshopAnalytics = async (req: any, res: any): Promise<void> => {
   const requestId = Math.random().toString(36).substring(7);
   const startTime = Date.now();
   
   // Extract query parameters
   const query: WorkshopAnalyticsQuery = {
-    startDate: req.query.startDate as string | undefined,
-    endDate: req.query.endDate as string | undefined,
-    status: req.query.status as string | undefined,
-    stage: req.query.stage as string | undefined,
-    priority: req.query.priority as string | undefined,
-    workerId: req.query.workerId ? parseInt(req.query.workerId as string) : undefined,
-    lowStock: req.query.lowStock === 'true',
-    searchQuery: req.query.searchQuery as string | undefined
+    startDate: (req as any).query.startDate as string | undefined,
+    endDate: (req as any).query.endDate as string | undefined,
+    status: (req as any).query.status as string | undefined,
+    stage: (req as any).query.stage as string | undefined,
+    priority: (req as any).query.priority as string | undefined,
+    workerId: (req as any).query.workerId ? parseInt((req as any).query.workerId as string) : undefined,
+    lowStock: (req as any).query.lowStock === 'true',
+    searchQuery: (req as any).query.searchQuery as string | undefined
   };
 
-  const tenantSlug = req.headers['x-tenant-slug'] as string || req.headers['x-tenant-id'] as string || 'system_shared';
-  const branchId = req.headers['x-branch-id'] as string || req.query.branchId as string || null;
+  const tenantSlug = (req as any).headers['x-tenant-slug'] as string || (req as any).headers['x-tenant-id'] as string || 'system_shared';
+  const branchId = (req as any).headers['x-branch-id'] as string || (req as any).query.branchId as string || null;
   
   // Resolve database
   const resolveSlug = branchId ? `${tenantSlug}-${branchId}` : tenantSlug;
@@ -60,7 +60,7 @@ export const getWorkshopAnalytics = async (req: Request, res: Response): Promise
   }
 
   try {
-    logger.info(`[${requestId}] Fetching workshop analytics for tenant: ${tenantSlug}`);
+    (logger as any).info(`[${requestId}] Fetching workshop analytics for tenant: ${tenantSlug}`);
 
     // Build filters
     const dateFilter = buildDateFilter(query);
@@ -297,7 +297,7 @@ export const getWorkshopAnalytics = async (req: Request, res: Response): Promise
     };
 
     // Emit real-time update via Socket.IO
-    const io = req.app?.get('io');
+    const io = (req as any).app?.get('io');
     if (io) {
       (io as any).to('dashboard').emit('workshop_analytics_update', {
         type: 'ANALYTICS_UPDATE',
@@ -324,7 +324,7 @@ export const getWorkshopAnalytics = async (req: Request, res: Response): Promise
     });
 
   } catch (error: any) {
-    logger.error(`[${requestId}] Workshop analytics error:`, error.message || error);
+    (logger as any).error(`[${requestId}] Workshop analytics error:`, error.message || error);
     res.status(500).json({
       success: false,
       message: error.message,

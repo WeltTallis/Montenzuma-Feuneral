@@ -1,9 +1,9 @@
-const { Worker } = require('bullmq');
-const IORedis = require('ioredis');
-const backgroundJob = require('../services/backgroundJob');
-const AnalyticsService = require('../services/analyticsService');
-const metrics = require('../services/metrics');
-const { logger } = require('@montezuma/shared-logger');
+import { Worker } from 'bullmq';
+import IORedis from 'ioredis';
+import backgroundJob from '../services/backgroundJob';
+import AnalyticsService from '../services/analyticsService';
+import metrics from '../services/metrics';
+import { logger } from '@montezuma/shared-logger';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const connection = new IORedis(REDIS_URL);

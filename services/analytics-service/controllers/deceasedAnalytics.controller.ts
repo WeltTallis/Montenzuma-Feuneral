@@ -51,23 +51,23 @@ const mapRecord = (r: any) => {
  * Get comprehensive deceased analytics data
  * Matches the frontend DeceasedAnalytics component requirements
  */
-export const getDeceasedAnalytics = async (req: Request, res: Response): Promise<void> => {
+export const getDeceasedAnalytics = async (req: any, res: any): Promise<void> => {
   const requestId = Math.random().toString(36).substring(7);
   const startTime = Date.now();
 
   // Extract query parameters
   const query: DeceasedAnalyticsQuery = {
-    timeRange: (req.query.timeRange as '3m' | '6m' | '12m') || '3m',
-    startDate: req.query.startDate as string | undefined,
-    endDate: req.query.endDate as string | undefined,
-    status: req.query.status as string | undefined,
-    pmFilter: req.query.pMFilter as string | undefined,
-    searchQuery: req.query.searchQuery as string | undefined,
-    selectedDate: req.query.selectedDate as string | undefined
+    timeRange: ((req as any).query.timeRange as '3m' | '6m' | '12m') || '3m',
+    startDate: (req as any).query.startDate as string | undefined,
+    endDate: (req as any).query.endDate as string | undefined,
+    status: (req as any).query.status as string | undefined,
+    pmFilter: (req as any).query.pMFilter as string | undefined,
+    searchQuery: (req as any).query.searchQuery as string | undefined,
+    selectedDate: (req as any).query.selectedDate as string | undefined
   };
 
-  const tenantSlug = req.headers['x-tenant-slug'] as string || req.headers['x-tenant-id'] as string || 'system_shared';
-  const branchId = req.headers['x-branch-id'] as string || req.query.branchId as string || null;
+  const tenantSlug = (req as any).headers['x-tenant-slug'] as string || (req as any).headers['x-tenant-id'] as string || 'system_shared';
+  const branchId = (req as any).headers['x-branch-id'] as string || (req as any).query.branchId as string || null;
 
   // Resolve database
   const resolveSlug = branchId ? `${tenantSlug}-${branchId}` : tenantSlug;
@@ -83,7 +83,7 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
   }
 
   try {
-    logger.info(`[${requestId}] Fetching deceased analytics for tenant: ${tenantSlug}, branch: ${branchId}`);
+    (logger as any).info(`[${requestId}] Fetching deceased analytics for tenant: ${tenantSlug}, branch: ${branchId}`);
 
     // Calculate date range based on timeRange
     const monthsBack = query.timeRange === '3m' ? 3 : query.timeRange === '6m' ? 6 : 12;
@@ -403,7 +403,7 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
     };
 
     // Emit real-time update via Socket.IO
-    const io = req.app?.get('io');
+    const io = (req as any).app?.get('io');
     if (io) {
       (io as any).to('dashboard').emit('analytics_update', {
         type: 'ANALYTICS_UPDATE',
@@ -430,7 +430,7 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
     });
 
   } catch (error: any) {
-    logger.error(`[${requestId}] Deceased analytics error:`, error.message || error);
+    (logger as any).error(`[${requestId}] Deceased analytics error:`, error.message || error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -479,14 +479,14 @@ const getEmptyAnalyticsData = (requestId: string): DeceasedAnalyticsData => ({
  */
 export const refreshAnalyticsCache = async (tenantSlug: string, branchId?: string): Promise<void> => {
   const requestId = Math.random().toString(36).substring(7);
-  logger.info(`[${requestId}] Refreshing analytics cache for tenant: ${tenantSlug}, branch: ${branchId}`);
+  (logger as any).info(`[${requestId}] Refreshing analytics cache for tenant: ${tenantSlug}, branch: ${branchId}`);
 
   try {
     // This would integrate with Redis caching layer
     // For now, just log the intent
-    logger.info(`[${requestId}] Analytics cache refresh triggered`);
+    (logger as any).info(`[${requestId}] Analytics cache refresh triggered`);
   } catch (error: any) {
-    logger.error(`[${requestId}] Failed to refresh analytics cache:`, error.message || error);
+    (logger as any).error(`[${requestId}] Failed to refresh analytics cache:`, error.message || error);
   }
 };
 

@@ -1,16 +1,16 @@
-const path = require('path');
+import path from 'path';
 // Must load .env FIRST before any other module that reads process.env
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const express = require('express');
-const http = require('http');
-const cors = require('cors');
-const { Server } = require('socket.io');
-const helmet = require('helmet');
-const { safeQuery } = require('../../shared/config/db');
-const { validateTenantActive } = require('../../shared/tenancy');
-const analyticsRoutes = require('./routes/analyticsRoutes');
-const enhancedAnalyticsRoutes = require('./routes/enhancedAnalyticsRoutes');
+import express, { Request, Response, NextFunction } from 'express';
+import http from 'http';
+import cors from 'cors';
+import { Server } from 'socket.io';
+import helmet from 'helmet';
+import { safeQuery } from '../../shared/config/db';
+import { validateTenantActive } from '../../shared/tenancy';
+import analyticsRoutes from './routes/analyticsRoutes';
+import enhancedAnalyticsRoutes from './routes/enhancedAnalyticsRoutes';
 
 const app = express();
 const server = http.createServer(app);
@@ -52,7 +52,7 @@ app.set('io', io);
 
 // Initialize Socket.IO for background analytics service
 try {
-  const { setSocketInstance } = require('./services/backgroundAnalytics.service');
+  import { setSocketInstance } from './services/backgroundAnalytics.service';
   setSocketInstance(io);
   console.log('Background analytics Socket.IO initialized');
 } catch (err) {
@@ -64,7 +64,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Tenant Resolution Middleware - handles both single-tenant and multi-branch
-app.use(async (req, res, next) => {
+app.use(async (req: Request, res: Response, next: NextFunction) => {
   const tenantSlug = req.headers['x-tenant-slug'] || req.headers['x-tenant-id'] || 'system_shared';
   const branchId = req.headers['x-branch-id'] || req.query.branchId || null;
 
@@ -112,7 +112,7 @@ app.use('/enhanced', enhancedAnalyticsRoutes);
 
 // Deceased analytics routes (TypeScript)
 try {
-  const deceasedAnalyticsRoutes = require('./routes/deceasedAnalytics.routes');
+  import deceasedAnalyticsRoutes from './routes/deceasedAnalytics.routes';
   app.use('/', deceasedAnalyticsRoutes);
   console.log('Deceased analytics routes loaded');
 } catch (err) {
@@ -121,7 +121,7 @@ try {
 
 // Hearse analytics routes (TypeScript)
 try {
-  const hearseAnalyticsRoutes = require('./routes/hearseAnalytics.routes');
+  import hearseAnalyticsRoutes from './routes/hearseAnalytics.routes';
   app.use('/', hearseAnalyticsRoutes);
   console.log('Hearse analytics routes loaded');
 } catch (err) {
@@ -130,7 +130,7 @@ try {
 
 // Flower booking analytics routes (TypeScript)
 try {
-  const flowerBookingAnalyticsRoutes = require('./routes/flowerBookingAnalytics.routes');
+  import flowerBookingAnalyticsRoutes from './routes/flowerBookingAnalytics.routes';
   app.use('/', flowerBookingAnalyticsRoutes);
   console.log('Flower booking analytics routes loaded');
 } catch (err) {
@@ -139,7 +139,7 @@ try {
 
 // Workshop analytics routes (TypeScript)
 try {
-  const workshopAnalyticsRoutes = require('./routes/workshopAnalytics.routes');
+  import workshopAnalyticsRoutes from './routes/workshopAnalytics.routes';
   app.use('/', workshopAnalyticsRoutes);
   console.log('Workshop analytics routes loaded');
 } catch (err) {
@@ -156,7 +156,7 @@ try {
 
 // Metrics endpoint (Prometheus)
 try {
-  const metrics = require('./services/metrics');
+  import metrics from './services/metrics';
   app.get('/metrics', metrics.metricsEndpoint);
   console.log('Metrics endpoint exposed at /metrics');
 } catch (err) {
