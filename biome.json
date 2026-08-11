@@ -1,21 +1,22 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  
-  "organizeImports": {
-    "enabled": true
+  "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   },
-
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
-      
+      "preset": "recommended",
       "suspicious": {
         "noArrayIndexKey": "error",
         "noAssignInExpressions": "error",
         "noAsyncPromiseExecutor": "error",
         "noCommentText": "error",
-        "noConsoleLog": "warn",
         "noDebugger": "error",
         "noDoubleEquals": "error",
         "noDuplicateCase": "error",
@@ -32,7 +33,6 @@
         "noImportAssign": "error",
         "noMisleadingCharacterClass": "error",
         "noMisleadingInstantiator": "error",
-        "noNonNullAssertion": "warn",
         "noObjectDefinePropertyArguments": "error",
         "noPrototypeBuiltins": "error",
         "noRedeclare": "error",
@@ -45,14 +45,18 @@
         "useDefaultSwitchClauseLast": "error",
         "useGetterReturn": "error",
         "useNamespaceKeyword": "warn",
-        "useValidTypeof": "error"
+        "noConsole": {
+          "level": "warn",
+          "options": {
+            "allow": ["log"]
+          }
+        },
+        "noTemplateCurlyInString": "error"
       },
-      
       "complexity": {
         "noBannedTypes": "error",
         "noExtraBooleanCast": "error",
         "noForEach": "warn",
-        "noMultipleSpacesInRegularExpressionLiterals": "error",
         "noStaticOnlyClass": "error",
         "noUselessConstructor": "error",
         "noUselessFragments": "error",
@@ -61,19 +65,18 @@
         "noUselessThisAlias": "error",
         "noUselessTypeConstraint": "error",
         "noVoid": "error",
-        "noWith": "error",
         "useArrowFunction": "error",
         "useFlatMap": "warn",
         "useLiteralKeys": "error",
         "useOptionalChain": "error",
         "useRegexLiterals": "error",
         "useSimpleNumberKeys": "error",
-        "useSimplifiedLogicExpression": "error"
+        "useSimplifiedLogicExpression": "error",
+        "noArguments": "error",
+        "noCommaOperator": "error"
       },
-      
       "correctness": {
         "noChildrenProp": "error",
-        "noConstEnum": "error",
         "noConstantMathMinMaxClamp": "error",
         "noEmptyPattern": "error",
         "noGlobalObjectCalls": "error",
@@ -90,16 +93,13 @@
         "noUnusedLabels": "error",
         "noUnusedPrivateClassMembers": "error",
         "noUnusedVariables": "error",
-        "useArrayLiterals": "error",
         "useExhaustiveDependencies": "error",
         "useHookAtTopLevel": "error",
         "useValidForDirection": "error",
-        "useYield": "error"
+        "useYield": "error",
+        "useValidTypeof": "error"
       },
-      
       "style": {
-        "noArguments": "error",
-        "noCommaOperator": "error",
         "noImplicitBoolean": "error",
         "noInferrableTypes": "off",
         "noNamespace": "error",
@@ -107,43 +107,34 @@
         "noParameterAssign": "error",
         "noParameterProperties": "error",
         "noShoutyConstants": "warn",
-        "noTemplateCurlyInString": "error",
         "noUnusedTemplateLiteral": "error",
         "noUselessElse": "error",
         "useCollapsedElseIf": "error",
         "useConst": "error",
         "useDefaultParameterLast": "error",
         "useEnumInitializers": "error",
-        "useExponentiationOperator": "error",
         "useExportType": "off",
         "useFragmentSyntax": "error",
         "useImportType": "off",
         "useLiteralEnumMembers": "error",
-        "useNamingConvention": "error",
         "useNodejsImportProtocol": "error",
         "useNumberNamespace": "error",
         "useSelfClosingElements": "error",
-        "useShorthandArrayType": "error",
         "useShorthandAssign": "error",
-        "useSingleCaseStatement": "error",
         "useSingleVarDeclarator": "error",
         "useTemplate": "error",
-        "useThrowNewError": "error",
-        "useWhile": "error"
+        "useThrowNewError": "error"
       },
-      
       "performance": {
         "noAccumulatingSpread": "error",
         "noDelete": "error"
       },
-      
       "security": {
         "noDangerouslySetInnerHtml": "warn",
         "noGlobalEval": "error"
       }
     }
   },
-
   "formatter": {
     "enabled": true,
     "formatWithErrors": false,
@@ -153,7 +144,6 @@
     "lineEnding": "lf",
     "attributePosition": "multiline"
   },
-
   "javascript": {
     "formatter": {
       "arrowParentheses": "always",
@@ -167,7 +157,6 @@
       "attributePosition": "multiline"
     }
   },
-
   "json": {
     "formatter": {
       "trailingCommas": "none"
@@ -177,10 +166,9 @@
       "allowTrailingCommas": true
     }
   },
-
   "overrides": [
     {
-      "include": ["**/*.ts", "**/*.tsx", "**/*.d.ts"],
+      "includes": ["**/*.ts", "**/*.tsx", "**/*.d.ts"],
       "linter": {
         "rules": {
           "suspicious": {
@@ -195,7 +183,7 @@
       }
     },
     {
-      "include": ["**/*.js", "**/*.jsx"],
+      "includes": ["**/*.js", "**/*.jsx"],
       "linter": {
         "rules": {
           "suspicious": {
@@ -209,13 +197,19 @@
       }
     },
     {
-      "include": ["**/tests/**", "**/__tests__/**", "**/*.test.ts", "**/*.spec.ts"],
+      "includes": [
+        "**/tests/**",
+        "**/__tests__/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx"
+      ],
       "linter": {
         "rules": {
           "suspicious": {
             "noExplicitAny": "off",
-            "noConsoleLog": "off",
-            "noNonNullAssertion": "off"
+            "noConsole": "off"
           },
           "correctness": {
             "noUndeclaredVariables": "off"
@@ -227,13 +221,13 @@
       }
     },
     {
-      "include": ["**/scripts/**", "**/tools/**", "**/migrations/**"],
+      "includes": ["**/scripts/**", "**/tools/**", "**/migrations/**"],
       "linter": {
         "rules": {
           "suspicious": {
-            "noConsoleLog": "off",
             "noDebugger": "off",
-            "noExplicitAny": "off"
+            "noExplicitAny": "off",
+            "noConsole": "off"
           },
           "complexity": {
             "noUselessConstructor": "off"
@@ -250,7 +244,7 @@
       }
     },
     {
-      "include": ["**/types/**", "**/*.d.ts", "**/interfaces/**"],
+      "includes": ["**/types/**", "**/*.d.ts", "**/interfaces/**"],
       "linter": {
         "rules": {
           "style": {
@@ -264,7 +258,7 @@
       }
     },
     {
-      "include": ["**/components/**", "**/pages/**", "**/layouts/**"],
+      "includes": ["**/components/**", "**/pages/**", "**/layouts/**"],
       "linter": {
         "rules": {
           "correctness": {
@@ -277,7 +271,7 @@
       }
     },
     {
-      "include": ["**/api/**", "**/services/**", "**/lib/**"],
+      "includes": ["**/api/**", "**/services/**", "**/lib/**"],
       "linter": {
         "rules": {
           "style": {
@@ -286,12 +280,16 @@
               "options": {
                 "conventions": [
                   {
-                    "selector": "function",
-                    "format": ["camelCase", "PascalCase"]
+                    "selector": {
+                      "kind": "function"
+                    },
+                    "formats": ["camelCase", "PascalCase"]
                   },
                   {
-                    "selector": "variable",
-                    "format": ["camelCase", "UPPER_CASE"]
+                    "selector": {
+                      "kind": "variable"
+                    },
+                    "formats": ["camelCase", "CONSTANT_CASE"]
                   }
                 ]
               }
@@ -301,7 +299,7 @@
       }
     },
     {
-      "include": ["**/*.json"],
+      "includes": ["**/*.json"],
       "json": {
         "parser": {
           "allowComments": false,
@@ -310,43 +308,33 @@
       }
     }
   ],
-
   "vcs": {
     "enabled": true,
     "clientKind": "git",
     "useIgnoreFile": true,
     "defaultBranch": "main"
   },
-
   "files": {
     "ignoreUnknown": false,
-    "ignore": [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/build/**",
-      "**/.next/**",
-      "**/out/**",
-      "**/coverage/**",
-      "**/.turbo/**",
-      "**/.cache/**",
-      "**/.vercel/**",
-      "**/.netlify/**",
-      "**/storybook-static/**",
-      "**/public/**",
-      "**/*.min.js",
-      "**/*.bundle.js",
-      "**/*.generated.*",
-      "**/generated/**"
+    "includes": [
+      "**",
+      "!**/node_modules/**",
+      "!**/dist/**",
+      "!**/build/**",
+      "!**/.next/**",
+      "!**/out/**",
+      "!**/coverage/**",
+      "!**/.turbo/**",
+      "!**/.cache/**",
+      "!**/.vercel/**",
+      "!**/.netlify/**",
+      "!**/storybook-static/**",
+      "!**/public/**",
+      "!**/*.min.js",
+      "!**/*.bundle.js",
+      "!**/*.generated.*",
+      "!**/generated/**"
     ],
     "maxSize": 1024000
-  },
-
-  "assists": {
-    "enabled": true,
-    "actions": {
-      "addMissingImports": "on",
-      "organizeImports": "on",
-      "removeUnusedImports": "on"
-    }
   }
 }

@@ -2,27 +2,49 @@ import { Request, Response } from 'express';
 import { safeTenantQuery, resolveDatabase, lookupTenantDatabase } from '../../../shared/dbConfig';
 import { logger } from '@montezuma/shared-logger';
 import {
-  DeceasedAnalyticsData,
-  DeceasedAnalyticsQuery
+  DeceasedAnalyticsData, DeceasedAnalyticsQuery
 } from '../types/analytics.types';
-
-// Helper to calculate age from date of birth
-const calculateAge = (dob: string): number => {
-  const birthDate = new Date(dob);
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
-};
 
 // Helper to format date for display
 const formatDisplayDate = (dateStr: string): string => {
   if (!dateStr) return '—';
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+// Helper to normalize a DB row into the shape consumed by the DeceasedAnalytics frontend component.
+const mapRecord = (r: any) => {
+  const admission = String(r.admission_status || r.status || '').toLowerCase();
+  const released = admission === 'released' || admission === 'buried' || admission === 'completed' || admission === 'dispatched';
+  const pmRequested = r.pm_pending === 1 || r.pm_completed === 1;
+  const pmCompleted = r.pm_completed === 1;
+  // Derive the human-friendly body_status used by the frontend from the DB admission_status / postmortem state.
+  const body_status = released
+    ? 'Released'
+    : (pmRequested && !pmCompleted ? 'Pending Autopsy' : 'In Morgue');
+
+  const rawDate = (v: any): string => (!v ? '' : String(v).slice(0, 10));
+  return {
+    id: r.id,
+    admission_number: r.admission_number || '',
+    full_name: r.full_name || 'Unknown',
+    gender: r.gender || 'Other',
+    age: r.age != null && !isNaN(Number(r.age)) ? Number(r.age) : 0,
+    date_admitted: rawDate(r.date_admitted),
+    time_received: r.time_received || '',
+    cause_of_death: r.cause_of_death || '',
+    body_status,
+    postmortem_requested: pmRequested,
+    postmortem_completed: pmCompleted,
+    postmortem_report: pmCompleted ? 'Report filed — available for collection' : '',
+    contact_person: r.receiving_officer || r.contact_person || '',
+    id_number: r.national_id || r.id_number || '',
+    tel_number: r.phone_number || r.tel_number || '',
+    received_from: r.received_from || '',
+    dispatch_date: rawDate(r.dispatch_date),
+    dispatch_time: r.dispatch_time || '',
+    dispatched_to: released ? (r.dispatched_to || 'Family — Burial') : (r.dispatched_to || ''),
+  };
 };
 
 /**
@@ -32,7 +54,7 @@ const formatDisplayDate = (dateStr: string): string => {
 export const getDeceasedAnalytics = async (req: Request, res: Response): Promise<void> => {
   const requestId = Math.random().toString(36).substring(7);
   const startTime = Date.now();
-  
+
   // Extract query parameters
   const query: DeceasedAnalyticsQuery = {
     timeRange: (req.query.timeRange as '3m' | '6m' | '12m') || '3m',
@@ -46,7 +68,7 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
 
   const tenantSlug = req.headers['x-tenant-slug'] as string || req.headers['x-tenant-id'] as string || 'system_shared';
   const branchId = req.headers['x-branch-id'] as string || req.query.branchId as string || null;
-  
+
   // Resolve database
   const resolveSlug = branchId ? `${tenantSlug}-${branchId}` : tenantSlug;
   const dbName = await resolveDatabase(resolveSlug) || await lookupTenantDatabase(tenantSlug);
@@ -65,9 +87,55 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
 
     // Calculate date range based on timeRange
     const monthsBack = query.timeRange === '3m' ? 3 : query.timeRange === '6m' ? 6 : 12;
-    const dateFilter = query.startDate && query.endDate 
+    const dateFilter = query.startDate && query.endDate
       ? `AND date_admitted BETWEEN '${query.startDate}' AND '${query.endDate}'`
       : `AND date_admitted >= DATE_SUB(NOW(), INTERVAL ${monthsBack} MONTH)`;
+
+    // Fetch ALL deceased records (full list) with a gracefu fallback if the postmortem table is missing.
+    const fetchAllRecords = async (): Promise<any[]> => {
+      try {
+        const rows = await safeTenantQuery(dbName, `
+          SELECT
+            d.id, d.deceased_id, d.admission_number, d.full_name, d.gender, d.age,
+            DATE(d.date_of_birth) as date_of_birth, DATE(d.date_of_death) as date_of_death,
+            DATE(d.date_admitted) as date_admitted, d.time_received, d.cause_of_death,
+            d.national_id, d.phone_number, d.received_from, d.receiving_officer,
+            d.body_status, d.admission_status, d.status, d.dispatch_date, d.dispatch_time, d.dispatched_to,
+            p.pending as pm_pending, p.completed as pm_completed
+          FROM deceased d
+          LEFT JOIN (
+            SELECT deceased_id,
+              MAX(CASE WHEN status IN ('pending') THEN 1 ELSE 0 END) as pending,
+              MAX(CASE WHEN status IN ('completed','approved','released') THEN 1 ELSE 0 END) as completed
+            FROM postmortem
+            GROUP BY deceased_id
+          ) p ON p.deceased_id = d.deceased_id
+          WHERE d.tenant_slug = ? AND d.is_deleted = FALSE
+          ORDER BY d.date_admitted DESC
+          LIMIT 500
+        `, [tenantSlug]);
+        return Array.isArray(rows) ? rows : [];
+      } catch (err) {
+        // Fallback: postmortem table may be missing in some tenant DBs — fetch without the join.
+        try {
+          const rows = await safeTenantQuery(dbName, `
+            SELECT
+              id, deceased_id, admission_number, full_name, gender, age,
+              DATE(date_of_birth) as date_of_birth, DATE(date_of_death) as date_of_death,
+              DATE(date_admitted) as date_admitted, time_received, cause_of_death,
+              national_id, phone_number, received_from, receiving_officer,
+              body_status, admission_status, status, dispatch_date
+            FROM deceased
+            WHERE tenant_slug = ? AND is_deleted = FALSE
+            ORDER BY date_admitted DESC
+            LIMIT 500
+          `, [tenantSlug]);
+          return Array.isArray(rows) ? rows : [];
+        } catch (err2) {
+          return [];
+        }
+      }
+    };
 
     // Fetch all data in parallel using Promise.allSettled for resilience
     const [
@@ -80,7 +148,8 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
       calendarResult,
       awaitingAutopsyResult,
       awaitingDispatchResult,
-      dispatchedResult
+      dispatchedResult,
+      recordsResult
     ] = await Promise.allSettled([
       // 1. Overall statistics
       safeTenantQuery(dbName, `
@@ -183,7 +252,7 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
       // 8. Awaiting autopsy (pending postmortem)
       safeTenantQuery(dbName, `
         SELECT 
-          id, full_name, admission_number, gender, date_of_birth, date_admitted,
+          id, full_name, admission_number, gender, age, date_admitted,
           time_received, received_from, postmortem_requested, postmortem_completed
         FROM deceased
         WHERE tenant_slug = ? AND is_deleted = FALSE
@@ -216,7 +285,10 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
           AND dispatch_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
         ORDER BY dispatch_date DESC
         LIMIT 20
-      `, [tenantSlug]).catch(() => [])
+      `, [tenantSlug]).catch(() => []),
+
+      // 11. ALL records - full list for the analytics tables, calendar & charts
+      fetchAllRecords()
     ]);
 
     // Extract results
@@ -230,6 +302,7 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
     const awaitingAutopsy = awaitingAutopsyResult.status === 'fulfilled' ? awaitingAutopsyResult.value : [];
     const awaitingDispatch = awaitingDispatchResult.status === 'fulfilled' ? awaitingDispatchResult.value : [];
     const dispatched = dispatchedResult.status === 'fulfilled' ? dispatchedResult.value : [];
+    const records = recordsResult.status === 'fulfilled' ? recordsResult.value : [];
 
     // Transform data to match frontend expectations
     const transformedData: DeceasedAnalyticsData = {
@@ -251,23 +324,23 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
         month: r.month || 'Unknown',
         count: parseInt(r.count) || 0
       })) : [],
-      
+
       statusData: Array.isArray(statusData) ? statusData.map((r: any) => ({
         status: r.status || 'Unknown',
         count: parseInt(r.count) || 0
       })) : [],
-      
+
       genderData: Array.isArray(genderData) ? genderData.map((r: any) => ({
         gender: r.gender || 'Unknown',
         count: parseInt(r.count) || 0
       })) : [],
-      
+
       pmData: {
         pending: parseInt((pmTracking as any).pending) || 0,
         completed: parseInt((pmTracking as any).completed) || 0,
         notRequested: parseInt((pmTracking as any).not_requested) || 0
       },
-      
+
       stayData: Array.isArray(stayData) ? stayData.map((r: any) => ({
         label: r.duration_range || 'Unknown',
         min: 0,
@@ -290,14 +363,14 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
         full_name: r.full_name,
         admission_number: r.admission_number,
         gender: r.gender,
-        age: calculateAge(r.date_of_birth),
+        age: r.age != null && !isNaN(Number(r.age)) ? Number(r.age) : 0,
         date_admitted: r.date_admitted,
         time_received: r.time_received || '',
         received_from: r.received_from || '',
         postmortem_requested: r.postmortem_requested === 1,
         postmortem_completed: r.postmortem_completed === 1
       })) : [],
-      
+
       awaitingDispatch: Array.isArray(awaitingDispatch) ? awaitingDispatch.map((r: any) => ({
         id: r.id,
         full_name: r.full_name,
@@ -307,7 +380,7 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
         tel_number: r.tel_number || '',
         body_status: r.body_status
       })) : [],
-      
+
       dispatched: Array.isArray(dispatched) ? dispatched.map((r: any) => ({
         id: r.id,
         full_name: r.full_name,
@@ -316,6 +389,9 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
         dispatch_date: r.dispatch_date || '',
         dispatched_to: r.dispatched_to || ''
       })) : [],
+
+      // Full records list — drives the tables, calendar and charts in DeceasedAnalytics
+      records: Array.isArray(records) ? records.map(mapRecord) : [],
 
       // Metadata
       metadata: {
@@ -334,7 +410,7 @@ export const getDeceasedAnalytics = async (req: Request, res: Response): Promise
         data: transformedData,
         timestamp: new Date().toISOString()
       });
-      
+
       // Also emit to tenant-specific room
       (io as any).to(`tenant_${tenantSlug}`).emit('analytics_update', {
         type: 'ANALYTICS_UPDATE',
@@ -388,6 +464,7 @@ const getEmptyAnalyticsData = (requestId: string): DeceasedAnalyticsData => ({
   awaitingAutopsy: [],
   awaitingDispatch: [],
   dispatched: [],
+  records: [],
   metadata: {
     requestId,
     timestamp: new Date().toISOString(),

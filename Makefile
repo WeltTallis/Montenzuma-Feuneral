@@ -26,7 +26,7 @@ COMPOSE_PROD := docker compose -f docker-compose.prod.yml
 help:
 	@echo "$(BLUE)RestPoint Docker Makefile - Production Grade with BuildKit$(NC)"
 	@echo ""
-	@echo "$(GREEN)🚀 FAST Build Commands (BuildKit enabled):$(NC)"
+	@echo "$(GREEN) FAST Build Commands (BuildKit enabled):$(NC)"
 	@echo "  make build                - Build all Docker images (with cache)"
 	@echo "  make build-fast           - Build all images with BuildKit (parallel, cached)"
 	@echo "  make build-no-cache       - Rebuild all images from scratch (sequential)"

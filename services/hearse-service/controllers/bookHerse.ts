@@ -78,7 +78,7 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
         }
 
         // Hearses under maintenance are never bookable regardless of the date.
-        if (['maintenance', 'out_of_service', 'disabled', 'pending_inspection'].includes(hearse.status)) {
+        if (['maintenance', 'out_of_service', 'disabled',].includes(hearse.status)) {
             res.status(200).json({
                 status: 'success',
                 available: false,
@@ -163,6 +163,7 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
 /**
  * Create a new hearse booking
  */
+
 export const makeHearseBooking = asyncHandler(async (req: Request, res: Response) => {
     try {
         const io = req.app.get('io');
@@ -265,7 +266,7 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
             INSERT INTO hearse_bookings
             (booking_code, hearse_id, tenant_db_name, client_name, client_phone, destination,
              from_location, to_location,
-             booking_dates, status, created_at, updated_at,
+             booking_date, booking_dates, status, created_at, updated_at,
              booked_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
@@ -279,6 +280,7 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
             derivedDestination,
             finalFrom,
             finalTo,
+            finalBookingDates[0],        // booking_date (DATE, NOT NULL)
             bookingDatesJson,
             bookingStatus,
             now,
@@ -411,7 +413,7 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
             const result = await safeQuery(insertQuery, insertParams);
             bookingDbId = result.insertId;
 
-                        const bookingRows = await safeQuery(
+            const bookingRows = await safeQuery(
                 `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`,
                 [bookingDbId]
             );
@@ -765,7 +767,7 @@ export const getUpcomingBookings = asyncHandler(async (req: Request, res: Respon
     try {
         const { days = '7' } = req.query;
         const daysAhead = parseInt(days as string) || 7;
-        
+
         const bookings = await safeQuery(`
             SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, 
                    hb.destination, hb.from_location, hb.to_location, hb.booking_dates, hb.status, h.hearse_name, h.plate_number, h.model,
@@ -798,7 +800,7 @@ export const getUpcomingBookings = asyncHandler(async (req: Request, res: Respon
                         message: `You have ${urgentBookings.length} hearse booking(s) in the next 48 hours`,
                         type: 'reminder',
                         priority: 'high',
-                        fullContent: `Upcoming Bookings:\n${urgentBookings.map((b: any) => 
+                        fullContent: `Upcoming Bookings:\n${urgentBookings.map((b: any) =>
                             `• ${b.booking_code} - ${b.client_name} (${b.destination}) on ${b.booking_date} (${b.days_until} days)`
                         ).join('\n')}`
                     }
@@ -808,9 +810,9 @@ export const getUpcomingBookings = asyncHandler(async (req: Request, res: Respon
             }
         }
 
-        res.status(200).json({ 
-            status: 'success', 
-            total: bookings.length, 
+        res.status(200).json({
+            status: 'success',
+            total: bookings.length,
             bookings,
             reminder_count: urgentBookings.length
         });

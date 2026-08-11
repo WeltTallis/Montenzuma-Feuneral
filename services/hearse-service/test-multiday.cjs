@@ -16,7 +16,7 @@
 // (created/dropped by this script) so the live data is never touched.
 
 const mysql = require('mysql2/promise');
-const hearseAvailability = require('./dist/services/hearse-service/utilities/hearseAvailability.js');
+const hearseAvailability = require('./utilities/hearseAvailability');
 
 const DB_HOST = process.env.DB_HOST || '127.0.0.1';
 const DB_PORT = parseInt(process.env.DB_PORT || '3306', 10);

@@ -149,6 +149,9 @@ export interface DeceasedAnalyticsData {
   awaitingDispatch: AwaitingDispatchItem[];
   dispatched: DispatchedItem[];
 
+  // Full records list (frontend DeceasedAnalytics component records state)
+  records: DeceasedRecordWithPM[];
+
   // Metadata
   metadata: {
     requestId: string;

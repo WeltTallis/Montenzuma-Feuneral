@@ -77,9 +77,9 @@ export const getHearsePool = async (): Promise<Pool> => {
   if (!hearsePool) {
     try {
       hearsePool = await mysql.createPool(HEARSE_DB_CONFIG);
-      console.log('✅ [HearseService] Local hearse database pool created:', HEARSE_DB_CONFIG.database);
+
     } catch (error) {
-      console.error('❌ [HearseService] Failed to create hearse database pool:', error);
+
       throw error;
     }
   }
@@ -172,7 +172,7 @@ export const runMigrations = async (): Promise<void> => {
   await rootPool.query(
     `CREATE DATABASE IF NOT EXISTS \`${HEARSE_DB_CONFIG.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
   );
-  console.log(`✅ [HearseService] Database ensured: ${HEARSE_DB_CONFIG.database}`);
+
   await rootPool.end();
 
   // Run knex migrations
@@ -200,12 +200,12 @@ export const runMigrations = async (): Promise<void> => {
   try {
     const [batchNo, log] = await knexInstance.migrate.latest();
     if (log.length === 0) {
-      console.log('✅ [HearseService] All migrations already up to date');
+
     } else {
-      console.log(`✅ [HearseService] Migrations up to date (batch ${batchNo}):`, log);
+
     }
   } catch (error) {
-    console.error('❌ [HearseService] Migration failed:', error);
+
     throw error;
   } finally {
     await knexInstance.destroy();
@@ -242,12 +242,12 @@ export const rollbackMigrations = async (): Promise<void> => {
   try {
     const [batchNo, log] = await knexInstance.migrate.rollback();
     if (log.length === 0) {
-      console.log('✅ [HearseService] No migrations to rollback');
+
     } else {
-      console.log(`✅ [HearseService] Rolled back batch ${batchNo}:`, log);
+
     }
   } catch (error) {
-    console.error('❌ [HearseService] Rollback failed:', error);
+
     throw error;
   } finally {
     await knexInstance.destroy();
@@ -258,7 +258,7 @@ export const rollbackMigrations = async (): Promise<void> => {
  * Reset database (rollback all and run latest)
  */
 export const resetDatabase = async (): Promise<void> => {
-  console.log('🔄 [HearseService] Resetting database...');
+
   await rollbackMigrations();
   await runMigrations();
 };
@@ -276,7 +276,7 @@ export const healthCheck = async (): Promise<boolean> => {
     await pool.query('SELECT 1');
     return true;
   } catch (error) {
-    console.error('❌ [HearseService] Health check failed:', error);
+
     return false;
   }
 };

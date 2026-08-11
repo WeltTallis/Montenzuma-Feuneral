@@ -1754,19 +1754,29 @@ const CoffinDashboard = () => {
                       <td style={styles.td}><Tag cls={st.cls}>{st.label}</Tag></td>
                       <td style={styles.td}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {coffin.stock > 0 ? (
+                          {coffin.stock > 0 && (
                             <button
                               style={{ ...styles.btn, ...styles.btnS, ...styles.btnSm }}
                               onClick={() => setModal({ open: true, type: 'booking', data: { coffin_id: id, service_date: todayKey() } })}
                             >
                               Book
                             </button>
-                          ) : (
+                          )}
+                          {coffin.stock <= 0 && (
                             <button
                               style={{ ...styles.btn, ...styles.btnW, ...styles.btnSm }}
                               onClick={() => openFindStock(coffin.name)}
                             >
                               Find Stock
+                            </button>
+                          )}
+                          {coffin.stock > 0 && (
+                            <button
+                              style={{ ...styles.btn, ...styles.btnW, ...styles.btnSm, padding: '6px 10px' }}
+                              onClick={() => openFindStock(coffin.name)}
+                              title="Search stock in other branches"
+                            >
+                              <i className="fa-solid fa-network-wired" style={{ fontSize: 12 }}></i>
                             </button>
                           )}
                           <button
@@ -2411,6 +2421,13 @@ const CoffinDashboard = () => {
                 onClick={() => setModal({ open: true, type: 'coffin', data: { stock: 0, price: 0 } })}
               >
                 <i className="fa-solid fa-plus"></i> Add Coffin
+              </button>
+              <button
+                style={{ ...styles.btn, ...styles.btnW, whiteSpace: 'nowrap' }}
+                onClick={() => openFindStock()}
+                title="Search and request stock from other branches"
+              >
+                <i className="fa-solid fa-network-wired"></i> Find Stock in Other Branches
               </button>
             </>
           )}

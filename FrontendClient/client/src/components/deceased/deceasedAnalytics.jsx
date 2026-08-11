@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Chart, registerables } from 'chart.js';
-import { formatDate } from '../../../utils/dates/parseDates';
+import { formatDate } from '../../utils/dates/parseDates';
+import api from '../../api/axios';
 Chart.register(...registerables);
 const ChartJS = Chart;
 
@@ -181,7 +182,10 @@ function useChart(ref, fn, deps) {
 //  MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
 const DeceasedAnalytics = () => {
-  const [records] = useState(ALL_RECORDS);
+  const [records, setRecords] = useState([]);
+  const [recordsLoading, setRecordsLoading] = useState(true);
+  const [recordsError, setRecordsError] = useState(null);
+
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [selectedDate, setSelectedDate] = useState(null);
@@ -196,6 +200,29 @@ const DeceasedAnalytics = () => {
   const pmRef = useRef(null);
   const stayRef = useRef(null);
   const genderRef = useRef(null);
+
+    // ── Fetch REAL data from the analytics backend API ─────────────────────
+  const fetchAnalytics = useCallback(async () => {
+    setRecordsLoading(true);
+    setRecordsError(null);
+    try {
+      const res = await api.get('/analytics/deceased/comprehensive');
+      const data = res?.data?.data || res?.data || {};
+      const list = Array.isArray(data.records) ? data.records : [];
+      setRecords(list);
+    } catch (err) {
+      console.error('Failed to fetch deceased analytics:', err);
+      setRecordsError(err?.friendlyMessage || err?.message || 'Failed to load analytics data');
+      // Fall back to generated seed data so the UI remains usable offline
+      setRecords(ALL_RECORDS);
+    } finally {
+      setRecordsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   // ── Filtered records for selected date ──
   const selectedDateRecords = useMemo(() => {
@@ -420,9 +447,7 @@ const DeceasedAnalytics = () => {
           {/* Scrollable Content */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '0.25rem 1.5rem 1.5rem' }} className="cal-scroll">
             <div style={{ fontSize: '0.65rem', fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.75rem', marginBottom: '0.25rem' }}>Admission Details</div>
-            <InfoRow icon={I.calendar} label="Date Admitted" value={`${formatDisplayDate(r.date_admitted)} at ${r.time_received}`} />
-            <InfoRow icon={I.calendar} label="Date of Death" value={formatDisplayDate(r.date_of_death)} />
-            <InfoRow icon={I.user} label="Date of Birth" value={formatDisplayDate(r.date_of_birth)} />
+                        <InfoRow icon={I.calendar} label="Date Admitted" value={`${formatDisplayDate(r.date_admitted)} at ${r.time_received}`} />
             <InfoRow icon={I.hash} label="National ID" value={r.id_number} />
             <InfoRow icon={I.mapPin} label="Received From" value={r.received_from} />
 
@@ -518,6 +543,20 @@ const DeceasedAnalytics = () => {
           <button style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.75rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 500, cursor: 'pointer', border: `1px solid ${T.border}`, background: T.surface, color: T.textBody, transition: 'all 0.15s' }} onClick={() => window.location.reload()}>{I.refresh} Refresh</button>
         </div>
       </div>
+
+      {/* ── DATA STATUS ── */}
+      {recordsLoading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', borderRadius: '8px', background: T.cyanBg, color: T.cyan, fontSize: '0.82rem', animation: 'fadeUp 0.3s ease both' }}>
+          {I.chartBar}
+          <span>Fetching live deceased records from the backend…</span>
+        </div>
+      )}
+      {recordsError && !recordsLoading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', borderRadius: '8px', background: T.dangerBg, color: T.danger, fontSize: '0.82rem', animation: 'fadeUp 0.3s ease both' }}>
+          {I.alertTriangle}
+          <span>{recordsError}</span>
+        </div>
+      )}
 
       {/* ── STAT CARDS ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>

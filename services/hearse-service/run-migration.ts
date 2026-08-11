@@ -17,12 +17,12 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
  */
 const main = async (): Promise<void> => {
   try {
-    console.log('🔄 [MigrationRunner] Starting migrations...');
+
     await runMigrations();
-    console.log('✅ [MigrationRunner] Migration completed successfully');
+
     process.exit(0);
   } catch (error) {
-    console.error('❌ [MigrationRunner] Migration failed:', error);
+
     process.exit(1);
   }
 };
@@ -32,11 +32,13 @@ main();
 
 // Handle uncaught errors
 process.on('uncaughtException', (error) => {
-  console.error('❌ [MigrationRunner] Uncaught exception:', error);
+
   process.exit(1);
+
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.error('❌ [MigrationRunner] Unhandled rejection:', reason);
+
   process.exit(1);
+
 });

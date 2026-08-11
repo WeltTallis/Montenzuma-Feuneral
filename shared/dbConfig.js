@@ -138,6 +138,7 @@ const DB_CONFIG = {
     user: process.env.DB_USER || 'restpoint_user',
     password: process.env.DB_PASSWORD || '',
     authPlugins: { auth_gssapi_client },
+    dateStrings: true, // return DATE/DATETIME columns as plain 'YYYY-MM-DD' strings (no UTC shift)
     connectTimeout: 10000,
 };
 // Pool limits to prevent memory leaks

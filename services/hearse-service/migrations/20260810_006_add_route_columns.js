@@ -2,8 +2,10 @@
 // HEARSE SERVICE MIGRATION - Add route columns to hearse_bookings
 // ============================================
 // Persists the separate From / To locations for every hearse booking
-// (e.g. route "from NAIROBI to MASSI") as two distinct columns.
-// Both columns are optional/nullable so legacy rows remain valid, and the
+// (e.g. route "from NAIROBI to MASSI") as two distinct columns, plus a
+// booking_dates JSON-array column (stored as TEXT) that holds the list of
+// calendar dates the booking spans, e.g. '["2026-08-12","2026-08-13"]'.
+// All columns are optional/nullable so legacy rows remain valid, and the
 // migration is idempotent (hasColumn) so it is safe to run more than once.
 
 exports.up = async function (knex) {
@@ -20,9 +22,23 @@ exports.up = async function (knex) {
             table.string('to_location', 255).nullable().after('from_location');
         });
     }
+
+    const hasBookingDates = await knex.schema.hasColumn('hearse_bookings', 'booking_dates');
+    if (!hasBookingDates) {
+        await knex.schema.alterTable('hearse_bookings', (table) => {
+            table.text('booking_dates').nullable().after('to_location');
+        });
+    }
 };
 
 exports.down = async function (knex) {
+    const hasBookingDates = await knex.schema.hasColumn('hearse_bookings', 'booking_dates');
+    if (hasBookingDates) {
+        await knex.schema.alterTable('hearse_bookings', (table) => {
+            table.dropColumn('booking_dates');
+        });
+    }
+
     const hasTo = await knex.schema.hasColumn('hearse_bookings', 'to_location');
     if (hasTo) {
         await knex.schema.alterTable('hearse_bookings', (table) => {
