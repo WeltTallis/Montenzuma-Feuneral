@@ -8,7 +8,9 @@
     "start": "node dist/services/coffin-service/server.js",
     "dev": "nodemon --watch src --ext ts,json --exec \"npm run build && node dist/services/coffin-service/server.js\"",
     "typecheck": "tsc --noEmit",
-    "migrate": "node migrate-add-coffin-images.js"
+    "migrate": "node migrate-coffin-db.js",
+    "migrate:latest": "node migrate-coffin-db.js",
+    "db:create": "node -e \"require('./db').ensureCoffinDatabase().then(()=>console.log('ok')).catch(e=>{console.error(e);process.exit(1)})\""
   },
   "dependencies": {
     "@montezuma/shared-config": "^1.0.0",
@@ -28,6 +30,7 @@
     "http-proxy-middleware": "3.0.7",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
+    "knex": "^3.3.0",
     "multer": "^2.2.0",
     "mysql2": "3.23.3",
     "object-assign": "^4.1.1",

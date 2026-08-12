@@ -9,14 +9,10 @@ export async function up(knex) {
     table.increments('id').primary();
     table.string('first_name', 100).notNullable();
     table.string('last_name', 100).notNullable();
-    table.string('email', 255).unique().notNullable();
-    table.string('password', 255).notNullable();
     table.string('role', 50).defaultTo('worker');
-    table.string('phone', 20);
     table.string('created_at', 255);
     table.string('updated_at', 255);
     table.index(['role'], 'idx_users_role');
-    table.index(['email'], 'idx_users_email');
   });
 
   // Coffin orders
@@ -25,7 +21,6 @@ export async function up(knex) {
     table.string('order_number', 50).unique().notNullable();
     table.string('coffin_name', 255).notNullable();
     table.string('coffin_type', 50).defaultTo('standard');
-    table.text('dimensions');
     table.string('color', 100);
     table.string('interior_fabric', 100);
     table.text('notes');
@@ -104,49 +99,6 @@ export async function up(knex) {
     table.index(['user_id'], 'idx_assignments_user');
   });
 
-  // Costing
-  await knex.schema.createTable('costing', (table) => {
-    table.increments('id').primary();
-    table.integer('coffin_order_id').unsigned().unique().notNullable();
-    table.decimal('materials_cost', 10, 2).defaultTo(0);
-    table.decimal('labor_cost', 10, 2).defaultTo(0);
-    table.decimal('overhead_cost', 10, 2).defaultTo(0);
-    table.decimal('total_cost', 10, 2).defaultTo(0);
-    table.decimal('selling_price', 10, 2).defaultTo(0);
-    table.decimal('profit', 10, 2).defaultTo(0);
-    table.decimal('profit_margin', 5, 2).defaultTo(0);
-    table.string('created_at', 255);
-    table.string('updated_at', 255);
-    table.foreign('coffin_order_id').references('coffin_orders.id').onDelete('CASCADE');
-  });
 
-
-
-  // Material intake
-  await knex.schema.createTable('material_intake', (table) => {
-    table.increments('id').primary();
-    table.integer('material_id').unsigned().notNullable();
-    table.decimal('quantity', 10, 2).notNullable();
-    table.decimal('unit_cost', 10, 2).defaultTo(0);
-    table.string('supplier', 255);
-    table.string('invoice_number', 100);
-    table.text('notes');
-    table.string('received_by', 255);
-    table.string('received_at', 255);
-    table.foreign('material_id').references('materials.id').onDelete('CASCADE');
-    table.index(['material_id'], 'idx_intake_material');
-    table.index(['received_at'], 'idx_intake_date');
-  });
 }
 
-export async function down(knex) {
-  await knex.schema.dropTableIfExists('material_intake');
-  await knex.schema.dropTableIfExists('design_specifications');
-  await knex.schema.dropTableIfExists('costing');
-  await knex.schema.dropTableIfExists('worker_assignments');
-  await knex.schema.dropTableIfExists('production_stages');
-  await knex.schema.dropTableIfExists('material_usage');
-  await knex.schema.dropTableIfExists('materials');
-  await knex.schema.dropTableIfExists('coffin_orders');
-  await knex.schema.dropTableIfExists('users');
-}

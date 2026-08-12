@@ -562,6 +562,7 @@ services:
       - DB_PORT=3306
       - DB_USER=restpoint_user
       - DB_PASSWORD=${DB_PASSWORD}
+      - COFFIN_DATABASE=restpoint_coffin
     env_file:
       - .env
     networks:

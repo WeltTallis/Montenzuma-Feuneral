@@ -4,7 +4,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import multer from 'multer';
-import { resolveDatabase, lookupTenantDatabase, getTenantDB } from '../../shared/dbConfig.js';
+import { ensureCoffinDatabase, runCoffinMigrations, closeCoffinDb } from './db.js';
 import logger from '@montezuma/shared-logger';
 // Load service-specific .env first, then root .env for shared config (with override)
 dotenv.config({ path: path.resolve(__dirname, '.env') });
@@ -69,102 +69,31 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Branch-aware tenant middleware - resolves to branch-specific database when available
+// Tenant middleware - resolves the tenant slug/id from headers. Coffin data
+// (inventory, orders, stock requests, images, usage) lives in ONE central coffin
+// database shared by ALL tenants, scoped via the tenant_slug (and tenant_id)
+// columns. No per-tenant database resolution is performed here.
 app.use(async (req: Request, res: Response, next: NextFunction) => {
   try {
     const tenantSlug = (req.headers['x-tenant-slug'] || req.headers['x-slug'] || 'system_shared') as string;
-    (req as any).tenantSlug = tenantSlug;
-
-    // For system_shared, use default DB
-    if (tenantSlug === 'system_shared') {
-      (req as any).tenant = {
-        db_name: process.env.DB_NAME || 'restpoint_main',
-        tenant_id: 1,
-        tenant_name: 'System Shared',
-        tenant_slug: tenantSlug
-      };
-      return next();
-    }
-
-    // Check for explicit branch database header
-    const branchDbHeader = req.headers['x-branch-db'];
-    let branchDbName: string | null = null;
-
-    // Expose branch headers on req for use by controllers
+    const tenantIdHeader = req.headers['x-tenant-id'];
     const branchIdHeader = req.headers['x-branch-id'];
     const branchSlugHeader = req.headers['x-branch-slug'];
+
+    (req as any).tenantSlug = tenantSlug;
+    (req as any).tenantId = tenantIdHeader ? (Array.isArray(tenantIdHeader) ? tenantIdHeader[0] : tenantIdHeader) : null;
     (req as any).branchId = branchIdHeader ? (Array.isArray(branchIdHeader) ? branchIdHeader[0] : branchIdHeader) : null;
     (req as any).branchSlug = branchSlugHeader ? (Array.isArray(branchSlugHeader) ? branchSlugHeader[0] : branchSlugHeader) : null;
 
-    if (branchDbHeader) {
-      branchDbName = Array.isArray(branchDbHeader) ? branchDbHeader[0] : branchDbHeader;
-      (req as any).branchDbName = branchDbName;
-    } else {
-      // Try to resolve branch from branch-id or branch-slug header
-      const branchId = (req as any).branchId;
-      const branchSlug = (req as any).branchSlug || tenantSlug;
-
-      if (branchId || branchSlug) {
-        try {
-          const tenantDbName = await lookupTenantDatabase(tenantSlug);
-
-          if (tenantDbName) {
-            const pool = await getTenantDB(tenantDbName);
-            let query = 'SELECT branch_db_name, branch_id FROM branches WHERE is_active = TRUE';
-            const params: any[] = [];
-
-            if (branchId) {
-              query += ' AND branch_id = ?';
-              params.push(branchId);
-            } else if (branchSlug) {
-              query += ' AND (branch_slug = ? OR branch_db_name = ?)';
-              params.push(branchSlug, branchSlug);
-            }
-
-            const [rows]: any[] = await pool.query(query, params);
-            const result = rows;
-            if (result.length > 0 && result[0].branch_db_name) {
-              branchDbName = result[0].branch_db_name;
-              (req as any).branchDbName = branchDbName;
-              (req as any).branchId = (req as any).branchId || result[0].branch_id;
-            }
-          }
-        } catch (err: any) {
-          logger.warn({ msg: 'Branch DB resolution failed', tenantSlug, error: err.message });
-        }
-      }
-    }
-
-    // For non-system tenants — resolve database from tenant_tracking
-    try {
-      let dbName = await resolveDatabase(tenantSlug) as string | null;
-
-      // Fallback: convert slug to db name pattern
-      if (!dbName) {
-        dbName = tenantSlug.replace(/-/g, '_');
-      }
-
-      // Use branch DB if available, otherwise main tenant DB
-      const finalDbName = branchDbName || dbName;
-
-      (req as any).tenant = {
-        db_name: finalDbName,
-        tenant_slug: tenantSlug,
-        tenant_name: tenantSlug,
-        branch_db_name: branchDbName || null,
-        branch_id: (req as any).branchId || null
-      };
-    } catch (err: any) {
-      logger.error({ msg: 'Tenant resolution error', tenantSlug, error: err.message });
-      // Fall back to default DB rather than blocking
-      (req as any).tenant = {
-        db_name: process.env.DB_NAME || 'restpoint_main',
-        tenant_slug: tenantSlug,
-        tenant_name: tenantSlug,
-        branch_db_name: branchDbName || null,
-        branch_id: (req as any).branchId || null
-      };
-    }
+    // The central coffin database serves every tenant - the tenant is identified
+    // by slug and/or id, not by a dedicated database.
+    (req as any).tenant = {
+      db_name: process.env.COFFIN_DATABASE || process.env.DB_NAME || 'restpoint_coffin',
+      tenant_slug: tenantSlug,
+      tenant_id: (req as any).tenantId,
+      tenant_name: tenantSlug,
+      branch_id: (req as any).branchId || null
+    };
 
     next();
   } catch (error: any) {
@@ -278,43 +207,54 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
 // ─── START SERVER ──────────────────────────────────────────────────────
 
-try {
-  const server = app.listen(PORT, '0.0.0.0', () => {
-    logger.info({
-      msg: 'Coffin Service running',
-      port: PORT,
-      health: `http://localhost:${PORT}/health`,
-      endpoints: `http://localhost:${PORT}/`
+async function startServer() {
+  try {
+    // The coffin service owns ONE central database that serves all tenants.
+    // Run its own knex migrations independently before accepting traffic.
+    await ensureCoffinDatabase();
+    await runCoffinMigrations();
+
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      logger.info({
+        msg: 'Coffin Service running',
+        port: PORT,
+        health: `http://localhost:${PORT}/health`,
+        endpoints: `http://localhost:${PORT}/`,
+        centralDb: process.env.COFFIN_DATABASE || 'restpoint_coffin'
+      });
     });
-  });
 
-  server.on('error', (error: any) => {
-    if (error.code === 'EADDRINUSE') {
-      logger.error({ msg: `Port ${PORT} is already in use. Please use a different port.` });
-      process.exit(1);
-    } else {
-      logger.error({ msg: 'Server error', error: error.message });
-    }
-  });
-
-  // Graceful shutdown
-  const shutdown = (signal: string) => {
-    logger.info({ msg: `Received ${signal}, shutting down gracefully...` });
-    server.close(() => {
-      logger.info({ msg: 'Server closed successfully' });
-      process.exit(0);
+    server.on('error', (error: any) => {
+      if (error.code === 'EADDRINUSE') {
+        logger.error({ msg: `Port ${PORT} is already in use. Please use a different port.` });
+        process.exit(1);
+      } else {
+        logger.error({ msg: 'Server error', error: error.message });
+      }
     });
-    // Force exit after 10 seconds if graceful shutdown fails
-    setTimeout(() => {
-      logger.warn({ msg: 'Forceful shutdown after timeout' });
-      process.exit(1);
-    }, 10000);
-  };
 
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
+    // Graceful shutdown
+    const shutdown = (signal: string) => {
+      logger.info({ msg: `Received ${signal}, shutting down gracefully...` });
+      server.close(async () => {
+        await closeCoffinDb();
+        logger.info({ msg: 'Server closed successfully' });
+        process.exit(0);
+      });
+      // Force exit after 10 seconds if graceful shutdown fails
+      setTimeout(() => {
+        logger.warn({ msg: 'Forceful shutdown after timeout' });
+        process.exit(1);
+      }, 10000);
+    };
 
-} catch (error: any) {
-  logger.error({ msg: 'Failed to start server', error: error.message, stack: error.stack });
-  process.exit(1);
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+  } catch (error: any) {
+    logger.error({ msg: 'Failed to start server', error: error.message, stack: error.stack });
+    process.exit(1);
+  }
 }
+
+startServer();

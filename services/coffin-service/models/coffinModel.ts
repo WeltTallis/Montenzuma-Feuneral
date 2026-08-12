@@ -1,8 +1,10 @@
-﻿import { resolveDatabase, safeTenantQuery } from '../../../shared/dbConfig.js';
+﻿import { coffinQuery } from '../db.js';
 import crypto from 'crypto';
 
 /**
- * Coffin Model - Database operations with tenant isolation.
+ * Coffin Model - Database operations against the CENTRAL coffin database.
+ * All tenants share one central coffin DB; every query is scoped by tenant_slug
+ * (and tenant_id) columns. There is no per-tenant database for coffin data.
  * Assumes the modern `coffins` schema:
  *   coffin_id, tenant_slug, type, exact_price, quantity, color, size, ...
  * Maps rows into the shape the frontend Inventory / Register / Select modals expect.
@@ -42,9 +44,6 @@ class CoffinModel {
    * Create a new coffin
    */
   static async create(tenantSlug: string, data: any): Promise<any> {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) throw new Error('Tenant database not found');
-
     const type = (data.type || data.name || '').toString().trim();
     const color = (data.color || '').toString().trim() || null;
     const size = (data.size || '').toString().trim() || null;
@@ -60,7 +59,7 @@ class CoffinModel {
       VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, NOW())
     `;
 
-    await safeTenantQuery(dbName, sql, [
+    await coffinQuery(sql, [
       coffinId, tenantSlug, type, exactPrice, quantity, color, size
     ]);
 
@@ -82,9 +81,6 @@ class CoffinModel {
    * Get all coffins for a tenant
    */
   static async getAll(tenantSlug: string): Promise<any[]> {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) return [];
-
     const sql = `
       SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
@@ -95,17 +91,17 @@ class CoffinModel {
       ORDER BY c.created_at DESC
     `;
 
-    const rows: any[] = await safeTenantQuery(dbName, sql, [tenantSlug]);
+    const rows: any[] = await coffinQuery(sql, [tenantSlug]);
     return rows.map(row => this.mapRow(row));
+
   }
 
   /**
-   * Get coffins for a branch DB
+   * Get coffins from the central coffin database for a tenant (optionally a branch).
+   * All branches share one central DB - the tenant (and optional branch) filter
+   * is applied with columns, never by switching databases.
    */
-  static async getByBranch(tenantSlug: string, branchDbName?: string | null, branchSlug?: string | null, branchId: number | null = null): Promise<any[]> {
-    const dbName = branchDbName || await resolveDatabase(tenantSlug);
-    if (!dbName) return [];
-
+  static async getByBranch(tenantSlug: string, _branchDbName?: string | null, _branchSlug?: string | null, branchId: number | null = null): Promise<any[]> {
     const sql = `
       SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
@@ -116,17 +112,17 @@ class CoffinModel {
       ORDER BY c.created_at DESC
     `;
 
-    const rows: any[] = await safeTenantQuery(dbName, sql, [branchSlug || tenantSlug]);
-    return rows.map(row => ({ ...this.mapRow(row), branch_id: branchId ? parseInt(String(branchId)) : null }));
+    const rows: any[] = await coffinQuery(sql, [tenantSlug]);
+    return rows.map(row => ({
+      ...this.mapRow(row),
+      branch_id: branchId ? parseInt(String(branchId)) : (row.branch_id ? parseInt(String(row.branch_id)) : null)
+    }));
   }
 
   /**
    * Get coffin by ID
    */
   static async getById(tenantSlug: string, id: string): Promise<any | null> {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) return null;
-
     const sql = `
       SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
@@ -136,7 +132,7 @@ class CoffinModel {
       GROUP BY c.coffin_id
     `;
 
-    const rows: any[] = await safeTenantQuery(dbName, sql, [id, tenantSlug]);
+    const rows: any[] = await coffinQuery(sql, [id, tenantSlug]);
     return rows.length > 0 ? this.mapRow(rows[0]) : null;
   }
 
@@ -145,9 +141,6 @@ class CoffinModel {
    * Can update: name/type, color, size, quantity, price
    */
   static async update(tenantSlug: string, id: string, data: any): Promise<boolean> {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) throw new Error('Tenant database not found');
-
     const updateFields: string[] = [];
     const updateValues: any[] = [];
 
@@ -180,7 +173,7 @@ class CoffinModel {
     if (updateFields.length > 1) {
       const sql = `UPDATE coffins SET ${updateFields.join(', ')} WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE`;
       updateValues.push(id, tenantSlug);
-      await safeTenantQuery(dbName, sql, updateValues);
+      await coffinQuery(sql, updateValues);
     }
 
     return true;
@@ -190,11 +183,8 @@ class CoffinModel {
    * Soft delete coffin
    */
   static async delete(tenantSlug: string, id: string): Promise<boolean> {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) throw new Error('Tenant database not found');
-
-    const orders: any[] = await safeTenantQuery(dbName,
-      'SELECT id FROM coffin_orders WHERE coffin_id = ? AND tenant_slug = ? AND status != "completed"',
+    const orders: any[] = await coffinQuery(
+      'SELECT order_id FROM coffin_orders WHERE coffin_id = ? AND tenant_slug = ? AND status != "completed"',
       [id, tenantSlug]
     );
 
@@ -202,7 +192,7 @@ class CoffinModel {
       throw new Error('Cannot delete coffin with active orders');
     }
 
-    await safeTenantQuery(dbName,
+    await coffinQuery(
       'UPDATE coffins SET is_deleted = TRUE WHERE coffin_id = ? AND tenant_slug = ?',
       [id, tenantSlug]
     );
@@ -214,14 +204,11 @@ class CoffinModel {
    * Create a coffin order
    */
   static async createOrder(tenantSlug: string, data: any): Promise<any> {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) throw new Error('Tenant database not found');
-
     const orderId = `ORD-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
     // Look the coffin up by its id — the caller auto-fills name/color/size from
     // the selected coffin, so we never require those fields for a booking.
-    const coffin: any[] = await safeTenantQuery(dbName,
+    const coffin: any[] = await coffinQuery(
       'SELECT coffin_id, quantity FROM coffins WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE',
       [data.coffin_id, tenantSlug]
     );
@@ -234,7 +221,7 @@ class CoffinModel {
       throw new Error(`Insufficient stock. Available: ${coffin[0].quantity}`);
     }
 
-    await safeTenantQuery(dbName,
+    await coffinQuery(
       'UPDATE coffins SET quantity = quantity - ? WHERE coffin_id = ? AND tenant_slug = ?',
       [parseInt(data.quantity), coffin[0].coffin_id, tenantSlug]
     );
@@ -244,7 +231,7 @@ class CoffinModel {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
     `;
 
-    const result: any = await safeTenantQuery(dbName, sql, [
+    const result: any = await coffinQuery(sql, [
       orderId, tenantSlug, coffin[0].coffin_id, data.coffin_name?.trim() || null,
       data.color ?? null, data.size ?? null, parseInt(data.quantity),
       data.booked_by?.trim() || null, data.booked_for?.trim() || null
@@ -266,9 +253,6 @@ class CoffinModel {
    * Request stock from another branch
    */
   static async requestStock(tenantSlug: string, data: any): Promise<any> {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) throw new Error('Tenant database not found');
-
     const requestId = `REQ-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
     const sql = `
@@ -276,7 +260,7 @@ class CoffinModel {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
     `;
 
-    const result: any = await safeTenantQuery(dbName, sql, [
+    const result: any = await coffinQuery(sql, [
       requestId, tenantSlug, data.coffin_name?.trim(), data.color?.trim(),
       data.size?.trim(), data.requested_by?.trim(), data.booked_for?.trim(),
       data.requesting_branch?.trim(), data.image_url || null
@@ -299,13 +283,10 @@ class CoffinModel {
    * Add images to a coffin
    */
   static async addImages(tenantSlug: string, coffinId: string, imageUrls: string[]): Promise<boolean> {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) return false;
-
     if (imageUrls.length > 0) {
       const sql = `INSERT INTO coffin_images (coffin_id, tenant_slug, image_url, created_at) VALUES ?`;
       const values = imageUrls.map(url => [coffinId, tenantSlug, url, new Date().toISOString().slice(0, 19).replace('T', ' ')]);
-      await safeTenantQuery(dbName, sql, [values]);
+      await coffinQuery(sql, [values]);
     }
     return true;
   }
@@ -314,10 +295,7 @@ class CoffinModel {
    * Update images for a coffin (replace existing)
    */
   static async updateImages(tenantSlug: string, coffinId: string, imageUrls: string[]): Promise<boolean> {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) return false;
-
-    await safeTenantQuery(dbName,
+    await coffinQuery(
       'DELETE FROM coffin_images WHERE coffin_id = ? AND tenant_slug = ?',
       [coffinId, tenantSlug]
     );

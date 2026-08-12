@@ -19,6 +19,7 @@
   },
   "include": [
     "server.ts",
+    "db.js",
     "routes/**/*.ts",
     "controllers/**/*.ts",
     "models/**/*.ts",

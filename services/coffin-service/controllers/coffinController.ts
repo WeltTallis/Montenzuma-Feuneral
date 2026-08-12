@@ -1,6 +1,6 @@
 ﻿import { Request, Response } from 'express';
 import CoffinModel from '../models/coffinModel.js';
-import { resolveDatabase, lookupTenantDatabase, safeTenantQuery } from '../../../shared/dbConfig.js';
+import { coffinQuery } from '../db.js';
 import { serviceGet, serviceSet, serviceDel, clearServiceCache } from '@montezuma/shared-services';
 import { publishTask } from '@montezuma/shared-services';
 import { centralizedUploadService } from '@montezuma/shared-services/dist/centralizedUploadService';
@@ -106,19 +106,16 @@ export const createCoffin = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Missing required field: Price must be greater than 0' });
     }
 
-    const dbName = await resolveDatabase(tenantSlug);
-    if (dbName) {
-      const existing: any[] = await safeTenantQuery(dbName,
-        'SELECT coffin_id FROM coffins WHERE type = ? AND color = ? AND size = ? AND tenant_slug = ? AND is_deleted = FALSE',
-        [modelType, (color || '').trim(), (size || '').trim(), tenantSlug]
-      );
+    const existing: any[] = await coffinQuery(
+      'SELECT coffin_id FROM coffins WHERE type = ? AND color = ? AND size = ? AND tenant_slug = ? AND is_deleted = FALSE',
+      [modelType, (color || '').trim(), (size || '').trim(), tenantSlug]
+    );
 
-      if (existing.length > 0) {
-        return res.status(409).json({
-          success: false,
-          message: 'Coffin with same name, color, and size already exists'
-        });
-      }
+    if (existing.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'Coffin with same name, color, and size already exists'
+      });
     }
 
     const result = await CoffinModel.create(tenantSlug, {
@@ -184,19 +181,9 @@ export const getAllCoffins = async (req: Request, res: Response) => {
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
 
-      const tenantDbName = await lookupTenantDatabase(tenantSlug);
-      if (!tenantDbName) {
-        return res.status(200).json({ success: true, data: [], count: 0 });
-      }
-
-      const branchQuery = `SELECT branch_db_name FROM branches WHERE branch_slug = ? AND is_active = TRUE LIMIT 1`;
-      const branchResult: any[] = await safeTenantQuery(tenantDbName, branchQuery, [branchSlug]);
-
-      if (!branchResult || branchResult.length === 0) {
-        return res.status(200).json({ success: true, data: [], count: 0 });
-      }
-
-      const branchDbName = branchResult[0].branch_db_name;
+      // All coffin inventory lives in ONE central coffin DB, scoped by tenant slug.
+      // A branch slug just further narrows the same central table.
+      const scopeSlug = (branchSlug ? String(branchSlug) : tenantSlug);
 
       const sql = `
         SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
@@ -208,7 +195,7 @@ export const getAllCoffins = async (req: Request, res: Response) => {
         ORDER BY c.created_at DESC
       `;
 
-      const rows: any[] = await safeTenantQuery(branchDbName, sql, [branchSlug]);
+      const rows: any[] = await coffinQuery(sql, [scopeSlug]);
 
       const coffins = rows.map(row => CoffinModel.mapRow(row));
 
@@ -216,23 +203,17 @@ export const getAllCoffins = async (req: Request, res: Response) => {
     }
 
     if (branchId) {
-      const branchDbName = await resolveDatabase(String(branchId));
-
-      if (!branchDbName) {
-        return res.status(200).json({ success: true, data: [], count: 0 });
-      }
-
       const sql = `
         SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
           GROUP_CONCAT(ci.image_url) as image_urls
         FROM coffins c
         LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
-        WHERE c.tenant_slug = ? AND c.is_deleted = FALSE
+        WHERE c.tenant_slug = ? AND c.branch_id = ? AND c.is_deleted = FALSE
         GROUP BY c.coffin_id
         ORDER BY c.created_at DESC
       `;
 
-      const rows: any[] = await safeTenantQuery(branchDbName, sql, [tenantSlug]);
+      const rows: any[] = await coffinQuery(sql, [tenantSlug, parseInt(String(branchId)) || 0]);
 
       const coffins = rows.map(row => CoffinModel.mapRow(row));
 
@@ -267,54 +248,31 @@ export const getAllCoffinsAllBranches = async (req: Request, res: Response) => {
   }
 
   try {
-    const parentDbName = await lookupTenantDatabase(String(parentSlug));
-    if (!parentDbName) {
-      return res.status(200).json({ success: true, data: [], count: 0 });
-    }
+    // One central coffin DB holds every branch's inventory for the tenant; we no
+    // longer iterate branch databases. parent_slug identifies the tenant whose
+    // inventory to return (via the tenant_slug column).
+    const rows: any[] = await coffinQuery(`
+      SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.branch_id, c.created_at,
+        GROUP_CONCAT(ci.image_url) as image_urls
+      FROM coffins c
+      LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
+      WHERE c.tenant_slug = ? AND c.is_deleted = FALSE
+      GROUP BY c.coffin_id
+      ORDER BY c.created_at DESC
+    `, [String(parentSlug)]);
 
-    const branches: any[] = await safeTenantQuery(parentDbName, `
-      SELECT branch_id, branch_name, branch_slug, branch_db_name
-      FROM branches
-      ORDER BY branch_name
-    `);
-
-    const branchCoffinsPromises = branches.map(async (branch) => {
-      try {
-        const branchDbName = branch.branch_db_name;
-        if (!branchDbName) return [];
-
-        const sql = `
-          SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
-            GROUP_CONCAT(ci.image_url) as image_urls
-          FROM coffins c
-          LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
-          WHERE c.tenant_slug = ? AND c.is_deleted = FALSE
-          GROUP BY c.coffin_id
-          ORDER BY c.created_at DESC
-        `;
-
-        const rows: any[] = await safeTenantQuery(branchDbName, sql, [branch.branch_slug]);
-
-        return rows.map(row => ({
-          ...CoffinModel.mapRow(row),
-          branch_id: branch.branch_id,
-          branch_name: branch.branch_name,
-          branch_slug: branch.branch_slug
-        }));
-      } catch (err: any) {
-        logger.warn({ msg: 'Error fetching coffins from branch', branch: branch.branch_name, error: err.message });
-        return [];
-      }
-    });
-
-    const allCoffinsArrays = await Promise.all(branchCoffinsPromises);
-    const allCoffins = allCoffinsArrays.flat();
+    const allCoffins = rows.map(row => ({
+      ...CoffinModel.mapRow(row),
+      branch_id: row.branch_id ? parseInt(String(row.branch_id)) : null,
+      branch_slug: String(parentSlug),
+      branch_name: String(parentSlug)
+    }));
 
     return res.status(200).json({
       success: true,
       data: allCoffins,
       count: allCoffins.length,
-      branches: branches.length
+      branches: 1
     });
   } catch (error: any) {
     logger.error({ msg: 'Get all branch coffins error', parentSlug, error: error.message });
@@ -473,17 +431,12 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) {
-      return res.status(404).json({ success: false, message: 'Tenant database not found' });
-    }
-
     // Resolve the coffin: by id when available (its details auto-fill name/color/size),
     // otherwise by name with optional color/size filters.
     let coffin: any = null;
     if (coffinIdRaw) {
-      const rows: any[] = await safeTenantQuery(dbName,
-        'SELECT coffin_id, type, color, size, quantity FROM coffins WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE FOR UPDATE',
+      const rows: any[] = await coffinQuery(
+        'SELECT coffin_id, type, color, size, quantity FROM coffins WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE',
         [coffinIdRaw, tenantSlug]
       );
       if (rows.length > 0) coffin = rows[0];
@@ -494,9 +447,9 @@ export const createOrder = async (req: Request, res: Response) => {
       const sizeTrim = (size || '').toString().trim();
       if (colorTrim) { sql += ' AND color = ?'; params.push(colorTrim); }
       if (sizeTrim) { sql += ' AND size = ?'; params.push(sizeTrim); }
-      sql += ' AND tenant_slug = ? AND is_deleted = FALSE FOR UPDATE';
+      sql += ' AND tenant_slug = ? AND is_deleted = FALSE';
       params.push(tenantSlug);
-      const rows: any[] = await safeTenantQuery(dbName, sql, params);
+      const rows: any[] = await coffinQuery(sql, params);
       if (rows.length > 0) coffin = rows[0];
     }
 
@@ -523,7 +476,7 @@ export const createOrder = async (req: Request, res: Response) => {
 
     // Avoid double-booking the same coffin for the same person when booked_for is given.
     if (finalBookedFor) {
-      const existingOrder: any[] = await safeTenantQuery(dbName,
+      const existingOrder: any[] = await coffinQuery(
         `SELECT order_id FROM coffin_orders
          WHERE coffin_id = ? AND tenant_slug = ?
          AND status = 'active' AND booked_for = ?`,
@@ -584,11 +537,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
   }
 
   try {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) {
-      return res.status(200).json({ success: true, data: [], count: 0 });
-    }
-
     const sql = `
       SELECT order_id, coffin_name, color, size, quantity, booked_by, booked_for, status, created_at
       FROM coffin_orders
@@ -596,7 +544,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
       ORDER BY created_at DESC
     `;
 
-    const orders: any[] = await safeTenantQuery(dbName, sql, [tenantSlug]);
+    const orders: any[] = await coffinQuery(sql, [tenantSlug]);
 
     return res.status(200).json({ success: true, data: orders, count: orders.length });
   } catch (error: any) {
@@ -617,18 +565,13 @@ export const getOrderById = async (req: Request, res: Response) => {
   }
 
   try {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) {
-      return res.status(404).json({ success: false, message: 'Tenant database not found' });
-    }
-
     const sql = `
       SELECT order_id, coffin_name, color, size, quantity, booked_by, booked_for, status, created_at, updated_at
       FROM coffin_orders
       WHERE order_id = ? AND tenant_slug = ?
     `;
 
-    const orders: any[] = await safeTenantQuery(dbName, sql, [id, tenantSlug]);
+    const orders: any[] = await coffinQuery(sql, [id, tenantSlug]);
     if (orders.length === 0) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
@@ -657,20 +600,15 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
   }
 
   try {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) {
-      return res.status(404).json({ success: false, message: 'Tenant database not found' });
-    }
-
     // If cancelling, return stock to inventory
     if (status === 'cancelled') {
-      const order: any[] = await safeTenantQuery(dbName,
+      const order: any[] = await coffinQuery(
         'SELECT coffin_name, color, size, quantity FROM coffin_orders WHERE order_id = ? AND tenant_slug = ?',
         [id, tenantSlug]
       );
 
       if (order.length > 0) {
-        await safeTenantQuery(dbName,
+        await coffinQuery(
           'UPDATE coffins SET quantity = quantity + ? WHERE type = ? AND color = ? AND size = ? AND tenant_slug = ?',
           [order[0].quantity, order[0].coffin_name, order[0].color, order[0].size, tenantSlug]
         );
@@ -678,7 +616,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     }
 
     const sql = `UPDATE coffin_orders SET status = ?, updated_at = NOW() WHERE order_id = ? AND tenant_slug = ?`;
-    await safeTenantQuery(dbName, sql, [status, id, tenantSlug]);
+    await coffinQuery(sql, [status, id, tenantSlug]);
 
     await clearCoffinCache(tenantSlug);
 
@@ -720,17 +658,14 @@ export const createStockRequest = async (req: Request, res: Response) => {
     let resolvedColor = (color || '').toString().trim() || null;
     let resolvedSize = (size || '').toString().trim() || null;
     if (coffinIdRaw) {
-      const dbName = await resolveDatabase(tenantSlug);
-      if (dbName) {
-        const rows: any[] = await safeTenantQuery(dbName,
-          'SELECT type, color, size FROM coffins WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE LIMIT 1',
-          [coffinIdRaw, tenantSlug]
-        );
-        if (rows.length > 0) {
-          resolvedName = resolvedName || rows[0].type || 'Coffin';
-          resolvedColor = resolvedColor || rows[0].color || null;
-          resolvedSize = resolvedSize || rows[0].size || null;
-        }
+      const rows: any[] = await coffinQuery(
+        'SELECT type, color, size FROM coffins WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE LIMIT 1',
+        [coffinIdRaw, tenantSlug]
+      );
+      if (rows.length > 0) {
+        resolvedName = resolvedName || rows[0].type || 'Coffin';
+        resolvedColor = resolvedColor || rows[0].color || null;
+        resolvedSize = resolvedSize || rows[0].size || null;
       }
     }
 
@@ -798,11 +733,6 @@ export const getAllStockRequests = async (req: Request, res: Response) => {
   }
 
   try {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) {
-      return res.status(200).json({ success: true, data: [], count: 0 });
-    }
-
     const sql = `
       SELECT request_id, coffin_name, color, size, requested_by, booked_for, requesting_branch, image_url, status, created_at
       FROM stock_requests
@@ -810,7 +740,7 @@ export const getAllStockRequests = async (req: Request, res: Response) => {
       ORDER BY created_at DESC
     `;
 
-    const requests: any[] = await safeTenantQuery(dbName, sql, [tenantSlug]);
+    const requests: any[] = await coffinQuery(sql, [tenantSlug]);
 
     return res.status(200).json({ success: true, data: requests, count: requests.length });
   } catch (error: any) {
@@ -831,18 +761,13 @@ export const getStockRequestById = async (req: Request, res: Response) => {
   }
 
   try {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) {
-      return res.status(404).json({ success: false, message: 'Tenant database not found' });
-    }
-
     const sql = `
       SELECT request_id, coffin_name, color, size, requested_by, booked_for, requesting_branch, image_url, status, created_at, updated_at
       FROM stock_requests
       WHERE request_id = ? AND tenant_slug = ?
     `;
 
-    const requests: any[] = await safeTenantQuery(dbName, sql, [id, tenantSlug]);
+    const requests: any[] = await coffinQuery(sql, [id, tenantSlug]);
     if (requests.length === 0) {
       return res.status(404).json({ success: false, message: 'Stock request not found' });
     }
@@ -871,13 +796,8 @@ export const updateStockRequestStatus = async (req: Request, res: Response) => {
   }
 
   try {
-    const dbName = await resolveDatabase(tenantSlug);
-    if (!dbName) {
-      return res.status(404).json({ success: false, message: 'Tenant database not found' });
-    }
-
     const sql = `UPDATE stock_requests SET status = ?, updated_at = NOW() WHERE request_id = ? AND tenant_slug = ?`;
-    await safeTenantQuery(dbName, sql, [status, id, tenantSlug]);
+    await coffinQuery(sql, [status, id, tenantSlug]);
 
     logger.info({ msg: 'Stock request status updated', tenantSlug, requestId: id, status });
 

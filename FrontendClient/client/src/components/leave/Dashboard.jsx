@@ -5,8 +5,9 @@ import { useSocket } from '../../utils/context/socketContext';
 import { api, ENDPOINTS } from '../../api';
 import {
   Calendar, Clock, Users, FileText, AlertCircle, CheckCircle, XCircle,
-  TrendingUp, X, PlusCircle, Wallet, UserPlus, Trash2
+  TrendingUp, X, PlusCircle, Wallet, UserPlus, Trash2, User, Mail, Briefcase
 } from '../../utils/icons/icons';
+import LeaveCalendar from './LeaveCalendar';
 
 const COLORS = {
   primary: '#0A2463',
@@ -561,7 +562,10 @@ const LeaveDashboard = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [rejectModal, setRejectModal] = useState({ show: false, leaveId: null, reason: '' });
   const [approveModal, setApproveModal] = useState({ show: false, leaveId: null });
-  const [detailModal, setDetailModal] = useState({ show: false, leave: null });
+    const [detailModal, setDetailModal] = useState({ show: false, leave: null });
+  const [employeeDetailModal, setEmployeeDetailModal] = useState({
+    show: false, employee: null, leaves: [], loading: false
+  });
   const [addDaysModal, setAddDaysModal] = useState({ show: false, employeeId: '', days: '', reason: '' });
   const [registerModal, setRegisterModal] = useState({ show: false, full_name: '', email: '', phone: '', role: 'staff', submitting: false });
   const [toasts, setToasts] = useState([]);

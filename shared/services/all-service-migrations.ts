@@ -288,7 +288,10 @@ export const ALL_TENANT_MIGRATIONS: Migration[] = [
   ...DECEASED_SERVICE_MIGRATIONS,
   ...INVOICE_SERVICE_MIGRATIONS,
   ...BODY_CHECKOUT_SERVICE_MIGRATIONS,
-  ...COFFIN_SERVICE_MIGRATIONS,
+  // NOTE: COFFIN_SERVICE_MIGRATIONS intentionally removed - the coffin service
+  // owns ONE central database for all tenants and runs its own knex migrations
+  // independently (services/coffin-service/migrations). No coffin tables are
+  // created in per-tenant/main databases anymore.
   ...CHEMICALS_SERVICE_MIGRATIONS,
   ...HEARSE_SERVICE_MIGRATIONS,
   ...FLORIST_SERVICE_MIGRATIONS,
@@ -306,7 +309,7 @@ export const BRANCH_MIGRATIONS: Migration[] = [
   ...DECEASED_SERVICE_MIGRATIONS,
   ...INVOICE_SERVICE_MIGRATIONS,
   ...BODY_CHECKOUT_SERVICE_MIGRATIONS,
-  ...COFFIN_SERVICE_MIGRATIONS,
+  // (coffin migrations are central-only - see note above)
   ...CHEMICALS_SERVICE_MIGRATIONS,
   ...HEARSE_SERVICE_MIGRATIONS,
 
@@ -319,7 +322,7 @@ export const SINGLE_TENANT_MIGRATIONS: Migration[] = [
   ...DECEASED_SERVICE_MIGRATIONS,
   ...INVOICE_SERVICE_MIGRATIONS,
   ...BODY_CHECKOUT_SERVICE_MIGRATIONS,
-  ...COFFIN_SERVICE_MIGRATIONS,
+  // (coffin migrations are central-only - see note above)
   ...CHEMICALS_SERVICE_MIGRATIONS,
   ...HEARSE_SERVICE_MIGRATIONS,
   ...FLORIST_SERVICE_MIGRATIONS,
