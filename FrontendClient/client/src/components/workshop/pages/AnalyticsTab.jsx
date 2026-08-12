@@ -264,7 +264,7 @@ const AnalyticsTab = () => {
     if (!leadRef.current) return;
     const top = stats.slice(0, 8);
     if (top.length === 0 || top.every((w) => w.total === 0)) return;
-    const chart = new Chart(leadRef.current, {
+        let chart = new Chart(leadRef.current, {
       type: 'doughnut',
       data: {
         labels: top.map((w) => w.name),
@@ -309,7 +309,7 @@ const AnalyticsTab = () => {
     if (!durRef.current) return;
     const list = stats.filter((w) => w.total > 0).slice(0, 10);
     if (list.length === 0) return;
-    const chart = new Chart(durRef.current, {
+        let chart = new Chart(durRef.current, {
       type: 'bar',
       data: {
         labels: list.map((w) => w.name),

@@ -1,7 +1,21 @@
 import { Request, Response } from "express"
+import axios from 'axios';
 import { safeTenantQuery, safeTenantExecute } from '../database/db'
 // @ts-ignore - socket module types not fully declared
 import { getIO } from '../socket'
+
+const SOCKETIO_SERVICE_URL = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+
+const emitNotification = async (event: string, data: any, tenantSlug: string) => {
+  try {
+    await axios.post(`${SOCKETIO_SERVICE_URL}/emit/${event}`, {
+      tenantSlug,
+      data
+    }, { timeout: 3000 });
+  } catch (error) {
+    console.warn(`[WORKSHOP] Failed to emit ${event}: ${(error as any).message}`);
+  }
+};
 
 /**
  * Store Management — inventory ledger + dispatch/restock history for the
@@ -135,7 +149,26 @@ const dispatchItem = async (req: Request, res: Response) => {
 
         const updated: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_items WHERE item_key = ?', [item_key]);
         const txn: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_transactions WHERE id = ?', [insertResult.insertId]);
-        try { const io = getIO(); if (io) io.emit('store:dispatch', txn[0]); } catch { /* socket optional */ }
+                try { const io = getIO(); if (io) io.emit('store:dispatch', txn[0]); } catch { /* socket optional */ }
+
+        // Emit a notification through the Socket.IO service so the Store dispatch
+        // surfaces in the Notification Bell (same pattern used by deceased/hearse services)
+        await emitNotification('store-dispatch', {
+          id: `store-dispatch-${insertResult.insertId}-${Date.now()}`,
+          transactionId: insertResult.insertId,
+          itemKey: item_key,
+          itemType: item_type || 'Item',
+          itemName: item_name || item_key,
+          unit: unit || 'pcs',
+          qty: q,
+          dispatchedBy: picked_by || '',
+          date: txnDate,
+          title: 'Store Item Dispatched',
+          message: `${item_name || item_key} (${q} ${unit || 'pcs'}) dispatched from store${picked_by ? ` by ${picked_by}` : ''}`,
+          type: 'store-dispatch',
+          priority: 'medium',
+          fullContent: `Item: ${item_name || item_key}\nType: ${item_type || 'Item'}\nQuantity: ${q} ${unit || 'pcs'}\nDate: ${txnDate}\nDispatched By: ${picked_by || 'N/A'}\nNotes: ${notes || 'None'}`
+        }, (req as any).tenantSlug || 'system');
 
         res.status(201).json({ success: true, item: updated[0], transaction: txn[0] });
     } catch (error: any) {

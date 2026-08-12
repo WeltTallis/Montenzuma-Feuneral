@@ -42,6 +42,13 @@ const env = {
   // via the tenant-service static mount. NOT a separate uploads-service.
   UPLOADS_URL: import.meta.env.VITE_UPLOADS_URL || (import.meta.env.PROD ? 'https://restpoint.co.ke' : 'http://localhost:5000'),
 
+      // Mini Store service - inventory + pick/restock (routed through the API gateway)
+  STORE_SERVICE_API:
+    import.meta.env.VITE_STORE_SERVICE_API ||
+    (import.meta.env.PROD
+      ? 'https://restpoint.co.ke/api/v1/restpoint/store'
+      : 'http://localhost:5000/api/v1/restpoint/store'),
+
   // Feature flags
   FEATURES: {
     ENABLE_ANALYTICS: true,

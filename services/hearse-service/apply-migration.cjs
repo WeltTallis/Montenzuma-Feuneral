@@ -1,3 +1,5 @@
+
+
 // One-off script: apply pending knex migrations to the live hearse database.
 // Run from services/hearse-service:  node apply-migration.cjs
 const knex = require('knex');

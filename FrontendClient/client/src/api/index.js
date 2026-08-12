@@ -1,6 +1,7 @@
 // Barrel export for all API modules
 export { default as api } from './axios';
 export { ENDPOINTS } from './endpoints';
+export { default as storeApi, StoreAPI } from './storeApi';
 export { authApi } from './authApi';
 export { default as callApi, createCallSocket, getTenantCallRoom, listActiveCallRooms, callTenant } from './callApi';
 export { paymentApi } from './paymentApi';

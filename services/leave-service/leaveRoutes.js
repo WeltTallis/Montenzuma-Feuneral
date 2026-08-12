@@ -12,6 +12,7 @@ const {
   addLeaveDays,
   removeLeaveDays,
   recordHolidayCompensation,
+  addEmployee,
   getLeaveBalance,
   getAllLeaveBalances
 } = require('./leaveController');
@@ -56,6 +57,9 @@ router.delete('/admin/add-days/:id', removeLeaveDays);
 
 // Record holiday compensation
 router.post('/admin/holiday-compensation', recordHolidayCompensation);
+
+// Register a new employee (grants default 26 annual leave days)
+router.post('/admin/employees', addEmployee);
 
 // ============================================
 // LEAVE BALANCES

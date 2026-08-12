@@ -1,0 +1,74 @@
+/* Mini Store - Bootstrap styling with the KitchenTrack accent palette (no Tailwind) */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+:root {
+  --k-primary: #1a5f7a;
+  --k-primary-dark: #134b5f;
+  --k-primary-light: #2c8ac9;
+  --k-success: #10b981;
+  --k-success-dark: #059669;
+  --k-warning: #f59e0b;
+  --k-warning-dark: #d97706;
+  --k-danger: #ef4444;
+  --k-danger-dark: #dc2626;
+  --k-info: #3b82f6;
+  --k-info-dark: #2563eb;
+  --k-ink: #111827;
+  --k-bg: #f5f7fa;
+  --k-surface: #ffffff;
+  --k-border: #d1d5db;
+}
+
+.mini-store {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--k-bg);
+  color: var(--k-ink);
+}
+.mini-store h1, .mini-store h2, .mini-store h3, .mini-store h4,
+.mini-store .navbar-brand, .mini-store .nav-link {
+  font-family: 'Space Grotesk', sans-serif;
+}
+.mini-store .navbar-brand { color: var(--k-primary); font-weight: 700; }
+
+.mini-store .nav-link.active {
+  color: var(--k-primary) !important;
+  font-weight: 600;
+}
+.mini-store .nav-link .nav-link { color: var(--k-primary); }
+
+.mini-store .stat-card {
+  background: var(--k-surface);
+  border: 1px solid var(--k-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.mini-store .stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px rgba(0, 0, 0, 0.08); }
+.mini-store .stat-icon { width: 36px; height: 36px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+
+.mini-store .badge-out { background: #fee2e2; color: var(--k-danger-dark); }
+.mini-store .badge-low { background: #fef3c7; color: var(--k-warning-dark); }
+.mini-store .badge-ok { background: #d1fae5; color: var(--k-success-dark); }
+.mini-store .badge-used { background: #fee2e2; color: var(--k-danger-dark); }
+.mini-store .badge-restocked { background: #d1fae5; color: var(--k-success-dark); }
+.mini-store .badge-adjusted { background: #dbeafe; color: var(--k-info-dark); }
+
+.mini-store .table th { font-family: 'Space Grotesk', sans-serif; font-size: .675rem; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
+.mini-store .table td { font-size: .825rem; }
+.mini-store tbody tr:hover { background: rgba(26, 95, 122, 0.02); }
+
+.mini-store .btn-brand { background: var(--k-primary); border-color: var(--k-primary); color: #fff; }
+.mini-store .btn-brand:hover { background: var(--k-primary-dark); border-color: var(--k-primary-dark); color: #fff; }
+.mini-store .btn-restock { background: var(--k-surface); border-color: var(--k-success); color: var(--k-success-dark); }
+.mini-store .btn-restock:hover { background: #e8f5e9; }
+.mini-store .form-control:focus, .mini-store .form-select:focus { border-color: var(--k-primary); box-shadow: 0 0 0 .2rem rgba(26, 95, 122, .15); }
+
+.mini-store .low-bar { height: 6px; border-radius: 9999px; background: #e5e7eb; overflow: hidden; }
+.mini-store .low-bar .fill { height: 100%; border-radius: 9999px; }
+
+.mini-store .cal-day { width: 32px; height: 32px; }
+.mini-store .connection-badge { font-size: .725rem; font-weight: 600; }
+.mini-store .quick-btn { font-size: .725rem; }
+
+.mini-store .panel { background: var(--k-surface); border: 1px solid var(--k-border); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.mini-store .page-bg { background: #f5f7fa; min-height: calc(100vh - 64px); }

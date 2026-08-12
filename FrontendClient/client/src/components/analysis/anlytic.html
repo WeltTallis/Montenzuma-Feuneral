@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restful Pines Command Centre</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f0f2f5;--card:#fff;--border:#e8eaed;--fg:#1a1d23;--fg2:#5f6368;--fg3:#9aa0a6;--accent:#5b8c5a;--accent-l:#e8f5e8;--blue:#4285f4;--blue-l:#e8f0fe;--orange:#f9a825;--orange-l:#fff8e1;--red:#ea4335;--red-l:#fce8e6;--purple:#9c27b0;--purple-l:#f3e5f5;--sh:0 1px 3px rgba(0,0,0,.07);--sh2:0 2px 8px rgba(0,0,0,.08);--r:14px;--rs:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;padding:16px 22px 30px;max-width:1420px;margin:0 auto}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px;margin-bottom:14px}.card:hover{box-shadow:var(--sh2)}.card:last-child{margin-bottom:0}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.ch h2{font-family:'Poppins',sans-serif;font-size:13px;font-weight:600}.ch a{font-size:10px;color:var(--accent);text-decoration:none;font-weight:700;cursor:pointer}
+.welcome{background:var(--card);border-radius:var(--r);box-shadow:var(--sh2);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;position:relative;overflow:hidden}
+.welcome::before{content:'';position:absolute;right:-30px;top:-30px;width:140px;height:140px;background:radial-gradient(circle,var(--accent-l),transparent 70%);opacity:.5;pointer-events:none}
+.welcome h1{font-family:'Poppins',sans-serif;font-size:17px;font-weight:700}.welcome p{font-size:11px;color:var(--fg2);margin-top:2px}.welcome p strong{color:var(--accent);font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:10px 12px;position:relative;overflow:hidden;cursor:default}.stat:hover{box-shadow:var(--sh2);transform:translateY(-1px)}
+.stat .sp{font-size:8px;color:var(--fg3);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:3px}.stat .sv{font-family:'Poppins',sans-serif;font-size:18px;font-weight:700;line-height:1}.stat .sc{font-size:9px;font-weight:700;margin-top:2px}.stat .sc.up{color:var(--accent)}.stat .sc.down{color:var(--red)}
+.stat .spark{position:absolute;right:6px;top:8px;opacity:.5}
+.main-grid{display:grid;grid-template-columns:220px 1fr;gap:12px}
+.side-col{display:flex;flex-direction:column;gap:12px}
+.d-item{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer}.d-item:last-child{border-bottom:none}.d-item:hover{background:#f8f9fa;margin:0 -5px;padding:6px 5px;border-radius:6px;border-color:transparent}
+.d-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}.d-av.m{background:var(--blue-l);color:var(--blue)}.d-av.f{background:var(--purple-l);color:var(--purple)}
+.d-info{flex:1;min-width:0}.d-info h4{font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.d-info span{font-size:8px;color:var(--fg3)}
+.pbar{width:100%;height:3px;background:var(--border);border-radius:2px;margin-top:2px;overflow:hidden}.pfill{height:100%;border-radius:2px;transition:width 1s ease}
+.d-pct{font-size:10px;font-weight:800;min-width:26px;text-align:right}
+.ring-section{display:flex;align-items:center;gap:12px;padding:6px 0}
+.ring-w{position:relative;width:90px;height:90px;flex-shrink:0}.ring-w canvas{width:100%;height:100%}
+.ring-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-c .rv{font-family:'Poppins',sans-serif;font-size:20px;font-weight:700;color:var(--accent);line-height:1}.ring-c .rl{font-size:7px;color:var(--fg3);text-transform:uppercase;letter-spacing:.3px;font-weight:700;margin-top:1px}
+.eff-item{padding:4px 0;border-bottom:1px solid var(--border)}.eff-item:last-child{border-bottom:none}.eff-item h4{font-size:10px;font-weight:700;margin-bottom:1px}.eff-row{display:flex;gap:6px;font-size:8px;color:var(--fg2);flex-wrap:wrap}.eff-row span{display:flex;align-items:center;gap:2px}.eff-row .late{color:var(--red);font-weight:700}
+.perf-item{display:flex;align-items:center;justify-content:space-between;padding:3px 0}.perf-label{font-size:9px;color:var(--fg2);font-weight:600}.perf-val{font-size:10px;font-weight:800}
+.perf-bar-bg{width:50px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-left:5px}.perf-bar{height:100%;border-radius:2px}
+.cal-card{padding:14px 18px 16px}
+.cal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cal-top-left{display:flex;align-items:center;gap:8px}
+.cal-top-left h2{font-family:'Poppins',sans-serif;font-size:14px;font-weight:700}
+.cal-tabs{display:flex;gap:2px}
+.cal-tab{padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--fg3);font-size:9px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif}.cal-tab:hover{border-color:var(--accent);color:var(--accent)}.cal-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cal-nav{display:flex;gap:2px}
+.cal-nav button{width:26px;height:26px;border:1px solid var(--border);background:var(--card);color:var(--fg3);border-radius:6px;cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center}.cal-nav button:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-l)}
+.cal-strip{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.cal-strip-item{display:flex;align-items:center;gap:4px;padding:4px 8px;background:#f8f9fa;border-radius:6px;font-size:9px;font-weight:600;color:var(--fg2)}.cal-strip-item .num{font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:var(--fg)}.cal-strip-item.alert{background:var(--red-l);color:var(--red)}.cal-strip-item.alert .num{color:var(--red)}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:12px}
+.cal-dl{font-size:8px;color:var(--fg3);padding:4px 0;font-weight:700;text-transform:uppercase;text-align:center}
+.cal-cell{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:6px 2px 4px;border-radius:8px;border:1.5px solid transparent;cursor:pointer;background:var(--card);min-height:52px}.cal-cell:hover{border-color:var(--accent);background:var(--accent-l)}
+.cal-cell.today{border-color:var(--accent);border-width:2px}
+.cal-cell.today .cal-num{background:var(--accent);color:#fff;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center}
+.cal-num{font-size:11px;font-weight:700;color:var(--fg2);margin-bottom:3px}
+.cal-dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center}
+.cal-dot{width:5px;height:5px;border-radius:50%}
+.cal-cell.empty-cell{background:transparent;border-color:transparent;cursor:default;pointer-events:none}
+.wk-live{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:700;color:var(--accent);margin-right:auto}
+.wk-live-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.wk-resources{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-bottom:10px}
+.wk-res{display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 6px;border-radius:6px}.wk-res:hover{background:#f0f2f5}
+.wk-res-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.wk-res-info{flex:1;min-width:0}
+.wk-res-label{font-size:9px;font-weight:700;color:var(--fg2);margin-bottom:2px;display:flex;align-items:center;justify-content:space-between}
+.wk-res-label .pct{font-family:'Poppins',sans-serif;font-weight:700}
+.wk-res-bar-bg{width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.wk-res-bar{height:100%;border-radius:3px;transition:width .8s ease}
+.wk-res-bar.critical{animation:barPulse 2s infinite}
+@keyframes barPulse{0%,100%{opacity:1}50%{opacity:.6}}
+.wk-res-sub{font-size:7px;color:var(--fg3);font-weight:600;margin-top:1px}
+.wk-summary{display:flex;gap:8px;margin-bottom:10px;padding:6px 10px;background:#f8f9fa;border-radius:8px;font-size:9px;font-weight:600;color:var(--fg2);flex-wrap:wrap;align-items:center}
+.wk-summary strong{font-family:'Poppins',sans-serif;font-weight:700;color:var(--fg)}.wk-summary .sep{color:var(--border)}
+.wk-main{display:flex;min-height:280px}
+.wk-days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;flex:1;min-width:0}
+.wk-day{background:#f8f9fa;border-radius:8px;padding:6px 4px;cursor:pointer;display:flex;flex-direction:column;min-height:240px;border:2px solid transparent}.wk-day:hover{background:#f0f2f5}.wk-day.selected{border-color:var(--accent);background:var(--accent-l)}
+.wk-day-hdr{text-align:center;padding-bottom:5px;border-bottom:1px solid var(--border);margin-bottom:5px}
+.wk-day-name{font-size:8px;color:var(--fg3);text-transform:uppercase;font-weight:700}
+.wk-day-num{font-family:'Poppins',sans-serif;font-size:14px;font-weight:700}
+.wk-day-badges{display:flex;justify-content:center;gap:3px;margin-top:2px}
+.wk-badge{font-size:7px;font-weight:700;padding:1px 4px;border-radius:4px;display:flex;align-items:center;gap:1px}
+.wk-badge.intake{background:var(--blue-l);color:var(--blue)}.wk-badge.release{background:var(--accent-l);color:var(--accent)}
+.wk-evts{flex:1;display:flex;flex-direction:column;gap:3px}
+.wk-evt{padding:5px 6px;border-radius:5px;border-left:3px solid;cursor:pointer;font-size:8px}.wk-evt:hover{transform:translateX(1px);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.wk-evt-time{font-weight:700;margin-bottom:1px}.wk-evt-name{font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wk-evt-type{font-size:7px;opacity:.7;margin-top:1px}
+.wk-no-evts{flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--fg3);opacity:.5}
+.wk-detail{width:0;overflow:hidden;transition:width .3s ease;flex-shrink:0;background:var(--card);border-left:1px solid var(--border);border-radius:0 var(--rs) var(--rs) 0}
+.wk-detail.open{width:300px}
+.wk-detail-inner{width:300px;padding:14px;overflow-y:auto;max-height:340px}
+.wk-detail-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.wk-detail-head h3{font-family:'Poppins',sans-serif;font-size:12px;font-weight:700}
+.wk-detail-close{width:22px;height:22px;border:none;background:#f0f2f5;border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:10px}.wk-detail-close:hover{background:var(--red-l);color:var(--red)}
+.wk-detail-section{margin-bottom:10px}.wk-detail-section h4{font-size:9px;color:var(--fg3);text-transform:uppercase;letter-spacing:.3px;font-weight:700;margin-bottom:6px}
+.wk-det-evt{background:#f8f9fa;border-radius:6px;padding:8px 10px;margin-bottom:6px;border-left:3px solid var(--accent)}.wk-det-evt:last-child{margin-bottom:0}
+.wk-det-evt-type{font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;display:inline-flex;align-items:center;gap:3px;margin-bottom:4px}
+.wk-det-evt-name{font-size:11px;font-weight:700;margin-bottom:2px}
+.wk-det-evt-time{font-size:9px;color:var(--fg2);margin-bottom:4px;display:flex;align-items:center;gap:3px}
+.wk-det-tags{display:flex;gap:3px;flex-wrap:wrap}
+.wk-det-tag{font-size:8px;font-weight:600;padding:2px 5px;border-radius:3px;background:var(--card);border:1px solid var(--border);color:var(--fg2)}
+.wk-det-row{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:10px;border-bottom:1px solid var(--border)}.wk-det-row:last-child{border-bottom:none}
+.wk-det-row-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0}
+.wk-det-row-info{flex:1}.wk-det-row-info h5{font-size:10px;font-weight:700}.wk-det-row-info span{font-size:8px;color:var(--fg3)}
+.wk-det-row-status{font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px}
+.st-available{background:var(--accent-l);color:var(--accent)}.st-booked{background:var(--blue-l);color:var(--blue)}.st-overdue{background:var(--red-l);color:var(--red)}.st-used{background:#f0f0f0;color:var(--fg3)}.st-preparing{background:var(--purple-l);color:var(--purple)}.st-delivered{background:var(--blue-l);color:var(--blue)}.st-ordered{background:var(--orange-l);color:var(--orange)}.st-received{background:var(--accent-l);color:var(--accent)}.st-released{background:var(--blue-l);color:var(--blue)}
+.day-tl{border-left:2px solid var(--border);margin-left:8px;padding-left:14px}
+.day-tl-item{position:relative;padding:4px 0 12px}.day-tl-item::before{content:'';position:absolute;left:-21px;top:7px;width:8px;height:8px;border-radius:50%;background:var(--accent);border:2px solid var(--card)}
+.day-tl-time{font-size:9px;color:var(--fg3);font-weight:700}.day-tl-text{font-size:11px;font-weight:600}.day-tl-sub{font-size:9px;color:var(--fg3)}
+.cal-analytics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.mini-card{background:#f8f9fa;border-radius:var(--rs);padding:8px 10px}
+.mini-card h4{font-size:9px;color:var(--fg3);text-transform:uppercase;letter-spacing:.3px;font-weight:700;margin-bottom:6px}
+.mini-card canvas{width:100%!important;height:90px!important}
+.cal-hm-section h4{font-size:9px;color:var(--fg3);text-transform:uppercase;letter-spacing:.3px;font-weight:700;margin-bottom:6px}
+.cal-hm{display:grid;grid-template-columns:40px repeat(7,1fr);gap:2px;margin-bottom:6px}
+.cal-hm-slot{font-size:7px;color:var(--fg3);display:flex;align-items:center;justify-content:flex-end;padding-right:3px;font-weight:700}
+.cal-hm-day{font-size:7px;color:var(--fg3);text-align:center;font-weight:700;padding-bottom:1px}
+.cal-hm-cell{height:18px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;cursor:pointer}.cal-hm-cell:hover{transform:scale(1.15);z-index:2}
+.hm-0{background:#f5f5f5;color:transparent}.hm-1{background:#c8e6c9;color:#2e7d32}.hm-2{background:#fff9c4;color:#f57f17}.hm-3{background:#ffcdd2;color:#c62828}
+.cal-hm-legend{display:flex;gap:6px;justify-content:center}.cal-hm-legend span{display:flex;align-items:center;gap:2px;font-size:7px;color:var(--fg3);font-weight:600}.cal-hm-legend i{width:7px;height:7px;border-radius:2px;display:inline-block}
+.cal-bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.cal-bottom .mini-card{padding:8px 10px}.cal-bottom .mini-card h4{margin-bottom:6px}
+.act-row{display:flex;align-items:center;gap:5px;padding:2px 0}.act-label{font-size:9px;font-weight:600;width:50px;flex-shrink:0;color:var(--fg2)}
+.act-bar-bg{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden}.act-bar{height:100%;border-radius:4px;transition:width 1s ease}.act-val{font-size:9px;font-weight:800;width:14px;text-align:right;flex-shrink:0}
+.alert-item{display:flex;align-items:flex-start;gap:5px;padding:3px 0;font-size:9px;color:var(--fg2);line-height:1.3}.alert-item i{margin-top:1px;font-size:9px;flex-shrink:0}
+.alert-item.danger i{color:var(--red)}.alert-item.warn i{color:var(--orange)}.alert-item.info i{color:var(--blue)}
+.btable{width:100%;border-collapse:collapse}.btable th{text-align:left;font-size:8px;text-transform:uppercase;letter-spacing:.3px;color:var(--fg3);padding:0 0 7px;font-weight:700;border-bottom:2px solid var(--border)}.btable td{padding:7px 0;font-size:10px;border-bottom:1px solid var(--border);vertical-align:middle}.btable tr:last-child td{border-bottom:none}.btable tr:hover td{background:#f8f9fa}
+.badge-s{display:inline-flex;align-items:center;gap:2px;padding:2px 7px;border-radius:8px;font-size:8px;font-weight:700}.badge-s.confirmed{background:var(--accent-l);color:var(--accent)}.badge-s.pending{background:var(--orange-l);color:var(--orange)}.badge-s.overdue{background:var(--red-l);color:var(--red)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center}.modal-overlay.show{display:flex}
+.modal{background:var(--card);border-radius:var(--r);box-shadow:0 8px 40px rgba(0,0,0,.2);width:440px;max-width:92vw;max-height:80vh;overflow-y:auto;animation:mIn .25s ease}
+@keyframes mIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.modal-head{padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--card);z-index:1;border-radius:var(--r) var(--r) 0 0}.modal-head h2{font-family:'Poppins',sans-serif;font-size:13px;font-weight:700}
+.modal-close{width:26px;height:26px;border:none;background:#f0f2f5;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:11px}.modal-close:hover{background:var(--red-l);color:var(--red)}
+.modal-body{padding:12px 18px 18px}
+.evt-card{background:#f8f9fa;border-radius:var(--rs);padding:10px 12px;margin-bottom:6px;border-left:3px solid var(--accent)}.evt-card:last-child{margin-bottom:0}
+.evt-type{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;margin-bottom:4px}
+.evt-name{font-size:12px;font-weight:700;margin-bottom:2px}
+.evt-time{font-size:10px;color:var(--fg2);margin-bottom:5px;display:flex;align-items:center;gap:3px}
+.evt-tags{display:flex;gap:3px;flex-wrap:wrap}
+.evt-tag{font-size:8px;font-weight:600;padding:2px 5px;border-radius:3px;background:var(--card);border:1px solid var(--border);color:var(--fg2)}
+.no-events{text-align:center;padding:20px 0;color:var(--fg3);font-size:11px}.no-events i{font-size:20px;display:block;margin-bottom:4px;opacity:.4}
+.toast-c{position:fixed;top:12px;right:12px;z-index:2000;display:flex;flex-direction:column;gap:4px}
+.toast{background:var(--fg);color:#fff;border-radius:7px;padding:7px 12px;font-size:10px;box-shadow:0 4px 14px rgba(0,0,0,.25);animation:tin .2s ease,tout .2s ease 2.5s forwards;display:flex;align-items:center;gap:5px;font-weight:500}
+.toast i{color:var(--accent)}
+@keyframes tin{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes tout{from{opacity:1}to{opacity:0;transform:translateX(14px)}}
+@keyframes fu{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fu .3s ease both}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.main-grid{grid-template-columns:1fr}.cal-analytics,.cal-bottom{grid-template-columns:1fr 1fr}.wk-detail.open{width:260px}.wk-detail-inner{width:260px}}
+@media(max-width:700px){body{padding:8px}.stats{grid-template-columns:repeat(2,1fr)}.wk-resources{grid-template-columns:1fr}.wk-days{grid-template-columns:repeat(4,1fr)}.cal-analytics,.cal-bottom{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="welcome anim"><div><h1>Welcome back, Harold</h1><p>Completed <strong>80%</strong> of preparations. <strong>12 events</strong> this week.</p></div></div>
+<div class="stats" id="statsRow"></div>
+<div class="main-grid">
+  <div class="side-col">
+    <div class="card anim"><div class="ch"><h2>Recent Deceased</h2><a onclick="showToast('All records')">See all</a></div><div id="deceasedList"></div></div>
+    <div class="card anim"><div class="ch"><h2>Preparation</h2></div><div class="ring-section"><div class="ring-w"><canvas id="ringCanvas" width="180" height="180"></canvas><div class="ring-c"><span class="rv" id="ringPct">0%</span><span class="rl">Complete</span></div></div><div id="effList" style="flex:1;min-width:0"></div></div></div>
+    <div class="card anim" style="margin-bottom:0"><div class="ch"><h2>Quick Stats</h2></div><div id="perfList"></div></div>
+  </div>
+  <div class="card cal-card anim" style="margin-bottom:0">
+    <div class="cal-top"><div class="cal-top-left"><h2 id="calTitle">August 2026</h2><div class="cal-tabs"><button class="cal-tab active" data-view="month">Month</button><button class="cal-tab" data-view="week">Week</button><button class="cal-tab" data-view="day">Day</button></div></div><div class="cal-nav"><button id="calPrev"><i class="fas fa-chevron-left"></i></button><button id="calNext"><i class="fas fa-chevron-right"></i></button></div></div>
+    <div class="cal-strip" id="calStrip"></div>
+    <div id="monthView"><div class="cal-g" id="calGrid"></div><div class="cal-analytics" id="calAnalytics"><div class="mini-card"><h4>Daily Events</h4><canvas id="miniBar"></canvas></div><div class="mini-card"><h4>Booking Trend</h4><canvas id="miniLine"></canvas></div><div class="mini-card"><h4>Service Types</h4><canvas id="miniDoughnut"></canvas></div></div><div class="cal-hm-section"><h4>Weekly Busyness</h4><div class="cal-hm" id="hmGrid"></div><div class="cal-hm-legend"><span><i style="background:#c8e6c9"></i> Low</span><span><i style="background:#fff9c4"></i> Medium</span><span><i style="background:#ffcdd2"></i> Busy</span><span><i style="background:#f5f5f5"></i> None</span></div></div><div class="cal-bottom" style="margin-top:10px"><div class="mini-card"><h4>Today</h4><div id="actBars"></div></div><div class="mini-card"><h4>Performance</h4><div id="perfCal"></div></div><div class="mini-card"><h4>Alerts</h4><div id="alertsCal"></div></div></div></div>
+    <div id="weekView" style="display:none"><div class="wk-resources" id="wkResources"></div><div class="wk-summary" id="wkSummary"></div><div class="wk-main"><div class="wk-days" id="wkDays"></div><div class="wk-detail" id="wkDetail"><div class="wk-detail-inner" id="wkDetailInner"></div></div></div></div>
+    <div id="dayView" style="display:none"></div>
+  </div>
+</div>
+<div class="card anim"><div class="ch"><h2>Recent Bookings</h2><a onclick="showToast('All bookings')">View All</a></div><div style="overflow-x:auto"><table class="btable"><thead><tr><th>ID</th><th>Type</th><th>Deceased</th><th>Date</th><th>Resources</th><th>Amount</th><th>Status</th></tr></thead><tbody id="bookingsBody"></tbody></table></div></div>
+<div class="modal-overlay" id="modalOverlay"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Events</h2><button class="modal-close" id="modalClose"><i class="fas fa-times"></i></button></div><div class="modal-body" id="modalBody"></div></div></div>
+<div class="toast-c" id="toastC"></div>
+
+<script>
+/* ============ ALL DATA ============ */
+var EV = {
+  3:[{t:"Funeral Service",ic:"fa-cross",c:"#5b8c5a",bg:"#e8f5e8",n:"Margaret Holloway",tm:"09:00 - 11:00",r:["Hearse H-01","Standard Oak #CO-101","White Lilies"]},{t:"Viewing",ic:"fa-eye",c:"#4285f4",bg:"#e8f0fe",n:"Robert Chen",tm:"14:00 - 16:00",r:["Mahogany Premium #CO-205","Mixed Roses"]}],
+  5:[{t:"Cremation",ic:"fa-fire",c:"#ea4335",bg:"#fce8e6",n:"Eleanor Voss",tm:"10:00 - 11:30",r:["Hearse H-03","Willow Eco #CO-310","Wildflower Bundle"]}],
+  7:[{t:"Burial",ic:"fa-monument",c:"#f9a825",bg:"#fff8e1",n:"James Whitfield",tm:"08:30 - 10:00",r:["Hearse H-02","Steel Casket #CO-418","White Carnations"]},{t:"Memorial",ic:"fa-church",c:"#9c27b0",bg:"#f3e5f5",n:"Susan Park",tm:"15:00 - 17:00",r:["Chapel B","Standing Sprays"]}],
+  10:[{t:"Funeral Service",ic:"fa-cross",c:"#5b8c5a",bg:"#e8f5e8",n:"David Morrison",tm:"10:00 - 12:00",r:["Hearse H-01","Mahogany Premium #CO-206","Red Roses"]}],
+  12:[{t:"Cremation",ic:"fa-fire",c:"#ea4335",bg:"#fce8e6",n:"Linda Garcia",tm:"11:00 - 12:30",r:["Hearse H-04","Pine Simple #CO-502","Daisy Arrangement"]},{t:"Viewing",ic:"fa-eye",c:"#4285f4",bg:"#e8f0fe",n:"Thomas Wright",tm:"15:00 - 17:00",r:["Standard Oak #CO-102","Lily Rose Mix"]}],
+  14:[{t:"Burial",ic:"fa-monument",c:"#f9a825",bg:"#fff8e1",n:"Patricia Lee",tm:"09:00 - 11:30",r:["Hearse H-02","Steel Casket #CO-419","Orchid Display"]},{t:"Funeral Service",ic:"fa-cross",c:"#5b8c5a",bg:"#e8f5e8",n:"Kevin Brooks",tm:"13:00 - 15:00",r:["Hearse H-05","Standard Oak #CO-103","White Chrysanthemums"]},{t:"Memorial",ic:"fa-church",c:"#9c27b0",bg:"#f3e5f5",n:"Anna Stewart",tm:"16:00 - 18:00",r:["Chapel A","Garden Flower Mix"]}],
+  17:[{t:"Cremation",ic:"fa-fire",c:"#ea4335",bg:"#fce8e6",n:"Michael Reed",tm:"10:00 - 11:00",r:["Willow Eco #CO-311","Simple White Flowers"]}],
+  19:[{t:"Funeral Service",ic:"fa-cross",c:"#5b8c5a",bg:"#e8f5e8",n:"Dorothy Adams",tm:"09:00 - 12:00",r:["Hearse H-01","Mahogany Premium #CO-207","White Lilies Roses"]},{t:"Viewing",ic:"fa-eye",c:"#4285f4",bg:"#e8f0fe",n:"Frank Miller",tm:"14:00 - 16:00",r:["Steel Casket #CO-420","Seasonal Arrangement"]}],
+  21:[{t:"Burial",ic:"fa-monument",c:"#f9a825",bg:"#fff8e1",n:"Helen Nguyen",tm:"08:00 - 10:00",r:["Hearse H-03","Pine Simple #CO-503","White Daisies"]}],
+  24:[{t:"Funeral Service",ic:"fa-cross",c:"#5b8c5a",bg:"#e8f5e8",n:"George Campbell",tm:"10:00 - 12:30",r:["Hearse H-02","Standard Oak #CO-104","Rose Carnation Mix"]},{t:"Cremation",ic:"fa-fire",c:"#ea4335",bg:"#fce8e6",n:"Ruth Turner",tm:"14:00 - 15:00",r:["Willow Eco #CO-312","Wildflower Bouquet"]}],
+  26:[{t:"Memorial",ic:"fa-church",c:"#9c27b0",bg:"#f3e5f5",n:"Samuel Jackson",tm:"11:00 - 13:00",r:["Chapel B","Lily Iris Arrangement"]}],
+  28:[{t:"Burial",ic:"fa-monument",c:"#f9a825",bg:"#fff8e1",n:"Carol White",tm:"09:30 - 11:30",r:["Hearse H-04","Steel Casket #CO-421","White Peonies"]},{t:"Viewing",ic:"fa-eye",c:"#4285f4",bg:"#e8f0fe",n:"Raymond Harris",tm:"14:00 - 16:30",r:["Mahogany Premium #CO-208","Tropical Flowers"]}]
+};
+
+var INTAKE = {10:[{n:"David Morrison",tm:"07:30 AM",src:"City Hospital",s:"Received"}],12:[{n:"Linda Garcia",tm:"09:00 AM",src:"Home Passing",s:"Received"},{n:"Thomas Wright",tm:"10:15 AM",src:"St. Mary Hospital",s:"Received"}],14:[{n:"Patricia Lee",tm:"06:00 AM",src:"General Hospital",s:"Received"},{n:"Kevin Brooks",tm:"07:00 AM",src:"Home Passing",s:"Received"},{n:"Anna Stewart",tm:"08:30 AM",src:"Hospice Care",s:"Received"}]};
+var RELEASE = {15:[{n:"David Morrison",tm:"02:00 PM",dst:"Oakwood Cemetery",s:"Released"}],16:[{n:"Linda Garcia",tm:"10:00 AM",dst:"Family Collection",s:"Released"}]};
+
+var RES = {
+  coffins:{lb:"Coffins",ic:"fa-box",ibg:"var(--orange-l)",ic2:"var(--orange)",tot:12,items:[{id:"CO-101",tp:"Standard Oak",s:"used",d:3},{id:"CO-102",tp:"Standard Oak",s:"booked",d:12},{id:"CO-103",tp:"Standard Oak",s:"booked",d:14},{id:"CO-104",tp:"Standard Oak",s:"booked",d:24},{id:"CO-205",tp:"Mahogany Premium",s:"used",d:3},{id:"CO-206",tp:"Mahogany Premium",s:"booked",d:10},{id:"CO-207",tp:"Mahogany Premium",s:"booked",d:19},{id:"CO-208",tp:"Mahogany Premium",s:"booked",d:28},{id:"CO-310",tp:"Willow Eco",s:"used",d:5},{id:"CO-311",tp:"Willow Eco",s:"booked",d:17},{id:"CO-312",tp:"Willow Eco",s:"booked",d:24},{id:"CO-418",tp:"Steel Casket",s:"used",d:7},{id:"CO-419",tp:"Steel Casket",s:"booked",d:14},{id:"CO-420",tp:"Steel Casket",s:"booked",d:19},{id:"CO-421",tp:"Steel Casket",s:"booked",d:28},{id:"CO-502",tp:"Pine Simple",s:"booked",d:12},{id:"CO-503",tp:"Pine Simple",s:"booked",d:21}]},
+  hearses:{lb:"Hearses",ic:"fa-car-side",ibg:"var(--blue-l)",ic2:"var(--blue)",tot:6,items:[{id:"H-01",s:"available",d:0},{id:"H-02",s:"booked",d:14},{id:"H-03",s:"overdue",d:0,nt:"Overdue from Aug 7"},{id:"H-04",s:"booked",d:12},{id:"H-05",s:"booked",d:14},{id:"H-06",s:"available",d:0}]},
+  chapels:{lb:"Chapels",ic:"fa-church",ibg:"var(--purple-l)",ic2:"var(--purple)",tot:3,items:[{id:"Chapel A",s:"booked",d:14},{id:"Chapel B",s:"available",d:0},{id:"Chapel C",s:"available",d:0}]},
+  flowers:{lb:"Flower Orders",ic:"fa-seedling",ibg:"var(--red-l)",ic2:"var(--red)",tot:10,items:[{id:"FL-01",tp:"Red Roses",s:"delivered",d:10},{id:"FL-02",tp:"Daisy Arrangement",s:"preparing",d:12},{id:"FL-03",tp:"Lily Rose Mix",s:"ordered",d:12},{id:"FL-04",tp:"Orchid Display",s:"ordered",d:14},{id:"FL-05",tp:"White Chrysanthemums",s:"ordered",d:14},{id:"FL-06",tp:"Garden Flower Mix",s:"ordered",d:14}]}
+};
+
+var DEC = [{n:"Margaret Holloway",a:87,g:"f",dt:"Aug 3",p:95,cl:"h"},{n:"Robert Chen",a:72,g:"m",dt:"Aug 5",p:84,cl:"m"},{n:"Micheal Watts",a:65,g:"m",dt:"Aug 7",p:96,cl:"h"},{n:"Amanda Wood",a:91,g:"f",dt:"Aug 10",p:72,cl:"l"},{n:"David Morrison",a:78,g:"m",dt:"Aug 12",p:88,cl:"m"}];
+var EFF = [{n:"Margaret H.",sc:"10:00",st:"10:17",en:"12:45",lt:true},{n:"Robert Chen",sc:"14:00",st:"14:00",en:"16:05",lt:false},{n:"Eleanor V.",sc:"10:00",st:"10:22",en:"11:40",lt:true},{n:"James W.",sc:"08:30",st:"08:30",en:"10:15",lt:false}];
+var HM = [[1,2,1,3,2,1,0],[2,3,3,3,2,2,0],[1,3,2,3,3,1,0],[2,2,3,2,3,1,0],[1,1,2,1,2,1,0]];
+var HMS = ["08-10","10-12","12-14","14-16","16-18"];
+var HMD = ["MON","TUE","WED","THU","FRI","SAT","SUN"];
+var ACT = [{lb:"Funerals",v:5,mx:6,c:"#5b8c5a"},{lb:"Hearses",v:4,mx:6,c:"#4285f4"},{lb:"Coffins",v:3,mx:6,c:"#f9a825"},{lb:"Flowers",v:4,mx:6,c:"#ea4335"},{lb:"Deliveries",v:2,mx:6,c:"#9c27b0"}];
+var PRF = [{lb:"On Time",v:92,c:"#5b8c5a"},{lb:"Delayed",v:8,c:"#ea4335"},{lb:"Utilization",v:78,c:"#f9a825"},{lb:"Satisfaction",v:96,c:"#4285f4"}];
+var ALR = [{cl:"danger",ic:"fa-exclamation-circle",tx:"<strong>3 conflicts</strong> detected"},{cl:"warn",ic:"fa-truck",tx:"Hearse <strong>H-03 overdue</strong>"},{cl:"warn",ic:"fa-layer-group",tx:"<strong>2 overlaps</strong> on Aug 14"},{cl:"info",ic:"fa-chart-line",tx:"Tomorrow: <strong>high demand</strong>"}];
+var STS = [{lb:"Active Cases",v:"12",ch:"+3",up:true,sk:[6,8,7,9,10,11,12],c:"#5b8c5a"},{lb:"Coffin Bookings",v:"47",ch:"+8",up:true,sk:[30,33,38,41,44,45,47],c:"#4285f4"},{lb:"Hearse Bookings",v:"23",ch:"+2",up:true,sk:[15,17,18,20,21,22,23],c:"#f9a825"},{lb:"Flower Orders",v:"31",ch:"+5",up:true,sk:[20,22,24,26,28,29,31],c:"#ea4335"},{lb:"Revenue",v:"$128K",ch:"+12%",up:true,sk:[85,92,98,105,118,124,128],c:"#9c27b0"},{lb:"On-Time",v:"92%",ch:"-2%",up:false,sk:[96,95,94,93,93,92,92],c:"#5b8c5a"}];
+var BK = [{id:"BK-2051",tp:"Funeral",n:"Margaret Holloway",dt:"Aug 3",rs:"H-01, Oak #101",am:"$4,250",st:"confirmed"},{id:"BK-2050",tp:"Cremation",n:"Eleanor Voss",dt:"Aug 5",rs:"H-03, Willow #310",am:"$2,100",st:"confirmed"},{id:"BK-2049",tp:"Burial",n:"James Whitfield",dt:"Aug 7",rs:"H-02, Steel #418",am:"$5,800",st:"pending"},{id:"BK-2048",tp:"Memorial",n:"Susan Park",dt:"Aug 7",rs:"Chapel B",am:"$1,950",st:"confirmed"},{id:"BK-2047",tp:"Funeral",n:"David Morrison",dt:"Aug 10",rs:"H-01, Mahogany #206",am:"$4,500",st:"confirmed"},{id:"BK-2046",tp:"Cremation",n:"Linda Garcia",dt:"Aug 12",rs:"H-04, Pine #502",am:"$1,850",st:"pending"},{id:"BK-2045",tp:"Funeral",n:"Kevin Brooks",dt:"Aug 14",rs:"H-05, Oak #103",am:"$4,100",st:"overdue"},{id:"BK-2044",tp:"Burial",n:"Helen Nguyen",dt:"Aug 21",rs:"H-03, Pine #503",am:"$5,400",st:"confirmed"}];
+var WD = [{d:"Mon",n:10},{d:"Tue",n:11},{d:"Wed",n:12},{d:"Thu",n:13},{d:"Fri",n:14},{d:"Sat",n:15},{d:"Sun",n:16}];
+var MN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+var DL = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+var calY=2026, calM=7, selDay=null;
+
+/* ============ HELPERS ============ */
+function toast(m){var c=document.getElementById("toastC"),t=document.createElement("div");t.className="toast";t.innerHTML='<i class="fas fa-info-circle"></i> '+m;c.appendChild(t);setTimeout(function(){if(t.parentNode)t.remove()},3000)}
+function spk(d,c){var mx=Math.max.apply(null,d),mn=Math.min.apply(null,d),rng=mx-mn||1,p=[];for(var i=0;i<d.length;i++)p.push((i/(d.length-1))*55+","+(20-((d[i]-mn)/rng)*16-2));return '<svg class="spark" width="55" height="20" viewBox="0 0 55 20"><polyline points="'+p.join(" ")+'" fill="none" stroke="'+c+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'}
+function rClr(p){return p>=90?"var(--red)":p>=75?"var(--orange)":p>=50?"#f9a825":"var(--accent)"}
+function rCls(p){return p>=90?"critical":""}
+function sLbl(s){var m={available:"Available",booked:"Booked",used:"Used",overdue:"Overdue",delivered:"Delivered",preparing:"Preparing",ordered:"Ordered",received:"Received",released:"Released"};return m[s]||s}
+function sCls(s){return "st-"+s}
+function dur(ts){var p=ts.split(" - ");if(p.length<2)return"-";var a=p[0].trim().split(":"),b=p[1].trim().split(":");var df=(parseInt(b[0],10)*60+parseInt(b[1],10))-(parseInt(a[0],10)*60+parseInt(a[1],10));var h=Math.floor(df/60),m=df%60;return h>0?h+"h"+(m>0?" "+m+"m":""):m+"m"}
+
+/* ============ STATS ============ */
+(function(){var h="";for(var i=0;i<STS.length;i++){var s=STS[i],arr=s.up?'<i class="fas fa-arrow-up" style="font-size:7px"></i>':'<i class="fas fa-arrow-down" style="font-size:7px"></i>';h+='<div class="stat anim"><div class="sp">'+s.lb+'</div><div class="sv">'+s.v+'</div><div class="sc '+(s.up?"up":"down")+'">'+arr+" "+s.ch+'</div>'+spk(s.sk,s.c)+'</div>';}document.getElementById("statsRow").innerHTML=h})();
+
+/* ============ DECEASED ============ */
+(function(){var el=document.getElementById("deceasedList"),cm={h:{p:"pct-high",f:"fill-high"},m:{p:"pct-mid",f:"fill-mid"},l:{p:"pct-low",f:"fill-low"}},h="";for(var i=0;i<DEC.length;i++){var d=DEC[i],c=cm[d.cl],gc=d.g==="m"?"m":"f",gi=d.g==="m"?"fa-male":"fa-female";h+='<div class="d-item" onclick="toast(\'Opening: '+d.n+'\')"><div class="d-av '+gc+'"><i class="fas '+gi+'"></i></div><div class="d-info"><h4>'+d.n+'</h4><span>Age '+d.a+" - "+d.dt+'</span><div class="pbar"><div class="pfill '+c.f+'" style="width:0%" data-w="'+d.p+'%"></div></div></div><span class="d-pct '+c.p+'">'+d.p+"%</span></div>"}el.innerHTML=h;setTimeout(function(){var bars=el.querySelectorAll(".pfill");for(var j=0;j<bars.length;j++)bars[j].style.width=bars[j].getAttribute("data-w")},100)})();
+
+/* ============ RING ============ */
+(function(){var cv=document.getElementById("ringCanvas"),ctx=cv.getContext("2d"),w=cv.width,h=cv.height,cx=w/2,cy=h/2,r=Math.max(1,w*.38),lw=12,st=performance.now();function draw(p){ctx.clearRect(0,0,w,h);ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle="#e8eaed";ctx.lineWidth=lw;ctx.stroke();var end=-Math.PI/2+Math.PI*2*0.84*p;if(p>0.001){ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI/2,end);ctx.strokeStyle="#5b8c5a";ctx.lineWidth=lw;ctx.lineCap="round";ctx.stroke();var ex=cx+r*Math.cos(end),ey=cy+r*Math.sin(end);ctx.beginPath();ctx.arc(ex,ey,3.5,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.beginPath();ctx.arc(ex,ey,2,0,Math.PI*2);ctx.fillStyle="#5b8c5a";ctx.fill()}document.getElementById("ringPct").textContent=Math.round(84*p)+"%"}function step(now){var t=Math.min(1,(now-st)/1000),e=1-Math.pow(1-t,3);draw(e);if(t<1)requestAnimationFrame(step)}requestAnimationFrame(step)})();
+
+/* ============ EFFICIENCY ============ */
+(function(){var h="";for(var i=0;i<EFF.length;i++){var e=EFF[i],lt=e.lt?' <span class="late">(+17m)</span>':"";h+='<div class="eff-item"><h4>'+e.n+'</h4><div class="eff-row"><span><i class="far fa-clock"></i> '+e.sc+"</span><span>"+e.st+lt+" -> "+e.en+"</span></div></div>"}document.getElementById("effList").innerHTML=h})();
+
+/* ============ PERF ============ */
+(function(){var h="";for(var i=0;i<PRF.length;i++){var p=PRF[i];h+='<div class="perf-item"><span class="perf-label">'+p.lb+'</span><div style="display:flex;align-items:center;gap:4px"><span class="perf-val" style="color:'+p.c+';font-size:9px">'+p.v+"%</span><div class='perf-bar-bg'><div class='perf-bar' style='width:"+p.v+"%;background:"+p.c+"'></div></div></div></div>"}document.getElementById("perfList").innerHTML=h})();
+
+/* ============ CALENDAR MONTH ============ */
+function getStrip(){var ev=0,he=0,fn=0,co=0,ks=Object.keys(EV);for(var k=0;k<ks.length;k++){var day=EV[ks[k]];ev+=day.length;for(var j=0;j<day.length;j++){var e=day[j];for(var r=0;r<e.r.length;r++){if(e.r[r].indexOf("Hearse")===0)he++;if(e.r[r].indexOf("#CO")>-1)co++}if(e.t.indexOf("Funeral")>-1)fn++}}document.getElementById("calStrip").innerHTML='<div class="cal-strip-item"><span class="num">'+ev+"</span> Events</div><div class='cal-strip-item'><span class='num'>"+he+"</span> Hearses</div><div class='cal-strip-item'><span class='num'>"+fn+"</span> Funerals</div><div class='cal-strip-item'><span class='num'>"+co+"</span> Coffins</div><div class='cal-strip-item alert'><i class='fas fa-exclamation-triangle' style='font-size:8px'></i> <span class='num'>3</span> Conflicts</div>"}
+
+function renderMonth(){document.getElementById("calTitle").textContent=MN[calM]+" "+calY;var g=document.getElementById("calGrid"),h="";for(var i=0;i<DL.length;i++)h+='<div class="cal-dl">'+DL[i]+"</div>";var first=new Date(calY,calM,1).getDay(),days=new Date(calY,calM+1,0).getDate();for(var e=0;e<first;e++)h+='<div class="cal-cell empty-cell"></div>';for(var d=1;d<=days;d++){var evts=EV[d]||[],isT=calY===2026&&calM===7&&d===14,dots="";for(var ei=0;ei<Math.min(evts.length,5);ei++)dots+='<span class="cal-dot" style="background:'+evts[ei].c+'"></span>';h+='<div class="cal-cell '+(isT?"today":"")+'" onclick="monthClick('+d+')"><span class="cal-num">'+d+"</span><div class='cal-dots'>"+dots+"</div></div>"}g.innerHTML=h;getStrip()}
+
+function monthClick(d){var evts=EV[d];if(!evts||!evts.length){toast("No events on "+MN[calM]+" "+d);return}openModal(MN[calM]+" "+d+", "+calY,evts)}
+
+document.getElementById("calPrev").onclick=function(){calM--;if(calM<0){calM=11;calY--}renderMonth()};
+document.getElementById("calNext").onclick=function(){calM++;if(calM>11){calM=0;calY++}renderMonth()};
+
+/* ============ TABS ============ */
+var tabs=document.querySelectorAll(".cal-tab");
+for(var ti=0;ti<tabs.length;ti++){tabs[ti].onclick=function(){for(var x=0;x<tabs.length;x++)tabs[x].classList.remove("active");this.classList.add("active");var v=this.getAttribute("data-view");document.getElementById("monthView").style.display=v==="month"?"block":"none";document.getElementById("weekView").style.display=v==="week"?"block":"none";document.getElementById("dayView").style.display=v==="day"?"block":"none";document.getElementById("calAnalytics").style.display=v==="month"?"grid":"none";if(v==="week"){renderWeek();closeDet()}if(v==="day")renderDayView()}}}
+
+/* ============ WEEK VIEW ============ */
+function wkResCounts(){var cn={},hn={},ch={};for(var d=10;d<=16;d++){var ev=EV[d]||[];for(var j=0;j<ev.length;j++){var rs=ev[j].r;for(var r=0;r<rs.length;r++){if(rs[r].indexOf("#CO")>-1)cn[rs[r]]=1;if(rs[r].indexOf("Hearse")===0)hn[rs[r]]=1;if(rs[r].indexOf("Chapel")===0)ch[rs[r]]=1}}}var fl={};var fi=RES.flowers.items;for(var f=0;f<fi.length;f++){if(fi[f].d>=10&&fi[f].d<=16)fl[fi[f].id]=1}return{co:Object.keys(cn).length,he:Object.keys(hn).length,ch:Object.keys(ch).length,fl:Object.keys(fl).length}}
+
+function renderWeek(){var rc=wkResCounts(),keys=["coffins","hearses","chapels","flowers"],rh="";for(var i=0;i<keys.length;i++){var k=keys[i],rp=RES[k],bk=rc[k],pc=Math.round(bk/rp.tot*100),cl=rClr(pc),cs=rCls(pc);rh+='<div class="wk-res" onclick="showResDet(\''+k+'\')"><div class="wk-res-icon" style="background:'+rp.ibg+";color:"+rp.ic2+'"><i class="fas '+rp.ic+'"></i></div><div class="wk-res-info"><div class="wk-res-label"><span>'+rp.lb+'</span><span class="pct" style="color:'+cl+'">'+pc+"%</span></div><div class='wk-res-bar-bg'><div class='wk-res-bar "+cs+"' style='width:"+pc+"%;background:"+cl+"'></div></div><div class='wk-res-sub'>"+bk+" of "+rp.tot+" booked this week</div></div></div>"}document.getElementById("wkResources").innerHTML=rh;
+
+var tI=0,tR=0;for(var d=10;d<=16;d++){if(INTAKE[d])tI+=INTAKE[d].length;if(RELEASE[d])tR+=RELEASE[d].length}document.getElementById("wkSummary").innerHTML='<div class="wk-live"><span class="wk-live-dot"></span> LIVE</div><span>Intake: <strong>'+tI+"</strong></span><span class='sep'>|</span><span>Release: <strong>"+tR+"</strong></span><span class='sep'>|</span><span>Active: <strong>12</strong></span><span class='sep'>|</span><span style='color:var(--red)'><i class='fas fa-exclamation-triangle' style='font-size:8px'></i> <strong>3</strong> Conflicts</span>";
+
+var dh="";for(var w=0;w<WD.length;w++){var wd=WD[w],ev=EV[wd.n]||[],inc=INTAKE[wd.n]||[],rel=RELEASE[wd.n]||[],isT=wd.n===14,sel=selDay===w;dh+='<div class="wk-day '+(sel?"selected":"")+'" onclick="selDayFn('+w+')"><div class="wk-day-hdr"><div class="wk-day-name" style="'+(isT?"color:var(--accent)":"")+'">'+wd.d+"</div><div class='wk-day-num' style='"+(isT?"color:var(--accent)":"")+"'>"+wd.n+"</div><div class='wk-day-badges'>";if(inc.length)dh+='<span class="wk-badge intake"><i class="fas fa-arrow-down" style="font-size:6px"></i>'+inc.length+"</span>";if(rel.length)dh+='<span class="wk-badge release"><i class="fas fa-arrow-up" style="font-size:6px"></i>'+rel.length+"</span>";dh+='</div></div><div class="wk-evts">';if(ev.length){for(var ei=0;ei<ev.length;ei++){var e=ev[

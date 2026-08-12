@@ -319,7 +319,7 @@ const MyLeaves = () => {
       // Get tenant slug from localStorage
       const tenantSlug = localStorage.getItem('tenantSlug') || 'system_shared';
 
-      const response = await api.get(ENDPOINTS.LEAVE.MY_LEAVES(tenantSlug));
+      const response = await api.get(ENDPOINTS.LEAVE.MY_LEAVES, { params: { user_id: userId } });
 
       const leavesData = Array.isArray(response?.data?.data) ? response.data.data : [];
       setLeaves(leavesData);

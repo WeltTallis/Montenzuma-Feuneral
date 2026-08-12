@@ -73,6 +73,7 @@ const ForgotPassword = lazy(() => import('../components/auth/ForgotPassword'));
 const ChangePassword = lazy(() => import('../components/auth/changePassword'));
 const InvoiceManager = lazy(() => import('../components/invoices/invoicemanager'));
 const DocumentsPage = lazy(() => import('../components/documents/documentspage'));
+const StoreDashboard = lazy(() => import('../modules/store'));
 const DeceasedRegistrationForm = lazy(() => import('../components/deceased/register/deceasedIntake'));
 const RegisterCoffin = lazy(() => import('../components/coffins/registerCoffin'));
 const CoffinInventory = lazy(() => import('../components/coffins/coffininventory'));
@@ -699,6 +700,10 @@ const AppRouter = () => (
       {/* Main Tenant Route - All authenticated routes */}
       <Route path="/tenant/:slug/*" element={<ProtectedRoute><TenantResolver /></ProtectedRoute>} />
       
+            {/* Mini Store - standalone mini POS / stock module */}
+      <Route path="/store" element={<StoreDashboard />} />
+      <Route path="/mini-store" element={<StoreDashboard />} />
+
       <Route path="*" element={<LandingPage />} />
     </Routes>
   </Suspense>

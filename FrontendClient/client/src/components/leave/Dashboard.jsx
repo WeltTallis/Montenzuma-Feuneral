@@ -563,6 +563,7 @@ const LeaveDashboard = () => {
   const [approveModal, setApproveModal] = useState({ show: false, leaveId: null });
   const [detailModal, setDetailModal] = useState({ show: false, leave: null });
   const [addDaysModal, setAddDaysModal] = useState({ show: false, employeeId: '', days: '', reason: '' });
+  const [registerModal, setRegisterModal] = useState({ show: false, full_name: '', email: '', phone: '', role: 'staff', submitting: false });
   const [toasts, setToasts] = useState([]);
   const { socket, connected } = useSocket();
   const tenantSlug = localStorage.getItem('tenantSlug') || 'default';
@@ -736,6 +737,45 @@ const LeaveDashboard = () => {
     } catch (error) {
       console.error('Error adding days:', error);
       showToast('Failed to add leave days', 'error');
+    }
+  };
+
+  const openRegisterEmployee = () => {
+    setRegisterModal({ show: true, full_name: '', email: '', phone: '', role: 'staff', submitting: false });
+  };
+
+  const closeRegisterEmployee = () => {
+    setRegisterModal({ show: false, full_name: '', email: '', phone: '', role: 'staff', submitting: false });
+  };
+
+  const submitRegisterEmployee = async () => {
+    const { full_name, email, phone, role } = registerModal;
+    if (!full_name.trim() || !email.trim()) {
+      showToast('Please provide employee name and email', 'error');
+      return;
+    }
+
+    setRegisterModal(prev => ({ ...prev, submitting: true }));
+    try {
+      const response = await api.post(ENDPOINTS.LEAVE.ADD_EMPLOYEE, {
+        full_name: full_name.trim(),
+        email: email.trim(),
+        phone: phone.trim() || undefined,
+        role: role || 'staff'
+      });
+      if (response?.data?.status === 'success') {
+        showToast(response.data.message || 'Employee registered successfully', 'success');
+        closeRegisterEmployee();
+        fetchData();
+      } else {
+        showToast(response?.data?.message || 'Failed to register employee', 'error');
+        setRegisterModal(prev => ({ ...prev, submitting: false }));
+      }
+    } catch (error) {
+      console.error('Error registering employee:', error);
+      const msg = error?.response?.data?.message || 'Failed to register employee';
+      showToast(msg, 'error');
+      setRegisterModal(prev => ({ ...prev, submitting: false }));
     }
   };
 
@@ -1101,8 +1141,14 @@ const LeaveDashboard = () => {
             <Wallet size={20} />
             Leave Balance Overview
           </SectionTitle>
-          <div style={{ fontSize: '0.8rem', color: COLORS.textSecondary }}>
-            Every employee starts with {DEFAULT_LEAVE_DAYS} days/year. Admin can add extra days.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ fontSize: '0.8rem', color: COLORS.textSecondary }}>
+              Every employee starts with {DEFAULT_LEAVE_DAYS} days/year. Admin can add extra days.
+            </div>
+            <Button type="button" $variant="primary" onClick={openRegisterEmployee}>
+              <UserPlus size={16} />
+              Register Employee
+            </Button>
           </div>
         </SectionHeader>
         <Table>
@@ -1360,6 +1406,83 @@ const LeaveDashboard = () => {
                 </Button>
               </ModalButtonGroup>
             )}
+          </ModalContent>
+        </Modal>
+      )}
+
+      {/* Register Employee Modal */}
+      {registerModal.show && (
+        <Modal>
+          <ModalContent>
+            <ModalHeader>
+              <ModalTitle>
+                <UserPlus size={20} color={COLORS.info} />
+                Register Employee
+              </ModalTitle>
+              <CloseButton onClick={closeRegisterEmployee}>
+                <X size={20} />
+              </CloseButton>
+            </ModalHeader>
+            <p style={{ marginBottom: '1.25rem', color: COLORS.textSecondary, fontSize: '0.9rem' }}>
+              Register a new employee to the leaves database. Each employee automatically receives{' '}
+              <strong>{DEFAULT_LEAVE_DAYS} days</strong> of annual leave per year.
+            </p>
+            <FormGroup>
+              <FormLabel>Full Name</FormLabel>
+              <FormInput
+                type="text"
+                value={registerModal.full_name}
+                onChange={(e) => setRegisterModal({ ...registerModal, full_name: e.target.value })}
+                placeholder="e.g. Jane Wanjiku"
+                autoFocus
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Email Address</FormLabel>
+              <FormInput
+                type="email"
+                value={registerModal.email}
+                onChange={(e) => setRegisterModal({ ...registerModal, email: e.target.value })}
+                placeholder="e.g. jane@example.com"
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Phone (Optional)</FormLabel>
+              <FormInput
+                type="text"
+                value={registerModal.phone}
+                onChange={(e) => setRegisterModal({ ...registerModal, phone: e.target.value })}
+                placeholder="e.g. +254712345678"
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Role</FormLabel>
+              <FormSelect
+                value={registerModal.role}
+                onChange={(e) => setRegisterModal({ ...registerModal, role: e.target.value })}
+              >
+                <option value="staff">Staff</option>
+                <option value="admin">Admin</option>
+                <option value="manager">Manager</option>
+                <option value="hr">HR</option>
+                <option value="accounts">Accounts</option>
+                <option value="driver">Driver</option>
+                <option value="mortician">Mortician</option>
+                <option value="supervisor">Supervisor</option>
+              </FormSelect>
+            </FormGroup>
+            <ModalButtonGroup>
+              <Button type="button" onClick={closeRegisterEmployee}>Cancel</Button>
+              <Button
+                type="button"
+                $variant="primary"
+                onClick={submitRegisterEmployee}
+                disabled={registerModal.submitting || !registerModal.full_name.trim() || !registerModal.email.trim()}
+              >
+                <UserPlus size={16} />
+                {registerModal.submitting ? 'Registering...' : 'Register Employee'}
+              </Button>
+            </ModalButtonGroup>
           </ModalContent>
         </Modal>
       )}

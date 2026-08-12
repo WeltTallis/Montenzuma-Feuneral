@@ -95,6 +95,16 @@ const calculateLeaveBalance = async (dbName, userId, tenantSlug) => {
         const [takenRows] = await safeTenantQuery(dbName, takenQuery, takenParams);
         const leaveTaken = parseFloat(takenRows[0]?.total) || 0;
 
+        // Get pending leave days (pending annual leave, filtered by tenant_slug if provided)
+        let pendingQuery = 'SELECT COALESCE(SUM(days), 0) as total FROM leave_requests WHERE user_id = ? AND leave_type = ? AND status = ?';
+        let pendingParams = [userId, LEAVE_TYPES.ANNUAL, LEAVE_STATUS.PENDING];
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            pendingQuery += ' AND tenant_slug = ?';
+            pendingParams.push(tenantSlug);
+        }
+        const [pendingRows] = await safeTenantQuery(dbName, pendingQuery, pendingParams);
+        const pendingDays = parseFloat(pendingRows[0]?.total) || 0;
+
         // Calculate current balance
         const currentBalance = initialBalance + manualAdditions + holidayCompensations - leaveTaken;
 
@@ -103,6 +113,7 @@ const calculateLeaveBalance = async (dbName, userId, tenantSlug) => {
             manualAdditions,
             holidayCompensations,
             leaveTaken,
+            pendingDays,
             currentBalance
         };
     } catch (error) {
@@ -188,7 +199,7 @@ const applyForLeave = async (req, res) => {
         // Get the created leave request
         const [leaveRows] = await safeTenantQuery(
             dbName,
-            `SELECT lr.*, u.full_name, u.email 
+            `SELECT lr.*, u.full_name AS name, u.email 
        FROM leave_requests lr 
        JOIN users u ON lr.user_id = u.user_id 
        WHERE lr.id = ?`,
@@ -225,7 +236,7 @@ const getAllLeaves = async (req, res) => {
     const { status, leave_type, start_date, end_date, user_id } = req.query;
 
     try {
-        let query = `SELECT lr.*, u.full_name, u.email 
+        let query = `SELECT lr.*, u.full_name AS name, u.email 
                  FROM leave_requests lr 
                  JOIN users u ON lr.user_id = u.user_id 
                  WHERE 1=1`;
@@ -291,10 +302,10 @@ const getAllLeaves = async (req, res) => {
 const getMyLeaves = async (req, res) => {
     const tenantSlug = getTenantSlug(req);
     const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
-    const userId = req.headers['x-user-id'] || req.params.user_id;
+    const userId = req.headers['x-user-id'] || req.params.user_id || req.query.user_id;
 
     try {
-        let query = `SELECT lr.*, u.full_name, u.email 
+        let query = `SELECT lr.*, u.full_name AS name, u.email 
        FROM leave_requests lr 
        JOIN users u ON lr.user_id = u.user_id 
        WHERE lr.user_id = ?`;
@@ -334,7 +345,7 @@ const getLeaveById = async (req, res) => {
     const leaveId = req.params.id;
 
     try {
-        let query = `SELECT lr.*, u.full_name, u.email 
+        let query = `SELECT lr.*, u.full_name AS name, u.email 
        FROM leave_requests lr 
        JOIN users u ON lr.user_id = u.user_id 
        WHERE lr.id = ?`;
@@ -430,7 +441,7 @@ const updateLeaveStatus = async (req, res) => {
         // Get updated leave request
         const [updatedRows] = await safeTenantQuery(
             dbName,
-            `SELECT lr.*, u.full_name, u.email 
+            `SELECT lr.*, u.full_name AS name, u.email 
        FROM leave_requests lr 
        JOIN users u ON lr.user_id = u.user_id 
        WHERE lr.id = ?`,
@@ -497,7 +508,7 @@ const cancelLeave = async (req, res) => {
         // Get updated leave request
         const [updatedRows] = await safeTenantQuery(
             dbName,
-            `SELECT lr.*, u.name, u.email 
+            `SELECT lr.*, u.full_name AS name, u.email 
        FROM leave_requests lr 
        JOIN users u ON lr.user_id = u.user_id 
        WHERE lr.id = ?`,
@@ -555,7 +566,7 @@ const uploadDocument = async (req, res) => {
         // Get updated leave request
         const [rows] = await safeTenantQuery(
             dbName,
-            `SELECT lr.*, u.name, u.email 
+            `SELECT lr.*, u.full_name AS name, u.email 
        FROM leave_requests lr 
        JOIN users u ON lr.user_id = u.user_id 
        WHERE lr.id = ?`,
@@ -592,18 +603,26 @@ const getLeaveStats = async (req, res) => {
     const { start_date, end_date } = req.query;
 
     try {
-        let dateFilter = '';
         const params = [];
+        const conditions = [];
 
         if (start_date && end_date) {
-            dateFilter = 'WHERE lr.start_date >= ? AND lr.end_date <= ?';
+            conditions.push('lr.start_date >= ?');
+            conditions.push('lr.end_date <= ?');
             params.push(start_date, end_date);
         }
+
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            conditions.push('lr.tenant_slug = ?');
+            params.push(tenantSlug);
+        }
+
+        const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : 'WHERE 1=1';
 
         // Total leaves
         const [totalRows] = await safeTenantQuery(
             dbName,
-            `SELECT COUNT(*) as total FROM leave_requests lr ${dateFilter}`,
+            `SELECT COUNT(*) as total FROM leave_requests lr ${whereClause}`,
             params
         );
 
@@ -612,7 +631,7 @@ const getLeaveStats = async (req, res) => {
             dbName,
             `SELECT status, COUNT(*) as count 
        FROM leave_requests lr 
-       ${dateFilter} 
+       ${whereClause}
        GROUP BY status`,
             params
         );
@@ -622,7 +641,7 @@ const getLeaveStats = async (req, res) => {
             dbName,
             `SELECT leave_type, COUNT(*) as count, SUM(days) as total_days 
        FROM leave_requests lr 
-       ${dateFilter} 
+       ${whereClause}
        GROUP BY leave_type`,
             params
         );
@@ -634,18 +653,22 @@ const getLeaveStats = async (req, res) => {
         // Pending approvals
         const [pendingRows] = await safeTenantQuery(
             dbName,
-            `SELECT COUNT(*) as pending FROM leave_requests lr WHERE status = 'pending' ${dateFilter.replace('WHERE', 'AND')}`,
-            params
+            `SELECT COUNT(*) as pending FROM leave_requests lr ${whereClause} AND lr.status = 'pending'`,
+            [...params, 'pending']
         );
 
         // Currently on leave
+        const onLeaveParams = [];
+        const onLeaveConditions = ['status = ?', "CURDATE() BETWEEN start_date AND end_date"];
+        onLeaveParams.push(LEAVE_STATUS.APPROVED);
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            onLeaveConditions.push('tenant_slug = ?');
+            onLeaveParams.push(tenantSlug);
+        }
         const [onLeaveRows] = await safeTenantQuery(
             dbName,
-            `SELECT COUNT(*) as on_leave 
-       FROM leave_requests lr 
-       WHERE status = 'approved' 
-       AND CURDATE() BETWEEN start_date AND end_date`,
-            []
+            `SELECT COUNT(*) as on_leave FROM leave_requests lr WHERE ${onLeaveConditions.join(' AND ')}`,
+            onLeaveParams
         );
 
         return res.status(200).json({
@@ -677,7 +700,7 @@ const getUsersOnLeave = async (req, res) => {
     const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
 
     try {
-        let query = `SELECT lr.*, u.full_name, u.email 
+        let query = `SELECT lr.*, u.full_name AS name, u.email 
        FROM leave_requests lr 
        JOIN users u ON lr.user_id = u.user_id 
        WHERE lr.status = 'approved' 
@@ -748,7 +771,7 @@ const addLeaveDays = async (req, res) => {
         // Get the created record
         const [additionRows] = await safeTenantQuery(
             dbName,
-            `SELECT lda.*, u.name, u.email 
+            `SELECT lda.*, u.full_name AS name, u.email 
        FROM leave_day_additions lda 
        JOIN users u ON lda.user_id = u.user_id 
        WHERE lda.id = ?`,
@@ -856,7 +879,7 @@ const recordHolidayCompensation = async (req, res) => {
         // Get the created record
         const [compensationRows] = await safeTenantQuery(
             dbName,
-            `SELECT hc.*, u.name, u.email 
+            `SELECT hc.*, u.full_name AS name, u.email 
        FROM holiday_compensations hc 
        JOIN users u ON hc.user_id = u.user_id 
        WHERE hc.id = ?`,
@@ -884,6 +907,121 @@ const recordHolidayCompensation = async (req, res) => {
     }
 };
 
+// ============================================
+// ADD EMPLOYEE (Admin) - creates a user with default 26 leave days
+// ============================================
+const addEmployee = async (req, res) => {
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
+    const { full_name, email, phone, role, branch_id } = req.body;
+
+    try {
+        if (!full_name || !email) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Full name and email are required'
+            });
+        }
+
+        // Check if email already exists
+        const [existingRows] = await safeTenantQuery(
+            dbName,
+            'SELECT user_id FROM users WHERE email = ?',
+            [email]
+        );
+        if (existingRows && existingRows.length > 0) {
+            return res.status(409).json({
+                status: 'error',
+                message: 'An employee with this email already exists',
+                data: existingRows[0]
+            });
+        }
+
+        // Generate a default password hash (Password@123) using bcryptjs if available
+        let passwordHash;
+        try {
+            const bcrypt = require('bcryptjs');
+            passwordHash = bcrypt.hashSync('Password@123', 10);
+        } catch (err) {
+            // Fallback placeholder hash (valid bcrypt format for 'password')
+            passwordHash = '$2a$10$EqKcp1XrGhYAX7jYtM1s8eV5V3nIjsxlZJqU1mOLHdBvNXpypXPLu';
+        }
+
+        // Inspect available columns so the insert works across tenant schema variants
+        const [colsRows] = await safeTenantQuery(dbName, 'SHOW COLUMNS FROM users');
+        const availableCols = (Array.isArray(colsRows) ? colsRows : []).map(c => c.Field);
+
+        const insertCols = ['email', 'password_hash', 'full_name'];
+        const placeholders = ['?', '?', '?'];
+        const values = [email, passwordHash, full_name];
+
+        if (availableCols.includes('username')) {
+            insertCols.push('username');
+            placeholders.push('?');
+            values.push(email.split('@')[0] + '_' + Date.now().toString().slice(-4));
+        }
+        if (availableCols.includes('phone')) {
+            insertCols.push('phone');
+            placeholders.push('?');
+            values.push(phone || null);
+        }
+        if (availableCols.includes('role')) {
+            insertCols.push('role');
+            placeholders.push('?');
+            values.push(role || 'staff');
+        }
+        if (availableCols.includes('branch_id')) {
+            insertCols.push('branch_id');
+            placeholders.push('?');
+            values.push(branch_id || null);
+        }
+        if (availableCols.includes('is_active')) {
+            insertCols.push('is_active');
+            placeholders.push('?');
+            values.push(true);
+        }
+        if (availableCols.includes('is_verified')) {
+            insertCols.push('is_verified');
+            placeholders.push('?');
+            values.push(true);
+        }
+        if (availableCols.includes('annual_leave_balance')) {
+            insertCols.push('annual_leave_balance');
+            placeholders.push('?');
+            values.push(DEFAULT_LEAVE_DAYS);
+        }
+
+        const sql = `INSERT INTO users (${insertCols.join(', ')}) VALUES (${placeholders.join(', ')})`;
+        const result = await safeTenantExecute(dbName, sql, values);
+        const userId = result.insertId;
+
+        // Get the created employee
+        const [userRows] = await safeTenantQuery(
+            dbName,
+            'SELECT user_id, full_name AS name, email, phone, role, annual_leave_balance FROM users WHERE user_id = ?',
+            [userId]
+        );
+
+        const employee = userRows[0] || { user_id: userId, name: full_name, email };
+
+        // Emit real-time update
+        emitUpdate(tenantSlug, 'leave:employee_added', employee);
+
+        return res.status(201).json({
+            status: 'success',
+            message: `Employee added successfully with ${DEFAULT_LEAVE_DAYS} days of leave per year`,
+            data: employee
+        });
+
+    } catch (error) {
+        console.error('Error adding employee:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Failed to add employee',
+            error: error.message
+        });
+    }
+};
 // ============================================
 // GET LEAVE BALANCE (User/Admin)
 // ============================================
@@ -966,6 +1104,7 @@ module.exports = {
     addLeaveDays,
     removeLeaveDays,
     recordHolidayCompensation,
+    addEmployee,
     getLeaveBalance,
     getAllLeaveBalances,
     calculateLeaveBalance,

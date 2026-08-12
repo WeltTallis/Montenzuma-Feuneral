@@ -85,8 +85,9 @@ const SERVICE_URLS = {
   scanner: process.env.SCANNER_SERVICE_URL || 'http://127.0.0.1:5022',
   hearse: process.env.HEARSE_SERVICE_URL || 'http://127.0.0.1:5023',
   leave: process.env.LEAVE_SERVICE_URL || 'http://127.0.0.1:5017',
-  support: process.env.SUPPORT_SERVICE_URL || 'http://127.0.0.1:8111',
+    support: process.env.SUPPORT_SERVICE_URL || 'http://127.0.0.1:8111',
   florist: process.env.FLORIST_SERVICE_URL || 'http://127.0.0.1:7070',
+  store: process.env.STORE_SERVICE_URL || 'http://127.0.0.1:7071',
 };
 
 const app = express();
@@ -363,8 +364,11 @@ const SERVICE_ROUTES = {
   // M-Pesa service (port 5006)
   'mpesa': SERVICE_URLS.mpesa,
 
-  // Marketplace service (port 5005)
+    // Marketplace service (port 5005)
   'marketplace': SERVICE_URLS.marketplace,
+
+  // Mini Store service (port 7071)
+  'store': SERVICE_URLS.store,
 };
 
 // Create proxy instances for each unique target URL (cached)
@@ -586,6 +590,11 @@ app.use('/api/v1/restpoint', checkServiceAvailability, (req, res, next) => {
     if (!pathParts[0]?.startsWith('auth/') && pathParts[0] !== 'auth') {
       rewrittenUrl = '/auth' + req.url;
     }
+  }
+
+  // Rewrite mini-store paths: /store/* → /api/store/*
+  if (firstSegment === 'store' || firstSegment === 'store-service') {
+    rewrittenUrl = '/api' + req.url;
   }
 
   Logger.debug(`[ROUTE] ${req.method} ${req.originalUrl} → ${targetUrl}${rewrittenUrl}`);

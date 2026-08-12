@@ -63,6 +63,7 @@ const getPriorityMeta = (type, priority) => {
     'coffin-assigned': { cls: 'icon-green', icon: <CheckCircle size={18} /> },
     'production-update': { cls: 'icon-navy', icon: <Star size={18} /> },
     'worker-assignment': { cls: 'icon-yellow', icon: <UserPlus size={18} /> },
+    'store-dispatch': { cls: 'icon-yellow', icon: <Truck size={18} /> },
     'reminder': { cls: 'icon-yellow', icon: <Clock size={18} /> },
   };
   if (colorMap[type]) return colorMap[type];
@@ -293,6 +294,7 @@ const NotificationBell = () => {
         'notification:coffin-used': { type: 'coffin-used', title: 'Coffin Used', priority: 'low' },
         'notification:body-released': { type: 'body-released', title: 'Body Released', priority: 'medium' },
         'notification:postmortem-completed': { type: 'postmortem-completed', title: 'Postmortem Completed', priority: 'medium' },
+        'notification:store-dispatch': { type: 'store-dispatch', title: 'Store Item Dispatched', priority: 'medium' },
       };
 
       // Hearse booking created
@@ -518,6 +520,7 @@ const NotificationBell = () => {
       'notification:payment-received', 'alert:invoice-overdue',
       'alert:low-stock', 'notification:coffin-used',
       'notification:body-released', 'notification:postmortem-completed',
+      'notification:store-dispatch',
       'notification:postmortem-results-ready',
       'notification:hearse-booking-created', 'notification:hearse-booking-updated', 'notification:hearse-booking-postponed',
       'notification:upcoming_bookings_24h', 'notification:urgent_bookings_2h', 'notification:weekly_bookings_summary',
