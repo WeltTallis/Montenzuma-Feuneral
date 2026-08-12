@@ -1,13 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import styled, { keyframes } from 'styled-components';
-import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../utils/context/socketContext';
+import styled, { keyframes } from 'styled-components';
+import React, { useState, useEffect } from 'react';
+import LeaveCalendar from './LeaveCalendar';
+import { useNavigate } from 'react-router-dom';
 import { api, ENDPOINTS } from '../../api';
 import {
-  Calendar, Clock, Users, FileText, AlertCircle, CheckCircle, XCircle,
-  TrendingUp, X, PlusCircle, Wallet, UserPlus, Trash2, User, Mail, Briefcase
+  Calendar,
+  Clock,
+  Users,
+  FileText,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  TrendingUp,
+  X,
+  PlusCircle,
+  Wallet,
+  UserPlus,
+  Trash2
 } from '../../utils/icons/icons';
-import LeaveCalendar from './LeaveCalendar';
+
 
 const COLORS = {
   primary: '#0A2463',
@@ -562,7 +574,7 @@ const LeaveDashboard = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [rejectModal, setRejectModal] = useState({ show: false, leaveId: null, reason: '' });
   const [approveModal, setApproveModal] = useState({ show: false, leaveId: null });
-    const [detailModal, setDetailModal] = useState({ show: false, leave: null });
+  const [detailModal, setDetailModal] = useState({ show: false, leave: null });
   const [employeeDetailModal, setEmployeeDetailModal] = useState({
     show: false, employee: null, leaves: [], loading: false
   });
@@ -678,6 +690,22 @@ const LeaveDashboard = () => {
 
   const handleViewDetails = (leave) => {
     setDetailModal({ show: true, leave });
+  };
+
+  // Click a user (employee) to see all their remaining leave days + a calendar
+  // of every leave period (start date -> day they returned / finished)
+  const openEmployeeDetail = async (emp) => {
+    setEmployeeDetailModal({ show: true, employee: emp, leaves: [], loading: true });
+    try {
+      // /leaves/all supports filtering by user_id -> returns the employee's
+      // full leave request history with current balance already known.
+      const res = await api.get(ENDPOINTS.LEAVE.ALL, { params: { user_id: emp.user_id } });
+      const leavesData = Array.isArray(res?.data?.data) ? res.data.data : [];
+      setEmployeeDetailModal((prev) => ({ ...prev, leaves: leavesData, loading: false }));
+    } catch (error) {
+      console.error('Error fetching employee leave history:', error);
+      setEmployeeDetailModal((prev) => ({ ...prev, leaves: [], loading: false }));
+    }
   };
 
   const handleReject = (leaveId) => {
@@ -1174,7 +1202,11 @@ const LeaveDashboard = () => {
               return (
                 <Tr key={emp.user_id}>
                   <Td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div
+                      onClick={() => openEmployeeDetail(emp)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}
+                      title={`View ${emp.name || 'employee'} leave details`}
+                    >
                       <div style={{
                         width: '36px',
                         height: '36px',
@@ -1216,6 +1248,9 @@ const LeaveDashboard = () => {
                     <div style={{ display: 'flex', gap: '0.25rem' }}>
                       <ActionIcon title="Add Days" onClick={() => openAddDaysFor(emp.user_id)}>
                         <PlusCircle size={16} color={COLORS.info} />
+                      </ActionIcon>
+                      <ActionIcon title="View Leave Calendar &amp; Days" onClick={() => openEmployeeDetail(emp)}>
+                        <FileText size={16} color={COLORS.info} />
                       </ActionIcon>
                       <ActionIcon title="Record Holiday" onClick={() => recordHoliday(emp.user_id)}>
                         <Calendar size={16} color={COLORS.success} />
@@ -1410,6 +1445,163 @@ const LeaveDashboard = () => {
                 </Button>
               </ModalButtonGroup>
             )}
+          </ModalContent>
+        </Modal>
+      )}
+
+      {/* Employee Leave Detail Modal - click a user to see all their remaining days + calendar */}
+      {employeeDetailModal.show && employeeDetailModal.employee && (
+        <Modal>
+          <ModalContent $wide>
+            <ModalHeader>
+              <ModalTitle>Employee Leave Details</ModalTitle>
+              <CloseButton
+                onClick={() =>
+                  setEmployeeDetailModal({ show: false, employee: null, leaves: [], loading: false })
+                }
+              >
+                <X size={20} />
+              </CloseButton>
+            </ModalHeader>
+
+            {/* Employee Information */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3
+                style={{ margin: '0 0 0.75rem', fontSize: '1rem', fontWeight: 600, color: COLORS.text }}
+              >
+                Employee Information
+              </h3>
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
+                <InfoRow>
+                  <span className={InfoLabel}>Name:</span>
+                  <span className={InfoValue}>
+                    <span
+                      style={{
+                        width: '24px', height: '24px', borderRadius: '6px',
+                        background: getAvatarColor(employeeDetailModal.employee.user_id),
+                        color: '#fff', display: 'inline-flex', alignItems: 'center',
+                        justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700,
+                        marginRight: '0.5rem',
+                      }}
+                    >
+                      {getInitials(employeeDetailModal.employee.name)}
+                    </span>
+                    {employeeDetailModal.employee.name || 'Unknown'}
+                  </span>
+                </InfoRow>
+                <InfoRow>
+                  <span className={InfoLabel}>Email:</span>
+                  <span className={InfoValue}>{employeeDetailModal.employee.email || '-'}</span>
+                </InfoRow>
+              </div>
+            </div>
+
+            {/* Remaining Leave Days - all their remaining days */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3
+                style={{ margin: '0 0 0.75rem', fontSize: '1rem', fontWeight: 600, color: COLORS.text }}
+              >
+                Remaining Leave Days
+              </h3>
+              <div
+                style={{
+                  display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.75rem',
+                }}
+              >
+                <div style={{ fontSize: '2rem', fontWeight: 800, color: COLORS.primary }}>
+                  {employeeDetailModal.employee.currentBalance}
+                </div>
+                <span style={{ fontSize: '0.8rem', color: COLORS.textSecondary }}>
+                  days remaining
+                </span>
+              </div>
+              <div
+                style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.5rem',
+                }}
+              >
+                <InfoRow>
+                  <span className={InfoLabel}>Leave Taken</span>
+                  <span className={InfoValue}>{employeeDetailModal.employee.leaveTaken}</span>
+                </InfoRow>
+                <InfoRow>
+                  <span className={InfoLabel}>Pending Approval</span>
+                  <span className={InfoValue}>{employeeDetailModal.employee.pendingDays}</span>
+                </InfoRow>
+                <InfoRow>
+                  <span className={InfoLabel}>Added Days</span>
+                  <span className={InfoValue}>{employeeDetailModal.employee.manualAdditions}</span>
+                </InfoRow>
+                <InfoRow>
+                  <span className={InfoLabel}>Holiday Comp</span>
+                  <span className={InfoValue}>{employeeDetailModal.employee.holidayCompensations}</span>
+                </InfoRow>
+              </div>
+            </div>
+
+            {/* Leave Calendar - from the day they started leave up to the day they returned */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3
+                style={{ margin: '0 0 0.75rem', fontSize: '1rem', fontWeight: 600, color: COLORS.text }}
+              >
+                Leave Calendar (started → returned)
+              </h3>
+              {employeeDetailModal.loading ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: COLORS.textSecondary }}>
+                  <p style={{ margin: 0 }}>Loading leave history...</p>
+                </div>
+              ) : (
+                <LeaveCalendar leaves={employeeDetailModal.leaves} />
+              )}
+            </div>
+
+            {/* Leave History Table - all remaining days / requests */}
+            <div>
+              <h3
+                style={{ margin: '0 0 0.75rem', fontSize: '1rem', fontWeight: 600, color: COLORS.text }}
+              >
+                Leave History ({employeeDetailModal.leaves.length})
+              </h3>
+              {employeeDetailModal.leaves.length === 0 && !employeeDetailModal.loading ? (
+                <p style={{ color: COLORS.textSecondary, fontSize: '0.85rem' }}>
+                  No leave requests found for this employee.
+                </p>
+              ) : (
+                <Table>
+                  <thead>
+                    <Tr>
+                      <Th>Type</Th>
+                      <Th>Start Date</Th>
+                      <Th>End Date</Th>
+                      <Th>Days</Th>
+                      <Th>Status</Th>
+                      <Th>Reason</Th>
+                    </Tr>
+                  </thead>
+                  <tbody>
+                    {employeeDetailModal.leaves.map((leave) => (
+                      <Tr key={leave.id}>
+                        <Td>
+                          <LeaveTypeBadge $type={leave.leave_type}>
+                            {leave.leave_type || 'Leave'}
+                          </LeaveTypeBadge>
+                        </Td>
+                        <Td>{formatDate(leave.start_date)}</Td>
+                        <Td>{formatDate(leave.end_date)}</Td>
+                        <Td>{leave.days}</Td>
+                        <Td>
+                          <Badge $status={leave.status}>
+                            {getStatusIcon(leave.status)}
+                            {leave.status}
+                          </Badge>
+                        </Td>
+                        <Td>{leave.reason || '-'}</Td>
+                      </Tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
+            </div>
           </ModalContent>
         </Modal>
       )}
