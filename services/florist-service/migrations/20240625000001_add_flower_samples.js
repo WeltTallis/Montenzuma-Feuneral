@@ -13,7 +13,7 @@ export const up = async (knex) => {
         table.json('sizes'); // Array of sizes: ['small', 'medium', 'large'] or numeric
         table.json('images'); // Array of image objects: [{url, alt_text, is_primary, order}]
         table.string('tenant_slug', 100).notNullable().index();
-        table.timestamps(true, true);
+        table.string('created_at', 255); table.string('updated_at', 255);
         
         // Add index for tenant queries
         table.index(['tenant_slug', 'sample_id']);

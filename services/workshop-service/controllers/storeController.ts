@@ -33,8 +33,8 @@ const ensureStoreTables = async (tenantDb: string) => {
             item_sub VARCHAR(255) DEFAULT '',
             unit VARCHAR(50) DEFAULT 'pcs',
             quantity DECIMAL(12,2) NOT NULL DEFAULT 0,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_at VARCHAR(255) NOT NULL,
+            updated_at VARCHAR(255),
             UNIQUE KEY uniq_item_key (item_key),
             INDEX idx_item_type (item_type)
         ) ENGINE=InnoDB`);
@@ -51,7 +51,7 @@ const ensureStoreTables = async (tenantDb: string) => {
             txn_date DATE NOT NULL,
             txn_by VARCHAR(255) NOT NULL DEFAULT '',
             notes TEXT,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at VARCHAR(255) NOT NULL,
             INDEX idx_txn_date (txn_date),
             INDEX idx_item_key (item_key)
         ) ENGINE=InnoDB`);

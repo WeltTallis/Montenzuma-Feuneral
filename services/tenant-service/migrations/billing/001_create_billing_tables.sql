@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS daily_billing (
   additional_charges DECIMAL(10,2) DEFAULT 0,
   total_charge DECIMAL(10,2) NOT NULL,
   billing_date DATE NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at VARCHAR(255),
+  updated_at VARCHAR(255),
   INDEX idx_deceased (deceased_id),
   INDEX idx_tenant_date (tenant_slug, billing_date),
   UNIQUE KEY unique_deceased_date (deceased_id, billing_date)
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS billing_job_logs (
   total_succeeded INT NOT NULL,
   total_failed INT NOT NULL,
   results JSON,
-  executed_at TIMESTAMP NOT NULL,
+  executed_at VARCHAR(255) NOT NULL,
   INDEX idx_executed (executed_at),
   INDEX idx_job_type (job_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -39,8 +39,8 @@ CREATE TABLE IF NOT EXISTS tenant_settings (
   storage_rate DECIMAL(10,2) DEFAULT 500.00,
   currency VARCHAR(10) DEFAULT 'KES',
   tax_rate DECIMAL(5,2) DEFAULT 0.00,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at VARCHAR(255),
+  updated_at VARCHAR(255),
   INDEX idx_tenant (tenant_slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -50,4 +50,4 @@ SELECT DISTINCT tenant_slug, 1500.00, 3000.00, 500.00
 FROM deceased
 WHERE tenant_slug IS NOT NULL
 AND tenant_slug NOT IN (SELECT tenant_slug FROM tenant_settings)
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+ON DUPLICATE KEY UPDATE updated_at = VALUES(updated_at);

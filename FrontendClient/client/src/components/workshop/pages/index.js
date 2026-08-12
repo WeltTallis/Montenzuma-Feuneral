@@ -8,7 +8,7 @@ export { default as DashboardTab } from './DashboardTab';
 export { default as MaterialsTab } from './MaterialsTab';
 export { default as AnalyticsTab } from './AnalyticsTab';
 export { default as ModalRouter } from './ModalRouter';
-export { default as WorkersTab } from './WorkersTab';
+export { default as WorkerAnalytics } from './WorkerAnalytics';
 export { default as OrdersTab } from './OrdersTab';
 export { default as StoreTab } from './StoreTab';
 export { default as Toasts } from './Toasts';

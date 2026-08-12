@@ -86,7 +86,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      # Service URLs - FIX: use restpoint_ prefix to match container names
+      # Service URLs 
       AUTH_SERVICE_URL: http://restpoint_auth_service:5000
       TENANT_SERVICE_URL: http://restpoint_tenant_service:5000
       DECEASED_SERVICE_URL: http://restpoint_deceased_service:5000

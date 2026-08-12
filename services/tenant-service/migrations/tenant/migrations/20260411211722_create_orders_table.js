@@ -13,8 +13,8 @@ exports.up = async function(knex) {
       table.decimal('total_amount', 10, 2).notNullable();
       table.enum('status', ['pending', 'processed', 'shipped', 'completed', 'cancelled']).defaultTo('pending');
       table.json('items').notNullable();
-      table.timestamp('created_at');
-      table.timestamp('updated_at');
+      table.string('created_at', 255);
+      table.string('updated_at', 255);
       table.index('order_number');
       table.index('status');
       table.index('customer_email');

@@ -11,7 +11,7 @@ exports.up = async function (knex) {
       table.integer("product_id").unsigned();
       table.string("category_slug", 255);
       table.enum("action_type", ["view", "click", "add_to_cart", "purchase"]).notNullable();
-      table.timestamp("created_at");
+      table.string("created_at", 255);
 
       table.index("user_id");
       table.index("product_id");
@@ -28,7 +28,7 @@ exports.up = async function (knex) {
       table.string("user_id", 255).notNullable();
       table.integer("product_id").unsigned().notNullable();
       table.decimal("score", 10, 4).defaultTo(0);
-      table.timestamp("updated_at");
+      table.string("updated_at", 255);
 
       table.foreign("product_id").references("id").on("products").onDelete("CASCADE");
       table.index("user_id");

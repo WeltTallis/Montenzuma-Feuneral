@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useContext, useMemo } from 'react';
 import { Chart, registerables } from 'chart.js';
 import { Ctx } from './WorkshopDashboard';
 import StatCard from './StatCard';
+import WorkerAnalytics from './WorkerAnalytics';
 Chart.register(...registerables);
 
 const T = {
@@ -553,6 +554,7 @@ const AnalyticsTab = () => {
           </Card>
         </>
       )}
+      <WorkerAnalytics />
     </div>
   );
 };

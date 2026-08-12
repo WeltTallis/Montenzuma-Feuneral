@@ -53,7 +53,7 @@ app.use(cors({
     'X-CSRF-Token',
     'x-tenant-slug',
     'x-tenant-id',
-    'x-request-timestamp',
+    'x-request-VARCHAR(255)',
     'x-client-id',
     'x-session-fingerprint',
     'Origin',
@@ -159,8 +159,8 @@ const ensureMortuarySettingsTable = async (conn: mysql.Connection) => {
       free_days INT NOT NULL DEFAULT 0,
       notes TEXT,
       is_active BOOLEAN DEFAULT TRUE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      created_at VARCHAR(255),
+      updated_at VARCHAR(255)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 };

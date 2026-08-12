@@ -10,7 +10,7 @@ export async function up(knex) {
     table.increments('id').primary();
     table.string('full_name', 255).notNullable();
     table.string('role', 100).defaultTo('Worker');
-    table.timestamp('created_at').defaultTo(knex.fn.now());
+    table.string('created_at', 255);
     table.index(['full_name'], 'idx_workers_name');
   });
 }

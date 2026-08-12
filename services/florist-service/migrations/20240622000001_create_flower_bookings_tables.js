@@ -25,8 +25,8 @@ export async function up(knex) {
     table.text('notes');
     table.boolean('urgent').defaultTo(false);
     table.string('created_by', 255);
-    table.timestamp('created_at').defaultTo(knex.fn.now());
-    table.timestamp('updated_at').defaultTo(knex.fn.now());
+    table.string('created_at', 255);
+    table.string('updated_at', 255);
 
     table.index(['booking_id'], 'idx_booking_id');
     table.index(['status'], 'idx_status');
@@ -47,8 +47,8 @@ export async function up(knex) {
     table.integer('total_orders').defaultTo(0);
     table.decimal('total_spent', 10, 2).defaultTo(0.00);
     table.integer('branch_id');
-    table.timestamp('created_at').defaultTo(knex.fn.now());
-    table.timestamp('updated_at').defaultTo(knex.fn.now());
+    table.string('created_at', 255);
+    table.string('updated_at', 255);
 
     table.index(['phone'], 'idx_phone');
     table.index(['name'], 'idx_name');
@@ -65,8 +65,8 @@ export async function up(knex) {
     table.string('image_url', 500);
     table.boolean('is_active').defaultTo(true);
     table.boolean('is_urgent').defaultTo(false);
-    table.timestamp('created_at').defaultTo(knex.fn.now());
-    table.timestamp('updated_at').defaultTo(knex.fn.now());
+    table.string('created_at', 255);
+    table.string('updated_at', 255);
   });
 
   // Insert default flower packages
@@ -129,7 +129,7 @@ export async function up(knex) {
     table.decimal('delivery_fee', 10, 2).defaultTo(0.00);
     table.integer('estimated_minutes');
     table.boolean('is_active').defaultTo(true);
-    table.timestamp('created_at').defaultTo(knex.fn.now());
+    table.string('created_at', 255);
   });
 
   // Insert default delivery zones

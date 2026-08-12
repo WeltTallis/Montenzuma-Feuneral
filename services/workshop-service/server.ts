@@ -235,8 +235,8 @@ async function ensureWorkshopTables(dbName: string) {
                 unit_price DECIMAL(10,2) DEFAULT 0,
                 min_stock_level DECIMAL(10,2) DEFAULT 0,
                 description TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                created_at VARCHAR(255),
+                updated_at VARCHAR(255),
                 INDEX idx_materials_category (category)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
             `CREATE TABLE IF NOT EXISTS material_usage (
@@ -246,7 +246,7 @@ async function ensureWorkshopTables(dbName: string) {
                 quantity_used DECIMAL(10,2) NOT NULL,
                 unit_cost DECIMAL(10,2) DEFAULT 0,
                 notes TEXT,
-                used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                used_at VARCHAR(255),
                 FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
                 FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE,
                 INDEX idx_usage_order (coffin_order_id),
@@ -257,8 +257,8 @@ async function ensureWorkshopTables(dbName: string) {
                 coffin_order_id INT NOT NULL,
                 stage VARCHAR(50) NOT NULL,
                 status VARCHAR(50) DEFAULT 'pending',
-                started_at DATETIME NULL,
-                completed_at DATETIME NULL,
+                started_at VARCHAR(255) NULL,
+                completed_at VARCHAR(255) NULL,
                 notes TEXT,
                 FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
                 UNIQUE KEY uk_order_stage (coffin_order_id, stage),
@@ -271,8 +271,8 @@ async function ensureWorkshopTables(dbName: string) {
                 stage VARCHAR(50) NOT NULL,
                 hours_worked DECIMAL(5,2) DEFAULT 0,
                 notes TEXT,
-                assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                completed_at DATETIME NULL,
+                assigned_at VARCHAR(255),
+                completed_at VARCHAR(255) NULL,
                 FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
                 INDEX idx_assignments_order (coffin_order_id),
                 INDEX idx_assignments_user (user_id)
@@ -287,8 +287,8 @@ async function ensureWorkshopTables(dbName: string) {
                 selling_price DECIMAL(10,2) DEFAULT 0,
                 profit DECIMAL(10,2) DEFAULT 0,
                 profit_margin DECIMAL(5,2) DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                created_at VARCHAR(255),
+                updated_at VARCHAR(255),
                 FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
             `CREATE TABLE IF NOT EXISTS design_specifications (
@@ -299,8 +299,8 @@ async function ensureWorkshopTables(dbName: string) {
                 specifications JSON,
                 design_files JSON,
                 status VARCHAR(50) DEFAULT 'draft',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                created_at VARCHAR(255),
+                updated_at VARCHAR(255),
                 FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
                 INDEX idx_design_order (coffin_order_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
@@ -313,7 +313,7 @@ async function ensureWorkshopTables(dbName: string) {
                 invoice_number VARCHAR(100),
                 notes TEXT,
                 received_by VARCHAR(255),
-                received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                received_at VARCHAR(255),
                 FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE,
                 INDEX idx_intake_material (material_id),
                 INDEX idx_intake_date (received_at)

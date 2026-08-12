@@ -11,8 +11,8 @@ export async function up(knex) {
       table.string('unit', 50).notNullable().defaultTo('pcs');
       table.decimal('stock', 12, 3).notNullable().defaultTo(0);
       table.decimal('min_stock', 12, 3).notNullable().defaultTo(0);
-      table.timestamp('created_at').defaultTo(knex.fn.now());
-      table.timestamp('updated_at').defaultTo(knex.fn.now());
+      table.string('created_at', 255);
+      table.string('updated_at', 255);
 
       table.index(['name'], 'idx_store_items_name');
       table.index(['category'], 'idx_store_items_category');
@@ -31,7 +31,7 @@ export async function up(knex) {
       table.string('staff', 255).notNullable().defaultTo('Store Clerk');
       table.string('reason', 500);
       table.decimal('remaining', 12, 3).notNullable();
-      table.timestamp('created_at').defaultTo(knex.fn.now());
+      table.string('created_at', 255);
 
       table.index(['item_id'], 'idx_store_tx_item');
       table.index(['action'], 'idx_store_tx_action');

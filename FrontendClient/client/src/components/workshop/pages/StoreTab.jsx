@@ -53,6 +53,7 @@ const Gauge = ({ pct, label }) => {
 
 const StoreTab = () => {
   const ctx = useContext(Ctx);
+  if (!ctx) return null;
   const { addToast, workers = [] } = ctx;
   const slug = getTenantSlug() || 'default';
 

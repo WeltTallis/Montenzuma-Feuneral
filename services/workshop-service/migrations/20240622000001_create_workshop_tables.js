@@ -13,8 +13,8 @@ export async function up(knex) {
     table.string('password', 255).notNullable();
     table.string('role', 50).defaultTo('worker');
     table.string('phone', 20);
-    table.timestamp('created_at').defaultTo(knex.fn.now());
-    table.timestamp('updated_at').defaultTo(knex.fn.now());
+    table.string('created_at', 255);
+    table.string('updated_at', 255);
     table.index(['role'], 'idx_users_role');
     table.index(['email'], 'idx_users_email');
   });
@@ -37,9 +37,9 @@ export async function up(knex) {
     table.string('created_by', 255);
     table.string('status', 50).defaultTo('pending');
     table.date('delivery_date');
-    table.datetime('order_date').defaultTo(knex.fn.now());
-    table.timestamp('created_at').defaultTo(knex.fn.now());
-    table.timestamp('updated_at').defaultTo(knex.fn.now());
+    table.string('order_date', 255);
+    table.string('created_at', 255);
+    table.string('updated_at', 255);
     table.index(['status'], 'idx_orders_status');
     table.index(['order_date'], 'idx_orders_date');
     table.index(['branch_id'], 'idx_orders_branch');
@@ -55,8 +55,8 @@ export async function up(knex) {
     table.decimal('unit_price', 10, 2).defaultTo(0);
     table.decimal('min_stock_level', 10, 2).defaultTo(0);
     table.text('description');
-    table.timestamp('created_at').defaultTo(knex.fn.now());
-    table.timestamp('updated_at').defaultTo(knex.fn.now());
+    table.string('created_at', 255);
+    table.string('updated_at', 255);
     table.index(['category'], 'idx_materials_category');
   });
 
@@ -68,7 +68,7 @@ export async function up(knex) {
     table.decimal('quantity_used', 10, 2).notNullable();
     table.decimal('unit_cost', 10, 2).defaultTo(0);
     table.text('notes');
-    table.timestamp('used_at').defaultTo(knex.fn.now());
+    table.string('used_at', 255);
     table.foreign('coffin_order_id').references('coffin_orders.id').onDelete('CASCADE');
     table.foreign('material_id').references('materials.id').onDelete('CASCADE');
     table.index(['coffin_order_id'], 'idx_usage_order');
@@ -81,8 +81,8 @@ export async function up(knex) {
     table.integer('coffin_order_id').unsigned().notNullable();
     table.string('stage', 50).notNullable();
     table.string('status', 50).defaultTo('pending');
-    table.datetime('started_at');
-    table.datetime('completed_at');
+    table.string('started_at', 255);
+    table.string('completed_at', 255);
     table.text('notes');
     table.foreign('coffin_order_id').references('coffin_orders.id').onDelete('CASCADE');
     table.unique(['coffin_order_id', 'stage'], 'uk_order_stage');
@@ -97,8 +97,8 @@ export async function up(knex) {
     table.string('stage', 50).notNullable();
     table.decimal('hours_worked', 5, 2).defaultTo(0);
     table.text('notes');
-    table.datetime('assigned_at').defaultTo(knex.fn.now());
-    table.datetime('completed_at');
+    table.string('assigned_at', 255);
+    table.string('completed_at', 255);
     table.foreign('coffin_order_id').references('coffin_orders.id').onDelete('CASCADE');
     table.index(['coffin_order_id'], 'idx_assignments_order');
     table.index(['user_id'], 'idx_assignments_user');
@@ -115,8 +115,8 @@ export async function up(knex) {
     table.decimal('selling_price', 10, 2).defaultTo(0);
     table.decimal('profit', 10, 2).defaultTo(0);
     table.decimal('profit_margin', 5, 2).defaultTo(0);
-    table.timestamp('created_at').defaultTo(knex.fn.now());
-    table.timestamp('updated_at').defaultTo(knex.fn.now());
+    table.string('created_at', 255);
+    table.string('updated_at', 255);
     table.foreign('coffin_order_id').references('coffin_orders.id').onDelete('CASCADE');
   });
 
@@ -132,7 +132,7 @@ export async function up(knex) {
     table.string('invoice_number', 100);
     table.text('notes');
     table.string('received_by', 255);
-    table.timestamp('received_at').defaultTo(knex.fn.now());
+    table.string('received_at', 255);
     table.foreign('material_id').references('materials.id').onDelete('CASCADE');
     table.index(['material_id'], 'idx_intake_material');
     table.index(['received_at'], 'idx_intake_date');

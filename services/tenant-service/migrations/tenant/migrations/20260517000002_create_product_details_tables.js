@@ -11,7 +11,7 @@ exports.up = async function (knex) {
       table.string("url", 500).notNullable();
       table.boolean("is_primary").defaultTo(false);
       table.integer("sort_order").defaultTo(0);
-      table.timestamp("created_at");
+      table.string("created_at", 255);
 
       table.foreign("product_id").references("id").on("products").onDelete("CASCADE");
       table.index("product_id");
@@ -30,8 +30,8 @@ exports.up = async function (knex) {
       table.decimal("price", 10, 2);
       table.integer("stock").defaultTo(0);
       table.enum("status", ["active", "inactive"]).defaultTo("active");
-      table.timestamp("created_at");
-      table.timestamp("updated_at");
+      table.string("created_at", 255);
+      table.string("updated_at", 255);
 
       table.foreign("product_id").references("id").on("products").onDelete("CASCADE");
       table.index("product_id");
@@ -46,7 +46,7 @@ exports.up = async function (knex) {
       table.increments("id").primary();
       table.integer("product_id").unsigned().notNullable();
       table.string("tag", 100).notNullable();
-      table.timestamp("created_at");
+      table.string("created_at", 255);
 
       table.foreign("product_id").references("id").on("products").onDelete("CASCADE");
       table.index("product_id");

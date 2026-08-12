@@ -5,7 +5,6 @@ import { workshopService } from '../services/workshopService';
 import WorkshopTabs from './WorkshopTabs';
 import DashboardTab from './DashboardTab';
 import OrdersTab from './OrdersTab';
-import WorkersTab from './WorkersTab';
 import MaterialsTab from './MaterialsTab';
 import StoreTab from './StoreTab';
 import AnalyticsTab from './AnalyticsTab';
@@ -330,6 +329,7 @@ const emitSocketEvent = useCallback((event, data) => {
   // ─── Loading State ──────────────────────────────────────────────────
   if (loading && !orders.length) {
     return (
+      <Ctx.Provider value={value}>
       <div style={{
         minHeight: '100vh',
         background: S.bg,
@@ -353,12 +353,14 @@ const emitSocketEvent = useCallback((event, data) => {
           Loading workshop data...
         </div>
       </div>
+      </Ctx.Provider>
     );
   }
 
   // ─── Error State ────────────────────────────────────────────────────
   if (error && !orders.length) {
     return (
+      <Ctx.Provider value={value}>
       <div style={{
         minHeight: '100vh',
         background: S.bg,
@@ -421,6 +423,7 @@ const emitSocketEvent = useCallback((event, data) => {
           </button>
         </div>
       </div>
+      </Ctx.Provider>
     );
   }
 
@@ -442,7 +445,6 @@ const emitSocketEvent = useCallback((event, data) => {
           <div style={{ marginTop: 24 }}>
             {tab === 'dashboard' && <DashboardTab />}
             {tab === 'orders' && <OrdersTab />}
-            {tab === 'workers' && <WorkersTab />}
             {tab === 'materials' && <MaterialsTab />}
             {tab === 'store' && <StoreTab />}
             {tab === 'analytics' && <AnalyticsTab />}

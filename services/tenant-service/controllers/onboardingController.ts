@@ -180,8 +180,8 @@ export class OnboardingController {
                   progress INT DEFAULT 0,
                   details TEXT,
                   error_message TEXT,
-                  started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  started_at VARCHAR(255),
+                  updated_at VARCHAR(255),
                   INDEX idx_status (status),
                   INDEX idx_started_at (started_at)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -200,9 +200,9 @@ export class OnboardingController {
                   status ENUM('active', 'inactive', 'suspended') DEFAULT 'active',
                   subscription_plan ENUM('basic', 'free', 'premium') DEFAULT 'basic',
                   subscription_status ENUM('active', 'inactive', 'suspended') DEFAULT 'active',
-                  subscription_expires_at TIMESTAMP NULL,
-                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  subscription_expires_at VARCHAR(255) NULL,
+                  created_at VARCHAR(255),
+                  updated_at VARCHAR(255),
                   INDEX idx_tenant_slug (tenant_slug),
                   INDEX idx_db_name (db_name),
                   INDEX idx_status (status)
@@ -219,8 +219,8 @@ export class OnboardingController {
                   branch_db_name VARCHAR(255) NOT NULL,
                   parent_branch_id INT NULL,
                   is_active BOOLEAN DEFAULT TRUE,
-                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  created_at VARCHAR(255),
+                  updated_at VARCHAR(255),
                   FOREIGN KEY (tenant_slug) REFERENCES tenants(tenant_slug) ON DELETE CASCADE,
                   FOREIGN KEY (parent_branch_id) REFERENCES branches(id) ON DELETE SET NULL,
                   UNIQUE KEY unique_branch (tenant_slug, branch_slug),
@@ -349,8 +349,8 @@ export class OnboardingController {
             progress INT DEFAULT 0,
             details TEXT,
             error_message TEXT,
-            started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            started_at VARCHAR(255),
+            updated_at VARCHAR(255),
             INDEX idx_status (status),
             INDEX idx_started_at (started_at)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

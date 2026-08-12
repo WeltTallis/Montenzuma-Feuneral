@@ -134,10 +134,10 @@ async function main() {
         logo_url VARCHAR(500),
         status ENUM('active', 'suspended', 'deleted') DEFAULT 'active',
         subscription_status ENUM('active', 'trial', 'suspended', 'cancelled') DEFAULT 'trial',
-        subscription_expires_at TIMESTAMP NULL,
+        subscription_expires_at VARCHAR(255) NULL,
         deployment_type ENUM('single', 'multi') DEFAULT 'single',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        created_at VARCHAR(255),
+        updated_at VARCHAR(255),
         INDEX idx_deployment_type (deployment_type),
         INDEX idx_tenant_slug (tenant_slug)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -156,9 +156,9 @@ async function main() {
         branch_id INT NULL,
         is_active BOOLEAN DEFAULT TRUE,
         is_verified BOOLEAN DEFAULT TRUE,
-        last_login_at TIMESTAMP NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        last_login_at VARCHAR(255) NULL,
+        created_at VARCHAR(255),
+        updated_at VARCHAR(255),
         INDEX idx_email (email),
         INDEX idx_tenant_id (tenant_id),
         INDEX idx_role (role)

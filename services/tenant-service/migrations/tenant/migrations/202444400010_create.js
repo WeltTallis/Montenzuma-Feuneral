@@ -23,8 +23,8 @@ exports.up = async function (knex) {
       table.string("seller", 255);
       table.boolean("featured").defaultTo(false);
       table.enum("status", ["active", "inactive", "draft"]).defaultTo("active");
-      table.timestamp("created_at");
-      table.timestamp("updated_at");
+      table.string("created_at", 255);
+      table.string("updated_at", 255);
 
       table.index("category");
       table.index("status");

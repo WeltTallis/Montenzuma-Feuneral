@@ -31,7 +31,7 @@ dotenv.config({ path: envPath });
 import express from 'express';
 import cors from 'cors';
 import knex from 'knex';
-import storeRoutes from './routes/storeRoutes.js';
+import storeRoutes from './routes/storeRoutes.ts';
 
 const app = express();
 

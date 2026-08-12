@@ -1,1 +1,27 @@
-{"compilerOptions":{"target":"ES2020","module":"commonjs","lib":["ES2020"],"outDir":"./dist","rootDir":"./","strict":true,"esModuleInterop":true,"skipLibCheck":true,"forceConsistentCasingInFileNames":true,"resolveJsonModule":true,"declaration":true,"sourceMap":true},"include":["**/*.ts"],"exclude":["node_modules","dist","**/*.js"]} 
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "commonjs",
+        "lib": [
+            "ES2020"
+        ],
+        "outDir": "./dist",
+        "rootDir": "./",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "declaration": true,
+        "sourceMap": true
+    },
+    "include": [
+        "**/*.ts",
+        "FrontendClient/client/src/components/analysis/new/feuneral/ui/select.tsx"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "**/*.js"
+    ]
+}

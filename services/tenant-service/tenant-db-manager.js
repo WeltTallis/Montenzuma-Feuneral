@@ -72,8 +72,8 @@ class TenantDatabaseManager {
         enable_cremation BOOLEAN DEFAULT FALSE,
         enable_chapel BOOLEAN DEFAULT TRUE,
         custom_branding JSON,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        created_at VARCHAR(255),
+        updated_at VARCHAR(255)
       );
 
       CREATE TABLE IF NOT EXISTS mortuary_operations (
@@ -81,16 +81,16 @@ class TenantDatabaseManager {
         operation_name VARCHAR(255) NOT NULL,
         description TEXT,
         is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at VARCHAR(255)
       );
 
       CREATE TABLE IF NOT EXISTS deceased_records (
         id INT PRIMARY KEY AUTO_INCREMENT,
         name VARCHAR(255) NOT NULL,
-        date_of_death DATETIME NOT NULL,
+        date_of_death VARCHAR(255) NOT NULL,
         mortuary_operation_id INT,
         status ENUM('received', 'processed', 'released') DEFAULT 'received',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at VARCHAR(255),
         FOREIGN KEY (mortuary_operation_id) REFERENCES mortuary_operations(id)
       );
     `;

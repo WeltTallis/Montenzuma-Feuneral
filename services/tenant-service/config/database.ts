@@ -64,9 +64,9 @@ export const createTenantDatabase = async (tenantDbName: string): Promise<void> 
         role ENUM('admin', 'manager', 'staff', 'user') DEFAULT 'user',
         is_active BOOLEAN DEFAULT TRUE,
         is_verified BOOLEAN DEFAULT FALSE,
-        last_login_at TIMESTAMP NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        last_login_at VARCHAR(255) NULL,
+        created_at VARCHAR(255),
+        updated_at VARCHAR(255),
         INDEX idx_email (email)
       )
     `);
@@ -85,8 +85,8 @@ export const createTenantDatabase = async (tenantDbName: string): Promise<void> 
         burial_location TEXT,
         burial_date DATE,
         created_by INT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        created_at VARCHAR(255),
+        updated_at VARCHAR(255),
         FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
         INDEX idx_name (full_name),
         INDEX idx_date_of_death (date_of_death)
@@ -104,8 +104,8 @@ export const createTenantDatabase = async (tenantDbName: string): Promise<void> 
         special_instructions TEXT,
         status ENUM('pending', 'confirmed', 'completed', 'cancelled') DEFAULT 'pending',
         created_by INT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        created_at VARCHAR(255),
+        updated_at VARCHAR(255),
         FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE,
         FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL
       )
@@ -116,9 +116,9 @@ export const createTenantDatabase = async (tenantDbName: string): Promise<void> 
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         token VARCHAR(500) NOT NULL,
-        expires_at TIMESTAMP NOT NULL,
+        expires_at VARCHAR(255) NOT NULL,
         is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at VARCHAR(255),
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
         INDEX idx_token (token(255))
       )
@@ -129,7 +129,7 @@ export const createTenantDatabase = async (tenantDbName: string): Promise<void> 
         id INT AUTO_INCREMENT PRIMARY KEY,
         setting_key VARCHAR(100) NOT NULL UNIQUE,
         setting_value TEXT,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        updated_at VARCHAR(255)
       )
     `);
     
@@ -153,8 +153,8 @@ export const createTenantDatabase = async (tenantDbName: string): Promise<void> 
         file_path VARCHAR(500) NOT NULL,
         mime_type VARCHAR(100),
         file_size BIGINT DEFAULT 0,
-        uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        uploaded_at VARCHAR(255),
+        created_at VARCHAR(255),
         tenant_slug VARCHAR(100),
         FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE,
         INDEX idx_deceased (deceased_id),

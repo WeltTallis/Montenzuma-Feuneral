@@ -16,8 +16,8 @@ export async function up(knex: Knex): Promise<void> {
     table.enum('role', ['admin', 'manager', 'staff']).defaultTo('staff');
     table.boolean('is_active').defaultTo(true);
     table.boolean('is_verified').defaultTo(false);
-    table.timestamp('last_login_at');
-    table.timestamps(true, true);
+    table.string('last_login_at', 255);
+    table.string('created_at', 255); table.string('updated_at', 255);
 
     // Indexes
     table.index('email');
@@ -32,9 +32,9 @@ export async function up(knex: Knex): Promise<void> {
     table.text('user_agent');
     table.string('ip_address', 45);
     table.boolean('is_active').defaultTo(true);
-    table.timestamps(true, true);
-    table.timestamp('expires_at').notNullable();
-    table.timestamp('revoked_at');
+    table.string('created_at', 255); table.string('updated_at', 255);
+    table.string('expires_at', 255).notNullable();
+    table.string('revoked_at', 255);
 
     // Indexes
     table.index('user_id');
@@ -46,7 +46,7 @@ export async function up(knex: Knex): Promise<void> {
     table.increments('id').primary();
     table.string('setting_key', 100).notNullable().unique();
     table.text('setting_value');
-    table.timestamps(true, true);
+    table.string('created_at', 255); table.string('updated_at', 255);
   });
 
   // Deceased records table
@@ -62,7 +62,7 @@ export async function up(knex: Knex): Promise<void> {
     table.string('public_deceased_id', 50).unique(); // For public links (dec_x8j4k91n format)
     table.boolean('is_published').defaultTo(false); // Can family access this record?
     table.integer('user_id').references('users.user_id').onDelete('SET NULL');
-    table.timestamps(true, true);
+    table.string('created_at', 255); table.string('updated_at', 255);
 
     // Indexes
     table.index('public_deceased_id');
@@ -78,7 +78,7 @@ export async function up(knex: Knex): Promise<void> {
     table.string('phone', 20);
     table.string('email', 255);
     table.string('relationship', 50);
-    table.timestamps(true, true);
+    table.string('created_at', 255); table.string('updated_at', 255);
 
     // Indexes
     table.index('deceased_id');

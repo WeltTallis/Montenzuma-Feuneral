@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS `coffin_images` (
   `image_url` VARCHAR(500) NOT NULL,
   `image_name` VARCHAR(255),
   `display_order` INT DEFAULT 0,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` VARCHAR(255) NOT NULL,
   
   PRIMARY KEY (`image_id`),
   INDEX `idx_coffin_id` (`coffin_id`),
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS `deceased_coffin` (
   `assigned_by_username` VARCHAR(100) DEFAULT NULL,
   `assigned_date` DATE NOT NULL,
   `rfid` VARCHAR(100) UNIQUE COMMENT 'RFID tag for tracking',
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `created_at` VARCHAR(255),
   
   PRIMARY KEY (`id`),
   INDEX `idx_deceased_id` (`deceased_id`),

@@ -47,9 +47,9 @@ const CREATE_COFFIN_ORDERS = `CREATE TABLE IF NOT EXISTS coffin_orders (
   hold_reason TEXT,
   delivery_date DATE,
   created_by INT,
-  order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  order_date VARCHAR(255),
+  created_at VARCHAR(255),
+  updated_at VARCHAR(255),
   INDEX idx_orders_status (status),
   INDEX idx_orders_date (order_date),
   INDEX idx_orders_branch (branch_id),
@@ -102,8 +102,8 @@ const CREATE_MATERIALS = `CREATE TABLE IF NOT EXISTS materials (
   unit_price DECIMAL(10,2) DEFAULT 0,
   min_stock_level DECIMAL(10,2) DEFAULT 0,
   description TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at VARCHAR(255),
+  updated_at VARCHAR(255),
   INDEX idx_materials_category (category)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`;
 
@@ -114,7 +114,7 @@ const CREATE_MATERIAL_USAGE = `CREATE TABLE IF NOT EXISTS material_usage (
   quantity_used DECIMAL(10,2) NOT NULL,
   unit_cost DECIMAL(10,2) DEFAULT 0,
   notes TEXT,
-  used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  used_at VARCHAR(255),
   FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
   FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE,
   INDEX idx_usage_order (coffin_order_id),
@@ -126,8 +126,8 @@ const CREATE_PRODUCTION_STAGES = `CREATE TABLE IF NOT EXISTS production_stages (
   coffin_order_id INT NOT NULL,
   stage VARCHAR(50) NOT NULL,
   status VARCHAR(50) DEFAULT 'pending',
-  started_at DATETIME NULL,
-  completed_at DATETIME NULL,
+  started_at VARCHAR(255) NULL,
+  completed_at VARCHAR(255) NULL,
   notes TEXT,
   FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
   UNIQUE KEY uk_order_stage (coffin_order_id, stage),
@@ -141,8 +141,8 @@ const CREATE_WORKER_ASSIGNMENTS = `CREATE TABLE IF NOT EXISTS worker_assignments
   stage VARCHAR(50) NOT NULL,
   hours_worked DECIMAL(5,2) DEFAULT 0,
   notes TEXT,
-  assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  completed_at DATETIME NULL,
+  assigned_at VARCHAR(255),
+  completed_at VARCHAR(255) NULL,
   FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
   INDEX idx_assignments_order (coffin_order_id),
   INDEX idx_assignments_user (user_id)
@@ -158,8 +158,8 @@ const CREATE_COSTING = `CREATE TABLE IF NOT EXISTS costing (
   selling_price DECIMAL(10,2) DEFAULT 0,
   profit DECIMAL(10,2) DEFAULT 0,
   profit_margin DECIMAL(5,2) DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at VARCHAR(255),
+  updated_at VARCHAR(255),
   FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`;
 

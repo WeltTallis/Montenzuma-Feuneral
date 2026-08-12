@@ -74,8 +74,8 @@ async function initDatabase() {
                     subject VARCHAR(500) NOT NULL,
                     message TEXT NOT NULL,
                     status VARCHAR(50) DEFAULT 'open',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    created_at VARCHAR(255),
+                    updated_at VARCHAR(255),
                     INDEX idx_tenant (tenant_slug),
                     INDEX idx_status (status),
                     INDEX idx_created (created_at)
@@ -87,7 +87,7 @@ async function initDatabase() {
                     user_type VARCHAR(50) NOT NULL,
                     message TEXT NOT NULL,
                     tenant_slug VARCHAR(100) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at VARCHAR(255),
                     FOREIGN KEY (ticket_id) REFERENCES support_tickets(ticket_id) ON DELETE CASCADE,
                     INDEX idx_ticket (ticket_id),
                     INDEX idx_tenant (tenant_slug)

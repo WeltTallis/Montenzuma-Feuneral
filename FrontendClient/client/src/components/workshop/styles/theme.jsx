@@ -1,4 +1,8 @@
 // Workshop Production System - Industrial Theme
+
+
+
+
 export const theme = {
   // Industrial Color Palette
   colors: {

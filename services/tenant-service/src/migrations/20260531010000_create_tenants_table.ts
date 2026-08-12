@@ -16,8 +16,8 @@ export async function up(knex: Knex): Promise<void> {
     table.string('logo_url', 500);
     table.enum('status', ['active', 'suspended', 'deleted']).defaultTo('active');
     table.enum('subscription_status', ['active', 'trial', 'suspended', 'cancelled']).defaultTo('trial');
-    table.timestamp('subscription_expires_at');
-    table.timestamps(true, true);
+    table.string('subscription_expires_at', 255);
+    table.string('created_at', 255); table.string('updated_at', 255);
 
     // Indexes for performance
     table.index('tenant_slug');

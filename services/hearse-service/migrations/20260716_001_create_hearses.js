@@ -19,8 +19,8 @@ exports.up = function (knex) {
             table.decimal('max_charge_ksh', 10, 2).defaultTo(0.00);
             table.tinyint('is_own_branch').defaultTo(1);
             table.integer('active_bookings').defaultTo(0);
-            table.timestamp('created_at').defaultTo(knex.fn.now());
-            table.timestamp('updated_at').defaultTo(knex.fn.now());
+            table.string('created_at', 255);
+            table.string('updated_at', 255);
 
             table.index('branch_id', 'idx_branch_id');
             table.index('status', 'idx_status');
@@ -35,8 +35,8 @@ exports.up = function (knex) {
             table.string('client_phone', 50).notNullable();
             table.string('client_email', 200);
             table.text('destination').notNullable();
-            table.datetime('from_timestamp');
-            table.datetime('to_timestamp');
+            table.string('from_timestamp', 255);
+            table.string('to_timestamp', 255);
             table.date('booking_date').notNullable();
             table.enu('status', ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'booked']).defaultTo('booked');
             table.integer('branch_id');
@@ -44,8 +44,8 @@ exports.up = function (knex) {
             table.integer('booked_by');
             table.string('booked_by_email', 200);
             table.string('booked_by_name', 200);
-            table.timestamp('created_at').defaultTo(knex.fn.now());
-            table.timestamp('updated_at').defaultTo(knex.fn.now());
+            table.string('created_at', 255);
+            table.string('updated_at', 255);
 
             table.foreign('hearse_id').references('id').inTable('hearses').onDelete('RESTRICT');
             table.index('hearse_id', 'idx_booking_hearse_id');
@@ -65,8 +65,8 @@ exports.up = function (knex) {
             table.string('branch_name', 100).notNullable();
             table.enu('status', ['available', 'on_trip', 'off_duty']).defaultTo('available');
             table.integer('current_booking_id');
-            table.timestamp('created_at').defaultTo(knex.fn.now());
-            table.timestamp('updated_at').defaultTo(knex.fn.now());
+            table.string('created_at', 255);
+            table.string('updated_at', 255);
 
             table.index('branch_id', 'idx_driver_branch_id');
             table.index('status', 'idx_driver_status');
