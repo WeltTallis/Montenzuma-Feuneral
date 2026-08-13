@@ -13,10 +13,12 @@ import env from '../config/env';
 // Default fallback values for tenant branding
 const DEFAULT_BRANDING = {
   name: 'MONTENZUMA MONALISA  FUNERAL',
-  phone: '+254 700 000 000',
-  email: 'info@restpoint.co.ke',
+  phone: '+254-722-827-652',
+  email: 'montezumamonalisa.com',
   location: 'Nairobi, Kenya',
   country: 'Kenya',
+  address: 'Raila Odinga Wy, Nairobi',
+  Adress: 'Raila Odinga Wy, Nairobi', // legacy key kept for backward compatibility
   logoUrl: '/monalisa.png', // Ensure this file exists in your /public folder!
 };
 
@@ -32,6 +34,7 @@ export const getTenantBrandingFromStorage = () => {
       phone: localStorage.getItem('tenantPhone') || '',
       location: localStorage.getItem('tenantLocation') || '',
       country: localStorage.getItem('tenantCountry') || '',
+      address: localStorage.getItem('tenantAddress') || localStorage.getItem('tenantAdress') || '',
       logoUrl: localStorage.getItem('tenantLogoUrl') || '',
     };
   } catch (error) {
@@ -42,6 +45,7 @@ export const getTenantBrandingFromStorage = () => {
       phone: '', 
       location: '', 
       country: '', 
+      address: '', 
       logoUrl: '' 
     };
   }
@@ -87,6 +91,13 @@ export const resolveTenantBranding = (tenantData) => {
     || tenantData?.tenantCountry
     || stored.country 
     || DEFAULT_BRANDING.country;
+
+  // Get street address with fallbacks (legacy key stored as "Adress")
+  const address = tenantData?.address 
+    || tenantData?.tenantAddress
+    || stored.address 
+    || DEFAULT_BRANDING.Adress
+    || DEFAULT_BRANDING.address;
 
   // Branch info (first branch) — used for display when available
   const branchInfo = tenantData?.branches?.[0] || {};
@@ -189,12 +200,14 @@ export const resolveTenantBranding = (tenantData) => {
     email: formattedEmail,
     location,
     country,
-    
+    address,
+
     branchInfo,
     displayBranch,
     displayLocation: displayLocation || location || DEFAULT_BRANDING.location,
     displayPhone: formattedPhone,
     displayEmail: formattedEmail,
+    displayAddress: address || displayLocation || location || DEFAULT_BRANDING.location,
     
     rawLogoUrl,
     tenantLogoUrl,
@@ -211,6 +224,7 @@ export const resolveTenantBranding = (tenantData) => {
       email: DEFAULT_BRANDING.email,
       name: DEFAULT_BRANDING.name,
       location: DEFAULT_BRANDING.location,
+      address: DEFAULT_BRANDING.Adress || DEFAULT_BRANDING.address,
     },
     
     hasBranding: !!(name && name !== DEFAULT_BRANDING.name),

@@ -76,6 +76,7 @@ export const ENDPOINTS = {
     BASE: '/deceased',
     CREATE: '/deceased/register-deceased',
     ADMISSION_NUMBER: (gender) => `/deceased/admission-number/${gender}`,
+    BY_ADMISSION: (admissionNumber) => `/deceased/admission-number/${admissionNumber}`,
     POSTMORTEM: '/deceased/postmortem',
     COFFIN: '/deceased/coffin',
     LIST: '/deceased/deceased-all',
@@ -160,11 +161,14 @@ export const ENDPOINTS = {
     GENERATE: '/qrcode/generate',
   },
   BODYCHECKOUT: {
-    BASE: '/bodycheckout',
-    CHECKOUT: '/bodycheckout/checkout',
-    GET_RELEASE: (id) => `/bodycheckout/checkout/${id}`,
-    LIST: '/bodycheckout/checkout',
+    BASE: '/body-release',
+    CHECKOUT: '/body-release/checkout',
+    GET_RELEASE: (id) => `/body-release/checkout/${id}`,
+    LIST: '/body-release/checkout',
+    BY_ADMISSION: (admissionNumber) => `/body-release/by-admission/${admissionNumber}`,
   },
+  // Convenience alias — ReleaseFormPage calls ENDPOINTS.RELEASE_FORMS()
+  RELEASE_FORMS: () => '/body-release/checkout',
   EDOCUMENTS: {
     BASE: '/edocuments',
     DOCUMENTS: '/edocuments/documents',

@@ -488,6 +488,14 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           <Layout tenantData={tenantData} tenantSlug={slug}><HearseBookings /></Layout>
         } />
 
+        {/* Mini Store - All authenticated users */}
+        <Route path="mini-store" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><StoreDashboard /></Layout>
+        } />
+        <Route path="store" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><StoreDashboard /></Layout>
+        } />
+
         {/* Driver Portal - Standalone without sidebar */}
         <Route path="driver-portal" element={
           <DriverPortal />

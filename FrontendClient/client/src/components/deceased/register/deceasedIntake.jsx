@@ -5,11 +5,10 @@ import env from '../../../utils/config/env';
 import { ToastContainer, toast } from 'react-toastify';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
-import { IDScannerComponent } from '../../../utils/idScanner.jsx?t=20250620';
 import bwipjs from '@bwip-js/browser';
 import {
   Check, Loader2, CheckCircle, X, FileText, User,
-  RotateCcw, ShieldCheck, AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, ScanBarcode, MapPin
+  RotateCcw, ShieldCheck, AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin
 } from '../../../utils/icons/icons';
 import styled, { keyframes } from 'styled-components';
 import OfficialStamp from '../../stamp/stamp';
@@ -36,8 +35,8 @@ const COLORS = {
   success: '#475A43',
   successBg: '#EEF3EC',
   white: '#FFFFFF',
-  inkBlue: '#1131db',
-  stampBlue: '#1e3a8a',
+  inkBlue: '#0f33e7',
+  stampBlue: '#0f33e7',
   stampRed: '#dc2626',
   gold: '#C9A227',
   goldDark: '#A8851C',
@@ -434,61 +433,6 @@ const TextArea = styled.textarea`
   }
 `;
 
-const CheckGrid = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 2rem;
-  padding: 1rem 1.25rem;
-  background: ${COLORS.bone};
-  border: 1px solid ${COLORS.line};
-  border-radius: 4px;
-  box-shadow: inset 0 1px 2px rgba(21, 23, 26, 0.03);
-  
-  @media (max-width: 768px) {
-    gap: 0.75rem 1.5rem;
-  }
-`;
-
-const CheckItem = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  color: ${COLORS.ink};
-  cursor: pointer;
-  font-weight: 400;
-`;
-
-const Checkbox = styled.input.attrs({ type: 'checkbox' })`
-  appearance: none;
-  width: 1.1rem;
-  height: 1.1rem;
-  border: 1px solid ${COLORS.brass};
-  background: ${COLORS.white};
-  cursor: pointer;
-  flex-shrink: 0;
-  position: relative;
-  border-radius: 2px;
-  transition: all 0.2s;
-
-  &:checked {
-    background: ${COLORS.verdigris};
-    border-color: ${COLORS.verdigris};
-  }
-
-  &:checked::after {
-    content: '';
-    position: absolute;
-    top: 0.1rem;
-    left: 0.3rem;
-    width: 0.3rem;
-    height: 0.6rem;
-    border: solid ${COLORS.bone};
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-  }
-`;
-
 const ErrorMessage = styled.span`
   color: ${COLORS.red};
   font-size: 0.75rem;
@@ -499,7 +443,6 @@ const ErrorMessage = styled.span`
 
 // ─── Redesigned Signature Area Specifics ───
 const SigCanvasWrap = styled.div`
-s
   border-bottom: 2px solid ${COLORS.ink};
   border-radius: 4px 4px 0 0;
   height: 14rem; 
@@ -532,16 +475,13 @@ const SigGuideText = styled.div`
   position: absolute;
   bottom: 10px;
   left: 15px;
-  font-family: 'Alex Brush', cursive; /* ← This is the key */
+  font-family: 'Alex Brush', cursive;
   font-size: 1.2rem;
   color: ${COLORS.gray};
   opacity: 0.3;
   pointer-events: none;
   user-select: none;
 `;
-
-
-/* In your component's CSS or a global CSS file */
 
 const SignOffContainer = styled.div`
   position: relative;
@@ -734,35 +674,6 @@ const BlackButton = styled.button`
   }
 `;
 
-const SecondaryButton = styled.button`
-  background: transparent;
-  color: ${COLORS.ink};
-  border: 1px solid ${COLORS.lineDark};
-  border-radius: 4px;
-  padding: 1rem 2rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  transition: all 0.2s ease;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-
-  &:hover {
-    background: ${COLORS.ink};
-    color: ${COLORS.bone};
-    border-color: ${COLORS.ink};
-  }
-
-  @media (max-width: 768px) {
-    width: 100%;
-  }
-`;
-
 const LegalBlock = styled.div`
   padding: 0;
   margin-bottom: 2rem;
@@ -777,72 +688,6 @@ const LegalText = styled.p`
 
   &:last-child { margin-bottom: 0; }
   strong { color: ${COLORS.ink}; font-weight: 600; }
-`;
-
-// ─── ID Scan Row ────────────────────────────────────────────────────
-const ScanRow = styled.div`
-  display: flex;
-  width: 100%;
-  border: 1px solid ${COLORS.line};
-  border-radius: 4px;
-  overflow: hidden;
-  transition: all 0.2s ease;
-  background: ${COLORS.bone};
-  box-shadow: inset 0 1px 2px rgba(21, 23, 26, 0.03);
-  
-  &:focus-within {
-    border-color: ${COLORS.ink};
-    background: ${COLORS.white};
-    box-shadow: 0 0 0 3px rgba(21, 23, 26, 0.08), inset 0 1px 2px rgba(21, 23, 26, 0.03);
-  }
-
-  &:has(input:not(:placeholder-shown)) {
-    border-color: ${COLORS.brassLight};
-    background: ${COLORS.white};
-  }
-
-  input {
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-    flex: 1;
-    background: transparent;
-    
-    &:focus {
-      box-shadow: none;
-      background: transparent;
-    }
-    &:not(:placeholder-shown) {
-      border: none;
-      background: transparent;
-    }
-  }
-`;
-
-const ScanButton = styled.button`
-  height: auto;
-  padding: 0 1.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: ${COLORS.ink};
-  background: ${COLORS.bone2};
-  border: none;
-  border-left: 1px solid ${COLORS.line};
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
-  font-family: 'Inter', sans-serif;
-  white-space: nowrap;
-  flex-shrink: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-
-  &:hover {
-    background: ${COLORS.ink};
-    color: ${COLORS.bone};
-  }
 `;
 
 const ClearSigButton = styled.button`
@@ -863,24 +708,9 @@ const ClearSigButton = styled.button`
   }
 `;
 
-const IDScannerModalWrap = styled.div`
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(21,23,26,0.8);
-  backdrop-filter: blur(4px);
-  padding: 1rem;
-
-  & > * { max-width: 100%; max-height: 100%; }
-`;
-
 // ─── Official Footer & Barcode Panel ───────────────────────────────
 const FooterPanel = styled.div`
   background: ${COLORS.white};
-
   padding: 1rem 2rem; 
   display: flex;
   justify-content: space-between;
@@ -995,14 +825,13 @@ const SuccessActions = styled.div`
   flex-direction: column;
 `;
 
-
 const TextBold = styled.div`
   font-size: 1rem;
   color: ${COLORS.gray};
-  text-decoration:   underline;
-  font-weight:     800;
+  text-decoration: underline;
+  font-weight: 800;
   text-underline-offset: 6px;
-`
+`;
 
 const DeceasedRegistrationForm = () => {
   const navigate = useNavigate();
@@ -1029,7 +858,6 @@ const DeceasedRegistrationForm = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [registeredName, setRegisteredName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showIdScanner, setShowIdScanner] = useState(false);
   const [admissionId, setAdmissionId] = useState('');
 
   /* ---------- USE LOCALSTORAGE ONLY FOR TENANT BRANDING ---------- */
@@ -1042,6 +870,7 @@ const DeceasedRegistrationForm = () => {
     displayLocation,
     tenantCountry,
     displayBranch,
+    displayAddress,
     tenantLogoUrl,
     fallback
   } = branding;
@@ -1086,7 +915,6 @@ const DeceasedRegistrationForm = () => {
     signature: '',
     verified_by: getLoggedInUserEmail(),
     permit_number: '',
-    belongings_description: '',
     relationship: '',
   };
 
@@ -1256,25 +1084,6 @@ const DeceasedRegistrationForm = () => {
     sigPadRef1.current?.clear();
   };
 
-  const handleIdScanComplete = (scanResult) => {
-    if (scanResult.success && scanResult.parsedFields) {
-      const { idNumber, fullName, dateOfBirth, gender } = scanResult.parsedFields;
-
-      setFormData(prev => ({
-        ...prev,
-        id_number: idNumber || prev.id_number,
-        full_name: fullName || prev.full_name,
-        date_of_birth: dateOfBirth || prev.date_of_birth,
-        gender: gender || prev.gender,
-      }));
-
-      toast.success('ID card scanned successfully!');
-    } else {
-      toast.error('Failed to scan ID card. Please try again.');
-    }
-    setShowIdScanner(false);
-  };
-
   if (loading && !showSuccess) {
     return (
       <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -1323,6 +1132,7 @@ const DeceasedRegistrationForm = () => {
                   <BrandMeta><MapPin size={12} /> {displayBranch ? `${displayBranch} · ` : ''}{displayLocation}{tenantCountry ? `, ${tenantCountry}` : ''}</BrandMeta>
                 )}
                 <BrandMeta><Phone size={12} /> {displayPhone || fallback.phone}{displayEmail ? ` · ${displayEmail}` : fallback.email ? ` · ${fallback.email}` : ''}</BrandMeta>
+                <BrandMeta><MapPin size={12} /> {displayAddress || fallback.address || fallback.location}</BrandMeta>
               </BrandDetails>
             </BrandLeftWrapper>
 
@@ -1346,7 +1156,7 @@ const DeceasedRegistrationForm = () => {
               <Section>
                 <SectionHead>
                   <SectionNum>01</SectionNum>
-                  <SectionTitle>  Receiving & Facility Information  </SectionTitle>
+                  <SectionTitle>Receiving & Facility Information</SectionTitle>
                 </SectionHead>
 
                 <Row>
@@ -1410,7 +1220,7 @@ const DeceasedRegistrationForm = () => {
               <Section>
                 <SectionHead>
                   <SectionNum>02</SectionNum>
-                  <SectionTitle> Information About Your Loved One  </SectionTitle>
+                  <SectionTitle>Information About Your Loved One</SectionTitle>
                 </SectionHead>
 
                 <Row>
@@ -1532,23 +1342,13 @@ const DeceasedRegistrationForm = () => {
                 <Row>
                   <Col15>
                     <Label>ID Number (Government-Issued)</Label>
-                    <ScanRow>
-                      <Input
-                        type="text"
-                        name="id_number"
-                        value={formData.id_number}
-                        onChange={handleChange}
-                        placeholder="National ID / Passport / Driver's License No."
-                      />
-                      <ScanButton
-                        type="button"
-                        onClick={() => setShowIdScanner(true)}
-                        disabled={loading}
-                      >
-                        <ScanBarcode size={14} />
-                        Scan
-                      </ScanButton>
-                    </ScanRow>
+                    <Input
+                      type="text"
+                      name="id_number"
+                      value={formData.id_number}
+                      onChange={handleChange}
+                      placeholder="National ID / Passport / Driver's License No."
+                    />
                   </Col15>
                   <Col06>
                     <Label>ID Type</Label>
@@ -1602,54 +1402,16 @@ const DeceasedRegistrationForm = () => {
                 </Row>
               </Section>
 
-              {/* Section 4 */}
+              {/* Section 4: Declaration & Sign-off - Personal Effects Section REMOVED */}
               <Section>
                 <SectionHead>
                   <SectionNum>04</SectionNum>
-                  <SectionTitle>Personal Effects Inventory</SectionTitle>
-                </SectionHead>
-
-                <CheckGrid>
-                  <CheckItem><Checkbox type="checkbox" /> Wallet / Purse</CheckItem>
-                  <CheckItem><Checkbox type="checkbox" /> Mobile Phone</CheckItem>
-                  <CheckItem><Checkbox type="checkbox" /> Jewelry</CheckItem>
-                  <CheckItem><Checkbox type="checkbox" /> Watch</CheckItem>
-
-                  <CheckItem><Checkbox type="checkbox" /> Clothing</CheckItem>
-                  <CheckItem><Checkbox type="checkbox" /> Eyewear</CheckItem>
-
-
-
-                  <CheckItem><Checkbox type="checkbox" /> Cash / Currency</CheckItem>
-
-                  <CheckItem><Checkbox type="checkbox" /> None</CheckItem>
-                  <CheckItem><Checkbox type="checkbox" /> Other (specify below)</CheckItem>
-                </CheckGrid>
-
-                <Row style={{ marginTop: '1.5rem' }}>
-                  <Col2>
-                    <Label>Detailed Description / Additional Items</Label>
-                    <TextArea
-                      name="belongings_description"
-                      value={formData.belongings_description}
-                      onChange={handleChange}
-                      placeholder="List all items with description, quantity, and estimated value if applicable..."
-                      rows="2"
-                    />
-                  </Col2>
-                </Row>
-              </Section>
-
-              {/* Section 5: Declaration & Sign-off */}
-              <Section>
-                <SectionHead>
-                  <SectionNum>05</SectionNum>
                   <SectionTitle>Declaration & Sign-off</SectionTitle>
                 </SectionHead>
 
                 <LegalBlock>
                   <LegalText>
-                    <TextBold>   By signing below, I confirm that:   </TextBold>
+                    <TextBold>By signing below, I confirm that:</TextBold>
                     <br />
                     The information provided is true and accurate to the best of my knowledge.
                     <br />
@@ -1760,21 +1522,8 @@ const DeceasedRegistrationForm = () => {
               </FileIdText>
             </BarcodeWrapper>
           </FooterPanel>
-
-
         </ContentWrapper>
       </FormSheet>
-
-      {showIdScanner && (
-        <IDScannerModalWrap>
-          <IDScannerComponent
-            onScanComplete={handleIdScanComplete}
-            onClose={() => setShowIdScanner(false)}
-            autoCapture={true}
-            captureDelay={3000}
-          />
-        </IDScannerModalWrap>
-      )}
 
       {showSuccess && (
         <SuccessOverlay>

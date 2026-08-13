@@ -46,6 +46,10 @@
 .mini-store .stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px rgba(0, 0, 0, 0.08); }
 .mini-store .stat-icon { width: 36px; height: 36px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
 
+.mini-store .stat-card-color { color: #fff; box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16); }
+.mini-store .stat-card-color:hover { transform: translateY(-3px); box-shadow: 0 16px 32px rgba(0, 0, 0, 0.24); }
+.mini-store .stock-gauge { display: block; }
+
 .mini-store .badge-out { background: #fee2e2; color: var(--k-danger-dark); }
 .mini-store .badge-low { background: #fef3c7; color: var(--k-warning-dark); }
 .mini-store .badge-ok { background: #d1fae5; color: var(--k-success-dark); }
@@ -72,3 +76,38 @@
 
 .mini-store .panel { background: var(--k-surface); border: 1px solid var(--k-border); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
 .mini-store .page-bg { background: #f5f7fa; min-height: calc(100vh - 64px); }
+
+/* ============================================================
+   Mobile responsive — the store is used mostly on phones
+   ============================================================ */
+@media (max-width: 767.98px) {
+  .mini-store .navbar { padding-top: .5rem; padding-bottom: .5rem; }
+  .mini-store .navbar .container-fluid { flex-wrap: wrap; row-gap: .5rem; }
+  .mini-store .navbar .navbar-tabs {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    padding-bottom: .25rem;
+    scrollbar-width: none;
+  }
+  .mini-store .navbar .navbar-tabs::-webkit-scrollbar { display: none; }
+  .mini-store .navbar .navbar-tabs .btn { white-space: nowrap; }
+  .mini-store .navbar .navbar-actions { margin-left: auto; }
+
+  /* bottom-sheet style modal on phones */
+  .mini-store .modal-dialog {
+    margin: 0;
+    align-items: flex-end;
+    min-height: calc(100% - 1rem);
+  }
+  .mini-store .modal-content { border-radius: 18px 18px 0 0; border: 0; max-height: 90vh; }
+  .mini-store .modal-body { overflow-y: auto; }
+
+  /* stat cards */
+  .mini-store .stat-card-color .card-body { padding: .9rem .4rem; }
+
+  /* tables scroll on narrow screens */
+  .mini-store .panel { overflow-x: auto; }
+}

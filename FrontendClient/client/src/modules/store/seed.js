@@ -16,6 +16,11 @@ export const STORE_CATEGORIES = [
   'Groceries', 'Household', 'Toiletries', 'Cleaning Supplies', 'Other',
 ];
 
+export const STORE_UNITS = [
+  'pcs', 'packs', 'cartons', 'crates', 'bottles', 'bags', 'boxes',
+  'cans', 'jars', 'tubs', 'liters', 'kg', 'dozens', 'pairs', 'units',
+];
+
 export const PICK_REASONS = [
   'Sold - Counter', 'Sold - Online', 'Sold - Takeaway',
   'Damaged / Expired', 'Transfer to Branch', 'Staff Meal',

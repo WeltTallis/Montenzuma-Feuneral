@@ -6,6 +6,33 @@ import {
   actionBadge, formatDate, formatTime, todayKey, dateKey, getStatus,
 } from '../seed';
 
+function StockGauge({ pct = 0, color = '#ffffff', size = 56 }) {
+  const r = 25;
+  const c = 2 * Math.PI * r;
+  const p = Math.max(0, Math.min(100, Number(pct) || 0));
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" className="stock-gauge">
+      <circle cx="32" cy="32" r={r} fill="rgba(255,255,255,.18)" />
+      <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="6" />
+      <circle
+        cx="32"
+        cy="32"
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={c * (1 - p / 100)}
+        transform="rotate(-90 32 32)"
+      />
+      <text x="32" y="37" textAnchor="middle" fill="#fff" fontWeight="700" fontSize="13">
+        {Math.round(p)}%
+      </text>
+    </svg>
+  );
+}
+
 export default function DashboardView() {
   const { stats, items, transactions } = useStoreContext();
 
@@ -15,12 +42,29 @@ export default function DashboardView() {
   const lowItems = items.filter((i) => getStatus(i) !== 'ok').sort((a, b) => a.stock - b.stock);
   const recent = [...transactions].slice(0, 12);
 
+  const total = Math.max(1, stats.total);
+  const pctOf = (n) => Math.max(0, Math.min(100, Math.round((Number(n) / total) * 100)));
   const cards = [
-    { label: 'Total Items', value: stats.total, icon: 'fa-solid fa-cubes', accent: 'var(--k-primary)' },
-    { label: 'In Stock', value: stats.inStock, icon: 'fa-solid fa-check', accent: 'var(--k-success-dark)' },
-    { label: 'Low Stock', value: stats.lowStock, icon: 'fa-solid fa-triangle-exclamation', accent: 'var(--k-warning-dark)' },
-    { label: 'Out of Stock', value: stats.outOfStock, icon: 'fa-solid fa-xmark', accent: 'var(--k-danger-dark)' },
-    { label: 'Picked Today', value: usedToday, icon: 'fa-solid fa-arrow-trend-down', accent: 'var(--k-info-dark)' },
+    {
+      label: 'Total Items', value: stats.total, icon: 'fa-solid fa-cubes',
+      pct: 100, bg: 'linear-gradient(135deg, #1a5f7a, #2c8ac9)',
+    },
+    {
+      label: 'In Stock', value: stats.inStock, icon: 'fa-solid fa-check',
+      pct: pctOf(stats.inStock), bg: 'linear-gradient(135deg, #059669, #34d399)',
+    },
+    {
+      label: 'Low Stock', value: stats.lowStock, icon: 'fa-solid fa-triangle-exclamation',
+      pct: pctOf(stats.lowStock), bg: 'linear-gradient(135deg, #d97706, #f59e0b)',
+    },
+    {
+      label: 'Out of Stock', value: stats.outOfStock, icon: 'fa-solid fa-xmark',
+      pct: pctOf(stats.outOfStock), bg: 'linear-gradient(135deg, #dc2626, #f87171)',
+    },
+    {
+      label: 'Picked Today', value: usedToday, icon: 'fa-solid fa-arrow-trend-down',
+      pct: pctOf(usedToday), bg: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+    },
   ];
 
   return (
@@ -28,19 +72,15 @@ export default function DashboardView() {
       <Row className="g-3 mb-4">
         {cards.map((c) => (
           <Col key={c.label} xs={6} lg={2}>
-            <Card className="stat-card h-100">
-              <Card.Body className="d-flex align-items-center gap-3">
-                <span
-                  className="stat-icon d-flex align-items-center justify-content-center"
-                  style={{ background: `${c.accent}14`, color: c.accent }}
+            <Card className="stat-card stat-card-color h-100" style={{ background: c.bg, border: 0 }}>
+              <Card.Body className="d-flex flex-column align-items-center justify-content-center gap-1 text-center py-3">
+                <StockGauge pct={c.pct} color="rgba(255,255,255,.95)" size={56} />
+                <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{c.value}</div>
+                <div
+                  className="text-uppercase"
+                  style={{ fontSize: 10, letterSpacing: '.08em', opacity: 0.9, fontWeight: 600 }}
                 >
-                  <i className={c.icon} />
-                </span>
-                <div>
-                  <div className="text-uppercase small fw-semibold text-secondary mb-1" style={{ letterSpacing: '.04em' }}>
-                    {c.label}
-                  </div>
-                  <div style={{ fontSize: 26, fontWeight: 700 }}>{c.value}</div>
+                  {c.label}
                 </div>
               </Card.Body>
             </Card>

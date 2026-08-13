@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Button, Form } from 'react-bootstrap';
 import { useStoreContext } from '../storeContext';
-import { STORE_CATEGORIES, STAFF_MEMBERS } from '../seed';
+import { STORE_CATEGORIES, STAFF_MEMBERS, STORE_UNITS } from '../seed';
 
 export default function AddItemModal({ show, onHide }) {
   const { addItem } = useStoreContext();
@@ -29,7 +29,7 @@ export default function AddItemModal({ show, onHide }) {
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered backdrop="static">
+    <Modal show={show} onHide={onHide} centered backdrop="static" size="lg" scrollable>
       <Modal.Header closeButton>
         <Modal.Title>Add New Item</Modal.Title>
       </Modal.Header>
@@ -46,13 +46,36 @@ export default function AddItemModal({ show, onHide }) {
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label>Category</Form.Label>
-            <Form.Select value={payload.category} onChange={(e) => upd('category', e.target.value)}>
-              {STORE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </Form.Select>
+            <Form.Control
+              type="text"
+              list="store-categories-list"
+              placeholder="e.g. Dairy & Chilled, Beverages"
+              value={payload.category}
+              onChange={(e) => upd('category', e.target.value)}
+            />
+            <datalist id="store-categories-list">
+              {STORE_CATEGORIES.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label>Unit</Form.Label>
-            <Form.Control type="text" value={payload.unit} onChange={(e) => upd('unit', e.target.value)} />
+            <Form.Control
+              type="text"
+              list="store-units-list"
+              placeholder="e.g. cartons, pcs, packs"
+              value={payload.unit}
+              onChange={(e) => upd('unit', e.target.value)}
+            />
+            <datalist id="store-units-list">
+              {STORE_UNITS.map((u) => (
+                <option key={u} value={u} />
+              ))}
+            </datalist>
+            <Form.Text className="text-muted">
+              e.g. Cartons of Milk, Crates of Eggs, Packs of Sugar
+            </Form.Text>
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label>Initial Stock</Form.Label>

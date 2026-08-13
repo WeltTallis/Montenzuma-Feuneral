@@ -648,6 +648,8 @@ function ReleaseFormPage() {
     embalmingAuthorized: false,
     finalDisposition: '',
     additionalNotes: '',
+    termsAccepted: false,
+    everythingPaid: true,
   });
   const [deceasedData, setDeceasedData] = useState(null);
   const [postmortemData, setPostmortemData] = useState(null);
@@ -659,6 +661,12 @@ function ReleaseFormPage() {
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
   const [loadingDeceased, setLoadingDeceased] = useState(true);
   const [viewMode, setViewMode] = useState(false);
+  const [lookupAdmissionNumber, setLookupAdmissionNumber] = useState('');
+  const [isLookupLoading, setIsLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState('');
+  const [admissionNumber, setAdmissionNumber] = useState('');
+  const isNewMode = !id || id === 'new' || id === 'undefined';
+
 
   useEffect(() => {
     if (location.state?.viewMode) {
@@ -675,16 +683,27 @@ function ReleaseFormPage() {
 
     const fetchDeceasedData = async () => {
       try {
-        if (!id) return;
-        const res = await api.get(ENDPOINTS.DECEASED(id));
+        if (!id || isNewMode) {
+          setLoadingDeceased(false);
+          return;
+        }
+        const res = await api.get(ENDPOINTS.DECEASED.DETAIL(id));
         const data = res.data?.data || res.data;
         setDeceasedData(data);
+        setAdmissionNumber(data?.admission_number || '');
+        setFormData((prev) => ({
+          ...prev,
+          idNumber: data?.national_id || prev.idNumber,
+          phoneNumber: data?.phone_number || prev.phoneNumber,
+          facilityName: data?.receiving_officer || prev.facilityName,
+        }));
         if (data?.postmortem_record) {
           setPostmortemData(data.postmortem_record);
         }
       } catch (err) {
         console.error('Error fetching deceased:', err);
-        setError('Could not load deceased record.');
+        // Don't block the form - let the user look up by admission number instead
+        setLoadingDeceased(false);
       } finally {
         setLoadingDeceased(false);
       }
@@ -702,35 +721,84 @@ function ReleaseFormPage() {
     const { name, checked } = e.target;
     setFormData((prev) => ({ ...prev, [name]: checked }));
   };
+  const handleAdmissionLookup = async () => {
+    if (!lookupAdmissionNumber.trim()) {
+      setLookupError('Please enter an admission number.');
+      toast.error('Please enter an admission number.');
+      return;
+    }
+    setIsLookupLoading(true);
+    setLookupError('');
+    try {
+      const res = await api.get(ENDPOINTS.DECEASED.BY_ADMISSION(lookupAdmissionNumber.trim()));
+      const data = res.data?.data || res.data;
+      if (!data) {
+        setLookupError('No deceased record found with that admission number.');
+        toast.error('No deceased record found with that admission number.');
+        return;
+      }
+      setDeceasedData(data);
+      setAdmissionNumber(data?.admission_number || lookupAdmissionNumber.trim());
+      setFormData((prev) => ({
+        ...prev,
+        idNumber: data?.national_id || prev.idNumber,
+        phoneNumber: data?.phone_number || prev.phoneNumber,
+        facilityName: data?.receiving_officer || prev.facilityName,
+      }));
+      if (data?.postmortem_record) {
+        setPostmortemData(data.postmortem_record);
+      }
+      toast.success(`Deceased record loaded: ${data?.full_name || 'Unknown'}`);
+    } catch (err) {
+      console.error('Admission lookup error:', err);
+      setLookupError(err?.response?.data?.message || 'No deceased record found with that admission number.');
+    } finally {
+      setIsLookupLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setShowErrors(true);
+    if (!formData.termsAccepted) {
+      toast.error('Please accept the terms and authorizations to proceed.');
+      return;
+    }
     if (!formData.releasedTo || !formData.relationship || !formData.phoneNumber || !formData.idNumber || !signature) {
       toast.error('Please fill in all required fields and sign the form.');
       return;
     }
     setSubmitting(true);
     try {
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const payload = {
-        ...formData,
-        deceased_id: id,
-        next_of_kin_name: formData.releasedTo,
-        relationship: formData.relationship,
-        contact_number: formData.phoneNumber,
+        admission_number: deceasedData?.admission_number || admissionNumber || '',
+        name_of_deceased: deceasedData?.full_name || '',
         id_number: formData.idNumber,
+        next_kin: formData.releasedTo,
+        tell_number: formData.phoneNumber,
+        relationship: formData.relationship,
+        date_of_removal: formData.dateReleased || today,
+        time_of_removal: formData.timeReleased || currentTime,
+        mode_of_transport: formData.transportBy,
+        permit_number: deceasedData?.permit_number || '',
+        everything_paid: !!formData.everythingPaid,
+        terms_accepted: !!formData.termsAccepted,
         signature: signature,
-        released_to_name: formData.releasedTo,
-        released_by: formData.releasedBy || 'Staff',
+        staff_name: formData.releasedBy || 'Staff',
+        received_by: formData.facilityName || 'RestPoint Funeral Services',
+        items_returned: '',
+        notes: [formData.additionalNotes, formData.additionalWitnesses, formData.finalDisposition, formData.driverName, formData.receivingFuneralHome, formData.cityState].filter(Boolean).join('\n'),
       };
       const res = await api.post(ENDPOINTS.RELEASE_FORMS(), payload);
-      setReleaseId(res.data?.data?.id || res.data?.id);
+      setReleaseId(res.data?.data?.release_id || res.data?.release_id || res.data?.data?.id || res.data?.id);
       setSubmissionSuccess(true);
       toast.success('Release form submitted successfully!');
     } catch (err) {
       console.error('Submit error:', err);
-      toast.error('Failed to submit form. Please try again.');
-      setError('Failed to submit. Please try again.');
+      toast.error(err?.response?.data?.message || 'Failed to submit form. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -784,9 +852,9 @@ function ReleaseFormPage() {
     );
   }
 
-  const fullName = [deceasedData?.first_name, deceasedData?.middle_name, deceasedData?.last_name].filter(Boolean).join(' ') || 'Unknown';
+  const fullName = deceasedData?.full_name || [deceasedData?.first_name, deceasedData?.middle_name, deceasedData?.last_name].filter(Boolean).join(' ') || 'Unknown';
   const age = deceasedData?.age ? `${deceasedData.age} years` : 'N/A';
-  const sex = deceasedData?.sex || 'N/A';
+  const sex = deceasedData?.gender || deceasedData?.sex || 'N/A';
   const dateOfDeath = deceasedData?.date_of_death || postmortemData?.date_of_death || 'N/A';
   const placeOfDeath = deceasedData?.place_of_death || postmortemData?.place_of_death || 'N/A';
   const causeOfDeath = postmortemData?.cause_of_death || deceasedData?.cause_of_death || 'Not specified';
@@ -816,6 +884,62 @@ function ReleaseFormPage() {
           </Letterhead>
 
           <FormBody>
+            {/* Section 0: Admission Number Lookup */}
+            <Section>
+              <SectionHead>
+                <SectionNum>00</SectionNum>
+                <SectionTitle>{deceasedData ? 'Deceased Record' : 'Locate Deceased by Admission Number'}</SectionTitle>
+              </SectionHead>
+              {!deceasedData ? (
+                <Row>
+                  <Col2>
+                    <Label>Admission Number</Label>
+                    <FlexRow style={{ gap: '8px', alignItems: 'flex-start' }}>
+                      <Input
+                        type="text"
+                        value={lookupAdmissionNumber}
+                        onChange={(e) => { setLookupAdmissionNumber(e.target.value); setLookupError(''); }}
+                        placeholder="Enter admission number (e.g. ADM-2025-001)"
+                      />
+                      <PrimaryButton type="button" onClick={handleAdmissionLookup} disabled={isLookupLoading} style={{ whiteSpace: 'nowrap' }}>
+                        {isLookupLoading ? <Loader2 size={16} /> : <Search size={16} />}
+                        {isLookupLoading ? 'Searching...' : 'Load Record'}
+                      </PrimaryButton>
+                    </FlexRow>
+                    <p style={{ color: COLORS.gray, fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                      Enter the patient's admission number to auto-populate the deceased details below.
+                    </p>
+                    {lookupError && (
+                      <div style={{ color: COLORS.red, fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                        <AlertCircle size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                        {lookupError}
+                      </div>
+                    )}
+                  </Col2>
+                </Row>
+              ) : (
+                <Row>
+                  <Col2>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '0.9rem 1rem', background: COLORS.grayLight, border: `1px solid ${COLORS.border}`, borderRadius: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                        <User size={16} color={COLORS.ink} />
+                        <strong style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {deceasedData?.full_name || 'Unknown'}
+                        </strong>
+                        <span style={{ color: COLORS.gray, fontSize: '0.85rem' }}>
+                          (Admission: {deceasedData?.admission_number || admissionNumber || 'ï¿½'})
+                        </span>
+                      </div>
+                      {isNewMode && (
+                        <SecondaryButton type="button" onClick={() => { setDeceasedData(null); setLookupError(''); }} style={{ whiteSpace: 'nowrap' }}>
+                          Change
+                        </SecondaryButton>
+                      )}
+                    </div>
+                  </Col2>
+                </Row>
+              )}
+            </Section>
             {/* Section 1: Deceased Information */}
             <Section>
               <SectionHead>
@@ -1011,6 +1135,21 @@ function ReleaseFormPage() {
                   </CheckGrid>
                 </Col2>
               </Row>
+              <Row>
+                <Col2>
+                  <CheckGrid>
+                    <CheckItem>
+                      <Checkbox type="checkbox" name="termsAccepted" checked={formData.termsAccepted} onChange={handleCheckboxChange} />
+                      I have read and accept the above declaration, certification, and indemnification terms <span style={{ color: COLORS.red }}>*</span>
+                    </CheckItem>
+                  </CheckGrid>
+                  {showErrors && !formData.termsAccepted && (
+                    <div style={{ color: COLORS.red, fontSize: '0.8rem', marginTop: '0.5rem' }}>You must accept the terms to proceed</div>
+                  )}
+                </Col2>
+              </Row>
+
+
 
               <Row>
                 <Col2>

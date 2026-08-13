@@ -5,15 +5,13 @@ import styled, { keyframes } from 'styled-components';
  * OfficialStamp — Vibrant, clean, professional blue rubber stamp component.
  * 
  * Improvements:
- * - Asymmetrical arc tuning: Top arcs are deeper to keep the name high 
- *   and perfectly fitted to the top border.
- * - Bottom arcs are flatter to lift the location and phone number UP 
- *   so they don't fall out of the bottom edge.
- * - Perfect vertical harmony between all text elements and the center date.
+ * - Inner border repositioned to avoid cutting through text
+ * - Proper spacing between text and borders
+ * - Clean, professional rubber stamp appearance
  */
 
 const COLORS = {
-  stampBlue: '#1D5BD8', // Vibrant, true rubber-stamp royal blue
+  stampBlue: '#0f33e7', // Vibrant, true rubber-stamp royal blue
   stampRed: '#DC2626',  // Vivid crimson red for the date
 };
 
@@ -37,7 +35,7 @@ const StampWrapper = styled.div`
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
+  padding: 0px;
   user-select: none;
 `;
 
@@ -50,9 +48,10 @@ const StyledSVG = styled.svg`
 
 const OfficialStamp = ({
   tenantName = 'FUNERAL HOME',
-  tenantPhone = '+254 700 000 000',
+  tenantPhone = '+254-722-827-652',
   tenantLocation = 'NAIROBI, KENYA',
   recordLabel = 'OFFICIAL INTAKE RECORD',
+  adress   = ' Raila Odinga Wy, Nairobi',
   stampBlue = COLORS.stampBlue,
   stampRed = COLORS.stampRed,
 }) => {
@@ -63,21 +62,21 @@ const OfficialStamp = ({
   const truncate = (text, maxLen) =>
     text && text.length > maxLen ? text.slice(0, maxLen - 1) + '…' : text;
 
-  const stampName = truncate((tenantName || 'FUNERAL ').toUpperCase(), 28);
-  const stampLocation = truncate((tenantLocation || 'NAIROBI, KENYA').toUpperCase(), 32);
-  const stampPhone = truncate(`TEL: ${tenantPhone || '+254 700 000 000'}`, 28);
+  const stampName = truncate((tenantName || 'FUNERAL HOME').toUpperCase(), 22);
+  const stampLocation = truncate((tenantLocation || 'NAIROBI, KENYA').toUpperCase(), 24);
+  const stampPhone = truncate(`TEL: ${tenantPhone || '+254 700 000 000'}`, 22);
 
   return (
     <StampWrapper>
-      <StyledSVG width="340" height="220" viewBox="0 0 340 220">
+      <StyledSVG width="340" height="230" viewBox="0 0 340 230">
         <defs>
-          {/* TOP ARCS: Deeper Y-radius (75 & 58) to push name & label UP towards the border */}
-          <path id="topOuterArc" d="M 40,110 A 130,75 0 0,1 300,110" />
-          <path id="topInnerArc" d="M 65,110 A 105,58 0 0,1 275,110" />
+          {/* TOP ARCS: Properly spaced from borders */}
+          <path id="topOuterArc" d="M 35,115 A 135,70 0 0,1 305,115" />
+          <path id="topInnerArc" d="M 60,115 A 110,52 0 0,1 280,115" />
           
-          {/* BOTTOM ARCS: Flatter Y-radius (50 & 68) to lift location & phone UP closer to date */}
-          <path id="bottomInnerArc" d="M 65,110 A 105,50 0 0,0 275,110" />
-          <path id="bottomOuterArc" d="M 40,110 A 130,68 0 0,0 300,110" />
+          {/* BOTTOM ARCS: Properly spaced from borders */}
+          <path id="bottomInnerArc" d="M 60,115 A 110,48 0 0,0 280,115" />
+          <path id="bottomOuterArc" d="M 35,115 A 135,62 0 0,0 305,115" />
 
           {/* Subtle ink texture filter */}
           <filter id="cleanGrunge" x="-10%" y="-10%" width="120%" height="120%">
@@ -90,47 +89,47 @@ const OfficialStamp = ({
 
         <g filter="url(#cleanGrunge)">
           {/* Outer Border */}
-          <ellipse cx="170" cy="110" rx="143" ry="90" fill="none" stroke={stampBlue} strokeWidth="3.5" />
+          <ellipse cx="170" cy="115" rx="150" ry="95" fill="none" stroke={stampBlue} strokeWidth="4.5" />
           
-          {/* Inner Border */}
-          <ellipse cx="170" cy="110" rx="130" ry="72" fill="none" stroke={stampBlue} strokeWidth="1.2" />
+          {/* Inner Border - Moved further out to avoid text */}
+          <ellipse cx="170" cy="115" rx="125" ry="67" fill="none" stroke={stampBlue} strokeWidth="1s" />
 
           {/* Top Outer Text (Tenant Name) */}
-          <text fill={stampBlue} fontSize="14" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="2.9">
+          <text fill={stampBlue} fontSize="18" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="4.5">
             <textPath href="#topOuterArc" startOffset="50%" textAnchor="middle">
               {stampName}
             </textPath>
           </text>
 
           {/* Top Inner Text (Record Label) */}
-          <text fill={stampBlue} fontSize="10.5" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="2">
+          <text fill={stampBlue} fontSize="14" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="2.5">
             <textPath href="#topInnerArc" startOffset="50%" textAnchor="middle">
               {recordLabel}
             </textPath>
           </text>
 
           {/* Center Date Dividing Lines */}
-          <line x1="85" y1="88" x2="255" y2="88" stroke={stampBlue} strokeWidth="1.2" strokeDasharray="4,3" />
-          <line x1="85" y1="132" x2="255" y2="132" stroke={stampBlue} strokeWidth="1.2" strokeDasharray="4,3" />
+          <line x1="85" y1="92" x2="255" y2="92" stroke={stampBlue} strokeWidth="1.2" strokeDasharray="4,3" />
+          <line x1="85" y1="138" x2="255" y2="138" stroke={stampBlue} strokeWidth="1.2" strokeDasharray="4,3" />
 
           {/* Center Date (Red Ink) */}
-          <text x="170" y="118" fill={stampRed} fontSize="26" fontWeight="900" fontFamily="Arial, Helvetica, sans-serif" textAnchor="middle" letterSpacing="1.5">
+          <text x="170" y="123" fill={stampRed} fontSize="32" fontWeight="900" fontFamily="Arial, Helvetica, sans-serif" textAnchor="middle" letterSpacing="2">
             {formattedDate}
           </text>
 
-          {/* Decorative Stars (Aligned with date center) */}
-          <polygon points="95,110 98,116 105,116 100,120 102,126 95,122 88,126 90,120 85,116 92,116" fill={stampBlue} />
-          <polygon points="245,110 248,116 255,116 250,120 252,126 245,122 238,126 240,120 235,116 242,116" fill={stampBlue} />
+          {/* Decorative Stars */}
+          <polygon points="98,115 101,120 106,120 102,123 104,128 98,125 92,128 94,123 90,120 95,120" fill={stampBlue} />
+          <polygon points="242,115 245,120 250,120 246,123 248,128 242,125 236,128 238,123 234,120 239,120" fill={stampBlue} />
 
-          {/* Bottom Inner Text (Location) - Lifted slightly higher */}
-          <text fill={stampBlue} fontSize="10" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="1.8">
+          {/* Bottom Inner Text (Location) */}
+          <text fill={stampBlue} fontSize="10.5" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="2">
             <textPath href="#bottomInnerArc" startOffset="50%" textAnchor="middle">
               {stampLocation}
             </textPath>
           </text>
 
-          {/* Bottom Outer Text (Phone) - Lifted slightly higher */}
-          <text fill={stampBlue} fontSize="11" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="1.8">
+          {/* Bottom Outer Text (Phone) */}
+          <text fill={stampBlue} fontSize="12" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="2">
             <textPath href="#bottomOuterArc" startOffset="50%" textAnchor="middle">
               {stampPhone}
             </textPath>

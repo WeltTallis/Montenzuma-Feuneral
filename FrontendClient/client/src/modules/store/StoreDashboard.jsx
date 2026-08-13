@@ -52,7 +52,7 @@ export default function StoreDashboard() {
               MiniStore
             </Navbar.Brand>
 
-            <div className="d-flex align-items-center gap-1 flex-wrap">
+                        <div className="d-flex align-items-center gap-1 flex-wrap navbar-tabs">
               {TABS.map((t) => (
                 <Button
                   key={t.key}
@@ -65,7 +65,7 @@ export default function StoreDashboard() {
               ))}
             </div>
 
-            <div className="d-flex align-items-center gap-3 ms-auto">
+                        <div className="d-flex align-items-center gap-3 ms-auto navbar-actions">
               <Button
                 variant="primary"
                 size="sm"
