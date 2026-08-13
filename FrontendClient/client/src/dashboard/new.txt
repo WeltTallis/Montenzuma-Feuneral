@@ -1,0 +1,701 @@
+your  layout lloks ab d us ethe   full clande  ri provid e us emy lyout now   show  dya event how ma  showing   "use client"
+
+import { useMemo, useState } from "react"
+import { DashboardHeader } from "'components/dashboard-header"' (see below for file content)
+import { StatCards } from "'components/stat-cards"' (see below for file content)
+import { OperationsCalendar, type CalView } from "'components/operations-calendar"' (see below for file content)
+import { DayEvents } from "'components/day-events"' (see below for file content)
+import { FleetCommand } from "'components/fleet-command"' (see below for file content)
+import { BodyFlow } from "'components/body-flow"' (see below for file content)
+import { CoffinInventory } from "'components/coffin-inventory"' (see below for file content)
+import { ConflictAlerts } from "'components/conflict-alerts"' (see below for file content)
+import { ResourceSharing } from "'components/resource-sharing"' (see below for file content)
+import { AnalyticsPanel } from "'components/analytics-panel"' (see below for file content)
+import { BranchCharts } from "'components/branch-charts"' (see below for file content)
+import { generateEvents, toDateKey } from "'lib/funeral-data"' (see below for file content)
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-1 mt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{children}</h2>
+  )
+}
+
+export default function Page() {
+  const today = useMemo(() => new Date(), [])
+  const events = useMemo(() => generateEvents(today), [today])
+
+  const [view, setView] = useState<CalView>("month")
+  const [cursor, setCursor] = useState<Date>(today)
+  const [selected, setSelected] = useState<Date>(today)
+
+  const selectedKey = toDateKey(selected)
+  const dayEvents = useMemo(() => events.filter((e) => e.date === selectedKey), [events, selectedKey])
+
+  function handleSelect(d: Date) {
+    setSelected(d)
+    setCursor(d)
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <DashboardHeader />
+
+      <main className="mx-auto flex max-w-[1600px] flex-col gap-4 px-6 py-6">
+        <StatCards dayEvents={dayEvents} />
+
+        {/* Command row: urgent operational awareness */}
+        <SectionTitle>Command &amp; Alerts</SectionTitle>
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12 min-h-[340px] xl:col-span-4">
+            <ConflictAlerts />
+          </div>
+          <div className="col-span-12 min-h-[340px] md:col-span-6 xl:col-span-4">
+            <ResourceSharing />
+          </div>
+          <div className="col-span-12 min-h-[340px] md:col-span-6 xl:col-span-4">
+            <CoffinInventory />
+          </div>
+        </div>
+
+        {/* Central calendar */}
+        <SectionTitle>Operations Calendar</SectionTitle>
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12 min-h-[560px] lg:col-span-7">
+            <OperationsCalendar
+              view={view}
+              onViewChange={setView}
+              cursor={cursor}
+              onCursorChange={setCursor}
+              selected={selected}
+              onSelect={handleSelect}
+              events={events}
+            />
+          </div>
+          <div className="col-span-12 min-h-[560px] lg:col-span-5">
+            <DayEvents date={selected} events={dayEvents} />
+          </div>
+        </div>
+
+        {/* Fleet command */}
+        <SectionTitle>Fleet Command</SectionTitle>
+        <FleetCommand />
+
+        {/* Body flow */}
+        <SectionTitle>Mortuary Flow</SectionTitle>
+        <BodyFlow />
+
+        {/* Analytics */}
+        <SectionTitle>Analytics</SectionTitle>
+        <AnalyticsPanel />
+        <BranchCharts events={events} />
+      </main>
+    </div>
+  )
+}@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  color-scheme: light;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+  "use client"
+
+import { useMemo } from "react"
+import { BRANCHES, type OpEvent, toDateKey } from "'lib/funeral-data"' (see below for file content)
+import { cn } from "'lib/utils"' (see below for file content)
+import { Button } from "'components/ui/button"' (see below for file content)
+import { ChevronLeft, ChevronRight } from "lucide-react"
+
+export type CalView = "month" | "week" | "day"
+
+interface CalendarProps {
+  view: CalView
+  onViewChange: (v: CalView) => void
+  cursor: Date // month/week anchor
+  onCursorChange: (d: Date) => void
+  selected: Date
+  onSelect: (d: Date) => void
+  events: OpEvent[]
+}
+
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+function startOfWeek(d: Date) {
+  const r = new Date(d)
+  const day = (r.getDay() + 6) % 7 // Monday = 0
+  r.setDate(r.getDate() - day)
+  r.setHours(0, 0, 0, 0)
+  return r
+}
+
+function sameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
+export function OperationsCalendar({
+  view,
+  onViewChange,
+  cursor,
+  onCursorChange,
+  selected,
+  onSelect,
+  events,
+}: CalendarProps) {
+  const today = useMemo(() => new Date(), [])
+
+  const byDay = useMemo(() => {
+    const map = new Map<string, OpEvent[]>()
+    for (const e of events) {
+      const arr = map.get(e.date) ?? []
+      arr.push(e)
+      map.set(e.date, arr)
+    }
+    return map
+  }, [events])
+
+  const monthDays = useMemo(() => {
+    const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
+    const gridStart = startOfWeek(first)
+    return Array.from({ length: 42 }, (_, i) => {
+      const d = new Date(gridStart)
+      d.setDate(gridStart.getDate() + i)
+      return d
+    })
+  }, [cursor])
+
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(cursor)
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start)
+      d.setDate(start.getDate() + i)
+      return d
+    })
+  }, [cursor])
+
+  function shift(dir: number) {
+    const d = new Date(cursor)
+    if (view === "month") d.setMonth(d.getMonth() + dir)
+    else if (view === "week") d.setDate(d.getDate() + dir * 7)
+    else d.setDate(d.getDate() + dir)
+    onCursorChange(d)
+    if (view === "day") onSelect(d)
+  }
+
+  const headerLabel =
+    view === "month"
+      ? `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`
+      : view === "week"
+        ? `Week of ${weekDays[0].getDate()} ${MONTHS[weekDays[0].getMonth()].slice(0, 3)} – ${weekDays[6].getDate()} ${MONTHS[weekDays[6].getMonth()].slice(0, 3)}`
+        : `${selected.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}`
+
+  function branchDots(d: Date) {
+    const list = byDay.get(toDateKey(d)) ?? []
+    const set = new Set(list.map((e) => e.branch))
+    return Array.from(set)
+  }
+
+  return (
+    <div className="flex h-full flex-col rounded-xl border border-border bg-card">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" className="h-8 w-8 bg-transparent" onClick={() => shift(-1)} aria-label="Previous">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 bg-transparent" onClick={() => shift(1)} aria-label="Next">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <h2 className="ml-1 text-sm font-semibold text-foreground">{headerLabel}</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-muted-foreground"
+            onClick={() => {
+              onCursorChange(new Date())
+              onSelect(new Date())
+            }}
+          >
+            Today
+          </Button>
+        </div>
+
+        <div className="flex items-center rounded-lg border border-border p-0.5">
+          {(["month", "week", "day"] as CalView[]).map((v) => (
+            <button
+              key={v}
+              onClick={() => onViewChange(v)}
+              className={cn(
+                "rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors",
+                view === v ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Month view */}
+      {view === "month" && (
+        <div className="flex flex-1 flex-col p-3">
+          <div className="grid grid-cols-7">
+            {WEEKDAYS.map((d) => (
+              <div key={d} className="pb-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {d}
+              </div>
+            ))}
+          </div>
+          <div className="grid flex-1 grid-cols-7 gap-1">
+            {monthDays.map((d, i) => {
+              const inMonth = d.getMonth() === cursor.getMonth()
+              const isSel = sameDay(d, selected)
+              const isToday = sameDay(d, today)
+              const dots = branchDots(d)
+              const total = (byDay.get(toDateKey(d)) ?? []).length
+              return (
+                <button
+                  key={i}
+                  onClick={() => onSelect(d)}
+                  className={cn(
+                    "flex min-h-[64px] flex-col items-start rounded-lg border p-1.5 text-left transition-colors",
+                    isSel ? "border-foreground bg-foreground/[0.03]" : "border-transparent hover:border-border hover:bg-muted/50",
+                    !inMonth && "opacity-40",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 items-center justify-center rounded-full text-xs tabular-nums",
+                      isToday ? "bg-foreground font-semibold text-background" : "text-foreground",
+                    )}
+                  >
+                    {d.getDate()}
+                  </span>
+                  <div className="mt-auto flex w-full items-center justify-between pt-1">
+                    <div className="flex gap-0.5">
+                      {dots.map((b) => (
+                        <span key={b} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: BRANCHES[b].color }} />
+                      ))}
+                    </div>
+                    {total > 0 && <span className="text-[10px] font-medium tabular-nums text-muted-foreground">{total}</span>}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Week view */}
+      {view === "week" && (
+        <div className="grid flex-1 grid-cols-7 gap-1 p-3">
+          {weekDays.map((d, i) => {
+            const isSel = sameDay(d, selected)
+            const isToday = sameDay(d, today)
+            const list = (byDay.get(toDateKey(d)) ?? []).slice().sort((a, b) => a.time.localeCompare(b.time))
+            return (
+              <button
+                key={i}
+                onClick={() => onSelect(d)}
+                className={cn(
+                  "flex flex-col rounded-lg border p-2 text-left transition-colors",
+                  isSel ? "border-foreground bg-foreground/[0.03]" : "border-border hover:bg-muted/50",
+                )}
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[11px] font-medium uppercase text-muted-foreground">{WEEKDAYS[i]}</span>
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 items-center justify-center rounded-full text-xs tabular-nums",
+                      isToday ? "bg-foreground font-semibold text-background" : "text-foreground",
+                    )}
+                  >
+                    {d.getDate()}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {list.slice(0, 6).map((e) => (
+                    <div
+                      key={e.id}
+                      className="truncate rounded px-1.5 py-1 text-[10px] font-medium"
+                      style={{ backgroundColor: BRANCHES[e.branch].color + "1a", color: BRANCHES[e.branch].color }}
+                    >
+                      <span className="tabular-nums">{e.time}</span> {e.title}
+                    </div>
+                  ))}
+                  {list.length > 6 && <span className="px-1 text-[10px] text-muted-foreground">+{list.length - 6} more</span>}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Day view */}
+      {view === "day" && <DayTimeline events={(byDay.get(toDateKey(selected)) ?? [])} />}
+    </div>
+  )
+}
+
+function DayTimeline({ events }: { events: OpEvent[] }) {
+  const hours = Array.from({ length: 14 }, (_, i) => i + 7) // 07:00 - 20:00
+  return (
+    <div className="flex-1 overflow-auto p-3">
+      <div className="flex flex-col">
+        {hours.map((h) => {
+          const slot = events
+            .filter((e) => Number.parseInt(e.time.split(":")[0], 10) === h)
+            .sort((a, b) => a.time.localeCompare(b.time))
+          return (
+            <div key={h} className="flex gap-3 border-b border-border py-2 last:border-0">
+              <span className="w-12 shrink-0 pt-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+                {h.toString().padStart(2, "0")}:00
+              </span>
+              <div className="flex flex-1 flex-wrap gap-1.5">
+                {slot.length === 0 ? (
+                  <span className="text-[11px] text-muted-foreground/40">—</span>
+                ) : (
+                  slot.map((e) => (
+                    <div
+                      key={e.id}
+                      className="rounded-md border px-2 py-1 text-[11px]"
+                      style={{
+                        backgroundColor: BRANCHES[e.branch].color + "12",
+                        borderColor: BRANCHES[e.branch].color + "40",
+                        color: BRANCHES[e.branch].color,
+                      }}
+                    >
+                      <span className="tabular-nums">{e.time}</span> · {e.title} · {e.deceasedName}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+"use client"
+
+import { useMemo } from "react"
+import {
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts"
+import { weeklyTrend, branchUtilization, fleetFuelAvg } from "'lib/command-data"' (see below for file content)
+import { BRANCHES } from "'lib/funeral-data"' (see below for file content)
+import { TrendingUp } from "lucide-react"
+
+export function AnalyticsPanel() {
+  const today = useMemo(() => new Date(), [])
+  const trend = useMemo(() => weeklyTrend(today), [today])
+  const util = useMemo(() => branchUtilization(), [])
+
+  return (
+    <section className="rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-2 border-b border-border p-4">
+        <TrendingUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-foreground">Operations Analytics</h2>
+        <span className="ml-auto text-[11px] text-muted-foreground">Last 7 days</span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 p-4 lg:grid-cols-3">
+        {/* Combination chart: bars (intake/release) + line (services) */}
+        <div className="lg:col-span-2">
+          <p className="mb-3 text-xs font-medium text-muted-foreground">
+            Intakes &amp; releases (bars) vs. funeral services (line)
+          </p>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={trend} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 8,
+                    border: "1px solid var(--color-border)",
+                    fontSize: 12,
+                    backgroundColor: "var(--color-card)",
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="intakes" name="Intakes" fill="#2563eb" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                <Bar dataKey="releases" name="Releases" fill="#059669" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                <Line type="monotone" dataKey="services" name="Services" stroke="#d97706" strokeWidth={2.5} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Branch capacity utilization */}
+        <div>
+          <p className="mb-3 text-xs font-medium text-muted-foreground">Branch capacity utilization</p>
+          <ul className="flex flex-col gap-3">
+            {util.map((u) => {
+              const branch = BRANCHES[u.branch]
+              const over = u.value >= 90
+              return (
+                <li key={u.branch}>
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="font-medium text-foreground">{u.name}</span>
+                    <span className="tabular-nums" style={{ color: over ? "#dc2626" : branch.color }}>
+                      {u.value}%
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full transition-[width] duration-700"
+                      style={{ width: `${u.value}%`, backgroundColor: over ? "#dc2626" : branch.color }}
+                    />
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+
+          <div className="mt-5 rounded-lg border border-border p-3">
+            <p className="text-xs font-medium text-muted-foreground">Fleet fuel average</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{fleetFuelAvg()}%</p>
+            <div className="mt-2 flex flex-col gap-1.5">
+              {(["nairobi", "thika", "machakos"] as const).map((b) => (
+                <div key={b} className="flex items-center justify-between text-[11px]">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: BRANCHES[b].color }} />
+                    {BRANCHES[b].name}
+                  </span>
+                  <span className="tabular-nums text-foreground">{fleetFuelAvg(b)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+<file_content path="components/dashboard-header"">
+Error fetching content: Failed to access path "components/dashboard-header"": ENOENT: no such file or directory, stat 'd:\new\restpoint\components\dashboard-header"'
+</file_content>
+
+<file_content path="components/stat-cards"">
+Error fetching content: Failed to access path "components/stat-cards"": ENOENT: no such file or directory, stat 'd:\new\restpoint\components\stat-cards"'
+</file_content>
+
+<file_content path="components/operations-calendar"">
+Error fetching content: Failed to access path "components/operations-calendar"": ENOENT: no such file or directory, stat 'd:\new\restpoint\components\operations-calendar"'
+</file_content>
+
+<file_content path="components/day-events"">
+Error fetching content: Failed to access path "components/day-events"": ENOENT: no such file or directory, stat 'd:\new\restpoint\components\day-events"'
+</file_content>
+
+<file_content path="components/fleet-command"">
+Error fetching content: Failed to access path "components/fleet-command"": ENOENT: no such file or directory, stat 'd:\new\restpoint\components\fleet-command"'
+</file_content>
+
+<file_content path="components/body-flow"">
+Error fetching content: Failed to access path "components/body-flow"": ENOENT: no such file or directory, stat 'd:\new\restpoint\components\body-flow"'
+</file_content>
+
+<file_content path="components/coffin-inventory"">
+Error fetching content: Failed to access path "components/coffin-inventory"": ENOENT: no such file or directory, stat 'd:\new\restpoint\components\coffin-inventory"'
+</file_content>
+
+<file_content path="components/conflict-alerts"">
+Error fetching content: Failed to access path "components/conflict-alerts"": ENOENT: no such file or directory, stat 'd:\new\restpoint\components\conflict-alerts"'
+</file_content>
+
+<file_content path="components/resource-sharing"">
+Error fetching content: Failed to access path "components/resource-sharing"": ENOENT: no such file or directory, stat 'd:\new\restpoint\components\resource-sharing"'
+</file_content>
+
+<file_content path="components/analytics-panel"">
+Error fetching content: Failed to access path "components/analytics-panel"": ENOENT: no such file or directory, stat 'd:\new\restpoint\components\analytics-panel"'
+</file_content>
+
+<file_content path="components/branch-charts"">
+Error fetching content: Failed to access path "components/branch-charts"": ENOENT: no such file or directory, stat 'd:\new\restpoint\components\branch-charts"'
+</file_content>
+
+<file_content path="lib/funeral-data"">
+Error fetching content: Failed to access path "lib/funeral-data"": ENOENT: no such file or directory, stat 'd:\new\restpoint\lib\funeral-data"'
+</file_content>
+
+<file_content path="lib/utils"">
+Error fetching content: Failed to access path "lib/utils"": ENOENT: no such file or directory, stat 'd:\new\restpoint\lib\utils"'
+</file_content>
+
+<file_content path="components/ui/button"">
+Error fetching content: Failed to access path "components/ui/button"": ENOENT: no such file or directory, stat 'd:\new\restpoint\components\ui\button"'
+</file_content>
+
+<file_content path="lib/command-data"">
+Error fetching content: Failed to access path "lib/command-data"": ENOENT: no such file or directory, stat 'd:\new\restpoint\lib\command-data"'
+</file_content>
