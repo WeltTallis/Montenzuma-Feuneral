@@ -13,43 +13,70 @@ const colors = {
   autopsyDanger: '#37fc00',
 };
 
-// ------------------- STYLED COMPONENTS -------------------
 const FooterBar = styled.footer`
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1.25rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 1.25rem;
   background: #0f172a;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   color: #94a3b8;
   font-size: 0.75rem;
-  gap: 1rem;
+  gap: 0.75rem;
+  overflow: hidden;
+
+  > * {
+    min-width: 0;
+  }
+
+  @media (max-width: 900px) {
+    justify-content: center;
+  }
 
   @media (max-width: 600px) {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
-    gap: 1.25rem;
-    padding: 1rem; /* taller padding on mobile */
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
   }
 `;
 
 const Section = styled.div`
   display: flex;
   align-items: center;
-  gap: 1rem;
+  min-width: 0;
+  gap: 0.8rem;
+  flex-shrink: 1;
+
+  /* Prevent long text from pushing the footer wider */
+  > * {
+    min-width: 0;
+  }
+
+  span {
+    min-width: 0;
+  }
+
+  @media (max-width: 900px) {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 
   @media (max-width: 600px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
+    width: 100%;
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.55rem;
 
     &:first-child {
-      grid-column: span 2;
+      grid-column: auto;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       padding-bottom: 0.75rem;
-      width: 100%;
     }
   }
 `;
@@ -57,35 +84,50 @@ const Section = styled.div`
 const Brand = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   color: #fff;
   font-weight: 700;
   letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  svg {
+    flex-shrink: 0;
+  }
 `;
 
 const NavLink = styled.a`
   color: #94a3b8;
   text-decoration: none;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  transition: 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
 
   &:hover {
     color: #60a5fa;
   }
+
+  svg {
+    flex-shrink: 0;
+  }
 `;
 
 const Status = styled.div`
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   color: #10b981;
   font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 
   span {
     width: 6px;
     height: 6px;
+    min-width: 6px;
     background: #10b981;
     border-radius: 50%;
     box-shadow: 0 0 8px #10b981;
@@ -95,23 +137,51 @@ const Status = styled.div`
 const RedText = styled.span`
   color: ${colors.autopsyDanger};
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+  display: inline-block;
+  vertical-align: bottom;
+
+  @media (max-width: 600px) {
+    max-width: 140px;
+  }
 `;
 
 const ProductId = styled.span`
   font-size: 0.7rem;
   color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
 `;
 
 const SystemMeta = styled.div`
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex-wrap: wrap;
+
+  > div {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
 
   @media (max-width: 600px) {
-    flex-direction: column;
-    gap: 6px;
+    width: 100%;
+    gap: 0.6rem;
+    justify-content: flex-start;
   }
 `;
-
 // ------------------- COMPONENT -------------------
 const FooterComponent = () => {
   const [latency, setLatency] = useState('24ms');
@@ -134,7 +204,7 @@ const FooterComponent = () => {
   // Generate a random product ID
   const generateProductId = () => {
     const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-    return `WT-RSP-${currentYear}-${randomCode}`;
+    return `WT-RSP-CLOUD.V2.1-${currentYear}-${randomCode}`;
   };
   const [productId] = useState(generateProductId());
 

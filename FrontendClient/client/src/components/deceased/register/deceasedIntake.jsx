@@ -14,7 +14,7 @@ import styled, { keyframes } from 'styled-components';
 import OfficialStamp from '../../stamp/stamp';
 import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 
-// ─── Restored Login Color Palette ──────────────────────────────────
+// ─── Color Palette ──────────────────────────────────
 const COLORS = {
   ink: '#15171A',
   bone: '#FAF8F4',
@@ -40,6 +40,7 @@ const COLORS = {
   stampRed: '#dc2626',
   gold: '#C9A227',
   goldDark: '#A8851C',
+  tickBlue: '#2563eb',
 };
 
 const spin = keyframes`
@@ -94,7 +95,6 @@ const ContentWrapper = styled.div`
   z-index: 1;
 `;
 
-// ─── Compact Letterhead Layout ─────────────────────────────────────
 const Letterhead = styled.div`
   display: flex;
   justify-content: space-between;
@@ -250,7 +250,6 @@ const FileIdText = styled.div`
   }
 `;
 
-// ─── Form Body ─────────────────────────────────────────────────────
 const FormBody = styled.div`
   padding: 3rem 4rem;
 
@@ -327,8 +326,6 @@ const Col = styled.div`
 
 const Col2 = styled(Col)` flex: 2; @media (max-width: 1024px) { flex: 1 1 100%; } `;
 const Col05 = styled(Col)` flex: 0.5; @media (max-width: 1024px) { flex: 1 1 30%; min-width: 120px; } `;
-const Col06 = styled(Col)` flex: 0.6; @media (max-width: 1024px) { flex: 1 1 30%; min-width: 140px; } `;
-const Col15 = styled(Col)` flex: 1.5; @media (max-width: 1024px) { flex: 1 1 60%; } `;
 
 const Label = styled.label`
   display: block;
@@ -341,41 +338,47 @@ const Label = styled.label`
   font-family: 'Inter', sans-serif;
 `;
 
+const InputFieldWrapper = styled.div`
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+`;
+
 const Input = styled.input`
   width: 100%;
   height: 2.75rem;
-  border: 1px solid ${COLORS.line};
-  border-radius: 4px;
-  padding: 0 0.85rem;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0 2rem 0 0;
   font-family: 'Inter', sans-serif;
   font-size: 0.95rem;
   font-weight: 400;
   color: ${COLORS.ink};
-  background: ${COLORS.bone};
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease;
   box-sizing: border-box;
-  box-shadow: inset 0 1px 2px rgba(21, 23, 26, 0.03);
 
   &:focus {
+    border: none;
+    border-bottom: 1px solid ${COLORS.ink};
     outline: none;
-    border-color: ${COLORS.ink};
-    background: ${COLORS.white};
-    box-shadow: 0 0 0 3px rgba(21, 23, 26, 0.08), inset 0 1px 2px rgba(21, 23, 26, 0.03);
+    box-shadow: none;
+    background: transparent;
   }
 
-  &:not(:placeholder-shown) {
-    border-color: ${COLORS.brassLight};
-    background: ${COLORS.white};
-    font-weight: 500;
-    color: ${COLORS.ink};
+  &:hover {
+    border-bottom: 1px solid ${COLORS.ink};
   }
 
   &:disabled {
-    background: ${COLORS.bone2};
+    background: transparent;
     color: ${COLORS.gray};
     cursor: not-allowed;
     opacity: 0.8;
-    box-shadow: none;
   }
 
   &::placeholder { color: #a8a29e; font-weight: 400; }
@@ -390,47 +393,43 @@ const InputLg = styled(Input)`
 const Select = styled.select`
   width: 100%;
   height: 2.75rem;
-  border: 1px solid ${COLORS.line};
-  border-radius: 4px;
-  padding: 0 0.85rem;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0 2rem 0 0;
   font-family: 'Inter', sans-serif;
   font-size: 0.95rem;
   color: ${COLORS.ink};
-  background: ${COLORS.bone};
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease;
   box-sizing: border-box;
   cursor: pointer;
-  box-shadow: inset 0 1px 2px rgba(21, 23, 26, 0.03);
 
   &:focus {
+    border: none;
+    border-bottom: 1px solid ${COLORS.ink};
     outline: none;
-    border-color: ${COLORS.ink};
-    background: ${COLORS.white};
-    box-shadow: 0 0 0 3px rgba(21, 23, 26, 0.08);
+    box-shadow: none;
+    background: transparent;
+  }
+
+  &:hover {
+    border-bottom: 1px solid ${COLORS.ink};
   }
 `;
 
-const TextArea = styled.textarea`
-  width: 100%;
-  min-height: 4.5rem;
-  border: 1px solid ${COLORS.line};
-  border-radius: 4px;
-  padding: 0.75rem;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.9rem;
-  color: ${COLORS.ink};
-  background: ${COLORS.bone};
-  resize: vertical;
-  box-sizing: border-box;
-  transition: all 0.2s ease;
-  box-shadow: inset 0 1px 2px rgba(21, 23, 26, 0.03);
-
-  &:focus {
-    outline: none;
-    border-color: ${COLORS.ink};
-    background: ${COLORS.white};
-    box-shadow: 0 0 0 3px rgba(21, 23, 26, 0.08);
-  }
+const TickIconWrapper = styled.div`
+  position: absolute;
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${COLORS.tickBlue};
+  pointer-events: none;
 `;
 
 const ErrorMessage = styled.span`
@@ -441,7 +440,6 @@ const ErrorMessage = styled.span`
   font-family: 'Inter', sans-serif;
 `;
 
-// ─── Redesigned Signature Area Specifics ───
 const SigCanvasWrap = styled.div`
   border-bottom: 2px solid ${COLORS.ink};
   border-radius: 4px 4px 0 0;
@@ -488,7 +486,6 @@ const SignOffContainer = styled.div`
   margin-top: 2.5rem;
 `;
 
-// ─── NEW Grid Layout: Signature on LEFT, Name/Date/Stamp on RIGHT ───
 const SignOffGrid = styled.div`
   display: grid;
   grid-template-columns: 2.5fr 1.5fr;
@@ -520,7 +517,6 @@ const GridRight = styled.div`
 const GridName = styled.div` min-width: 0; position: relative; z-index: 1; `;
 const GridDate = styled.div` min-width: 0; position: relative; z-index: 1; `;
 
-// ─── Stamp Wrapper Overlapping Name & Date ───
 const StampWrapper = styled.div`
   position: absolute;
   bottom: 25px;
@@ -592,7 +588,6 @@ const PrimaryButton = styled.button`
   }
 `;
 
-// ─── Gold Button (Back to Reception) ───
 const GoldButton = styled.button`
   background: linear-gradient(135deg, ${COLORS.gold} 0%, ${COLORS.goldDark} 100%);
   color: ${COLORS.ink};
@@ -633,7 +628,6 @@ const GoldButton = styled.button`
   }
 `;
 
-// ─── Black Button (Clear Form) ───
 const BlackButton = styled.button`
   background: ${COLORS.ink};
   color: ${COLORS.bone};
@@ -674,22 +668,6 @@ const BlackButton = styled.button`
   }
 `;
 
-const LegalBlock = styled.div`
-  padding: 0;
-  margin-bottom: 2rem;
-`;
-
-const LegalText = styled.p`
-  font-size: 0.875rem;
-  line-height: 1.7;
-  color: ${COLORS.gray};
-  margin-bottom: 1rem;
-  text-align: justify;
-
-  &:last-child { margin-bottom: 0; }
-  strong { color: ${COLORS.ink}; font-weight: 600; }
-`;
-
 const ClearSigButton = styled.button`
   font-size: 0.7rem;
   font-weight: 600;
@@ -710,36 +688,36 @@ const ClearSigButton = styled.button`
 
 // ─── Official Footer & Barcode Panel ───────────────────────────────
 const FooterPanel = styled.div`
-  background: ${COLORS.white};
-  padding: 1rem 2rem; 
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 2rem;
-  flex-wrap: wrap;
+background: ${COLORS.white};
+padding: 1rem 2rem; 
+display: flex;
+justify-content: space-between;
+align-items: center;
+gap: 2rem;
+flex-wrap: wrap;
 
-  @media (max-width: 768px) {
-    flex-direction: column;
-    padding: 2rem 1.5rem;
-    text-align: center;
-  }
+ @media (max-width: 768px) {
+ flex-direction: column;
+ padding: 2rem 1.5rem;
+ text-align: center;
+ }
 `;
 
 const FooterText = styled.div`
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: ${COLORS.gray};
-  font-family: 'JetBrains Mono', monospace;
-  text-align: left;
-  line-height: 1.6;
-  
-  @media (max-width: 768px) {
-    text-align: center;
-  }
+font-size: 0.65rem;
+letter-spacing: 0.1em;
+text-transform: uppercase;
+color: ${COLORS.gray};
+font-family: 'JetBrains Mono', monospace;
+text-align: left;
+line-height: 1.6;
+ 
+@media (max-width: 768px) {
+text-align: center;
+
+}
 `;
 
-// ─── bwip-js Barcode Component ─────────────────────────────────────
 const Barcode = ({ value }) => {
   const canvasRef = useRef(null);
 
@@ -766,72 +744,6 @@ const Barcode = ({ value }) => {
 
   return <canvas ref={canvasRef} style={{ width: '100%', maxWidth: '250px', height: 'auto' }} />;
 };
-
-// ─── Success Modal Components ──────────────────────────────────────
-const SuccessOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(21, 23, 26, 0.8);
-  backdrop-filter: blur(8px);
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  animation: ${keyframes`from { opacity: 0; } to { opacity: 1; }`} 0.2s ease-out;
-`;
-
-const SuccessCard = styled.div`
-  background: ${COLORS.white};
-  border-radius: 12px;
-  padding: 3rem;
-  max-width: 480px;
-  width: 100%;
-  text-align: center;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-  animation: ${keyframes`from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; }`} 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-`;
-
-const SuccessIconWrap = styled.div`
-  width: 80px;
-  height: 80px;
-  background: ${COLORS.bone2};
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 1.5rem;
-  color: ${COLORS.verdigris};
-`;
-
-const SuccessTitle = styled.h2`
-  font-family: 'Fraunces', serif;
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: ${COLORS.ink};
-  margin: 0 0 0.5rem;
-`;
-
-const SuccessText = styled.p`
-  font-size: 0.95rem;
-  color: ${COLORS.gray};
-  margin: 0 0 2rem;
-  line-height: 1.6;
-`;
-
-const SuccessActions = styled.div`
-  display: flex;
-  gap: 1rem;
-  flex-direction: column;
-`;
-
-const TextBold = styled.div`
-  font-size: 1rem;
-  color: ${COLORS.gray};
-  text-decoration: underline;
-  font-weight: 800;
-  text-underline-offset: 6px;
-`;
 
 const DeceasedRegistrationForm = () => {
   const navigate = useNavigate();
@@ -860,7 +772,6 @@ const DeceasedRegistrationForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [admissionId, setAdmissionId] = useState('');
 
-  /* ---------- USE LOCALSTORAGE ONLY FOR TENANT BRANDING ---------- */
   const branding = useMemo(() => resolveTenantBranding(), []);
 
   const {
@@ -875,7 +786,6 @@ const DeceasedRegistrationForm = () => {
     fallback
   } = branding;
 
-  /* ---------- Helpers ---------- */
   const getLoggedInUserEmail = () => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -993,7 +903,7 @@ const DeceasedRegistrationForm = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (!validateForm()) return;
 
     setIsSubmitting(true);
@@ -1003,7 +913,6 @@ const DeceasedRegistrationForm = () => {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken();
       const signatureData = sigPadRef1.current?.toDataURL();
-
       const freshTime = getCurrentTime();
 
       const payload = {
@@ -1084,6 +993,8 @@ const DeceasedRegistrationForm = () => {
     sigPadRef1.current?.clear();
   };
 
+  const hasValue = (val) => val !== undefined && val !== null && String(val).trim().length > 0;
+
   if (loading && !showSuccess) {
     return (
       <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -1162,56 +1073,75 @@ const DeceasedRegistrationForm = () => {
                 <Row>
                   <Col2>
                     <Label>Admission Number</Label>
-                    <InputLg
-                      type="text"
-                      name="admission_number"
-                      value={admissionId || formData.admission_number}
-                      placeholder="Auto-generated from gender"
-                      readOnly
-                      disabled
-                    />
+                    <InputFieldWrapper>
+                      <InputLg
+                        type="text"
+                        name="admission_number"
+                        value={admissionId || formData.admission_number}
+                        placeholder="Auto-generated from gender"
+                        readOnly
+                        disabled
+                      />
+                      {hasValue(admissionId || formData.admission_number) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
                   </Col2>
                   <Col>
                     <Label>Date Admitted <span style={{ color: COLORS.red }}>*</span></Label>
-                    <InputLg
-                      type="date"
-                      name="date_admitted"
-                      value={formData.date_admitted}
-                      onChange={handleChange}
-                    />
+                    <InputFieldWrapper>
+                      <InputLg
+                        type="date"
+                        name="date_admitted"
+                        value={formData.date_admitted}
+                        onChange={handleChange}
+                      />
+                      {hasValue(formData.date_admitted) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
                     {errors.date_admitted && <ErrorMessage>{errors.date_admitted}</ErrorMessage>}
                   </Col>
                 </Row>
+
                 <Row>
                   <Col>
                     <Label>Permit Number</Label>
-                    <Input
-                      type="text"
-                      name="permit_number"
-                      value={formData.permit_number}
-                      onChange={handleChange}
-                      placeholder="Permit/Reference Number"
-                    />
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="permit_number"
+                        value={formData.permit_number}
+                        onChange={handleChange}
+                        placeholder="Permit/Reference Number"
+                      />
+                      {hasValue(formData.permit_number) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
                   </Col>
                   <Col>
                     <Label>Received From</Label>
-                    <Input
-                      type="text"
-                      name="received_from"
-                      value={formData.received_from}
-                      onChange={handleChange}
-                      placeholder="Hospital, Home, Police, Other"
-                    />
-                  </Col>
-                  <Col>
-                    <Label>Admitting Officer</Label>
-                    <Input
-                      type="text"
-                      name="receiving_officer"
-                      value={formData.receiving_officer}
-                      onChange={handleChange}
-                      placeholder="Officer / Staff Name"
-                    />
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="received_from"
+                        value={formData.received_from}
+                        onChange={handleChange}
+                        placeholder="Hospital, Home, Police, Other"
+                      />
+                      {hasValue(formData.received_from) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
                   </Col>
                 </Row>
               </Section>
@@ -1220,92 +1150,157 @@ const DeceasedRegistrationForm = () => {
               <Section>
                 <SectionHead>
                   <SectionNum>02</SectionNum>
-                  <SectionTitle>Information About Your Loved One</SectionTitle>
+                  <SectionTitle>Deceased Information</SectionTitle>
                 </SectionHead>
 
                 <Row>
                   <Col2>
-                    <Label>Full Legal Name of Deceased <span style={{ color: COLORS.red }}>*</span></Label>
-                    <InputLg
-                      type="text"
-                      name="full_name"
-                      value={formData.full_name}
-                      onChange={handleChange}
-                      placeholder="Last, First, Middle Name"
-                    />
+                    <Label>Full Name <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="full_name"
+                        value={formData.full_name}
+                        onChange={handleChange}
+                        placeholder="Enter full legal name"
+                      />
+                      {hasValue(formData.full_name) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
                     {errors.full_name && <ErrorMessage>{errors.full_name}</ErrorMessage>}
                   </Col2>
+                  <Col>
+                    <Label>Gender <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <Select
+                        name="gender"
+                        value={formData.gender}
+                        onChange={handleChange}
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </Select>
+                      {hasValue(formData.gender) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                    {errors.gender && <ErrorMessage>{errors.gender}</ErrorMessage>}
+                  </Col>
+                </Row>
+
+                <Row>
                   <Col05>
                     <Label>Age</Label>
-                    <Input
-                      type="number"
-                      name="age"
-                      value={formData.age}
-                      onChange={handleChange}
-                      placeholder="Yrs"
-                      min="0"
-                      max="150"
-                    />
+                    <InputFieldWrapper>
+                      <Input
+                        type="number"
+                        name="age"
+                        value={formData.age}
+                        onChange={handleChange}
+                        placeholder="Years"
+                      />
+                      {hasValue(formData.age) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
                   </Col05>
-                  <Col05>
-                    <Label>Sex <span style={{ color: COLORS.red }}>*</span></Label>
-                    <Select
-                      name="gender"
-                      value={formData.gender}
-                      onChange={handleChange}
-                    >
-                      <option value="" disabled>Select</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                    </Select>
-                    {errors.gender && <ErrorMessage>{errors.gender}</ErrorMessage>}
-                  </Col05>
-                </Row>
-                <Row>
-                  <Col2>
+                  <Col>
+                    <Label>Date of Birth</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="date"
+                        name="date_of_birth"
+                        value={formData.date_of_birth}
+                        onChange={handleChange}
+                      />
+                      {hasValue(formData.date_of_birth) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                  <Col>
                     <Label>Date of Death</Label>
-                    <Input
-                      type="date"
-                      name="date_of_death"
-                      value={formData.date_of_death}
-                      onChange={handleChange}
-                    />
-                  </Col2>
+                    <InputFieldWrapper>
+                      <Input
+                        type="date"
+                        name="date_of_death"
+                        value={formData.date_of_death}
+                        onChange={handleChange}
+                      />
+                      {hasValue(formData.date_of_death) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
                 </Row>
-                <Row>
-                  <Col2>
-                    <Label>Place of Death</Label>
-                    <Input
-                      type="text"
-                      name="place_of_death"
-                      value={formData.place_of_death}
-                      onChange={handleChange}
-                      placeholder="Facility Name, Address, or Residence"
-                    />
-                  </Col2>
-                </Row>
-                <Row>
-                  <Col2>
-                    <Label>Cause of Death</Label>
-                    <TextArea
-                      name="cause_of_death"
-                      value={formData.cause_of_death}
-                      onChange={handleChange}
-                      placeholder="Preliminary cause if known — clinical notes, pending autopsy, etc."
-                      rows="2"
-                    />
-                  </Col2>
-                </Row>
+
                 <Row>
                   <Col>
-                    <Label>Body Status (Optional)</Label>
-                    <Input
-                      type="text"
-                      name="body_status"
-                      value={formData.body_status}
-                      onChange={handleChange}
-                      placeholder="e.g. In Morgue, Pending Autopsy, etc."
-                    />
+                    <Label>Cause of Death</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="cause_of_death"
+                        value={formData.cause_of_death}
+                        onChange={handleChange}
+                        placeholder="As certified on medical document"
+                      />
+                      {hasValue(formData.cause_of_death) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                  <Col>
+                    <Label>Place of Death</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="place_of_death"
+                        value={formData.place_of_death}
+                        onChange={handleChange}
+                        placeholder="Location/Hospital"
+                      />
+                      {hasValue(formData.place_of_death) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                  <Col>
+                    <Label>Body Status</Label>
+                    <InputFieldWrapper>
+                      <Select
+                        name="body_status"
+                        value={formData.body_status}
+                        onChange={handleChange}
+                      >
+                        <option value="">Select Condition</option>
+                        <option value="Normal Condition">Normal Condition</option>
+                        <option value="Decomposed">Decomposed</option>
+                        <option value="Autopsied">Autopsied</option>
+                        <option value="Mutilated">Mutilated</option>
+                      </Select>
+                      {hasValue(formData.body_status) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
                   </Col>
                 </Row>
               </Section>
@@ -1314,191 +1309,235 @@ const DeceasedRegistrationForm = () => {
               <Section>
                 <SectionHead>
                   <SectionNum>03</SectionNum>
-                  <SectionTitle>Next of Kin — Contact & Identification</SectionTitle>
+                  <SectionTitle>Next of Kin / Contact Details</SectionTitle>
                 </SectionHead>
 
                 <Row>
                   <Col2>
-                    <Label>Next of Kin Full Name</Label>
-                    <Input
-                      type="text"
-                      name="contact_person"
-                      value={formData.contact_person}
-                      onChange={handleChange}
-                      placeholder="Last, First, Middle"
-                    />
+                    <Label>Contact Person Name</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="contact_person"
+                        value={formData.contact_person}
+                        onChange={handleChange}
+                        placeholder="Full name of primary contact"
+                      />
+                      {hasValue(formData.contact_person) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
                   </Col2>
                   <Col>
-                    <Label>Relationship to Deceased</Label>
-                    <Input
-                      type="text"
-                      name="relationship"
-                      value={formData.relationship}
-                      onChange={handleChange}
-                      placeholder="Spouse, Child, Parent, Sibling, etc."
-                    />
+                    <Label>Relationship</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="relationship"
+                        value={formData.relationship}
+                        onChange={handleChange}
+                        placeholder="e.g. Spouse, Child, Sibling"
+                      />
+                      {hasValue(formData.relationship) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
                   </Col>
                 </Row>
-                <Row>
-                  <Col15>
-                    <Label>ID Number (Government-Issued)</Label>
-                    <Input
-                      type="text"
-                      name="id_number"
-                      value={formData.id_number}
-                      onChange={handleChange}
-                      placeholder="National ID / Passport / Driver's License No."
-                    />
-                  </Col15>
-                  <Col06>
-                    <Label>ID Type</Label>
-                    <Select
-                      name="id_type"
-                      value={formData.id_type}
-                      onChange={handleChange}
-                    >
-                      <option value="" disabled>Select</option>
-                      <option value="national-id">National ID</option>
-                      <option value="passport">Passport</option>
-                      <option value="voters-card">Voter's Card</option>
-                      <option value="other">Other</option>
-                    </Select>
-                  </Col06>
-                </Row>
+
                 <Row>
                   <Col>
-                    <Label>Telephone Number</Label>
-                    <Input
-                      type="tel"
-                      name="tel_number"
-                      value={formData.tel_number}
-                      onChange={handleChange}
-                      placeholder="+254 7XX XXX XXX"
-                    />
+                    <Label>ID Type</Label>
+                    <InputFieldWrapper>
+                      <Select
+                        name="id_type"
+                        value={formData.id_type}
+                        onChange={handleChange}
+                      >
+                        <option value="">Select Identification</option>
+                        <option value="National ID">National ID</option>
+                        <option value="Passport">Passport</option>
+                        <option value="Alien Card">Alien Card</option>
+                      </Select>
+                      {hasValue(formData.id_type) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                  <Col>
+                    <Label>ID / Passport Number</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="id_number"
+                        value={formData.id_number}
+                        onChange={handleChange}
+                        placeholder="Identification number"
+                      />
+                      {hasValue(formData.id_number) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col>
+                    <Label>Primary Telephone</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="tel"
+                        name="tel_number"
+                        value={formData.tel_number}
+                        onChange={handleChange}
+                        placeholder="e.g., 0712345678"
+                      />
+                      {hasValue(formData.tel_number) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
                     {errors.tel_number && <ErrorMessage>{errors.tel_number}</ErrorMessage>}
                   </Col>
                   <Col>
                     <Label>Alternative Phone</Label>
-                    <Input
-                      type="tel"
-                      name="alternative_phone"
-                      value={formData.alternative_phone}
-                      onChange={handleChange}
-                      placeholder="+254 7XX XXX XXX"
-                    />
+                    <InputFieldWrapper>
+                      <Input
+                        type="tel"
+                        name="alternative_phone"
+                        value={formData.alternative_phone}
+                        onChange={handleChange}
+                        placeholder="Secondary contact number"
+                      />
+                      {hasValue(formData.alternative_phone) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
                     {errors.alternative_phone && <ErrorMessage>{errors.alternative_phone}</ErrorMessage>}
                   </Col>
-                  <Col06>
-                    <Label>Email</Label>
-                    <Input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="email@example.com"
-                    />
+                  <Col>
+                    <Label>Email Address</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="contact@example.com"
+                      />
+                      {hasValue(formData.email) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
                     {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
-                  </Col06>
+                  </Col>
                 </Row>
               </Section>
 
-              {/* Section 4: Declaration & Sign-off - Personal Effects Section REMOVED */}
+              {/* Section 4 */}
               <Section>
                 <SectionHead>
                   <SectionNum>04</SectionNum>
-                  <SectionTitle>Declaration & Sign-off</SectionTitle>
+                  <SectionTitle>Verification & Digital Sign-off</SectionTitle>
                 </SectionHead>
-
-                <LegalBlock>
-                  <LegalText>
-                    <TextBold>By signing below, I confirm that:</TextBold>
-                    <br />
-                    The information provided is true and accurate to the best of my knowledge.
-                    <br />
-                    I authorize this facility to take temporary custody of and prepare the remains.
-                  </LegalText>
-                </LegalBlock>
 
                 <SignOffContainer>
                   <SignOffGrid>
-                    {/* ─── SIGNATURE ALONE ON THE LEFT ─── */}
                     <GridSig>
-                      <Label>Authorized Signature <span style={{ color: COLORS.red }}>*</span></Label>
-                      <SigCanvasWrap>
-                        <SigGuideText>✕ Authorized Signature</SigGuideText>
-                        <ReusableSignaturePad
-                          ref={sigPadRef1}
-                          penColor={COLORS.inkBlue}
-                          minWidth={1.5}
-                          maxWidth={3.5}
-                          velocityFilterWeight={0.6}
-                          placeholder="Sign here"
-                          showSave={false}
-                        />
-                      </SigCanvasWrap>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <ClearSigButton
-                          type="button"
-                          onClick={() => sigPadRef1.current?.clear()}
-                        >
-                          Clear Signature
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Label>Officer Digital Signature <span style={{ color: COLORS.red }}>*</span></Label>
+                        <ClearSigButton type="button" onClick={() => sigPadRef1.current?.clear()}>
+                          Clear Pad
                         </ClearSigButton>
                       </div>
+                      <SigCanvasWrap>
+                        <ReusableSignaturePad ref={sigPadRef1} />
+                        <SigGuideText>Sign within boundaries</SigGuideText>
+                      </SigCanvasWrap>
+                      {errors.signature && <ErrorMessage>{errors.signature}</ErrorMessage>}
                     </GridSig>
 
-                    {/* ─── NAME, DATE, AND STAMP ON THE RIGHT ─── */}
                     <GridRight>
                       <GridName>
-                        <Label>Printed Name</Label>
-                        <InputLg
-                          type="text"
-                          value={formData.contact_person}
-                          readOnly
-                          placeholder="Auto-filled from Next of Kin"
-                        />
+                        <Label>Receiving Officer</Label>
+                        <InputFieldWrapper>
+                          <Input
+                            type="text"
+                            name="receiving_officer"
+                            value={formData.receiving_officer}
+                            onChange={handleChange}
+                            placeholder="Officer full name"
+                          />
+                          {hasValue(formData.receiving_officer) && (
+                            <TickIconWrapper>
+                              <Check size={16} strokeWidth={2.5} />
+                            </TickIconWrapper>
+                          )}
+                        </InputFieldWrapper>
                       </GridName>
 
                       <GridDate>
-                        <Label>Date</Label>
-                        <InputLg
-                          type="text"
-                          value={new Date().toLocaleDateString()}
-                          readOnly
-                        />
+                        <Label>Verified By System User</Label>
+                        <InputFieldWrapper>
+                          <Input
+                            type="text"
+                            name="verified_by"
+                            value={formData.verified_by}
+                            onChange={handleChange}
+                            readOnly
+                            disabled
+                          />
+                          {hasValue(formData.verified_by) && (
+                            <TickIconWrapper>
+                              <Check size={16} strokeWidth={2.5} />
+                            </TickIconWrapper>
+                          )}
+                        </InputFieldWrapper>
                       </GridDate>
 
-                      {/* Stamp overlapping the Name and Date inputs */}
                       <StampWrapper>
-                        <OfficialStamp
-                          tenantName={tenantName}
-                          tenantPhone={displayPhone || fallback.phone}
-                          tenantLocation={displayLocation || fallback.location}
-                        />
+                        <OfficialStamp />
                       </StampWrapper>
                     </GridRight>
                   </SignOffGrid>
                 </SignOffContainer>
-                {errors.signature && <ErrorMessage style={{ marginTop: '0.5rem' }}>{errors.signature}</ErrorMessage>}
               </Section>
 
-              {/* Actions */}
+              {/* Three Action Buttons */}
               <ActionsContainer>
-                <GoldButton type="button" onClick={() => navigate(`/tenant/${getTenantSlug()}/receptionist`)}>
-                  ← Back to Reception
+                <ClearSigButton type="button" onClick={handleClear} style={{ marginRight: 'auto' }}>
+                  <RotateCcw size={14} style={{ marginRight: '4px' }} /> Clear Form
+                </ClearSigButton>
+
+                <GoldButton type="button" onClick={handleClear} disabled={isSubmitting}>
+                  Reset Inputs
                 </GoldButton>
-                <BlackButton type="button" onClick={handleClear} disabled={isSubmitting}>
-                  <RotateCcw size={15} /> Clear Form
+
+                <BlackButton type="button" onClick={() => navigate(-1)} disabled={isSubmitting}>
+                  Cancel / Back
                 </BlackButton>
+
                 <PrimaryButton type="submit" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Processing...
+                      <Loader2 size={16} className="animate-spin" /> Submitting Record...
                     </>
                   ) : (
                     <>
-                      <Check size={16} />
-                      Submit Registration
+                      Submit Record <ArrowRight size={16} />
                     </>
                   )}
                 </PrimaryButton>
@@ -1506,9 +1545,10 @@ const DeceasedRegistrationForm = () => {
             </form>
           </FormBody>
 
+          {/* Footer Component */}
           <FooterPanel>
             <FooterText>
-              {tenantName}  Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}<br />
+              {tenantName}  Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}<br />
               - Official Intake Record —
             </FooterText>
 
@@ -1524,28 +1564,6 @@ const DeceasedRegistrationForm = () => {
           </FooterPanel>
         </ContentWrapper>
       </FormSheet>
-
-      {showSuccess && (
-        <SuccessOverlay>
-          <SuccessCard>
-            <SuccessIconWrap>
-              <CheckCircle size={48} strokeWidth={1.5} />
-            </SuccessIconWrap>
-            <SuccessTitle>Record Registered Successfully</SuccessTitle>
-            <SuccessText>
-              The intake record for <strong style={{ color: COLORS.ink }}>{registeredName}</strong> has been successfully registered and securely saved in the system.
-            </SuccessText>
-            <SuccessActions>
-              <PrimaryButton onClick={() => setShowSuccess(false)}>
-                <Check size={16} /> Register Another Record
-              </PrimaryButton>
-              <GoldButton onClick={() => navigate(`/tenant/${getTenantSlug()}/receptionist`)}>
-                ← Back to Reception
-              </GoldButton>
-            </SuccessActions>
-          </SuccessCard>
-        </SuccessOverlay>
-      )}
     </Container>
   );
 };

@@ -1,40 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
 import { Copy, Check, ShieldCheck } from 'lucide-react';
+
 import './PostmortemQRPage.css';
 
 const PostmortemQRPage = () => {
   const { slug } = useParams();
-  const [qrValue, setQrValue] = useState('');
   const [copied, setCopied] = useState(false);
 
   const tenantSlug = slug || localStorage.getItem('tenantSlug') || 'system_shared';
-
-  useEffect(() => {
-    const baseUrl = window.location.origin;
-    setQrValue(`${baseUrl}/tenant/${tenantSlug}/postmortem-verify`);
-  }, [tenantSlug]);
-
   const verifyUrl = `${window.location.origin}/tenant/${tenantSlug}/postmortem-verify`;
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(verifyUrl);
       setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
     } catch (err) {
-      // Fallback for older browsers
-      const ta = document.createElement('textarea');
-      ta.value = verifyUrl;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      setCopied(true);
+      console.error('Failed to copy link:', err);
     }
-    setTimeout(() => setCopied(false), 2200);
   };
 
   const today = new Date();
@@ -99,6 +86,7 @@ const PostmortemQRPage = () => {
               </div>
               <div className="class-badge">Verified</div>
             </div>
+
             <div className="details-grid" style={{ borderTop: '1px solid #E3DDD0' }}>
               <div className="detail-item">
                 <div className="label">QR Code</div>
@@ -123,7 +111,7 @@ const PostmortemQRPage = () => {
           {/* Tear strip */}
           <div className="tear-strip">
             <div className="tear-dots">
-              {Array.from({ length: 20 }).map((_, i) => <span key={i}></span>)}
+              {Array.from({ length: 20 }).map((_, i) => <span key={i} />)}
             </div>
           </div>
 
@@ -139,7 +127,7 @@ const PostmortemQRPage = () => {
                 <div className="label">Issued</div>
                 <div className="time">{hour12} <small>{meridiem}</small></div>
               </div>
-              <div className="time-divider"></div>
+              <div className="time-divider" />
               <div className="time-block">
                 <div className="label">Access</div>
                 <div className="time">24<span>/7</span></div>
@@ -173,7 +161,7 @@ const PostmortemQRPage = () => {
             <div className="qr-section">
               <div className="qr-container">
                 <QRCodeSVG
-                  value={qrValue}
+                  value={verifyUrl}
                   size={160}
                   level="H"
                   includeMargin

@@ -1,8 +1,8 @@
 import React from 'react';
-import BeautifulMortuaryDashboard from '../analysis/compDashboardLive';
+import Dashboard from '../../dashboard';
 
 const DashboardPage = () => {
-    return <BeautifulMortuaryDashboard />;
+    return <Dashboard />;
 };
 
 export default DashboardPage;
