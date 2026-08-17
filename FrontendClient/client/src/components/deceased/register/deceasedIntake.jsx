@@ -40,7 +40,7 @@ const COLORS = {
   stampRed: '#dc2626',
   gold: '#C9A227',
   goldDark: '#A8851C',
-  tickBlue: '#2563eb',
+  tickBlue: '#2564eb1b',
 };
 
 const spin = keyframes`
@@ -809,7 +809,6 @@ const DeceasedRegistrationForm = () => {
     full_name: '',
     gender: '',
     age: '',
-    date_of_birth: '',
     date_of_death: '',
     cause_of_death: '',
     body_status: '',
@@ -918,7 +917,6 @@ const DeceasedRegistrationForm = () => {
       const payload = {
         full_name: formData.full_name,
         cause_of_death: formData.cause_of_death,
-        date_of_birth: formData.date_of_birth || null,
         national_id: formData.id_number,
         received_from: formData.received_from,
         age: formData.age ? parseInt(formData.age, 10) : 0,
@@ -1213,22 +1211,6 @@ const DeceasedRegistrationForm = () => {
                     </InputFieldWrapper>
                   </Col05>
                   <Col>
-                    <Label>Date of Birth</Label>
-                    <InputFieldWrapper>
-                      <Input
-                        type="date"
-                        name="date_of_birth"
-                        value={formData.date_of_birth}
-                        onChange={handleChange}
-                      />
-                      {hasValue(formData.date_of_birth) && (
-                        <TickIconWrapper>
-                          <Check size={16} strokeWidth={2.5} />
-                        </TickIconWrapper>
-                      )}
-                    </InputFieldWrapper>
-                  </Col>
-                  <Col>
                     <Label>Date of Death</Label>
                     <InputFieldWrapper>
                       <Input
@@ -1284,17 +1266,13 @@ const DeceasedRegistrationForm = () => {
                   <Col>
                     <Label>Body Status</Label>
                     <InputFieldWrapper>
-                      <Select
+                      <Input
+                        type="text"
                         name="body_status"
                         value={formData.body_status}
                         onChange={handleChange}
-                      >
-                        <option value="">Select Condition</option>
-                        <option value="Normal Condition">Normal Condition</option>
-                        <option value="Decomposed">Decomposed</option>
-                        <option value="Autopsied">Autopsied</option>
-                        <option value="Mutilated">Mutilated</option>
-                      </Select>
+                        placeholder="e.g. Normal Condition, Decomposed, Autopsied"
+                      />
                       {hasValue(formData.body_status) && (
                         <TickIconWrapper>
                           <Check size={16} strokeWidth={2.5} />
@@ -1464,7 +1442,7 @@ const DeceasedRegistrationForm = () => {
                         </ClearSigButton>
                       </div>
                       <SigCanvasWrap>
-                        <ReusableSignaturePad ref={sigPadRef1} />
+                        <ReusableSignaturePad ref={sigPadRef1} penColor={COLORS.inkBlue} />
                         <SigGuideText>Sign within boundaries</SigGuideText>
                       </SigCanvasWrap>
                       {errors.signature && <ErrorMessage>{errors.signature}</ErrorMessage>}
