@@ -22,6 +22,13 @@ services:
       - "${MARIADB_EXTERNAL_PORT:-3306}:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
+      # Monitoring: custom MariaDB config (slow query log + performance_schema)
+      - ./docker/mariadb/custom-mysqld.cnf:/etc/mysql/conf.d/custom-mysqld.cnf:ro
+      # Monitoring: creates the dedicated `exporter` user for mysqld_exporter
+      # (automated only on first init / empty data volume)
+      - ./docker/mariadb/exporter-user.sql:/docker-entrypoint-initdb.d/01-exporter-user.sql:ro
+      # Monitoring: init SQL to create the exporter user (run manually on an
+      # existing/initialised database - see docker/mariadb/exporter-user.sql)
     networks:
       - restpoint_network
     healthcheck:
@@ -180,6 +187,9 @@ services:
       REDIS_PORT: 6379
       RABBITMQ_HOST: restpoint_rabbitmq
       RABBITMQ_PORT: 5672
+      GLOBAL_UPLOAD_PATH: /opt/storage/uploads
+    volumes:
+      - uploads_data:/opt/storage/uploads
     depends_on:
       mariadb:
         condition: service_healthy
@@ -275,7 +285,7 @@ services:
       SERVICE_NAME: coffin-service
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
-      COFFIN_DATABASE: restpoint_coffin
+      OPERATIONS_DATABASE: restpoint_operations
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
     volumes:
@@ -311,6 +321,7 @@ services:
     volumes:
       - documents_service_data:/usr/src/app/data
       - ./services/documents-service/uploads:/usr/src/app/uploads
+      - uploads_data:/opt/storage/uploads
     networks:
       - restpoint_network
     healthcheck:
@@ -804,3 +815,4 @@ volumes:
     driver: local
   uploads_data:
     driver: local
+

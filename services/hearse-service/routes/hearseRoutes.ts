@@ -4,7 +4,7 @@ import { makeHearseBooking, checkHearseAvailability, getAllHearseBookings, assig
 import { getHearseFleetAnalytics, getHearsePeriodAnalytics } from '../controllers/hearseAnalytics';
 // @ts-ignore - authMiddleware is JavaScript, not TypeScript
 import { protect } from '../../app-global/middlewares/authMiddleware';
-
+            
 const router = express.Router();
 
 // Hearse CRUD

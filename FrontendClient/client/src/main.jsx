@@ -37,6 +37,12 @@ if (rootElement) {
       <App />
     </React.StrictMode>
   );
+
+  // Remove the static boot loader now that React has mounted.
+  requestAnimationFrame(() => {
+    const bootLoader = document.getElementById('boot-loader');
+    if (bootLoader) bootLoader.remove();
+  });
 } else {
   console.error('Root element not found! Make sure there is a div with id="root" in your HTML.');
   

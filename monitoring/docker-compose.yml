@@ -20,7 +20,7 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
     networks:
-      - monitoring
+      - restpoint_network
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -43,7 +43,7 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     networks:
-      - monitoring
+      - restpoint_network
     depends_on:
       - prometheus
 
@@ -85,7 +85,7 @@ services:
       - /dev/kmsg
     privileged: true
     networks:
-      - monitoring
+      - restpoint_network
 
   # ============================================
   # MYSQL EXPORTER - Database Metrics (v0.14.0 - working version)
@@ -97,9 +97,25 @@ services:
     ports:
       - "9104:9104"
     environment:
-      - DATA_SOURCE_NAME=exporter:exporter_password@tcp(restpoint_mariadb:3306)/
+      - DATA_SOURCE_NAME=exporter:exporter_password@tcp(restpoint_mariadb:3306/)?timeout=10s
+      # exporter user is created in docker/mariadb/exporter-user.sql and mounted into the mariadb container (see docker-compose.prod.yml).
+    command:
+      # Enable EVERY useful collector so ALL MariaDB metrics are scraped.
+      # Flag names are the exact scraper.Name() values for mysqld_exporter v0.14.0 (README collector table is stale).
+      # do NOT exist in v0.14.0 and would crash the exporter.
+      - '--collect.global_status'
+      - '--collect.global_variables'
+      - '--collect.slave_status'
+      - '--collect.binlog_size'
+      - '--collect.perf_schema.eventsstatements'
+      - '--collect.perf_schema.eventswaits'
+      - '--collect.perf_schema.tableiowaits'
+      - '--collect.perf_schema.indexiowaits'
+      - '--collect.perf_schema.tablelocks'
+      - '--collect.perf_schema.file_events'
+      - '--collect.perf_schema.memory_events'
     networks:
-      - monitoring
+      - restpoint_network
 
   # ============================================
   # REDIS EXPORTER - Cache Metrics
@@ -111,10 +127,10 @@ services:
     ports:
       - "9121:9121"
     environment:
-      - REDIS_ADDR=84.247.183.53:6379
-      - REDIS_PASSWORD=
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     networks:
-      - monitoring
+      - restpoint_network
 
   # ============================================
   # RABBITMQ EXPORTER - Message Queue Metrics
@@ -126,12 +142,12 @@ services:
     ports:
       - "9419:9419"
     environment:
-      - RABBIT_URL=http://84.247.183.53:15672
-      - RABBIT_USER=guest
-      - RABBIT_PASSWORD=guest
+      - RABBIT_URL=http://restpoint_rabbitmq:15672
+      - RABBIT_USER=restpoint
+      - RABBIT_PASSWORD=${RABBITMQ_DEFAULT_PASS:-RestPointRabbit2024}
       - PUBLISH_PORT=9419
     networks:
-      - monitoring
+      - restpoint_network
 
   # ============================================
   # PROCESS EXPORTER - Process-level metrics
@@ -149,7 +165,7 @@ services:
       - '--config.path=/config/config.yml'
       - '--procfs=/host/proc'
     networks:
-      - monitoring
+      - restpoint_network
 
   # ============================================
   # BLACKBOX EXPORTER - External Service Monitoring
@@ -165,7 +181,7 @@ services:
     command:
       - '--config.file=/config/blackbox.yml'
     networks:
-      - monitoring
+      - restpoint_network
 
   # ============================================
   # UPTIME KUMA - Service Availability & Alerts
@@ -177,9 +193,9 @@ services:
     ports:
       - "3004:3001"
     volumes:
-      - uptime-kuma-data:/app/data
+      - ./uptime-kuma-data:/app/data
     networks:
-      - monitoring
+      - restpoint_network
 
   # ============================================
   # LOKI - Log Aggregation
@@ -196,7 +212,7 @@ services:
     command:
       - '-config.file=/etc/loki/local-config.yaml'
     networks:
-      - monitoring
+      - restpoint_network
 
   # ============================================
   # PROMTAIL - Log Collection
@@ -212,7 +228,7 @@ services:
     command:
       - '-config.file=/etc/promtail/config.yml'
     networks:
-      - monitoring
+      - restpoint_network
 
 volumes:
   prometheus-data:
@@ -225,5 +241,5 @@ volumes:
     driver: local
 
 networks:
-  monitoring:
-    driver: bridge
+  restpoint_network:
+    external: true

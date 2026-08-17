@@ -5,6 +5,17 @@
  * This file exists at the legacy path `services/global/services/fileStorageService.ts`
  * and re-exports from `packages/shared-services/src/fileStorageService.ts`.
  */
-export { fileStorageService, FolderCategory, FileType, default } from '../packages/shared-services/src/fileStorageService';
-export type { UploadConfig, UploadedFile, TenantFolderInfo, MulterFile } from '../packages/shared-services/src/fileStorageService';
+
+export type {
+  MulterFile,
+  TenantFolderInfo,
+  UploadConfig,
+  UploadedFile,
+} from '../packages/shared-services/src/fileStorageService';
+export {
+  default,
+  FileType,
+  FolderCategory,
+  fileStorageService,
+} from '../packages/shared-services/src/fileStorageService';
 //# sourceMappingURL=fileStorageService.d.ts.map

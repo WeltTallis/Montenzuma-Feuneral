@@ -9,7 +9,7 @@ const HEARSE_DB_CONFIG = {
     port: process.env.DB_PORT || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.HEARSE_DB_NAME || 'restpoint_hearses',
+    database: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -22,9 +22,9 @@ const getHearsePool = async () => {
     if (!hearsePool) {
         try {
             hearsePool = await mysql.createPool(HEARSE_DB_CONFIG);
-            console.log('✅ Hearse database pool created:', HEARSE_DB_CONFIG.database);
+            console.log(' Hearse database pool created:', HEARSE_DB_CONFIG.database);
         } catch (error) {
-            console.error('❌ Failed to create hearse database pool:', error);
+            console.error('Failed to create hearse database pool:', error);
             throw error;
         }
     }
@@ -44,10 +44,10 @@ const initializeHearseDatabase = async () => {
 
         // Create database if not exists
         await rootPool.query(`CREATE DATABASE IF NOT EXISTS \`${HEARSE_DB_CONFIG.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-        console.log(`✅ Hearse database ensured: ${HEARSE_DB_CONFIG.database}`);
-
-        // Create hearses table
-        await rootPool.query(`
+        console.log(` Hearse database ensured: ${HEARSE_DB_CONFIG.database}`);
+                   
+        // Create hearses table    
+        await rootPool.query(` 
       CREATE TABLE IF NOT EXISTS \`hearses\` (
         \`id\` INT AUTO_INCREMENT PRIMARY KEY,
         \`hearse_code\` VARCHAR(50) UNIQUE NOT NULL,
@@ -91,7 +91,7 @@ const initializeHearseDatabase = async () => {
         \`status\` ENUM('pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'booked') DEFAULT 'booked',
         \`branch_id\` INT,
         \`branch_code\` VARCHAR(50),
-        \`booked_by\` INT,
+        \`booked_by\` VARCHAR(200),
         \`booked_by_email\` VARCHAR(200),
         \`booked_by_name\` VARCHAR(200),
         \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -125,11 +125,11 @@ const initializeHearseDatabase = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-        console.log('✅ Hearse database tables created successfully');
+        console.log(' Hearse database tables created successfully');
         await rootPool.end();
         return true;
     } catch (error) {
-        console.error('❌ Failed to initialize hearse database:', error);
+        console.error(' Failed to initialize hearse database:', error);
         throw error;
     }
 };

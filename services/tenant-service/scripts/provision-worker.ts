@@ -15,8 +15,9 @@ async function updateProvisioningStatus(tenantSlug: string, status: string, prog
     const tenantTrackingDbUser = process.env.TENANT_TRACKING_DB_USER || process.env.DB_USER;
     const tenantTrackingDbPassword = process.env.TENANT_TRACKING_DB_PASSWORD || process.env.DB_PASSWORD;
 
-    // First connect without database to create it if it doesn't exist
-    const rootConn = await mysql.createConnection({
+    // Connect as the application user ONLY (restpoint_user) — no root credentials are used
+    // by the service. Admin grants are applied once via init-db.sql / DBA setup.
+    const bootstrapConn = await mysql.createConnection({
       host: tenantTrackingDbHost,
       port: tenantTrackingDbPort,
       user: tenantTrackingDbUser,
@@ -25,11 +26,15 @@ async function updateProvisioningStatus(tenantSlug: string, status: string, prog
     });
 
     try {
-      await rootConn.query('CREATE DATABASE IF NOT EXISTS tenant_tracking');
-      await rootConn.query("GRANT ALL PRIVILEGES ON tenant_tracking.* TO 'restpoint_user'@'%'");
-      await rootConn.query('FLUSH PRIVILEGES');
+      // Best-effort so a fresh deployment still creates the schema.
+      await bootstrapConn.query('CREATE DATABASE IF NOT EXISTS tenant_tracking');
+      await bootstrapConn.query(`GRANT ALL PRIVILEGES ON tenant_tracking.* TO '${tenantTrackingDbUser}'@'%'`);
+      await bootstrapConn.query(`GRANT ALL PRIVILEGES ON tenant_tracking.* TO '${tenantTrackingDbUser}'@'localhost'`);
+    } catch (bootstrapErr: any) {
+      // Grants may already exist from the admin setup — continue regardless.
+      console.warn('DB bootstrap (create/grant) skipped:', bootstrapErr && bootstrapErr.message ? bootstrapErr.message : String(bootstrapErr));
     } finally {
-      await rootConn.end();
+      await bootstrapConn.end();
     }
 
     const conn = await mysql.createConnection({

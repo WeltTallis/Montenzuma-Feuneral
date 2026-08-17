@@ -5,8 +5,8 @@
  * @returns {Promise<{active: boolean, tenant?: {db_name?: string, tenant_id?: number, name?: string, [key: string]: any}, reason?: string}>}
  */
 export function validateTenantActive(tenantSlug: string): Promise<{
-    active: boolean;
-    tenant?: { db_name?: string; tenant_id?: number; name?: string; [key: string]: any };
-    reason?: string;
+  active: boolean;
+  tenant?: { db_name?: string; tenant_id?: number; name?: string; [key: string]: any };
+  reason?: string;
 }>;
 //# sourceMappingURL=tenancy.d.ts.map

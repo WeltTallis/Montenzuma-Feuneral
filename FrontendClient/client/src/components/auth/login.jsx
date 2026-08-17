@@ -44,7 +44,7 @@ export default function LoginPage() {
     const token = localStorage.getItem('authToken');
     const slug = localStorage.getItem('tenantSlug');
     if (token && token !== 'undefined' && token !== 'null' && slug && slug !== 'default' && slug !== 'dashboard') {
-      navigate(`/tenant/${slug}/all-deceased`);
+      navigate(`/tenant/${slug}/dashboard`);
     } else if (!token || token === 'undefined' || token === 'null') {
       localStorage.removeItem('authToken');
       localStorage.removeItem('tenantSlug');
@@ -92,7 +92,7 @@ export default function LoginPage() {
           setShowSuccess(true);
 
           setTimeout(() => {
-            navigate(`/tenant/${tenantSlug}/all-deceased`, { replace: true });
+            navigate(`/tenant/${tenantSlug}/dashboard`, { replace: true });
           }, 400);
         } else {
           throw new Error('No tenant information available');

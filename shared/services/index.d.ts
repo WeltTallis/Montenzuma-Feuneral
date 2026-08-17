@@ -12,7 +12,12 @@
  * These re-exports are kept for backward compatibility but will redirect
  * to the canonical location within the tenant service.
  */
-export { MigrationService } from './migration-service';
+
+export {
+  ALL_SERVICE_MIGRATIONS,
+  getBranchMigrations,
+  getMainTenantMigrations,
+} from './all-service-migrations';
 export type { DatabaseConfig, Migration, MigrationResult } from './migration-service';
-export { ALL_SERVICE_MIGRATIONS, getMainTenantMigrations, getBranchMigrations } from './all-service-migrations';
+export { MigrationService } from './migration-service';
 //# sourceMappingURL=index.d.ts.map

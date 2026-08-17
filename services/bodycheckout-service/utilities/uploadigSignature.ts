@@ -119,7 +119,7 @@ const processSignature = async (
         .slice(0, 16);
 
     // Save directly to global uploads folder
-    const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || 'C:\\Users\\User\\Downloads\\uploads';
+    const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
     const signatureDir = path.join(globalUploadsDir, 'system', 'signatures');
     
     // Ensure directory exists

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -22,11 +23,24 @@ app.use(express.json());
 // ============ GLOBAL UPLOADS CONFIGURATION ============
 // Use global uploads folder (same as coffin service)
 const getGlobalUploadsDir = () => {
+  // 1) Honour the platform-wide configured store FIRST (/opt/storage/uploads),
+  //    shared by every service, instead of a repo-local process.cwd() folder.
+  for (const envDir of [process.env.GLOBAL_UPLOADS_DIR, process.env.UPLOADS_BASE_DIR].filter(Boolean)) {
+    try {
+      fs.mkdirSync(envDir, { recursive: true });
+      return envDir;
+    } catch (e) {
+      console.warn(`[DOCUMENTS] GLOBAL_UPLOADS_DIR/UPLOADS_BASE_DIR (${envDir}) not writable, trying fallback:`, e.message);
+    }
+  }
+
+  // 2) Backward-compatible local fallbacks (project-local)
   const possiblePaths = [
     path.join(process.cwd(), 'uploads'),
     path.join(__dirname, '../../uploads'),
     path.join(__dirname, '../../../uploads'),
   ];
+
   
   // Return the first path that exists or can be created
   for (const basePath of possiblePaths) {

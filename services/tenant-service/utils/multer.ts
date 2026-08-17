@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import { v4 as uuidv4 } from 'uuid';
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
+const UPLOAD_DIR = process.env.GLOBAL_UPLOAD_PATH || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
 
 // Ensure upload directory exists
 fs.ensureDirSync(UPLOAD_DIR);

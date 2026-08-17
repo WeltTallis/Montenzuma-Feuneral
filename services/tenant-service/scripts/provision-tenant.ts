@@ -2,7 +2,6 @@
 /* Detached provisioning worker
  * Usage: npx ts-node services/tenant-service/scripts/provision-tenant.ts --payload <base64json>
  */
-
 import * as process from 'process';
 import * as mysql from 'mysql2/promise';
 import { TenantModel } from '../models/Tenant.model';
@@ -13,6 +12,27 @@ async function updateProvisioningStatus(tenantSlug: string, status: string, prog
     const tenantTrackingDbPort = parseInt(process.env.TENANT_TRACKING_DB_PORT || process.env.DB_PORT || '3306');
     const tenantTrackingDbUser = process.env.TENANT_TRACKING_DB_USER || process.env.DB_USER;
     const tenantTrackingDbPassword = process.env.TENANT_TRACKING_DB_PASSWORD || process.env.DB_PASSWORD;
+
+    // Connect using the application user (restpoint_user) — no root credentials in code.
+    const bootstrapConn = await mysql.createConnection({
+      host: tenantTrackingDbHost,
+      port: tenantTrackingDbPort,
+      user: tenantTrackingDbUser,
+      password: tenantTrackingDbPassword,
+      multipleStatements: true
+    });
+
+    try {
+      // Best-effort so a fresh deployment still creates the schema.
+      await bootstrapConn.query('CREATE DATABASE IF NOT EXISTS tenant_tracking');
+      await bootstrapConn.query(`GRANT ALL PRIVILEGES ON tenant_tracking.* TO '${tenantTrackingDbUser}'@'%'`);
+      await bootstrapConn.query(`GRANT ALL PRIVILEGES ON tenant_tracking.* TO '${tenantTrackingDbUser}'@'localhost'`);
+    } catch (bootstrapErr: any) {
+      // Grants may already exist from the DBA setup — skip regardless.
+      console.warn('DB bootstrap (create/grant) skipped:', bootstrapErr && bootstrapErr.message ? bootstrapErr.message : String(bootstrapErr));
+    } finally {
+      await bootstrapConn.end();
+    }
 
     const conn = await mysql.createConnection({
       host: tenantTrackingDbHost,
@@ -46,7 +66,7 @@ async function main() {
 
   try {
     // Call the registered tenant creation flow
-    await TenantModel.registerTenant({
+        const result = await TenantModel.registerTenant({
       tenant_name: payload.tenant_name,
       email: payload.email,
       password: payload.password,
@@ -59,16 +79,21 @@ async function main() {
       branches: payload.branches
     });
 
-    // Auto-connect all branches so they can communicate with each other
+        // Auto-connect all branches so they can communicate with each other.
+    // Use the tenant record returned by registerTenant() (canonical tenant_id /
+    // tenant_slug / db_name) — the slug MUST match the registered subdomain exactly,
+    // otherwise findBySubdomain() returns null and branch_connections are never
+    // created, leaving the branch_connections table empty.
     try {
-      const tenantSlug = payload.tenant_slug || (payload.tenant_name || 'tenant').replace(/\s+/g, '-').toLowerCase();
-      const tenant = await TenantModel.findBySubdomain(tenantSlug);
+      const tenant = result.tenant;
       if (tenant) {
-        await TenantModel.autoConnectBranches(tenant.db_name, tenantSlug);
-        console.log(`✅ Auto-connected all branches for tenant: ${tenantSlug}`);
+        await TenantModel.autoConnectBranches(tenant.db_name, tenant.tenant_slug, tenant.tenant_id);
+        console.log(`Auto-connected all branches for tenant: ${tenant.tenant_slug}`);
+      } else {
+        console.warn('Auto-connect skipped: registerTenant did not return a tenant record');
       }
     } catch (autoConnectErr: any) {
-      console.warn(`⚠️ Auto-connect branches failed: ${autoConnectErr.message}`);
+      console.warn(` Auto-connect branches failed: ${autoConnectErr.message}`);
     }
 
     await updateProvisioningStatus(tenantSlug, 'completed', 100, 'Provisioning completed');

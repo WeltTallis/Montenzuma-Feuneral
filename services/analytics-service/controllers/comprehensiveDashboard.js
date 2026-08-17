@@ -104,12 +104,12 @@ const getComprehensiveDashboard = asyncHandler(async (req, res) => {
             safeTenantQuery(dbName, `SELECT COUNT(*) as total_types, COALESCE(SUM(COALESCE(quantity,0)),0) as total_stock, COALESCE(SUM(COALESCE(exact_price,0)*COALESCE(quantity,0)),0) as total_value FROM coffins`),
             safeTenantQuery(dbName, `SELECT c.type, COUNT(dc.coffin_id) as sold, COALESCE(SUM(c.exact_price),0) as revenue FROM coffins c LEFT JOIN deceased_coffin dc ON c.coffin_id=dc.coffin_id GROUP BY c.coffin_id, c.type ORDER BY sold DESC LIMIT 10`),
             safeTenantQuery(dbName, `SELECT COALESCE(name,'Unknown') as chemical, COALESCE(current_stock,0) as available, COALESCE(min_stock_level,0) as min_level, COALESCE(unit,'units') as unit FROM chemicals WHERE is_active = 1 ORDER BY available ASC LIMIT 10`),
-            safeTenantQuery(dbName, `SELECT COALESCE(name,'Unknown') as chemical, MONTH(created_at) as month_num, DATE_FORMAT(created_at,'%b') as month, COALESCE(SUM(COALESCE(quantity_used,0)),0) as qty FROM deceased_chemical_usage dcu JOIN chemicals c ON c.id = dcu.chemical_id WHERE dcu.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH) GROUP BY c.name, MONTH(dcu.created_at), DATE_FORMAT(dcu.created_at,'%b') ORDER BY c.name, month_num`),
+            safeTenantQuery(dbName, `SELECT COALESCE(name,'Unknown') as chemical, MONTH(created_at) as month_num, DATE_FORMAT(created_at,'%b') as month, COALESCE(SUM(COALESCE(quantity_used,0)),0) as qty FROM chemical_usage dcu JOIN chemicals c ON c.id = dcu.chemical_id WHERE dcu.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH) GROUP BY c.name, MONTH(dcu.created_at), DATE_FORMAT(dcu.created_at,'%b') ORDER BY c.name, month_num`),
             safeTenantQuery(dbName, `SELECT COUNT(*) as total_orders, SUM(CASE WHEN status IN ('completed','delivered') THEN 1 ELSE 0 END) as completed, COALESCE(SUM(profit),0) as profit FROM coffin_orders`),
             safeTenantQuery(dbName, `SELECT stage, COUNT(*) as total, SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status='in_progress' THEN 1 ELSE 0 END) as in_progress FROM production_stages GROUP BY stage ORDER BY FIELD(stage,'design','cutting','assembly','polishing','finishing')`),
             safeTenantQuery(dbName, `SELECT id, name, category, unit, current_stock, min_stock_level, (current_stock - min_stock_level) as deficit FROM chemicals WHERE is_active = 1 AND current_stock <= min_stock_level ORDER BY (current_stock / min_stock_level) ASC LIMIT 10`),
             safeTenantQuery(dbName, `SELECT id, name, unit, current_stock, min_stock_level, created_at FROM chemicals WHERE is_active = 1 AND DATEDIFF(NOW(), created_at) >= 180 ORDER BY created_at ASC LIMIT 10`),
-            safeTenantQuery(dbName, `SELECT c.name, c.category, c.unit, COALESCE(SUM(dcu.quantity_used),0) as total_used, COUNT(DISTINCT dcu.deceased_id) as patient_count FROM chemicals c JOIN deceased_chemical_usage dcu ON dcu.chemical_id = c.id WHERE dcu.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) GROUP BY c.id, c.name, c.category, c.unit ORDER BY total_used DESC LIMIT 10`)
+            safeTenantQuery(dbName, `SELECT c.name, c.category, c.unit, COALESCE(SUM(dcu.quantity_used),0) as total_used, COUNT(DISTINCT dcu.reference_id) as patient_count FROM chemicals c JOIN chemical_usage dcu ON dcu.chemical_id = c.id WHERE dcu.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) GROUP BY c.id, c.name, c.category, c.unit ORDER BY total_used DESC LIMIT 10`)
         ]);
 
         // Safely extract values from Promise.allSettled results
@@ -337,7 +337,7 @@ const getComparisonDashboard = asyncHandler(async (req, res) => {
             // Low stock chemicals
             safeTenantQuery(dbName, `SELECT COUNT(*) as low_stock_count FROM chemicals WHERE branch_id = ? AND is_active = 1 AND current_stock <= min_stock_level`, [branchId]),
             // Chemical usage
-            safeTenantQuery(dbName, `SELECT COALESCE(SUM(dcu.quantity_used),0) as total_chemical_used FROM deceased_chemical_usage dcu JOIN chemicals c ON c.id = dcu.chemical_id WHERE c.branch_id = ? AND dcu.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`, [branchId]),
+            safeTenantQuery(dbName, `SELECT COALESCE(SUM(dcu.quantity_used),0) as total_chemical_used FROM chemical_usage dcu JOIN chemicals c ON c.id = dcu.chemical_id WHERE c.branch_id = ? AND dcu.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`, [branchId]),
             // Revenue from extra charges
             safeTenantQuery(dbName, `SELECT COALESCE(SUM(amount),0) as extra_revenue, COALESCE(SUM(CASE WHEN status='paid' THEN amount ELSE 0 END),0) as collected FROM extra_charges WHERE branch_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`, [branchId]),
             // Branch info

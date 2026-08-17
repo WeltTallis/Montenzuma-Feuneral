@@ -62,7 +62,9 @@ const generateArrangementId = (): string => {
 
 // ─── Upload path fallbacks ───
 const getUploadBaseDir = (): string[] => {
+  const globalDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
   return [
+    path.join(globalDir, 'FlowerSamples'),
     path.join(__dirname, '../../uploads/FlowerSamples'),
     path.join(__dirname, '../../../uploads/FlowerSamples'),
     path.join(process.cwd(), 'uploads/FlowerSamples'),

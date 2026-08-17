@@ -45,51 +45,48 @@ app.use(async (req, res, next) => {
   console.log(`[CHEMICAL] Request: ${req.method} ${req.path}`);
   console.log(`[CHEMICAL] Tenant: ${tenantSlug}, Branch: ${branchId}`);
 
-  // For system_shared, skip tenant validation and use default DB
+  // For system_shared, skip tenant validation and use the central operations DB
   if (tenantSlug === 'system_shared') {
     console.log('[CHEMICAL] Using system_shared tenant (bypassing validation)');
     req.tenant = {
-      db_name: process.env.DB_NAME || 'restpoint_main',
+      db_name: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
+      main_db_name: process.env.DB_NAME || 'restpoint_main',
       tenant_id: 1,
       name: 'System Shared'
     };
     return next();
   }
 
-  // For non-system tenants — resolve database directly (no active-status blocking)
+  // For non-system tenants — resolve tenant main DB for branch lookups, but
+  // chemical DATA lives in the ONE central operations database shared by ALL
+  // tenants (tenant isolation via tenant_slug column).
   try {
     console.log(`[CHEMICAL] Validating tenant: ${tenantSlug}`);
     const { resolveDatabase } = require('../../shared/dbConfig');
 
-    let dbName = await resolveDatabase(tenantSlug);
+    let mainDbName = await resolveDatabase(tenantSlug);
 
     // Fallback: try the slug itself as a db name
-    if (!dbName) {
-      dbName = tenantSlug.replace(/-/g, '_');
+    if (!mainDbName) {
+      mainDbName = tenantSlug.replace(/-/g, '_');
     }
 
     req.tenant = {
-      db_name: dbName,
+      db_name: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
+      main_db_name: mainDbName,
       tenant_slug: tenantSlug,
       name: tenantSlug
     };
-    console.log(`[CHEMICAL] Tenant resolved: ${dbName}`);
-
-    // Auto-migrate: Ensure chemical tables exist in this tenant's database
-    if (dbName) {
-      ensureChemicalTables(dbName).catch(err => {
-        console.warn(`[CHEMICAL] Auto-migration warning for ${dbName}:`, err.message);
-      });
-    }
+    console.log(`[CHEMICAL] Tenant resolved — operations DB: ${req.tenant.db_name}, main DB: ${mainDbName}`);
 
     // Resolve branch if not provided
-    if (!req.branchId && dbName) {
+    if (!req.branchId && mainDbName) {
       const lastDash = tenantSlug.lastIndexOf('-');
       if (lastDash > 0) {
         const branchPart = tenantSlug.substring(lastDash + 1);
         try {
           const branches = await safeTenantQuery(
-            dbName,
+            mainDbName,
             'SELECT branch_id FROM branches WHERE branch_slug LIKE ? OR branch_name LIKE ? LIMIT 1',
             [`%${branchPart}%`, `%${branchPart}%`]
           );
@@ -104,9 +101,10 @@ app.use(async (req, res, next) => {
     }
   } catch (err) {
     console.error('[CHEMICAL] Tenant resolution error:', err.message);
-    // Always fall back to default DB rather than blocking
+    // Always fall back to the central operations DB rather than blocking
     req.tenant = {
-      db_name: process.env.DB_NAME || 'restpoint_main',
+      db_name: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
+      main_db_name: process.env.DB_NAME || 'restpoint_main',
       tenant_slug: tenantSlug,
       name: tenantSlug
     };
@@ -194,6 +192,7 @@ app.use((err, req, res, next) => {
 const CHEMICAL_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS chemicals (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_slug VARCHAR(100) NOT NULL DEFAULT 'system_shared',
   branch_id INT NOT NULL DEFAULT 1,
   name VARCHAR(255) NOT NULL,
   category VARCHAR(100) DEFAULT 'embalming',
@@ -211,6 +210,7 @@ CREATE TABLE IF NOT EXISTS chemicals (
   created_by INT DEFAULT NULL,
   created_at VARCHAR(255),
   updated_at VARCHAR(255),
+  INDEX idx_chemicals_tenant (tenant_slug),
   INDEX idx_chemicals_branch (branch_id),
   INDEX idx_chemicals_category (category),
   INDEX idx_chemicals_active (is_active),
@@ -219,6 +219,7 @@ CREATE TABLE IF NOT EXISTS chemicals (
 
 CREATE TABLE IF NOT EXISTS chemical_transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_slug VARCHAR(100) NOT NULL DEFAULT 'system_shared',
   chemical_id INT NOT NULL,
   branch_id INT NOT NULL DEFAULT 1,
   transaction_type ENUM('received', 'consumed', 'adjusted', 'wasted', 'transferred') NOT NULL,
@@ -232,16 +233,19 @@ CREATE TABLE IF NOT EXISTS chemical_transactions (
   notes TEXT DEFAULT NULL,
   created_at VARCHAR(255),
   FOREIGN KEY (chemical_id) REFERENCES chemicals(id) ON DELETE CASCADE,
+  INDEX idx_transactions_tenant (tenant_slug),
   INDEX idx_transactions_chemical (chemical_id),
   INDEX idx_transactions_branch (branch_id),
   INDEX idx_transactions_type (transaction_type),
   INDEX idx_transactions_date (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS deceased_chemical_usage (
+CREATE TABLE IF NOT EXISTS chemical_usage (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_slug VARCHAR(100) NOT NULL DEFAULT 'system_shared',
   branch_id INT NOT NULL DEFAULT 1,
-  deceased_id INT DEFAULT NULL,
+  reference_type VARCHAR(50) DEFAULT NULL,
+  reference_id INT DEFAULT NULL,
   chemical_id INT NOT NULL,
   quantity_used DECIMAL(10,2) NOT NULL,
   unit VARCHAR(50) NOT NULL DEFAULT 'liters',
@@ -251,7 +255,8 @@ CREATE TABLE IF NOT EXISTS deceased_chemical_usage (
   created_at VARCHAR(255),
   FOREIGN KEY (chemical_id) REFERENCES chemicals(id) ON DELETE CASCADE,
   FOREIGN KEY (transaction_id) REFERENCES chemical_transactions(id) ON DELETE SET NULL,
-  INDEX idx_usage_deceased (deceased_id),
+  INDEX idx_usage_tenant (tenant_slug),
+  INDEX idx_usage_reference (reference_type, reference_id),
   INDEX idx_usage_chemical (chemical_id),
   INDEX idx_usage_branch (branch_id),
   INDEX idx_usage_date (created_at)
@@ -259,6 +264,7 @@ CREATE TABLE IF NOT EXISTS deceased_chemical_usage (
 
 CREATE TABLE IF NOT EXISTS chemical_alerts (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_slug VARCHAR(100) NOT NULL DEFAULT 'system_shared',
   branch_id INT NOT NULL DEFAULT 1,
   chemical_id INT NOT NULL,
   alert_threshold DECIMAL(10,2) DEFAULT NULL,
@@ -267,11 +273,13 @@ CREATE TABLE IF NOT EXISTS chemical_alerts (
   resolved_by INT DEFAULT NULL,
   created_at VARCHAR(255),
   FOREIGN KEY (chemical_id) REFERENCES chemicals(id) ON DELETE CASCADE,
-  UNIQUE KEY uk_chemical_alert (chemical_id, branch_id)
+  UNIQUE KEY uk_chemical_alert (chemical_id, branch_id, tenant_slug),
+  INDEX idx_alerts_tenant (tenant_slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS ppe_requests (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_slug VARCHAR(100) NOT NULL DEFAULT 'system_shared',
   branch_id INT NOT NULL DEFAULT 1,
   item_name VARCHAR(255) NOT NULL,
   quantity_requested INT NOT NULL DEFAULT 1,
@@ -282,12 +290,14 @@ CREATE TABLE IF NOT EXISTS ppe_requests (
   notes TEXT DEFAULT NULL,
   created_at VARCHAR(255),
   updated_at VARCHAR(255),
+  INDEX idx_ppe_tenant (tenant_slug),
   INDEX idx_ppe_branch (branch_id),
   INDEX idx_ppe_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS chemical_transfers (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_slug VARCHAR(100) NOT NULL DEFAULT 'system_shared',
   chemical_id INT NOT NULL,
   from_branch_id INT NOT NULL,
   to_branch_id INT NOT NULL,
@@ -300,6 +310,7 @@ CREATE TABLE IF NOT EXISTS chemical_transfers (
   created_at VARCHAR(255),
   updated_at VARCHAR(255),
   FOREIGN KEY (chemical_id) REFERENCES chemicals(id) ON DELETE CASCADE,
+  INDEX idx_transfer_tenant (tenant_slug),
   INDEX idx_transfer_from (from_branch_id),
   INDEX idx_transfer_to (to_branch_id),
   INDEX idx_transfer_status (status)
@@ -322,9 +333,9 @@ async function normalizePPERequestsSchema(connection, dbName) {
     if (!columnRows.length) return;
 
     await connection.query('ALTER TABLE ppe_requests DROP COLUMN requester_id');
-    console.log(`  ✅ Removed legacy requester_id column from ppe_requests in ${dbName}`);
+    console.log(`   Removed legacy requester_id column from ppe_requests in ${dbName}`);
   } catch (error) {
-    console.warn(`  ⚠️ PPE schema normalization warning for ${dbName}: ${error.message}`);
+    console.warn(`  PPE schema normalization warning for ${dbName}: ${error.message}`);
   }
 }
 
@@ -351,19 +362,19 @@ async function ensureChemicalTables(dbName) {
       try {
         await connection.query(match[0]);
         const tableName = match[0].match(/CREATE TABLE IF NOT EXISTS (\w+)/i)?.[1] || 'unknown';
-        console.log(`  ✅ Table '${tableName}' ensured in ${dbName}`);
+        console.log(`  Table '${tableName}' ensured in ${dbName}`);
         count++;
       } catch (err) {
-        console.warn(`  ⚠️ Table creation warning: ${err.message}`);
+        console.warn(` Table creation warning: ${err.message}`);
       }
     }
 
     await normalizePPERequestsSchema(connection, dbName);
 
-    console.log(`✅ Chemical tables ensured in database: ${dbName} (${count} tables)`);
+    console.log(`Chemical tables ensured in database: ${dbName} (${count} tables)`);
     return true;
   } catch (error) {
-    console.error(`❌ Failed to ensure chemical tables in ${dbName}:`, error.message);
+    console.error(`Failed to ensure chemical tables in ${dbName}:`, error.message);
     return false;
   } finally {
     if (connection) await connection.end().catch(() => { });
@@ -375,16 +386,14 @@ async function ensureChemicalTables(dbName) {
 // ============================================
 async function startServer() {
   // Run auto-migration on the main database
-  const mainDb = process.env.DB_NAME || 'restpoint_main';
-  console.log(`🔧 Running auto-migration for chemical tables in: ${mainDb}`);
+    const mainDb = process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+  console.log(`Running auto-migration for chemical tables in: ${mainDb}`);
   await ensureChemicalTables(mainDb);
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log('========================================');
-    console.log(`🧪 Chemical Service`);
-    console.log(`   Port: ${PORT}`);
-    console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`   DB: ${process.env.DB_NAME || 'not configured'}`);
+    console.log(`Chemical Service`);
+    console.log(`DB: ${process.env.OPERATIONS_DATABASE || 'restpoint_operations'}`);
     console.log('========================================');
   });
 }

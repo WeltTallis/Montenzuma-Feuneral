@@ -47,7 +47,7 @@ const transformOrder = (o) => {
   return {
     id: o.order_number || `CF-${o.id}`,
     dbId: o.id,
-    name: o.coffin_name || o.deceased_name || 'Unnamed',
+    name: o.coffin_name || 'Unnamed',
     type: o.coffin_type || 'Standard',
     size: o.size || 'Standard',
     color: o.color || 'Natural',

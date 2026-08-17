@@ -9,7 +9,9 @@ export async function up(knex: Knex): Promise<void> {
     table.increments('tenant_id').primary();
     table.string('tenant_name', 255).notNullable();
     table.string('tenant_slug', 100).notNullable().unique();
+    table.string('tenant_code', 100).nullable().unique();
     table.string('db_name', 100).notNullable().unique();
+    table.string('db_shared_name', 100).nullable();
     table.string('email', 255).notNullable();
     table.string('phone', 20);
     table.text('location');
@@ -21,6 +23,7 @@ export async function up(knex: Knex): Promise<void> {
 
     // Indexes for performance
     table.index('tenant_slug');
+    table.index('tenant_code');
     table.index('email');
     table.index('status');
     table.index('subscription_status');

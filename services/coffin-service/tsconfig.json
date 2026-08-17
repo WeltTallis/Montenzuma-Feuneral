@@ -20,6 +20,7 @@
   "include": [
     "server.ts",
     "db.js",
+    "migrations/**/*.js",
     "routes/**/*.ts",
     "controllers/**/*.ts",
     "models/**/*.ts",

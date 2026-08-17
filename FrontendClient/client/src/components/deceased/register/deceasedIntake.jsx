@@ -1548,7 +1548,7 @@ const DeceasedRegistrationForm = () => {
           {/* Footer Component */}
           <FooterPanel>
             <FooterText>
-              {tenantName}  Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}<br />
+              {tenantName} Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}<br />
               - Official Intake Record —
             </FooterText>
 

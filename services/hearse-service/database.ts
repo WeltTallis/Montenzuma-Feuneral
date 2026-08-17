@@ -10,9 +10,18 @@ import knex, { Knex } from 'knex';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 
-// Load root .env file - works from both source and dist directories
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+// Load the service .env first, then the repo-root .env. These paths resolve
+// for BOTH source (`services/hearse-service`) and compiled
+// (`dist/services/hearse-service`) layouts, so the DB credentials from the repo
+// root .env are always available.
+for (const envPath of [
+  path.resolve(__dirname, '.env'),            // service folder (source layout)
+  path.resolve(__dirname, '../../../.env'),     // service folder (dist layout)
+  path.resolve(__dirname, '../../.env'),        // repo root (source layout)
+  path.resolve(__dirname, '../../../../../.env'), // repo root (dist layout)
+]) {
+  dotenv.config({ path: envPath });
+}
 
 // ============================================
 // Type Definitions
@@ -57,8 +66,8 @@ const HEARSE_DB_CONFIG: DatabaseConfig = {
   host: process.env.DB_HOST || '127.0.0.1',
   port: parseInt(process.env.DB_PORT || '3306', 10),
   user: process.env.DB_USER || 'restpoint_user',
-  password: process.env.DB_PASSWORD || 'RestPointUser2024',
-  database: process.env.HEARSE_DB_NAME || 'restpoint_hearses',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
@@ -158,7 +167,6 @@ export const transaction = async <T>(
  * Run Knex migrations - self-contained
  */
 export const runMigrations = async (): Promise<void> => {
-  console.log('🔄 [HearseService] Running knex migrations...');
 
   // First ensure the database exists
   const rootPool = await mysql.createPool({
@@ -188,7 +196,7 @@ export const runMigrations = async (): Promise<void> => {
     },
     migrations: {
       directory: path.join(__dirname, 'migrations'),
-      tableName: 'knex_migrations',
+      tableName: 'knex_migrations_hearse',
       extension: 'js'
     },
     pool: {
@@ -230,7 +238,7 @@ export const rollbackMigrations = async (): Promise<void> => {
     },
     migrations: {
       directory: path.join(__dirname, 'migrations'),
-      tableName: 'knex_migrations',
+      tableName: 'knex_migrations_hearse',
       extension: 'js'
     },
     pool: {

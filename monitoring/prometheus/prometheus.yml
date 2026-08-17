@@ -17,44 +17,45 @@ scrape_configs:
   # INFRASTRUCTURE METRICS
   # ============================================
   - job_name: 'node-exporter'
+    # node-exporter runs with network_mode: host so use host gateway
     static_configs:
-      - targets: ['84.247.183.53:9100']
+      - targets: ['host.docker.internal:9100']
 
   - job_name: 'cadvisor'
     static_configs:
-      - targets: ['84.247.183.53:8082']
+      - targets: ['restpoint-cadvisor:8080']
 
   - job_name: 'process-exporter'
     static_configs:
-      - targets: ['84.247.183.53:9256']
+      - targets: ['restpoint-process-exporter:9256']
 
   # ============================================
   # DATABASE METRICS
   # ============================================
   - job_name: 'mysql-exporter'
     static_configs:
-      - targets: ['84.247.183.53:9104']
+      - targets: ['restpoint-mysql-exporter:9104']
 
   # ============================================
   # CACHE METRICS
   # ============================================
   - job_name: 'redis-exporter'
     static_configs:
-      - targets: ['84.247.183.53:9121']
+      - targets: ['restpoint-redis-exporter:9121']
 
   # ============================================
   # MESSAGE QUEUE METRICS
   # ============================================
   - job_name: 'rabbitmq-exporter'
     static_configs:
-      - targets: ['84.247.183.53:9419']
+      - targets: ['restpoint-rabbitmq-exporter:9419']
 
   # ============================================
   # API GATEWAY - Request Metrics
   # ============================================
   - job_name: 'api-gateway'
     static_configs:
-      - targets: ['84.247.183.53:5000']
+      - targets: ['restpoint_api_gateway:5000']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
@@ -63,107 +64,113 @@ scrape_configs:
   # ============================================
   - job_name: 'auth-service'
     static_configs:
-      - targets: ['84.247.183.53:5001']
+      - targets: ['restpoint_auth_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'tenant-service'
     static_configs:
-      - targets: ['84.247.183.53:5002']
+      - targets: ['restpoint_tenant_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'deceased-service'
     static_configs:
-      - targets: ['84.247.183.53:5003']
+      - targets: ['restpoint_deceased_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'hearse-service'
     static_configs:
-      - targets: ['84.247.183.53:5023']
+      - targets: ['restpoint_hearse_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'coffin-service'
     static_configs:
-      - targets: ['84.247.183.53:5008']
+      - targets: ['restpoint_coffin_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'florist-service'
     static_configs:
-      - targets: ['84.247.183.53:7070']
+      - targets: ['host.docker.internal:7070']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'workshop-service'
     static_configs:
-      - targets: ['84.247.183.53:6060']
+      - targets: ['restpoint_workshop_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'bodycheckout-service'
     static_configs:
-      - targets: ['84.247.183.53:5013']
+      - targets: ['restpoint_bodycheckout_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'billing-service'
     static_configs:
-      - targets: ['84.247.183.53:5017']
+      - targets: ['restpoint_billing_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'analytics-service'
     static_configs:
-      - targets: ['84.247.183.53:5012']
+      - targets: ['restpoint_analytics_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'socketio-service'
     static_configs:
-      - targets: ['84.247.183.53:5018']
+      - targets: ['restpoint_socketio_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'documents-service'
     static_configs:
-      - targets: ['84.247.183.53:8112']
+      - targets: ['restpoint_documents_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'support-service'
     static_configs:
-      - targets: ['84.247.183.53:8111']
+      - targets: ['restpoint_support_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'chemicals-service'
     static_configs:
-      - targets: ['84.247.183.53:5019']
+      - targets: ['restpoint_chemical_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'leave-service'
     static_configs:
-      - targets: ['84.247.183.53:5016']
+      - targets: ['restpoint_leave_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   - job_name: 'scanner-service'
     static_configs:
-      - targets: ['84.247.183.53:5022']
+      - targets: ['restpoint_scanner_service:2024']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'invoice-service'
+    static_configs:
+      - targets: ['restpoint_invoice_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 
   # ============================================
-  # WORKER SERVICES - Background Jobs
+  # WORKER SERVICES - Background Jobs (BullMQ)
   # ============================================
-  - job_name: 'excel-export-worker'
+  - job_name: 'bullmq-workers'
     static_configs:
-      - targets: ['84.247.183.53:5003']
-    metrics_path: '/metrics/workers'
+      - targets: ['restpoint_deceased_service:5000']
+    metrics_path: '/metrics'
     scrape_interval: 15s
 
   # ============================================
@@ -175,19 +182,22 @@ scrape_configs:
       module: [http_2xx]
     static_configs:
       - targets:
-          - http://84.247.183.53:5000/health
-          - http://84.247.183.53:5001/health
-          - http://84.247.183.53:5002/health
-          - http://84.247.183.53:5003/health
-          - http://84.247.183.53:5018/health
-          - http://84.247.183.53:5013/health
-          - http://84.247.183.53:5023/health
-          - http://84.247.183.53:5008/health
-          - http://84.247.183.53:7070/health
-          - http://84.247.183.53:6060/health
-          - http://84.247.183.53:5017/health
-          - http://84.247.183.53:5012/health
-          - http://84.247.183.53:3003
+          - http://restpoint_api_gateway:5000/health
+          - http://restpoint_auth_service:5000/health
+          - http://restpoint_tenant_service:5000/health
+          - http://restpoint_deceased_service:5000/health
+          - http://restpoint_socketio_service:5000/health
+          - http://restpoint_bodycheckout_service:5000/health
+          - http://restpoint_hearse_service:5000/health
+          - http://restpoint_coffin_service:5000/health
+          - http://restpoint_workshop_service:5000/health
+          - http://restpoint_billing_service:5000/health
+          - http://restpoint_analytics_service:5000/health
+          - http://restpoint_support_service:5000/health
+          - http://restpoint_leave_service:5000/health
+          - http://restpoint_chemical_service:5000/health
+          - http://restpoint_invoice_service:5000/health
+          - http://restpoint_monitoring_grafana:3000
           - https://restpoint.co.ke
     relabel_configs:
       - source_labels: [__address__]
@@ -195,4 +205,4 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: 84.247.183.53:9115
+        replacement: restpoint-blackbox-exporter:9115

@@ -23,6 +23,16 @@ const useAuthStore = create((set, get) => ({
         if (userData.tenantSlug) localStorage.setItem('tenantSlug', userData.tenantSlug);
         if (userData.branchId) localStorage.setItem('branchId', userData.branchId);
         if (userData.dbName) localStorage.setItem('dbName', userData.dbName);
+        if (userData.tenantId) localStorage.setItem('tenantId', String(userData.tenantId));
+        if (userData.userId || userData.id) {
+          const uid = userData.userId || userData.id;
+          localStorage.setItem('userId', String(uid));
+          sessionStorage.setItem('userId', String(uid));
+        }
+        if (userData.branchSlug) {
+          localStorage.setItem('branchSlug', userData.branchSlug);
+          sessionStorage.setItem('branchSlug', userData.branchSlug);
+        }
 
         set({
             user: userData,
@@ -48,9 +58,17 @@ const useAuthStore = create((set, get) => ({
         localStorage.removeItem('authToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('tenantSlug');
+        localStorage.removeItem('tenantId');
         localStorage.removeItem('branchSlug');
         localStorage.removeItem('branchId');
         localStorage.removeItem('dbName');
+        localStorage.removeItem('user');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('parentTenantSlug');
+        localStorage.removeItem('branches');
+        localStorage.removeItem('branchHierarchy');
+        sessionStorage.removeItem('userId');
+        sessionStorage.removeItem('branchSlug');
 
         set({
             user: null,

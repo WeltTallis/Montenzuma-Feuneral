@@ -1,10 +1,10 @@
 /**
  * @file shared/services/migration-service.ts
  * PRODUCTION-READY: Shared Migration Service
- * 
+ *
  * Centralized migration runner for all tenant databases.
  * Tracks executed migrations in a `migrations` table per tenant database.
- * 
+ *
  * Usage:
  *   const service = new MigrationService();
  *   await service.initializeMasterConnection(config);
@@ -59,7 +59,9 @@ export class MigrationService {
     // Verify connectivity
     const conn = await this.masterPool.getConnection();
     conn.release();
-    console.log(`[MigrationService] ✅ Master connection established: ${config.host}:${config.port}/${config.database || 'N/A'}`);
+    console.log(
+      `[MigrationService] ✅ Master connection established: ${config.host}:${config.port}/${config.database || 'N/A'}`
+    );
   }
 
   /**
@@ -67,19 +69,21 @@ export class MigrationService {
    */
   private getMasterPool(): mysql.Pool {
     if (!this.masterPool) {
-      throw new Error('[MigrationService] Master connection not initialized. Call initializeMasterConnection() first.');
+      throw new Error(
+        '[MigrationService] Master connection not initialized. Call initializeMasterConnection() first.'
+      );
     }
     return this.masterPool;
   }
 
   /**
    * Run all pending migrations against a specific tenant database.
-   * 
+   *
    * - Creates the `migrations` tracking table if it doesn't exist.
    * - Skips migrations that have already been executed.
    * - Executes each migration SQL in order.
    * - Records successful migrations in the tracking table.
-   * 
+   *
    * @param dbName  The tenant database name.
    * @param migrations  Ordered array of migration objects ({ name, sql }).
    * @param connectionConfig  Database connection config (without database name).
@@ -120,7 +124,9 @@ export class MigrationService {
 
       // Get already-executed migration names
       const executedMigrations = await this.getExecutedMigrations(connection);
-      console.log(`[MigrationService] Database "${dbName}": ${executedMigrations.size} previously executed migration(s)`);
+      console.log(
+        `[MigrationService] Database "${dbName}": ${executedMigrations.size} previously executed migration(s)`
+      );
 
       // Run each pending migration
       for (const migration of migrations) {
@@ -143,7 +149,9 @@ export class MigrationService {
             );
           } catch (insertErr: any) {
             if (insertErr && insertErr.code === 'ER_DUP_ENTRY') {
-              console.warn(`[MigrationService] ⚠️ Migration tracking record already exists for: ${migration.name} (another process?)`);
+              console.warn(
+                `[MigrationService] ⚠️ Migration tracking record already exists for: ${migration.name} (another process?)`
+              );
             } else {
               throw insertErr;
             }
@@ -175,7 +183,7 @@ export class MigrationService {
     } finally {
       // Always close the tenant connection pool
       if (connection) {
-        await connection.end().catch(() => { });
+        await connection.end().catch(() => {});
       }
     }
 
@@ -226,7 +234,7 @@ export class MigrationService {
       return { executed: [], totalInTable: 0 };
     } finally {
       if (connection) {
-        await connection.end().catch(() => { });
+        await connection.end().catch(() => {});
       }
     }
   }
@@ -269,20 +277,23 @@ export class MigrationService {
       const executedList = Array.from(executedMigrations).reverse().slice(0, count);
 
       for (const migrationName of executedList) {
-        const migration = migrations.find(m => m.name === migrationName);
+        const migration = migrations.find((m) => m.name === migrationName);
         if (!migration) {
-          console.warn(`[MigrationService] ⚠️  Migration "${migrationName}" found in DB but not in migration list. Skipping.`);
+          console.warn(
+            `[MigrationService] ⚠️  Migration "${migrationName}" found in DB but not in migration list. Skipping.`
+          );
           continue;
         }
 
         try {
-          console.log(`[MigrationService] 🔄 Rolling back migration: ${migrationName} from ${dbName}`);
+          console.log(
+            `[MigrationService] 🔄 Rolling back migration: ${migrationName} from ${dbName}`
+          );
 
           // Remove from tracking table
-          await connection.query(
-            'DELETE FROM migrations WHERE migration_name = ?',
-            [migration.name]
-          );
+          await connection.query('DELETE FROM migrations WHERE migration_name = ?', [
+            migration.name,
+          ]);
 
           result.migrationsRun.push(migration.name);
           console.log(`[MigrationService] ✅ Rolled back migration: ${migration.name}`);
@@ -300,7 +311,7 @@ export class MigrationService {
       result.success = false;
     } finally {
       if (connection) {
-        await connection.end().catch(() => { });
+        await connection.end().catch(() => {});
       }
     }
 
@@ -339,7 +350,7 @@ export class MigrationService {
    */
   async close(): Promise<void> {
     if (this.masterPool) {
-      await this.masterPool.end().catch(() => { });
+      await this.masterPool.end().catch(() => {});
       this.masterPool = null;
       console.log('[MigrationService] 🔌 Master connection closed');
     }

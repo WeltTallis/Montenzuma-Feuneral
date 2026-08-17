@@ -7,6 +7,7 @@ import { TenantProvider } from './utils/context/TenantContext';
 import { UserProvider } from './utils/context/userContext';
 import { SocketProvider } from './utils/context/socketContext';
 import InstallPrompt from './components/pwa/InstallPrompt';
+import Loader, { GlobalLoaderStyles } from './components/loader/loader';
 import './index.css';
 
 // Error Boundary Component
@@ -83,39 +84,15 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Loading component for Suspense
+// Loading component for Suspense — uses the global Rest Point loader
 const LoadingFallback = () => (
-  <div style={{
-    minHeight: '100vh',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    fontFamily: 'system-ui, -apple-system, sans-serif'
-  }}>
-    <div style={{ textAlign: 'center' }}>
-      <div style={{
-        width: '40px',
-        height: '40px',
-        border: '4px solid #f3f3f3',
-        borderTop: '4px solid #0d6efd',
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite',
-        margin: '0 auto 16px'
-      }} />
-      <p style={{ color: '#6c757d' }}>Loading...</p>
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
-    </div>
-  </div>
+  <Loader text="Loading" color="#0e3345" />
 );
 
 function App() {
   return (
     <ErrorBoundary>
+      <GlobalLoaderStyles />
       <HelmetProvider>
         <Router>
           <AuthProvider>

@@ -8,9 +8,12 @@ import { safeTenantQuery, safeTenantExecute, resolveDatabase, getTenantDB, getRo
 import { validateTenantActive } from '../../shared/tenancy';
 import asyncHandler from 'express-async-handler';
 
-// Load .env files
+// Load .env files (service folder + repo root; supports the compiled
+// `services/hearse-service/dist/services/hearse-service` layout)
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../../../.env') });
 
 import restpointRoutes from './routes/hearseRoutes';
 
@@ -25,6 +28,7 @@ const io = new SocketIOServer(server, {
     }
 });
 
+
 app.set('io', io);
 
 // Initialize hearse database on startup using knex migrations
@@ -33,13 +37,22 @@ runMigrations().catch((err: Error) => {
     console.error('Failed to run hearse database migrations:', err);
 });
 
+
+     
+
+
+
+
 // Middleware
 const corsOptions = {
     origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'x-tenant-id', 'x-user-id', 'x-branch-id', 'x-branch-code']
+        allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'x-tenant-id', 'x-user-id', 'x-branch-id', 'x-branch-slug', 'x-branch-code', 'x-branch-db']
 };
+
+
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

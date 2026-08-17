@@ -1,4 +1,4 @@
-/**
+/** 
  * Create workshop tables - Coffin building, materials, and production tracking
  * Multi-tenant: Each funeral home gets its own database
  */
@@ -7,6 +7,7 @@ export async function up(knex) {
   // Users table (workers, managers, admins)
   await knex.schema.createTable('users', (table) => {
     table.increments('id').primary();
+    table.string('tenant_slug', 100).notNullable().index();
     table.string('first_name', 100).notNullable();
     table.string('last_name', 100).notNullable();
     table.string('role', 50).defaultTo('worker');
@@ -18,6 +19,7 @@ export async function up(knex) {
   // Coffin orders
   await knex.schema.createTable('coffin_orders', (table) => {
     table.increments('id').primary();
+    table.string('tenant_slug', 100).notNullable().index();
     table.string('order_number', 50).unique().notNullable();
     table.string('coffin_name', 255).notNullable();
     table.string('coffin_type', 50).defaultTo('standard');
@@ -43,6 +45,7 @@ export async function up(knex) {
   // Materials inventory
   await knex.schema.createTable('materials', (table) => {
     table.increments('id').primary();
+    table.string('tenant_slug', 100).notNullable().index();
     table.string('name', 255).notNullable();
     table.string('category', 100).notNullable();
     table.string('unit', 50).notNullable().defaultTo('pieces');
@@ -58,6 +61,7 @@ export async function up(knex) {
   // Material usage tracking
   await knex.schema.createTable('material_usage', (table) => {
     table.increments('id').primary();
+    table.string('tenant_slug', 100).notNullable().index();
     table.integer('coffin_order_id').unsigned().notNullable();
     table.integer('material_id').unsigned().notNullable();
     table.decimal('quantity_used', 10, 2).notNullable();
@@ -73,6 +77,7 @@ export async function up(knex) {
   // Production stages
   await knex.schema.createTable('production_stages', (table) => {
     table.increments('id').primary();
+    table.string('tenant_slug', 100).notNullable().index();
     table.integer('coffin_order_id').unsigned().notNullable();
     table.string('stage', 50).notNullable();
     table.string('status', 50).defaultTo('pending');
@@ -87,6 +92,7 @@ export async function up(knex) {
   // Worker assignments
   await knex.schema.createTable('worker_assignments', (table) => {
     table.increments('id').primary();
+    table.string('tenant_slug', 100).notNullable().index();
     table.integer('coffin_order_id').unsigned().notNullable();
     table.integer('user_id').unsigned().notNullable();
     table.string('stage', 50).notNullable();

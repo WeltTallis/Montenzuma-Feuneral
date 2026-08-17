@@ -12,12 +12,14 @@ if (!fs.existsSync(hearsesDir)) {
 }
 
 const storage = multer.diskStorage({
+
     destination: (_req: Request, _file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => cb(null, hearsesDir),
     filename: (_req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
         const ext = path.extname(file.originalname);
         cb(null, `hearse-${uniqueSuffix}${ext}`);
     },
+    
 });
 
 const upload = multer({ storage });
@@ -41,57 +43,62 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
             return;
         }
 
+        // Tenant/branch context — prefer the auth headers the frontend now sends
+        // (x-tenant-id / x-tenant-slug / x-branch-id), then req.tenant, then body.
+
+
+        const headerOf = (name: string): string | null => {
+            const v = (req.headers as any)[name];
+            return Array.isArray(v) ? (v[0] as string) : (v ? String(v) : null);
+        };
+
+
+        const tenantId = headerOf('x-tenant-id') || (req as any).tenant?.id || (req as any).tenant?.tenant_id || (req.body as any)?.tenant_id || (req.body as any)?.tenantId || null;
+        const tenantSlug = headerOf('x-tenant-slug') || (req as any).tenant?.tenant_slug || (req as any).tenantSlug || (req.body as any)?.tenant_slug || null;
+        const headerBranchId = headerOf('x-branch-id') || (req.body as any)?.branch_id || (req.body as any)?.branchId || null;
+        const headerBranchSlug = headerOf('x-branch-slug') || null;
+
         const now = getKenyaTimeISO();
         const pool = await getHearsePool();
 
-        let resolvedBranchCode = branch_code || null;
-        let assignedBranchId = parseInt(branch_id) || 1;
+        let resolvedBranchCode = branch_code || headerBranchSlug || null;
+        let assignedBranchId: string | null = headerBranchId || branch_id || null;
 
-        // If branch_code is provided, look up the branch_id from database
-        if (branch_code && !branch_id) {
+        // Resolve branch_code from a UUID/int branch_id (or branch_id from
+        // branch_code) against the shared branches registry. Single-branch tenants
+        // may omit both — the hearse is then simply owned by the tenant.
+        if (!assignedBranchId && branch_code) {
             try {
                 const [branchRows] = await pool.query('SELECT branch_id, branch_name FROM branches WHERE branch_code = ? AND is_active = TRUE', [branch_code]);
                 const branchRow = branchRows[0];
                 if (branchRow) {
                     assignedBranchId = branchRow.branch_id;
                     resolvedBranchCode = branch_code;
-                } else {
-                    // Branch code not found, use the provided code as-is
-                    resolvedBranchCode = branch_code;
-                    assignedBranchId = 1; // Default to first branch
                 }
-            } catch (e) {
-                // If lookup fails, use provided values
-                resolvedBranchCode = branch_code;
-                assignedBranchId = 1;
-            }
-        } else if (branch_id) {
-            // If branch_id is provided, look up the branch_code
+            } catch (e) { /* lookup failed - keep provided values */ }
+        } else if (assignedBranchId) {
             try {
-                const [branchRows] = await pool.query('SELECT branch_code, branch_name FROM branches WHERE branch_id = ? AND is_active = TRUE', [branch_id]);
+                const [branchRows] = await pool.query('SELECT branch_code, branch_name FROM branches WHERE branch_id = ? AND is_active = TRUE', [assignedBranchId]);
                 const branchRow = branchRows[0];
                 if (branchRow) {
-                    resolvedBranchCode = branchRow.branch_code || `BRANCH-${branch_id}`;
+                    resolvedBranchCode = branchRow.branch_code || `BRANCH-${assignedBranchId}`;
                 } else {
-                    resolvedBranchCode = `BRANCH-${branch_id}`;
+                    resolvedBranchCode = resolvedBranchCode || `BRANCH-${assignedBranchId}`;
                 }
             } catch (e) {
-                resolvedBranchCode = branch_code || `BRANCH-${branch_id}`;
+                resolvedBranchCode = resolvedBranchCode || (assignedBranchId ? `BRANCH-${assignedBranchId}` : 'MAIN');
             }
-        } else {
-            // Neither branch_id nor branch_code provided
-            res.status(400).json({ success: false, message: 'Branch identification is required. Please provide branch_code or branch_id.' });
-            return;
         }
+        const branchNameValue = assignedBranchId ? `Branch ${assignedBranchId}` : 'Main Branch';
+        const branchCodeValue = resolvedBranchCode || (assignedBranchId ? `BRANCH-${assignedBranchId}` : 'MAIN');
         const [countResult] = await pool.query('SELECT COUNT(*) as count FROM hearses');
         const hearseNumber = String((countResult[0]?.count || 0) + 1).padStart(3, '0');
         const hearse_code = `HRS-${hearseNumber}`;
 
-        const insertFields = ['hearse_code', 'hearse_name', 'plate_number', 'model', 'capacity', 'status', 'branch_id', 'branch_name', 'branch_code', 'is_own_branch', 'active_bookings', 'created_at', 'updated_at'];
+        const insertFields = ['hearse_code', 'hearse_name', 'plate_number', 'model', 'capacity', 'status', 'branch_id', 'branch_name', 'branch_code', 'active_bookings', 'tenant_id', 'tenant_slug', 'created_at', 'updated_at'];
         const insertValues = [
             hearse_code, hearse_name || null, plate_number.trim(), model || null, capacity || 8, status || 'available',
-            assignedBranchId, resolvedBranchCode ? `Branch ${assignedBranchId}` : `Branch ${assignedBranchId}`,
-            resolvedBranchCode || `BRANCH-${assignedBranchId}`, 1, 0, now, now
+            assignedBranchId, branchNameValue, branchCodeValue, 0, tenantId, tenantSlug, now, now
         ];
 
         const placeholders = insertValues.map(() => '?').join(', ');
@@ -106,15 +113,16 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
             const newHearse = {
                 id: result.insertId, hearse_code, hearse_name: hearse_name || null, plate_number: plate_number.trim(),
                 model: model || null, capacity: capacity || 8, status: status || 'available',
-                branch_id: assignedBranchId, branch_name: resolvedBranchCode ? `Branch ${assignedBranchId}` : `Branch ${assignedBranchId}`,
-                branch_code: resolvedBranchCode || `BRANCH-${assignedBranchId}`, image, created_at: now, updated_at: now
+                branch_id: assignedBranchId, branch_name: branchNameValue,
+                branch_code: branchCodeValue, tenant_id: tenantId, tenant_slug: tenantSlug,
+                image, created_at: now, updated_at: now
             };
             io.emit('hearse_registered', { type: 'HEARSE_REGISTERED', hearse: newHearse, timestamp: now, message: `New hearse registered: ${hearse_name || plate_number}` });
         }
 
         res.status(201).json({
             success: true, message: 'Hearse registered successfully.',
-            data: { id: result.insertId, hearse_code, hearse_name: hearse_name || null, plate_number, image_path: image, branch_id, status: status || 'available' }
+            data: { id: result.insertId, hearse_code, hearse_name: hearse_name || null, plate_number, image_path: image, branch_id: assignedBranchId, tenant_id: tenantId, tenant_slug: tenantSlug, status: status || 'available' }
         });
         return;
     } catch (error) {
@@ -261,7 +269,27 @@ export const deleteHearse = asyncHandler(async (req: Request, res: Response) => 
 export const getAllHearses = asyncHandler(async (req: Request, res: Response) => {
     try {
         const pool = await getHearsePool();
-        const [hearses] = await pool.query(`SELECT h.*, h.branch_name, h.branch_code, h.image FROM hearses h ORDER BY h.created_at DESC`) as any;
+
+        // ACCURACY — this table lives in the SHARED operations database and MANY
+        // tenants write hearses into it. Every read MUST be scoped by the calling
+        // tenant's id (the frontend sends x-tenant-id). A hearse fleet is
+        // TENANT-wide, so we never filter by branch here — but we ALWAYS filter by
+        // tenant so one tenant can never see another tenant's hearses.
+        const headerOf = (name: string): string | null => {
+            const v = (req.headers as any)[name];
+            return Array.isArray(v) ? (v[0] as string) : (v ? String(v) : null);
+        };
+        const tenantId = headerOf('x-tenant-id') || (req.query as any)?.tenant_id || (req as any).tenant?.id || (req as any).tenant?.tenant_id || null;
+
+        let sql = `SELECT h.*, h.branch_name, h.branch_code, h.image FROM hearses h`;
+        const params: any[] = [];
+        if (tenantId) {
+            sql += ` WHERE h.tenant_id = ?`;
+            params.push(tenantId);
+        }
+        sql += ` ORDER BY h.created_at DESC`;
+
+        const [hearses] = await pool.query(sql, params) as any;
         res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.set('Pragma', 'no-cache');
         res.set('Expires', '0');

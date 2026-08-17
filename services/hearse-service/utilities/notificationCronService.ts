@@ -262,7 +262,7 @@ export class NotificationCronService {
                     ...data,
                     timestamp: getKenyaTimeISO()
                 }
-            }, { timeout: 5000 }).then(() => {
+            }, { timeout: 30000 }).then(() => {
                 console.log(`📤 Emitted notification: ${eventName} to tenant_${targetTenant}`);
             }).catch((error) => {
                 console.error(`Error emitting notification ${eventName} to tenant_${targetTenant}:`, error.message);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Menu, X, ArrowRight, ArrowUpRight, ShieldCheck, Users, Zap, CheckCircle, Code2, Server, Settings, Trophy, Building2, Smartphone } from '../../utils/icons/icons';
+import { ChevronDown, Menu, X, ArrowRight, ArrowUpRight,   GraduationCap   , ShieldCheck, Users, Zap, CheckCircle, Code2, Server, Settings, Trophy, Building2, Smartphone, MonitorSmartphone, Brain, Cpu } from '../../utils/icons/icons';
 import Footer from '../../components/layout/Footer';
 
 const C = {

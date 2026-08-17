@@ -24,7 +24,7 @@ import path from 'path';
 import crypto from 'crypto';
 
 // Base uploads directory
-const UPLOADS_BASE_DIR = process.env.UPLOADS_BASE_DIR || path.join(process.cwd(), 'uploads');
+const UPLOADS_BASE_DIR = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
 
 // Folder categories
 export enum FolderCategory {

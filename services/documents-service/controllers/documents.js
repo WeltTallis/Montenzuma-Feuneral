@@ -4,6 +4,48 @@ const { lookupTenantDatabase, safeTenantQuery } = require('../../shared/dbConfig
 const { getKenyaTimeISO } = require('../../../packages/shared-utils/dist/timestamps');
 
 /**
+ * Resolve the canonical global uploads directory, honouring the platform
+ * GLOBAL_UPLOADS_DIR / UPLOADS_BASE_DIR env vars first (same logic as server.js)
+ * so this controller never falls back to a repo-local path.
+ */
+function resolveGlobalUploadsDir() {
+  for (const envDir of [process.env.GLOBAL_UPLOADS_DIR, process.env.UPLOADS_BASE_DIR].filter(Boolean)) {
+    try {
+      fs.mkdirSync(envDir, { recursive: true });
+      return envDir;
+    } catch (e) {
+      console.warn(`[DOCUMENTS] GLOBAL_UPLOADS_DIR not writable (${envDir}):`, e.message);
+    }
+  }
+  for (const basePath of [
+    path.join(process.cwd(), 'uploads'),
+    path.join(__dirname, '../../uploads'),
+    path.join(__dirname, '../../../uploads'),
+  ]) {
+    try {
+      fs.mkdirSync(basePath, { recursive: true });
+      return basePath;
+    } catch (e) {}
+  }
+  return path.join(require('os').tmpdir(), 'restpoint-uploads');
+}
+
+const GLOBAL_UPLOADS_DIR = resolveGlobalUploadsDir();
+
+function documentsDir(tenantSlug, deceasedId) {
+  const dir = path.join(GLOBAL_UPLOADS_DIR, 'documents', tenantSlug, deceasedId);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function absoluteStoredPath(storedPath) {
+  // stored_path is stored as "/uploads/documents/{tenant}/{deceased}/{file}" —
+  // resolve under GLOBAL_UPLOADS_DIR by stripping the leading "/uploads" prefix.
+  const rel = String(storedPath || '').replace(/^\/?(uploads[\\/])*/, '');
+  return path.join(GLOBAL_UPLOADS_DIR, rel);
+}
+
+/**
  * Ensure folder exists with retry mechanism
  */
 function ensureFolderExists(dir, retries = 3, delay = 100) {
@@ -97,13 +139,8 @@ const uploadDocument = async (req, res) => {
       });
     }
 
-    // Multi-tenant folder structure: uploads/documents/{tenantSlug}/{deceased_idd}/
-    const uploadDir = path.join(
-      __dirname,
-      '../../uploads/documents',
-      tenantSlug,
-      deceased_idd,
-    );
+        // Multi-tenant folder structure: {GLOBAL_UPLOADS_DIR}/documents/{tenantSlug}/{deceased_idd}/
+    const uploadDir = documentsDir(tenantSlug, deceased_idd);
     await ensureFolderExists(uploadDir);
 
     const uniqueName = `${Date.now()}-${Math.floor(Math.random() * 10000)}${path.extname(file.originalname)}`;
@@ -168,7 +205,7 @@ const getDocuments = async (req, res) => {
     const documents = await safeTenantQuery(
       dbName,
       `SELECT 
-        id,
+         document_id AS id,
         document_type,
         file_name as document_name,
         file_path,
@@ -213,7 +250,7 @@ const downloadDocument = async (req, res) => {
       dbName,
       `SELECT file_path, file_name, mime_type, tenant_slug 
        FROM documents 
-       WHERE id = ? AND (tenant_slug = ? OR tenant_slug IS NULL)`,
+               WHERE document_id = ? AND (tenant_slug = ? OR tenant_slug IS NULL)`,
       [documentId, tenantSlug],
     );
 
@@ -222,7 +259,7 @@ const downloadDocument = async (req, res) => {
     }
 
     const doc = document[0];
-    const absolutePath = path.join(__dirname, '../..', doc.file_path);
+    const absolutePath = absoluteStoredPath(doc.file_path);
 
     if (!fs.existsSync(absolutePath)) {
       return res.status(404).json({ message: 'File not found on server' });
@@ -261,7 +298,7 @@ const deleteDocument = async (req, res) => {
 
     const document = await safeTenantQuery(
       dbName,
-      `SELECT file_path FROM documents WHERE id = ? AND (tenant_slug = ? OR tenant_slug IS NULL)`,
+      `SELECT file_path FROM documents         WHERE document_id = ? AND (tenant_slug = ? OR tenant_slug IS NULL)`,
       [documentId, tenantSlug],
     );
 
@@ -269,7 +306,7 @@ const deleteDocument = async (req, res) => {
       return res.status(404).json({ message: 'Document not found' });
     }
 
-    const filePath = path.join(__dirname, '../..', document[0].file_path);
+    const filePath = absoluteStoredPath(document[0].file_path);
 
     // Delete file from filesystem
     if (fs.existsSync(filePath)) {
@@ -277,7 +314,7 @@ const deleteDocument = async (req, res) => {
     }
 
     // Delete record from database
-    await safeTenantQuery(dbName, `DELETE FROM documents WHERE id = ?`, [documentId]);
+        await safeTenantQuery(dbName, `DELETE FROM documents WHERE document_id = ?`, [documentId]);
 
     return res.status(200).json({
       message: 'Document deleted successfully',
@@ -297,3 +334,4 @@ module.exports = {
   downloadDocument,
   deleteDocument,
 };
+

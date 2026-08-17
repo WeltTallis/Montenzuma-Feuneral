@@ -6,12 +6,12 @@ const createWorkOrder = async (req: Request, res: Response) => {
         const tenantDb = (req as any).tenant?.db_name;
         if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
 
-        const { coffin_order_id, design_name, description, specifications, design_files, status } = req.body;
+        const { coffin_order_id, design_name, description, specifications, status } = req.body;
 
         const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO design_specifications (coffin_order_id, design_name, description, specifications, design_files, status)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [coffin_order_id, design_name, description, specifications, design_files, status || 'pending']
+            `INSERT INTO design_specifications (coffin_order_id, design_name, description, specifications, status)
+             VALUES (?, ?, ?, ?, ?)`,
+            [coffin_order_id, design_name, description, specifications, status || 'pending']
         );
 
         const rows: any = await safeTenantQuery(tenantDb,
@@ -32,16 +32,16 @@ const saveDesignSpec = async (req: Request, res: Response) => {
 
         // Use order ID from URL params (route: /orders/:id/design)
         const coffin_order_id = req.params.id;
-        const { design_name, description, specifications, design_files, status } = req.body;
+        const { design_name, description, specifications, status } = req.body;
 
         if (!coffin_order_id) {
             return res.status(400).json({ error: 'Order ID is required' });
         }
 
         const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO design_specifications (coffin_order_id, design_name, description, specifications, design_files, status)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [coffin_order_id, design_name, description, specifications, design_files, status || 'pending']
+            `INSERT INTO design_specifications (coffin_order_id, design_name, description, specifications, status)
+             VALUES (?, ?, ?, ?, ?)`,
+            [coffin_order_id, design_name, description, specifications, status || 'pending']
         );
 
         const rows: any = await safeTenantQuery(tenantDb,
@@ -108,12 +108,12 @@ const recordMaterialIntake = async (req: Request, res: Response) => {
         const tenantDb = (req as any).tenant?.db_name;
         if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
 
-        const { material_id, quantity, unit_cost, supplier, invoice_number, notes, received_by } = req.body;
+        const { material_id, quantity, unit_cost, notes, received_by } = req.body;
 
         const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO material_intake (material_id, quantity, unit_cost, supplier, invoice_number, notes, received_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [material_id, quantity, unit_cost, supplier, invoice_number, notes, received_by]
+            `INSERT INTO material_intake (material_id, quantity, unit_cost, notes, received_by)
+             VALUES (?, ?, ?, ?, ?)`,
+            [material_id, quantity, unit_cost, notes, received_by]
         );
 
         // Update material quantity

@@ -54,13 +54,14 @@ class CoffinModel {
 
     const sql = `
       INSERT INTO coffins
-        (coffin_id, tenant_slug, type, exact_price, quantity, color, size,
+        (coffin_id, tenant_slug, tenant_id, branch_id, type, exact_price, quantity, color, size,
          is_active, is_deleted, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, NOW())
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, NOW())
     `;
 
     await coffinQuery(sql, [
-      coffinId, tenantSlug, type, exactPrice, quantity, color, size
+      coffinId, tenantSlug, data.tenant_id || null, data.branch_id || null,
+      type, exactPrice, quantity, color, size
     ]);
 
     return {
@@ -184,7 +185,7 @@ class CoffinModel {
    */
   static async delete(tenantSlug: string, id: string): Promise<boolean> {
     const orders: any[] = await coffinQuery(
-      'SELECT order_id FROM coffin_orders WHERE coffin_id = ? AND tenant_slug = ? AND status != "completed"',
+      'SELECT order_id FROM coffin_bookings WHERE coffin_id = ? AND tenant_slug = ? AND status != "completed"',
       [id, tenantSlug]
     );
 
@@ -227,12 +228,13 @@ class CoffinModel {
     );
 
     const sql = `
-      INSERT INTO coffin_orders (order_id, tenant_slug, coffin_id, coffin_name, color, size, quantity, booked_by, booked_for, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
+      INSERT INTO coffin_bookings (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size, quantity, booked_by, booked_for, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
     `;
 
     const result: any = await coffinQuery(sql, [
-      orderId, tenantSlug, coffin[0].coffin_id, data.coffin_name?.trim() || null,
+      orderId, tenantSlug, data.tenant_id || null, data.branch_id || null,
+      coffin[0].coffin_id, data.coffin_name?.trim() || null,
       data.color ?? null, data.size ?? null, parseInt(data.quantity),
       data.booked_by?.trim() || null, data.booked_for?.trim() || null
     ]);

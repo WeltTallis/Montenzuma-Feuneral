@@ -206,9 +206,8 @@ const getCostingReport = async (req: Request, res: Response) => {
         }
 
         const [costingData]: any = await safeTenantQuery(tenantDb,
-            `SELECT co.id, co.order_number, co.customer_name, co.coffin_type, co.status,
-                c.materials_cost, c.labor_cost, c.overhead_cost, c.total_cost,
-                c.selling_price, c.profit, c.profit_margin
+            `SELECT co.id, co.order_number, co.coffin_name, co.coffin_type, co.status,
+                c.overhead_cost, c.total_cost, c.selling_price
              FROM costing c JOIN coffin_orders co ON c.coffin_order_id = co.id
              ORDER BY c.created_at DESC LIMIT 50`
         );
@@ -216,9 +215,7 @@ const getCostingReport = async (req: Request, res: Response) => {
         const [averages]: any = await safeTenantQuery(tenantDb,
             `SELECT coffin_type, COUNT(*) as order_count,
                 COALESCE(AVG(total_cost), 0) as avg_cost,
-                COALESCE(AVG(selling_price), 0) as avg_price,
-                COALESCE(AVG(profit), 0) as avg_profit,
-                COALESCE(AVG(profit_margin), 0) as avg_margin
+                COALESCE(AVG(selling_price), 0) as avg_price
              FROM costing c JOIN coffin_orders co ON c.coffin_order_id = co.id
              WHERE co.status IN ('completed', 'delivered') GROUP BY coffin_type`
         );

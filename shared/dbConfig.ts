@@ -12,14 +12,20 @@ import * as mysql from 'mysql2/promise';
 const LOGGER = {
   info: (msg: string, data?: any) => {
     if (process.env.NODE_ENV !== 'test') {
-      process.stdout.write(JSON.stringify({ level: 'info', msg, data, ts: new Date().toISOString() }) + '\n');
+      process.stdout.write(
+        JSON.stringify({ level: 'info', msg, data, ts: new Date().toISOString() }) + '\n'
+      );
     }
   },
   warn: (msg: string, data?: any) => {
-    process.stdout.write(JSON.stringify({ level: 'warn', msg, data, ts: new Date().toISOString() }) + '\n');
+    process.stdout.write(
+      JSON.stringify({ level: 'warn', msg, data, ts: new Date().toISOString() }) + '\n'
+    );
   },
   error: (msg: string, data?: any) => {
-    process.stderr.write(JSON.stringify({ level: 'error', msg, data, ts: new Date().toISOString() }) + '\n');
+    process.stderr.write(
+      JSON.stringify({ level: 'error', msg, data, ts: new Date().toISOString() }) + '\n'
+    );
   },
 };
 
@@ -34,15 +40,15 @@ const auth_gssapi_client = () => () => {
 // Circuit Breaker
 // ============================================
 class CircuitBreaker {
-  private failures: number = 0;
-  private lastFailureTime: number = 0;
+  private failures = 0;
+  private lastFailureTime = 0;
   private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
   private readonly threshold: number;
   private readonly timeout: number;
   private readonly halfOpenMaxRequests: number = 1;
-  private halfOpenRequests: number = 0;
+  private halfOpenRequests = 0;
 
-  constructor(threshold: number = 5, timeout: number = 30000) {
+  constructor(threshold = 5, timeout = 30000) {
     this.threshold = threshold;
     this.timeout = timeout;
   }
@@ -94,7 +100,9 @@ class CircuitBreaker {
     }
   }
 
-  getState(): string { return this.state; }
+  getState(): string {
+    return this.state;
+  }
   reset(): void {
     this.failures = 0;
     this.state = 'CLOSED';
@@ -107,7 +115,7 @@ class CircuitBreaker {
 // ============================================
 const DB_CONFIG = {
   host: process.env.DB_HOST || '127.0.0.1',
-  port: parseInt(process.env.DB_PORT || '3306', 10),
+  port: Number.parseInt(process.env.DB_PORT || '3306', 10),
   user: process.env.DB_USER || 'restpoint_user',
   password: process.env.DB_PASSWORD || '',
   authPlugins: { auth_gssapi_client },
@@ -124,7 +132,10 @@ const MIN_POOL_CONNECTIONS = 2;
 
 // ─── Connection Pool Caches ──────────────────────────────────────────────────
 let rootPool: mysql.Pool | null = null;
-const tenantPoolCache = new Map<string, { pool: mysql.Pool; createdAt: number; lastUsed: number }>();
+const tenantPoolCache = new Map<
+  string,
+  { pool: mysql.Pool; createdAt: number; lastUsed: number }
+>();
 const branchDbCache = new Map<string, { dbName: string; createdAt: number }>();
 const branchDbCacheTTL = 300000; // 5 minutes
 
@@ -151,12 +162,11 @@ function startPoolCleanup(): void {
 
     // Clean idle tenant pools (beyond max cache size)
     if (tenantPoolCache.size > MAX_POOL_CACHE_SIZE) {
-      const sorted = [...tenantPoolCache.entries()]
-        .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+      const sorted = [...tenantPoolCache.entries()].sort((a, b) => a[1].lastUsed - b[1].lastUsed);
 
       const toRemove = sorted.slice(0, tenantPoolCache.size - MAX_POOL_CACHE_SIZE);
       for (const [key, entry] of toRemove) {
-        entry.pool.end().catch(() => { });
+        entry.pool.end().catch(() => {});
         tenantPoolCache.delete(key);
         cleaned++;
       }
@@ -292,7 +302,8 @@ export const resolveDatabase = async (slug: string): Promise<string | null> => {
         }
       } catch (err: any) {
         LOGGER.warn('Branch lookup failed, falling back to main DB', {
-          tenantDbName, error: err.message,
+          tenantDbName,
+          error: err.message,
         });
         return tenantDbName;
       }
@@ -315,10 +326,9 @@ export const getTenantDB = async (tenantDbName: string): Promise<mysql.Pool> => 
 
   // Enforce max cache size
   if (tenantPoolCache.size >= MAX_POOL_CACHE_SIZE) {
-    const oldest = [...tenantPoolCache.entries()]
-      .sort((a, b) => a[1].lastUsed - b[1].lastUsed)[0];
+    const oldest = [...tenantPoolCache.entries()].sort((a, b) => a[1].lastUsed - b[1].lastUsed)[0];
     if (oldest) {
-      oldest[1].pool.end().catch(() => { });
+      oldest[1].pool.end().catch(() => {});
       tenantPoolCache.delete(oldest[0]);
       LOGGER.info('Evicted oldest pool to maintain cache limit', { dbName: oldest[0] });
     }
@@ -380,7 +390,11 @@ export const query = async (req: any, sql: string, params: any[] = []): Promise<
   }
 };
 
-export const execute = async (req: any, sql: string, params: any[] = []): Promise<mysql.ResultSetHeader> => {
+export const execute = async (
+  req: any,
+  sql: string,
+  params: any[] = []
+): Promise<mysql.ResultSetHeader> => {
   const rawSlug = req.headers['x-slug'] || req.headers['x-tenant-slug'];
   const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
 
@@ -405,24 +419,40 @@ export const execute = async (req: any, sql: string, params: any[] = []): Promis
 
 // ─── Safe Query Functions ────────────────────────────────────────────────────
 
-export const safeTenantQuery = async (dbName: string, sql: string, params: any[] = []): Promise<any[]> => {
+export const safeTenantQuery = async (
+  dbName: string,
+  sql: string,
+  params: any[] = []
+): Promise<any[]> => {
   try {
     const pool = await getTenantDB(dbName);
     const [rows] = await pool.query(sql, params);
     return rows as any[];
   } catch (error: any) {
-    LOGGER.error('safeTenantQuery error', { dbName, message: error.message, sql: sql.substring(0, 200) });
+    LOGGER.error('safeTenantQuery error', {
+      dbName,
+      message: error.message,
+      sql: sql.substring(0, 200),
+    });
     throw error;
   }
 };
 
-export const safeTenantExecute = async (dbName: string, sql: string, params: any[] = []): Promise<mysql.ResultSetHeader> => {
+export const safeTenantExecute = async (
+  dbName: string,
+  sql: string,
+  params: any[] = []
+): Promise<mysql.ResultSetHeader> => {
   try {
     const pool = await getTenantDB(dbName);
     const [result] = await pool.query(sql, params);
     return result as mysql.ResultSetHeader;
   } catch (error: any) {
-    LOGGER.error('safeTenantExecute error', { dbName, message: error.message, sql: sql.substring(0, 200) });
+    LOGGER.error('safeTenantExecute error', {
+      dbName,
+      message: error.message,
+      sql: sql.substring(0, 200),
+    });
     throw error;
   }
 };
@@ -432,7 +462,7 @@ export const safeTenantExecute = async (dbName: string, sql: string, params: any
 export const closeTenantDB = async (tenantDbName: string): Promise<void> => {
   const entry = tenantPoolCache.get(tenantDbName);
   if (entry) {
-    await entry.pool.end().catch(() => { });
+    await entry.pool.end().catch(() => {});
     tenantPoolCache.delete(tenantDbName);
     LOGGER.info('Closed pool for tenant', { dbName: tenantDbName });
   }
@@ -442,14 +472,14 @@ export const closeAllConnections = async (): Promise<void> => {
   stopPoolCleanup();
 
   for (const [dbName, entry] of tenantPoolCache) {
-    await entry.pool.end().catch(() => { });
+    await entry.pool.end().catch(() => {});
     LOGGER.info('Closed pool', { dbName });
   }
   tenantPoolCache.clear();
   branchDbCache.clear();
 
   if (rootPool) {
-    await rootPool.end().catch(() => { });
+    await rootPool.end().catch(() => {});
     rootPool = null;
     LOGGER.info('Closed root pool');
   }

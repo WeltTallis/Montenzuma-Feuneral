@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -623,7 +623,7 @@ const FlexRow = styled.div`
 `;
 
 function ReleaseFormPage() {
-  const { id } = useParams();
+  const { slug, id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const isAdmin = useTenantStore((s) => s.isAdmin);
@@ -675,12 +675,12 @@ function ReleaseFormPage() {
   }, [location]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
+    if (slug) {
+      localStorage.setItem('tenantSlug', slug);
     }
+  }, [slug]);
 
+  useEffect(() => {
     const fetchDeceasedData = async () => {
       try {
         if (!id || isNewMode) {
@@ -730,8 +730,11 @@ function ReleaseFormPage() {
     setIsLookupLoading(true);
     setLookupError('');
     try {
-      const res = await api.get(ENDPOINTS.DECEASED.BY_ADMISSION(lookupAdmissionNumber.trim()));
-      const data = res.data?.data || res.data;
+      const res = await api.get('/deceased/public/postmortem/search', {
+        params: { admission_number: lookupAdmissionNumber.trim() }
+      });
+      const searchData = res.data?.data;
+      const data = searchData?.deceased;
       if (!data) {
         setLookupError('No deceased record found with that admission number.');
         toast.error('No deceased record found with that admission number.');
@@ -745,8 +748,8 @@ function ReleaseFormPage() {
         phoneNumber: data?.phone_number || prev.phoneNumber,
         facilityName: data?.receiving_officer || prev.facilityName,
       }));
-      if (data?.postmortem_record) {
-        setPostmortemData(data.postmortem_record);
+      if (searchData?.postmortem) {
+        setPostmortemData(searchData.postmortem);
       }
       toast.success(`Deceased record loaded: ${data?.full_name || 'Unknown'}`);
     } catch (err) {

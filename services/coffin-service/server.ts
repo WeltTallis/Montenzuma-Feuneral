@@ -88,7 +88,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
     // The central coffin database serves every tenant - the tenant is identified
     // by slug and/or id, not by a dedicated database.
     (req as any).tenant = {
-      db_name: process.env.COFFIN_DATABASE || process.env.DB_NAME || 'restpoint_coffin',
+            db_name: process.env.OPERATIONS_DATABASE || process.env.DB_NAME || 'restpoint_operations',
       tenant_slug: tenantSlug,
       tenant_id: (req as any).tenantId,
       tenant_name: tenantSlug,
@@ -220,7 +220,7 @@ async function startServer() {
         port: PORT,
         health: `http://localhost:${PORT}/health`,
         endpoints: `http://localhost:${PORT}/`,
-        centralDb: process.env.COFFIN_DATABASE || 'restpoint_coffin'
+                centralDb: process.env.OPERATIONS_DATABASE || 'restpoint_operations'
       });
     });
 
