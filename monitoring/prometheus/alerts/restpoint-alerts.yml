@@ -481,3 +481,79 @@ groups:
         annotations:
           summary: "Memory predicted to exhaust within 4 hours"
           description: "Memory will exhaust within 4 hours at current rate"
+
+  # ============================================
+  # DATABASE (MariaDB) ALERTS
+  # ============================================
+  - name: restpoint_database
+    interval: 30s
+    rules:
+      - alert: MariaDBDown
+        expr: up{job="mysql-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "MariaDB exporter / database is down"
+          description: "Cannot scrape MariaDB metrics (mysql_exporter target {{ $labels.instance }} is down) for more than 1 minute."
+
+      - alert: MariaDBExporterNoMetrics
+        expr: up{job="mysql-exporter"} == 1 and mysql_global_variables_port == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "MariaDB exporter is up but returning no metrics"
+          description: "mysql_exporter is reachable but exposed no MariaDB port variable - the exporter user may lack privileges."
+
+      - alert: MariaDBHighConnectionUsage
+        expr: (mysql_global_status_threads_connected / mysql_global_variables_max_connections) * 100 > 80
+        for: 2m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "High MariaDB connection usage on {{ $labels.instance }}"
+          description: "{{ $value | humanizePercentage }} of max_connections in use (warning threshold 80%)."
+
+      - alert: MariaDBCriticalConnectionUsage
+        expr: (mysql_global_status_threads_connected / mysql_global_variables_max_connections) * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "Critical MariaDB connection usage on {{ $labels.instance }}"
+          description: "{{ $value | humanizePercentage }} of max_connections in use - new connections may be rejected."
+
+      - alert: MariaDBSlowQueries
+        expr: rate(mysql_global_status_slow_queries[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "MariaDB slow query rate rising on {{ $labels.instance }}"
+          description: "{{ $value }} slow queries/sec (queries exceeding long_query_time=1s) over the last 5 minutes."
+
+      - alert: MariaDBCriticalSlowQueries
+        expr: rate(mysql_global_status_slow_queries[5m]) > 1
+        for: 1m
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "Critical MariaDB slow query rate on {{ $labels.instance }}"
+          description: "{{ $value }} slow queries/sec over the last 5 minutes - investigate query plans."
+
+      - alert: MariaDBAbortedConnections
+        expr: rate(mysql_global_status_aborted_connects[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "MariaDB aborted connections on {{ $labels.instance }}"
+          description: "{{ $value }} aborted connection attempts/sec - check credentials / network."

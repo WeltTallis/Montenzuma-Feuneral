@@ -1,0 +1,46 @@
+# =============================================================================
+# RestPoint - MariaDB custom configuration (Prometheus monitoring coverage)
+# =============================================================================
+# Mounted at /etc/mysql/conf.d/custom-mysqld.cnf inside the mariadb:10.11 image.
+#
+# These settings guarantee the Prometheus mysql_exporter can expose EVERY metric
+# the stack needs: slow queries, connections, the listening port, InnoDB stats,
+# and the performance_schema detail (per-digest slow-query breakdown, waits,
+# table/index/file/memory events).
+#
+# NOTE: options here are only read at server start. Restarting the mariadb
+# service is enough - no data-volume wipe / re-initialisation required.
+# =============================================================================
+
+[mysqld]
+
+# --- Performance Schema (required by the perf_schema scrapers) ---------------
+# The exporter's perf_schema collectors read from performance_schema tables
+# (events_statements_summary_by_digest, table_io_waits_*, file/memory events).
+# It is ON by default in MariaDB 10.11 but we set it explicitly for safety.
+performance_schema = ON
+
+# --- Slow query log (drives `mysql_global_status_slow_queries`) --------------
+# When enabled, MariaDB increments the `Slow_queries` counter for every query
+# whose execution time exceeds long_query_time. The exporter exposes this
+# counter as `mysql_global_status_slow_queries` (slow query volume) and, with
+# performance_schema enabled, per-digest timing via perf_schema.eventsstatements.
+slow_query_log = ON
+long_query_time = 1
+
+# TABLE keeps the slow log queryable (mysql.slow_log) and bounded in size,
+# while still incrementing the Slow_queries counter the exporter reads.
+log_output = TABLE
+
+# --- General / error log -----------------------------------------------------
+# general_log is intentionally OFF (very verbose, hurts performance).
+general_log = OFF
+log_warnings = 2
+
+# --- Connection / thread tuning ----------------------------------------------
+# Helps expose meaningful, actionable connection metrics.
+max_connections = 500
+thread_cache_size = 100
+wait_timeout = 28800
+interactive_timeout = 28800
+connect_timeout = 10

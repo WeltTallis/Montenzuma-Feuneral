@@ -90,8 +90,8 @@ export class BranchController {
       });
 
       // Auto-connect the new branch to all existing branches
-      try {
-        await TenantModel.autoConnectBranches(tenant.db_name, tenantSlug);
+            try {
+        await TenantModel.autoConnectBranches(tenant.db_name, tenantSlug, tenant.tenant_id);
         logger.info({ service: 'tenant-service', function: 'createBranch', message: 'Auto-connected new branch to existing branches' });
       } catch (connectErr: any) {
         logger.warn({ service: 'tenant-service', function: 'createBranch', message: 'Auto-connect failed', error: connectErr.message });
@@ -142,7 +142,7 @@ export class BranchController {
   async listBranchConnections(req: Request, res: Response): Promise<void> {
     try {
       const tenantSlug = getHeader(req, 'x-tenant-slug');
-      const branchId = parseInt(Array.isArray(req.params.branchId) ? req.params.branchId[0] : req.params.branchId);
+      const branchId = String(Array.isArray(req.params.branchId) ? req.params.branchId[0] : req.params.branchId);
 
       if (!tenantSlug) {
         res.status(400).json({ success: false, message: 'Tenant slug required' });
@@ -193,8 +193,8 @@ export class BranchController {
       const connectionId = await TenantModel.createBranchConnection(
         tenant.db_name,
         tenantSlug,
-        parseInt(branch_id),
-        parseInt(connected_branch_id),
+        String(branch_id),
+        String(connected_branch_id),
         connection_type || 'partnership',
         notes
       );
@@ -218,7 +218,7 @@ export class BranchController {
   async updateConnection(req: Request, res: Response): Promise<void> {
     try {
       const tenantSlug = getHeader(req, 'x-tenant-slug');
-      const connectionId = parseInt(Array.isArray(req.params.connectionId) ? req.params.connectionId[0] : req.params.connectionId);
+      const connectionId = String(Array.isArray(req.params.connectionId) ? req.params.connectionId[0] : req.params.connectionId);
 
       if (!tenantSlug) {
         res.status(400).json({ success: false, message: 'Tenant slug required' });
@@ -250,7 +250,7 @@ export class BranchController {
   async deleteConnection(req: Request, res: Response): Promise<void> {
     try {
       const tenantSlug = getHeader(req, 'x-tenant-slug');
-      const connectionId = parseInt(Array.isArray(req.params.connectionId) ? req.params.connectionId[0] : req.params.connectionId);
+      const connectionId = String(Array.isArray(req.params.connectionId) ? req.params.connectionId[0] : req.params.connectionId);
 
       if (!tenantSlug) {
         res.status(400).json({ success: false, message: 'Tenant slug required' });
@@ -287,7 +287,7 @@ export class BranchController {
         return;
       }
 
-      await TenantModel.autoConnectBranches(tenant.db_name, tenantSlug);
+            await TenantModel.autoConnectBranches(tenant.db_name, tenantSlug, tenant.tenant_id);
       res.json({ success: true, message: 'All branches auto-connected successfully' });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
@@ -301,8 +301,8 @@ export class BranchController {
   async checkConnection(req: Request, res: Response): Promise<void> {
     try {
       const tenantSlug = getHeader(req, 'x-tenant-slug');
-      const branchId = parseInt(Array.isArray(req.params.branchId) ? req.params.branchId[0] : req.params.branchId);
-      const connectedBranchId = parseInt(Array.isArray(req.params.connectedBranchId) ? req.params.connectedBranchId[0] : req.params.connectedBranchId);
+      const branchId = String(Array.isArray(req.params.branchId) ? req.params.branchId[0] : req.params.branchId);
+      const connectedBranchId = String(Array.isArray(req.params.connectedBranchId) ? req.params.connectedBranchId[0] : req.params.connectedBranchId);
 
       if (!tenantSlug) {
         res.status(400).json({ success: false, message: 'Tenant slug required' });

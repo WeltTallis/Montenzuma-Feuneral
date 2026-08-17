@@ -6,6 +6,7 @@
 -- Chemicals / Products in stock
 CREATE TABLE IF NOT EXISTS chemicals (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_slug VARCHAR(100) NOT NULL DEFAULT 'system_shared',
   branch_id INT NOT NULL DEFAULT 1,
   name VARCHAR(255) NOT NULL,
   category VARCHAR(100) DEFAULT 'embalming',
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS chemicals (
   created_by INT DEFAULT NULL,
   created_at VARCHAR(255),
   updated_at VARCHAR(255),
+  INDEX idx_chemicals_tenant (tenant_slug),
   INDEX idx_chemicals_branch (branch_id),
   INDEX idx_chemicals_category (category),
   INDEX idx_chemicals_active (is_active),
@@ -32,6 +34,7 @@ CREATE TABLE IF NOT EXISTS chemicals (
 -- Stock transactions (received, consumed, adjusted, wasted, transferred)
 CREATE TABLE IF NOT EXISTS chemical_transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_slug VARCHAR(100) NOT NULL DEFAULT 'system_shared',
   chemical_id INT NOT NULL,
   branch_id INT NOT NULL DEFAULT 1,
   transaction_type ENUM('received', 'consumed', 'adjusted', 'wasted', 'transferred') NOT NULL,

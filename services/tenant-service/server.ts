@@ -65,7 +65,7 @@ app.use(cors({
 // Serve uploaded files from the SHARED global uploads folder
 // (the exact same folder all microservices SAVE to via GLOBAL_UPLOADS_DIR),
 // exposed to the browser through the API gateway origin at /uploads/...
-const uploadsDir = process.env.GLOBAL_UPLOADS_DIR || 'C:\\Users\\User\\Downloads\\uploads';
+const uploadsDir = process.env.GLOBAL_UPLOAD_PATH || process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
 app.use('/uploads', express.static(uploadsDir));
 
 app.use((req: Request, res: Response, next: NextFunction) => {

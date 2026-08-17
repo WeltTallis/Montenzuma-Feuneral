@@ -14,14 +14,14 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
-const COFFIN_DATABASE = process.env.COFFIN_DATABASE || process.env.DB_NAME || 'restpoint_coffin';
+const COFFIN_DATABASE = process.env.OPERATIONS_DATABASE || process.env.DB_NAME || 'restpoint_operations';
 
 const buildConfig = () => ({
   client: 'mysql2',
   connection: {
     host: process.env.COFFIN_DB_HOST || process.env.DB_HOST || '127.0.0.1',
     port: Number(process.env.COFFIN_DB_PORT || process.env.DB_PORT || 3306),
-    user: process.env.COFFIN_DB_USER || process.env.DB_USER || 'restpoint_user',
+    user: process.env.COFFIN_DB_USER || process.env.DB_USER,
     password: process.env.COFFIN_DB_PASSWORD || process.env.DB_PASSWORD || '',
     database: COFFIN_DATABASE,
     charset: 'utf8mb4',

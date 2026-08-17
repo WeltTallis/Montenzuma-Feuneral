@@ -15,9 +15,6 @@ exports.up = function (knex) {
             table.string('branch_name', 100).notNullable();
             table.string('branch_code', 50);
             table.string('image', 500);
-            table.decimal('min_charge_ksh', 10, 2).defaultTo(0.00);
-            table.decimal('max_charge_ksh', 10, 2).defaultTo(0.00);
-            table.tinyint('is_own_branch').defaultTo(1);
             table.integer('active_bookings').defaultTo(0);
             table.string('created_at', 255);
             table.string('updated_at', 255);
@@ -33,7 +30,6 @@ exports.up = function (knex) {
             table.string('tenant_db_name', 100).notNullable();
             table.string('client_name', 200).notNullable();
             table.string('client_phone', 50).notNullable();
-            table.string('client_email', 200);
             table.text('destination').notNullable();
             table.string('from_timestamp', 255);
             table.string('to_timestamp', 255);
@@ -41,9 +37,7 @@ exports.up = function (knex) {
             table.enu('status', ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'booked']).defaultTo('booked');
             table.integer('branch_id');
             table.string('branch_code', 50);
-            table.integer('booked_by');
-            table.string('booked_by_email', 200);
-            table.string('booked_by_name', 200);
+            table.string('booked_by', 255).nullable().comment('User who created the booking (name, email, or system)');
             table.string('created_at', 255);
             table.string('updated_at', 255);
 

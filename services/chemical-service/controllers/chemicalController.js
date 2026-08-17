@@ -7,17 +7,18 @@ exports.getAll = async (req, res) => {
   try {
     const { category, active, search } = req.query;
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
 
     if (!tenantDb) {
-      return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
+       return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
     }
 
     let sql = `SELECT c.*, 
-               (SELECT COALESCE(SUM(quantity_used), 0) FROM deceased_chemical_usage WHERE chemical_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as total_used_30d,
-               (SELECT COALESCE(SUM(quantity_used), 0) FROM deceased_chemical_usage WHERE chemical_id = c.id AND DATE(created_at) = CURDATE()) as used_today,
+               (SELECT COALESCE(SUM(quantity_used), 0) FROM chemical_usage WHERE chemical_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as total_used_30d,
+               (SELECT COALESCE(SUM(quantity_used), 0) FROM chemical_usage WHERE chemical_id = c.id AND DATE(created_at) = CURDATE()) as used_today,
                CASE WHEN c.current_stock <= c.min_stock_level THEN 1 ELSE 0 END as is_low_stock
-               FROM chemicals c WHERE c.is_active = 1`;
-    const params = [];
+               FROM chemicals c WHERE c.is_active = 1 AND c.tenant_slug = ?`;
+    const params = [tenantSlug];
 
     if (category) { sql += ' AND c.category = ?'; params.push(category); }
     if (active !== 'false') { sql += ' AND c.is_active = 1'; }
@@ -65,9 +66,10 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
-    const rows = await safeTenantQuery(tenantDb, 'SELECT * FROM chemicals WHERE id = ? AND is_active = 1', [req.params.id]);
+    const rows = await safeTenantQuery(tenantDb, 'SELECT * FROM chemicals WHERE id = ? AND is_active = 1 AND tenant_slug = ?', [req.params.id, tenantSlug]);
 
     if (!rows.length) return res.status(404).json({ success: false, message: 'Chemical not found' });
 
@@ -83,6 +85,7 @@ exports.getById = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const { name, category, unit, current_stock, min_stock_level, reorder_level, unit_cost, hazard_level, supplier, batch_number, notes } = req.body;
@@ -94,23 +97,24 @@ exports.create = async (req, res) => {
     const initialQty = parseFloat(current_stock) || 0;
 
     const result = await safeTenantExecute(tenantDb,
-      `INSERT INTO chemicals (name, category, unit, current_stock, min_stock_level, reorder_level, unit_cost, hazard_level, supplier, batch_number, notes) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, effectiveCategory, effectiveUnit, initialQty, min_stock_level || 0, reorder_level || 0, unit_cost || 0, effectiveHazard, supplier || null, batch_number || null, notes || null]
+      `INSERT INTO chemicals (tenant_slug, name, category, unit, current_stock, min_stock_level, reorder_level, unit_cost, hazard_level, supplier, batch_number, notes) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tenantSlug, name, effectiveCategory, effectiveUnit, initialQty, min_stock_level || 0, reorder_level || 0, unit_cost || 0, effectiveHazard, supplier || null, batch_number || null, notes || null]
     );
 
     // Log initial stock as received transaction if quantity > 0
     if (initialQty > 0) {
       await safeTenantExecute(tenantDb,
-        `INSERT INTO chemical_transactions (chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, notes) 
-         VALUES (?, 'received', ?, ?, 0, ?, 'Initial stock on creation')`,
-        [result.insertId, initialQty, effectiveUnit, initialQty]
+        `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, notes) 
+         VALUES (?, ?, 'received', ?, ?, 0, ?, 'Initial stock on creation')`,
+        [tenantSlug, result.insertId, initialQty, effectiveUnit, initialQty]
       );
     }
-
     res.status(201).json({ success: true, message: 'Chemical created successfully', id: result.insertId });
   } catch (error) {
+
     console.error('[chemicalController.create]', error.message);
+
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -121,6 +125,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const { name, category, unit, min_stock_level, reorder_level, unit_cost, hazard_level, supplier, batch_number, notes } = req.body;
@@ -131,13 +136,15 @@ exports.update = async (req, res) => {
        unit_cost=COALESCE(?,unit_cost), hazard_level=COALESCE(?,hazard_level),
        supplier=COALESCE(?,supplier), batch_number=COALESCE(?,batch_number),
        notes=COALESCE(?,notes)
-       WHERE id=? AND is_active=1`,
-      [name, category, unit, min_stock_level, reorder_level, unit_cost, hazard_level, supplier, batch_number, notes, req.params.id]
+       WHERE id=? AND is_active=1 AND tenant_slug=?`,
+      [name, category, unit, min_stock_level, reorder_level, unit_cost, hazard_level, supplier, batch_number, notes, req.params.id, tenantSlug]
     );
 
     res.json({ success: true, message: 'Chemical updated successfully' });
   } catch (error) {
+
     res.status(500).json({ success: false, message: error.message });
+
   }
 };
 
@@ -147,9 +154,10 @@ exports.update = async (req, res) => {
 exports.remove = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
-    await safeTenantExecute(tenantDb, 'UPDATE chemicals SET is_active=0 WHERE id=?', [req.params.id]);
+    await safeTenantExecute(tenantDb, 'UPDATE chemicals SET is_active=0 WHERE id=? AND tenant_slug=?', [req.params.id, tenantSlug]);
     res.json({ success: true, message: 'Chemical removed successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -162,28 +170,33 @@ exports.remove = async (req, res) => {
 exports.receiveStock = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const { quantity, notes } = req.body;
     if (!quantity || parseFloat(quantity) <= 0) return res.status(400).json({ success: false, message: 'Valid quantity required' });
 
-    const chem = await safeTenantQuery(tenantDb, 'SELECT id, current_stock, unit FROM chemicals WHERE id=? AND is_active=1', [req.params.id]);
+    const chem = await safeTenantQuery(tenantDb, 'SELECT id, current_stock, unit FROM chemicals WHERE id=? AND is_active=1 AND tenant_slug=?', [req.params.id, tenantSlug]);
     if (!chem.length) return res.status(404).json({ success: false, message: 'Chemical not found' });
 
     const previousStock = parseFloat(chem[0].current_stock);
     const qty = parseFloat(quantity);
     const newStock = previousStock + qty;
 
-    await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=?', [newStock, req.params.id]);
+    await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [newStock, req.params.id, tenantSlug]);
     await safeTenantExecute(tenantDb,
-      `INSERT INTO chemical_transactions (chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, notes)
-       VALUES (?, 'received', ?, ?, ?, ?, ?)`,
-      [req.params.id, qty, chem[0].unit, previousStock, newStock, notes || 'Stock received']
+      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, notes)
+       VALUES (?, ?, 'received', ?, ?, ?, ?, ?)`,
+      [tenantSlug, req.params.id, qty, chem[0].unit, previousStock, newStock, notes || 'Stock received']
     );
 
     res.json({ success: true, message: 'Stock received successfully', previous_stock: previousStock, new_stock: newStock });
   } catch (error) {
+
+
     res.status(500).json({ success: false, message: error.message });
+
+
   }
 };
 
@@ -191,29 +204,35 @@ exports.receiveStock = async (req, res) => {
 // ADJUST STOCK
 // ============================================
 exports.adjustStock = async (req, res) => {
+
   try {
+
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
+
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
-
     const { new_quantity, reason } = req.body;
+
     if (new_quantity === undefined || parseFloat(new_quantity) < 0) return res.status(400).json({ success: false, message: 'Valid new_quantity required' });
+    const chem = await safeTenantQuery(tenantDb, 'SELECT id, current_stock, unit FROM chemicals WHERE id=? AND is_active=1 AND tenant_slug=?', [req.params.id, tenantSlug]);
 
-    const chem = await safeTenantQuery(tenantDb, 'SELECT id, current_stock, unit FROM chemicals WHERE id=? AND is_active=1', [req.params.id]);
     if (!chem.length) return res.status(404).json({ success: false, message: 'Chemical not found' });
-
     const previousStock = parseFloat(chem[0].current_stock);
-    const newQty = parseFloat(new_quantity);
 
-    await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=?', [newQty, req.params.id]);
+    const newQty = parseFloat(new_quantity);
+    await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [newQty, req.params.id, tenantSlug]);
+    
     await safeTenantExecute(tenantDb,
-      `INSERT INTO chemical_transactions (chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, notes)
-       VALUES (?, 'adjusted', ?, ?, ?, ?, ?)`,
-      [req.params.id, Math.abs(newQty - previousStock), chem[0].unit, previousStock, newQty, reason || 'Manual stock adjustment']
+      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, notes)
+       VALUES (?, ?, 'adjusted', ?, ?, ?, ?, ?)`,
+      [tenantSlug, req.params.id, Math.abs(newQty - previousStock), chem[0].unit, previousStock, newQty, reason || 'Manual stock adjustment']
     );
 
     res.json({ success: true, message: 'Stock adjusted successfully', previous_stock: previousStock, new_stock: newQty });
   } catch (error) {
+
     res.status(500).json({ success: false, message: error.message });
+
   }
 };
 
@@ -223,14 +242,15 @@ exports.adjustStock = async (req, res) => {
 exports.getTransactions = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const sql = `SELECT ct.*, c.name as chemical_name FROM chemical_transactions ct 
                JOIN chemicals c ON c.id = ct.chemical_id
-               WHERE ct.chemical_id = ?
+               WHERE ct.chemical_id = ? AND ct.tenant_slug = ?
                ORDER BY ct.created_at DESC LIMIT 100`;
 
-    const rows = await safeTenantQuery(tenantDb, sql, [req.params.id]);
+    const rows = await safeTenantQuery(tenantDb, sql, [req.params.id, tenantSlug]);
     res.json({ success: true, data: rows });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -243,34 +263,42 @@ exports.getTransactions = async (req, res) => {
 exports.getDashboardSummary = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
-    const [totalChemicals] = await safeTenantQuery(tenantDb, 'SELECT COUNT(*) as total FROM chemicals WHERE is_active=1');
-    const [lowStock] = await safeTenantQuery(tenantDb, 'SELECT COUNT(*) as total FROM chemicals WHERE is_active=1 AND current_stock <= min_stock_level');
+    const [totalChemicals] = await safeTenantQuery(tenantDb, 'SELECT COUNT(*) as total FROM chemicals WHERE is_active=1 AND tenant_slug=?', [tenantSlug]);
+    const [lowStock] = await safeTenantQuery(tenantDb, 'SELECT COUNT(*) as total FROM chemicals WHERE is_active=1 AND current_stock <= min_stock_level AND tenant_slug=?', [tenantSlug]);
     const [recentUsage] = await safeTenantQuery(tenantDb,
-      `SELECT COALESCE(SUM(quantity_used), 0) as total FROM deceased_chemical_usage 
-       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`
+      `SELECT COALESCE(SUM(quantity_used), 0) as total FROM chemical_usage 
+       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND tenant_slug = ?`,
+      [tenantSlug]
     );
     const recentTransactions = await safeTenantQuery(tenantDb,
       `SELECT ct.*, c.name as chemical_name FROM chemical_transactions ct 
        JOIN chemicals c ON c.id = ct.chemical_id
-       ORDER BY ct.created_at DESC LIMIT 10`
+       WHERE ct.tenant_slug = ?
+       ORDER BY ct.created_at DESC LIMIT 10`,
+      [tenantSlug]
     );
     const topUsed = await safeTenantQuery(tenantDb,
-      `SELECT c.id, c.name, c.unit, COALESCE(SUM(dcu.quantity_used),0) as total_used
-       FROM chemicals c LEFT JOIN deceased_chemical_usage dcu ON dcu.chemical_id = c.id
-       AND dcu.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-       WHERE c.is_active=1 GROUP BY c.id ORDER BY total_used DESC LIMIT 5`
+      `SELECT c.id, c.name, c.unit, COALESCE(SUM(cu.quantity_used),0) as total_used
+       FROM chemicals c LEFT JOIN chemical_usage cu ON cu.chemical_id = c.id
+       AND cu.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+       WHERE c.is_active=1 AND c.tenant_slug=? 
+       GROUP BY c.id ORDER BY total_used DESC LIMIT 5`,
+      [tenantSlug]
     );
 
     res.json({
       success: true,
       data: {
+
         total_chemicals: totalChemicals?.total || 0,
         low_stock_count: lowStock?.total || 0,
         total_usage_30d: recentUsage?.total || 0,
         recent_transactions: recentTransactions || [],
         top_used_chemicals: topUsed || []
+
       }
     });
   } catch (error) {
@@ -285,15 +313,16 @@ exports.getDashboardSummary = async (req, res) => {
 exports.getLowStockAlerts = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const sql = `SELECT id, name, category, unit, current_stock, min_stock_level,
                 (current_stock - min_stock_level) as deficit
                FROM chemicals 
-               WHERE is_active=1 AND current_stock <= min_stock_level
+               WHERE is_active=1 AND current_stock <= min_stock_level AND tenant_slug = ?
                ORDER BY (current_stock / min_stock_level) ASC`;
 
-    const rows = await safeTenantQuery(tenantDb, sql);
+    const rows = await safeTenantQuery(tenantDb, sql, [tenantSlug]);
     res.json({ success: true, data: rows, count: rows.length });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -306,22 +335,23 @@ exports.getLowStockAlerts = async (req, res) => {
 exports.getChemicalAnalytics = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const sql = `
       SELECT c.id as chemical_id, c.name as chemical_name, c.category, c.unit, 
              c.current_stock, c.min_stock_level, c.reorder_level, c.hazard_level,
-             COALESCE((SELECT SUM(quantity_used) FROM deceased_chemical_usage 
-                       WHERE chemical_id = c.id AND DATE(created_at) = CURDATE()), 0) as used_today,
-             COALESCE((SELECT SUM(quantity_used) FROM deceased_chemical_usage 
-                       WHERE chemical_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)), 0) as total_used_30d,
+             COALESCE((SELECT SUM(quantity_used) FROM chemical_usage 
+                       WHERE chemical_id = c.id AND DATE(created_at) = CURDATE() AND tenant_slug = ?), 0) as used_today,
+             COALESCE((SELECT SUM(quantity_used) FROM chemical_usage 
+                       WHERE chemical_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND tenant_slug = ?), 0) as total_used_30d,
              CASE WHEN c.current_stock <= c.min_stock_level THEN 1 ELSE 0 END as is_low_stock,
              c.created_at
       FROM chemicals c
-      WHERE c.is_active = 1
+      WHERE c.is_active = 1 AND c.tenant_slug = ?
       ORDER BY c.name ASC`;
 
-    const rows = await safeTenantQuery(tenantDb, sql);
+    const rows = await safeTenantQuery(tenantDb, sql, [tenantSlug, tenantSlug, tenantSlug]);
 
     // Calculate analytics
     const data = rows.map(r => {
@@ -359,7 +389,9 @@ exports.getChemicalAnalytics = async (req, res) => {
     res.json({ success: true, data });
   } catch (error) {
     console.error('[chemicalController.getChemicalAnalytics]', error.message);
+
     res.status(500).json({ success: false, message: error.message });
+
   }
 };
 
@@ -369,28 +401,28 @@ exports.getChemicalAnalytics = async (req, res) => {
 exports.getUsageByBranch = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const branchId = req.params.branchId || req.branchId;
     if (!branchId) return res.status(400).json({ success: false, message: 'Branch ID required' });
 
     const rows = await safeTenantQuery(tenantDb,
-      `SELECT dcu.*, c.name as chemical_name, c.unit, c.category,
+      `SELECT cu.*, c.name as chemical_name, c.unit, c.category,
               c.hazard_level,
-              dcu.deceased_id
-       FROM deceased_chemical_usage dcu
-       JOIN chemicals c ON c.id = dcu.chemical_id
-       WHERE dcu.branch_id = ?
-       ORDER BY dcu.created_at DESC
+              cu.reference_id
+       FROM chemical_usage cu
+       JOIN chemicals c ON c.id = cu.chemical_id
+       WHERE cu.branch_id = ? AND cu.tenant_slug = ?
+       ORDER BY cu.created_at DESC
        LIMIT 50`,
-      [branchId]
+      [branchId, tenantSlug]
     );
 
     // Map to frontend format
     const data = rows.map(r => ({
       usage_id: r.id,
-      deceased_id: r.deceased_id,
-      deceased_name: `Deceased #${r.deceased_id}`,
+      reference_id: r.reference_id,
       chemical_id: r.chemical_id,
       chemical_name: r.chemical_name,
       category: r.category,
@@ -414,6 +446,7 @@ exports.getUsageByBranch = async (req, res) => {
 exports.createPPERequest = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const { item_name, quantity_requested, requested_by } = req.body;
@@ -422,9 +455,9 @@ exports.createPPERequest = async (req, res) => {
     }
 
     const result = await safeTenantExecute(tenantDb,
-      `INSERT INTO ppe_requests (item_name, quantity_requested, requested_by, branch_id)
-       VALUES (?, ?, ?, 1)`,
-      [item_name, parseInt(quantity_requested), requested_by || 'Staff']
+      `INSERT INTO ppe_requests (tenant_slug, item_name, quantity_requested, requested_by, branch_id)
+       VALUES (?, ?, ?, ?, 1)`,
+      [tenantSlug, item_name, parseInt(quantity_requested), requested_by || 'Staff']
     );
 
     res.status(201).json({ success: true, message: 'PPE request submitted successfully', id: result.insertId });
@@ -437,11 +470,12 @@ exports.createPPERequest = async (req, res) => {
 exports.getPPERequests = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
-    const sql = `SELECT * FROM ppe_requests ORDER BY created_at DESC LIMIT 50`;
+    const sql = `SELECT * FROM ppe_requests WHERE tenant_slug = ? ORDER BY created_at DESC LIMIT 50`;
 
-    const rows = await safeTenantQuery(tenantDb, sql);
+    const rows = await safeTenantQuery(tenantDb, sql, [tenantSlug]);
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('[chemicalController.getPPERequests]', error.message);
@@ -452,14 +486,15 @@ exports.getPPERequests = async (req, res) => {
 exports.updatePPERequest = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const { status, quantity_approved, notes } = req.body;
 
     await safeTenantExecute(tenantDb,
       `UPDATE ppe_requests SET status=COALESCE(?,status), quantity_approved=COALESCE(?,quantity_approved), 
-       notes=COALESCE(?,notes) WHERE id=?`,
-      [status, quantity_approved, notes, req.params.id]
+       notes=COALESCE(?,notes) WHERE id=? AND tenant_slug=?`,
+      [status, quantity_approved, notes, req.params.id, tenantSlug]
     );
 
     res.json({ success: true, message: 'PPE request updated successfully' });
@@ -474,6 +509,7 @@ exports.updatePPERequest = async (req, res) => {
 exports.createTransfer = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const { chemical_id, to_branch_id, quantity, notes } = req.body;
@@ -484,8 +520,8 @@ exports.createTransfer = async (req, res) => {
 
     // Check stock availability
     const chem = await safeTenantQuery(tenantDb,
-      'SELECT id, current_stock, unit FROM chemicals WHERE id=? AND is_active=1',
-      [chemical_id]
+      'SELECT id, current_stock, unit FROM chemicals WHERE id=? AND is_active=1 AND tenant_slug=?',
+      [chemical_id, tenantSlug]
     );
     if (!chem.length) return res.status(404).json({ success: false, message: 'Chemical not found' });
 
@@ -497,10 +533,10 @@ exports.createTransfer = async (req, res) => {
       });
     }
 
-    const result = await safeTenantExecute(tenantDb,
-      `INSERT INTO chemical_transfers (chemical_id, to_branch_id, quantity, unit, notes)
-       VALUES (?, ?, ?, ?, ?)`,
-      [chemical_id, to_branch_id, qty, chem[0].unit, notes || null]
+                const result = await safeTenantExecute(tenantDb,
+      `INSERT INTO chemical_transfers (tenant_slug, chemical_id, to_branch_id, quantity, unit, notes)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [tenantSlug, chemical_id, to_branch_id, qty, chem[0].unit, notes || null]
     );
 
     res.status(201).json({ success: true, message: 'Transfer request created', id: result.insertId });
@@ -513,23 +549,98 @@ exports.createTransfer = async (req, res) => {
 exports.getTransfers = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const sql = `SELECT ct.*, c.name as chemical_name, c.unit
                FROM chemical_transfers ct
                JOIN chemicals c ON c.id = ct.chemical_id
+               WHERE ct.tenant_slug = ?
                ORDER BY ct.created_at DESC LIMIT 50`;
 
-    const rows = await safeTenantQuery(tenantDb, sql);
+    const rows = await safeTenantQuery(tenantDb, sql, [tenantSlug]);
+    
     res.json({ success: true, data: rows });
+
   } catch (error) {
+
+
     console.error('[chemicalController.getTransfers]', error.message);
+
     res.status(500).json({ success: false, message: error.message });
+
   }
 };
 
 exports.approveTransfer = async (req, res) => {
   try {
+    const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
+    if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
+
+    const { status } = req.body;
+
+    const transfer = await safeTenantQuery(tenantDb,
+      'SELECT * FROM chemical_transfers WHERE id=? AND status="pending" AND tenant_slug=?',
+      [req.params.id, tenantSlug]
+    );
+    if (!transfer.length) return res.status(404).json({ success: false, message: 'Transfer not found or already processed' });
+
+    const t = transfer[0];
+
+    if (status === 'completed') {
+      // Deduct from source branch
+      const fromChem = await safeTenantQuery(tenantDb,
+        'SELECT id, current_stock FROM chemicals WHERE id=? AND is_active=1 AND tenant_slug=?',
+        [t.chemical_id, tenantSlug]
+      );
+      if (fromChem.length) {
+        const newFromStock = parseFloat(fromChem[0].current_stock) - parseFloat(t.quantity);
+        await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [newFromStock, fromChem[0].id, tenantSlug]);
+        await safeTenantExecute(tenantDb,
+          `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, notes)
+           VALUES (?, ?, 'transferred', ?, ?, ?, ?, ?)`,
+          [tenantSlug, t.chemical_id, t.quantity, t.unit, fromChem[0].current_stock, newFromStock, `Transferred to branch #${t.to_branch_id}`]
+        );
+      }
+
+      // Add to destination branch
+      const toChem = await safeTenantQuery(tenantDb,
+        'SELECT id, current_stock FROM chemicals WHERE id=? AND is_active=1 AND tenant_slug=?',
+        [t.chemical_id, tenantSlug]
+      );
+      if (toChem.length) {
+        const newToStock = parseFloat(toChem[0].current_stock) + parseFloat(t.quantity);
+        await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [newToStock, toChem[0].id, tenantSlug]);
+        await safeTenantExecute(tenantDb,
+          `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, notes)
+           VALUES (?, ?, 'received', ?, ?, ?, ?, ?)`,
+          [tenantSlug, t.chemical_id, t.quantity, t.unit, toChem[0].current_stock, newToStock, `Received from branch #${t.from_branch_id}`]
+        );
+      }
+    }
+
+    await safeTenantExecute(tenantDb,
+      'UPDATE chemical_transfers SET status=? WHERE id=? AND tenant_slug=?',
+      [status || 'approved', req.params.id, tenantSlug]
+    );
+
+    res.json({ success: true, message: `Transfer ${status || 'approved'} successfully` });
+  } catch (error) {
+    console.error('[chemicalController.approveTransfer]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+
+
+
+
+exports.approveTransfer = async (req, res) => {
+     
+  try {
+
     const tenantDb = req.tenant?.db_name;
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 

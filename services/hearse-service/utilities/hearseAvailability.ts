@@ -65,6 +65,7 @@ export function toDateKey(value: any): string | null {
     const key = `${y}-${m}-${d}`;
     return isValidDateKey(key) ? key : null;
 }
+
 /**
  * Expand a start/end date range (inclusive) into an array of date keys.
  * e.g. ("2026-08-10", "2026-08-12") => ["2026-08-10","2026-08-11","2026-08-12"]
@@ -109,8 +110,39 @@ export function expandDateRange(startKey: string, endKey: string): string[] {
 export function normalizeBookingDates(raw: any): string[] {
     if (raw == null || raw === '') return [];
 
+    // ---- array shapes (CHECK THIS FIRST) ----
+    if (Array.isArray(raw)) {
+        const out: string[] = [];
+        for (const entry of raw) {
+            if (entry == null) continue;
+            
+            // If entry is an object with start/end, treat it as a range
+            if (typeof entry === 'object' && !Array.isArray(entry)) {
+                const start = entry.start_date || entry.startDate || entry.start || entry.from || entry.from_timestamp;
+                const end = entry.end_date || entry.endDate || entry.end || entry.to || entry.to_timestamp;
+                if (start && end) {
+                    const startKey = toDateKey(start);
+                    const endKey = toDateKey(end);
+                    if (startKey && endKey) {
+                        out.push(...expandDateRange(startKey, endKey));
+                    }
+                } else {
+                    // Otherwise extract single date
+                    const k = toDateKey(
+                        entry.date || entry.booking_date || entry.start_date || entry.from_timestamp || entry
+                    );
+                    if (k) out.push(k);
+                }
+            } else if (typeof entry === 'string') {
+                const k = toDateKey(entry);
+                if (k) out.push(k);
+            }
+        }
+        return [...new Set(out)].sort();
+    }
+
     // ---- object shapes ----
-    if (typeof raw === 'object' && !Array.isArray(raw)) {
+    if (typeof raw === 'object') {
         const start =
             raw.start_date || raw.startDate || raw.start || raw.from || raw.from_timestamp;
         const end = raw.end_date || raw.endDate || raw.end || raw.to || raw.to_timestamp;
@@ -124,7 +156,14 @@ export function normalizeBookingDates(raw: any): string[] {
             const k = toDateKey(single);
             return k ? [k] : [];
         }
-        return [];
+        // If it's an object with no recognized date fields, try to extract any date-like values
+        const values = Object.values(raw).filter(v => typeof v === 'string' || v instanceof Date);
+        const extracted: string[] = [];
+        for (const val of values) {
+            const k = toDateKey(val);
+            if (k) extracted.push(k);
+        }
+        return [...new Set(extracted)].sort();
     }
 
     // ---- string shapes ----
@@ -146,26 +185,9 @@ export function normalizeBookingDates(raw: any): string[] {
         return [];
     }
 
-    // ---- array shapes ----
-    if (Array.isArray(raw)) {
-        const out: string[] = [];
-        for (const entry of raw) {
-            if (entry == null) continue;
-            if (typeof entry === 'string') {
-                const k = toDateKey(entry);
-                if (k) out.push(k);
-            } else if (typeof entry === 'object') {
-                const k = toDateKey(
-                    entry.date || entry.booking_date || entry.start_date || entry.from_timestamp
-                );
-                if (k) out.push(k);
-            }
-        }
-        return [...new Set(out)].sort();
-    }
-
     return [];
 }
+
 /**
  * Extract the normalized booked dates from a single DB booking row.
  * Prefers booking_dates (the JSON array column) and falls back to any
@@ -254,7 +276,7 @@ export async function attemptHearseReservation(
     bookingDates: string[]
 ): Promise<
     | { ok: true }
-    | { ok: false; notFound?: boolean; conflictDate: string; conflicts: { date: string }[] }
+    | { ok: false; notFound?: boolean; conflictDate: string; conflicts: { date: string }[]; debug?: any }
 > {
     const [hearseRows] = await conn.query('SELECT id, status FROM hearses WHERE id = ? FOR UPDATE', [
         hearseId
@@ -273,17 +295,36 @@ export async function attemptHearseReservation(
     );
 
     const bookedSet = new Set<string>();
+    const allBookedDates: string[] = [];
     for (const row of bookingRows as any[]) {
-        for (const d of extractRowDates(row)) bookedSet.add(d);
+        const dates = extractRowDates(row);
+        for (const d of dates) {
+            if (isValidDateKey(d)) {
+                bookedSet.add(d);
+                allBookedDates.push(d);
+            }
+        }
     }
 
     const normalizedRequested = dedupeDateKeys(bookingDates);
-    const conflicts = computeDateConflicts(normalizedRequested, [...bookedSet]).map((date) => ({
+    const bookedArray = [...bookedSet].sort();
+    const conflicts = computeDateConflicts(normalizedRequested, bookedArray).map((date) => ({
         date
     }));
 
     if (conflicts.length > 0) {
-        return { ok: false, conflictDate: conflicts[0].date, conflicts };
+        // Return debug info to help diagnose the issue
+        return { 
+            ok: false, 
+            conflictDate: conflicts[0].date, 
+            conflicts,
+            debug: {
+                requested: normalizedRequested,
+                booked: bookedArray,
+                rawInput: bookingDates,
+                totalBookings: (bookingRows as any[]).length
+            }
+        };
     }
 
     return { ok: true };

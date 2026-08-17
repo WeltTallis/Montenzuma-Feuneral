@@ -241,17 +241,22 @@ const generateTokens = async (
   branchDbName: string | null = null
 ): Promise<TokenResult> => {
   const effectiveSlug = branchDbName || tenant.tenant_slug;
+  // New tenant_tracking.tenants uses `id VARCHAR(36)` as the primary key (there is no
+  // `tenant_id` column anymore), so resolve whichever identifier exists to keep the
+  // JWT stable across legacy and UUID schemas.
+  const tenantId = tenant.tenant_id ?? tenant.id;
   const payload = {
     userId: user.user_id,
     email: user.email,
-    tenantId: tenant.tenant_id,
+    tenantId,
     tenantName: tenant.tenant_name,
     tenantSlug: effectiveSlug,
     dbName: tenant.db_name,
     role: user.role || 'admin',
     branchDbName,
-  };
-  const { jwtSecret, refreshSecret } = await getTenantJwtSecret(tenant.tenant_id);
+    ...(user.branch_id ? { branchId: user.branch_id } : {}),
+  } as any;
+  const { jwtSecret, refreshSecret } = await getTenantJwtSecret(tenantId);
   const accessToken = jwt.sign(payload, jwtSecret, { expiresIn: '7d' });
   const refreshToken = jwt.sign(payload, refreshSecret, { expiresIn: '30d' });
   return { accessToken, refreshToken };
@@ -367,7 +372,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     try {
       const [tenantRows]: any = await pool.query(
         'SELECT deployment_type FROM tenant_tracking.tenants WHERE id = ?',
-        [tenant.tenant_id]
+        [tenant.tenant_id ?? tenant.id]
       );
       if (tenantRows.length > 0 && tenantRows[0].deployment_type) {
         deploymentType = tenantRows[0].deployment_type;
@@ -376,12 +381,37 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     const { accessToken, refreshToken } = await generateTokens(user, tenant, branchDbName);
     const effectiveSlug = branchDbName || tenant.tenant_slug;
+    // Resolve the tenant id across schemas: legacy rows carried `tenant_id`, the
+    // current tenant_tracking.tenants primary key is `id` (VARCHAR(36) UUID).
+    const tenantId = tenant.tenant_id ?? tenant.id;
 
     // Set session
-    req.session.userId = user.user_id;
-    req.session.tenantId = tenant.tenant_id;
-    req.session.tenantSlug = effectiveSlug;
-    req.session.dbName = dbName;
+    const session = req.session as any;
+    session.userId = user.user_id;
+    session.tenantId = tenantId;
+    session.tenantSlug = effectiveSlug;
+    session.dbName = dbName;
+
+    // Full branch list with parent/child relationships so the frontend can persist
+    // the branch hierarchy (branch_id -> parent_branch_id) after login.
+    let branchList: any[] = [];
+    try {
+      const [brows]: any = await pool.query(
+        `SELECT branch_id, branch_name, branch_slug, branch_db_name, parent_branch_id, is_active
+         FROM \`${tenant.db_name}\`.branches
+         ORDER BY parent_branch_id IS NOT NULL, branch_name`
+      );
+      branchList = (brows || []).map((b: any) => ({
+        branchId: b.branch_id,
+        branchName: b.branch_name,
+        branchSlug: b.branch_slug,
+        branchDbName: b.branch_db_name,
+        parentBranchId: b.parent_branch_id || null,
+        isActive: b.is_active === 1 || b.is_active === true,
+      }));
+    } catch (err: any) {
+      console.warn('Could not load tenant branches for login response:', (err && err.message) || err);
+    }
 
     res.status(200).json({
       success: true,
@@ -395,19 +425,24 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         fullName: user.full_name,
         phone: user.phone || '',
         role: user.role,
+        tenantId,
+        tenantSlug: effectiveSlug, // effective scope (branch db for branch users)
         branchId,
         branchDbName,
         dbName,
-        parentTenantSlug: tenant.tenant_slug, // Add parent tenant slug for branch users
+        parentTenantSlug: tenant.tenant_slug, // parent tenant slug for branch users
         isActive: user.is_active === 1,
         isVerified: user.is_verified === 1,
       },
       tenant: {
-        tenantId: tenant.tenant_id,
+        tenantId,
         tenantName: tenant.tenant_name,
         tenantSlug: effectiveSlug,
+        slug: tenant.tenant_slug,
+        parentTenantSlug: tenant.tenant_slug,
         dbName: tenant.db_name,
       },
+      branches: branchList,
     });
   } catch (error: any) {
     if (error?.code === 'ER_ACCESS_DENIED_ERROR') {

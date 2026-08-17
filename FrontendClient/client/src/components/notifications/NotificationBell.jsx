@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import api from '../../api/axios';
-import { getTenantHeaders } from '../../api/endpoints';
+import { ENDPOINTS, getTenantHeaders } from '../../api/endpoints';
 import { useSocket } from '../../utils/context/socketContext';
 import { getTenantSlug } from '../../utils/globalAuth';
 import {
@@ -175,7 +175,7 @@ const NotificationBell = () => {
       setLoading(true);
       const tenantSlug = getTenantSlug();
       const headers = getTenantHeaders();
-      const url = `${NOTIFICATION_SERVICE}/notifications`;
+      const url = `${ENDPOINTS.NOTIFICATION.BASE}/notifications`;
       const response = await api.get(url, {
         headers: { ...headers, 'x-tenant-slug': tenantSlug },
         params: { _t: Date.now() }
@@ -212,7 +212,7 @@ const NotificationBell = () => {
   const markAsRead = useCallback(async (id) => {
     try {
       const headers = getTenantHeaders();
-      await api.put(`${NOTIFICATION_SERVICE}/notifications/${id}/read`, {}, { headers });
+      await api.put(`${ENDPOINTS.NOTIFICATION.BASE}/notifications/${id}/read`, {}, { headers });
     } catch {}
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
@@ -221,7 +221,7 @@ const NotificationBell = () => {
   const markAllAsRead = useCallback(async () => {
     try {
       const headers = getTenantHeaders();
-      await api.put(`${NOTIFICATION_SERVICE}/notifications/mark-all-read`, {}, { headers });
+      await api.put(`${ENDPOINTS.NOTIFICATION.BASE}/notifications/mark-all-read`, {}, { headers });
     } catch {}
         setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
     setUnreadCount(0);
@@ -230,7 +230,7 @@ const NotificationBell = () => {
   const deleteNotification = useCallback(async (id) => {
     try {
       const headers = getTenantHeaders();
-      await api.delete(`${NOTIFICATION_SERVICE}/notifications/${id}`, { headers });
+      await api.delete(`${ENDPOINTS.NOTIFICATION.BASE}/notifications/${id}`, { headers });
     } catch {}
     setNotifications(prev => prev.filter(n => n.id !== id));
     setUnreadCount(prev => Math.max(0, prev - 1));

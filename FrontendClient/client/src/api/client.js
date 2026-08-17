@@ -84,6 +84,21 @@ api.interceptors.request.use((config) => {
   // Default to system_shared if still not found
   config.headers['x-tenant-slug'] = tenantSlug || 'system_shared';
 
+  // Attach branch context so microservices can route to the correct branch DB
+  // for multi-branch tenants (branchSlug / branchDbName are the branch scope).
+  const branchSlug = localStorage.getItem('branchSlug') || sessionStorage.getItem('branchSlug');
+  const branchId = localStorage.getItem('branchId');
+  const branchDbName = localStorage.getItem('branchDbName');
+  if (branchSlug && branchSlug !== 'undefined' && branchSlug !== 'null') {
+    config.headers['x-branch-slug'] = branchSlug;
+  }
+  if (branchDbName && branchDbName !== 'undefined' && branchDbName !== 'null') {
+    config.headers['x-branch-db'] = branchDbName;
+  }
+  if (branchId && branchId !== 'undefined' && branchId !== 'null') {
+    config.headers['x-branch-id'] = branchId;
+  }
+
   return config;
 }, (error) => {
   return Promise.reject(error);

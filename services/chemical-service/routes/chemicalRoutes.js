@@ -48,14 +48,14 @@ router.get('/:id/transactions', chemicalController.getTransactions);
 // DECEASED CHEMICAL USAGE
 // ============================================
 
-// Record chemical usage on a deceased
+// Record chemical usage on a reference (e.g. case/deceased)
 router.post('/usage', usageController.recordUsage);
 
-// Get all chemicals used on a specific deceased
-router.get('/usage/deceased/:deceasedId', usageController.getByDeceased);
+// Get all chemicals used on a specific reference (case/deceased id)
+router.get('/usage/reference/:referenceId', usageController.getByReference);
 
-// Get all deceased that have used a specific chemical
-router.get('/usage/chemical/:chemicalId', usageController.getDeceasedByChemical);
+// Get all references that have used a specific chemical
+router.get('/usage/chemical/:chemicalId', usageController.getByChemical);
 
 // Get full usage report (all deceased + chemicals used)
 router.get('/usage/report', usageController.getUsageReport);

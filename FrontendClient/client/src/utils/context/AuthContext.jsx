@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../../api/client';
+import { storeBranchContext, clearBranchContext } from '../../utils/globalAuth';
 
 const AuthContext = createContext(null);
 
@@ -85,6 +86,14 @@ export const AuthProvider = ({ children }) => {
             // userId is required so the socket client can join the
             // tenant/branch room (join-tenant guard: tenantSlug && userId)
             userId: userData.userId || userData.user_id || userData.id,
+            tenantId:
+              userData.tenantId ||
+              userData.tenant?.tenantId ||
+              userData.tenant?.id ||
+              data.tenant?.tenantId ||
+              data.tenant?.id,
+            branchId: userData.branchId || userData.branch_id || userData.branch?.branchId,
+            branchDbName: userData.branchDbName,
             username: userData.fullName || userData.username || 'User',
             fullName: userData.fullName || userData.username || 'User',
             // tenantSlug = the effective scope the user is logged into.
@@ -131,12 +140,54 @@ export const AuthProvider = ({ children }) => {
           console.warn('[AuthContext] No parentTenantSlug found in login response!');
         }
 
+        // Store the resolved IDs in localStorage so every component can read them:
+        //   tenantId  → current tenant (parent) id
+        //   userId    → current authenticated user id
+        //   branchId  → current branch id (null for single-branch tenants)
+        //   branchSlug→ current branch slug / scope
+        const loginTenantId =
+          data.tenant?.tenantId || data.tenant?.id || userData?.tenantId;
+        if (loginTenantId) localStorage.setItem('tenantId', String(loginTenantId));
+
+        const loginUserId = userData?.userId || userData?.user_id || userData?.id;
+        if (loginUserId) {
+          localStorage.setItem('userId', String(loginUserId));
+          sessionStorage.setItem('userId', String(loginUserId));
+        }
+
+        const loginBranchId = userData?.branchId || userData?.branch_id || userData?.branch?.branchId;
+        if (loginBranchId) localStorage.setItem('branchId', String(loginBranchId));
+        else localStorage.removeItem('branchId');
+
+        const loginBranchSlug = userData?.branchSlug || userData?.branch?.branchSlug || userData?.branchDbName || null;
+        if (loginBranchSlug) {
+          localStorage.setItem('branchSlug', loginBranchSlug);
+          sessionStorage.setItem('branchSlug', loginBranchSlug);
+        } else {
+          localStorage.removeItem('branchSlug');
+          sessionStorage.removeItem('branchSlug');
+        }
+
+        if (userData?.dbName) localStorage.setItem('dbName', userData.dbName);
+        if (userData?.branchDbName) localStorage.setItem('branchDbName', userData.branchDbName);
+
+        console.log('[AuthContext] Stored IDs in localStorage:', {
+          tenantId: localStorage.getItem('tenantId'),
+          userId: localStorage.getItem('userId'),
+          branchId: localStorage.getItem('branchId'),
+          branchSlug: localStorage.getItem('branchSlug'),
+        });
+
+        // Persist the branch list + parent/child hierarchy straight from the login
+        // response (fallback: the /tenant/:slug/branches fetch below).
+        storeBranchContext(data.branches);
+
         // Fetch and store branches for inter-branch operations
         try {
           const parentTenantSlug = userData?.parentTenantSlug || tenantSlug;
           const branchesRes = await api.get(`/tenant/${parentTenantSlug}/branches`);
           if (branchesRes.data?.success && branchesRes.data?.data) {
-            localStorage.setItem('branches', JSON.stringify(branchesRes.data.data));
+            storeBranchContext(branchesRes.data.data);
             console.log(
               '[AuthContext] Branches saved to localStorage:',
               branchesRes.data.data.length,
@@ -175,9 +226,20 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('authToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+      localStorage.removeItem('tenantSlug');
+      localStorage.removeItem('tenantId');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('branchId');
+      localStorage.removeItem('branchSlug');
+      localStorage.removeItem('branchDbName');
+      localStorage.removeItem('dbName');
+      localStorage.removeItem('parentTenantSlug');
+      clearBranchContext();
       sessionStorage.removeItem('authToken');
       sessionStorage.removeItem('refreshToken');
       sessionStorage.removeItem('user');
+      sessionStorage.removeItem('userId');
+      sessionStorage.removeItem('branchSlug');
       setUser(null);
     }
   }, []);

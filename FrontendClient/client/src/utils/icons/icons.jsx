@@ -220,6 +220,10 @@ export const FileText = (p) => (
   <Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></Icon>
 );
 
+export const ScrollText = (p) => (
+  <Icon {...p}><path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4" /><path d="M19 17V5a2 2 0 0 0-2-2H4" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="14" y2="17" /></Icon>
+);
+
 export const FileImage = (p) => (
   <Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><circle cx="10" cy="13" r="2" /><path d="M20 17l-4.5-4.5-3 3L8 12l-3 3" /></Icon>
 );
@@ -612,6 +616,67 @@ export const MonitorSmartphone = (p) => (
   <Icon {...p}><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /><rect x="6" y="6" width="12" height="8" rx="1" /></Icon>
 );
 
+/* ─── Additional icons referenced across the app (added here so they ship with the shared icon module) ─── */
+
+export const CheckCircle2 = (p) => (
+  <Icon {...p}><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></Icon>
+);
+
+export const Brain = (p) => (
+  <Icon {...p}>
+    <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z" />
+    <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z" />
+    <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4" />
+    <path d="M17.599 6.5a3 3 0 0 0 .399-1.375" />
+    <path d="M6.003 5.125A3 3 0 0 0 6.401 6.5" />
+    <path d="M3.477 10.896a4 4 0 0 1 .585-.396" />
+    <path d="M19.938 10.5a4 4 0 0 1 .585.396" />
+    <path d="M6 18a4 4 0 0 1-1.967-.516" />
+    <path d="M19.967 17.484A4 4 0 0 1 18 18" />
+  </Icon>
+);
+
+
+
+export   const     GraduationCap   = (p) => (
+  <Icon {...p}>
+    <rect x="4" y="4" width="16" height="16" rx="2" />
+    <rect x="9" y="9" width="6" height="6" />
+    <path d="M15 2v2" />
+    <path d="M15 20v2" />
+    <path d="M2 15h2" />
+    <path d="M2 9h2" />
+    <path d="M20 15h2" />
+    <path d="M20 9h2" />
+    <path d="M9 2v2" />
+        <path d="M9 20v2" />
+  </Icon>
+);
+
+
+export const Cpu = (p) => (
+  <Icon {...p}>
+    <rect x="4" y="4" width="16" height="16" rx="2" />
+    <rect x="9" y="9" width="6" height="6" />
+    <path d="M15 2v2" />
+    <path d="M15 20v2" />
+    <path d="M2 15h2" />
+    <path d="M2 9h2" />
+    <path d="M20 15h2" />
+    <path d="M20 9h2" />
+    <path d="M9 2v2" />
+        <path d="M9 20v2" />
+  </Icon>
+);
+
+export const Award = (p) => (
+  <Icon {...p}><circle cx="12" cy="8" r="6" /><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" /></Icon>
+);
+
+export const Cloud = (p) => (
+  <Icon {...p}><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" /></Icon>
+);
+
 export const Music = (p) => (
   <Icon {...p}><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></Icon>
 );
@@ -936,6 +1001,7 @@ export const Icons = {
   FileText, FileImage, FileSpreadsheet, ClipboardList, FileArchive, FilePlus, FileDigit, FileUp,
   // News & Media
   Newspaper,
+    GraduationCap ,
   // Location & Map
   MapPin, Globe, Navigation, Route,
   // Money & Finance
@@ -948,25 +1014,25 @@ export const Icons = {
   Phone, Mail, Bell, MessageCircle, MessageSquare, Quote,
   // Security
   Shield, ShieldCheck, Lock, KeyRound, Eye, EyeOff,
-  // Server & Infrastructure
-  Server,
+    // Server & Infrastructure
+  Server, Cloud,
   // Vehicles & Transport
   Truck, Car, Fuel, Gauge,
   // Medical & Laboratory
   Beaker, FlaskConical, Syringe, Stethoscope, TestTube2,
   // Analytics & Charts
   TrendingUp, BarChart3, BarChart2, Activity, PieChartIcon, PieChart, TrendingDown,
-  // Objects & Items
-  Box, Package, ShoppingCart, ShoppingBag, Trophy, Star, Flower2, HardDrive, Type,
+    // Objects & Items
+  Box, Package, ShoppingCart, ShoppingBag, Trophy, Star, Flower2, HardDrive, Type, Award,
   // Targets & Goals
   Target, GitCompareArrows,
   // Buildings & Places
   Building, Building2, Warehouse,
-  // Misc
+    // Misc
   Heart, Zap, Settings, LogOut,
-  Sun, Moon, CloudSun, Play, Pause, Smartphone, MonitorSmartphone, Camera, Music, Mic, Wifi, WifiOff, Github, Linkedin, Twitter,
-  // Additional
-  ArrowUpRight, Code2, Paintbrush, Bug, Lightbulb, HelpCircle, Crown, BookText, Eraser, HardHat, TrafficCone, Flame, Video, Percent, Badge, Scale, UploadCloud, Hourglass, CheckSquare, PlusSquare,
+  Sun, Moon, CloudSun, Play, Pause, Smartphone, MonitorSmartphone, Camera, Music, Mic, Wifi, WifiOff, Github, Linkedin, Twitter, Brain, Cpu,
+    // Additional
+  ArrowUpRight, Code2, Paintbrush, Bug, Lightbulb, HelpCircle, Crown, BookText, Eraser, HardHat, TrafficCone, Flame, Video, Percent, Badge, Scale, UploadCloud, Hourglass, CheckSquare, PlusSquare, CheckCircle2,
 };
 
 export default Icons;

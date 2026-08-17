@@ -128,6 +128,13 @@ export class AuthController {
           }
         }
 
+        // Get ALL active branches for the tenant so the frontend can switch
+        // branches / call other branch endpoints on multi-branch tenants.
+        const tenantBranches = await TenantModel.getBranches(tenant.db_name).catch((err: any) => {
+          console.warn('Could not load tenant branches at login:', err && err.message ? err.message : String(err));
+          return [];
+        });
+
         // FIXED: Explicitly stringified JWT Secret fallbacks to prevent undefined runtime typing crashes
         const jwtSecret = process.env.JWT_SECRET || 'default_jwt_secret_fallback';
         const refreshSecret = process.env.REFRESH_TOKEN_SECRET || jwtSecret;
@@ -157,7 +164,7 @@ export class AuthController {
           success: true, message: 'Login successful',
           data: {
             token, refreshToken,
-            tenant: { tenantId: tenant.tenant_id, tenantName: tenant.tenant_name, tenantSlug: tenant.tenant_slug, country: tenant.country },
+            tenant: { tenantId: tenant.tenant_id, tenantName: tenant.tenant_name, tenantSlug: tenant.tenant_slug, country: tenant.country, dbName: tenant.db_name, deploymentType: tenant.deployment_type },
             user: {
               userId: user.user_id,
               email: user.email,
@@ -170,7 +177,15 @@ export class AuthController {
                 branchSlug: branchInfo.branch_slug,
                 branchDbName: branchInfo.branch_db_name
               } : null
-            }
+            },
+            branches: tenantBranches.map((b: any) => ({
+              branchId: b.branch_id,
+              branchName: b.branch_name,
+              branchSlug: b.branch_slug,
+              branchDbName: b.branch_db_name,
+              parentBranchId: b.parent_branch_id,
+              branchLocation: b.branch_location
+            }))
           }
         });
       } finally {

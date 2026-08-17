@@ -38,7 +38,7 @@ async function processAndUploadSignature(
       // Save directly to global uploads folder
       const fs = await import('fs');
       const path = await import('path');
-      const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || 'C:\\Users\\User\\Downloads\\uploads';
+      const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
       const signatureDir = path.join(globalUploadsDir, tenantSlug || 'system', 'signatures');
       
       // Ensure directory exists

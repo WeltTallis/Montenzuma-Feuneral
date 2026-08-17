@@ -1,15 +1,14 @@
 import bcrypt from 'bcryptjs';
 import mysql from 'mysql2/promise';
 import slugify from 'slugify';
-import { getMainTenantMigrations, getBranchMigrations, getSingleTenantMigrations, getAllTenantMigrations, HEARSE_SERVICE_MIGRATIONS } from '../../../shared/services/all-service-migrations';
+import { v4 as uuidv4 } from 'uuid';
+import { getMainTenantMigrations, getBranchMigrations, getSingleTenantMigrations, getAllTenantMigrations } from '../../../shared/services/all-service-migrations';
 import { MigrationService } from '../../../shared/services/migration-service';
 import * as dotenv from 'dotenv';
 import axios from 'axios';
 import * as fs from 'fs';
-
 import * as path from 'path';
 
-// Load environment variables
 dotenv.config();
 
 export interface RegisterTenantData {
@@ -31,9 +30,10 @@ export interface RegisterTenantData {
 }
 
 export interface Tenant {
-    tenant_id: number;
+    tenant_id: string;
     tenant_name: string;
     tenant_slug: string;
+    tenant_code?: string;
     db_name: string;
     email: string;
     phone: string | null;
@@ -49,28 +49,16 @@ export interface Tenant {
 }
 
 export interface BranchInfo {
-    branch_id: number;
+    branch_id: string;
     branch_name: string;
     branch_slug: string;
     branch_db_name: string;
-    parent_branch_id: number | null;
+    parent_branch_id: string | null;
     branch_location: string | null;
     branch_phone: string | null;
     branch_email: string | null;
     is_active: boolean;
     created_at: Date;
-}
-
-export interface BranchConnection {
-    id: number;
-    tenant_slug: string;
-    branch_id: number;
-    connected_branch_id: number;
-    connection_type: 'referral' | 'transfer' | 'partnership' | 'parent_child';
-    status: 'active' | 'inactive' | 'pending';
-    notes: string | null;
-    created_at: Date;
-    updated_at: Date;
 }
 
 // ============================================
@@ -86,23 +74,13 @@ function getDbConfig() {
     };
 }
 
-// FIXED: Auth plugins for all connections
-// Handles both mysql_native_password and unknown plugins (like auth_gssapi_client)
-// that MariaDB may request during the handshake
 const AUTH_PLUGINS: any = {
-    // Catch-all for unknown auth plugins (e.g., auth_gssapi_client)
-    // Falls back to mysql_native_password authentication
     auth_gssapi_client: () => {
         return (pluginData: Buffer) => {
-            // Return empty buffer to signal fallback to mysql_native_password
             return Buffer.from([]);
         };
     }
 };
-
-// ============================================
-// CONNECTION POOL
-// ============================================
 
 let serverPool: mysql.Pool | null = null;
 
@@ -121,24 +99,17 @@ async function getServerPool(): Promise<mysql.Pool> {
             authPlugins: AUTH_PLUGINS,
         } as any);
 
-
         try {
             const conn = await serverPool.getConnection();
-
             conn.release();
         } catch (error: any) {
-            console.error(' Database connection failed:', error.message);
-            console.error(' Check your .env file for correct credentials');
+            console.error('Database connection failed:', error.message);
         }
     }
     return serverPool;
 }
 
-// ============================================
-// HELPERS
-// ============================================
-
-function generateSlug(tenantName: string): string {
+export function generateSlug(tenantName: string): string {
     const slugifyFn = typeof slugify === 'function' ? slugify : (slugify as any).default;
     const cleanedName = tenantName.replace(/^tenant\s+/i, '').trim();
     return slugifyFn(cleanedName, {
@@ -147,6 +118,47 @@ function generateSlug(tenantName: string): string {
         remove: /[*+~.()'"!:@]/g,
         trim: true
     });
+}
+
+export function generateTenantCode(tenantName: string, length = 4): string {
+    const year = new Date().getFullYear();
+    const cleaned = (tenantName || '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+    const words = cleaned.split(/\s+/).filter(Boolean);
+    // Use the first letter of each word as the prefix (e.g. "Nairobi Regional Bureau" -> "NRB",
+    // "Montezuma Monalisa Feuneral" -> "MMF"). For single-word names fall back to the
+    // first 3 letters of the name so "Nairobi" still yields a 3-char prefix.
+    let prefix = words.map(w => w.charAt(0).toUpperCase()).join('');
+    if (prefix.length < 3) {
+        prefix = (cleaned.replace(/\s+/g, '').substring(0, 3) || 'TNT');
+    }
+    prefix = prefix.substring(0, 3).toUpperCase();
+
+    // Unambiguous charset — no 0/O/1/I, so codes survive copy/paste & voice readback.
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let random = '';
+    for (let i = 0; i < length; i++) {
+        random += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `${prefix}-${random}-${year}`;
+}
+
+// Resolves the platform-wide shared uploads directory. Accepts every env-var
+// spelling used across the repo (GLOBAL_UPLOAD_PATH / GLOBAL_UPLOADS_DIR /
+// UPLOADS_BASE_DIR) so local dev, docker-compose and production all resolve to
+// the SAME folder the API gateway serves at /uploads/...
+export function getUploadsBaseDir(): string {
+    return process.env.GLOBAL_UPLOAD_PATH || process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+}
+
+function generateBranchCode(tenantCode: string, branchName: string, length = 2): string {
+    const t = String(tenantCode || 'tenant').replace(/^-+|-+$/g, '');
+    const b = generateSlug(branchName) || 'branch';
+    const charset = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz0123456789';
+    let random = '';
+    for (let i = 0; i < length; i++) {
+        random += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return `${t}-${b}-${random}`;
 }
 
 async function getTenantConnection(dbName: string) {
@@ -172,16 +184,9 @@ async function getBranchConnection(dbName: string) {
     } as any);
 }
 
-// ============================================
-// WEBSOCKET PROGRESS TRACKING
-// ============================================
-
 const SOCKET_SERVICE_URL = process.env.SOCKET_SERVICE_URL || 'http://localhost:8010';
 
 function emitOnboardingProgress(tenantSlug: string, step: string, progress: number, details?: string) {
-    // Fire-and-forget POST to socket service with a short timeout so onboarding
-    // doesn't block on slow/unavailable socket service. Also persist progress to
-    // tenant_tracking.provisioning_status as a fallback so frontend can poll.
     try {
         axios.post(
             `${SOCKET_SERVICE_URL}/emit/onboarding-progress`,
@@ -195,24 +200,25 @@ function emitOnboardingProgress(tenantSlug: string, step: string, progress: numb
                 }
             },
             { timeout: 2000 }
-        ).then(() => {
-            // success - nothing to do
-        }).catch((err: any) => {
+        ).catch((err: any) => {
             console.warn(`⚠️ Socket emit failed (${err.code || err.message || String(err)})`);
         });
     } catch (error) {
         console.warn(`⚠️ Socket emit exception: ${error && (error as any).message ? (error as any).message : String(error)}`);
     }
 
-    // Persist to provisioning_status table (best-effort)
     try {
-        // Don't block; run in background
         (async () => {
             try {
                 const pool = await getServerPool();
-                await pool.query(`INSERT INTO provisioning_status (tenant_slug, status, progress, details) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status), progress = VALUES(progress), details = VALUES(details), updated_at = CURRENT_TIMESTAMP`, [tenantSlug, progress >= 100 ? 'completed' : 'running', progress, details || null]);
+                await pool.query(
+                    `INSERT INTO tenant_tracking.provisioning_status (tenant_slug, status, progress, details) 
+                     VALUES (?, ?, ?, ?) 
+                     ON DUPLICATE KEY UPDATE 
+                     status = VALUES(status), progress = VALUES(progress), details = VALUES(details), updated_at = CURRENT_TIMESTAMP`,
+                    [tenantSlug, progress >= 100 ? 'completed' : 'running', progress, details || null]
+                );
             } catch (err: any) {
-                // ignore errors
                 console.warn('⚠️ Could not persist provisioning status:', err && err.message ? err.message : String(err));
             }
         })();
@@ -221,38 +227,22 @@ function emitOnboardingProgress(tenantSlug: string, step: string, progress: numb
     }
 }
 
-// ============================================
-// UPLOAD DIRECTORY CREATION
-// ============================================
-
 const UPLOAD_SUBDIRS = [
-    'logos',
-    'employees',
-    'chemicals',
-    'documents',
-    'images',
-    'deceased',
-    'receipts',
-    'reports',
-    'contracts',
-    'signatures'
+    'logos', 'employees', 'chemicals', 'documents', 'images',
+    'deceased', 'receipts', 'reports', 'contracts', 'signatures'
 ];
 
 async function createTenantUploadDirectories(tenantSlug: string): Promise<void> {
-    const baseDir = path.join(process.cwd(), 'uploads', 'tenants', tenantSlug);
-
-    // Create base tenant directory
+        const baseDir = path.join(getUploadsBaseDir(), 'tenants', tenantSlug);
     fs.mkdirSync(baseDir, { recursive: true });
     console.log(`📂 Created base upload directory: ${baseDir}`);
 
-    // Create all subdirectories
     for (const subdir of UPLOAD_SUBDIRS) {
         const dirPath = path.join(baseDir, subdir);
         fs.mkdirSync(dirPath, { recursive: true });
         console.log(`   📁 Created: ${subdir}/`);
     }
 
-    // Create .gitkeep files to ensure empty directories are tracked
     for (const subdir of UPLOAD_SUBDIRS) {
         const gitkeepPath = path.join(baseDir, subdir, '.gitkeep');
         if (!fs.existsSync(gitkeepPath)) {
@@ -277,8 +267,9 @@ async function createCompleteTenantDatabase(
     country: string | null,
     location: string | null,
     branches: Array<{ branch_name: string; branch_location: string; branch_phone: string; branch_email: string }> | undefined,
-    deploymentType: 'single' | 'multi'
-): Promise<{ dbName: string; branches: Array<{ branch_name: string; branch_slug: string; branch_db_name: string; parent_branch_id: number | null }>; sharedHearseDbName?: string | null }> {
+    deploymentType: 'single' | 'multi',
+    tenantId: string
+): Promise<{ dbName: string; branches: Array<{ branch_name: string; branch_slug: string; branch_db_name: string; parent_branch_id: string | null }> }> {
     const serverConn = await getServerPool();
     const migrationService = new MigrationService();
 
@@ -298,49 +289,16 @@ async function createCompleteTenantDatabase(
 
     const subdomain = dbName;
     const firstBranch = branchList[0];
-    const branchData: Array<{ branch_name: string; branch_slug: string; branch_db_name: string; parent_branch_id: number | null }> = [];
+    const branchData: Array<{ branch_name: string; branch_slug: string; branch_db_name: string; parent_branch_id: string | null }> = [];
 
     console.log(`📦 Creating primary database: ${dbName}`);
     await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
     await serverConn.query(`GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${dbUser}'@'%'`);
     emitOnboardingProgress(subdomain, 'Database created', 10, `Primary database ${dbName} created`);
 
-    // ============================================================
-    // MULTI-BRANCH: Create shared hearse bookings database
-    // ============================================================
-    let sharedHearseDbName: string | null = null;
-    if (deploymentType === 'multi' && branchList.length > 1) {
-      sharedHearseDbName = `${generateSlug(tenantName)}-shared-hearse`;
-      await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`${sharedHearseDbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-      await serverConn.query(`GRANT ALL PRIVILEGES ON \`${sharedHearseDbName}\`.* TO '${dbUser}'@'%'`);
-      console.log(`✅ Created shared hearse bookings database: ${sharedHearseDbName}`);
-      
-      // Run hearse-related migrations on the shared database
-      const hearseMigrations = HEARSE_SERVICE_MIGRATIONS;
-      const hearseMigrationResult = await migrationService.runTenantMigrations(sharedHearseDbName, hearseMigrations, dbConfig);
-      if (!hearseMigrationResult.success) {
-        console.error(`❌ Hearse migration errors for ${sharedHearseDbName}:`, hearseMigrationResult.errors);
-        // Don't fail the entire provisioning, just log the error
-      } else {
-        console.log(`✅ Shared hearse database ready: ${hearseMigrationResult.migrationsRun.length} migrations executed`);
-      }
-    }
+    const primaryMigrations = getMainTenantMigrations();
+    console.log(`📋 Running main DB migrations for: ${dbName} (${primaryMigrations.length} migrations)`);
 
-    // ============================================================
-    // FIX: Run migrations on PRIMARY database based on deployment type
-    // ============================================================
-    const isMultiTenant = deploymentType === 'multi';
-    
-    // Primary database migration strategy:
-    // - Single branch: ALL migrations
-    // - Multi-branch main: ALL migrations (includes workshop)
-    const primaryMigrations = isMultiTenant ? getMainTenantMigrations() : getSingleTenantMigrations();
-    console.log(`📋 Using ${isMultiTenant ? 'MULTI-BRANCH PRIMARY' : 'SINGLE-BRANCH'} migrations for primary DB: ${dbName} (${primaryMigrations.length} migrations)`);
-
-    const totalMigrations = primaryMigrations.length;
-    let completedMigrations = 0;
-
-    // Run migrations on primary database
     const migrationResult = await migrationService.runTenantMigrations(dbName, primaryMigrations, dbConfig);
     if (!migrationResult.success) {
         console.error(`❌ Migration errors for ${dbName}:`, migrationResult.errors);
@@ -353,6 +311,18 @@ async function createCompleteTenantDatabase(
     const tenantConn = await getTenantConnection(dbName);
 
     try {
+        // Ensure branch_code column exists
+        try {
+            const [branchCodeCols] = await tenantConn.query(
+                `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'branches' AND COLUMN_NAME = 'branch_code'`
+            );
+            if (Array.isArray(branchCodeCols) && branchCodeCols.length > 0) {
+                await tenantConn.query(`ALTER TABLE branches MODIFY COLUMN branch_code VARCHAR(255) NULL`);
+            } else {
+                await tenantConn.query(`ALTER TABLE branches ADD COLUMN branch_code VARCHAR(255) NULL AFTER branch_slug`);
+            }
+        } catch (e) { /* ignore */ }
+
         await tenantConn.query(`
             INSERT IGNORE INTO mortuary_settings (setting_key, setting_value) VALUES 
             ('mortuary_name', ?),
@@ -366,18 +336,15 @@ async function createCompleteTenantDatabase(
 
         // ─── FIRST BRANCH: points to primary DB ────────────────────────
         const firstBranchSlugFull = dbName;
-
-        // Use INSERT IGNORE to prevent duplicate branch_slug errors
+        const firstBranchUuid = uuidv4();
         await tenantConn.query(
-            `INSERT IGNORE INTO branches (branch_name, branch_slug, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
-             VALUES (?, ?, ?, NULL, ?, ?, ?, 1)
+            `INSERT IGNORE INTO branches (branch_id, branch_name, branch_slug, branch_code, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
+             VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, 1)
             `,
-            [firstBranch.branch_name, firstBranchSlugFull, dbName, firstBranch.branch_location || '', firstBranch.branch_phone || '', firstBranch.branch_email || '']
+            [firstBranchUuid, firstBranch.branch_name, firstBranchSlugFull, generateBranchCode(dbName, firstBranch.branch_name), dbName, firstBranch.branch_location || '', firstBranch.branch_phone || '', firstBranch.branch_email || '']
         );
 
-                // Verify the branch was created or already exists
-        // Track the first branch's ID for parent_branch_id on additional branches
-        let firstBranchId: number | null = null;
+        let firstBranchId: string | null = null;
         const [existingBranch] = await tenantConn.query(
             'SELECT branch_id, branch_name, branch_slug, branch_db_name FROM branches WHERE branch_slug = ? LIMIT 1',
             [firstBranchSlugFull]
@@ -394,14 +361,12 @@ async function createCompleteTenantDatabase(
             });
             console.log(`✅ Primary branch "${branch.branch_name}" → DB: ${dbName} (slug: ${firstBranchSlugFull})`);
         } else {
-            // Fallback: create with a unique slug
             const uniqueSlug = `${firstBranchSlugFull}-${Date.now()}`;
             await tenantConn.query(
-                `INSERT INTO branches (branch_name, branch_slug, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
-                 VALUES (?, ?, ?, NULL, ?, ?, ?, 1)`,
-                [firstBranch.branch_name, uniqueSlug, dbName, firstBranch.branch_location || '', firstBranch.branch_phone || '', firstBranch.branch_email || '']
+                `INSERT INTO branches (branch_id, branch_name, branch_slug, branch_code, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
+                 VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, 1)`,
+                [uuidv4(), firstBranch.branch_name, uniqueSlug, generateBranchCode(dbName, firstBranch.branch_name), dbName, firstBranch.branch_location || '', firstBranch.branch_phone || '', firstBranch.branch_email || '']
             );
-            // Retrieve the branch_id of the newly inserted first branch
             const [fallbackResult] = await tenantConn.query(
                 'SELECT branch_id FROM branches WHERE branch_slug = ? LIMIT 1',
                 [uniqueSlug]
@@ -424,7 +389,6 @@ async function createCompleteTenantDatabase(
             const branchDbName = `${generateSlug(tenantName)}-${generateSlug(branch.branch_name)}`;
             const branchSlug = branchDbName;
 
-            // CHECK FIRST: Prevent duplicate branch_slug errors
             const [existingBranchForSlug] = await tenantConn.query(
                 'SELECT branch_id FROM branches WHERE branch_slug = ? LIMIT 1',
                 [branchSlug]
@@ -438,10 +402,6 @@ async function createCompleteTenantDatabase(
             await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`${branchDbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
             await serverConn.query(`GRANT ALL PRIVILEGES ON \`${branchDbName}\`.* TO '${dbUser}'@'%'`);
 
-            // ============================================================
-            // FIX: Branch databases get ALL migrations EXCEPT workshop
-            // Workshop remains only in the primary/main database
-            // ============================================================
             const branchMigrations = getBranchMigrations();
             console.log(`📋 Running branch migrations (${branchMigrations.length} total) for branch DB: ${branchDbName}`);
 
@@ -450,7 +410,6 @@ async function createCompleteTenantDatabase(
             if (!branchResult.success) {
                 const errorMsg = `Failed to run migrations for branch database ${branchDbName}: ${branchResult.errors.join(', ')}`;
                 console.error(`❌ ${errorMsg}`);
-                // Rollback - drop the database if migrations failed
                 try {
                     await serverConn.query(`DROP DATABASE IF EXISTS \`${branchDbName}\``);
                     console.log(`   🗑️ Rolled back: dropped database ${branchDbName}`);
@@ -461,10 +420,11 @@ async function createCompleteTenantDatabase(
             }
             console.log(`✅ Branch migrations completed: ${branchResult.migrationsRun.length} migrations executed for ${branchDbName}`);
 
-                        await tenantConn.query(
-                `INSERT INTO branches (branch_name, branch_slug, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-                [branch.branch_name, branchSlug, branchDbName, firstBranchId, branch.branch_location || '', branch.branch_phone || '', branch.branch_email || '']
+            const branchUuid = uuidv4();
+            await tenantConn.query(
+                `INSERT INTO branches (branch_id, branch_name, branch_slug, branch_code, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+                [branchUuid, branch.branch_name, branchSlug, generateBranchCode(dbName, branch.branch_name), branchDbName, firstBranchId, branch.branch_location || '', branch.branch_phone || '', branch.branch_email || '']
             );
 
             branchData.push({
@@ -478,15 +438,12 @@ async function createCompleteTenantDatabase(
         }
 
         await tenantConn.query(`
-            INSERT INTO activity_logs (user_id, action, details)
-            VALUES (1, 'TENANT_CREATED', ?)
-        `, [`Tenant ${subdomain} created with ${branchData.length} branch(es)`]);
+            INSERT INTO activity_logs (log_id, user_id, action, details)
+            VALUES (?, ?, 'TENANT_CREATED', ?)
+        `, [uuidv4(), uuidv4(), `Tenant ${subdomain} created with ${branchData.length} branch(es)`]);
 
         console.log(`✅ Tenant setup complete: ${subdomain}`);
         console.log(`   📁 Primary DB: ${dbName}`);
-        if (sharedHearseDbName) {
-            console.log(`   🚗 Shared Hearse DB: ${sharedHearseDbName}`);
-        }
         branchData.forEach(b => console.log(`      - ${b.branch_name} (slug: ${b.branch_slug}, db: ${b.branch_db_name})`));
 
         emitOnboardingProgress(subdomain, 'Finalizing', 95, 'Setup complete');
@@ -495,7 +452,7 @@ async function createCompleteTenantDatabase(
     }
 
     emitOnboardingProgress(subdomain, 'Complete', 100, 'Tenant setup successful');
-    return { dbName, branches: branchData, sharedHearseDbName };
+    return { dbName, branches: branchData };
 }
 
 // ============================================
@@ -520,30 +477,188 @@ export class TenantModel {
         const password_hash = await bcrypt.hash(password, 10);
         const serverConn = await getServerPool();
 
-        // Step 1: Create tracking database
-        await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`tenant_tracking\``);
+        // Start transaction
+        await serverConn.query('START TRANSACTION');
 
-        // Disable foreign key checks to allow dropping tables with constraints
-        await serverConn.query('SET FOREIGN_KEY_CHECKS = 0');
-        console.log('Disabled foreign key checks');
+        // Declared at function scope so the catch block can clean up after failures
+        // (DDL implicit commits may have persisted the tenant row / databases).
+        let tenantUuid = '';
+        let tenantInserted = false;
 
-        // Drop tables in reverse order (users first, then tenants) to avoid foreign key constraint errors
-        await serverConn.query('DROP TABLE IF EXISTS tenant_tracking.users');
-        console.log('Dropped old users table (if existed)');
+        try {
+            // 1. Create tracking database
+            await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`tenant_tracking\``);
+            await serverConn.query('USE tenant_tracking');
 
-        await serverConn.query('DROP TABLE IF EXISTS tenant_tracking.tenants');
-        console.log('Dropped old tenants table (if existed)');
+            // 2. Ensure schema exists with UUID primary keys
+            await this.ensureTrackingSchema(serverConn);
 
-        // Re-enable foreign key checks
-        await serverConn.query('SET FOREIGN_KEY_CHECKS = 1');
-        console.log('Re-enabled foreign key checks');
+            // 3. Check if tenant already exists. A previous (failed) attempt may have left a
+            // partial tenant row + databases behind because DDL statements run implicit
+            // COMMITs, so a plain ROLLBACK cannot undo them. If the last attempt failed,
+            // clean those leftovers and re-provision from scratch; truly-registered
+            // (completed) tenants are rejected.
+            const [existing] = await serverConn.query(
+                'SELECT id, db_name FROM tenant_tracking.tenants WHERE tenant_slug = ?',
+                [subdomain]
+            );
+            if (Array.isArray(existing) && existing.length > 0) {
+                const staleTenant = (existing as any[])[0];
+                let provisionStatus = '';
+                try {
+                    const [psRows] = await serverConn.query(
+                        'SELECT status FROM tenant_tracking.provisioning_status WHERE tenant_slug = ?',
+                        [subdomain]
+                    );
+                    provisionStatus = String(((psRows as any[]) || [])[0]?.status || '');
+                } catch (psErr: any) { /* best-effort */ }
 
+                if (provisionStatus === '' || provisionStatus === 'completed') {
+                    // No provisioning tracking OR a fully registered tenant → never touch it.
+                    throw new Error('Tenant slug already exists');
+                }
+
+                console.warn(`♻️ Re-provisioning tenant ${subdomain} (previous attempt failed)`);
+                try {
+                    const [bRows] = await serverConn.query(
+                        `SELECT branch_db_name FROM tenant_tracking.branches WHERE tenant_id = ? AND branch_db_name IS NOT NULL`,
+                        [staleTenant.id]
+                    );
+                    const toDrop = new Set<string>();
+                    for (const nm of [staleTenant.db_name].concat((bRows as any[] || []).map(r => r.branch_db_name))) {
+                        if (nm) toDrop.add(String(nm));
+                    }
+                    for (const nm of toDrop) {
+                        try {
+                            await serverConn.query(`DROP DATABASE IF EXISTS \`${nm}\``);
+                            console.log(`🧹 Dropped partial tenant database: ${nm}`);
+                        } catch (d2: any) {
+                            console.warn('⚠️ Could not drop tenant database', nm, d2.message);
+                        }
+                    }
+                    await serverConn.query('DELETE FROM tenant_tracking.users WHERE tenant_id = ?', [staleTenant.id]);
+                    await serverConn.query('DELETE FROM tenant_tracking.branches WHERE tenant_id = ?', [staleTenant.id]);
+                    await serverConn.query('DELETE FROM tenant_tracking.branch_connections WHERE tenant_slug = ?', [subdomain]);
+                    await serverConn.query('DELETE FROM tenant_tracking.tenants WHERE id = ?', [staleTenant.id]);
+                } catch (cleanupErr: any) {
+                    console.warn('⚠️ Failed to clean partial tenant, aborting re-provision:', (cleanupErr && cleanupErr.message) || String(cleanupErr));
+                    throw new Error('Tenant slug already exists (partial cleanup failed): ' + ((cleanupErr && cleanupErr.message) || String(cleanupErr)));
+                }
+            }
+
+            const finalDeploymentType = deployment_type || ((branches && branches.length > 1) ? 'multi' : 'single');
+            const tenantCode = generateTenantCode(tenant_name);
+            tenantUuid = uuidv4();
+
+            // 4. INSERT TENANT FIRST
+            await serverConn.query(
+                `INSERT INTO tenant_tracking.tenants 
+                 (id, tenant_name, tenant_slug, db_name, tenant_code, email, phone, location, country, logo_url, status, subscription_status, deployment_type)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'trial', ?)`,
+                [tenantUuid, tenant_name, subdomain, dbName, tenantCode, email, phone || null, location || null, country || null, logo_url || null, finalDeploymentType]
+            );
+
+            tenantInserted = true;
+            console.log(`✅ Tenant record inserted with ID: ${tenantUuid}`);
+
+            // 5. Create tenant database and branches
+            const { branches: branchData } = await createCompleteTenantDatabase(
+                tenant_name, dbName, email, password_hash, full_name,
+                phone || null, country || null, location || null, branches,
+                finalDeploymentType, tenantUuid
+            );
+
+            // 6. Create branch tracking records
+            await this.createBranchTrackingRecords(serverConn, tenantUuid, subdomain, dbName, branchData);
+
+            // 7. Create admin user in tenant_tracking
+            const trackingUserId = uuidv4();
+            await this.createTrackingUser(serverConn, trackingUserId, email, password_hash, full_name, phone, tenantUuid);
+
+            // 8. Create admin user in tenant database
+            await this.createTenantAdminUser(dbName, email, password_hash, full_name, phone);
+
+            // 9. Create upload directories
+            await createTenantUploadDirectories(subdomain);
+
+            // 10. Auto-connect all branches
+                        await this.autoConnectBranches(dbName, subdomain, tenantUuid);
+
+            // 11. COMMIT transaction
+            await serverConn.query('COMMIT');
+
+            console.log(`✅ Tenant registered successfully: ${tenant_name} (${subdomain})`);
+
+            // 12. Generate JWT token
+            const jwt = require('jsonwebtoken');
+            const token = jwt.sign(
+                { userId: trackingUserId, tenantId: tenantUuid, tenantSlug: subdomain, email: email, role: 'admin' },
+                process.env.JWT_SECRET || 'RestPointJWTSecret2024ChangeMe',
+                { expiresIn: '7d' }
+            );
+
+            // 13. Fetch complete tenant record
+            const tenant = await this.findById(tenantUuid);
+            if (!tenant) {
+                throw new Error('Tenant created but not found after commit');
+            }
+
+            await emitOnboardingProgress(subdomain, 'Setup complete', 100, 'Redirecting to dashboard');
+
+            return { tenant, token };
+
+        } catch (error: any) {
+            // Rollback (best-effort) — DDL statements ran implicit COMMITs so the
+            // transaction cannot undo the tenant row or the created databases.
+            try { await serverConn.query('ROLLBACK'); } catch (rbErr: any) { /* ignore */ }
+
+            // Remove ONLY the artifacts THIS attempt created so a retry starts from a
+            // clean slate. Never touches pre-existing tenants: guarded by tenantInserted
+            // (set only after THIS call's INSERT committed) + tenantUuid (fresh id).
+            if (tenantInserted && tenantUuid) {
+                try {
+                    const [trackedBranches] = await serverConn.query(
+                        `SELECT branch_db_name FROM tenant_tracking.branches WHERE tenant_id = ? AND branch_db_name IS NOT NULL`,
+                        [tenantUuid]
+                    );
+                    const dbNames = new Set<string>();
+                    if (dbName) dbNames.add(dbName);
+                    for (const row of (trackedBranches as any[]) || []) {
+                        const name = String(row.branch_db_name || '').trim();
+                        if (name) dbNames.add(name);
+                    }
+                    for (const name of dbNames) {
+                        try {
+                            await serverConn.query(`DROP DATABASE IF EXISTS \`${name}\``);
+                            console.log(`🧹 Dropped partial tenant database: ${name}`);
+                        } catch (dErr: any) {
+                            console.warn('⚠️ Could not drop tenant database', name, dErr.message);
+                        }
+                    }
+                    await serverConn.query('DELETE FROM tenant_tracking.branches WHERE tenant_id = ?', [tenantUuid]);
+                    await serverConn.query('DELETE FROM tenant_tracking.tenants WHERE id = ?', [tenantUuid]);
+                    console.log('🧹 Cleaned partial tenant artifacts for failed provisioning');
+                } catch (cleanupErr: any) {
+                    console.warn('⚠️ Partial cleanup failed (manual cleanup may be needed):', (cleanupErr && cleanupErr.message) || String(cleanupErr));
+                }
+            }
+
+            console.error('❌ Tenant registration failed:', error.message);
+            throw error;
+        }
+    }
+
+    // ─── Schema Management ──────────────────────────────────────────────
+
+    private static async ensureTrackingSchema(serverConn: mysql.Pool): Promise<void> {
+        // Create tenants table with UUID primary key
         await serverConn.query(`
-            CREATE TABLE tenant_tracking.tenants (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS tenant_tracking.tenants (
+                id VARCHAR(36) PRIMARY KEY,
                 tenant_name VARCHAR(255) NOT NULL,
                 tenant_slug VARCHAR(255) UNIQUE NOT NULL,
                 db_name VARCHAR(255) UNIQUE NOT NULL,
+                tenant_code VARCHAR(255) UNIQUE NULL,
                 email VARCHAR(255) NOT NULL,
                 phone VARCHAR(50),
                 location TEXT,
@@ -553,294 +668,503 @@ export class TenantModel {
                 subscription_status ENUM('active', 'trial', 'suspended', 'cancelled') DEFAULT 'trial',
                 subscription_expires_at VARCHAR(255) NULL,
                 deployment_type ENUM('single', 'multi') DEFAULT 'single',
-                created_at VARCHAR(255),
-                updated_at VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_deployment_type (deployment_type),
-                INDEX idx_tenant_slug (tenant_slug)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        `);
-        console.log('✅ Created tenants table with correct schema');
-
-        const [missingColumns] = await serverConn.query(`
-            SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_SCHEMA = 'tenant_tracking' 
-            AND TABLE_NAME = 'tenants' 
-            AND COLUMN_NAME IN ('country', 'deployment_type')
-        `);
-
-        const existingColumns = Array.isArray(missingColumns)
-            ? missingColumns.map((col: any) => col.COLUMN_NAME)
-            : [];
-
-        if (!existingColumns.includes('country')) {
-            try {
-                await serverConn.query(`ALTER TABLE tenant_tracking.tenants ADD COLUMN country VARCHAR(100) NULL AFTER location`);
-            } catch (e) { /* column may already exist */ }
-        }
-
-        if (!existingColumns.includes('deployment_type')) {
-            try {
-                await serverConn.query(`ALTER TABLE tenant_tracking.tenants ADD COLUMN deployment_type ENUM('single', 'multi') DEFAULT 'single' AFTER subscription_expires_at`);
-            } catch (e) { /* column may already exist */ }
-        }
-
-        // Create branch_tracking table without foreign key constraint first
-        // We'll add the constraint after ensuring the tenants table has the right structure
-        await serverConn.query(`
-            CREATE TABLE IF NOT EXISTS tenant_tracking.branch_tracking (
-                branch_tracking_id INT PRIMARY KEY AUTO_INCREMENT,
-                tenant_id INT NOT NULL,
-                branch_id INT NOT NULL,
-                branch_name VARCHAR(255) NOT NULL,
-                branch_slug VARCHAR(255) NOT NULL,
-                branch_db_name VARCHAR(255),
-                created_at VARCHAR(255),
-                INDEX idx_tenant_id (tenant_id),
-                INDEX idx_branch_slug (branch_slug)
+                INDEX idx_tenant_slug (tenant_slug),
+                INDEX idx_email (email)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
 
-        // Try to add foreign key constraint if tenants table has tenant_id as primary key
+        // ======================================================================
+        // Legacy tenant_tracking bootstrap:
+        //  * Tracking DBs created before the UUID switch may still store ids as INT
+        //  * Existing tables may use a different collation than the new
+        //    utf8mb4_unicode_ci tables, which makes MySQL/MariaDB reject the
+        //    FOREIGN KEY on CREATE TABLE with "errno: 150 Foreign key constraint
+        //    is incorrectly formed".
+        // We normalize tenants.id first and create child tables WITH a FOREIGN KEY
+        // when possible, falling back to creating them WITHOUT the FK when the
+        // legacy parent key cannot be referenced. Indexes are kept either way.
+        // ======================================================================
+
+        // Normalize a legacy tenants.id (INT AUTO_INCREMENT) to VARCHAR(36).
         try {
-            const [tenantColumns] = await serverConn.query(`
-                SELECT COLUMN_NAME, COLUMN_KEY 
-                FROM INFORMATION_SCHEMA.COLUMNS 
-                WHERE TABLE_SCHEMA = 'tenant_tracking' 
-                AND TABLE_NAME = 'tenants' 
-                AND COLUMN_NAME = 'tenant_id'
-            `);
-
-            const tenantColumnInfo = tenantColumns as any[];
-            const hasTenantIdPrimaryKey = tenantColumnInfo.length > 0 && tenantColumnInfo[0].COLUMN_KEY === 'PRI';
-
-            if (hasTenantIdPrimaryKey) {
-                await serverConn.query(`
-                    ALTER TABLE tenant_tracking.branch_tracking
-                    ADD CONSTRAINT fk_branch_tracking_tenant 
-                    FOREIGN KEY (tenant_id) REFERENCES tenant_tracking.tenants(tenant_id) ON DELETE CASCADE
-                `);
-                console.log('✅ Foreign key constraint added to branch_tracking');
-            } else {
-                console.log('⚠️ Skipping foreign key constraint - tenants table uses different primary key');
-            }
-        } catch (fkError: any) {
-            console.warn('⚠️ Could not add foreign key constraint:', fkError.message);
-        }
-
-        const [existing] = await serverConn.query(
-            'SELECT id FROM tenant_tracking.tenants WHERE tenant_slug = ?',
-            [subdomain]
-        );
-        if (Array.isArray(existing) && existing.length > 0) {
-            throw new Error('Tenant slug already exists');
-        }
-
-        const finalDeploymentType = deployment_type || ((branches && branches.length > 1) ? 'multi' : 'single');
-
-        const { branches: branchData } = await createCompleteTenantDatabase(
-            tenant_name, dbName, email, password_hash, full_name,
-            phone || null, country || null, location || null, branches,
-            finalDeploymentType
-        );
-
-        emitOnboardingProgress(subdomain, 'Registering tenant', 98, 'Saving tenant record');
-
-        const [columns] = await serverConn.query(`
-            SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_SCHEMA = 'tenant_tracking' 
-            AND TABLE_NAME = 'tenants' 
-            AND COLUMN_NAME = 'deployment_type'
-        `);
-
-        const hasDeploymentTypeColumn = Array.isArray(columns) && columns.length > 0;
-
-        // Ensure logo_url column exists
-        try {
-            const [logoCols] = await serverConn.query(`
-                SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
-                WHERE TABLE_SCHEMA = 'tenant_tracking' 
-                AND TABLE_NAME = 'tenants' 
-                AND COLUMN_NAME = 'logo_url'
-            `);
-            if (Array.isArray(logoCols) && logoCols.length === 0) {
-                await serverConn.query(`ALTER TABLE tenant_tracking.tenants ADD COLUMN logo_url VARCHAR(500) NULL AFTER country`);
-                console.log('✅ Added logo_url column to tenants table');
-            }
-        } catch (e) { /* column may already exist */ }
-
-        let result;
-        if (hasDeploymentTypeColumn) {
-            const [insertResult] = await serverConn.query(
-                `INSERT INTO tenant_tracking.tenants (tenant_name, tenant_slug, db_name, email, phone, location, country, logo_url, status, subscription_status, deployment_type)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 'trial', ?)`,
-                [tenant_name, subdomain, dbName, email, phone || null, location || null, country || null, logo_url || null, finalDeploymentType]
+            const [legacyIdCols] = await serverConn.query(
+                `SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = 'tenant_tracking' AND TABLE_NAME = 'tenants' AND COLUMN_NAME = 'id'`
             );
-            result = insertResult;
-        } else {
-            const [insertResult] = await serverConn.query(
-                `INSERT INTO tenant_tracking.tenants (tenant_name, tenant_slug, db_name, email, phone, location, country, logo_url, status, subscription_status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 'trial')`,
-                [tenant_name, subdomain, dbName, email, phone || null, location || null, country || null, logo_url || null]
-            );
-            result = insertResult;
-
-            try {
-                await serverConn.query(`ALTER TABLE tenant_tracking.tenants ADD COLUMN deployment_type ENUM('single', 'multi') DEFAULT 'single' AFTER subscription_expires_at`);
-                await serverConn.query(`UPDATE tenant_tracking.tenants SET deployment_type = ? WHERE id = ?`, [finalDeploymentType, (result as any).insertId]);
-            } catch (alterErr) {
-                console.warn('Could not add deployment_type column:', alterErr.message);
+            const tenantIdCol = (legacyIdCols as any[] || [])[0];
+            if (tenantIdCol && tenantIdCol.COLUMN_TYPE !== 'varchar(36)') {
+                await serverConn.query(`ALTER TABLE tenant_tracking.tenants MODIFY COLUMN id VARCHAR(36) NOT NULL`);
+                console.log('✅ Converted tenant_tracking.tenants.id to VARCHAR(36)');
             }
+        } catch (e: any) {
+            console.warn('⚠️ Could not normalize tenant_tracking.tenants.id:', e.message);
         }
 
-        const tenantId = (result as any).insertId;
-
-        console.log(`✅ Tenant record inserted with ID: ${tenantId}`);
-
-        // CRITICAL FIX: Select tenant_tracking database before querying
-        await serverConn.query('USE tenant_tracking');
-
-        const [tenants] = await serverConn.query<mysql.RowDataPacket[]>(
-            'SELECT * FROM tenants WHERE id = ?',
-            [tenantId]
-        );
-        const tenantRow = Array.isArray(tenants) && tenants.length > 0 ? tenants[0] : null;
-        if (!tenantRow) {
-            console.error('❌ Tenant record not found after insert. This should not happen.');
-            throw new Error('Failed to create tenant');
-        }
-
-        const tenant: Tenant = {
-            // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`.
-            // Map `id` to `tenant_id` so downstream code that expects `tenant_id` works correctly.
-            tenant_id: tenantRow.tenant_id ?? tenantRow.id,
-            tenant_name: tenantRow.tenant_name,
-            tenant_slug: tenantRow.tenant_slug,
-            db_name: tenantRow.db_name,
-            email: tenantRow.email,
-            phone: tenantRow.phone || null,
-            location: tenantRow.location || null,
-            country: tenantRow.country || null,
-            logo_url: tenantRow.logo_url || null,
-            status: tenantRow.status || 'active',
-            subscription_status: tenantRow.subscription_status || 'trial',
-            subscription_expires_at: tenantRow.subscription_expires_at || null,
-            deployment_type: tenantRow.deployment_type || 'single',
-            created_at: tenantRow.created_at,
-            updated_at: tenantRow.updated_at
+        const isFkFormationError = (err: any): boolean => {
+            const msg = String((err && err.message) || err);
+            return /errno[: ]*150|foreign key constraint is incorrectly formed|cannot add foreign key/i.test(msg);
         };
 
-        // ============================================================
-        // FIX: Create upload directories for the tenant
-        // ============================================================
-        try {
-            await createTenantUploadDirectories(tenant.tenant_slug);
-            console.log(`📂 Tenant upload directories created for: ${tenant.tenant_slug}`);
-        } catch (folderError: any) {
-            console.error(`❌ Failed to create tenant upload directories: ${folderError.message}`);
-            // Abort tenant creation if folder creation fails
-            throw new Error(`Failed to create tenant upload directories: ${folderError.message}`);
-        }
-
-        const jwt = require('jsonwebtoken');
-        const token = jwt.sign(
-            { userId: 1, tenantId: tenant.tenant_id, tenantSlug: tenant.tenant_slug, email: email, role: 'admin' },
-            process.env.JWT_SECRET || 'RestPointJWTSecret2024ChangeMe',
-            { expiresIn: '7d' }
-        );
-
-        try {
-            const tenantDbConn = await getTenantConnection(dbName);
-            try {
-                const [branchRows] = await tenantDbConn.query(
-                    'SELECT branch_id, branch_name, branch_slug, branch_db_name FROM branches WHERE is_active = TRUE'
-                );
-                const branches = branchRows as any[];
-
-                for (const branch of branches) {
+        // Create a child tracking table with an optional FK to tenants(id).
+        const createTrackingTable = async (tableName: string, columns: string, fkColumn: string): Promise<void> => {
+            for (const withFk of [true, false]) {
+                const fkClause = withFk
+                    ? `,\n                FOREIGN KEY (${fkColumn}) REFERENCES tenant_tracking.tenants(id) ON DELETE CASCADE`
+                    : '';
+                try {
                     await serverConn.query(`
-                        INSERT INTO tenant_tracking.branch_tracking 
-                        (tenant_id, branch_id, branch_name, branch_slug, branch_db_name) 
-                        VALUES (?, ?, ?, ?, ?)
-                    `, [tenantId, branch.branch_id, branch.branch_name, branch.branch_slug, branch.branch_db_name || null]);
+                        CREATE TABLE IF NOT EXISTS tenant_tracking.${tableName} (
+                            ${columns}
+                            ${fkClause}
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    `);
+                    if (!withFk) {
+                        console.warn(`⚠️ Created tenant_tracking.${tableName} WITHOUT FK constraint (legacy tenants column mismatch)`);
+                    }
+                    return;
+                } catch (err: any) {
+                    if (withFk && isFkFormationError(err)) {
+                        continue;
+                    }
+                    throw err;
                 }
-                console.log(`✅ Branch tracking records created: ${branches.length} branches tracked`);
-            } finally {
-                await tenantDbConn.end();
             }
-        } catch (trackingError: any) {
-            console.warn(`⚠️ Could not create branch tracking records: ${trackingError.message}`);
-        }
+        };
 
-        try {
-            await serverConn.query(`
-                CREATE TABLE IF NOT EXISTS tenant_tracking.users (
-                    user_id INT AUTO_INCREMENT PRIMARY KEY,
-                    email VARCHAR(255) NOT NULL UNIQUE,
-                    password_hash VARCHAR(255) NOT NULL,
-                    full_name VARCHAR(255) NOT NULL,
-                    phone VARCHAR(20),
-                    role VARCHAR(50) DEFAULT 'admin',
-                    tenant_id INT NOT NULL,
-                    branch_id INT NULL,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    is_verified BOOLEAN DEFAULT TRUE,
-                    last_login_at VARCHAR(255) NULL,
-                    created_at VARCHAR(255),
-                    updated_at VARCHAR(255),
-                    INDEX idx_email (email),
-                    INDEX idx_tenant_id (tenant_id),
-                    INDEX idx_role (role),
-                    FOREIGN KEY (tenant_id) REFERENCES tenant_tracking.tenants(tenant_id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            `);
+        const hasColumn = async (tableName: string, columnName: string): Promise<boolean> => {
+            const [rows] = await serverConn.query(
+                `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = 'tenant_tracking' AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+                [tableName, columnName]
+            );
+            return Array.isArray(rows) && rows.length > 0;
+        };
 
-            await serverConn.query(`
-                INSERT INTO tenant_tracking.users (email, password_hash, full_name, phone, role, tenant_id, is_verified, is_active)
-                VALUES (?, ?, ?, ?, 'admin', ?, 1, 1)
-            `, [email, password_hash, full_name, phone || '', tenantId]);
-            console.log(`✅ Admin user created in tenant_tracking for authentication`);
-            emitOnboardingProgress(subdomain, 'Creating admin user', 90, `Admin user ${email} created`);
-        } catch (userError: any) {
-            console.warn(`⚠️ Could not create tenant_tracking user: ${userError.message}`);
-        }
-
-        try {
-            const tenantConnForUser = await getTenantConnection(dbName);
+        // Add a column to an older tracking table when it's missing.
+        const addColumnIfMissing = async (tableName: string, columnName: string, columnDdl: string, afterColumn: string): Promise<void> => {
             try {
-                const [branchRows] = await tenantConnForUser.query(
-                    'SELECT branch_id FROM branches WHERE is_active = TRUE ORDER BY branch_id ASC LIMIT 1'
-                );
-                const branches = branchRows as any[];
-                const primaryBranchId = branches.length > 0 ? branches[0].branch_id : null;
-
-                const adminUsername = full_name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-
-                await tenantConnForUser.query(`
-                    INSERT INTO users (email, password_hash, full_name, username, phone, role, branch_id, is_verified, is_active)
-                    VALUES (?, ?, ?, ?, ?, 'admin', ?, 1, 1)
-                `, [email, password_hash, full_name, adminUsername, phone || '', primaryBranchId]);
-                console.log(`✅ Admin user created in tenant database for login control (branch_id: ${primaryBranchId})`);
-            } finally {
-                await tenantConnForUser.end();
+                if (!(await hasColumn(tableName, columnName))) {
+                    await serverConn.query(
+                        `ALTER TABLE tenant_tracking.\`${tableName}\` ADD COLUMN \`${columnName}\` ${columnDdl} AFTER \`${afterColumn}\``
+                    );
+                    console.log(`✅ Added tenant_tracking.${tableName}.${columnName}`);
+                }
+            } catch (e: any) {
+                console.warn(`⚠️ Could not add tenant_tracking.${tableName}.${columnName}:`, e.message);
             }
-        } catch (userError: any) {
-            console.warn(`⚠️ Could not create admin user: ${userError.message}`);
+        };
+
+        // Reconcile legacy tenant_tracking.tenants (created by the old onboarding
+        // bootstrap) with the canonical schema registerTenant()'s INSERT expects. The
+        // legacy table is missing tenant_code/location/country/logo_url/deployment_type
+        // and since CREATE TABLE IF NOT EXISTS is a no-op on it, add them here (idempotent).
+        await addColumnIfMissing('tenants', 'tenant_code', 'VARCHAR(255) NULL', 'db_name');
+        await addColumnIfMissing('tenants', 'location', 'TEXT NULL', 'phone');
+        await addColumnIfMissing('tenants', 'country', 'VARCHAR(100) NULL', 'location');
+        await addColumnIfMissing('tenants', 'logo_url', 'VARCHAR(500) NULL', 'country');
+        await addColumnIfMissing('tenants', 'deployment_type', `ENUM('single','multi') DEFAULT 'single'`, 'subscription_status');
+
+        // The legacy ENUMs don't accept canonical values ('trial', 'deleted') and the
+        // servers run with STRICT_TRANS_TABLES, so INSERTs fail with "Data truncated".
+        // Broaden them using supersets that keep every existing (legacy) value valid.
+        const ensureEnum = async (tableName: string, columnName: string, columnDdl: string): Promise<void> => {
+            try {
+                const [colMeta] = await serverConn.query(
+                    `SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = 'tenant_tracking' AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+                    [tableName, columnName]
+                );
+                const current = String(((colMeta as any[]) || [])[0]?.COLUMN_TYPE || '');
+                const required = columnDdl
+                    .replace(/^ENUM\(/i, '')
+                    .replace(/\s+\).*$/i, '')
+                    .split(',')
+                    .map(v => v.trim().replace(/^'|'$/g, ''));
+                const missing = current.length === 0 || required.some(v => !current.includes(v));
+                if (missing) {
+                    await serverConn.query(
+                        `ALTER TABLE tenant_tracking.\`${tableName}\` MODIFY COLUMN \`${columnName}\` ${columnDdl}`
+                    );
+                    console.log(`✅ Normalized tenant_tracking.${tableName}.${columnName} -> ${columnDdl}`);
+                }
+            } catch (e: any) {
+                console.warn(`⚠️ Could not normalize tenant_tracking.${tableName}.${columnName}:`, e.message);
+            }
+        };
+
+        await ensureEnum('tenants', 'status', `ENUM('active','inactive','suspended','deleted') DEFAULT 'active'`);
+        await ensureEnum('tenants', 'subscription_status', `ENUM('active','inactive','trial','suspended','cancelled') DEFAULT 'trial'`);
+
+        // Create branches tracking table
+        await createTrackingTable('branches', `
+                id VARCHAR(36) PRIMARY KEY,
+                tenant_id VARCHAR(36) NOT NULL,
+                tenant_slug VARCHAR(255) NOT NULL,
+                branch_slug VARCHAR(255) NOT NULL,
+                branch_code VARCHAR(255) NULL,
+                branch_name VARCHAR(255) NOT NULL,
+                branch_db_name VARCHAR(255) NOT NULL,
+                parent_branch_id VARCHAR(36) NULL,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_branch (tenant_slug, branch_slug),
+                INDEX idx_tenant_id (tenant_id),
+                INDEX idx_tenant_slug (tenant_slug),
+                INDEX idx_branch_slug (branch_slug)`, 'tenant_id');
+
+        // Older tracking DBs created the branches registry without a tenant_id column —
+        // backfill it so the INSERTs below can store the owning tenant.
+        await addColumnIfMissing('branches', 'tenant_id', 'VARCHAR(36) NULL', 'id');
+
+        // Legacy tracking DBs created the branch registry with INT `id` / INT
+        // `parent_branch_id` (plus FKs back into those INT columns) while the canonical
+        // INSERTs store UUID strings — under STRICT_TRANS_TABLES that fails with
+        // "Data truncated". Convert the columns (and their FKs) to VARCHAR(36), idempotent.
+        try {
+            const [branchIdCol] = await serverConn.query(
+                `SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = 'tenant_tracking' AND TABLE_NAME = 'branches' AND COLUMN_NAME = 'id'`
+            );
+            const branchIdType = String(((branchIdCol as any[]) || [])[0]?.COLUMN_TYPE || '');
+            if (branchIdType && branchIdType !== 'varchar(36)') {
+                const [branchFks] = await serverConn.query(
+                    `SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+                     WHERE TABLE_SCHEMA = 'tenant_tracking' AND TABLE_NAME = 'branches'
+                       AND REFERENCED_TABLE_NAME IS NOT NULL`
+                );
+                for (const fk of ((branchFks as any[]) || [])) {
+                    try {
+                        await serverConn.query(`ALTER TABLE tenant_tracking.branches DROP FOREIGN KEY \`${fk.CONSTRAINT_NAME}\``);
+                    } catch (fkErr: any) {
+                        console.warn('⚠️ Could not drop legacy branches FK:', fk.CONSTRAINT_NAME, fkErr.message);
+                    }
+                }
+                await serverConn.query(
+                    `ALTER TABLE tenant_tracking.branches
+                     MODIFY COLUMN id VARCHAR(36) NOT NULL,
+                     MODIFY COLUMN parent_branch_id VARCHAR(36) NULL`
+                );
+                console.log('✅ Converted tenant_tracking.branches.id / parent_branch_id to VARCHAR(36)');
+                try {
+                    // Re-add ONLY the FK on tenant_id (canonical fresh-table schema). There
+                    // must be NO FK on parent_branch_id: tracking rows are populated with
+                    // parent ids taken from the TENANT database's branches (different rows),
+                    // so a self-referencing FK here would reject those inserts.
+                    await serverConn.query(
+                        `ALTER TABLE tenant_tracking.branches
+                         ADD CONSTRAINT fk_tracking_branches_tenant FOREIGN KEY (tenant_id)
+                             REFERENCES tenant_tracking.tenants(id) ON DELETE CASCADE`
+                    );
+                } catch (fkErr: any) {
+                    console.warn('⚠️ Could not re-add branches tracking FK (indexes retained):', fkErr.message);
+                }
+            }
+        } catch (e: any) {
+            console.warn('⚠️ Could not normalize legacy tenant_tracking.branches:', e.message);
         }
 
-        console.log(`✅ Tenant registered: ${tenant.tenant_name} (${tenant.tenant_slug})`);
-        console.log(`📁 Main DB: ${tenant.db_name}`);
-        console.log(`🌍 Country: ${tenant.country || 'Not specified'}`);
-        console.log(`🏢 Branches: ${branchData.length}`);
-        branchData.forEach(b => console.log(`   📋 ${b.branch_name} (slug: ${b.branch_slug}, db: ${b.branch_db_name})`));
+        // Create users tracking table
+        await createTrackingTable('users', `
+                user_id VARCHAR(36) PRIMARY KEY,
+                email VARCHAR(255) NOT NULL UNIQUE,
+                password_hash VARCHAR(255) NOT NULL,
+                full_name VARCHAR(255) NOT NULL,
+                phone VARCHAR(20),
+                role VARCHAR(50) DEFAULT 'admin',
+                tenant_id VARCHAR(36) NOT NULL,
+                branch_id VARCHAR(36) NULL,
+                is_active BOOLEAN DEFAULT TRUE,
+                is_verified BOOLEAN DEFAULT TRUE,
+                last_login_at TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_email (email),
+                INDEX idx_tenant_id (tenant_id),
+                INDEX idx_role (role)`, 'tenant_id');
 
-        await emitOnboardingProgress(subdomain, 'Setup complete', 100, 'Redirecting to dashboard');
+        // Create provisioning_status table
+        await serverConn.query(`
+            CREATE TABLE IF NOT EXISTS tenant_tracking.provisioning_status (
+                tenant_slug VARCHAR(255) PRIMARY KEY,
+                status VARCHAR(50) DEFAULT 'pending',
+                progress INT DEFAULT 0,
+                details TEXT,
+                error_message TEXT,
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_status (status),
+                INDEX idx_started_at (started_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
 
-        return { tenant, token };
+        // Create branch_connections tracking table
+        await createTrackingTable('branch_connections', `
+                id VARCHAR(36) PRIMARY KEY,
+                tenant_id VARCHAR(36) NOT NULL,
+                tenant_slug VARCHAR(255) NOT NULL,
+                branch_id VARCHAR(36) NOT NULL,
+                connected_branch_id VARCHAR(36) NOT NULL,
+                connection_type ENUM('referral','transfer','partnership','parent_child') DEFAULT 'partnership',
+                status ENUM('active','inactive','pending') DEFAULT 'active',
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_tenant_slug (tenant_slug),
+                INDEX idx_branch_id (branch_id),
+                INDEX idx_connected_branch_id (connected_branch_id),
+                UNIQUE KEY unique_branch_connection (tenant_slug, branch_id, connected_branch_id)`, 'tenant_id');
+
+        console.log('✅ Tenant tracking schema verified');
     }
 
-    // ─── Branch Operations ──────────────────────────────────────────────
+    private static async createBranchTrackingRecords(
+        serverConn: mysql.Pool,
+        tenantId: string,
+        tenantSlug: string,
+        tenantDbName: string,
+        branchData: Array<{ branch_name: string; branch_slug: string; branch_db_name: string; parent_branch_id: string | null }>
+    ): Promise<void> {
+        for (const branch of branchData) {
+            const branchUuid = uuidv4();
+            await serverConn.query(`
+                INSERT INTO tenant_tracking.branches 
+                (id, tenant_id, tenant_slug, branch_slug, branch_code, branch_name, branch_db_name, parent_branch_id, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+            `, [
+                branchUuid,
+                tenantId,
+                tenantSlug,
+                branch.branch_slug,
+                generateBranchCode(tenantDbName, branch.branch_name),
+                branch.branch_name,
+                branch.branch_db_name,
+                branch.parent_branch_id
+            ]);
+        }
 
-        static async getBranches(tenantDbName: string): Promise<BranchInfo[]> {
+        console.log(`✅ ${branchData.length} branch tracking records created`);
+    }
+
+    private static async createTrackingUser(
+        serverConn: mysql.Pool,
+        userId: string,
+        email: string,
+        password_hash: string,
+        full_name: string,
+        phone: string | null,
+        tenantId: string
+    ): Promise<void> {
+        await serverConn.query(`
+            INSERT INTO tenant_tracking.users 
+            (user_id, email, password_hash, full_name, phone, role, tenant_id, is_verified, is_active)
+            VALUES (?, ?, ?, ?, ?, 'admin', ?, 1, 1)
+        `, [userId, email, password_hash, full_name, phone || '', tenantId]);
+
+        console.log(`✅ Tracking user created: ${email}`);
+    }
+
+    private static async createTenantAdminUser(
+        dbName: string,
+        email: string,
+        password_hash: string,
+        full_name: string,
+        phone: string | null
+    ): Promise<void> {
+        const conn = await getTenantConnection(dbName);
+        try {
+            // Get the first branch ID
+            const [branchRows] = await conn.query(
+                'SELECT branch_id FROM branches WHERE is_active = TRUE ORDER BY branch_id ASC LIMIT 1'
+            );
+            const branches = branchRows as any[];
+            const primaryBranchId = branches.length > 0 ? branches[0].branch_id : null;
+
+            const adminUsername = full_name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+            const mainUserUuid = uuidv4();
+
+            await conn.query(`
+                INSERT INTO users (user_id, email, password_hash, full_name, username, phone, role, branch_id, is_verified, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, 1, 1)
+            `, [mainUserUuid, email, password_hash, full_name, adminUsername, phone || '', primaryBranchId]);
+
+            console.log(`✅ Admin user created in tenant database (branch_id: ${primaryBranchId})`);
+        } finally {
+            await conn.end();
+        }
+    }
+
+    // ─── Branch Connection Operations ──────────────────────────────────
+
+    static async ensureBranchConnectionsTable(tenantDbName: string): Promise<void> {
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS branch_connections (
+                    id VARCHAR(36) PRIMARY KEY,
+                    tenant_slug VARCHAR(255) NOT NULL,
+                    branch_id VARCHAR(36) NOT NULL,
+                    connected_branch_id VARCHAR(36) NOT NULL,
+                    connection_type ENUM('referral','transfer','partnership','parent_child') DEFAULT 'partnership',
+                    status ENUM('active','inactive','pending') DEFAULT 'active',
+                    notes TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (branch_id) REFERENCES branches(branch_id) ON DELETE CASCADE,
+                    FOREIGN KEY (connected_branch_id) REFERENCES branches(branch_id) ON DELETE CASCADE,
+                    INDEX idx_tenant_slug (tenant_slug),
+                    INDEX idx_branch_id (branch_id),
+                    INDEX idx_connected_branch_id (connected_branch_id),
+                    UNIQUE KEY unique_branch_connection (tenant_slug, branch_id, connected_branch_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            `);
+        } finally {
+            await conn.end();
+        }
+    }
+
+        static async autoConnectBranches(tenantDbName: string, tenantSlug: string, tenantId?: string): Promise<void> {
+        await this.ensureBranchConnectionsTable(tenantDbName);
+
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            // Get all active branches
+            const [branches] = await conn.query(
+                'SELECT branch_id, parent_branch_id FROM branches WHERE is_active = TRUE ORDER BY branch_id'
+            );
+            const branchList = branches as any[];
+
+            if (branchList.length < 2) {
+                console.log(`ℹ️ Only ${branchList.length} branch(es), no connections needed`);
+                return;
+            }
+
+            // Identify parent branch
+            let parentBranchId: string | null = null;
+            const childBranchIds: string[] = [];
+            for (const b of branchList) {
+                if (b.parent_branch_id === null || b.parent_branch_id === undefined) {
+                    if (parentBranchId === null) {
+                        parentBranchId = b.branch_id;
+                    }
+                } else {
+                    childBranchIds.push(b.branch_id);
+                }
+            }
+
+            // Create parent-child connections
+            if (parentBranchId !== null && childBranchIds.length > 0) {
+                for (const childId of childBranchIds) {
+                    const [existing] = await conn.query(
+                        'SELECT id FROM branch_connections WHERE branch_id = ? AND connected_branch_id = ? LIMIT 1',
+                        [parentBranchId, childId]
+                    );
+                    if ((existing as any[]).length === 0) {
+                        await conn.query(
+                            `INSERT INTO branch_connections (id, tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+                             VALUES (?, ?, ?, ?, 'parent_child', 'active', 'Parent-child hierarchy')`,
+                            [uuidv4(), tenantSlug, parentBranchId, childId]
+                        );
+                        await conn.query(
+                            `INSERT INTO branch_connections (id, tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+                             VALUES (?, ?, ?, ?, 'parent_child', 'active', 'Parent-child hierarchy')`,
+                            [uuidv4(), tenantSlug, childId, parentBranchId]
+                        );
+                    }
+                }
+            }
+
+            // Create partnership connections between ALL pairs
+            for (let i = 0; i < branchList.length; i++) {
+                for (let j = i + 1; j < branchList.length; j++) {
+                    const branchA = branchList[i].branch_id;
+                    const branchB = branchList[j].branch_id;
+
+                    const [existing] = await conn.query(
+                        'SELECT id FROM branch_connections WHERE branch_id = ? AND connected_branch_id = ? LIMIT 1',
+                        [branchA, branchB]
+                    );
+                    if ((existing as any[]).length === 0) {
+                        await conn.query(
+                            `INSERT INTO branch_connections (id, tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+                             VALUES (?, ?, ?, ?, 'partnership', 'active', 'Auto-connected on tenant setup')`,
+                            [uuidv4(), tenantSlug, branchA, branchB]
+                        );
+                        await conn.query(
+                            `INSERT INTO branch_connections (id, tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+                             VALUES (?, ?, ?, ?, 'partnership', 'active', 'Auto-connected on tenant setup')`,
+                            [uuidv4(), tenantSlug, branchB, branchA]
+                        );
+                    }
+                }
+            }
+
+                        // Mirror branch connections into the central tenant_tracking database so the
+            // branch_connections table is populated there too — the admin dashboard and
+            // branch-connection lookups read from tenant_tracking, not the per-tenant DB.
+            if (tenantId) {
+                await this.mirrorBranchConnectionsToTracking(tenantId, tenantSlug, branchList, parentBranchId, childBranchIds).catch((e: any) => {
+                    console.warn('⚠️ Could not mirror branch connections to tenant_tracking:', e && e.message ? e.message : String(e));
+                });
+            }
+
+            console.log(`✅ Auto-connected ${branchList.length} branches for tenant: ${tenantSlug}`);
+        } finally {
+            await conn.end();
+        }
+    }
+
+        private static async insertTrackingConnection(
+        tConn: mysql.Pool,
+        tenantId: string,
+        tenantSlug: string,
+        branchId: string,
+        connectedBranchId: string,
+        connectionType: 'referral' | 'transfer' | 'partnership' | 'parent_child',
+        notes: string
+    ): Promise<void> {
+        await tConn.query(
+            `INSERT IGNORE INTO tenant_tracking.branch_connections
+             (id, tenant_id, tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+             VALUES (?, ?, ?, ?, ?, ?, 'active', ?)`,
+            [uuidv4(), tenantId, tenantSlug, branchId, connectedBranchId, connectionType, notes]
+        );
+    }
+
+    // Writes the same parent/child + partnership links that exist on a tenant's
+    // own database into tenant_tracking.branch_connections so the central
+    // tracking DB also reflects the branch graph (idempotent via INSERT IGNORE).
+    private static async mirrorBranchConnectionsToTracking(
+        tenantId: string,
+        tenantSlug: string,
+        branchList: Array<{ branch_id: string; parent_branch_id: string | null }>,
+        parentBranchId: string | null,
+        childBranchIds: string[]
+    ): Promise<void> {
+        const tConn = await getServerPool();
+        // Parent <-> child (both directions)
+        if (parentBranchId !== null && childBranchIds.length > 0) {
+            for (const childId of childBranchIds) {
+                await this.insertTrackingConnection(tConn, tenantId, tenantSlug, parentBranchId, childId, 'parent_child', 'Parent-child hierarchy');
+                await this.insertTrackingConnection(tConn, tenantId, tenantSlug, childId, parentBranchId, 'parent_child', 'Parent-child hierarchy');
+            }
+        }
+        // Partnership between every pair (both directions)
+        for (let i = 0; i < branchList.length; i++) {
+            for (let j = i + 1; j < branchList.length; j++) {
+                const branchA = branchList[i].branch_id;
+                const branchB = branchList[j].branch_id;
+                await this.insertTrackingConnection(tConn, tenantId, tenantSlug, branchA, branchB, 'partnership', 'Auto-connected on tenant setup');
+                await this.insertTrackingConnection(tConn, tenantId, tenantSlug, branchB, branchA, 'partnership', 'Auto-connected on tenant setup');
+            }
+        }
+        console.log(`✅ Mirrored branch connections to tenant_tracking for tenant: ${tenantSlug}`);
+    }
+
+    static async getBranches(tenantDbName: string): Promise<BranchInfo[]> {
         const conn = await getTenantConnection(tenantDbName);
         try {
             const [rows] = await conn.query(
@@ -863,13 +1187,13 @@ export class TenantModel {
         }
     }
 
-        static async addBranch(tenantDbName: string, branch: {
+    static async addBranch(tenantDbName: string, branch: {
         branch_name: string;
         branch_location: string;
         branch_phone: string;
         branch_email: string;
-        parent_branch_id?: number | null;
-    }): Promise<{ branch_id: number; branch_db_name: string }> {
+        parent_branch_id?: string | null;
+    }): Promise<{ branch_id: string; branch_db_name: string }> {
         const serverConn = await getServerPool();
         const migrationService = new MigrationService();
 
@@ -878,10 +1202,6 @@ export class TenantModel {
 
         await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`${branchDbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
 
-        // ============================================================
-        // FIX: ALL migrations run on EVERY new branch database
-        // Sub-branches get ALL migrations EXCEPT Workshop
-        // ============================================================
         const branchMigrations = getBranchMigrations();
         const dbConfig = {
             host: process.env.DB_HOST || '127.0.0.1',
@@ -891,16 +1211,12 @@ export class TenantModel {
             authPlugins: AUTH_PLUGINS
         };
 
-        console.log(`📋 Running ALL migrations (${branchMigrations.length} total) for new branch DB: ${branchDbName}`);
-
-        let completedBranchMigrations = 0;
         console.log(`📋 Running branch migrations for ${branchDbName} (${branchMigrations.length} migrations)`);
         const branchResult = await migrationService.runTenantMigrations(branchDbName, branchMigrations, dbConfig);
 
         if (!branchResult.success) {
             const errorMsg = `Failed to run migrations for branch database ${branchDbName}: ${branchResult.errors.join(', ')}`;
             console.error(`❌ ${errorMsg}`);
-            // Rollback - drop the database if migrations failed
             try {
                 await serverConn.query(`DROP DATABASE IF EXISTS \`${branchDbName}\``);
                 console.log(`   🗑️ Rolled back: dropped database ${branchDbName}`);
@@ -909,12 +1225,10 @@ export class TenantModel {
             }
             throw new Error(errorMsg);
         }
-        console.log(`✅ Branch migrations completed: ${branchResult.migrationsRun.length} migrations executed for ${branchDbName}`);
 
-                const conn = await getTenantConnection(tenantDbName);
+        const conn = await getTenantConnection(tenantDbName);
         try {
-            // If no parent_branch_id provided, use the first (main) branch as parent
-            let resolvedParentId = branch.parent_branch_id ?? null;
+            let resolvedParentId: string | null = branch.parent_branch_id ?? null;
             if (resolvedParentId === null) {
                 const [mainBranch] = await conn.query(
                     'SELECT branch_id FROM branches WHERE parent_branch_id IS NULL ORDER BY branch_id ASC LIMIT 1'
@@ -923,93 +1237,157 @@ export class TenantModel {
                     resolvedParentId = (mainBranch[0] as any).branch_id;
                 }
             }
-            const [result] = await conn.query(
-                `INSERT INTO branches (branch_name, branch_slug, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-                [branch.branch_name, branchSlug, branchDbName, resolvedParentId, branch.branch_location || '', branch.branch_phone || '', branch.branch_email || '']
+            const newBranchUuid = uuidv4();
+            await conn.query(
+                `INSERT INTO branches (branch_id, branch_name, branch_slug, branch_code, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+                [newBranchUuid, branch.branch_name, branchSlug, generateBranchCode(tenantDbName, branch.branch_name), branchDbName, resolvedParentId, branch.branch_location || '', branch.branch_phone || '', branch.branch_email || '']
             );
-            return { branch_id: (result as any).insertId, branch_db_name: branchDbName };
+            return { branch_id: newBranchUuid, branch_db_name: branchDbName };
         } finally {
             await conn.end();
         }
     }
 
-    // ─── Base Charges Operations ────────────────────────────────────────
+    static async getBranchConnections(tenantDbName: string, branchId: string): Promise<any[]> {
+        await this.ensureBranchConnectionsTable(tenantDbName);
 
-    static async getBaseCharges(branchDbName: string): Promise<any[]> {
-        const conn = await getBranchConnection(branchDbName);
+        const conn = await getTenantConnection(tenantDbName);
         try {
-            const [rows] = await conn.query('SELECT * FROM base_charges ORDER BY charge_category');
+            const [rows] = await conn.query(
+                `SELECT bc.*, 
+                        b.branch_name as connected_branch_name,
+                        b.branch_slug as connected_branch_slug,
+                        b.branch_db_name as connected_branch_db_name
+                 FROM branch_connections bc
+                 INNER JOIN branches b ON bc.connected_branch_id = b.branch_id
+                 WHERE bc.branch_id = ? AND bc.status = 'active'
+                 ORDER BY bc.created_at DESC`,
+                [branchId]
+            );
             return rows as any[];
         } finally {
             await conn.end();
         }
     }
 
-    static async upsertBaseCharge(branchDbName: string, charge: {
-        charge_id?: number;
-        charge_name: string;
-        charge_description: string;
-        amount: number;
-        charge_category: string;
-        is_mandatory: boolean;
-    }): Promise<any> {
-        const conn = await getBranchConnection(branchDbName);
-        try {
-            if (charge.charge_id) {
-                await conn.query(
-                    'UPDATE base_charges SET charge_name=?, charge_description=?, amount=?, charge_category=?, is_mandatory=? WHERE charge_id=?',
-                    [charge.charge_name, charge.charge_description, charge.amount, charge.charge_category, charge.is_mandatory, charge.charge_id]
-                );
-                return charge.charge_id;
-            } else {
-                const [result] = await conn.query(
-                    'INSERT INTO base_charges (charge_name, charge_description, amount, charge_category, is_mandatory) VALUES (?, ?, ?, ?, ?)',
-                    [charge.charge_name, charge.charge_description, charge.amount, charge.charge_category, charge.is_mandatory]
-                );
-                return (result as any).insertId;
-            }
-        } finally {
-            await conn.end();
-        }
-    }
+    static async getAllBranchConnections(tenantDbName: string): Promise<any[]> {
+        await this.ensureBranchConnectionsTable(tenantDbName);
 
-    // ─── Marketplace Operations ─────────────────────────────────────────
-
-    static async getMarketplaceProducts(branchDbName: string): Promise<any[]> {
-        const conn = await getBranchConnection(branchDbName);
+        const conn = await getTenantConnection(tenantDbName);
         try {
-            const [rows] = await conn.query('SELECT * FROM marketplace_products WHERE is_available = TRUE ORDER BY created_at DESC');
+            const [rows] = await conn.query(
+                `SELECT bc.*, 
+                        b1.branch_name as branch_name,
+                        b2.branch_name as connected_branch_name,
+                        b2.branch_db_name as connected_branch_db_name
+                 FROM branch_connections bc
+                 INNER JOIN branches b1 ON bc.branch_id = b1.branch_id
+                 INNER JOIN branches b2 ON bc.connected_branch_id = b2.branch_id
+                 WHERE bc.status = 'active'
+                 ORDER BY bc.created_at DESC`
+            );
             return rows as any[];
         } finally {
             await conn.end();
         }
     }
 
-    static async createOrder(branchDbName: string, order: {
-        customer_name: string;
-        customer_phone: string;
-        customer_email?: string;
-        deceased_id?: number;
-        items: Array<{ product_id: number; quantity: number; unit_price: number }>;
-        notes?: string;
-    }): Promise<number> {
-        const conn = await getBranchConnection(branchDbName);
+    static async canBranchesCommunicate(
+        tenantDbName: string,
+        branchId: string,
+        connectedBranchId: string
+    ): Promise<boolean> {
+        await this.ensureBranchConnectionsTable(tenantDbName);
+
+        const conn = await getTenantConnection(tenantDbName);
         try {
-            const totalAmount = order.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-            const [result] = await conn.query(
-                `INSERT INTO marketplace_orders (customer_name, customer_phone, customer_email, deceased_id, total_amount, notes, order_status)
-                 VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
-                [order.customer_name, order.customer_phone, order.customer_email || null, order.deceased_id || null, totalAmount, order.notes || null]
+            const [rows] = await conn.query(
+                `SELECT id FROM branch_connections 
+                 WHERE branch_id = ? AND connected_branch_id = ? AND status = 'active'
+                 LIMIT 1`,
+                [branchId, connectedBranchId]
             );
-            const orderId = (result as any).insertId;
-            for (const item of order.items) {
+            return (rows as any[]).length > 0;
+        } finally {
+            await conn.end();
+        }
+    }
+
+    static async createBranchConnection(
+        tenantDbName: string,
+        tenantSlug: string,
+        branchId: string,
+        connectedBranchId: string,
+        connectionType: 'referral' | 'transfer' | 'partnership' | 'parent_child' = 'partnership',
+        notes?: string
+    ): Promise<string> {
+        await this.ensureBranchConnectionsTable(tenantDbName);
+
+        if (branchId === connectedBranchId) {
+            throw new Error('Cannot connect a branch to itself');
+        }
+
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            const [branchCheck] = await conn.query(
+                'SELECT branch_id FROM branches WHERE branch_id IN (?, ?) AND is_active = TRUE',
+                [branchId, connectedBranchId]
+            );
+            if ((branchCheck as any[]).length < 2) {
+                throw new Error('One or both branches not found or inactive');
+            }
+
+            const connUuid1 = uuidv4();
+            const connUuid2 = uuidv4();
+            await conn.query(
+                `INSERT IGNORE INTO branch_connections (id, tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+                 VALUES (?, ?, ?, ?, ?, 'active', ?)`,
+                [connUuid1, tenantSlug, branchId, connectedBranchId, connectionType, notes || null]
+            );
+            await conn.query(
+                `INSERT IGNORE INTO branch_connections (id, tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
+                 VALUES (?, ?, ?, ?, ?, 'active', ?)`,
+                [connUuid2, tenantSlug, connectedBranchId, branchId, connectionType, notes || null]
+            );
+
+            return connUuid1;
+        } finally {
+            await conn.end();
+        }
+    }
+
+    static async updateBranchConnection(
+        tenantDbName: string,
+        connectionId: string,
+        status: 'active' | 'inactive' | 'pending'
+    ): Promise<void> {
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            await conn.query(
+                'UPDATE branch_connections SET status = ? WHERE id = ?',
+                [status, connectionId]
+            );
+        } finally {
+            await conn.end();
+        }
+    }
+
+    static async deleteBranchConnection(tenantDbName: string, connectionId: string): Promise<void> {
+        const conn = await getTenantConnection(tenantDbName);
+        try {
+            const [rows] = await conn.query(
+                'SELECT branch_id, connected_branch_id FROM branch_connections WHERE id = ?',
+                [connectionId]
+            );
+            const list = rows as any[];
+            if (list.length > 0) {
+                const { branch_id, connected_branch_id } = list[0];
                 await conn.query(
-                    'INSERT INTO marketplace_order_items (order_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)',
-                    [orderId, item.product_id, item.quantity, item.unit_price]
+                    'DELETE FROM branch_connections WHERE (branch_id = ? AND connected_branch_id = ?) OR (branch_id = ? AND connected_branch_id = ?)',
+                    [branch_id, connected_branch_id, connected_branch_id, branch_id]
                 );
             }
-            return orderId;
         } finally {
             await conn.end();
         }
@@ -1026,10 +1404,10 @@ export class TenantModel {
         const tenantRow = Array.isArray(tenants) && tenants.length > 0 ? tenants[0] : null;
         if (!tenantRow) return null;
         return {
-            // CRITICAL FIX: Map `id` to `tenant_id` since the tenants table uses `id` as PK
-            tenant_id: tenantRow.tenant_id ?? tenantRow.id,
+            tenant_id: tenantRow.id,
             tenant_name: tenantRow.tenant_name,
             tenant_slug: tenantRow.tenant_slug,
+            tenant_code: tenantRow.tenant_code || null,
             db_name: tenantRow.db_name,
             email: tenantRow.email,
             phone: tenantRow.phone || null,
@@ -1045,9 +1423,8 @@ export class TenantModel {
         };
     }
 
-    static async findById(tenantId: number): Promise<Tenant | null> {
+    static async findById(tenantId: string): Promise<Tenant | null> {
         const serverConn = await getServerPool();
-        // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`
         const [tenants] = await serverConn.query<mysql.RowDataPacket[]>(
             'SELECT * FROM tenant_tracking.tenants WHERE id = ?',
             [tenantId]
@@ -1055,10 +1432,10 @@ export class TenantModel {
         const tenantRow = Array.isArray(tenants) && tenants.length > 0 ? tenants[0] : null;
         if (!tenantRow) return null;
         return {
-            // CRITICAL FIX: Map `id` to `tenant_id` since the tenants table uses `id` as PK
-            tenant_id: tenantRow.tenant_id ?? tenantRow.id,
+            tenant_id: tenantRow.id,
             tenant_name: tenantRow.tenant_name,
             tenant_slug: tenantRow.tenant_slug,
+            tenant_code: tenantRow.tenant_code || null,
             db_name: tenantRow.db_name,
             email: tenantRow.email,
             phone: tenantRow.phone || null,
@@ -1083,10 +1460,10 @@ export class TenantModel {
         const tenantRow = Array.isArray(tenants) && tenants.length > 0 ? tenants[0] : null;
         if (!tenantRow) return null;
         return {
-            // CRITICAL FIX: Map `id` to `tenant_id` since the tenants table uses `id` as PK
-            tenant_id: tenantRow.tenant_id ?? tenantRow.id,
+            tenant_id: tenantRow.id,
             tenant_name: tenantRow.tenant_name,
             tenant_slug: tenantRow.tenant_slug,
+            tenant_code: tenantRow.tenant_code || null,
             db_name: tenantRow.db_name,
             email: tenantRow.email,
             phone: tenantRow.phone || null,
@@ -1102,25 +1479,16 @@ export class TenantModel {
         };
     }
 
-    static async updateStatus(tenantId: number, status: 'active' | 'suspended' | 'deleted'): Promise<void> {
-        const serverConn = await getServerPool();
-        // CRITICAL FIX: The tenants table uses `id` as the primary key, NOT `tenant_id`
-        await serverConn.query(
-            'UPDATE tenant_tracking.tenants SET status = ?, updated_at = NOW() WHERE id = ?',
-            [status, tenantId]
-        );
-    }
-
     static async getAllTenants(): Promise<Tenant[]> {
         const serverConn = await getServerPool();
         const [tenants] = await serverConn.query<mysql.RowDataPacket[]>(
             'SELECT * FROM tenant_tracking.tenants ORDER BY created_at DESC'
         );
         return (tenants || []).map((tenantRow: any) => ({
-            // CRITICAL FIX: Map `id` to `tenant_id` since the tenants table uses `id` as PK
-            tenant_id: tenantRow.tenant_id ?? tenantRow.id,
+            tenant_id: tenantRow.id,
             tenant_name: tenantRow.tenant_name,
             tenant_slug: tenantRow.tenant_slug,
+            tenant_code: tenantRow.tenant_code || null,
             db_name: tenantRow.db_name,
             email: tenantRow.email,
             phone: tenantRow.phone || null,
@@ -1136,7 +1504,7 @@ export class TenantModel {
         }));
     }
 
-    static async getTenantDatabase(tenantId: number): Promise<mysql.Connection | null> {
+    static async getTenantDatabase(tenantId: string): Promise<mysql.Connection | null> {
         const tenant = await this.findById(tenantId);
         if (!tenant) return null;
         return getTenantConnection(tenant.db_name);
@@ -1156,355 +1524,11 @@ export class TenantModel {
         }
     }
 
-    // ─── Branch Connection Operations ──────────────────────────────────
-    // Enables inter-branch communication (e.g., coffin inventory requests)
-
-    /**
-     * Ensure the branch_connections table exists in the tenant database.
-     * This table tracks relationships between branches so they can
-     * communicate (e.g., request coffin inventory from each other).
-     */
-    static async ensureBranchConnectionsTable(tenantDbName: string): Promise<void> {
-        const conn = await getTenantConnection(tenantDbName);
-        try {
-            await conn.query(`
-                CREATE TABLE IF NOT EXISTS branch_connections (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    tenant_slug VARCHAR(255) NOT NULL,
-                    branch_id INT NOT NULL,
-                    connected_branch_id INT NOT NULL,
-                    connection_type ENUM('referral','transfer','partnership','parent_child') DEFAULT 'partnership',
-                    status ENUM('active','inactive','pending') DEFAULT 'active',
-                    notes TEXT,
-                    created_at VARCHAR(255),
-                    updated_at VARCHAR(255),
-                    FOREIGN KEY (branch_id) REFERENCES branches(branch_id) ON DELETE CASCADE,
-                    FOREIGN KEY (connected_branch_id) REFERENCES branches(branch_id) ON DELETE CASCADE,
-                    INDEX idx_tenant_slug (tenant_slug),
-                    INDEX idx_branch_id (branch_id),
-                    INDEX idx_connected_branch_id (connected_branch_id),
-                    UNIQUE KEY unique_branch_connection (tenant_slug, branch_id, connected_branch_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            `);
-        } finally {
-            await conn.end();
-        }
-    }
-
-    /**
-     * Create a connection between two branches so they can communicate.
-     * This is bidirectional - if branch A connects to branch B, branch B
-     * can also communicate with branch A.
-     */
-    static async createBranchConnection(
-        tenantDbName: string,
-        tenantSlug: string,
-        branchId: number,
-        connectedBranchId: number,
-        connectionType: 'referral' | 'transfer' | 'partnership' | 'parent_child' = 'partnership',
-        notes?: string
-    ): Promise<number> {
-        await this.ensureBranchConnectionsTable(tenantDbName);
-
-        if (branchId === connectedBranchId) {
-            throw new Error('Cannot connect a branch to itself');
-        }
-
-        const conn = await getTenantConnection(tenantDbName);
-        try {
-            // Verify both branches exist and are active
-            const [branchCheck] = await conn.query(
-                'SELECT branch_id FROM branches WHERE branch_id IN (?, ?) AND is_active = TRUE',
-                [branchId, connectedBranchId]
-            );
-            if ((branchCheck as any[]).length < 2) {
-                throw new Error('One or both branches not found or inactive');
-            }
-
-            // Insert the connection (bidirectional)
-            await conn.query(
-                `INSERT IGNORE INTO branch_connections (tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
-                 VALUES (?, ?, ?, ?, 'active', ?)`,
-                [tenantSlug, branchId, connectedBranchId, connectionType, notes || null]
-            );
-
-            // Also create the reverse connection so both branches know about each other
-            await conn.query(
-                `INSERT IGNORE INTO branch_connections (tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
-                 VALUES (?, ?, ?, ?, 'active', ?)`,
-                [tenantSlug, connectedBranchId, branchId, connectionType, notes || null]
-            );
-
-            // Get the connection ID
-            const [rows] = await conn.query(
-                'SELECT id FROM branch_connections WHERE tenant_slug = ? AND branch_id = ? AND connected_branch_id = ? LIMIT 1',
-                [tenantSlug, branchId, connectedBranchId]
-            );
-            const list = rows as any[];
-            return list.length > 0 ? list[0].id : 0;
-        } finally {
-            await conn.end();
-        }
-    }
-
-    /**
-     * Get all connections for a specific branch.
-     * Returns the branches that this branch can communicate with.
-     */
-    static async getBranchConnections(tenantDbName: string, branchId: number): Promise<any[]> {
-        await this.ensureBranchConnectionsTable(tenantDbName);
-
-        const conn = await getTenantConnection(tenantDbName);
-        try {
-            const [rows] = await conn.query(
-                `SELECT bc.*, 
-                        b.branch_name as connected_branch_name,
-                        b.branch_slug as connected_branch_slug,
-                        b.branch_db_name as connected_branch_db_name,
-                        b.parent_branch_id as connected_branch_parent_id,
-                        b.branch_location as connected_branch_location,
-                        b.branch_phone as connected_branch_phone,
-                        b.branch_email as connected_branch_email
-                 FROM branch_connections bc
-                 INNER JOIN branches b ON bc.connected_branch_id = b.branch_id
-                 WHERE bc.branch_id = ? AND bc.status = 'active'
-                 ORDER BY bc.created_at DESC`,
-                [branchId]
-            );
-            return rows as any[];
-        } finally {
-            await conn.end();
-        }
-    }
-
-    /**
-     * Get all branch connections for a tenant.
-     */
-    static async getAllBranchConnections(tenantDbName: string): Promise<any[]> {
-        await this.ensureBranchConnectionsTable(tenantDbName);
-
-        const conn = await getTenantConnection(tenantDbName);
-        try {
-            const [rows] = await conn.query(
-                `SELECT bc.*, 
-                        b1.branch_name as branch_name,
-                        b1.branch_slug as branch_slug,
-                        b1.parent_branch_id as branch_parent_id,
-                        b2.branch_name as connected_branch_name,
-                        b2.branch_slug as connected_branch_slug,
-                        b2.parent_branch_id as connected_branch_parent_id
-                 FROM branch_connections bc
-                 INNER JOIN branches b1 ON bc.branch_id = b1.branch_id
-                 INNER JOIN branches b2 ON bc.connected_branch_id = b2.branch_id
-                 WHERE bc.status = 'active'
-                 ORDER BY bc.created_at DESC`
-            );
-            return rows as any[];
-        } finally {
-            await conn.end();
-        }
-    }
-
-    /**
-     * Update a branch connection status.
-     */
-    static async updateBranchConnection(
-        tenantDbName: string,
-        connectionId: number,
-        status: 'active' | 'inactive' | 'pending'
-    ): Promise<void> {
-        const conn = await getTenantConnection(tenantDbName);
-        try {
-            await conn.query(
-                'UPDATE branch_connections SET status = ? WHERE id = ?',
-                [status, connectionId]
-            );
-        } finally {
-            await conn.end();
-        }
-    }
-
-    /**
-     * Delete a branch connection (and its reverse).
-     */
-    static async deleteBranchConnection(tenantDbName: string, connectionId: number): Promise<void> {
-        const conn = await getTenantConnection(tenantDbName);
-        try {
-            // Get the connection details first
-            const [rows] = await conn.query(
-                'SELECT branch_id, connected_branch_id FROM branch_connections WHERE id = ?',
-                [connectionId]
-            );
-            const list = rows as any[];
-            if (list.length > 0) {
-                const { branch_id, connected_branch_id } = list[0];
-                // Delete both directions
-                await conn.query(
-                    'DELETE FROM branch_connections WHERE (branch_id = ? AND connected_branch_id = ?) OR (branch_id = ? AND connected_branch_id = ?)',
-                    [branch_id, connected_branch_id, connected_branch_id, branch_id]
-                );
-            }
-        } finally {
-            await conn.end();
-        }
-    }
-
-    /**
-     * Check if two branches can communicate (have an active connection).
-     */
-    static async canBranchesCommunicate(
-        tenantDbName: string,
-        branchId: number,
-        connectedBranchId: number
-    ): Promise<boolean> {
-        await this.ensureBranchConnectionsTable(tenantDbName);
-
-        const conn = await getTenantConnection(tenantDbName);
-        try {
-            const [rows] = await conn.query(
-                `SELECT id FROM branch_connections 
-                 WHERE branch_id = ? AND connected_branch_id = ? AND status = 'active'
-                 LIMIT 1`,
-                [branchId, connectedBranchId]
-            );
-            return (rows as any[]).length > 0;
-        } finally {
-            await conn.end();
-        }
-    }
-
-    /**
-     * Auto-connect all branches within a tenant when a new branch is created.
-     * This ensures every branch knows about every other branch by default.
-     */
-    static async autoConnectBranches(tenantDbName: string, tenantSlug: string): Promise<void> {
-        await this.ensureBranchConnectionsTable(tenantDbName);
-
-                const conn = await getTenantConnection(tenantDbName);
-        try {
-            // Get all active branches with their parent_branch_id
-            const [branches] = await conn.query(
-                'SELECT branch_id, parent_branch_id FROM branches WHERE is_active = TRUE ORDER BY branch_id'
-            );
-            const branchList = branches as any[];
-
-            // Identify the parent (main) branch — the one with parent_branch_id IS NULL
-            let parentBranchId: number | null = null;
-            const childBranchIds: number[] = [];
-            for (const b of branchList) {
-                if (b.parent_branch_id === null || b.parent_branch_id === undefined) {
-                    if (parentBranchId === null) {
-                        parentBranchId = b.branch_id;
-                    }
-                } else {
-                    childBranchIds.push(b.branch_id);
-                }
-            }
-
-            // Create parent-child connections (bidirectional)
-            if (parentBranchId !== null && childBranchIds.length > 0) {
-                for (const childId of childBranchIds) {
-                    const [existing] = await conn.query(
-                        'SELECT id FROM branch_connections WHERE branch_id = ? AND connected_branch_id = ? LIMIT 1',
-                        [parentBranchId, childId]
-                    );
-                    if ((existing as any[]).length === 0) {
-                        // Parent → Child
-                        await conn.query(
-                            `INSERT INTO branch_connections (tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
-                             VALUES (?, ?, ?, 'parent_child', 'active', 'Parent-child hierarchy')`,
-                            [tenantSlug, parentBranchId, childId]
-                        );
-                        // Child → Parent
-                        await conn.query(
-                            `INSERT INTO branch_connections (tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
-                             VALUES (?, ?, ?, 'parent_child', 'active', 'Parent-child hierarchy')`,
-                            [tenantSlug, childId, parentBranchId]
-                        );
-                    }
-                }
-            }
-
-            // Create partnership connections between ALL pairs of branches
-            // (siblings communicate with each other; parent-child pairs already
-            //  connected above so the existing-connection check skips them)
-            for (let i = 0; i < branchList.length; i++) {
-                for (let j = i + 1; j < branchList.length; j++) {
-                    const branchA = branchList[i].branch_id;
-                    const branchB = branchList[j].branch_id;
-
-                    // Check if connection already exists
-                    const [existing] = await conn.query(
-                        'SELECT id FROM branch_connections WHERE branch_id = ? AND connected_branch_id = ? LIMIT 1',
-                        [branchA, branchB]
-                    );
-                    if ((existing as any[]).length === 0) {
-                        // Create bidirectional connection
-                        await conn.query(
-                            `INSERT INTO branch_connections (tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
-                             VALUES (?, ?, ?, 'partnership', 'active', 'Auto-connected on tenant setup')`,
-                            [tenantSlug, branchA, branchB]
-                        );
-                        await conn.query(
-                            `INSERT INTO branch_connections (tenant_slug, branch_id, connected_branch_id, connection_type, status, notes)
-                             VALUES (?, ?, ?, 'partnership', 'active', 'Auto-connected on tenant setup')`,
-                            [tenantSlug, branchB, branchA]
-                        );
-                    }
-                }
-            }
-            console.log(`✅ Auto-connected ${branchList.length} branches for tenant: ${tenantSlug}`);
-        } finally {
-            await conn.end();
-        }
-    }
-
-    // ─── Portal Login ─────────────────────────────────────────────────────
-
-    static async findDeceasedByPhone(phone: string): Promise<{
-        tenant: Tenant;
-        deceased: any;
-        branch: any;
-    } | null> {
-        const allTenants = await this.getAllTenants();
-
-        for (const tenant of allTenants) {
-            try {
-                const mainConn = await getTenantConnection(tenant.db_name);
-
-                const [branchRows] = await mainConn.query(
-                    'SELECT branch_db_name, branch_name, branch_slug FROM branches WHERE is_active = TRUE'
-                );
-                await mainConn.end();
-
-                const branches = branchRows as any[];
-
-                for (const branch of branches) {
-                    try {
-                        const branchConn = await getBranchConnection(branch.branch_db_name);
-
-                        const [rows] = await branchConn.query(
-                            'SELECT d.* FROM deceased d WHERE d.next_of_kin_phone = ? LIMIT 1',
-                            [phone]
-                        );
-                        await branchConn.end();
-
-                        const deceasedArray = rows as any[];
-                        if (deceasedArray.length > 0) {
-                            return {
-                                tenant,
-                                deceased: deceasedArray[0],
-                                branch: { branch_name: branch.branch_name, branch_slug: branch.branch_slug, branch_db_name: branch.branch_db_name }
-                            };
-                        }
-                    } catch (err) {
-                        continue;
-                    }
-                }
-            } catch (err) {
-                continue;
-            }
-        }
-        return null;
+    static async updateStatus(tenantId: string, status: 'active' | 'suspended' | 'deleted'): Promise<void> {
+        const serverConn = await getServerPool();
+        await serverConn.query(
+            'UPDATE tenant_tracking.tenants SET status = ?, updated_at = NOW() WHERE id = ?',
+            [status, tenantId]
+        );
     }
 }

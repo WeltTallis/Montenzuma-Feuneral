@@ -4,7 +4,7 @@
     "description": "Hearse booking and management service",
     "main": "dist/services/hearse-service/server.js",
     "scripts": {
-        "build": "tsc && node copy-middlewares.js",
+        "build": "tsc",
         "start": "node dist/services/hearse-service/server.js",
         "dev": "nodemon --watch src --ext ts,json --exec \"npm run build && node dist/services/hearse-service/server.js\"",
         "start:dev": "nodemon --watch src --ext ts,json --exec \"npm run build && node dist/services/hearse-service/server.js\""

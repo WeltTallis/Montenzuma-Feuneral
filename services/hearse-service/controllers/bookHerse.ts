@@ -50,6 +50,7 @@ interface Hearse {
  */
 export const checkHearseAvailability = asyncHandler(async (req: Request, res: Response) => {
     try {
+        
         const { hearse_id, booking_dates } = req.body;
 
         if (!hearse_id) {
@@ -162,9 +163,7 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
 
 /**
  * Create a new hearse booking
- */
-
-export const makeHearseBooking = asyncHandler(async (req: Request, res: Response) => {
+ */export const makeHearseBooking = asyncHandler(async (req: Request, res: Response) => {
     try {
         const io = req.app.get('io');
         const {
@@ -177,12 +176,11 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
             from_timestamp
         } = req.body;
 
-        // ===== From / To route: two separate fields (e.g. "from NAIROBI to MASSI") =====
+        // ===== From / To route: two separate fields =====
         const fromLocation = (req.body.from_location || '').toString().trim();
         const toLocation = (req.body.to_location || '').toString().trim();
         const destinationValue = (destination || '').toString().trim();
 
-        // Backward compatibility: older clients may send only `destination`.
         const finalFrom = fromLocation || null;
         const finalTo = toLocation || destinationValue;
         const derivedDestination = fromLocation && finalTo
@@ -206,8 +204,6 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
         }
 
         // ===== Multi-day date validation =====
-        // Every date in booking_dates must be a valid calendar date and must not be
-        // in the past. The whole multi-day booking is treated as ONE atomic unit.
         const { dates: finalBookingDates, conflicts: dateValidationConflicts } = validateRequestedDates(req.body.booking_dates);
         if (dateValidationConflicts.length > 0) {
             res.status(400).json({
@@ -227,7 +223,7 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
         }
         const bookingDatesJson = JSON.stringify(finalBookingDates);
 
-        // ===== Shared booking preparation (used by both hearse / non-hearse paths) =====
+        // ===== Deceased validation =====
         let deceasedNote = '';
         if (deceased_id && deceased_id.trim() !== '') {
             try {
@@ -257,34 +253,47 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
             booking_code = `BK-${Date.now().toString().slice(-6)}`;
         }
 
-        // Use simple text input for created_by - no user table references
+        // Tenant and branch info
         const createdByName = req.body.booked_by || req.body.created_by || 'System';
-        const tenantDbName = (req as any).tenantSlug || 'system';
+        const headerOf = (name: string): string | null => {
+            const v = (req.headers as any)[name];
+            return Array.isArray(v) ? (v[0] as string) : (v ? String(v) : null);
+        };
+        const tenantDbName = (req as any).tenantSlug || headerOf('x-tenant-slug') || 'system';
+        const tenantId = headerOf('x-tenant-id') || (req as any).tenant?.id || (req as any).tenant?.tenant_id || req.body?.tenant_id || null;
+        const tenantSlugVal = headerOf('x-tenant-slug') || (req as any).tenant?.tenant_slug || (req as any).tenantSlug || null;
+        const branchIdVal = headerOf('x-branch-id') || req.body?.branch_id || req.body?.branchId || null;
+        const branchSlugVal = headerOf('x-branch-slug') || req.body?.branch_slug || null;
         const bookingStatus = 'booked';
 
         const insertQuery = `
             INSERT INTO hearse_bookings
-            (booking_code, hearse_id, tenant_db_name, client_name, client_phone, destination,
+            (booking_code, hearse_id, tenant_db_name, tenant_id, tenant_slug,
+             client_name, client_phone, destination,
              from_location, to_location,
              booking_date, booking_dates, status, created_at, updated_at,
-             booked_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             branch_id, branch_slug, booked_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const insertParams = [
             booking_code,
             hearse_id || null,
             tenantDbName,
+            tenantId,
+            tenantSlugVal,
             client_name.trim(),
             client_phone.trim(),
             derivedDestination,
             finalFrom,
             finalTo,
-            finalBookingDates[0],        // booking_date (DATE, NOT NULL)
+            finalBookingDates[0],
             bookingDatesJson,
             bookingStatus,
             now,
             now,
+            branchIdVal,
+            branchSlugVal,
             createdByName
         ];
 
@@ -294,16 +303,12 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
         let booking: any;
 
         if (hearse_id) {
-            const connection = await getHearseConnection();
+            let connection = null;
             try {
+                connection = await getHearseConnection();
                 await connection.beginTransaction();
 
                 // ===== ATOMIC multi-day check-and-reserve =====
-                // attemptHearseReservation locks the hearse row (SELECT ... FOR UPDATE)
-                // for the WHOLE transaction, reads every active booking with a CURRENT
-                // READ, normalizes each stored date set and returns the exact overlap.
-                // Concurrent requests for the same hearse serialize on the row lock,
-                // so a request that waits behind another commit ALWAYS sees its insert.
                 const reservation = await attemptHearseReservation(connection, hearse_id, finalBookingDates);
 
                 if (reservation.ok === false && reservation.notFound) {
@@ -331,15 +336,11 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
                     return;
                 }
 
-                // No conflict found — INSERT the booking INSIDE the transaction while
-                // the hearse row is still locked. This makes check-and-reserve ATOMIC:
-                // all requested dates are created together or none at all.
+                // No conflict found — INSERT the booking
                 const [insertTxResult] = await connection.query(insertQuery, insertParams);
                 const newBookingId = (insertTxResult as any).insertId;
 
-                // Keep the hearse fleet `status` field MEANINGFUL without making it the
-                // availability source of truth. Availability is ALWAYS decided by the
-                // date-set overlap above (date-based), NOT by a global status flag.
+                // Update hearse status
                 const [activeRows] = await connection.query(
                     `SELECT COUNT(*) AS cnt FROM hearse_bookings WHERE hearse_id = ? AND status NOT IN ('completed', 'cancelled')`,
                     [hearse_id]
@@ -350,7 +351,7 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
                     [activeCount > 0 ? 'booked' : 'available', activeCount, now, hearse_id]
                 );
 
-                // Fetch the created booking inside the transaction
+                // Fetch the created booking
                 const [bookingTxRows] = await connection.query(
                     selectBookingQuery,
                     [newBookingId]
@@ -360,6 +361,7 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
                 await connection.commit();
                 connection.release();
 
+                // Emit events
                 if (io && bookedRow) {
                     io.emit('new_booking', {
                         type: 'NEW_BOOKING',
@@ -370,6 +372,7 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
                     });
                 }
 
+                // Emit to socket service (non-blocking)
                 try {
                     const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
                     await axios.post(`${socketioServiceUrl}/emit/hearse-booking-created`, {
@@ -390,7 +393,8 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
                         }
                     }, { timeout: 5000 });
                 } catch (emitError) {
-                    // Notification emit failure is non-critical
+                    // Notification emit failure is non-critical - log but don't fail
+                    console.warn('Failed to emit booking notification:', emitError.message);
                 }
 
                 res.status(201).json({
@@ -399,12 +403,33 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
                     booking: { ...bookedRow, booking_code: booking_code, status: bookingStatus }
                 });
                 return;
+
             } catch (txError) {
-                await connection.rollback();
-                connection.release();
+                // ROLLBACK AND RELEASE CONNECTION PROPERLY
+                if (connection) {
+                    try {
+                        await connection.rollback();
+                    } catch (rollbackError) {
+                        console.error('Rollback failed:', rollbackError);
+                    }
+                    try {
+                        connection.release();
+                    } catch (releaseError) {
+                        console.error('Connection release failed:', releaseError);
+                    }
+                }
+                
+                // LOG THE ACTUAL ERROR FOR DEBUGGING
+                console.error('Transaction error in makeHearseBooking:', txError);
+                
                 res.status(500).json({
                     status: 'error',
-                    message: 'Failed to verify hearse availability. Please try again.'
+                    message: 'Failed to verify hearse availability. Please try again.',
+                    // Only include error details in development
+                    ...(process.env.NODE_ENV === 'development' && {
+                        error: txError.message,
+                        stack: txError.stack
+                    })
                 });
                 return;
             }
@@ -449,7 +474,7 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
                     }
                 }, { timeout: 5000 });
             } catch (emitError) {
-                // Notification emit failure is non-critical
+                console.warn('Failed to emit booking notification:', emitError.message);
             }
 
             res.status(201).json({
@@ -460,6 +485,8 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
         }
 
     } catch (error) {
+        // Catch any other unexpected errors
+        console.error('Unexpected error in makeHearseBooking:', error);
         res.status(500).json({
             status: 'error',
             message: error.message || 'Server error while creating booking.',
@@ -467,7 +494,6 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
         });
     }
 });
-
 /**
  * Get all hearse bookings
  */
@@ -477,8 +503,27 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
         const whereClauses: string[] = [];
         const params: any[] = [];
 
-        // NOTE: Do NOT filter by branch_id - hearses are in a SHARED database across all branches
-        // This ensures all branches can see all bookings and prevents double-booking
+        // NOTE: Do NOT filter by branch_id — hearses are in a SHARED operations
+        // database across ALL branches. Hearse bookings are TENANT-wide: every branch
+        // must see every booking so the whole fleet can coordinate.
+        // ACCURACY: because the operations DB is shared by MANY tenants, always scope
+        // by the calling tenant's id (x-tenant-id). Legacy rows may only have
+        // tenant_db_name, so match those as well for the same tenant.
+        const headerOf = (name: string): string | null => {
+            const v = (req.headers as any)[name];
+            return Array.isArray(v) ? (v[0] as string) : (v ? String(v) : null);
+        };
+        const tenantId = headerOf('x-tenant-id') || (req.query as any)?.tenant_id || (req as any).tenant?.id || (req as any).tenant?.tenant_id || null;
+        const tenantSlugScope = headerOf('x-tenant-slug') || (req as any).tenantSlug || null;
+
+        if (tenantId) {
+            whereClauses.push('(hb.tenant_id = ? OR (hb.tenant_id IS NULL AND hb.tenant_db_name = ?))');
+            params.push(tenantId, tenantSlugScope || '');
+        } else if (tenantSlugScope) {
+            whereClauses.push('hb.tenant_db_name = ?');
+            params.push(tenantSlugScope);
+        }
+
         if (status && status !== 'all') {
             whereClauses.push('hb.status = ?');
             params.push(status);
@@ -488,7 +533,13 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
         const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id ${whereSQL} ORDER BY hb.created_at DESC`;
 
         const bookings = await safeQuery(query, params);
-        const allBranches = await safeQuery(`SELECT DISTINCT branch_id, branch_code, branch_name FROM hearses WHERE branch_id IS NOT NULL ORDER BY branch_name ASC`);
+        let allBranches: any[] = [];
+        try {
+            allBranches = await safeQuery(tenantId
+                ? `SELECT DISTINCT branch_id, branch_code, branch_name FROM hearses WHERE branch_id IS NOT NULL AND tenant_id = ? ORDER BY branch_name ASC`
+                : `SELECT DISTINCT branch_id, branch_code, branch_name FROM hearses WHERE branch_id IS NOT NULL ORDER BY branch_name ASC`,
+                tenantId ? [tenantId] : []);
+        } catch (e) { /* branches lookup optional */ }
 
         res.status(200).json({ status: 'success', total: bookings.length, bookings, branches: allBranches });
     } catch (error) {

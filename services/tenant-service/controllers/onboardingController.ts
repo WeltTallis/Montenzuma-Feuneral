@@ -1,12 +1,14 @@
-import * as mysql from 'mysql2/promise';
-import * as bcrypt from 'bcryptjs';
-import * as jwt from 'jsonwebtoken';
-import { TenantModel } from '../models/Tenant.model';
+
+import { TenantModel, generateSlug, getUploadsBaseDir } from '../models/Tenant.model';
 import provisionQueue from '../scripts/provisionQueue';
 import { Request, Response } from 'express';
 import logger from '@montezuma/shared-logger';
-import * as fs from 'fs';
+import * as mysql from 'mysql2/promise';
+import * as bcrypt from 'bcryptjs';
+import * as jwt from 'jsonwebtoken';
 import * as path from 'path';
+import * as fs from 'fs';
+
 
 /**
  * OnboardingController — handles tenant registration, login, logout, org info
@@ -91,18 +93,24 @@ export class OnboardingController {
       // deploymentType is now explicitly forwarded by validationMiddleware for
       // multi-branch tenants; fall back to branch-count derivation for older
       // clients that don't send it.
-      const finalDeploymentType = deploymentType || (normalizedBranches.length > 1 ? 'multi' : 'single');
+            const finalDeploymentType = deploymentType || (normalizedBranches.length > 1 ? 'multi' : 'single');
+      // Canonical tenant slug — mirrors registerTenant()'s subdomain/dbName so the
+      // logo folder, the /uploads/<slug> URL and the tracking rows all line up
+      // with the tenant record stored in tenant_tracking.tenants.tenant_slug.
+      const tenantSlug = normalizedBranches.length > 1
+        ? `${generateSlug(finalTenantName)}-${generateSlug(normalizedBranches[0].branch_name)}`
+        : generateSlug(finalTenantName);
 
     
       // ─── PROCESS LOGO UPLOAD ─────────────────────────────────────────────
       let logoUrl: string | null = null;
       if (req.file) {
         try {
-          const tenantSlug = finalTenantName.replace(/\s+/g, '-').toLowerCase();
+                    // canonical tenantSlug (scoped above) — matches the registered subdomain
           
           // Save directly to global uploads folder
-          const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || 'C:\\Users\\User\\Downloads\\uploads';
-          const logoDir = path.join(globalUploadsDir, tenantSlug, 'logos');
+                    const globalUploadsDir = getUploadsBaseDir();
+                    const logoDir = path.join(globalUploadsDir, 'tenants', tenantSlug, 'logos');
           
           // Ensure directory exists
           await fs.promises.mkdir(logoDir, { recursive: true });
@@ -124,7 +132,7 @@ export class OnboardingController {
           // by the gateway) through the tenant-service static folder.
           const uploadsBase = process.env.API_GATEWAY_URL || process.env.UPLOADS_SERVICE_URL ||
             (process.env.NODE_ENV === 'production' ? 'https://restpoint.co.ke' : 'http://localhost:5000');
-          logoUrl = `${uploadsBase}/uploads/${tenantSlug}/logos/${logoFilename}`;
+                    logoUrl = `${uploadsBase}/uploads/tenants/${tenantSlug}/logos/${logoFilename}`;
           logger.info({ service: 'tenant-service', function: 'createOrganization', message: 'Logo saved to global uploads folder', logoUrl });
         } catch (logoErr: any) {
           logger.warn({ service: 'tenant-service', function: 'createOrganization', message: 'Logo upload failed', error: logoErr.message });
@@ -133,14 +141,17 @@ export class OnboardingController {
 
       (async () => {
         try {
-          try {
+                    try {
             const tenantTrackingDbHost = process.env.TENANT_TRACKING_DB_HOST || process.env.DB_HOST || '127.0.0.1';
             const tenantTrackingDbPort = parseInt(process.env.TENANT_TRACKING_DB_PORT || process.env.DB_PORT || '3306');
             const tenantTrackingDbUser = process.env.TENANT_TRACKING_DB_USER || process.env.DB_USER;
             const tenantTrackingDbPassword = process.env.TENANT_TRACKING_DB_PASSWORD || process.env.DB_PASSWORD;
 
-            // First connect without database to create it if it doesn't exist
-            const rootConn = await mysql.createConnection({
+            // Connect as the application user ONLY (restpoint_user) — no root credentials are
+            // used by the service. One-time DBA/admin setup (see init-db.sql) grants
+            // restpoint_user the privileges it needs to create databases/tables and grant its
+            // own access to new tenant databases at provisioning time.
+            const bootstrapConn = await mysql.createConnection({
               host: tenantTrackingDbHost,
               port: tenantTrackingDbPort,
               user: tenantTrackingDbUser,
@@ -149,16 +160,28 @@ export class OnboardingController {
             });
 
             try {
-              // Create tenant_tracking database if it doesn't exist
-              await rootConn.query('CREATE DATABASE IF NOT EXISTS tenant_tracking');
+              // Best-effort bootstrap so a fresh deployment still creates the schema.
+              await bootstrapConn.query('CREATE DATABASE IF NOT EXISTS tenant_tracking');
+              await bootstrapConn.query('CREATE TABLE IF NOT EXISTS tenant_tracking.bootstrap (id INT AUTO_INCREMENT PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
+              await bootstrapConn.query('DROP TABLE IF EXISTS tenant_tracking.bootstrap');
 
-              // Grant privileges
-              await rootConn.query("GRANT ALL PRIVILEGES ON tenant_tracking.* TO 'restpoint_user'@'%'");
-              await rootConn.query("GRANT ALL PRIVILEGES ON `tenant_%`.* TO 'restpoint_user'@'%'");
-              await rootConn.query("GRANT ALL PRIVILEGES ON `restpoint_%`.* TO 'restpoint_user'@'%'");
-              await rootConn.query('FLUSH PRIVILEGES');
+              // Best-effort, idempotent grants for the application user.
+              await bootstrapConn.query(`GRANT ALL PRIVILEGES ON tenant_tracking.* TO '${tenantTrackingDbUser}'@'%'`);
+              await bootstrapConn.query(`GRANT ALL PRIVILEGES ON tenant_tracking.* TO '${tenantTrackingDbUser}'@'localhost'`);
+              await bootstrapConn.query(`GRANT ALL PRIVILEGES ON \`tenant_%\`.* TO '${tenantTrackingDbUser}'@'%'`);
+              await bootstrapConn.query(`GRANT ALL PRIVILEGES ON \`restpoint_%\`.* TO '${tenantTrackingDbUser}'@'%'`);
+            } catch (bootstrapErr: any) {
+              // If restpoint_user lacks global CREATE/GRANT privileges, re-granting is skipped.
+              // The admin DBA setup (init-db.sql) already provisions these objects.
+              logger.warn({
+                service: 'tenant-service',
+                controller: 'OnboardingController',
+                function: 'createOrganization',
+                message: 'DB bootstrap (create/grant) skipped — continuing',
+                error: bootstrapErr && bootstrapErr.message ? bootstrapErr.message : String(bootstrapErr),
+              });
             } finally {
-              await rootConn.end();
+              await bootstrapConn.end();
             }
 
             // Now connect to tenant_tracking database
@@ -215,6 +238,7 @@ export class OnboardingController {
                   id INT AUTO_INCREMENT PRIMARY KEY,
                   tenant_slug VARCHAR(255) NOT NULL,
                   branch_slug VARCHAR(255) NOT NULL,
+                  branch_code VARCHAR(255) NULL,
                   branch_name VARCHAR(255) NOT NULL,
                   branch_db_name VARCHAR(255) NOT NULL,
                   parent_branch_id INT NULL,
@@ -236,7 +260,7 @@ export class OnboardingController {
                 VALUES ('system_shared', 'restpoint_main', 'System Shared Database', 'active')
               `);
 
-              const tenantSlug = finalTenantName.replace(/\s+/g, '-').toLowerCase();
+                            // canonical tenantSlug (scoped above) — matches the registered subdomain
               await serverConn.query(
                 `INSERT INTO provisioning_status (tenant_slug, status, progress, details) VALUES (?, 'pending', 0, ?) ON DUPLICATE KEY UPDATE status='pending', progress=0, details=?`,
                 [tenantSlug, 'Provisioning queued', 'Provisioning queued']
@@ -272,7 +296,7 @@ export class OnboardingController {
             success: true,
             message: 'Organization provisioning started',
             data: {
-              tenantSlug: finalTenantName.replace(/\s+/g, '-').toLowerCase(),
+                            tenantSlug,
               logoUrl,
               note: 'Provisioning is running in the background. The UI will receive progress via socket events and can poll /onboarding/status/:tenantSlug as a fallback.'
             }
@@ -308,15 +332,16 @@ export class OnboardingController {
   async getProvisioningStatus(req: Request, res: Response): Promise<void> {
     try {
       const tenantSlug = req.params.tenantSlug;
-      if (!tenantSlug) { res.status(400).json({ success: false, message: 'tenantSlug is required' }); return; }
+            if (!tenantSlug) { res.status(400).json({ success: false, message: 'tenantSlug is required' }); return; }
 
       const tenantTrackingDbHost = process.env.TENANT_TRACKING_DB_HOST || process.env.DB_HOST || '127.0.0.1';
       const tenantTrackingDbPort = parseInt(process.env.TENANT_TRACKING_DB_PORT || process.env.DB_PORT || '3306');
       const tenantTrackingDbUser = process.env.TENANT_TRACKING_DB_USER || process.env.DB_USER;
       const tenantTrackingDbPassword = process.env.TENANT_TRACKING_DB_PASSWORD || process.env.DB_PASSWORD;
 
-      // First connect without database to create it if it doesn't exist
-      const rootConn = await mysql.createConnection({
+      // Use only the application DB user (restpoint_user). Admin bootstrap/grants are done
+      // once via the DBA setup (init-db.sql), not at runtime.
+      const bootstrapConn = await mysql.createConnection({
         host: tenantTrackingDbHost,
         port: tenantTrackingDbPort,
         user: tenantTrackingDbUser,
@@ -325,11 +350,11 @@ export class OnboardingController {
       });
 
       try {
-        await rootConn.query('CREATE DATABASE IF NOT EXISTS tenant_tracking');
-        await rootConn.query("GRANT ALL PRIVILEGES ON tenant_tracking.* TO 'restpoint_user'@'%'");
-        await rootConn.query('FLUSH PRIVILEGES');
+        await bootstrapConn.query('CREATE DATABASE IF NOT EXISTS tenant_tracking');
+      } catch (bootstrapErr: any) {
+        // Best-effort only — the database should already exist from the admin setup.
       } finally {
-        await rootConn.end();
+        await bootstrapConn.end();
       }
 
       const conn = await mysql.createConnection({
@@ -414,6 +439,13 @@ export class OnboardingController {
           }
         }
 
+        // Get ALL active branches for the tenant so multi-branch tenants can
+        // route to / call any branch from the login response.
+        const tenantBranches = await TenantModel.getBranches(tenant.db_name).catch((err: any) => {
+          console.warn('Could not load tenant branches at login:', err && err.message ? err.message : String(err));
+          return [];
+        });
+
         const isValidPassword = await bcrypt.compare(password, user.password_hash);
         if (!isValidPassword) { res.status(401).json({ success: false, message: 'Invalid email or password' }); return; }
 
@@ -436,8 +468,16 @@ export class OnboardingController {
           data: {
             token,
             refreshToken,
-            tenant: { tenantId: tenant.tenant_id, tenantName: tenant.tenant_name, tenantSlug: tenant.tenant_slug, country: tenant.country, location: tenant.location, logoUrl: tenant.logo_url },
-            user: { userId: user.user_id, email: user.email, fullName: user.full_name, role: user.role, branchId: user.branch_id, branchSlug }
+            tenant: { tenantId: tenant.tenant_id, tenantName: tenant.tenant_name, tenantSlug: tenant.tenant_slug, country: tenant.country, location: tenant.location, logoUrl: tenant.logo_url, dbName: tenant.db_name, deploymentType: tenant.deployment_type },
+            user: { userId: user.user_id, email: user.email, fullName: user.full_name, role: user.role, branchId: user.branch_id, branchSlug },
+            branches: tenantBranches.map((b: any) => ({
+              branchId: b.branch_id,
+              branchName: b.branch_name,
+              branchSlug: b.branch_slug,
+              branchDbName: b.branch_db_name,
+              parentBranchId: b.parent_branch_id,
+              branchLocation: b.branch_location
+            }))
           }
         });
       } finally { await conn.end(); }

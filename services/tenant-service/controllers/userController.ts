@@ -1,5 +1,6 @@
 import * as mysql from 'mysql2/promise';
 import * as bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
 import { TenantModel } from '../models/Tenant.model';
 import { Request, Response } from 'express';
 import logger from '@montezuma/shared-logger';
@@ -84,40 +85,42 @@ export class UserController {
                     return;
                 }
 
-                // Validate branch_id if provided
+                // Validate branch_id if provided (branch IDs are UUID strings)
                 let finalBranchId = null;
                 if (branch_id) {
-                    // Convert branch_id to number if it's a string
-                    const branchIdNum = typeof branch_id === 'string' ? parseInt(branch_id) : branch_id;
+                    const branchIdStr = String(branch_id);
 
                     const [branches] = await conn.query(
                         'SELECT branch_id FROM branches WHERE branch_id = ? AND is_active = TRUE',
-                        [branchIdNum]
+                        [branchIdStr]
                     );
                     if ((branches as any[]).length === 0) {
                         res.status(400).json({ success: false, message: 'Invalid branch_id' });
                         return;
                     }
-                    finalBranchId = branchIdNum;
+                    finalBranchId = branchIdStr;
                 }
 
                 // Hash password
                 const password_hash = await bcrypt.hash(password, 10);
 
-                // Create user
+                // Generate a UUID for the user (users.user_id is VARCHAR(36), no AUTO_INCREMENT)
+                const newUserUuid = uuidv4();
+
+                // Create user — attached to the tenant's DB and the selected branch
                 const [result] = await conn.query(
-                    `INSERT INTO users (email, password_hash, full_name, username, phone, role, branch_id, is_verified, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)`,
-                    [email, password_hash, full_name, username, phone || null, role, finalBranchId]
+                    `INSERT INTO users (user_id, email, password_hash, full_name, username, phone, role, branch_id, is_verified, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1)`,
+                    [newUserUuid, email, password_hash, full_name, username, phone || null, role, finalBranchId]
                 );
 
-                const userId = (result as any).insertId;
+                const userId = newUserUuid;
 
                 // Log activity (optional - don't fail if it errors)
                 try {
                     await conn.query(
                         'INSERT INTO activity_logs (user_id, action, details) VALUES (?, ?, ?)',
-                        [user.userId || 1, 'USER_CREATED', `User ${username} (${email}) created with role ${role}${finalBranchId ? ` for branch ${finalBranchId}` : ''}`]
+                        [userId, 'USER_CREATED', `User ${username} (${email}) created with role ${role}${finalBranchId ? ` for branch ${finalBranchId}` : ''}`]
                     );
                 } catch (logError) {
                     // Ignore activity log errors
@@ -133,7 +136,10 @@ export class UserController {
                         full_name,
                         username,
                         role,
-                        branch_id: finalBranchId
+                        branch_id: finalBranchId,
+                        tenant_id: tenant.tenant_id,
+                        tenant_slug: tenant.tenant_slug,
+                        db_name: tenant.db_name
                     }
                 });
             } finally {

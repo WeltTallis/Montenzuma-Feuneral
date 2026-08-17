@@ -36,8 +36,8 @@ interface Booking {
  */
 export const getBookings = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
-        const tenantSlug = req.tenantSlug;
+        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
         const { status, branch, flower_type, date_from, date_to, search, page = '1', limit = '20' } = req.query;
 
         let whereClause = 'WHERE 1=1';
@@ -45,7 +45,7 @@ export const getBookings = async (req: any, res: any) => {
 
         // Add tenant isolation if not system_shared
         if (tenantSlug && tenantSlug !== 'system_shared') {
-            whereClause += ' AND created_by = ?';
+            whereClause += ' AND tenant_slug = ?';
             params.push(tenantSlug);
         }
 
@@ -136,13 +136,14 @@ export const getBookings = async (req: any, res: any) => {
  */
 export const getBookingById = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
+        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
         const { id } = req.params;
 
         const bookings = await safeTenantQuery(
             dbName,
-            'SELECT * FROM flower_bookings WHERE id = ? OR booking_id = ? LIMIT 1',
-            [id, id]
+            'SELECT * FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND tenant_slug = ? LIMIT 1',
+            [id, id, tenantSlug]
         );
 
         if (bookings.length === 0) {
@@ -162,7 +163,8 @@ export const getBookingById = async (req: any, res: any) => {
  */
 export const createBooking = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
+        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
         const {
             arrangement_name, arrangement_id, deceased_name, booked_by,
             funeral_home, date, time, notes, phone, email
@@ -187,7 +189,8 @@ export const createBooking = async (req: any, res: any) => {
         // Generate booking ID
         const countResult = await safeTenantQuery(
             dbName,
-            'SELECT COUNT(*) as total FROM flower_bookings'
+            'SELECT COUNT(*) as total FROM flower_bookings WHERE tenant_slug = ?',
+            [tenantSlug]
         );
         const count = countResult[0]?.total || 0;
         const booking_id = `FLW-${24000 + count + 1}`;
@@ -195,12 +198,12 @@ export const createBooking = async (req: any, res: any) => {
         const result = await safeTenantQuery(
             dbName,
             `INSERT INTO flower_bookings 
-            (booking_id, flower_type, flower_description, customer, 
+            (booking_id, tenant_slug, flower_type, flower_description, customer, 
              customer_phone, customer_email, deceased_name, branch, 
              arrangement_id, date, time, status, notes, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
             [
-                booking_id, flower_type, flower_description, customer,
+                booking_id, tenantSlug, flower_type, flower_description, customer,
                 customer_phone || '', customer_email || '', deceased_name || '', branch,
                 arrangement_id || null, date, time || '10:00', notes || '', req.tenantSlug || 'system'
             ]
@@ -208,8 +211,8 @@ export const createBooking = async (req: any, res: any) => {
 
         const newBooking = await safeTenantQuery(
             dbName,
-            'SELECT * FROM flower_bookings WHERE booking_id = ? LIMIT 1',
-            [booking_id]
+            'SELECT * FROM flower_bookings WHERE booking_id = ? AND tenant_slug = ? LIMIT 1',
+            [booking_id, tenantSlug]
         );
 
         res.status(201).json({ success: true, data: newBooking[0], message: 'Booking created successfully' });
@@ -225,15 +228,16 @@ export const createBooking = async (req: any, res: any) => {
  */
 export const updateBooking = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
+        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
         const { id } = req.params;
         const updates = req.body;
 
         // Check booking exists
         const existing = await safeTenantQuery(
             dbName,
-            'SELECT * FROM flower_bookings WHERE id = ? OR booking_id = ? LIMIT 1',
-            [id, id]
+            'SELECT * FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND tenant_slug = ? LIMIT 1',
+            [id, id, tenantSlug]
         );
 
         if (existing.length === 0) {
@@ -262,17 +266,18 @@ export const updateBooking = async (req: any, res: any) => {
         }
 
         params.push(existing[0].id);
+        params.push(tenantSlug);
 
         await safeTenantQuery(
             dbName,
-            `UPDATE flower_bookings SET ${setClauses.join(', ')} WHERE id = ?`,
+            `UPDATE flower_bookings SET ${setClauses.join(', ')} WHERE id = ? AND tenant_slug = ?`,
             params
         );
 
         const updated = await safeTenantQuery(
             dbName,
-            'SELECT * FROM flower_bookings WHERE id = ? LIMIT 1',
-            [existing[0].id]
+            'SELECT * FROM flower_bookings WHERE id = ? AND tenant_slug = ? LIMIT 1',
+            [existing[0].id, tenantSlug]
         );
 
         res.json({ success: true, data: updated[0], message: 'Booking updated successfully' });
@@ -288,7 +293,8 @@ export const updateBooking = async (req: any, res: any) => {
  */
 export const updateBookingStatus = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
+        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
         const { id } = req.params;
         const { status } = req.body;
 
@@ -302,8 +308,8 @@ export const updateBookingStatus = async (req: any, res: any) => {
 
         const result = await safeTenantExecute(
             dbName,
-            'UPDATE flower_bookings SET status = ? WHERE id = ? OR booking_id = ?',
-            [status, id, id]
+            'UPDATE flower_bookings SET status = ? WHERE (id = ? OR booking_id = ?) AND tenant_slug = ?',
+            [status, id, id, tenantSlug]
         );
 
         if (result.affectedRows === 0) {
@@ -312,8 +318,8 @@ export const updateBookingStatus = async (req: any, res: any) => {
 
         const updated = await safeTenantQuery(
             dbName,
-            'SELECT * FROM flower_bookings WHERE id = ? OR booking_id = ? LIMIT 1',
-            [id, id]
+            'SELECT * FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND tenant_slug = ? LIMIT 1',
+            [id, id, tenantSlug]
         );
 
         // Emit notification for booking status update
@@ -351,13 +357,14 @@ export const updateBookingStatus = async (req: any, res: any) => {
  */
 export const deleteBooking = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
+        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
         const { id } = req.params;
 
         const result = await safeTenantExecute(
             dbName,
-            'DELETE FROM flower_bookings WHERE id = ? OR booking_id = ?',
-            [id, id]
+            'DELETE FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND tenant_slug = ?',
+            [id, id, tenantSlug]
         );
 
         if (result.affectedRows === 0) {
@@ -401,14 +408,16 @@ export const deleteBooking = async (req: any, res: any) => {
  */
 export const getStats = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
+        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
 
-        const totalResult = await safeTenantQuery(dbName, 'SELECT COUNT(*) as total FROM flower_bookings');
+        const totalResult = await safeTenantQuery(dbName, 'SELECT COUNT(*) as total FROM flower_bookings WHERE tenant_slug = ?', [tenantSlug]);
         const total = totalResult[0]?.total || 0;
 
         const statusCounts = await safeTenantQuery(
             dbName,
-            `SELECT status, COUNT(*) as count FROM flower_bookings GROUP BY status`
+            'SELECT status, COUNT(*) as count FROM flower_bookings WHERE tenant_slug = ? GROUP BY status',
+            [tenantSlug]
         );
 
         const statusMap: Record<string, number> = {};
@@ -438,7 +447,8 @@ export const getStats = async (req: any, res: any) => {
  */
 export const getMonthlyTrend = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
+        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
 
         const trend = await safeTenantQuery(
             dbName,
@@ -446,9 +456,11 @@ export const getMonthlyTrend = async (req: any, res: any) => {
                 DATE_FORMAT(date, '%Y-%m') as month,
                 COUNT(*) as count
              FROM flower_bookings
-             WHERE date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+             WHERE tenant_slug = ?
+               AND date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
              GROUP BY DATE_FORMAT(date, '%Y-%m')
-             ORDER BY month ASC`
+             ORDER BY month ASC`,
+            [tenantSlug]
         );
 
         res.json({ success: true, data: trend });

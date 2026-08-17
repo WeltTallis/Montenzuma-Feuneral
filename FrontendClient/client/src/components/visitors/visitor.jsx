@@ -837,9 +837,8 @@ const RegisterVisitor = () => {
       return (
         <div style={{ padding: '40px', textAlign: 'center' }}>
           <CoolLoader
-            type="spinner"
-            color="primary"
             text="Loading online bookings..."
+            color="#0e3345"
             size="large"
           />
         </div>

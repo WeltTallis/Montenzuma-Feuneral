@@ -15,6 +15,13 @@ import {
 
 const router = Router();
 
+// @ts-ignore - authMiddleware is JavaScript, not TypeScript
+import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware.js';
+
+// All routes are protected with JWT authentication
+router.use(protect);
+router.use(authorizeAny as any);
+
 // ============================================
 // ROUTES  (order matters — /categories & /stats before /:id)
 // ============================================

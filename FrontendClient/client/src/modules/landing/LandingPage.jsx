@@ -5,6 +5,7 @@ import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, File
 
 import Footer from '../../components/layout/Footer';
 import LandingPageSEO from '../seo/LandingPageSEO';
+import ModuleGridSection from './imageCard';
 
 import   C    from  '../../utils/colors/index'
 
@@ -514,8 +515,8 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap');
         *{margin:0;padding:0;box-sizing:border-box}
-        html{scroll-behavior:smooth}
-        body{font-family:'Inter',sans-serif;color:${C.gray};background:${C.bone};-webkit-font-smoothing:antialiased}
+        html{scroll-behavior:smooth;overflow-x:hidden}
+        body{font-family:'Inter',sans-serif;color:${C.gray};background:${C.bone};-webkit-font-smoothing:antialiased;overflow-x:hidden}
         h1,h2,h3{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-0.01em;color:${C.ink}}
         h1{font-size:clamp(2.8rem,6.5vw,4.6rem);line-height:1.05;margin-bottom:1.4rem}
         h2{font-size:clamp(1.9rem,4vw,2.5rem);line-height:1.2}
@@ -787,12 +788,6 @@ export default function App() {
         /* ── Sections ── */
         .section{padding:clamp(4rem,8vw,6rem) 0}
         .showcase-mobile{display:grid;grid-template-columns:1.1fr 1fr;gap:4rem;align-items:center;margin-bottom:6rem}
-        .proof{border-top:1px solid ${C.line};border-bottom:1px solid ${C.line};background:${C.bone2};padding:clamp(2.5rem,5vw,3.5rem) 0}
-        .proof-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem}
-        .proof-item{text-align:center;padding:0 1rem;border-left:1px solid ${C.line}}
-        .proof-item:first-child{border-left:none}
-        .proof-num{font-family:'JetBrains Mono',monospace;font-size:clamp(1.8rem,4vw,2.4rem);color:${C.verdigris};font-weight:600;margin-bottom:0.4rem}
-        .proof-cap{font-size:0.85rem;color:${C.ink};font-weight:500}
         .about-section{background:${C.bone};padding:clamp(3rem,6vw,4rem) 0;border-top:1px solid ${C.line}}
         .about-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
         .pricing-section{padding:clamp(4rem,8vw,6rem) 0;background:${C.bone};border-top:1px solid ${C.line}}
@@ -867,8 +862,6 @@ export default function App() {
           .showcase-mobile{grid-template-columns:1fr!important;gap:2rem!important;margin-bottom:4rem!important}
           .showcase-mobile .showcase-text{order:2!important}
           .showcase-mobile .showcase-visual{order:1!important;justify-content:center!important}
-          .proof-grid{grid-template-columns:1fr;gap:1.5rem}
-          .proof-item{border-left:none;padding:0}
           .insurance-grid{grid-template-columns:1fr;gap:2rem}
           .about-grid{grid-template-columns:1fr;gap:2rem}
           .hero-buttons{flex-direction:column;width:100%}
@@ -970,14 +963,7 @@ export default function App() {
         <Marquee items={marqueeItems} />
         <QuickFindSection />
 
-        {/* ── Stats ── */}
-        <section className="proof">
-          <div className="wrap proof-grid">
-            {[{ num: 500, suffix: '+', cap: 'Organizations onboarded' }, { num: 12, suffix: 'K+', cap: 'Cases managed monthly' }, { num: 99.9, suffix: '%', cap: 'Platform uptime' }].map((p, i) => (
-              <div key={i} className="proof-item"><div className="proof-num"><AnimatedNumber end={p.num} suffix={p.suffix} /></div><div className="proof-cap">{p.cap}</div></div>
-            ))}
-          </div>
-        </section>
+        <ModuleGridSection />
 
         {/* ── Features ── */}
         <section id="features" className="section">

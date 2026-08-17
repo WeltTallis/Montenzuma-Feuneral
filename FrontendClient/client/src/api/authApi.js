@@ -1,6 +1,7 @@
 import api from './axios';
 import { ENDPOINTS } from './endpoints';
 import useAuthStore from '../utils/store/useAuthStore';
+import { storeBranchContext, clearBranchContext } from '../utils/globalAuth';
 
 // ─── Shared Auth API ──────────────────────────────────────────
 // Uses httpOnly cookies for refresh tokens (via withCredentials)
@@ -40,6 +41,27 @@ export const authApi = {
       if (data.tenant?.tenantId) localStorage.setItem('tenantId', data.tenant.tenantId.toString());
       if (data.tenant?.dbName || data.user?.dbName) localStorage.setItem('dbName', data.user?.dbName || data.tenant.dbName);
 
+      // Store the authenticated IDs for branch/tenant-scoped requests
+      const uid = data.user?.userId || data.user?.user_id || data.user?.id;
+      if (uid) {
+        localStorage.setItem('userId', String(uid));
+        sessionStorage.setItem('userId', String(uid));
+      }
+      const bid = data.user?.branchId || data.user?.branch_id || data.user?.branch?.branchId;
+      if (bid) localStorage.setItem('branchId', String(bid));
+      else localStorage.removeItem('branchId');
+      const bslug = data.user?.branchSlug || data.user?.branch?.branchSlug || data.user?.branchDbName || null;
+      if (bslug) {
+        localStorage.setItem('branchSlug', bslug);
+        sessionStorage.setItem('branchSlug', bslug);
+      } else {
+        localStorage.removeItem('branchSlug');
+        sessionStorage.removeItem('branchSlug');
+      }
+      if (data.user?.branchDbName) localStorage.setItem('branchDbName', data.user.branchDbName);
+      // Persist the full branch list + parent/child hierarchy for multi-branch switching
+      storeBranchContext(data.branches);
+
       // Start auto-refresh via the axios module
       const { startTokenRefresh } = await import('./axios');
       startTokenRefresh();
@@ -62,6 +84,7 @@ export const authApi = {
       sessionStorage.removeItem('authToken');
       sessionStorage.removeItem('refreshToken');
       sessionStorage.removeItem('user');
+      clearBranchContext();
       localStorage.removeItem('authToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('tenantSlug');

@@ -13,19 +13,44 @@
  */
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs');
 const mysql = require('mysql2/promise');
 const knex = require('knex');
-const logger = require('@montezuma/shared-logger');
 
-dotenv.config({ path: path.resolve(__dirname, '.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// @montezuma/shared-logger is a TypeScript package compiled with a `default`
+// export (plus a named `logger` export). When loaded through plain CommonJS
+// `require()` it resolves to the module namespace object `{ __esModule:true,
+// logger, default }`, so call `.default` when `require()` did not hand back the
+// pino instance directly.
+const loggerModule = require('@montezuma/shared-logger');
+const logger = (loggerModule && typeof loggerModule.info === 'function')
+  ? loggerModule
+  : (loggerModule.default || loggerModule);
 
-const COFFIN_DATABASE = process.env.COFFIN_DATABASE || process.env.DB_NAME || 'restpoint_coffin';
+// Load .env from the service folder first, then from the repository root.
+// Works for BOTH source (`services/coffin-service`) and compiled
+// (`dist/services/coffin-service`) layouts.
+for (const envPath of [
+  path.resolve(__dirname, '.env'),
+  path.resolve(__dirname, '../../.env'),
+  path.resolve(__dirname, '../../../.env'),
+]) {
+  dotenv.config({ path: envPath });
+}
+
+// The coffin domain lives in the ONE shared operations database (`restpoint_operations`)
+// so every tenant's coffin data is scoped via tenant_slug/tenant_id columns.
+// Note: the legacy COFFIN_DATABASE env is intentionally ignored here because the
+// service .env sets it to the UNEXPANDED literal `${OPERATIONS_DATABASE}`,
+// which would break database resolution.
+const COFFIN_DATABASE = process.env.OPERATIONS_DATABASE
+  || process.env.DB_NAME
+  || 'restpoint_operations';
 
 const DB_CONFIG = () => ({
   host: process.env.COFFIN_DB_HOST || process.env.DB_HOST || '127.0.0.1',
   port: Number(process.env.COFFIN_DB_PORT || process.env.DB_PORT || 3306),
-  user: process.env.COFFIN_DB_USER || process.env.DB_USER || 'restpoint_user',
+  user: process.env.COFFIN_DB_USER || process.env.DB_USER,
   password: process.env.COFFIN_DB_PASSWORD || process.env.DB_PASSWORD || '',
 });
 
@@ -73,6 +98,26 @@ function getCoffinPool() {
 }
 
 /**
+ * Resolve the knex migrations directory. When running from the compiled
+ * `dist/services/coffin-service/` the `migrations` folder is copied there by
+ * `tsc`; as a safety net this also falls back to the source tree path.
+ */
+function resolveMigrationsDir() {
+  const candidates = [
+    path.resolve(__dirname, 'migrations'),
+    path.resolve(__dirname, '../../../services/coffin-service/migrations'),
+  ];
+  for (const dir of candidates) {
+    try {
+      if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) return dir;
+    } catch (e) {
+      // ignore and try the next candidate
+    }
+  }
+  return candidates[0];
+}
+
+/**
  * Lazy knex instance bound to the central coffin database (used for migrations).
  */
 function getCoffinKnex() {
@@ -82,8 +127,9 @@ function getCoffinKnex() {
       connection: { ...DB_CONFIG(), database: COFFIN_DATABASE, charset: 'utf8mb4' },
       pool: { min: 2, max: 10 },
       migrations: {
-        directory: path.resolve(__dirname, 'migrations'),
+        directory: resolveMigrationsDir(),
         tableName: 'knex_migrations',
+        loadExtensions: ['.js'],
       },
     });
   }

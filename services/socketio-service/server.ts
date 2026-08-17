@@ -7,6 +7,8 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import Logger from '../../packages/shared-logger/dist/index';
+import { error } from 'console';
 
 dotenv.config();
 
@@ -174,7 +176,11 @@ const initializeRedis = async (): Promise<void> => {
       socket: {
         reconnectStrategy: (retries: number) => {
           if (retries > 10) {
-            console.error('Redis max reconnection attempts reached');
+            Logger.error({
+              message:   'Redis    max    reconection attempts  reached',
+              error:     error
+            })
+          
             return new Error('Redis connection failed');
           }
           return Math.min(retries * 100, 3000);
@@ -220,10 +226,19 @@ const initializeRedis = async (): Promise<void> => {
       if (pubClient) await pubClient.disconnect();
       if (subClient) await subClient.disconnect();
     } catch (cleanupError: any) {
-      console.error('Redis cleanup error:', cleanupError.message);
-    }
 
-    console.warn('Socket.IO running in-memory mode - horizontal scaling unavailable');
+
+      Logger.error({
+        message:    ' Redis   clen up    error   detected ',
+        error:   error
+      })
+
+    }
+    Logger.warn({
+     message:          'Socket.IO running in-memory mode - horizontal scaling unavailable',
+     
+     
+    })
   }
 };
 
@@ -240,6 +255,11 @@ io.use((socket, next) => {
     if (!token) {
       if (process.env.NODE_ENV === 'production') {
         const err = new AppError('Authentication required', 401);
+
+        Logger.error({
+          message:   'Authentication Required ',
+          error:   err
+        })
         return next(err);
       }
     }
@@ -286,7 +306,12 @@ function resolveOrgRooms(tenantSlug: string): string[] {
 // ============================================
 
 io.on('connection', (socket) => {
-  console.log(`👤 User connected: ${socket.id}`);
+ 
+
+  Logger.info({
+    message:    `   👤   New   user  connected   to teh  sockets   &{socket.id}`,
+
+  })
 
   socket.emit('connected', {
     socketId: socket.id,
@@ -355,7 +380,20 @@ io.on('connection', (socket) => {
       }
       socketIdMap.get(userId)!.add(socket.id);
 
-      console.log(`📎 Socket ${socket.id} joined for user ${userId}: rooms=[${Array.from(rooms).join(', ')}]`);
+    
+    
+
+
+
+      Logger.info({
+        message:   
+      ` 📎 Socket ${socket.id} joined for user ${userId}: rooms=[${Array.from(rooms).join(', ')}]`
+      })
+
+
+
+
+
 
       if (typeof callback === 'function') {
         callback({
@@ -378,6 +416,10 @@ io.on('connection', (socket) => {
 
     } catch (error: any) {
       console.error('Join tenant error:', error);
+      Logger.error({
+        message:    "Joined    tenat  error",
+        error:   error
+      })
       if (typeof callback === 'function') {
         callback({
           success: false,

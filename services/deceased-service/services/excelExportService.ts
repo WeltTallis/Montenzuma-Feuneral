@@ -470,7 +470,7 @@ export class ExcelExportService {
     
     // Save the file directly to global uploads folder
     try {
-      const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || 'C:\\Users\\User\\Downloads\\uploads';
+      const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
       const reportDir = path.join(globalUploadsDir, tenantSlug, 'deceased-reports');
       
       // Ensure directory exists

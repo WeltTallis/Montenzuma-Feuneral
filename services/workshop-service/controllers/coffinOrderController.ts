@@ -124,16 +124,11 @@ const createOrder = async (req: Request, res: Response) => {
         }
 
                         const {
-            coffin_name, coffin_type, dimensions, size,
+            coffin_name, coffin_type, size,
             color, notes,
             due_date, priority, branch_id,
             assigned_worker_id
         } = req.body;
-
-        // Convert dimensions object to JSON string for TEXT column
-        const processedDimensions = typeof dimensions === 'object' && dimensions !== null
-            ? JSON.stringify(dimensions)
-            : dimensions || '';
 
         // Generate readable order number (shorter, memorable)
         const now = new Date();
@@ -142,20 +137,13 @@ const createOrder = async (req: Request, res: Response) => {
         const seq = Math.floor(Math.random() * 90) + 10;
         const order_number = `CFN-${day}${month}-${seq}`;
 
-        // deceased_name is a legacy NOT NULL column on coffin_orders schemas that
-        // were originally created by the front-desk/coffin module. The workshop
-        // form does not collect it, so mirror coffin_name here (kept in sync with
-        // the ensure-migration which makes the column nullable) so the INSERT
-        // succeeds regardless of which module created the table.
-        const deceasedValue = coffin_name || 'Coffin Order';
-
         const insertResult: any = await safeTenantExecute(tenantDb,
             `INSERT INTO coffin_orders
-            (order_number, coffin_name, deceased_name, coffin_type, size, dimensions, color,
+            (order_number, coffin_name, coffin_type, size, color,
              notes, due_date, priority, branch_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [order_number, coffin_name, deceasedValue, coffin_type || 'standard', size || null,
-                processedDimensions, color, notes, due_date || null, priority || 'normal', branch_id || 1]
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [order_number, coffin_name, coffin_type || 'standard', size || null,
+                color, notes, due_date || null, priority || 'normal', branch_id || 1]
         );
 
         const orderId = insertResult.insertId;
@@ -214,7 +202,7 @@ const updateOrder = async (req: Request, res: Response) => {
         }
 
                 const allowedFields = [
-            'coffin_name', 'coffin_type', 'size', 'dimensions', 'color', 'interior_fabric',
+            'coffin_name', 'coffin_type', 'size', 'color', 'interior_fabric',
             'notes', 'instructions', 'status', 'delivery_date', 'due_date',
             'priority', 'branch_id', 'hold_reason', 'created_by'
         ];
@@ -284,38 +272,6 @@ const deleteOrder = async (req: Request, res: Response) => {
         res.status(500).json({ error: error.message });
     }
 };
-
-async function updateCosting(tenantDb: string, orderId: number) {
-    const materialsCost: any = await safeTenantQuery(tenantDb,
-        'SELECT COALESCE(SUM(total_cost), 0) as total FROM material_usage WHERE coffin_order_id = ?',
-        [orderId]
-    );
-
-    const laborCost: any = await safeTenantQuery(tenantDb,
-        `SELECT COALESCE(SUM(wa.hours_worked * 15), 0) as total 
-         FROM worker_assignments wa WHERE wa.coffin_order_id = ?`,
-        [orderId]
-    );
-
-    const overheadCost = Number(materialsCost[0].total) * 0.1; // 10% overhead
-
-    await safeTenantExecute(tenantDb,
-        `UPDATE costing SET materials_cost = ?, labor_cost = ?, overhead_cost = ? WHERE coffin_order_id = ?`,
-                [materialsCost[0].total, laborCost[0].total, overheadCost, orderId]
-    );
-
-    // Recalculate profit
-    const costing: any = await safeTenantQuery(tenantDb, 'SELECT * FROM costing WHERE coffin_order_id = ?', [orderId]);
-    if (costing.length) {
-        const c = costing[0];
-        const totalCost = Number(c.total_cost);
-        const profit = Number(c.selling_price) - totalCost;
-        await safeTenantExecute(tenantDb,
-            'UPDATE costing SET total_cost = ?, profit = ? WHERE coffin_order_id = ?',
-            [totalCost, profit, orderId]
-        );
-    }
-}
 
 export {
     getOrders,

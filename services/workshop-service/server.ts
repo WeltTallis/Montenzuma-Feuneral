@@ -47,44 +47,48 @@ app.use(async (req: any, res: any, next: any) => {
     console.log(`[WORKSHOP] Request: ${req.method} ${req.path}`);
     console.log(`[WORKSHOP] Tenant: ${tenantSlug}, Branch: ${branchId}`);
 
-    // For system_shared, skip tenant validation and use default DB
+    // For system_shared, skip tenant validation and use the central operations DB
     if (tenantSlug === 'system_shared') {
         console.log('[WORKSHOP] Using system_shared tenant (bypassing validation)');
         req.tenant = {
-            db_name: process.env.DB_NAME || 'restpoint_main',
+            db_name: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
+            main_db_name: process.env.DB_NAME || 'restpoint_main',
             tenant_id: 1,
             name: 'System Shared'
         };
         return next();
     }
 
-    // For non-system tenants — resolve database directly (no active-status blocking)
+    // For non-system tenants — resolve the tenant main DB for branch lookups,
+    // but workshop DATA lives in the ONE central operations database shared by
+    // all tenants (tenant isolation via tenant_slug column).
     try {
         // @ts-ignore
         const { resolveDatabase, safeTenantQuery } = await import('../../shared/dbConfig.js');
 
-        let dbName = await resolveDatabase(tenantSlug);
+        let mainDbName = await resolveDatabase(tenantSlug);
 
         // Fallback: convert slug to db name pattern
-        if (!dbName) {
-            dbName = tenantSlug.replace(/-/g, '_');
+        if (!mainDbName) {
+            mainDbName = tenantSlug.replace(/-/g, '_');
         }
 
         req.tenant = {
-            db_name: dbName,
+            db_name: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
+            main_db_name: mainDbName,
             tenant_slug: tenantSlug,
             name: tenantSlug
         };
-        console.log(`[WORKSHOP] Tenant resolved: ${dbName}`);
+        console.log(`[WORKSHOP] Tenant resolved — operations DB: ${req.tenant.db_name}, main DB: ${mainDbName}`);
 
         // Resolve branch if not provided
-        if (!req.branchId && dbName) {
+        if (!req.branchId && mainDbName) {
             const lastDash = tenantSlug.lastIndexOf('-');
             if (lastDash > 0) {
                 const branchPart = tenantSlug.substring(lastDash + 1);
                 try {
                     const branches = await safeTenantQuery(
-                        dbName,
+                        mainDbName,
                         'SELECT branch_id FROM branches WHERE branch_slug LIKE ? OR branch_name LIKE ? LIMIT 1',
                         [`%${branchPart}%`, `%${branchPart}%`]
                     );
@@ -102,19 +106,14 @@ app.use(async (req: any, res: any, next: any) => {
             }
         }
 
-        // Ensure workshop tables exist in tenant database
-        if (dbName) {
-            try {
-                await ensureWorkshopTables(dbName);
-            } catch (tableError: any) {
-                console.error(`[WORKSHOP] Warning: Could not ensure tables in ${dbName}:`, tableError.message);
-            }
-        }
+        // Workshop tables are ensured once at startup against the central
+        // operations database — no per-tenant auto-migration is needed.
     } catch (err: any) {
         console.error('[WORKSHOP] Tenant resolution error:', err.message);
-        // Always fall back to default DB rather than blocking
+        // Always fall back to the central operations DB rather than blocking
         req.tenant = {
-            db_name: process.env.DB_NAME || 'restpoint_main',
+            db_name: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
+            main_db_name: process.env.DB_NAME || 'restpoint_main',
             tenant_slug: tenantSlug,
             name: tenantSlug
         };
@@ -241,8 +240,8 @@ async function ensureWorkshopTables(dbName: string) {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
             `CREATE TABLE IF NOT EXISTS material_usage (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                coffin_order_id INT NOT NULL,
-                material_id INT NOT NULL,
+                coffin_order_id INT UNSIGNED NOT NULL,
+                material_id INT UNSIGNED NOT NULL,
                 quantity_used DECIMAL(10,2) NOT NULL,
                 unit_cost DECIMAL(10,2) DEFAULT 0,
                 notes TEXT,
@@ -254,7 +253,7 @@ async function ensureWorkshopTables(dbName: string) {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
             `CREATE TABLE IF NOT EXISTS production_stages (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                coffin_order_id INT NOT NULL,
+                coffin_order_id INT UNSIGNED NOT NULL,
                 stage VARCHAR(50) NOT NULL,
                 status VARCHAR(50) DEFAULT 'pending',
                 started_at VARCHAR(255) NULL,
@@ -266,7 +265,7 @@ async function ensureWorkshopTables(dbName: string) {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
             `CREATE TABLE IF NOT EXISTS worker_assignments (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                coffin_order_id INT NOT NULL,
+                coffin_order_id INT UNSIGNED NOT NULL,
                 user_id INT NOT NULL,
                 stage VARCHAR(50) NOT NULL,
                 hours_worked DECIMAL(5,2) DEFAULT 0,
@@ -279,25 +278,20 @@ async function ensureWorkshopTables(dbName: string) {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
             `CREATE TABLE IF NOT EXISTS costing (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                coffin_order_id INT NOT NULL UNIQUE,
-                materials_cost DECIMAL(10,2) DEFAULT 0,
-                labor_cost DECIMAL(10,2) DEFAULT 0,
+                coffin_order_id INT UNSIGNED NOT NULL UNIQUE,
                 overhead_cost DECIMAL(10,2) DEFAULT 0,
                 total_cost DECIMAL(10,2) DEFAULT 0,
                 selling_price DECIMAL(10,2) DEFAULT 0,
-                profit DECIMAL(10,2) DEFAULT 0,
-                profit_margin DECIMAL(5,2) DEFAULT 0,
                 created_at VARCHAR(255),
                 updated_at VARCHAR(255),
                 FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
             `CREATE TABLE IF NOT EXISTS design_specifications (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                coffin_order_id INT NOT NULL UNIQUE,
+                coffin_order_id INT UNSIGNED NOT NULL UNIQUE,
                 design_name VARCHAR(255),
                 description TEXT,
                 specifications JSON,
-                design_files JSON,
                 status VARCHAR(50) DEFAULT 'draft',
                 created_at VARCHAR(255),
                 updated_at VARCHAR(255),
@@ -306,11 +300,9 @@ async function ensureWorkshopTables(dbName: string) {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
             `CREATE TABLE IF NOT EXISTS material_intake (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                material_id INT NOT NULL,
+                material_id INT UNSIGNED NOT NULL,
                 quantity DECIMAL(10,2) NOT NULL,
                 unit_cost DECIMAL(10,2) DEFAULT 0,
-                supplier VARCHAR(255),
-                invoice_number VARCHAR(100),
                 notes TEXT,
                 received_by VARCHAR(255),
                 received_at VARCHAR(255),
@@ -333,10 +325,8 @@ async function ensureWorkshopTables(dbName: string) {
         const neededOrderColumns: [string, string][] = [
             ['order_number', "VARCHAR(50) NULL"],
             ['coffin_name', "VARCHAR(255) NULL"],
-            ['deceased_name', "VARCHAR(255) NULL"],
             ['coffin_type', "VARCHAR(50) DEFAULT 'standard'"],
             ['size', "VARCHAR(100) NULL"],
-            ['dimensions', "TEXT NULL"],
             ['color', "VARCHAR(100) NULL"],
             ['notes', "TEXT NULL"],
             ['priority', "VARCHAR(20) DEFAULT 'normal'"],
@@ -360,6 +350,37 @@ async function ensureWorkshopTables(dbName: string) {
             }
         }
 
+        // ── Drop obsolete columns ─────────────────────────────────────────
+        // The workshop no longer tracks deceased/dimensions (coffin_orders),
+        // design files (design_specifications), material/labour cost & profit
+        // fields (costing), or supplier/invoice metadata (material_intake).
+        // Drop them idempotently so existing databases match the new schema.
+        const obsoleteColumns: [string, string][] = [
+            ['coffin_orders', 'deceased_name'],
+            ['coffin_orders', 'dimensions'],
+            ['costing', 'materials_cost'],
+            ['costing', 'labor_cost'],
+            ['costing', 'profit'],
+            ['costing', 'profit_margin'],
+            ['design_specifications', 'design_files'],
+            ['material_intake', 'supplier'],
+            ['material_intake', 'invoice_number']
+        ];
+        for (const [table, col] of obsoleteColumns) {
+            try {
+                const hasObsoleteCol = await tenantKnex.schema.hasColumn(table, col);
+                if (hasObsoleteCol) {
+                    await tenantKnex.raw(`ALTER TABLE \`${table}\` DROP COLUMN \`${col}\``);
+                    console.log(`[WORKSHOP] ✅ Dropped '${col}' from ${table} in: ${dbName}`);
+                }
+            } catch (e: any) {
+                const msg = e?.message || '';
+                if (!/ER_CANT_DROP_FIELD_OR_KEY|ER_DUP_FIELDNAME/i.test(msg)) {
+                    console.warn(`[WORKSHOP] Could not drop column ${table}.${col} in ${dbName}: ${msg}`);
+                }
+            }
+        }
+
         await tenantKnex.destroy();
         return true;
     } catch (error: any) {
@@ -372,11 +393,11 @@ async function ensureWorkshopTables(dbName: string) {
 // START SERVER
 // ============================================
 async function startServer() {
-    // Run auto-migration on the workshop database
-    const workshopDb = process.env.DB_NAME || 'restpoint_main';
+    // Run auto-migration on the ONE central operations database (all tenants share it)
+    const workshopDb = process.env.OPERATIONS_DATABASE || 'restpoint_operations';
     console.log(`[WORKSHOP] Running auto-migration for workshop tables in: ${workshopDb}`);
     await ensureWorkshopTables(workshopDb);
-    console.log('[WORKSHOP] Workshop database ready (tenant query skipped — using direct DB)');
+    console.log('[WORKSHOP] Operations database ready (workshop tables shared by all tenants, scoped via tenant_slug)');
 
     const PORT = Number(process.env.PORT) || 6060;
 

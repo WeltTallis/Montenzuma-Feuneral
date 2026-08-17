@@ -1,0 +1,26 @@
+
+> store-service@1.0.0 dev
+> nodemon --exec ts-node --esm --project tsconfig.json server.ts
+
+[33m[nodemon] 3.1.14[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: json,json[39m
+[32m[nodemon] starting `ts-node --esm --project tsconfig.json server.ts`[39m
+(node:82508) [DEP0180] DeprecationWarning: fs.Stats constructor is deprecated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+C:\Users\User\Downloads\restpoint\services\app-global\middlewares\authMiddleware.js:8
+  throw new Error('FATAL: JWT_SECRET environment variable is required');
+        ^
+Error: FATAL: JWT_SECRET environment variable is required
+    at Object.<anonymous> (C:\Users\User\Downloads\restpoint\services\app-global\middlewares\authMiddleware.js:8:9)
+    at Module._compile (node:internal/modules/cjs/loader:1871:14)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .js] (C:\Users\User\Downloads\restpoint\node_modules\ts-node\src\index.ts:1608:43)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at loadCJSModuleWithModuleLoad (node:internal/modules/esm/translators:372:15)
+    at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:244:9)
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m

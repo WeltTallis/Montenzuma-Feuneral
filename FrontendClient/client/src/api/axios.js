@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ENDPOINTS } from './endpoints';
 import env from '../utils/config/env';
-import { getUserId, getAuthToken, getTenantSlug } from '../utils/globalAuth';
+import { getUserId, getAuthToken, getTenantSlug, getBranchSlug, getBranchId } from '../utils/globalAuth';
 
 // Alias for backwards compatibility
 const getSlug = getTenantSlug;
@@ -19,6 +19,15 @@ workshopApi.interceptors.request.use((config) => {
   const slug = getTenantSlug();
   if (token) config.headers['Authorization'] = `Bearer ${token}`;
   if (slug) config.headers['x-tenant-slug'] = slug;
+
+  // Attach branch context for multi-branch routing
+  const branchSlug = getBranchSlug();
+  const branchId = getBranchId();
+  const branchDbName = localStorage.getItem('branchDbName');
+  if (branchSlug) config.headers['x-branch-slug'] = branchSlug;
+  if (branchId) config.headers['x-branch-id'] = branchId;
+  if (branchDbName && branchDbName !== 'undefined' && branchDbName !== 'null') config.headers['x-branch-db'] = branchDbName;
+
   return config;
 }, (error) => Promise.reject(error));
 

@@ -112,12 +112,7 @@ const MyLeaves = lazy(() => import('../components/leave/MyLeaves'));
 
 
 const RouteLoadingFallback = () => (
-  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#F7F9FB' }}>
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ width: '40px', height: '40px', border: '3px solid #E5E7EB', borderTop: '3px solid #C9A84C', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
-      <Loader text="Loading..." size="medium" color="primary" />
-    </div>
-  </div>
+  <Loader text="Loading" color="#0e3345" />
 );
 
 const ProtectedRoute = ({ children }) => {
@@ -125,14 +120,7 @@ const ProtectedRoute = ({ children }) => {
   const location = useLocation();
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#F7F9FB' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ width: '40px', height: '40px', border: '3px solid #E5E7EB', borderTop: '3px solid #C9A84C', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
-          <p style={{ color: '#6B7280', fontSize: '0.9rem' }}>Validating session...</p>
-        </div>
-      </div>
-    );
+    return <Loader text="Validating session" color="#0e3345" />;
   }
 
   if (!user || !user.isAuthenticated) {
@@ -613,7 +601,7 @@ const DashboardRedirect = () => {
       return;
     }
 
-    if (from && from !== '/login' && from !== '/') { navigate(`/tenant/${finalSlug}${from}`, { replace: true }); } else { navigate(`/tenant/${finalSlug}/all-deceased`, { replace: true }); }
+    if (from && from !== '/login' && from !== '/') { navigate(`/tenant/${finalSlug}${from}`, { replace: true }); } else { navigate(`/tenant/${finalSlug}/dashboard`, { replace: true }); }
   }, [navigate, location]);
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#6B7280' }}>
@@ -702,6 +690,7 @@ const AppRouter = () => (
       <Route path="/tenant/:slug/postmortem-qr" element={<PostmortemQRPage />} />
       <Route path="/tenant/:slug/postmortem-verify" element={<PostmortemVerifyPage />} />
       <Route path="/tenant/:slug/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
+      <Route path="/tenant/:slug/release-form/:id" element={<ReleaseFormPage />} />
       <Route path="/postmortem/verify" element={<PostmortemVerifyPage />} />
       <Route path="/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
       

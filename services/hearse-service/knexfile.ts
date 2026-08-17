@@ -20,14 +20,14 @@ const config: KnexConfig = {
     connection: {
       host: process.env.DB_HOST || '127.0.0.1',
       port: parseInt(process.env.DB_PORT || '3306', 10),
-      user: process.env.DB_USER || 'root',
+      user: process.env.DB_USER || 'restpoint_user',
       password: process.env.DB_PASSWORD || '',
-      database: process.env.HEARSE_DB_NAME || 'restpoint_hearses',
+      database: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
       charset: 'utf8mb4'
     },
     migrations: {
       directory: './migrations',
-      tableName: 'knex_migrations'
+      tableName: 'knex_migrations_hearse'
     },
     pool: {
       min: 2,
@@ -39,14 +39,14 @@ const config: KnexConfig = {
     connection: {
       host: process.env.DB_HOST || '127.0.0.1',
       port: parseInt(process.env.DB_PORT || '3306', 10),
-      user: process.env.DB_USER || 'root',
+      user: process.env.DB_USER || 'restpoint_user',
       password: process.env.DB_PASSWORD || '',
-      database: process.env.HEARSE_DB_NAME || 'restpoint_hearses',
+      database: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
       charset: 'utf8mb4'
     },
     migrations: {
       directory: './migrations',
-      tableName: 'knex_migrations'
+      tableName: 'knex_migrations_hearse'
     },
     pool: {
       min: 2,

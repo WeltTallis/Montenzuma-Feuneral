@@ -2,8 +2,8 @@ import multer from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
 
-// Ensure upload directory exists
-const uploadDir = 'uploads';
+// Ensure upload directory exists — use global shared uploads path
+const uploadDir = process.env.GLOBAL_UPLOAD_PATH || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }

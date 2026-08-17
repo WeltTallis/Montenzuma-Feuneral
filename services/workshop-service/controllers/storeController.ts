@@ -65,7 +65,7 @@ const getInventory = async (req: Request, res: Response) => {
 
         // Base items: coffins sitting in the Store stage + workshop materials
         const coffins: any = await safeTenantQuery(tenantDb,
-            `SELECT id, order_number, deceased_name, coffin_type, color
+            `SELECT id, order_number, coffin_name, coffin_type, color
              FROM coffin_orders
              WHERE status IN ('completed','delivered','store')
              ORDER BY order_number`);
@@ -74,7 +74,7 @@ const getInventory = async (req: Request, res: Response) => {
 
         const syncItems: any[] = [];
         (coffins || []).forEach((c: any) => syncItems.push({
-            key: 'cf:' + c.id, type: 'Coffin', name: c.deceased_name || c.order_number || ('Coffin #' + c.id),
+            key: 'cf:' + c.id, type: 'Coffin', name: c.coffin_name || c.order_number || ('Coffin #' + c.id),
             sub: `${c.coffin_type || 'Standard'} · ${c.color || 'Natural'}`, unit: 'pcs', qty: 1
         }));
         (materials || []).forEach((m: any) => syncItems.push({

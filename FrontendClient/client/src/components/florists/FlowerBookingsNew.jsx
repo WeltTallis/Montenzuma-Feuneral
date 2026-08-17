@@ -286,6 +286,7 @@ const FlowerBookingsNew = () => {
         <div style={styles.viewToggle}>
           <button style={styles.viewBtn(view === 'list')} onClick={() => setView('list')}>List</button>
           <button style={styles.viewBtn(view === 'calendar')} onClick={() => setView('calendar')}>Calendar</button>
+          <button style={styles.viewBtn(view === 'samples')} onClick={() => setView('samples')}>Samples</button>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button 
@@ -465,6 +466,89 @@ const FlowerBookingsNew = () => {
             ) : (
               getEventsForDate(selectedDate).map(b => renderBookingCard(b))
             )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSamples = () => {
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h2 style={styles.sectionTitle}>Available Flower Samples</h2>
+        </div>
+        {arrangements.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9C9389' }}>
+            <Flower2 size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
+            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', color: '#574F47', marginBottom: '6px' }}>No samples uploaded</h3>
+            <p style={{ fontSize: '14px' }}>Click "Create Arrangement" to upload your first sample.</p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gap: '24px'
+          }}>
+            {arrangements.map(arrangement => (
+              <div key={arrangement.arrangement_id} style={{
+                background: '#fff',
+                border: '1px solid #EAE7E2',
+                borderRadius: '20px',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
+              }}>
+                <div style={{
+                  width: '100%',
+                  height: '180px',
+                  borderRadius: '14px',
+                  marginBottom: '12px',
+                  overflow: 'hidden',
+                  background: '#1C1A17'
+                }}>
+                  {arrangement.images?.length > 0 ? (
+                    <img 
+                      src={arrangement.images[0]?.url || arrangement.images[0]} 
+                      alt={arrangement.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div style={styles.productMediaPlaceholder}>
+                      {arrangement.title?.charAt(0) || 'F'}
+                    </div>
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '16px', fontWeight: 600, fontFamily: "'Playfair Display', serif", marginBottom: '4px' }}>
+                    {arrangement.title}
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#9C9389', marginBottom: '12px' }}>
+                    {arrangement.types?.[0] || 'Custom'} · ${arrangement.price || '0.00'}
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    selectArrangement(arrangement);
+                    setView('new');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: '12px',
+                    background: '#2F4F3E',
+                    color: '#fff',
+                    border: 'none',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Book This
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -850,6 +934,7 @@ const FlowerBookingsNew = () => {
       <div style={styles.content}>
         {view === 'list' && renderList()}
         {view === 'calendar' && renderCalendar()}
+        {view === 'samples' && renderSamples()}
         {view === 'new' && renderNewBooking()}
       </div>
 

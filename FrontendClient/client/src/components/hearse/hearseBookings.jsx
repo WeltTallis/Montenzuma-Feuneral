@@ -4,11 +4,14 @@ import { useSocket } from '../../utils/context/socketContext';
 import env from '../../utils/config/env';
 import HearseCalendar from './HearseCalendar';
 import useAuthStore from '../../utils/store/useAuthStore';
+import { getTenantHeaders } from '../../api/endpoints';
+import { getTenantId, getBranchId, getBranchSlug } from '../../utils/globalAuth';
 import { Truck, Car, Clock, Check, Search, Plus, RefreshCw, MoreVertical, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, List, Grid, X, Calendar, MapPin, Phone, User, Filter } from '../../utils/icons/icons';
 
 const API_BASE_URL = import.meta.env.PROD
   ? 'https://restpoint.co.ke/api/v1/restpoint'
   : (env.FULL_API_URL || 'http://localhost:5000/api/v1/restpoint');
+  
 const RESULTS_PER_PAGE = 10;
 
 const STATUS_CONFIG = {
@@ -155,8 +158,11 @@ const api = {
       return r.ok ? (await r.json()).data || [] : [];
     } catch { return []; }
   },
-  getAllHearses: async () => {
-    const r = await fetch(`${API_BASE_URL}/hearses`, { headers: getAuthHeaders() });
+    getAllHearses: async () => {
+    // Merge getTenantHeaders (tenantId, branchId, branchSlug) with the local
+    // getAuthHeaders (robust tenantSlug + Authorization) so the listing is
+    // scoped to the current tenant/branch stored in localStorage.
+    const r = await fetch(`${API_BASE_URL}/hearses`, { headers: { ...getTenantHeaders(), ...getAuthHeaders() } });
     return r.ok ? (await r.json()).hearses || [] : [];
   },
   updateStatus: async (id, status) => {
@@ -1845,13 +1851,51 @@ const HearseBookings = () => {
               return;
             }
             setRegisterLoading(true);
-            try {
-              const headers = getAuthHeaders();
+                        try {
+              // Attach the hearse name + full tenant/branch context stored in
+              // localStorage so the backend can scope the hearse to the correct
+              // tenant (tenant id/slug), branch (branch id/slug/code) and resolve
+              // the branch relationship.
+              const userStr = localStorage.getItem('user');
+              const userObj = userStr ? JSON.parse(userStr) : {};
+              const ctxTenantSlug = getTenantSlug();
+              const ctxTenantId = getTenantId() || userObj?.tenantId || null;
+              const ctxBranchId = getBranchId() || userObj?.branchId || null;
+              const ctxBranchSlug = getBranchSlug() || userObj?.branchSlug || null;
+              const ctxBranchDbName = localStorage.getItem('branchDbName') || userObj?.branchDbName || null;
+
+              // Resolve the branch code — prefer the form value, then the
+              // branch slug/dbName already stored in localStorage context.
+              const ctxBranchCode = hearseForm.branch_code || ctxBranchSlug || ctxBranchDbName || null;
+
+              // Headers carrying ALL tenant/branch context from localStorage
+              // (x-tenant-slug, x-tenant-id, x-branch-id, x-branch-slug, x-branch-db)
+              const headers = { ...getTenantHeaders() };
+              if (ctxTenantId) headers['x-tenant-id'] = ctxTenantId;
+              if (ctxBranchId) headers['x-branch-id'] = ctxBranchId;
+              if (ctxBranchSlug) headers['x-branch-slug'] = ctxBranchSlug;
+              if (ctxBranchDbName && ctxBranchDbName !== 'undefined' && ctxBranchDbName !== 'null') {
+                headers['x-branch-db'] = ctxBranchDbName;
+              }
               headers['Content-Type'] = 'application/json';
+
+              // Attach the hearse name and ALL context to the body so the
+              // backend can resolve tenant/branch even if a header is dropped.
+              const requestBody = {
+                ...hearseForm,
+                hearse_name: hearseForm.hearse_name || null,
+                branch_code: ctxBranchCode,
+                tenant_id: ctxTenantId,
+                tenant_slug: ctxTenantSlug || null,
+                branch_id: ctxBranchId,
+                branch_slug: ctxBranchSlug,
+                branch_db_name: ctxBranchDbName || null,
+              };
+
               const response = await fetch(`${API_BASE_URL}/hearses`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify(hearseForm)
+                body: JSON.stringify(requestBody)
               });
               if (!response.ok) {
                 const err = await response.json().catch(() => ({}));

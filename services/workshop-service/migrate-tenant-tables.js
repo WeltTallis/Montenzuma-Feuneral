@@ -30,9 +30,7 @@ const CREATE_COFFIN_ORDERS = `CREATE TABLE IF NOT EXISTS coffin_orders (
   customer_name VARCHAR(255) NOT NULL,
   customer_phone VARCHAR(20),
   customer_email VARCHAR(255),
-  deceased_name VARCHAR(255),
   coffin_type VARCHAR(50) DEFAULT 'standard',
-  dimensions TEXT,
   color VARCHAR(100),
   interior_fabric VARCHAR(100),
   notes TEXT,
@@ -151,13 +149,9 @@ const CREATE_WORKER_ASSIGNMENTS = `CREATE TABLE IF NOT EXISTS worker_assignments
 const CREATE_COSTING = `CREATE TABLE IF NOT EXISTS costing (
   id INT AUTO_INCREMENT PRIMARY KEY,
   coffin_order_id INT NOT NULL UNIQUE,
-  materials_cost DECIMAL(10,2) DEFAULT 0,
-  labor_cost DECIMAL(10,2) DEFAULT 0,
   overhead_cost DECIMAL(10,2) DEFAULT 0,
   total_cost DECIMAL(10,2) DEFAULT 0,
   selling_price DECIMAL(10,2) DEFAULT 0,
-  profit DECIMAL(10,2) DEFAULT 0,
-  profit_margin DECIMAL(5,2) DEFAULT 0,
   created_at VARCHAR(255),
   updated_at VARCHAR(255),
   FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE
