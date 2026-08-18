@@ -87,8 +87,8 @@ const getInventory = async (req: Request, res: Response) => {
             const existing: any = await safeTenantQuery(tenantDb, 'SELECT id FROM store_items WHERE item_key = ?', [it.key]);
             if (!existing.length) {
                 await safeTenantExecute(tenantDb,
-                    `INSERT INTO store_items (item_key, item_type, item_name, item_sub, unit, quantity) VALUES (?,?,?,?,?,?)`,
-                    [it.key, it.type, it.name, it.sub, it.unit, it.qty]);
+                    `INSERT INTO store_items (item_key, item_type, item_name, item_sub, unit, quantity, created_at) VALUES (?,?,?,?,?,?,?)`,
+                    [it.key, it.type, it.name, it.sub, it.unit, it.qty, new Date().toISOString()]);
             } else {
                 await safeTenantExecute(tenantDb,
                     `UPDATE store_items SET item_type=?, item_name=?, item_sub=?, unit=? WHERE item_key=?`,
@@ -132,8 +132,8 @@ const dispatchItem = async (req: Request, res: Response) => {
         const existing: any = await safeTenantQuery(tenantDb, 'SELECT id, quantity FROM store_items WHERE item_key = ?', [item_key]);
         if (!existing.length) {
             await safeTenantExecute(tenantDb,
-                `INSERT INTO store_items (item_key, item_type, item_name, item_sub, unit, quantity) VALUES (?,?,?,?,?,?)`,
-                [item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs', 0]);
+                `INSERT INTO store_items (item_key, item_type, item_name, item_sub, unit, quantity, created_at) VALUES (?,?,?,?,?,?,?)`,
+                [item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs', 0, new Date().toISOString()]);
         } else {
             row = existing[0];
         }
@@ -144,8 +144,8 @@ const dispatchItem = async (req: Request, res: Response) => {
 
         await safeTenantExecute(tenantDb, 'UPDATE store_items SET quantity = quantity - ? WHERE item_key = ?', [q, item_key]);
         const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO store_transactions (item_key, item_type, item_name, item_sub, unit, action, qty, txn_date, txn_by, notes) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-            [item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs', 'DISPATCH', q, txnDate, picked_by || '', notes || '']);
+            `INSERT INTO store_transactions (item_key, item_type, item_name, item_sub, unit, action, qty, txn_date, txn_by, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+            [item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs', 'DISPATCH', q, txnDate, picked_by || '', notes || '', new Date().toISOString()]);
 
         const updated: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_items WHERE item_key = ?', [item_key]);
         const txn: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_transactions WHERE id = ?', [insertResult.insertId]);
@@ -192,13 +192,13 @@ const restockItem = async (req: Request, res: Response) => {
         const existing: any = await safeTenantQuery(tenantDb, 'SELECT id FROM store_items WHERE item_key = ?', [item_key]);
         if (!existing.length) {
             await safeTenantExecute(tenantDb,
-                `INSERT INTO store_items (item_key, item_type, item_name, item_sub, unit, quantity) VALUES (?,?,?,?,?,0)`,
-                [item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs']);
+                `INSERT INTO store_items (item_key, item_type, item_name, item_sub, unit, quantity, created_at) VALUES (?,?,?,?,?,?,?)`,
+                [item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs', 0, new Date().toISOString()]);
         }
         await safeTenantExecute(tenantDb, 'UPDATE store_items SET quantity = quantity + ? WHERE item_key = ?', [q, item_key]);
         const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO store_transactions (item_key, item_type, item_name, item_sub, unit, action, qty, txn_date, txn_by, notes) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-            [item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs', 'RESTOCK', q, txnDate, by, notes || '']);
+            `INSERT INTO store_transactions (item_key, item_type, item_name, item_sub, unit, action, qty, txn_date, txn_by, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+            [item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs', 'RESTOCK', q, txnDate, by, notes || '', new Date().toISOString()]);
 
         const updated: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_items WHERE item_key = ?', [item_key]);
         const txn: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_transactions WHERE id = ?', [insertResult.insertId]);

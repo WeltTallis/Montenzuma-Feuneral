@@ -34,10 +34,6 @@ router.get('/coffins-list', coffinController.getAllCoffins);
 // Cross-branch inventory search
 router.get('/all-branches', coffinController.getAllCoffinsAllBranches);
 
-// Get coffin by ID
-router.get('/detail/:id', coffinController.getCoffinById);
-router.get('/:id', coffinController.getCoffinById);
-
 // Update coffin
 router.put('/:id', upload.array('images', 10), coffinController.updateCoffin);
 router.put('/update/:id', upload.array('images', 10), coffinController.updateCoffin);
@@ -62,6 +58,9 @@ router.get('/orders/detail/:id', coffinController.getOrderById);
 
 router.patch('/orders/:id/status', coffinController.updateOrderStatus);
 
+// Alias used by the frontend inventory page (/coffins/bookings/:id/status)
+router.patch('/bookings/:id/status', coffinController.updateOrderStatus);
+
 // ============================================================
 // STOCK REQUESTS
 // ============================================================
@@ -77,11 +76,22 @@ router.get('/stock-requests/detail/:id', coffinController.getStockRequestById);
 
 router.patch('/stock-requests/:id/status', coffinController.updateStockRequestStatus);
 
+// Action-based status updates the frontend uses: approve / reject / transferring / delivered
+router.post('/stock-requests/:id/:action', coffinController.updateStockRequestAction);
+
 // ============================================================
 // HEALTH
 // ============================================================
 
 router.get('/health', coffinController.healthCheck);
+
+// ============================================================
+// GET coffin by ID - registered LAST among the GET routes so the
+// catch-all :id does not hijack single-segment endpoints such as
+// /orders, /stock-requests, and /health (Express first-match-wins).
+// ============================================================
+router.get('/detail/:id', coffinController.getCoffinById);
+router.get('/:id', coffinController.getCoffinById);
 
 // ============================================================
 // 404 handler for unmatched routes within /coffins
@@ -94,6 +104,8 @@ router.use((req: Request, res: Response) => {
     url: req.originalUrl,
     tenant: (req as any).tenantSlug
   });
+
+  
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found in coffin service`

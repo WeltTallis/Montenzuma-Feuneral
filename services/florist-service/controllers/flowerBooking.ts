@@ -5,6 +5,7 @@
 
 // @ts-ignore
 import { getTenantDB, safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig.js';
+import axios from 'axios';
 
 interface Booking {
     id?: number;
@@ -36,7 +37,7 @@ interface Booking {
  */
 export const getBookings = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
         const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
         const { status, branch, flower_type, date_from, date_to, search, page = '1', limit = '20' } = req.query;
 
@@ -136,7 +137,7 @@ export const getBookings = async (req: any, res: any) => {
  */
 export const getBookingById = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
         const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
         const { id } = req.params;
 
@@ -163,7 +164,7 @@ export const getBookingById = async (req: any, res: any) => {
  */
 export const createBooking = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
         const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
         const {
             arrangement_name, arrangement_id, deceased_name, booked_by,
@@ -228,7 +229,7 @@ export const createBooking = async (req: any, res: any) => {
  */
 export const updateBooking = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
         const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
         const { id } = req.params;
         const updates = req.body;
@@ -293,7 +294,7 @@ export const updateBooking = async (req: any, res: any) => {
  */
 export const updateBookingStatus = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
         const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
         const { id } = req.params;
         const { status } = req.body;
@@ -357,7 +358,7 @@ export const updateBookingStatus = async (req: any, res: any) => {
  */
 export const deleteBooking = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
         const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
         const { id } = req.params;
 
@@ -408,7 +409,7 @@ export const deleteBooking = async (req: any, res: any) => {
  */
 export const getStats = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
         const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
 
         const totalResult = await safeTenantQuery(dbName, 'SELECT COUNT(*) as total FROM flower_bookings WHERE tenant_slug = ?', [tenantSlug]);
@@ -447,7 +448,7 @@ export const getStats = async (req: any, res: any) => {
  */
 export const getMonthlyTrend = async (req: any, res: any) => {
     try {
-        const dbName = req.tenant?.db_name || process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
         const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
 
         const trend = await safeTenantQuery(

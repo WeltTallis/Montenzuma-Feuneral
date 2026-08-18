@@ -75,13 +75,13 @@ async function migrateExistingTables(tenantDbName) {
         for (const sql of ALTER_STATEMENTS) {
             try {
                 await connection.query(sql);
-                console.log(`  ✅ Added column: ${sql.split('ADD COLUMN')[1].split(' ')[1]}`);
+                console.log(`   Added column: ${sql.split('ADD COLUMN')[1].split(' ')[1]}`);
             } catch (error) {
                 // Ignore "duplicate column" errors - column already exists
                 if (error.code === 'ER_DUP_FIELDNAME' || error.message.includes('Duplicate column name')) {
-                    console.log(`  ℹ️  Column already exists: ${sql.split('ADD COLUMN')[1].split(' ')[1]}`);
+                    console.log(`    Column already exists: ${sql.split('ADD COLUMN')[1].split(' ')[1]}`);
                 } else {
-                    console.error(`  ❌ Error adding column: ${error.message}`);
+                    console.error(`   Error adding column: ${error.message}`);
                 }
             }
         }

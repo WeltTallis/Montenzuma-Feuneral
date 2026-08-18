@@ -20,8 +20,8 @@ import express from 'express';
 import cors from 'cors';
 import knex from 'knex';
 import { getRootPool } from '../../shared/dbConfig.js';
-import { flowerBookingRouter } from './routes/flowerBookingRoutes.js';
-import flowerSampleRoutes from './routes/flowerSampleRoutes.js';
+import { flowerBookingRouter } from './routes/flowerBookingRoutes.ts';
+import flowerSampleRoutes from './routes/flowerSampleRoutes.ts';
 
 const app = express();
 
@@ -70,7 +70,7 @@ const runMigrations = async () => {
     if (!floristKnex) return;
     try {
         // Get the directory path for knexfile
-        const knexfilePath = path.resolve(__dirname, './knexfile.js');
+        const knexfilePath = path.resolve(__dirname, './knexfile.ts');
         console.log(`[FLORIST] Loading knexfile from: ${knexfilePath}`);
         
         // Dynamic import for knexfile

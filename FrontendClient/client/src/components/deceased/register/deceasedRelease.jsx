@@ -1,41 +1,46 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ENDPOINTS } from '../../../api/endpoints';
 import env from '../../../utils/config/env';
+import { ToastContainer, toast } from 'react-toastify';
+import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
-import { Check, Loader2, XCircle, CheckCircle, RotateCcw } from '../../utils/icons/icons';
-import styled, { keyframes, css } from 'styled-components';
+import bwipjs from '@bwip-js/browser';
+import {
+  Check, Loader2, CheckCircle, X, FileText, User,
+  RotateCcw, ShieldCheck, AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin
+} from '../../../utils/icons/icons';
+import styled, { keyframes } from 'styled-components';
+import OfficialStamp from '../../stamp/stamp';
+import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 
-// Neutral color scheme matching the HTML design exactly
+// ─── Color Palette ──────────────────────────────────
 const COLORS = {
-    black: '#0a0a0a',
-    dark: '#1a1a1a',
-    mid: '#444444',
-    gray: '#777777',
-    lightGray: '#aaaaaa',
-    border: '#c8c8c8',
-    borderLight: '#e0e0e0',
-    bgField: '#f7f7f5',
-    bgAccent: '#f0eeea',
-    bgSection: '#fafaf9',
-    white: '#FFFFFF',
-    bg: '#f5f7fa',
-    surface: '#ffffff',
-    text: '#111827',
-    textSecondary: '#6b7280',
-    textMuted: '#9ca3af',
-    success: '#10b981',
-    successLight: '#d1fae5',
-    danger: '#ef4444',
-    dangerLight: '#fee2e2',
-    info: '#3b82f6',
-    infoLight: '#dbeafe',
-    infoDark: '#2563eb',
-    radius: '8px',
-    radiusSm: '6px',
-    shadowSm: '0 1px 2px rgba(0, 0, 0, 0.04)',
-    shadowMd: '0 4px 6px rgba(0, 0, 0, 0.06)',
-    transition: 'all 0.15s ease',
+  ink: '#15171A',
+  bone: '#FAF8F4',
+  bone2: '#F3EFE6',
+  brass: '#8B7355',
+  brassLight: '#A98F6E',
+  verdigris: '#3D4F47',
+  verdigrisDark: '#2E3F37',
+  verdigrisLight: '#4D6359',
+  verdigrisTint: '#EBEFEF',
+  line: '#E3DDD0',
+  lineDark: 'rgba(250,248,244,0.14)',
+  gray: '#6B6862',
+  grayLight: 'rgba(250,248,244,0.62)',
+  red: '#9B4A3F',
+  redBg: '#F7ECE9',
+  redLine: '#E8D2CC',
+  success: '#475A43',
+  successBg: '#EEF3EC',
+  white: '#FFFFFF',
+  inkBlue: '#0f33e7',
+  stampBlue: '#0f33e7',
+  stampRed: '#dc2626',
+  gold: '#C9A227',
+  goldDark: '#A8851C',
+  tickBlue: '#2564eb1b',
 };
 
 const spin = keyframes`
@@ -43,1335 +48,1726 @@ const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
 
-/* ---------- Responsive helpers ---------- */
-const media = {
-  tablet: (...args) => css`@media (max-width: 1024px) { ${css(...args)} }`,
-  mobile: (...args) => css`@media (max-width: 768px) { ${css(...args)} }`,
-  small: (...args) => css`@media (max-width: 480px) { ${css(...args)} }`,
-};
-
 const Container = styled.div`
   min-height: 100vh;
-  background: #d5d3cf;
-  font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: ${COLORS.dark};
-  font-size: 10.5px;
+  background: ${COLORS.bone2};
+  font-family: 'Inter', sans-serif;
+  color: ${COLORS.ink};
+  font-size: 15px;
   line-height: 1.5;
+  padding: 0;
 
-  ${media.tablet`
-    font-size: 12px;
-  `}
-  ${media.mobile`
-    font-size: 13px;
-    background: #ececea;
-  `}
+  .Toastify__toast-container { width: 380px !important; max-width: 90vw !important; padding: 0 !important; }
+  .Toastify__toast { border-radius: 8px !important; font-family: 'Inter', sans-serif !important; font-size: 0.85rem !important; padding: 10px 14px !important; min-height: 44px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; margin-bottom: 0.5rem !important; }
+  .Toastify__toast-body { padding: 0 !important; margin: 0 !important; font-size: 0.85rem !important; }
 `;
 
-const Page = styled.div`
-  max-width: 8.5in;
-  margin: 24px auto;
-  background: white;
-  box-shadow: 0 2px 20px rgba(0,0,0,0.12);
+const FormSheet = styled.div`
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  background: ${COLORS.white};
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
+  overflow: hidden;
   position: relative;
-  padding: 0.55in 0.6in;
-  display: flex;
-  flex-direction: column;
-  min-height: calc(100vh - 48px);
-
-  ${media.tablet`
-    padding: 1.5rem;
-    margin: 16px auto;
-  `}
-  ${media.mobile`
-    padding: 1rem;
-    margin: 0;
-    min-height: 100vh;
-    box-shadow: none;
-  `}
 `;
 
-const TopBar = styled.div`
+const Watermark = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-35deg);
+  font-size: 8rem;
+  font-weight: 800;
+  color: rgba(21, 23, 26, 0.025);
+  font-family: 'Fraunces', serif;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 0;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+`;
+
+const ContentWrapper = styled.div`
+  position: relative;
+  z-index: 1;
+`;
+
+const Letterhead = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
-  padding-bottom: 0.625rem;
-  border-bottom: 2.5px solid ${COLORS.black};
-  margin-bottom: 0.375rem;
+  align-items: center;
+  gap: 2rem;
+  padding: 1.5rem 3rem;
+  border-bottom: 1px solid ${COLORS.line};
+  background: ${COLORS.white};
+  position: relative;
+  overflow: hidden;
 
-  ${media.mobile`
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, ${COLORS.verdigris} 0%, ${COLORS.brass} 50%, ${COLORS.verdigris} 100%);
+  }
+
+  @media (max-width: 480px) {
     flex-direction: column;
-    align-items: stretch;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
     gap: 1rem;
-  `}
+    padding: 1.5rem 1rem;
+  }
 `;
 
-const TopBarLeft = styled.div`
-  flex: 1;
-  min-width: 0;
+const BrandLeftWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  
+  @media (max-width: 480px) {
+    align-items: center;
+  }
 `;
 
-const TopBarRight = styled.div`
-  text-align: right;
+const LogoBox = styled.div`
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-
-  ${media.mobile`
-    text-align: left;
-  `}
+  
+  & > img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
 `;
 
-const Title = styled.h1`
-  font-family: 'Merriweather', Georgia, serif;
-  font-size: 1.375rem;
+const BrandDetails = styled.div`
+  min-width: 0;
+
+  @media (max-width: 480px) {
+    text-align: center;
+  }
+`;
+
+const BrandName = styled.h1`
+  font-family: 'Fraunces', serif;
+  font-size: 1.8rem;
   font-weight: 700;
   margin: 0;
-  color: ${COLORS.black};
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
-  line-height: 1.2;
+  color: ${COLORS.ink};
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 
-  ${media.tablet`
-    font-size: 1.25rem;
-  `}
-  ${media.mobile`
-    font-size: 1.1rem;
-  `}
+  @media (max-width: 480px) {
+    font-size: 1.5rem;
+  }
 `;
 
-const Subtitle = styled.p`
-  font-family: 'Merriweather', Georgia, serif;
-  font-size: 0.8125rem;
-  font-weight: 400;
-  font-style: italic;
-  color: ${COLORS.mid};
-  margin: 0.25rem 0 0;
-
-  ${media.mobile`
-    font-size: 0.75rem;
-  `}
-`;
-
-const SaasBrand = styled.div`
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+const BrandMeta = styled.div`
+  font-size: 0.8rem;
   color: ${COLORS.gray};
-  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+  font-weight: 500;
+  
+  svg { 
+    opacity: 0.8;
+    flex-shrink: 0;
+    color: ${COLORS.brass};
+  }
 
-  ${media.mobile`
-    font-size: 0.625rem;
-  `}
+  @media (max-width: 480px) {
+    justify-content: center;
+  }
 `;
 
-const ReleaseIdBlock = styled.div`
-  text-align: right;
-  margin-bottom: 0.5rem;
-
-  ${media.mobile`
-    text-align: left;
-  `}
+const BrandRightWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  
+  @media (max-width: 480px) {
+    align-items: center;
+  }
 `;
 
-const ReleaseIdBlockLabel = styled.div`
-  font-size: 0.625rem;
+const DocTitle = styled.div`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: ${COLORS.gray};
-  margin-bottom: 0.125rem;
-`;
-
-const ReleaseIdBlockValue = styled.div`
-  font-family: 'Source Sans 3', monospace;
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: ${COLORS.black};
-  letter-spacing: 0.08em;
-
-  ${media.mobile`
-    font-size: 1rem;
-  `}
-`;
-
-const TopMeta = styled.div`
+  color: ${COLORS.verdigris};
   display: flex;
-  gap: 1.5rem;
-  justify-content: flex-end;
-
-  ${media.mobile`
-    justify-content: flex-start;
-    gap: 1rem;
-  `}
-`;
-
-const TopMetaItem = styled.div`
-  text-align: right;
-
-  ${media.mobile`
-    text-align: left;
-  `}
-`;
-
-const TopMetaLabel = styled.div`
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: ${COLORS.lightGray};
-  margin-bottom: 0.125rem;
-`;
-
-const TopMetaValue = styled.div`
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: ${COLORS.dark};
-`;
-
-const SubLine = styled.div`
-  display: flex;
-  justify-content: space-between;
-  padding: 0.3125rem 0;
-  border-bottom: 0.5px solid ${COLORS.borderLight};
-  margin-bottom: 1rem;
-  font-size: 0.625rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: ${COLORS.lightGray};
+  align-items: center;
   gap: 0.5rem;
 
-  ${media.mobile`
-    flex-direction: column;
-    gap: 0.25rem;
-    font-size: 0.6rem;
-  `}
+  &::before {
+    content: '';
+    width: 8px;
+    height: 4px;
+    background: ${COLORS.brass};
+    display: inline-block;
+  }
+
+  @media (max-width: 480px) {
+    &::before { display: none; }
+  }
+`;
+
+const BarcodeWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
+const FileIdText = styled.div`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: ${COLORS.gray};
+  text-align: center;
+  
+  span {
+    font-weight: 700;
+    color: ${COLORS.ink};
+    letter-spacing: 0.05em;
+    margin-left: 0.25rem;
+  }
+`;
+
+const FormBody = styled.div`
+  padding: 3rem 4rem;
+
+  @media (max-width: 768px) {
+    padding: 2rem 1.5rem;
+  }
 `;
 
 const Section = styled.div`
-  margin-bottom: 1rem;
+  margin-bottom: 4rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 `;
 
 const SectionHead = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.625rem;
-  padding: 0.375rem 0.625rem;
-  background: ${COLORS.black};
-  color: white;
-  border-radius: 2px;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  padding: 0.75rem 1.25rem;
+  background: ${COLORS.ink}; 
+  border-radius: 4px;
 `;
 
 const SectionNum = styled.span`
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  opacity: 0.5;
-`;
-
-const SectionTitle = styled.span`
   font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-
-  ${media.mobile`
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
-  `}
+  font-weight: 500;
+  color: rgba(250,248,244,0.4);
+  font-family: 'JetBrains Mono', monospace;
 `;
 
-const SectionBody = styled.div`
-  padding: 0 0.125rem;
+const SectionTitle = styled.h2`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: ${COLORS.bone};
+  margin: 0;
 `;
 
 const Row = styled.div`
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
 
-  ${media.tablet`
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 1024px) {
     flex-wrap: wrap;
-  `}
-  ${media.mobile`
+  }
+  @media (max-width: 768px) {
     flex-direction: column;
-    gap: 0.75rem;
-  `}
+    gap: 1.25rem;
+  }
 `;
 
 const Col = styled.div`
   flex: 1;
   min-width: 0;
 
-  ${media.tablet`
+  @media (max-width: 1024px) {
     flex: 1 1 45%;
     min-width: 200px;
-  `}
-  ${media.mobile`
+  }
+  @media (max-width: 768px) {
     flex: 1 1 100%;
-  `}
+  }
 `;
 
-const Col2 = styled.div`
-  flex: 2;
-  min-width: 0;
-
-  ${media.tablet`
-    flex: 1 1 100%;
-  `}
-  ${media.mobile`
-    flex: 1 1 100%;
-  `}
-`;
-
-const Col05 = styled.div`
-  flex: 0.5;
-  min-width: 0;
-
-  ${media.tablet`
-    flex: 1 1 30%;
-    min-width: 120px;
-  `}
-  ${media.mobile`
-    flex: 1 1 100%;
-  `}
-`;
-
-const Col06 = styled.div`
-  flex: 0.6;
-  min-width: 0;
-
-  ${media.tablet`
-    flex: 1 1 30%;
-    min-width: 140px;
-  `}
-  ${media.mobile`
-    flex: 1 1 100%;
-  `}
-`;
-
-const Col04 = styled.div`
-  flex: 0.4;
-  min-width: 0;
-
-  ${media.tablet`
-    flex: 1 1 30%;
-    min-width: 120px;
-  `}
-  ${media.mobile`
-    flex: 1 1 100%;
-  `}
-`;
+const Col2 = styled(Col)` flex: 2; @media (max-width: 1024px) { flex: 1 1 100%; } `;
+const Col05 = styled(Col)` flex: 0.5; @media (max-width: 1024px) { flex: 1 1 30%; min-width: 120px; } `;
 
 const Label = styled.label`
   display: block;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: ${COLORS.gray};
-  margin-bottom: 0.1875rem;
+  color: ${COLORS.brass};
+  margin-bottom: 0.5rem;
+  font-family: 'Inter', sans-serif;
+`;
 
-  ${media.mobile`
-    font-size: 0.75rem;
-  `}
+const InputFieldWrapper = styled.div`
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
 `;
 
 const Input = styled.input`
   width: 100%;
-  height: 1.75rem;
-  border: 1px solid ${COLORS.border};
-  border-radius: 2px;
-  padding: 0 0.5rem;
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 0.6875rem;
-  color: ${COLORS.dark};
-  background: ${COLORS.bgField};
-  transition: border-color 0.15s;
+  height: 2.75rem;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0 2rem 0 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: ${COLORS.ink};
+  transition: border-color 0.2s ease;
   box-sizing: border-box;
 
   &:focus {
+    border: none;
+    border-bottom: 1px solid ${COLORS.ink};
     outline: none;
-    border-color: ${COLORS.black};
-    box-shadow: 0 0 0 1.5px rgba(0,0,0,0.08);
+    box-shadow: none;
+    background: transparent;
+  }
+
+  &:hover {
+    border-bottom: 1px solid ${COLORS.ink};
   }
 
   &:disabled {
-    background: ${COLORS.bgSection};
-    color: ${COLORS.textSecondary};
+    background: transparent;
+    color: ${COLORS.gray};
     cursor: not-allowed;
+    opacity: 0.8;
   }
 
-  ${media.mobile`
-    height: 2.5rem;
-    font-size: 0.9rem;
-  `}
+  &::placeholder { color: #a8a29e; font-weight: 400; }
 `;
 
 const InputLg = styled(Input)`
-  height: 2rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-
-  ${media.mobile`
-    height: 2.75rem;
-    font-size: 1rem;
-  `}
+  height: 3rem;
+  font-size: 1.05rem;
+  font-weight: 500;
 `;
 
 const Select = styled.select`
   width: 100%;
-  height: 1.75rem;
-  border: 1px solid ${COLORS.border};
-  border-radius: 2px;
-  padding: 0 0.5rem;
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 0.6875rem;
-  color: ${COLORS.dark};
-  background: ${COLORS.bgField};
-  transition: border-color 0.15s;
+  height: 2.75rem;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0 2rem 0 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  color: ${COLORS.ink};
+  transition: border-color 0.2s ease;
   box-sizing: border-box;
+  cursor: pointer;
 
   &:focus {
+    border: none;
+    border-bottom: 1px solid ${COLORS.ink};
     outline: none;
-    border-color: ${COLORS.black};
-    box-shadow: 0 0 0 1.5px rgba(0,0,0,0.08);
+    box-shadow: none;
+    background: transparent;
   }
 
-  ${media.mobile`
-    height: 2.5rem;
-    font-size: 0.9rem;
-  `}
-`;
-
-const TextArea = styled.textarea`
-  width: 100%;
-  min-height: 2.75rem;
-  border: 1px solid ${COLORS.border};
-  border-radius: 2px;
-  padding: 0.375rem 0.5rem;
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 0.625rem;
-  color: ${COLORS.dark};
-  background: ${COLORS.bgField};
-  resize: vertical;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: ${COLORS.black};
-    box-shadow: 0 0 0 1.5px rgba(0,0,0,0.08);
+  &:hover {
+    border-bottom: 1px solid ${COLORS.ink};
   }
-
-  ${media.mobile`
-    font-size: 0.85rem;
-    min-height: 4rem;
-    padding: 0.5rem;
-  `}
 `;
 
-const CheckGrid = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1.125rem;
-
-  ${media.tablet`
-    gap: 0.25rem 1rem;
-  `}
-  ${media.mobile`
-    flex-direction: column;
-    gap: 0.5rem;
-  `}
-`;
-
-const CheckItem = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 0.3125rem;
-  font-size: 0.625rem;
-  color: ${COLORS.mid};
-  cursor: pointer;
-  padding: 0.1875rem 0;
-
-  ${media.mobile`
-    font-size: 0.8rem;
-  `}
-`;
-
-const Checkbox = styled.input.attrs({ type: 'checkbox' })`
-  appearance: none;
-  width: 0.875rem;
-  height: 0.875rem;
-  border: 1.5px solid ${COLORS.border};
-  background: white;
-  cursor: pointer;
-  flex-shrink: 0;
-  position: relative;
-  border-radius: 2px;
-
-  &:checked {
-    background: ${COLORS.black};
-    border-color: ${COLORS.black};
-  }
-
-  &:checked::after {
-    content: '';
-    position: absolute;
-    top: 0.0625rem;
-    left: 0.25rem;
-    width: 0.25rem;
-    height: 0.5rem;
-    border: solid white;
-    border-width: 0 1.5px 1.5px 0;
-    transform: rotate(45deg);
-  }
-
-  ${media.mobile`
-    width: 1.1rem;
-    height: 1.1rem;
-  `}
-`;
-
-const ErrorMessage = styled.span`
-  color: ${COLORS.danger};
-  font-size: 0.6875rem;
-  margin-top: 0.25rem;
-  display: block;
-
-  ${media.mobile`
-    font-size: 0.75rem;
-  `}
-`;
-
-const AlertBox = styled.div`
-  padding: 0.75rem 1rem;
-  border-radius: ${COLORS.radiusSm};
-  font-size: 0.8125rem;
-  font-weight: 500;
-  text-align: center;
-  margin: 1rem;
+const TickIconWrapper = styled.div`
+  position: absolute;
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  background: ${props => props.type === 'error' ? COLORS.dangerLight : COLORS.successLight};
-  color: ${props => props.type === 'error' ? COLORS.danger : COLORS.success};
-  border: 1px solid ${props => props.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'};
+  color: ${COLORS.tickBlue};
+  pointer-events: none;
 `;
 
-const SignatureWrapper = styled.div`
-  border: 1px solid ${COLORS.border};
-  border-radius: 2px;
-  padding: 1rem;
-  background: ${COLORS.bgField};
+const ErrorMessage = styled.span`
+  color: ${COLORS.red};
+  font-size: 0.75rem;
+  margin-top: 0.3rem;
+  display: block;
+  font-family: 'Inter', sans-serif;
+`;
 
-  ${media.mobile`
-    padding: 0.625rem;
-  `}
+const SigCanvasWrap = styled.div`
+  border-bottom: 2px solid ${COLORS.ink};
+  border-radius: 4px 4px 0 0;
+  height: 14rem; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${COLORS.bone};
+  cursor: crosshair;
+  position: relative;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+  width: 100%;
+  box-shadow: inset 0 1px 2px rgba(21, 23, 26, 0.03);
+
+  & > canvas {
+    width: 100% !important;
+    height: 100% !important;
+    touch-action: none;
+  }
+
+  @media (max-width: 1024px) {
+    height: 14rem; 
+  }
+  @media (max-width: 768px) {
+    height: 18rem; 
+  }
+`;
+
+const SigGuideText = styled.div`
+  position: absolute;
+  bottom: 10px;
+  left: 15px;
+  font-family: 'Alex Brush', cursive;
+  font-size: 1.2rem;
+  color: ${COLORS.gray};
+  opacity: 0.3;
+  pointer-events: none;
+  user-select: none;
+`;
+
+const SignOffContainer = styled.div`
+  position: relative;
+  margin-top: 2.5rem;
+`;
+
+const SignOffGrid = styled.div`
+  display: grid;
+  grid-template-columns: 2.5fr 1.5fr;
+  gap: 3rem;
+  align-items: end;
+  grid-template-areas: "sig right";
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "sig"
+      "right";
+    gap: 2.5rem;
+  }
+`;
+
+const GridSig = styled.div` grid-area: sig; min-width: 0; `;
+
+const GridRight = styled.div`
+  grid-area: right;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: relative; 
+  padding-bottom: 1.5rem;
+`;
+
+const GridName = styled.div` min-width: 0; position: relative; z-index: 1; `;
+const GridDate = styled.div` min-width: 0; position: relative; z-index: 1; `;
+
+const StampWrapper = styled.div`
+  position: absolute;
+  bottom: 25px;
+  right: -15px;
+  width: 240px;
+  pointer-events: none;
+  transform: rotate(-12deg);
+  opacity: 0.92;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+  z-index: 10;
+
+  @media (max-width: 1024px) {
+    position: relative;
+    bottom: auto;
+    right: auto;
+    margin: 1rem auto 0;
+    transform: rotate(-6deg) scale(0.9);
+  }
 `;
 
 const ActionsContainer = styled.div`
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
   justify-content: flex-end;
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 0.5px solid ${COLORS.borderLight};
+  margin-top: 4rem;
+  padding-top: 2rem;
+  border-top: 1px solid ${COLORS.line};
   flex-wrap: wrap;
 
-  ${media.mobile`
+  @media (max-width: 768px) {
     flex-direction: column-reverse;
-    gap: 0.5rem;
-  `}
+    gap: 0.75rem;
+  }
 `;
 
 const PrimaryButton = styled.button`
-  background: ${COLORS.black};
-  color: ${COLORS.white};
+  background: ${COLORS.verdigris};
+  color: ${COLORS.bone};
   border: none;
-  border-radius: ${COLORS.radiusSm};
-  padding: 0.625rem 1.25rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
+  border-radius: 4px;
+  padding: 1rem 2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: ${COLORS.transition};
-  box-shadow: ${COLORS.shadowSm};
+  transition: all 0.2s ease;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 
   &:hover {
-    background: ${COLORS.dark};
+    background: ${COLORS.verdigrisDark};
     transform: translateY(-1px);
-    box-shadow: ${COLORS.shadowMd};
+    box-shadow: 0 4px 12px rgba(61, 79, 71, 0.2);
   }
 
   &:disabled {
-    background: ${COLORS.textMuted};
+    background: ${COLORS.gray};
     cursor: not-allowed;
+    opacity: 0.6;
     transform: none;
   }
 
-  ${media.mobile`
+  @media (max-width: 768px) {
     width: 100%;
-    padding: 0.85rem 1.25rem;
-    font-size: 0.9rem;
-  `}
+  }
 `;
 
-const SecondaryButton = styled.button`
-  background: ${COLORS.surface};
-  color: ${COLORS.text};
-  border: 1px solid ${COLORS.border};
-  border-radius: ${COLORS.radiusSm};
-  padding: 0.625rem 1.25rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
+const GoldButton = styled.button`
+  background: linear-gradient(135deg, ${COLORS.gold} 0%, ${COLORS.goldDark} 100%);
+  color: ${COLORS.ink};
+  border: 1px solid ${COLORS.goldDark};
+  border-radius: 4px;
+  padding: 1rem 2rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: ${COLORS.transition};
+  transition: all 0.2s ease;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(201, 162, 39, 0.25);
 
   &:hover {
-    background: ${COLORS.bg};
-    border-color: ${COLORS.textSecondary};
+    background: linear-gradient(135deg, ${COLORS.goldDark} 0%, ${COLORS.gold} 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(201, 162, 39, 0.4);
+    color: ${COLORS.white};
   }
 
-  ${media.mobile`
+  &:disabled {
+    background: ${COLORS.gray};
+    color: ${COLORS.bone};
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+  }
+
+  @media (max-width: 768px) {
     width: 100%;
-    padding: 0.85rem 1.25rem;
-    font-size: 0.9rem;
-  `}
+  }
 `;
 
+const BlackButton = styled.button`
+  background: ${COLORS.ink};
+  color: ${COLORS.bone};
+  border: 1px solid ${COLORS.ink};
+  border-radius: 4px;
+  padding: 1rem 2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(21, 23, 26, 0.2);
 
-const getTenantSlug = () => {
-    return localStorage.getItem('tenantSlug') ||
-        localStorage.getItem('tenant_slug') ||
-        (() => {
-            try {
-                const user = JSON.parse(localStorage.getItem('user') || '{}');
-                return user.tenantSlug || user.tenant?.slug || 'default';
-            } catch {
-                return 'default';
-            }
-        })();
+  &:hover {
+    background: #2a2d31;
+    border-color: #2a2d31;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(21, 23, 26, 0.35);
+  }
+
+  &:disabled {
+    background: ${COLORS.gray};
+    border-color: ${COLORS.gray};
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
+`;
+
+const ClearSigButton = styled.button`
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: ${COLORS.gray};
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+
+  &:hover {
+    color: ${COLORS.red};
+  }
+`;
+
+// ─── Official Footer & Barcode Panel ───────────────────────────────
+const FooterPanel = styled.div`
+background: ${COLORS.white};
+padding: 1rem 2rem; 
+display: flex;
+justify-content: space-between;
+align-items: center;
+gap: 2rem;
+flex-wrap: wrap;
+
+ @media (max-width: 768px) {
+ flex-direction: column;
+ padding: 2rem 1.5rem;
+ text-align: center;
+ }
+`;
+
+const FooterText = styled.div`
+font-size: 0.65rem;
+letter-spacing: 0.1em;
+text-transform: uppercase;
+color: ${COLORS.gray};
+font-family: 'JetBrains Mono', monospace;
+text-align: left;
+line-height: 1.6;
+ 
+@media (max-width: 768px) {
+text-align: center;
+
+}
+`;
+
+const Barcode = ({ value }) => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      try {
+        const text = value || 'AWAITING-ID';
+        bwipjs.toCanvas(canvasRef.current, {
+          bcid: 'code128',
+          text: text,
+          scale: 4,
+          height: 10,
+          includetext: true,
+          textxalign: 'center',
+          textsize: 13,
+          paddingwidth: 10,
+          paddingheight: 5,
+        });
+      } catch (e) {
+        console.error("Barcode generation error:", e);
+      }
+    }
+  }, [value]);
+
+  return <canvas ref={canvasRef} style={{ width: '100%', maxWidth: '250px', height: 'auto' }} />;
 };
 
+const TextArea = styled.textarea`
+  width: 100%;
+  min-height: 5.5rem;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0.5rem 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: ${COLORS.ink};
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+  resize: vertical;
+
+  &:focus {
+    border: none;
+    border-bottom: 1px solid ${COLORS.ink};
+    outline: none;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  &:hover {
+    border-bottom: 1px solid ${COLORS.ink};
+  }
+
+  &::placeholder { color: #a8a29e; font-weight: 400; }
+`;
+
 const DeceasedReleaseForm = () => {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const { id } = useParams();
-    const sigPadRef = useRef(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { id } = useParams();
 
-    const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState({});
-    const [notification, setNotification] = useState({
-        isVisible: false, type: 'info', title: '', message: '',
-    });
-    const [deceasedData, setDeceasedData] = useState(null);
-    const [isLoadingDeceased, setIsLoadingDeceased] = useState(false);
-    const [releaseId, setReleaseId] = useState('');
-    const [deceasedList, setDeceasedList] = useState([]);
-    const [isLoadingDeceasedList, setIsLoadingDeceasedList] = useState(false);
-
-    const getCurrentTime = () => {
-        const now = new Date();
-        return now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    };
-
-    const initialFormData = {
-        admission_number: location.state?.permitNumber || '',
-        date_admitted: new Date().toISOString().split('T')[0],
-        time_received: getCurrentTime(), // Hidden from UI, auto-detected
-        full_name: '',
-        gender: '',
-        age: '',
-        date_of_birth: '',
-        date_of_death: '',
-        cause_of_death: '',
-        body_status: 'Released',
-        contact_person: '',
-        id_number: '',
-        tel_number: '',
-        release_date: new Date().toISOString().split('T')[0],
-        release_time: getCurrentTime(), // Hidden from UI, auto-detected
-        released_by: '',
-        release_notes: '',
-        next_kin: '',
-        relationship: '',
-        date_of_removal: new Date().toISOString().split('T')[0],
-        permit_number: '',
-        mode_of_transport: 'hearse',
-        terms_accepted: false,
-        everything_paid: false,
-    };
-
-    const [formData, setFormData] = useState(initialFormData);
-
-    // Fetch deceased list for dropdown
-    useEffect(() => {
-        const fetchDeceasedList = async () => {
-            const tenantSlug = getTenantSlug();
-            setIsLoadingDeceasedList(true);
-            try {
-                const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.LIST}`, {
-                    headers: {
-                        'x-tenant-slug': tenantSlug,
-                        'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
-                    },
-                });
-
-                const result = await response.json();
-                if (response.ok && result.data) {
-                    // Removed TS syntax (d: any) -> (d)
-                    const unreleased = result.data.filter((d) => 
-                        d.body_status !== 'Released' && d.body_status !== 'Transferred'
-                    );
-                    setDeceasedList(unreleased || []);
-                }
-            } catch (error) {
-                console.error('Error fetching deceased list:', error);
-            } finally {
-                setIsLoadingDeceasedList(false);
-            }
-        };
-
-        fetchDeceasedList();
-    }, []);
-
-    // Fetch deceased data if ID is provided
-    useEffect(() => {
-        const fetchDeceasedData = async () => {
-            const deceasedId = id || location.state?.deceasedId;
-            if (!deceasedId) return;
-
-            setIsLoadingDeceased(true);
-            try {
-                const tenantSlug = getTenantSlug();
-                const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.DETAIL(deceasedId)}`, {
-                    headers: {
-                        'x-tenant-slug': tenantSlug,
-                        'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
-                    },
-                });
-
-                const result = await response.json();
-                if (response.ok && result.data) {
-                    setDeceasedData(result.data);
-                    // Pre-fill form with existing data
-                    setFormData(prev => ({
-                        ...prev,
-                        ...result.data,
-                        release_date: new Date().toISOString().split('T')[0],
-                        release_time: getCurrentTime(),
-                    }));
-                }
-            } catch (error) {
-                console.error('Error fetching deceased data:', error);
-            } finally {
-                setIsLoadingDeceased(false);
-            }
-        };
-
-        fetchDeceasedData();
-    }, [id, location.state]);
-
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData(prev => ({ 
-            ...prev, 
-            [name]: type === 'checkbox' ? checked : value 
-        }));
-        if (errors[name]) {
-            setErrors(prev => ({ ...prev, [name]: '' }));
-        }
-    };
-
-    const handleAdmissionChange = (e) => {
-        const admissionNumber = e.target.value;
-        const selectedDeceased = deceasedList.find(d => d.admission_number === admissionNumber);
-        
-        setFormData(prev => ({
-            ...prev,
-            admission_number: admissionNumber,
-            ...(selectedDeceased && {
-                full_name: selectedDeceased.full_name || '',
-                gender: selectedDeceased.gender || '',
-                age: selectedDeceased.age || '',
-                date_of_birth: selectedDeceased.date_of_birth || '',
-                date_of_death: selectedDeceased.date_of_death || '',
-                cause_of_death: selectedDeceased.cause_of_death || '',
-                contact_person: selectedDeceased.contact_person || '',
-                id_number: selectedDeceased.national_id || '',
-                tel_number: selectedDeceased.tell_no || '',
-            })
-        }));
-    };
-
-    const validateForm = () => {
-        const newErrors = {};
-        if (!formData.admission_number) newErrors.admission_number = 'Admission number is required';
-        if (!formData.full_name.trim()) newErrors.full_name = 'Full name is required';
-        if (!formData.gender) newErrors.gender = 'Gender is required';
-        if (!formData.date_admitted) newErrors.date_admitted = 'Date admitted is required';
-        if (!formData.release_date) newErrors.release_date = 'Release date is required';
-        if (!formData.released_by.trim()) newErrors.released_by = 'Released by is required';
-        if (!formData.next_kin.trim()) newErrors.next_kin = 'Next of kin is required';
-        if (!formData.id_number.trim()) newErrors.id_number = 'ID number is required';
-        if (!formData.tel_number.trim()) newErrors.tel_number = 'Telephone number is required';
-        if (!formData.terms_accepted) newErrors.terms_accepted = 'You must accept the terms';
-        if (sigPadRef.current?.isEmpty()) {
-            newErrors.signature = 'Signature is required to proceed';
-        }
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleSubmit = async () => {
-        if (!validateForm()) return;
-
-        setLoading(true);
+  const getTenantSlug = () => {
+    return localStorage.getItem('tenantSlug') ||
+      localStorage.getItem('tenant_slug') ||
+      (() => {
         try {
-            const tenantSlug = getTenantSlug();
-            const signatureData = sigPadRef.current?.toDataURL();
-            const freshTime = getCurrentTime(); // Generate fresh time right before submit
-
-            const payload = {
-                ...formData,
-                time_received: freshTime,
-                release_time: freshTime,
-                age: formData.age ? parseInt(formData.age, 10) : null,
-                signature: signatureData,
-                name_of_deceased: formData.full_name,
-                tell_number: formData.tel_number,
-            };
-
-            const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.BODYCHECKOUT.CHECKOUT}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-tenant-slug': tenantSlug,
-                    'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.message || 'Release failed');
-            }
-
-            // Set the release ID from backend response
-            if (result.data && result.data.release_id) {
-                setReleaseId(result.data.release_id);
-            }
-
-            setNotification({
-                isVisible: true,
-                type: 'success',
-                title: 'Release Successful',
-                message: `Body release created successfully. Release ID: ${result.data?.release_id || 'Generated'}`,
-            });
-
-            setTimeout(() => {
-                navigate(`/tenant/${tenantSlug}/all-deceased`);
-            }, 3000);
-
-        } catch (error) {
-            setNotification({
-                isVisible: true,
-                type: 'error',
-                title: 'Release Failed',
-                message: error.message || 'Something went wrong.',
-            });
-        } finally {
-            setLoading(false);
+          const user = JSON.parse(localStorage.getItem('user') || '{}');
+          return user.tenantSlug || user.tenant?.slug || 'default';
+        } catch {
+          return 'default';
         }
-    };
+      })();
+  };
+  const sigPadRef1 = useRef(null);
 
-    const handleClear = () => {
-        setFormData({
-            ...initialFormData,
-            time_received: getCurrentTime(),
-            release_time: getCurrentTime(),
-            release_date: new Date().toISOString().split('T')[0],
-            date_admitted: new Date().toISOString().split('T')[0],
-            date_of_removal: new Date().toISOString().split('T')[0],
+  const [loading, setLoading] = useState(false);
+  const [isLoadingDeceasedList, setIsLoadingDeceasedList] = useState(false);
+  const [isLoadingDeceased, setIsLoadingDeceased] = useState(false);
+  const [deceasedList, setDeceasedList] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState({ type: '', text: '' });
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [releaseId, setReleaseId] = useState('');
+
+  const branding = useMemo(() => resolveTenantBranding(), []);
+
+  const {
+    name: tenantName,
+    displayPhone,
+    displayEmail,
+    displayLocation,
+    tenantCountry,
+    displayBranch,
+    displayAddress,
+    tenantLogoUrl,
+    fallback
+  } = branding;
+
+  const getLoggedInUserEmail = () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      return user.email || user.userEmail || '';
+    } catch {
+      return '';
+    }
+  };
+
+  const getCurrentTime = () => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  const initialFormData = {
+    admission_number: location.state?.permitNumber || '',
+    date_admitted: new Date().toISOString().split('T')[0],
+    time_received: getCurrentTime(),
+    full_name: '',
+    gender: '',
+    age: '',
+    date_of_birth: '',
+    date_of_death: '',
+    cause_of_death: '',
+    place_of_death: '',
+    body_status: 'Released',
+    contact_person: '',
+    next_kin: '',
+    relationship: '',
+    id_type: 'National ID',
+    id_number: '',
+    tel_number: '',
+    release_date: new Date().toISOString().split('T')[0],
+    release_time: getCurrentTime(),
+    released_by: '',
+    release_notes: '',
+    date_of_removal: new Date().toISOString().split('T')[0],
+    permit_number: '',
+    mode_of_transport: 'hearse',
+    terms_accepted: false,
+    everything_paid: false,
+    signature: '',
+    verified_by: getLoggedInUserEmail(),
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
+
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      time_received: getCurrentTime(),
+      release_time: getCurrentTime(),
+    }));
+  }, []);
+
+  // Fetch deceased list for the admission dropdown (only unreleased records)
+  useEffect(() => {
+    const fetchDeceasedList = async () => {
+      const tenantSlug = getTenantSlug();
+      setIsLoadingDeceasedList(true);
+      try {
+        const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.LIST}`, {
+          headers: {
+            'x-tenant-slug': tenantSlug,
+            'Authorization': `Bearer ${getAuthToken()}`,
+          },
         });
-        setErrors({});
-        setReleaseId('');
-        sigPadRef.current?.clear();
+
+        const result = await response.json();
+        if (response.ok && result.data) {
+          const unreleased = result.data.filter((d) =>
+            d.body_status !== 'Released' && d.body_status !== 'Transferred'
+          );
+          setDeceasedList(unreleased || []);
+        }
+      } catch (error) {
+        console.error('Error fetching deceased list:', error);
+      } finally {
+        setIsLoadingDeceasedList(false);
+      }
     };
 
-    if (isLoadingDeceased) {
-        return (
-            <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <Loader2 size={32} color={COLORS.black} className="animate-spin" />
-            </Container>
-        );
+    fetchDeceasedList();
+  }, []);
+
+  // Pre-fill form when arriving with a deceased ID
+  useEffect(() => {
+    const fetchDeceasedData = async () => {
+      const deceasedId =
+        id ||
+        location.state?.deceasedId ||
+        location.state?.deceasedData?.deceased_id ||
+        location.state?.deceasedData?.id;
+      if (!deceasedId) return;
+
+      setIsLoadingDeceased(true);
+      try {
+        const tenantSlug = getTenantSlug();
+        const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.DETAIL(deceasedId)}`, {
+          headers: {
+            'x-tenant-slug': tenantSlug,
+            'Authorization': `Bearer ${getAuthToken()}`,
+          },
+        });
+
+        const result = await response.json();
+        if (response.ok && result.data) {
+          setFormData(prev => ({
+            ...prev,
+            ...result.data,
+            admission_number: result.data.admission_number || prev.admission_number,
+            release_date: new Date().toISOString().split('T')[0],
+            release_time: getCurrentTime(),
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching deceased data:', error);
+      } finally {
+        setIsLoadingDeceased(false);
+      }
+    };
+
+    fetchDeceasedData();
+  }, [id, location.state]);
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    if (message.text) setMessage({ type: '', text: '' });
+  };
+
+  const handleAdmissionChange = (e) => {
+    const admissionNumber = e.target.value;
+    const selectedDeceased = deceasedList.find(d => d.admission_number === admissionNumber);
+
+    setFormData(prev => ({
+      ...prev,
+      admission_number: admissionNumber,
+      ...(selectedDeceased && {
+        full_name: selectedDeceased.full_name || '',
+        gender: selectedDeceased.gender || '',
+        age: selectedDeceased.age || '',
+        date_of_birth: selectedDeceased.date_of_birth || '',
+        date_of_death: selectedDeceased.date_of_death || '',
+        cause_of_death: selectedDeceased.cause_of_death || '',
+        place_of_death: selectedDeceased.place_of_death || '',
+        next_kin: selectedDeceased.contact_person || selectedDeceased.next_kin || '',
+        contact_person: selectedDeceased.contact_person || '',
+        relationship: selectedDeceased.relationship || '',
+        id_number: selectedDeceased.national_id || selectedDeceased.id_number || '',
+        tel_number: selectedDeceased.tell_no || selectedDeceased.tel_number || '',
+        date_admitted: selectedDeceased.date_admitted || prev.date_admitted,
+      }),
+    }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.admission_number) newErrors.admission_number = 'Admission number is required';
+    if (!formData.full_name.trim()) newErrors.full_name = 'Full name is required';
+    if (!formData.gender) newErrors.gender = 'Gender is required';
+    if (!formData.date_admitted) newErrors.date_admitted = 'Date admitted is required';
+    if (!formData.release_date) newErrors.release_date = 'Release date is required';
+    if (!formData.released_by.trim()) newErrors.released_by = 'Released by is required';
+    if (!formData.next_kin.trim()) newErrors.next_kin = 'Next of kin is required';
+    if (!formData.id_number.trim()) newErrors.id_number = 'ID number is required';
+    if (!formData.tel_number.trim()) newErrors.tel_number = 'Telephone number is required';
+    if (!formData.terms_accepted) newErrors.terms_accepted = 'You must accept the terms';
+
+    if (formData.tel_number && !/^(\+254|0)[17]\d{8}$/.test(formData.tel_number.replace(/\s/g, ''))) {
+      newErrors.tel_number = 'Please enter a valid Kenyan phone number';
     }
 
+    if (sigPadRef1.current?.isEmpty()) {
+      newErrors.signature = 'Signature is required to proceed';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault();
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const tenantSlug = getTenantSlug();
+      const token = getAuthToken();
+      const signatureData = sigPadRef1.current?.toDataURL();
+      const freshTime = getCurrentTime();
+
+      const payload = {
+        ...formData,
+        time_received: freshTime,
+        release_time: freshTime,
+        age: formData.age ? parseInt(formData.age, 10) : null,
+        body_status: 'Released',
+        verified_by: formData.verified_by || getLoggedInUserEmail() || null,
+        signature: signatureData,
+        name_of_deceased: formData.full_name,
+        tell_number: formData.tel_number,
+      };
+
+      const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.BODYCHECKOUT.CHECKOUT}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-slug': tenantSlug,
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Release failed');
+      }
+
+      setShowSuccess(true);
+
+      if (result.data && result.data.release_id) {
+        setReleaseId(result.data.release_id);
+      }
+
+      setFormData({
+        ...initialFormData,
+        verified_by: getLoggedInUserEmail(),
+        time_received: getCurrentTime(),
+        release_time: getCurrentTime(),
+        date_admitted: new Date().toISOString().split('T')[0],
+        release_date: new Date().toISOString().split('T')[0],
+        date_of_removal: new Date().toISOString().split('T')[0],
+      });
+      sigPadRef1.current?.clear();
+      setErrors({});
+
+      setTimeout(() => {
+        navigate(`/tenant/${tenantSlug}/all-deceased`);
+      }, 3000);
+
+    } catch (error) {
+      toast.error(error.message || 'Release failed. Please try again.');
+      setMessage({
+        type: 'error',
+        text: error.message || 'Something went wrong. Please try again.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClear = () => {
+    setFormData({
+      ...initialFormData,
+      verified_by: getLoggedInUserEmail(),
+      time_received: getCurrentTime(),
+      release_time: getCurrentTime(),
+      date_admitted: new Date().toISOString().split('T')[0],
+      release_date: new Date().toISOString().split('T')[0],
+      date_of_removal: new Date().toISOString().split('T')[0],
+    });
+    setErrors({});
+    setMessage({ type: '', text: '' });
+    setReleaseId('');
+    sigPadRef1.current?.clear();
+  };
+
+  const hasValue = (val) => val !== undefined && val !== null && String(val).trim().length > 0;
+
+  if (isLoadingDeceased && !showSuccess) {
     return (
-        <Container>
-            {notification.isVisible && (
-                <AlertBox type={notification.type}>
-                    {notification.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
-                    <strong>{notification.title}:</strong> {notification.message}
-                </AlertBox>
-            )}
-
-            <Page>
-                {/* Top Bar */}
-                <TopBar>
-                    <TopBarLeft>
-                        <SaasBrand>FuneralOS — Release Management</SaasBrand>
-                        <Title>Release of Remains</Title>
-                        <Subtitle>Authorization for Removal & Transportation of Deceased</Subtitle>
-                    </TopBarLeft>
-                    <TopBarRight>
-                        <ReleaseIdBlock>
-                            <ReleaseIdBlockLabel>Release ID</ReleaseIdBlockLabel>
-                            <ReleaseIdBlockValue>{releaseId || 'RLS-XXXXXX-XXXX'}</ReleaseIdBlockValue>
-                        </ReleaseIdBlock>
-                        <TopMeta>
-                            <TopMetaItem>
-                                <TopMetaLabel>Date Issued</TopMetaLabel>
-                                <TopMetaValue>{formData.release_date}</TopMetaValue>
-                            </TopMetaItem>
-                        </TopMeta>
-                    </TopBarRight>
-                </TopBar>
-
-                <SubLine>
-                    <span>Confidential Legal Document</span>
-                    <span>This form constitutes a binding legal authorization</span>
-                </SubLine>
-
-                {/* Section 1: Admission Details */}
-                <Section>
-                    <SectionHead>
-                        <SectionNum>01</SectionNum>
-                        <SectionTitle>Admission Details</SectionTitle>
-                    </SectionHead>
-                    <SectionBody>
-                        <Row>
-                            <Col2>
-                                <Label>Admission Number <span style={{ color: COLORS.danger }}>*</span></Label>
-                                <Select
-                                    name="admission_number"
-                                    value={formData.admission_number}
-                                    onChange={handleAdmissionChange}
-                                    disabled={!!id || !!location.state?.deceasedId}
-                                >
-                                    <option value="">Select deceased record</option>
-                                    {isLoadingDeceasedList ? (
-                                        <option value="" disabled>Loading records...</option>
-                                    ) : (
-                                        deceasedList.map((deceased) => (
-                                            <option key={deceased.deceased_id} value={deceased.admission_number}>
-                                                {deceased.admission_number} - {deceased.full_name}
-                                            </option>
-                                        ))
-                                    )}
-                                </Select>
-                                {errors.admission_number && <ErrorMessage>{errors.admission_number}</ErrorMessage>}
-                            </Col2>
-                            <Col06>
-                                <Label>Date Admitted <span style={{ color: COLORS.danger }}>*</span></Label>
-                                <Input
-                                    type="date"
-                                    name="date_admitted"
-                                    value={formData.date_admitted}
-                                    onChange={handleChange}
-                                />
-                                {errors.date_admitted && <ErrorMessage>{errors.date_admitted}</ErrorMessage>}
-                            </Col06>
-                            {/* Time Received Hidden & Auto-Generated */}
-                        </Row>
-                    </SectionBody>
-                </Section>
-
-                {/* Section 2: Deceased Information */}
-                <Section>
-                    <SectionHead>
-                        <SectionNum>02</SectionNum>
-                        <SectionTitle>Deceased Information</SectionTitle>
-                    </SectionHead>
-                    <SectionBody>
-                        <Row>
-                            <Col2>
-                                <Label>Full Legal Name of Deceased <span style={{ color: COLORS.danger }}>*</span></Label>
-                                <InputLg
-                                    type="text"
-                                    name="full_name"
-                                    value={formData.full_name}
-                                    onChange={handleChange}
-                                    placeholder="Last, First, Middle"
-                                />
-                                {errors.full_name && <ErrorMessage>{errors.full_name}</ErrorMessage>}
-                            </Col2>
-                            <Col04>
-                                <Label>Sex</Label>
-                                <Select
-                                    name="gender"
-                                    value={formData.gender}
-                                    onChange={handleChange}
-                                >
-                                    <option value="" disabled>Select</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                </Select>
-                                {errors.gender && <ErrorMessage>{errors.gender}</ErrorMessage>}
-                            </Col04>
-                        </Row>
-                        <Row>
-                            <Col>
-                                <Label>Date of Birth</Label>
-                                <Input
-                                    type="date"
-                                    name="date_of_birth"
-                                    value={formData.date_of_birth}
-                                    onChange={handleChange}
-                                />
-                            </Col>
-                            <Col>
-                                <Label>Date of Death</Label>
-                                <Input
-                                    type="date"
-                                    name="date_of_death"
-                                    value={formData.date_of_death}
-                                    onChange={handleChange}
-                                />
-                            </Col>
-                            <Col05>
-                                <Label>Age</Label>
-                                <Input
-                                    type="number"
-                                    name="age"
-                                    value={formData.age}
-                                    onChange={handleChange}
-                                    placeholder="Yrs"
-                                    min="0"
-                                    max="150"
-                                />
-                            </Col05>
-                        </Row>
-                        <Row>
-                            <Col2>
-                                <Label>Place of Death</Label>
-                                <Input
-                                    type="text"
-                                    name="cause_of_death"
-                                    value={formData.cause_of_death}
-                                    onChange={handleChange}
-                                    placeholder="Facility Name, Address"
-                                />
-                            </Col2>
-                            <Col>
-                                <Label>Body Status</Label>
-                                <Select
-                                    name="body_status"
-                                    value={formData.body_status}
-                                    onChange={handleChange}
-                                >
-                                    <option value="" disabled>Select status</option>
-                                    <option value="In Morgue">In Morgue</option>
-                                    <option value="Pending Autopsy">Pending Autopsy</option>
-                                    <option value="Released">Released</option>
-                                    <option value="Transferred">Transferred</option>
-                                </Select>
-                            </Col>
-                        </Row>
-                    </SectionBody>
-                </Section>
-
-                {/* Section 3: Next of Kin */}
-                <Section>
-                    <SectionHead>
-                        <SectionNum>03</SectionNum>
-                        <SectionTitle>Next of Kin / Authorizing Party</SectionTitle>
-                    </SectionHead>
-                    <SectionBody>
-                        <Row>
-                            <Col2>
-                                <Label>Next of Kin Full Name <span style={{ color: COLORS.danger }}>*</span></Label>
-                                <Input
-                                    type="text"
-                                    name="next_kin"
-                                    value={formData.next_kin}
-                                    onChange={handleChange}
-                                    placeholder="Last, First, Middle"
-                                />
-                                {errors.next_kin && <ErrorMessage>{errors.next_kin}</ErrorMessage>}
-                            </Col2>
-                            <Col>
-                                <Label>Relationship</Label>
-                                <Input
-                                    type="text"
-                                    name="relationship"
-                                    value={formData.relationship}
-                                    onChange={handleChange}
-                                    placeholder="Spouse, Child, Parent, etc."
-                                />
-                            </Col>
-                        </Row>
-                        <Row>
-                            <Col2>
-                                <Label>Address</Label>
-                                <Input
-                                    type="text"
-                                    name="contact_person"
-                                    value={formData.contact_person}
-                                    onChange={handleChange}
-                                    placeholder="Street Address, City, State, ZIP"
-                                />
-                            </Col2>
-                            <Col06>
-                                <Label>Telephone No. <span style={{ color: COLORS.danger }}>*</span></Label>
-                                <Input
-                                    type="tel"
-                                    name="tel_number"
-                                    value={formData.tel_number}
-                                    onChange={handleChange}
-                                    placeholder="(XXX) XXX-XXXX"
-                                />
-                                {errors.tel_number && <ErrorMessage>{errors.tel_number}</ErrorMessage>}
-                            </Col06>
-                        </Row>
-                        <Row>
-                            <Col>
-                                <Label>ID Number (Govt. Issued) <span style={{ color: COLORS.danger }}>*</span></Label>
-                                <Input
-                                    type="text"
-                                    name="id_number"
-                                    value={formData.id_number}
-                                    onChange={handleChange}
-                                    placeholder="Driver's License / State ID No."
-                                />
-                                {errors.id_number && <ErrorMessage>{errors.id_number}</ErrorMessage>}
-                            </Col>
-                        </Row>
-                    </SectionBody>
-                </Section>
-
-                {/* Section 4: Removal & Transportation */}
-                <Section>
-                    <SectionHead>
-                        <SectionNum>04</SectionNum>
-                        <SectionTitle>Removal & Transportation Details</SectionTitle>
-                    </SectionHead>
-                    <SectionBody>
-                        <Row>
-                            <Col>
-                                <Label>Date of Removal</Label>
-                                <Input
-                                    type="date"
-                                    name="date_of_removal"
-                                    value={formData.date_of_removal}
-                                    onChange={handleChange}
-                                />
-                            </Col>
-                            {/* Time of Removal Hidden & Auto-Generated */}
-                            <Col06>
-                                <Label>Permit Number</Label>
-                                <Input
-                                    type="text"
-                                    name="permit_number"
-                                    value={formData.permit_number}
-                                    onChange={handleChange}
-                                    placeholder="Permit No."
-                                />
-                            </Col06>
-                            <Col>
-                                <Label>Mode of Transport</Label>
-                                <Select
-                                    name="mode_of_transport"
-                                    value={formData.mode_of_transport}
-                                    onChange={handleChange}
-                                >
-                                    <option value="hearse">Hearse / Van</option>
-                                    <option value="air">Air Transport</option>
-                                    <option value="rail">Rail</option>
-                                    <option value="private">Private Vehicle</option>
-                                    <option value="courier">Courier Service</option>
-                                    <option value="other">Other</option>
-                                </Select>
-                            </Col>
-                        </Row>
-                    </SectionBody>
-                </Section>
-
-                {/* Section 5: Release Information */}
-                <Section>
-                    <SectionHead>
-                        <SectionNum>05</SectionNum>
-                        <SectionTitle>Release Information</SectionTitle>
-                    </SectionHead>
-                    <SectionBody>
-                        <Row>
-                            <Col>
-                                <Label>Release Date <span style={{ color: COLORS.danger }}>*</span></Label>
-                                <Input
-                                    type="date"
-                                    name="release_date"
-                                    value={formData.release_date}
-                                    onChange={handleChange}
-                                />
-                                {errors.release_date && <ErrorMessage>{errors.release_date}</ErrorMessage>}
-                            </Col>
-                            <Col>
-                                <Label>Released By <span style={{ color: COLORS.danger }}>*</span></Label>
-                                <Input
-                                    type="text"
-                                    name="released_by"
-                                    value={formData.released_by}
-                                    onChange={handleChange}
-                                    placeholder="Name of person releasing the body"
-                                />
-                                {errors.released_by && <ErrorMessage>{errors.released_by}</ErrorMessage>}
-                            </Col>
-                        </Row>
-                        <Row>
-                            <Col2>
-                                <Label>Release Notes</Label>
-                                <TextArea
-                                    name="release_notes"
-                                    value={formData.release_notes}
-                                    onChange={handleChange}
-                                    placeholder="Any additional notes about the release..."
-                                    rows="2"
-                                />
-                            </Col2>
-                        </Row>
-                    </SectionBody>
-                </Section>
-
-                {/* Section 6: Authorizations */}
-                <Section>
-                    <SectionHead>
-                        <SectionNum>06</SectionNum>
-                        <SectionTitle>Authorizations</SectionTitle>
-                    </SectionHead>
-                    <SectionBody>
-                        <CheckGrid>
-                            <CheckItem>
-                                <Checkbox checked readOnly />
-                                <span>Release remains from place of death</span>
-                            </CheckItem>
-                            <CheckItem>
-                                <Checkbox checked readOnly />
-                                <span>Authorize transportation as specified above</span>
-                            </CheckItem>
-                            <CheckItem>
-                                <Checkbox />
-                                <span>Embalming authorized</span>
-                            </CheckItem>
-                            <CheckItem>
-                                <Checkbox />
-                                <span>Cremation authorized</span>
-                            </CheckItem>
-                            <CheckItem>
-                                <Checkbox />
-                                <span>Pacemaker / implant removal</span>
-                            </CheckItem>
-                            <CheckItem>
-                                <Checkbox />
-                                <span>Out-of-state transport</span>
-                            </CheckItem>
-                            <CheckItem>
-                                <Checkbox />
-                                <span>Release medical records</span>
-                            </CheckItem>
-                            <CheckItem>
-                                <Checkbox />
-                                <span>Hold remains for pickup</span>
-                            </CheckItem>
-                        </CheckGrid>
-                    </SectionBody>
-                </Section>
-
-                {/* Section 7: Terms & Conditions */}
-                <Section>
-                    <SectionHead>
-                        <SectionNum>07</SectionNum>
-                        <SectionTitle>Terms & Conditions</SectionTitle>
-                    </SectionHead>
-                    <SectionBody>
-                        <div style={{ marginBottom: '0.75rem' }}>
-                            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                                <Checkbox
-                                    name="terms_accepted"
-                                    checked={formData.terms_accepted}
-                                    onChange={handleChange}
-                                />
-                                <span style={{ fontSize: '0.6875rem', color: COLORS.mid, lineHeight: '1.5' }}>
-                                    I hereby authorize the release and transportation of the deceased. I certify that I am the legally authorized next of kin or representative and have the right to make this authorization.
-                                </span>
-                            </label>
-                            {errors.terms_accepted && <ErrorMessage>{errors.terms_accepted}</ErrorMessage>}
-                        </div>
-                        <div>
-                            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                                <Checkbox
-                                    name="everything_paid"
-                                    checked={formData.everything_paid}
-                                    onChange={handleChange}
-                                />
-                                <span style={{ fontSize: '0.6875rem', color: COLORS.mid, lineHeight: '1.5' }}>
-                                    I confirm that all outstanding charges and payments have been settled.
-                                </span>
-                            </label>
-                        </div>
-                    </SectionBody>
-                </Section>
-
-                {/* Section 8: Signature */}
-                <Section>
-                    <SectionHead>
-                        <SectionNum>08</SectionNum>
-                        <SectionTitle>Authorization Signature</SectionTitle>
-                    </SectionHead>
-                    <SectionBody>
-                        <SignatureWrapper>
-                            <ReusableSignaturePad
-                                ref={sigPadRef}
-                                penColor="#1A1D24"
-                                placeholder="Sign here to authorize release"
-                                showSave={false}
-                            />
-                            {errors.signature && (
-                                <ErrorMessage style={{ marginTop: '0.5rem' }}>{errors.signature}</ErrorMessage>
-                            )}
-                        </SignatureWrapper>
-                    </SectionBody>
-                </Section>
-
-                {/* Actions */}
-                <ActionsContainer>
-                    <SecondaryButton type="button" onClick={handleClear}>
-                        <RotateCcw size={15} /> Clear
-                    </SecondaryButton>
-                    <PrimaryButton type="button" onClick={handleSubmit} disabled={loading}>
-                        {loading ? (
-                            <>
-                                <Loader2 size={15} className="animate-spin" />
-                                Processing...
-                            </>
-                        ) : (
-                            <>
-                                <Check size={15} />
-                                {id || location.state?.deceasedId ? 'Update & Release' : 'Register & Release'}
-                            </>
-                        )}
-                    </PrimaryButton>
-                </ActionsContainer>
-            </Page>
-        </Container>
+      <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Loader2 size={48} color={COLORS.ink} className="animate-spin" />
+          <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Inter', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Loading Record...</p>
+        </div>
+      </Container>
     );
+  }
+
+  if (isSubmitting) {
+    return (
+      <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Loader2 size={48} color={COLORS.ink} className="animate-spin" />
+          <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Inter', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Processing Release...</p>
+        </div>
+      </Container>
+    );
+  }
+
+  return (
+    <Container>
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        limit={3}
+      />
+
+      <FormSheet>
+        <Watermark>OFFICIAL RECORD</Watermark>
+
+        <ContentWrapper>
+          <Letterhead>
+            <BrandLeftWrapper>
+              <LogoBox>
+                {tenantLogoUrl && (
+                  <img
+                    src={tenantLogoUrl}
+                    alt={tenantName}
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                )}
+              </LogoBox>
+              <BrandDetails>
+                <BrandName>{tenantName}</BrandName>
+                {displayLocation && (
+                  <BrandMeta><MapPin size={12} /> {displayBranch ? `${displayBranch} · ` : ''}{displayLocation}{tenantCountry ? `, ${tenantCountry}` : ''}</BrandMeta>
+                )}
+                <BrandMeta><Phone size={12} /> {displayPhone || fallback.phone}{displayEmail ? ` · ${displayEmail}` : fallback.email ? ` · ${fallback.email}` : ''}</BrandMeta>
+                <BrandMeta><MapPin size={12} /> {displayAddress || fallback.address || fallback.location}</BrandMeta>
+              </BrandDetails>
+            </BrandLeftWrapper>
+
+            <BrandRightWrapper>
+              <DocTitle>Release Record</DocTitle>
+              <BarcodeWrapper>
+                <Barcode value={formData.admission_number} />
+                <FileIdText>
+                  File ID:
+                  <span>
+                    {isLoadingDeceasedList ? 'Loading...' : (formData.admission_number || 'Select deceased')}
+                  </span>
+                </FileIdText>
+              </BarcodeWrapper>
+            </BrandRightWrapper>
+          </Letterhead>
+
+          <FormBody>
+            <form onSubmit={handleSubmit} noValidate>
+              {/* Section 1 */}
+              <Section>
+                <SectionHead>
+                  <SectionNum>01</SectionNum>
+                  <SectionTitle>Receiving & Facility Information</SectionTitle>
+                </SectionHead>
+
+                <Row>
+                  <Col2>
+                    <Label>Admission Number <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <Select
+                        name="admission_number"
+                        value={formData.admission_number}
+                        onChange={handleAdmissionChange}
+                        disabled={!!id || !!location.state?.deceasedId || !!location.state?.deceasedData}
+                      >
+                        <option value="">Select deceased record</option>
+                        {isLoadingDeceasedList ? (
+                          <option value="" disabled>Loading records...</option>
+                        ) : (
+                          deceasedList.map((deceased) => (
+                            <option key={deceased.deceased_id} value={deceased.admission_number}>
+                              {deceased.admission_number} — {deceased.full_name}
+                            </option>
+                          ))
+                        )}
+                      </Select>
+                      {hasValue(formData.admission_number) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                    {errors.admission_number && <ErrorMessage>{errors.admission_number}</ErrorMessage>}
+                  </Col2>
+                  <Col>
+                    <Label>Date Admitted <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <InputLg
+                        type="date"
+                        name="date_admitted"
+                        value={formData.date_admitted}
+                        onChange={handleChange}
+                      />
+                      {hasValue(formData.date_admitted) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                    {errors.date_admitted && <ErrorMessage>{errors.date_admitted}</ErrorMessage>}
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col>
+                    <Label>Permit Number</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="permit_number"
+                        value={formData.permit_number}
+                        onChange={handleChange}
+                        placeholder="Permit/Reference Number"
+                      />
+                      {hasValue(formData.permit_number) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                  <Col>
+                    <Label>Released By <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="released_by"
+                        value={formData.released_by}
+                        onChange={handleChange}
+                        placeholder="Name of person releasing the body"
+                      />
+                      {hasValue(formData.released_by) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                    {errors.released_by && <ErrorMessage>{errors.released_by}</ErrorMessage>}
+                  </Col>
+                </Row>
+              </Section>
+
+              {/* Section 2 */}
+              <Section>
+                <SectionHead>
+                  <SectionNum>02</SectionNum>
+                  <SectionTitle>Deceased Information</SectionTitle>
+                </SectionHead>
+
+                <Row>
+                  <Col2>
+                    <Label>Full Legal Name of Deceased <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <InputLg
+                        type="text"
+                        name="full_name"
+                        value={formData.full_name}
+                        onChange={handleChange}
+                        placeholder="Enter full legal name"
+                      />
+                      {hasValue(formData.full_name) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                    {errors.full_name && <ErrorMessage>{errors.full_name}</ErrorMessage>}
+                  </Col2>
+                  <Col>
+                    <Label>Gender <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <Select
+                        name="gender"
+                        value={formData.gender}
+                        onChange={handleChange}
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </Select>
+                      {hasValue(formData.gender) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                    {errors.gender && <ErrorMessage>{errors.gender}</ErrorMessage>}
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col05>
+                    <Label>Age</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="number"
+                        name="age"
+                        value={formData.age}
+                        onChange={handleChange}
+                        placeholder="Years"
+                      />
+                      {hasValue(formData.age) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col05>
+                  <Col>
+                    <Label>Date of Birth</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="date"
+                        name="date_of_birth"
+                        value={formData.date_of_birth}
+                        onChange={handleChange}
+                      />
+                      {hasValue(formData.date_of_birth) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                  <Col>
+                    <Label>Date of Death</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="date"
+                        name="date_of_death"
+                        value={formData.date_of_death}
+                        onChange={handleChange}
+                      />
+                      {hasValue(formData.date_of_death) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col>
+                    <Label>Cause of Death</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="cause_of_death"
+                        value={formData.cause_of_death}
+                        onChange={handleChange}
+                        placeholder="As certified on medical document"
+                      />
+                      {hasValue(formData.cause_of_death) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                  <Col>
+                    <Label>Place of Death</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="place_of_death"
+                        value={formData.place_of_death}
+                        onChange={handleChange}
+                        placeholder="Location/Hospital"
+                      />
+                      {hasValue(formData.place_of_death) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                  <Col>
+                    <Label>Body Status</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="body_status"
+                        value={formData.body_status || 'Released'}
+                        readOnly
+                        disabled
+                      />
+                      {hasValue(formData.body_status) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                </Row>
+              </Section>
+
+              {/* Section 3 */}
+              <Section>
+                <SectionHead>
+                  <SectionNum>03</SectionNum>
+                  <SectionTitle>Next of Kin / Authorizing Party</SectionTitle>
+                </SectionHead>
+
+                <Row>
+                  <Col2>
+                    <Label>Next of Kin Full Name <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="next_kin"
+                        value={formData.next_kin}
+                        onChange={handleChange}
+                        placeholder="Full name of authorizing party"
+                      />
+                      {hasValue(formData.next_kin) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                    {errors.next_kin && <ErrorMessage>{errors.next_kin}</ErrorMessage>}
+                  </Col2>
+                  <Col>
+                    <Label>Relationship</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="relationship"
+                        value={formData.relationship}
+                        onChange={handleChange}
+                        placeholder="e.g. Spouse, Child, Sibling"
+                      />
+                      {hasValue(formData.relationship) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col>
+                    <Label>ID Type</Label>
+                    <InputFieldWrapper>
+                      <Select
+                        name="id_type"
+                        value={formData.id_type}
+                        onChange={handleChange}
+                      >
+                        <option value="">Select Identification</option>
+                        <option value="National ID">National ID</option>
+                        <option value="Passport">Passport</option>
+                        <option value="Alien Card">Alien Card</option>
+                      </Select>
+                      {hasValue(formData.id_type) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                  <Col>
+                    <Label>ID / Passport Number <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="id_number"
+                        value={formData.id_number}
+                        onChange={handleChange}
+                        placeholder="Identification number"
+                      />
+                      {hasValue(formData.id_number) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                    {errors.id_number && <ErrorMessage>{errors.id_number}</ErrorMessage>}
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col>
+                    <Label>Primary Telephone <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="tel"
+                        name="tel_number"
+                        value={formData.tel_number}
+                        onChange={handleChange}
+                        placeholder="e.g., 0712345678"
+                      />
+                      {hasValue(formData.tel_number) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                    {errors.tel_number && <ErrorMessage>{errors.tel_number}</ErrorMessage>}
+                  </Col>
+                  <Col2>
+                    <Label>Release Notes</Label>
+                    <TextArea
+                      name="release_notes"
+                      value={formData.release_notes}
+                      onChange={handleChange}
+                      placeholder="Any additional notes about the release..."
+                    />
+                  </Col2>
+                </Row>
+              </Section>
+
+              {/* Section 4 */}
+              <Section>
+                <SectionHead>
+                  <SectionNum>04</SectionNum>
+                  <SectionTitle>Removal, Transportation & Release Details</SectionTitle>
+                </SectionHead>
+
+                <Row>
+                  <Col>
+                    <Label>Release Date <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <InputLg
+                        type="date"
+                        name="release_date"
+                        value={formData.release_date}
+                        onChange={handleChange}
+                      />
+                      {hasValue(formData.release_date) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                    {errors.release_date && <ErrorMessage>{errors.release_date}</ErrorMessage>}
+                  </Col>
+                  <Col>
+                    <Label>Date of Removal</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="date"
+                        name="date_of_removal"
+                        value={formData.date_of_removal}
+                        onChange={handleChange}
+                      />
+                      {hasValue(formData.date_of_removal) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                  <Col>
+                    <Label>Mode of Transport</Label>
+                    <InputFieldWrapper>
+                      <Select
+                        name="mode_of_transport"
+                        value={formData.mode_of_transport}
+                        onChange={handleChange}
+                      >
+                        <option value="hearse">Hearse / Van</option>
+                        <option value="air">Air Transport</option>
+                        <option value="rail">Rail</option>
+                        <option value="private">Private Vehicle</option>
+                        <option value="courier">Courier Service</option>
+                        <option value="other">Other</option>
+                      </Select>
+                      {hasValue(formData.mode_of_transport) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                </Row>
+
+                <Row>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        name="terms_accepted"
+                        checked={formData.terms_accepted}
+                        onChange={handleChange}
+                        style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', accentColor: COLORS.verdigris }}
+                      />
+                      <span style={{ fontSize: '0.8rem', color: COLORS.gray, lineHeight: '1.5' }}>
+                        I hereby authorize the release and transportation of the deceased. I certify that I am the legally authorized next of kin or representative and have the right to make this authorization.
+                      </span>
+                    </label>
+                    {errors.terms_accepted && <ErrorMessage>{errors.terms_accepted}</ErrorMessage>}
+
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        name="everything_paid"
+                        checked={formData.everything_paid}
+                        onChange={handleChange}
+                        style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', accentColor: COLORS.verdigris }}
+                      />
+                      <span style={{ fontSize: '0.8rem', color: COLORS.gray, lineHeight: '1.5' }}>
+                        I confirm that all outstanding charges and payments have been settled.
+                      </span>
+                    </label>
+                  </div>
+                </Row>
+              </Section>
+
+              {/* Section 5 */}
+              <Section>
+                <SectionHead>
+                  <SectionNum>05</SectionNum>
+                  <SectionTitle>Verification & Digital Sign-off</SectionTitle>
+                </SectionHead>
+
+                <SignOffContainer>
+                  <SignOffGrid>
+                    <GridSig>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Label>Authorizing Signature <span style={{ color: COLORS.red }}>*</span></Label>
+                        <ClearSigButton type="button" onClick={() => sigPadRef1.current?.clear()}>
+                          Clear Pad
+                        </ClearSigButton>
+                      </div>
+                      <SigCanvasWrap>
+                        <ReusableSignaturePad ref={sigPadRef1} penColor={COLORS.inkBlue} />
+                        <SigGuideText>Sign within boundaries</SigGuideText>
+                      </SigCanvasWrap>
+                      {errors.signature && <ErrorMessage>{errors.signature}</ErrorMessage>}
+                    </GridSig>
+
+                    <GridRight>
+                      <GridName>
+                        <Label>Released By Officer</Label>
+                        <InputFieldWrapper>
+                          <Input
+                            type="text"
+                            name="released_by"
+                            value={formData.released_by}
+                            onChange={handleChange}
+                            placeholder="Officer full name"
+                          />
+                          {hasValue(formData.released_by) && (
+                            <TickIconWrapper>
+                              <Check size={16} strokeWidth={2.5} />
+                            </TickIconWrapper>
+                          )}
+                        </InputFieldWrapper>
+                      </GridName>
+
+                      <GridDate>
+                        <Label>Verified By System User</Label>
+                        <InputFieldWrapper>
+                          <Input
+                            type="text"
+                            name="verified_by"
+                            value={formData.verified_by}
+                            onChange={handleChange}
+                            readOnly
+                            disabled
+                          />
+                          {hasValue(formData.verified_by) && (
+                            <TickIconWrapper>
+                              <Check size={16} strokeWidth={2.5} />
+                            </TickIconWrapper>
+                          )}
+                        </InputFieldWrapper>
+                      </GridDate>
+
+                      <StampWrapper>
+                        <OfficialStamp
+                          tenantName={tenantName}
+                          tenantPhone={displayPhone || fallback.phone}
+                          tenantLocation={displayLocation || fallback.location}
+                          recordLabel="OFFICIAL RELEASE RECORD"
+                        />
+                      </StampWrapper>
+                    </GridRight>
+                  </SignOffGrid>
+                </SignOffContainer>
+              </Section>
+
+              {/* Three Action Buttons */}
+              <ActionsContainer>
+                <ClearSigButton type="button" onClick={handleClear} style={{ marginRight: 'auto' }}>
+                  <RotateCcw size={14} style={{ marginRight: '4px' }} /> Clear Form
+                </ClearSigButton>
+
+                <GoldButton type="button" onClick={handleClear} disabled={isSubmitting}>
+                  Reset Inputs
+                </GoldButton>
+
+                <BlackButton type="button" onClick={() => navigate(-1)} disabled={isSubmitting}>
+                  Cancel / Back
+                </BlackButton>
+
+                <PrimaryButton type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Submitting Release...
+                    </>
+                  ) : (
+                    <>
+                      Submit Release <ArrowRight size={16} />
+                    </>
+                  )}
+                </PrimaryButton>
+              </ActionsContainer>
+            </form>
+          </FormBody>
+
+          {/* Footer Component */}
+          <FooterPanel>
+            <FooterText>
+              {tenantName} Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}<br />
+              - Official Release Record —
+            </FooterText>
+
+            <BarcodeWrapper>
+              <Barcode value={formData.admission_number} />
+              <FileIdText>
+                File ID:
+                <span>
+                  {isLoadingDeceasedList ? 'Loading...' : (formData.admission_number || 'Select deceased')}
+                </span>
+              </FileIdText>
+            </BarcodeWrapper>
+          </FooterPanel>
+        </ContentWrapper>
+      </FormSheet>
+    </Container>
+  );
 };
 
 export default DeceasedReleaseForm;
+

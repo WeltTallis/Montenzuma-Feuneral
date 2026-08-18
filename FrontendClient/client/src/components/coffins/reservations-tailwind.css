@@ -1,0 +1,4 @@
+/* Tailwind entry for the coffins Reservation dashboard (Tailwind v3).
+   Only utilities are emitted — no preflight/base reset — so the rest of the
+   app's styling is left untouched. */
+@tailwind utilities;

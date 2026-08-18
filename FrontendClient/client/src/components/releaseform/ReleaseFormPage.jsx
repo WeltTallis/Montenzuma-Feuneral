@@ -54,6 +54,12 @@ const FormSheet = styled.div`
   position: relative;
 `;
 
+const ContentWrapper = styled.div`
+  position: relative;
+  z-index: 1;
+`;
+
+
 const Letterhead = styled.div`
   padding: 2rem 3rem;
   border-bottom: 2px solid ${COLORS.border};
@@ -666,6 +672,17 @@ function ReleaseFormPage() {
   const [lookupError, setLookupError] = useState('');
   const [admissionNumber, setAdmissionNumber] = useState('');
   const isNewMode = !id || id === 'new' || id === 'undefined';
+
+  // If the route is for creating a new release, render the dedicated Deceased Release component
+  // that matches the intake page styles. This lets the receptionist portal use the updated UI.
+  if (isNewMode) {
+    const DeceasedReleaseForm = React.lazy(() => import('../deceased/register/deceasedRelease'));
+    return (
+      <Suspense fallback={<Container style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}><Loader2 size={48} /></Container>}>
+        <DeceasedReleaseForm />
+      </Suspense>
+    );
+  }
 
 
   useEffect(() => {

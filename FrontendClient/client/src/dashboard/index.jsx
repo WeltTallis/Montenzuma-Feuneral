@@ -23,6 +23,7 @@ const Ico = ({ size = 16, stroke = "currentColor", sw = 2, children }) => (
     {children}
   </svg>
 );
+
 const IcoTruck      = p => <Ico {...p}><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 4v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></Ico>;
 const IcoBox        = p => <Ico {...p}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></Ico>;
 const IcoFlower     = p => <Ico {...p}><path d="M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1"/><circle cx="12" cy="8" r="2"/><path d="M12 10v12"/></Ico>;
@@ -56,7 +57,7 @@ const MODULES = [
     label: "Hearse Bookings",
     icon: IcoTruck,
     accent: "#818cf8",
-    apiEndpoint: "/hearse/bookings",
+    apiEndpoint: "/hearse-bookings",
     statusMap: {
       pending:     { label: "Pending",     color: "#3b82f6" },
       confirmed:   { label: "Confirmed",   color: "#8b5cf6" },
@@ -81,7 +82,7 @@ const MODULES = [
     label: "Coffin Bookings",
     icon: IcoBox,
     accent: "#fb923c",
-    apiEndpoint: "/coffin/bookings",
+    apiEndpoint: "/coffins/orders",
     statusMap: {
       pending:   { label: "Pending",   color: "#3b82f6" },
       reserved:  { label: "Reserved",  color: "#8b5cf6" },
@@ -127,7 +128,7 @@ const MODULES = [
     label: "Deceased Register",
     icon: IcoUser,
     accent: "#f472b6",
-    apiEndpoint: "/deceased",
+    apiEndpoint: "/deceased/deceased-all",
     statusMap: {
       admitted:    { label: "Admitted",    color: "#3b82f6" },
       embalming:   { label: "Embalming",   color: "#8b5cf6" },

@@ -3,9 +3,17 @@
 const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
 
-const GLOBAL_JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
+let GLOBAL_JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
 if (!GLOBAL_JWT_SECRET) {
-  throw new Error('FATAL: JWT_SECRET environment variable is required');
+  // In development allow a non-fatal fallback to make local dev easier.
+  // This avoids crashing nodemon when JWT_SECRET isn't set locally.
+  if (process.env.NODE_ENV === 'development' || process.env.DEBUG_JWT_FALLBACK === 'true') {
+    console.warn('WARNING: JWT_SECRET not set — using development fallback. Do NOT use in production.');
+    GLOBAL_JWT_SECRET = process.env.DEV_JWT_FALLBACK || 'dev_local_jwt_secret_please_change';
+  } else {
+    throw new Error('FATAL: JWT_SECRET environment variable is required');
+  }
+  
 }
 
 const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET;
@@ -155,7 +163,8 @@ const optionalAuth = async (req, res, next) => {
 
   if (token) {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
+      // Use the GLOBAL_JWT_SECRET (with fallback) for optional auth as well
+      const decoded = jwt.verify(token, GLOBAL_JWT_SECRET);
       req.user = decoded;
     } catch (error) {
       // Token invalid, but we continue anyway (optional auth)

@@ -101,8 +101,12 @@ export const createCoffin = async (req: Request, res: Response) => {
       const v = (req.headers as any)[name];
       return Array.isArray(v) ? (v[0] as string) : (v ? String(v) : null);
     };
-    const rTenantId = headerOf('x-tenant-id') || (req as any).tenant?.id || (req as any).tenant?.tenant_id || (req as any).body?.tenant_id || (req as any).body?.tenantId || null;
-    const rBranchId = headerOf('x-branch-id') || (req as any).body?.branch_id || (req as any).body?.branchId || null;
+    const rTenantId = headerOf('x-tenant-id') || (req as any).tenant?.id || (req as any).tenant?.tenant_id || (req as any).tenantId || (req as any).body?.tenant_id || (req as any).body?.tenantId || null;
+    const rBranchId = headerOf('x-branch-id') || (req as any).branchId || (req as any).body?.branch_id || (req as any).body?.branchId || null;
+    // Keep ids EXACT as strings (UUIDs). Coercing to numbers corrupts/truncates the
+    // UUID branch_id/tenant_id and the coffin leaks into every branch.
+    const tenantIdVal = (rTenantId != null && String(rTenantId).trim() !== '') ? String(rTenantId).trim() : null;
+    const branchIdVal = (rBranchId != null && String(rBranchId).trim() !== '') ? String(rBranchId).trim() : null;
 
     const modelType = (type || name || '').toString().trim();
     const modelPrice = parseFloat(exact_price ?? price) || 0;
@@ -133,8 +137,8 @@ export const createCoffin = async (req: Request, res: Response) => {
       quantity: modelQty,
       color,
       size,
-      tenant_id: rTenantId,
-      branch_id: rBranchId
+      tenant_id: tenantIdVal,
+      branch_id: branchIdVal
     });
 
     let imageResult: any = { queued: false, imageUrls: [] };
@@ -162,6 +166,8 @@ export const createCoffin = async (req: Request, res: Response) => {
       stock: result.quantity,
       exact_price: result.exact_price,
       price: result.price,
+      branch_id: result.branch_id,
+      tenant_id: result.tenant_id,
       images: {
         count: imageResult.imageUrls.length,
         urls: imageResult.imageUrls
@@ -190,6 +196,16 @@ export const getAllCoffins = async (req: Request, res: Response) => {
   };
   const headerBranchId = headerOf('x-branch-id');
   const headerBranchSlug = headerOf('x-branch-slug');
+  // The tenant id (UUID) scopes the central coffin DB. Multi-branch tenants share ONE
+  // tenant_id across every branch; coffins written by a branch carry tenant_slug =
+  // <branch slug> while head-office coffins carry tenant_slug = <parent slug>. Matching
+  // on tenant_id as well gives a correct tenant-wide/branch view regardless of slug.
+  const tenantId = headerOf('x-tenant-id') || (req.query as any).tenant_id || (req as any).tenantId || null;
+  const tenantParam = (tenantId != null && String(tenantId).trim() !== '') ? String(tenantId).trim() : null;
+  const tenantClause = tenantParam
+    ? '(c.tenant_slug = ? OR c.tenant_id = ?)'
+    : 'c.tenant_slug = ?';
+  const tenantParams: any[] = tenantParam ? [tenantSlug, tenantParam] : [tenantSlug];
 
   if (!tenantSlug) {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
@@ -205,20 +221,27 @@ export const getAllCoffins = async (req: Request, res: Response) => {
       res.setHeader('Expires', '0');
 
       // All coffin inventory lives in ONE central coffin DB, scoped by tenant slug.
-      // A branch slug just further narrows the same central table.
-      const scopeSlug = effectiveBranchSlug;
+      // A branch slug (x-branch-slug) narrows to the current branch whenever a branch
+      // id (x-branch-id) is also supplied; without a branch id we fall back to the
+      // whole tenant inventory.
+      const params: any[] = [...tenantParams];
+      let branchClause = '';
+      if (effectiveBranchId) {
+        branchClause = ' AND (c.branch_id = ? OR c.branch_id IS NULL)';
+        params.push(String(effectiveBranchId));
+      }
 
       const sql = `
-        SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+        SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
           GROUP_CONCAT(ci.image_url) as image_urls
         FROM coffins c
         LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
-        WHERE c.tenant_slug = ? AND c.is_deleted = FALSE
+        WHERE ${tenantClause} AND c.is_deleted = FALSE ${branchClause}
         GROUP BY c.coffin_id
         ORDER BY c.created_at DESC
       `;
 
-      const rows: any[] = await coffinQuery(sql, [scopeSlug]);
+      const rows: any[] = await coffinQuery(sql, params);
 
       const coffins = rows.map(row => CoffinModel.mapRow(row));
 
@@ -227,16 +250,16 @@ export const getAllCoffins = async (req: Request, res: Response) => {
 
     if (effectiveBranchId) {
       const sql = `
-        SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+        SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
           GROUP_CONCAT(ci.image_url) as image_urls
         FROM coffins c
         LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
-        WHERE c.tenant_slug = ? AND (c.branch_id = ? OR c.branch_id IS NULL) AND c.is_deleted = FALSE
+        WHERE ${tenantClause} AND (c.branch_id = ? OR c.branch_id IS NULL) AND c.is_deleted = FALSE
         GROUP BY c.coffin_id
         ORDER BY c.created_at DESC
       `;
 
-      const rows: any[] = await coffinQuery(sql, [tenantSlug, String(effectiveBranchId)]);
+      const rows: any[] = await coffinQuery(sql, [...tenantParams, String(effectiveBranchId)]);
 
       const coffins = rows.map(row => CoffinModel.mapRow(row));
 
@@ -251,18 +274,18 @@ export const getAllCoffins = async (req: Request, res: Response) => {
     if (!coffins) {
       if (effectiveBranchId) {
         const sql = `
-          SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+          SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
             GROUP_CONCAT(ci.image_url) as image_urls
           FROM coffins c
           LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
-          WHERE c.tenant_slug = ? AND (c.branch_id = ? OR c.branch_id IS NULL) AND c.is_deleted = FALSE
+          WHERE ${tenantClause} AND (c.branch_id = ? OR c.branch_id IS NULL) AND c.is_deleted = FALSE
           GROUP BY c.coffin_id
           ORDER BY c.created_at DESC
         `;
-        const rows: any[] = await coffinQuery(sql, [tenantSlug, String(effectiveBranchId)]);
+        const rows: any[] = await coffinQuery(sql, [...tenantParams, String(effectiveBranchId)]);
         coffins = rows.map(row => CoffinModel.mapRow(row));
       } else {
-        coffins = await CoffinModel.getAll(tenantSlug); // already mapped (name, price, stock, ...)
+        coffins = await CoffinModel.getAll(tenantSlug, tenantParam); // already mapped (name, price, stock, ...)
       }
       await setCached(tenantSlug, cacheKey, coffins);
     }
@@ -287,21 +310,36 @@ export const getAllCoffinsAllBranches = async (req: Request, res: Response) => {
 
   try {
     // One central coffin DB holds every branch's inventory for the tenant; we no
-    // longer iterate branch databases. parent_slug identifies the tenant whose
-    // inventory to return (via the tenant_slug column).
+    // longer iterate branch databases. Branch rows are written with tenant_slug =
+    // <branch slug> while head-office rows use tenant_slug = <parent slug>. Both
+    // share the SAME tenant_id (UUID), so when a tenant id is supplied we match on
+    // it too. This guarantees "all branches" returns every branch's coffins.
+    const headerOf = (name: string): any => {
+      const v = (req.headers as any)[name];
+      return Array.isArray(v) ? v[0] : (v ? String(v) : null);
+    };
+    const tenantId = headerOf('x-tenant-id') || (req.query as any).tenant_id || (req as any).tenantId || null;
+    const tenantParam = (tenantId != null && String(tenantId).trim() !== '') ? String(tenantId).trim() : null;
+    const tenantClause = tenantParam
+      ? '(c.tenant_slug = ? OR c.tenant_id = ?)'
+      : 'c.tenant_slug = ?';
+    const params: any[] = tenantParam ? [String(parentSlug), tenantParam] : [String(parentSlug)];
+
     const rows: any[] = await coffinQuery(`
-      SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.branch_id, c.created_at,
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
-      WHERE c.tenant_slug = ? AND c.is_deleted = FALSE
+      WHERE ${tenantClause} AND c.is_deleted = FALSE
       GROUP BY c.coffin_id
       ORDER BY c.created_at DESC
-    `, [String(parentSlug)]);
+    `, params);
 
     const allCoffins = rows.map(row => ({
       ...CoffinModel.mapRow(row),
-      branch_id: row.branch_id ? parseInt(String(row.branch_id)) : null,
+      branch_id: (row.branch_id !== null && row.branch_id !== undefined && String(row.branch_id).trim() !== '')
+        ? String(row.branch_id)
+        : '',
       branch_slug: String(parentSlug),
       branch_name: String(parentSlug)
     }));
@@ -334,11 +372,18 @@ export const getCoffinById = async (req: Request, res: Response) => {
   }
 
   try {
+    const headerOf = (name: string): any => {
+      const v = (req.headers as any)[name];
+      return Array.isArray(v) ? v[0] : (v ? String(v) : null);
+    };
+    const tenantId = headerOf('x-tenant-id') || (req.query as any).tenant_id || (req as any).tenantId || null;
+    const tenantParam = (tenantId != null && String(tenantId).trim() !== '') ? String(tenantId).trim() : null;
+
     const cacheKey = `coffin_${id}`;
     let coffin: any = await getCached(tenantSlug, cacheKey);
 
     if (!coffin) {
-      coffin = await CoffinModel.getById(tenantSlug, id); // already mapped (name, price, stock, ...)
+      coffin = await CoffinModel.getById(tenantSlug, id, tenantParam); // already mapped (name, price, stock, ...)
       if (!coffin) {
         return res.status(404).json({ success: false, message: 'Coffin not found' });
       }
@@ -449,7 +494,8 @@ export const createOrder = async (req: Request, res: Response) => {
     // from the selected coffin so users don't have to re-enter them.
     const {
       coffin_id, coffin_name, color, size, quantity,
-      booked_by, booked_for, client_name, deceased_name
+      booked_by, booked_for, client_name, deceased_name,
+      service_date
     } = (req as any).body;
 
     // Tenant/branch context — prefer the auth headers the frontend sends
@@ -458,8 +504,8 @@ export const createOrder = async (req: Request, res: Response) => {
       const v = (req.headers as any)[name];
       return Array.isArray(v) ? (v[0] as string) : (v ? String(v) : null);
     };
-    const rTenantId = headerOf('x-tenant-id') || (req as any).tenant?.id || (req as any).tenant?.tenant_id || (req as any).body?.tenant_id || (req as any).body?.tenantId || null;
-    const rBranchId = headerOf('x-branch-id') || (req as any).body?.branch_id || (req as any).body?.branchId || null;
+    const rTenantId = headerOf('x-tenant-id') || (req as any).tenant?.id || (req as any).tenant?.tenant_id || (req as any).tenantId || (req as any).body?.tenant_id || (req as any).body?.tenantId || null;
+    const rBranchId = headerOf('x-branch-id') || (req as any).branchId || (req as any).body?.branch_id || (req as any).body?.branchId || null;
 
     const parsedQuantity = parseInt(quantity);
     if (quantity !== undefined && quantity !== '' && quantity !== null && (isNaN(parsedQuantity) || parsedQuantity <= 0)) {
@@ -546,6 +592,7 @@ export const createOrder = async (req: Request, res: Response) => {
       quantity: finalQuantity,
       booked_by: finalBookedBy,
       booked_for: finalBookedFor,
+      service_date: service_date || null,
       tenant_id: rTenantId,
       branch_id: rBranchId
     });
@@ -565,6 +612,7 @@ export const createOrder = async (req: Request, res: Response) => {
         quantity: finalQuantity,
         booked_by: finalBookedBy,
         booked_for: finalBookedFor,
+        service_date: service_date || null,
         status: 'active'
       }
     });
@@ -585,15 +633,42 @@ export const getAllOrders = async (req: Request, res: Response) => {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
   }
 
+                      const headerOf = (name: string): string | null => {
+    const v = (req.headers as any)[name];
+    return Array.isArray(v) ? String(v[0]) : v ? String(v) : null;
+  };
+  // Scope bookings to the current branch when one is present (x-branch-id header,
+  // branch_id query param or the middleware-resolved req.branchId). Bookings with a
+  // NULL branch_id are treated as shared central inventory and stay visible everywhere.
+  // Without this, a coffin booked in e.g. Nairobi would show up in every other branch.
+  const branchId =
+    headerOf('x-branch-id') ||
+    (req.query.branch_id as string | undefined) ||
+    (req as any).branchId ||
+    null;
+
   try {
+    const params: any[] = [tenantSlug];
+    let branchClause = '';
+    if (branchId) {
+      branchClause = ' AND (cb.branch_id = ? OR cb.branch_id IS NULL)';
+      params.push(String(branchId));
+    }
+
     const sql = `
-      SELECT order_id, coffin_name, color, size, quantity, booked_by, booked_for, status, created_at
-      FROM coffin_bookings
-      WHERE tenant_slug = ?
-      ORDER BY created_at DESC
+      SELECT order_id, order_id AS id, coffin_name, color, size, quantity,
+             booked_by, booked_for,
+             booked_by AS client_name, booked_for AS deceased_name,
+             branch_id,
+             status,
+             COALESCE(service_date, DATE(created_at)) AS service_date,
+             created_at
+      FROM coffin_bookings cb
+      WHERE cb.tenant_slug = ?${branchClause}
+      ORDER BY cb.created_at DESC
     `;
 
-    const orders: any[] = await coffinQuery(sql, [tenantSlug]);
+    const orders: any[] = await coffinQuery(sql, params);
 
     return res.status(200).json({ success: true, data: orders, count: orders.length });
   } catch (error: any) {
@@ -615,7 +690,13 @@ export const getOrderById = async (req: Request, res: Response) => {
 
   try {
     const sql = `
-      SELECT order_id, coffin_name, color, size, quantity, booked_by, booked_for, status, created_at, updated_at
+      SELECT order_id, order_id AS id, coffin_name, color, size, quantity,
+             booked_by, booked_for,
+             booked_by AS client_name, booked_for AS deceased_name,
+             branch_id,
+             status,
+             COALESCE(service_date, DATE(created_at)) AS service_date,
+             created_at, updated_at
       FROM coffin_bookings
       WHERE order_id = ? AND tenant_slug = ?
     `;
@@ -644,8 +725,8 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
   }
 
-  if (!status || !['active', 'completed', 'cancelled'].includes(status)) {
-    return res.status(400).json({ success: false, message: 'Invalid status. Must be: active, completed, or cancelled' });
+  if (!status || !['active', 'booked', 'completed', 'cancelled'].includes(status)) {
+    return res.status(400).json({ success: false, message: 'Invalid status. Must be: active, booked, completed, or cancelled' });
   }
 
   try {
@@ -690,7 +771,7 @@ export const createStockRequest = async (req: Request, res: Response) => {
   }
 
   try {
-    const { coffin_id, coffin_name, color, size, requested_by, booked_for, requesting_branch, client_name, deceased_name } = (req as any).body;
+    const { coffin_id, coffin_name, color, size, requested_by, booked_for, requesting_branch, client_name, deceased_name, from_branch_id, to_branch_id, from_branch_name, to_branch_name, quantity, req_type } = (req as any).body;
 
     const coffinIdRaw = (coffin_id || '').toString().trim();
     const coffinNameRaw = (coffin_name || '').toString().trim();
@@ -738,12 +819,20 @@ export const createStockRequest = async (req: Request, res: Response) => {
     }
 
     const result = await CoffinModel.requestStock(tenantSlug, {
+      coffin_id: coffinIdRaw || null,
       coffin_name: resolvedName || 'Coffin',
       color: resolvedColor,
       size: resolvedSize,
       requested_by: (requested_by || '').toString().trim() || (client_name || '').toString().trim() || null,
       booked_for: (booked_for || '').toString().trim() || (deceased_name || '').toString().trim() || null,
       requesting_branch: (requesting_branch || '').toString().trim() || null,
+      from_branch_id: (from_branch_id || '').toString().trim() || null,
+      to_branch_id: (to_branch_id || '').toString().trim() || null,
+      from_branch_name: (from_branch_name || '').toString().trim() || null,
+      to_branch_name: (to_branch_name || '').toString().trim() || null,
+      quantity,
+      req_type: (req_type || '').toString().trim() || null,
+      tenant_id: (req as any).tenantId || (req as any).body?.tenant_id || null,
       image_url: imageUrl
     });
 
@@ -754,12 +843,18 @@ export const createStockRequest = async (req: Request, res: Response) => {
       message: 'Stock request created successfully',
       data: {
         request_id: result.request_id,
-        coffin_name: resolvedName,
-        color: resolvedColor,
-        size: resolvedSize,
+        coffin_id: result.coffin_id,
+        coffin_name: result.coffin_name,
+        color: result.color,
+        size: result.size,
         requested_by: (requested_by || '').toString().trim() || (client_name || '').toString().trim() || null,
         booked_for: (booked_for || '').toString().trim() || (deceased_name || '').toString().trim() || null,
         requesting_branch: (requesting_branch || '').toString().trim() || null,
+        from_branch_id: result.from_branch_id,
+        to_branch_id: result.to_branch_id,
+        from_branch_name: result.from_branch_name,
+        to_branch_name: result.to_branch_name,
+        quantity: result.quantity,
         image: imageUrl,
         status: 'pending'
       }
@@ -783,7 +878,9 @@ export const getAllStockRequests = async (req: Request, res: Response) => {
 
   try {
     const sql = `
-      SELECT request_id, coffin_name, color, size, requested_by, booked_for, requesting_branch, image_url, status, created_at
+      SELECT request_id, request_id AS id, coffin_id, tenant_id, coffin_name, color, size, requested_by, booked_for,
+        requesting_branch, from_branch_id, to_branch_id, from_branch_name, to_branch_name,
+        quantity, req_type, image_url, status, created_at, updated_at
       FROM stock_requests
       WHERE tenant_slug = ?
       ORDER BY created_at DESC
@@ -811,7 +908,9 @@ export const getStockRequestById = async (req: Request, res: Response) => {
 
   try {
     const sql = `
-      SELECT request_id, coffin_name, color, size, requested_by, booked_for, requesting_branch, image_url, status, created_at, updated_at
+      SELECT request_id, request_id AS id, coffin_id, tenant_id, coffin_name, color, size, requested_by, booked_for,
+        requesting_branch, from_branch_id, to_branch_id, from_branch_name, to_branch_name,
+        quantity, req_type, image_url, status, created_at, updated_at
       FROM stock_requests
       WHERE request_id = ? AND tenant_slug = ?
     `;
@@ -860,6 +959,50 @@ export const updateStockRequestStatus = async (req: Request, res: Response) => {
 /**
  * GET /coffins/health - Health check
  */
+/**
+ * POST /coffins/stock-requests/:id/:action - Update stock request status by action name
+ * (approve -> approved, reject -> rejected, transferring, delivered, complete -> completed, pending)
+ */
+export const updateStockRequestAction = async (req: Request, res: Response) => {
+  const tenantSlug = (req as any).tenantSlug;
+  const id = String(req.params.id);
+  const action = String((req.params as any).action || (req as any).params?.action || '').toLowerCase();
+
+  if (!tenantSlug) {
+    return res.status(403).json({ success: false, message: 'Valid tenant required' });
+  }
+
+  const statusMap: Record<string, string> = {
+    approve: 'approved',
+    approved: 'approved',
+    reject: 'rejected',
+    rejected: 'rejected',
+    complete: 'completed',
+    completed: 'completed',
+    transferring: 'transferring',
+    transit: 'transferring',
+    delivered: 'delivered',
+    pending: 'pending'
+  };
+  const status = statusMap[action];
+
+  if (!status) {
+    return res.status(400).json({ success: false, message: `Unknown stock request action: ${action}` });
+  }
+
+  try {
+    const sql = `UPDATE stock_requests SET status = ? WHERE request_id = ? AND tenant_slug = ?`;
+    await coffinQuery(sql, [status, id, tenantSlug]);
+
+    logger.info({ msg: 'Stock request action applied', tenantSlug, requestId: id, action, status });
+
+    return res.status(200).json({ success: true, message: `Request ${status}`, status });
+  } catch (error: any) {
+    logger.error({ msg: 'Update stock request action error', tenantSlug, id, action, error: error.message });
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const healthCheck = async (req: Request, res: Response) => {
   return res.status(200).json({
     status: 'UP',

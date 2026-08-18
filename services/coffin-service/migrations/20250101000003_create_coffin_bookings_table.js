@@ -22,6 +22,7 @@ module.exports = {
       table.integer('quantity').notNullable().defaultTo(1);
       table.string('booked_by', 255).nullable();
       table.string('booked_for', 255).nullable();
+      table.date('service_date').nullable();
       table.string('status', 50).notNullable().defaultTo('active');
       table.string('created_at', 255).notNullable();
       table.string('updated_at', 255).nullable();
@@ -31,6 +32,7 @@ module.exports = {
       table.index(['coffin_id'], 'idx_cbk_coffin_id');
       table.index(['status'], 'idx_cbk_status');
       table.index(['booked_for'], 'idx_cbk_booked_for');
+      table.index(['service_date'], 'idx_cbk_service_date');
       table.index(['created_at'], 'idx_cbk_created_at');
     });
   },

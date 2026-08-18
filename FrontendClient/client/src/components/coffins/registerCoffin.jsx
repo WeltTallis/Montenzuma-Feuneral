@@ -8,6 +8,7 @@ import { Form, Row, Col, Alert } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { ENDPOINTS, getTenantHeaders } from '../../api/endpoints';
 import env from '../../utils/config/env';
+import { getBranchId } from '../../utils/globalAuth';
 
 // --- Enhanced Color Palette ---
 const Colors = {
@@ -1046,8 +1047,24 @@ const RegisterCoffin = () => {
       }
     });
 
-    // Add username/created_by information
+                                    // Add username/created_by information
     formData.append('created_by', getUsername());
+
+    // Always tag the coffin with the current branch. getBranchId() reads
+    // localStorage branchId first, then falls back to the logged-in user's
+    // branch object. This guarantees the coffin is persisted against the branch
+    // the user is working in; otherwise it is stored with branch_id = NULL and
+    // then leaks into EVERY branch's inventory.
+    const _branchId = getBranchId();
+    if (_branchId) formData.append('branch_id', String(_branchId));
+
+    // Always tag the coffin with the tenant id (UUID) so the backend can scope
+    // the row to the tenant - this is what lets a tenant fetch coffins from ALL
+    // of its branches regardless of which branch slug wrote the row.
+    const _tenantId = localStorage.getItem('tenantId');
+    if (_tenantId && _tenantId !== 'undefined' && _tenantId !== 'null') {
+      formData.append('tenant_id', String(_tenantId));
+    }
 
     // Append multiple images - field name must match multer upload.array('images', 10) on backend
     imageFiles.forEach((file, index) => {

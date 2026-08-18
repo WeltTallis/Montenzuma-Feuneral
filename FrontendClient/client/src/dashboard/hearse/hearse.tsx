@@ -12,6 +12,7 @@ import {
   ChevronLeft, ChevronRight, Truck, AlertTriangle,
   CheckCircle2, Bell, X, User, Phone, MapPin, Navigation,
 } from "lucide-react";
+import api from "../../api/axios";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Branch = "Nairobi" | "Machakos" | "Thika";
@@ -571,11 +572,39 @@ export default function App() {
   const [currentDate, setCurrentDate] = useState(new Date(2026, 7, 14));
   const [activeBranches, setActiveBranches] = useState<Branch[]>([...ALL_BRANCHES]);
   const [activeStatuses, setActiveStatuses] = useState<Status[]>([...ALL_STATUSES]);
-  const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [lastUpdated, setLastUpdated] = useState(new Date(2026, 7, 14, 9, 47, 32));
   const [notifications, setNotifications] = useState<string[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const { data } = await api.get('/hearse-bookings');
+        const raw = data?.bookings || data?.data || data || [];
+        const mapped = raw.map((b: any) => ({
+          id: b.booking_id || b.id || `UNK-${Math.random()}`,
+          hearseId: b.hearse_name || b.plate_number || b.hearse_id || "Unassigned",
+          branch: (b.branch_name || b.branch || "Nairobi") as Branch,
+          status: (b.status?.toLowerCase() || "booked") as Status,
+          client: b.client_name || "Unknown Client",
+          pickup: b.pickup || "Unknown",
+          dropoff: b.destination || b.dropoff || "Unknown",
+          date: b.booking_date || b.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          startHour: b.start_hour || parseInt(b.time?.split(':')[0]) || 8,
+          duration: b.duration || 2,
+          driver: b.driver_name || "Unassigned",
+          phone: b.client_phone || b.driver_phone || "N/A"
+        }));
+        setBookings(mapped.length > 0 ? mapped : INITIAL_BOOKINGS);
+      } catch (err) {
+        console.error("Failed to fetch hearse bookings", err);
+        setBookings(INITIAL_BOOKINGS);
+      }
+    };
+    fetchBookings();
+  }, []);
 
   // Real-time simulation: status transitions every ~12 seconds
   useEffect(() => {

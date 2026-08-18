@@ -4,18 +4,19 @@ import 'react-toastify/dist/ReactToastify.css';
 import api from '../../api/axios';
 import { ENDPOINTS } from '../../api/endpoints';
 import env from '../../utils/config/env';
-import { getTenantSlug, getParentTenantSlug } from '../../utils/globalAuth';
+import { getTenantSlug, getParentTenantSlug, getTenantId, getBranchId, getBranches } from '../../utils/globalAuth';
 import ReusableCalendar from '../../utils/calender/calender';
 import HorizontalCalendar from '../views/horizontalCalender';
 import WeeklyView from '../views/weeklyView';
 import DailyView from '../views/dailyView';
 import { formatDate, toDateKey, todayKey } from '../../utils/dates/parseDates';
+import ReservationDashboard from './ReservationDashboard';
 
 const API = env.FULL_API_URL;
 
 // ─── Design Tokens (Modern SaaS Aesthetic) ───────────────────────────
 const S = {
-  primary: '#1d4ed8', // Rich Royal Blue
+  primary: '#1d4ed8', 
   primaryLight: '#eff6ff',
   primaryDark: '#1e3a8a',
   bg: '#f8fafc',
@@ -106,8 +107,8 @@ const getStatusColor = (status) => {
 
 const formatKES = (n) => 'KES ' + parseFloat(n || 0).toLocaleString();
 
+// ─── Inline Styles Object ───
 
-// ─── Inline Styles Object ────────────────────────────────────────────
 const styles = {
   W: {
     maxWidth: 2200,
@@ -728,15 +729,7 @@ const CoffinDashboard = () => {
   const [bkFilter, setBkFilter] = useState('all');
   const [invQuery, setInvQuery] = useState('');
   const [bkQuery, setBkQuery] = useState('');
-  // Reservations view: 'calendar' (default monthly view) or 'list'
-  const [bkView, setBkView] = useState('calendar');
-  const [calendarMode, setCalendarMode] = useState('week');
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return now;
-  });
-  const [detailDate, setDetailDate] = useState(null);
+  // Reservations calendar/list state now lives inside <ReservationDashboard />
 
   // Transfers tab state (lifted from renderTransfers to avoid conditional hooks)
   const [transferTab, setTransferTab] = useState('incoming');
@@ -770,8 +763,10 @@ const CoffinDashboard = () => {
       const tenantSlug = getTenantSlug();
       const userStr = localStorage.getItem('user');
       const user = userStr ? JSON.parse(userStr) : {};
-      // Fix: Use logged-in user's actual branch ID instead of defaulting to branchList[0]
-      const userBranchId = user?.branchId || user?.branch_id;
+      // Fix: Use logged-in user's actual branch ID (UUID from localStorage) instead of
+      // defaulting to branchList[0]. getBranchId() reads localStorage 'branchId' first,
+      // then the user object - both are the exact UUID (e.g. '55e1190b-...').
+      const userBranchId = user?.branchId || user?.branch_id || getBranchId();
 
       // Fetch branches using PARENT tenant slug ONLY (never branch slug)
       // Read parentTenantSlug DIRECTLY from user object in localStorage
@@ -807,6 +802,23 @@ const CoffinDashboard = () => {
       }
 
       if (branchList.length === 0) {
+        // Fallback: use the branches cached at login (localStorage `branches` array) so we
+        // keep the real UUID branch ids (e.g. '55e1190b-...') instead of a fake numeric 1.
+        const cachedBranches = getBranches();
+        if (cachedBranches.length > 0) {
+          branchList = cachedBranches
+            .map(b => ({
+              id: b.branchId || b.branch_id || b.id,
+              name: b.branchName || b.branch_name || 'Branch',
+              branch_slug: b.branchSlug || b.branch_slug || b.branchDbName || '',
+              branch_db_name: b.branchDbName || b.branch_db_name || ''
+            }))
+            .filter(b => b.id != null);
+          console.log('[COFFIN UI] Using localStorage branches fallback:', branchList.length);
+        }
+      }
+
+      if (branchList.length === 0) {
         // Fallback: create a default main branch
         branchList = [{
           id: 1,
@@ -837,8 +849,9 @@ const CoffinDashboard = () => {
         // The old /coffins/list endpoint is branch-agnostic and can resolve to the wrong DB (or
         // wrong tenant_slug) for a branch user, which is why the dropdown used to say "no coffins".
         const parentSlug = getParentTenantSlug();
+        const tenantId = getTenantId();
         const allBranchRes = await api.get('/coffins/all-branches', {
-          params: { parent_slug: parentSlug }
+          params: { parent_slug: parentSlug, tenant_id: tenantId || undefined }
         });
         if (allBranchRes.data?.success && Array.isArray(allBranchRes.data?.data)) {
           setCoffins(allBranchRes.data.data);
@@ -853,8 +866,8 @@ const CoffinDashboard = () => {
         console.error('[COFFIN UI] Error fetching coffins:', e);
       }
 
-      try {
-        const bookingRes = await api.get('/coffins/bookings');
+            try {
+        const bookingRes = await api.get('/coffins/orders');
         if (bookingRes.data?.success && bookingRes.data?.data) {
           setBookings(bookingRes.data.data);
         }
@@ -889,9 +902,30 @@ const CoffinDashboard = () => {
   const handleCreateCoffin = async (e) => {
     e.preventDefault();
     setSubmitLoading(true);
-    try {
+        try {
       const data = modal.data;
       const formData = new FormData();
+      // Tag the coffin with the active branch so it only appears in this
+      // branch's inventory. The backend also reads this from the x-branch-id
+      // header, but sending it in the body is deterministic and prevents the
+      // coffin from being stored unbranched (which would leak it to all branches).
+      // The branch id is a UUID string (e.g. '55e1190b-...') - never an int.
+      let branchIdForCreate = currentBranch;
+      // If the branch list fell back to the fake numeric '1' (branches API
+      // unavailable), prefer the real UUID branch id from localStorage.
+      if (!branchIdForCreate || branchIdForCreate === 1 || String(branchIdForCreate) === '1') {
+        branchIdForCreate = getBranchId() || branchIdForCreate;
+      }
+      if (branchIdForCreate) {
+        formData.append('branch_id', String(branchIdForCreate));
+      }
+      // Always tag the coffin with the tenant id (UUID) so the backend can scope
+      // the row to the tenant - this is what lets a tenant fetch coffins from ALL
+      // of its branches regardless of which branch slug wrote the row.
+      const tenantId = getTenantId();
+      if (tenantId) {
+        formData.append('tenant_id', String(tenantId));
+      }
       formData.append('name', data.name);
       formData.append('exact_price', parseFloat(data.price));
       formData.append('quantity', parseInt(data.stock) || 0);
@@ -941,9 +975,13 @@ const CoffinDashboard = () => {
       if (res.data?.success) {
         if (isInterBranch) {
           try {
+            const selBranchRec = branches.find(b => b.id == selectedBranchId);
+            const curBranchRec = branches.find(b => b.id == currentBranch);
             await api.post('/coffins/stock-requests', {
               from_branch_id: selectedBranchId,
               to_branch_id: currentBranch,
+              from_branch_name: selBranchRec?.name || null,
+              to_branch_name: curBranchRec?.name || null,
               coffin_id: d.coffin_id,
               quantity: 1,
               client_name: d.client_name,
@@ -975,9 +1013,13 @@ const CoffinDashboard = () => {
     setSubmitLoading(true);
     try {
       const d = modal.data;
+      const fromBranchRec = branches.find(b => b.id == currentBranch);
+      const toBranchRec = branches.find(b => b.id == d.to_branch_id);
       const res = await api.post('/coffins/stock-requests', {
         from_branch_id: currentBranch,
         to_branch_id: d.to_branch_id,
+        from_branch_name: fromBranchRec?.name || null,
+        to_branch_name: toBranchRec?.name || null,
         coffin_id: d.coffin_id,
         quantity: parseInt(d.quantity) || 1,
         client_name: d.client_name,
@@ -1134,9 +1176,9 @@ const CoffinDashboard = () => {
           </div>
         </div>
         <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-top:24px;">
-          ${c.stock > 0 ? `<button class="drawer-btn btn-s" onclick="window.__openBookingModal(${c.coffin_id || c.id})"><i class="fa-solid fa-calendar-plus"></i> Book Locally</button>` : ''}
+          ${c.stock > 0 ? `<button class="drawer-btn btn-s" onclick="window.__openBookingModal('${c.coffin_id || c.id}')"><i class="fa-solid fa-calendar-plus"></i> Book Locally</button>` : ''}
           <button class="drawer-btn btn-w" onclick="window.__openFindStock('${c.name?.replace(/'/g, "\\'") || ''}')"><i class="fa-solid fa-network-wired"></i> Find Stock Elsewhere</button>
-          <button class="drawer-btn btn-d" onclick="window.__deleteCoffin(${c.coffin_id || c.id})"><i class="fa-solid fa-trash"></i> Delete Coffin</button>
+          <button class="drawer-btn btn-d" onclick="window.__deleteCoffin('${c.coffin_id || c.id}')"><i class="fa-solid fa-trash"></i> Delete Coffin</button>
           <button class="drawer-btn btn-g" onclick="window.__closeDrawer()">Close</button>
         </div>
       </div>`;
@@ -1170,10 +1212,10 @@ const CoffinDashboard = () => {
         <div style="background:${S.bg}; padding:12px; border-radius:8px; font-size:13px; color:#334155; border:1px solid ${S.border};">${b.notes || 'No notes provided'}</div>
       </div>
       <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-top:24px;">
-        ${b.status === 'pending' ? `<button class="drawer-btn btn-s" onclick="window.__handleBookingStatus(${b.id},'booked')"><i class="fa-solid fa-check"></i> Approve Reservation</button>` : ''}
-        ${b.status === 'pending' ? `<button class="drawer-btn btn-d" onclick="window.__handleBookingStatus(${b.id},'cancelled')"><i class="fa-solid fa-times"></i> Cancel Reservation</button>` : ''}
-        ${b.status === 'booked' ? `<button class="drawer-btn btn-s" onclick="window.__handleBookingStatus(${b.id},'completed')"><i class="fa-solid fa-check-double"></i> Mark Completed</button>` : ''}
-        ${!b.paid && b.status !== 'cancelled' ? `<button class="drawer-btn btn-w" onclick="window.__markPaid(${b.id})"><i class="fa-solid fa-coins"></i> Mark as Paid</button>` : ''}
+        ${b.status === 'pending' ? `<button class="drawer-btn btn-s" onclick="window.__handleBookingStatus('${b.id}','booked')"><i class="fa-solid fa-check"></i> Approve Reservation</button>` : ''}
+        ${b.status === 'pending' ? `<button class="drawer-btn btn-d" onclick="window.__handleBookingStatus('${b.id}','cancelled')"><i class="fa-solid fa-times"></i> Cancel Reservation</button>` : ''}
+        ${b.status === 'booked' ? `<button class="drawer-btn btn-s" onclick="window.__handleBookingStatus('${b.id}','completed')"><i class="fa-solid fa-check-double"></i> Mark Completed</button>` : ''}
+        ${!b.paid && b.status !== 'cancelled' ? `<button class="drawer-btn btn-w" onclick="window.__markPaid('${b.id}')"><i class="fa-solid fa-coins"></i> Mark as Paid</button>` : ''}
         <button class="drawer-btn btn-g" onclick="window.__closeDrawer()">Close</button>
       </div>`;
     openDrawer(`Reservation #${b.id}`, content);
@@ -1226,8 +1268,8 @@ const CoffinDashboard = () => {
         <h4 style="${objToStr(styles.detailSectionH4)}"><i class="fa-solid fa-exchange-alt"></i> Transfer Info</h4>
         <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Type</span><strong style="${objToStr(styles.detailRowStrong)}">${r.req_type === 'client' ? 'Client Reservation' : 'Stock Replenishment'}</strong></div>
         <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Coffin</span><strong style="${objToStr(styles.detailRowStrong)}">${c ? c.name : 'N/A'}</strong></div>
-        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">From Branch</span><strong style="${objToStr(styles.detailRowStrong)}">${branches.find(b => b.id == r.from_branch_id)?.name || 'N/A'}</strong></div>
-        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">To Branch</span><strong style="${objToStr(styles.detailRowStrong)}">${branches.find(b => b.id == r.to_branch_id)?.name || 'N/A'}</strong></div>
+        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">From Branch</span><strong style="${objToStr(styles.detailRowStrong)}">${r.from_branch_name || branches.find(b => b.id == r.from_branch_id)?.name || 'N/A'}</strong></div>
+        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">To Branch</span><strong style="${objToStr(styles.detailRowStrong)}">${r.to_branch_name || branches.find(b => b.id == r.to_branch_id)?.name || 'N/A'}</strong></div>
         <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Quantity</span><strong style="${objToStr(styles.detailRowStrong)}">${r.quantity || 1}</strong></div>
         <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Status</span><strong><span class="inline-tag ${getReqStatus(r.status).cls}">${getReqStatus(r.status).label}</span></strong></div>
       </div>
@@ -1239,9 +1281,9 @@ const CoffinDashboard = () => {
       ${trackerHtml}
       ${historyHtml}
       <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-top:24px;">
-        ${r.status === 'pending' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction(${r.id},'approve')"><i class="fa-solid fa-check"></i> Approve Request</button>` : ''}
-        ${r.status === 'approved' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-w" onclick="window.__handleStockAction(${r.id},'transferring')"><i class="fa-solid fa-truck"></i> Mark In Transit</button>` : ''}
-        ${r.status === 'transferring' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction(${r.id},'delivered')"><i class="fa-solid fa-check-double"></i> Confirm Delivered</button>` : ''}
+        ${r.status === 'pending' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction('${r.id}','approve')"><i class="fa-solid fa-check"></i> Approve Request</button>` : ''}
+        ${r.status === 'approved' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-w" onclick="window.__handleStockAction('${r.id}','transferring')"><i class="fa-solid fa-truck"></i> Mark In Transit</button>` : ''}
+        ${r.status === 'transferring' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction('${r.id}','delivered')"><i class="fa-solid fa-check-double"></i> Confirm Delivered</button>` : ''}
         <button class="drawer-btn btn-g" onclick="window.__closeDrawer()">Close</button>
       </div>`;
     openDrawer(`Transfer Request #${r.id}`, content);
@@ -1269,9 +1311,12 @@ const CoffinDashboard = () => {
     `);
 
     try {
-      // Fetch coffins from ALL branch databases using parent slug
+      // Fetch coffins from ALL branch databases using parent slug + tenant id (UUID).
+      // Tenant id guarantees branch rows (written with tenant_slug = <branch slug>)
+      // are included alongside head-office rows for the same tenant.
+      const tenantId = getTenantId();
       const res = await api.get('/coffins/all-branches', {
-        params: { parent_slug: parentSlug }
+        params: { parent_slug: parentSlug, tenant_id: tenantId || undefined }
       });
 
       if (res.data?.success && res.data?.data) {
@@ -1341,7 +1386,7 @@ const CoffinDashboard = () => {
       // "Find in Other Branches" must not surface the CURRENT branch's own stock —
       // that stock is already shown in the Inventory tab / Reservation dropdown.
       if (c.branch_id && c.branch_id == currentBranch) return false;
-      if (branchFilter && c.branch_id != parseInt(branchFilter)) return false;
+      if (branchFilter && String(c.branch_id || '') != String(branchFilter)) return false;
       if (query) {
         const ql = query.toLowerCase();
         if (!c.name?.toLowerCase().includes(ql)) return false;
@@ -1379,7 +1424,7 @@ const CoffinDashboard = () => {
               <div>
                 <div style="font-weight:700; color:${S.text}; font-size:15px; margin-bottom:4px;">${c.name}</div>
                 <div style="font-size:13px; color:${S.textMuted}; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  <span style="display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-building" style="font-size:11px;"></i> ${c.branch_name || 'Unknown'}</span>
+                  <span style="display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-building" style="font-size:11px;"></i> ${branches.find(b => b.id == c.branch_id)?.name || c.branch_name || 'Unknown'}</span>
                   <span style="color:${S.border};">|</span>
                   <span style="font-weight:600; color:${S.text};">${formatKES(c.price)}</span>
                   ${c.color ? `<span style="color:${S.border};">|</span><span><i class="fa-solid fa-palette" style="font-size:11px;"></i> Color: ${c.color}</span>` : ''}
@@ -1392,7 +1437,7 @@ const CoffinDashboard = () => {
                 ${stock} ${stockLabel}
               </span>
               ${stock > 0 ?
-            `<button class="drawer-btn btn-p btn-sm" style="width:auto; padding:8px 14px;" onclick="window.__reserveInterBranch(${c.coffin_id || c.id})">
+            `<button class="drawer-btn btn-p btn-sm" style="width:auto; padding:8px 14px;" onclick="window.__reserveInterBranch('${c.coffin_id || c.id}')">
                   <i class="fa-solid fa-paper-plane"></i> Request
                 </button>`
             :
@@ -1459,7 +1504,7 @@ const CoffinDashboard = () => {
             <div>
               <h4 style="font-size:16px; font-weight:700; color:${S.primaryDark}; margin:0 0 4px;">${c.name}</h4>
               <p style="font-size:13px; color:${S.primaryDark}; margin:0; opacity:0.8;">
-                From <strong>${c.branch_name || 'other branch'}</strong> • ${formatKES(c.price)}
+                From <strong>${branches.find(b => b.id == c.branch_id)?.name || c.branch_name || 'other branch'}</strong> • ${formatKES(c.price)}
               </p>
             </div>
           </div>
@@ -1499,7 +1544,7 @@ const CoffinDashboard = () => {
           </div>
         </div>
         
-        <button class="drawer-btn btn-p btn-w-full" onclick="window.__submitInterReserve(${c.coffin_id || c.id}, ${c.branch_id})" style="margin-top:8px; padding:14px; font-size:14px;">
+        <button class="drawer-btn btn-p btn-w-full" onclick="window.__submitInterReserve('${c.coffin_id || c.id}')" style="margin-top:8px; padding:14px; font-size:14px;">
           <i class="fa-solid fa-paper-plane"></i> Send Transfer Request
         </button>
       `;
@@ -1534,6 +1579,8 @@ const CoffinDashboard = () => {
         const res = await api.post('/coffins/stock-requests', {
           from_branch_id: fromBranch?.id || currentUserBranchId,  // Use branch ID (INT) for FK
           to_branch_id: toBranch?.id || c.branch_id,              // Use branch ID (INT) for FK
+          from_branch_name: fromBranch?.name || null,             // Friendly name e.g. "Nairobi"
+          to_branch_name: toBranch?.name || c.branch_name || null, // Friendly name e.g. "Machakos"
           coffin_id: cid,
           quantity: parseInt(quantity) || 1,
           client_name: client,
@@ -1800,235 +1847,31 @@ const CoffinDashboard = () => {
   );
 
   // ─── Render Bookings Tab ────────────────────────────────────────────
-  const renderBookings = () => {
-    const toDateKey = (raw) => {
-      if (!raw) return '';
-      const s = String(raw);
-      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-      const d = new Date(s);
-      if (isNaN(d.getTime())) return '';
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    };
-
-    const handleDateSelect = (date) => {
-      setSelectedDate(date);
-      setDetailDate(date);
-    };
-
-    const closeDetail = () => setDetailDate(null);
-
-    const handleWeekBookingClick = (b) => {
-      viewBooking(b.id);
-    };
-
+    const renderBookings = () => {
     return (
-      <>
-        <div style={styles.tw}>
-          <div style={styles.tt}>
-            <div style={styles.sbox}>
-              <i className="fa-solid fa-magnifying-glass" style={{ color: S.textMuted }}></i>
-              <input
-                style={styles.sboxInput}
-                placeholder="Search client..."
-                value={bkQuery}
-                onChange={e => setBkQuery(e.target.value)}
-              />
-            </div>
-            <div style={styles.ff}>
-              {[
-                ['all', 'All', '#0f172a'],
-                ['pending', 'Pending', '#d97706'],
-                ['booked', 'Approved', '#0284c7'],
-                ['completed', 'Completed', '#059669'],
-                ['unpaid', 'Unpaid', '#dc2626'],
-              ].map(f => {
-                const active = bkFilter === f[0];
-                return (
-                  <button
-                    key={f[0]}
-                    style={{
-                      ...styles.fn,
-                      background: active ? f[2] : '#fff',
-                      color: active ? '#fff' : S.textMuted,
-                      border: `1px solid ${active ? f[2] : S.border}`,
-                      boxShadow: active ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
-                      fontWeight: 700,
-                    }}
-                    onClick={() => setBkFilter(f[0])}
-                  >
-                    {f[1]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          {bkView === 'calendar' ? (
-            <div>
-              <HorizontalCalendar
-                eventsData={filteredBookings}
-                selectedDate={selectedDate}
-                onDateSelect={handleDateSelect}
-                dateKey="service_date"
-              />
-
-              {calendarMode === 'week' ? (
-                <WeeklyView
-                  currentDate={selectedDate}
-                  bookings={filteredBookings}
-                  getEvents={(ds) => filteredBookings.filter(b => toDateKey(b.service_date) === ds).map(b => ({
-                    id: b.id,
-                    client: b.client_name || '—',
-                    dest: b.deceased_name || '—',
-                    from: getCoffinName(b.coffin_id, coffins) || '—',
-                    start: 6,
-                    end: 22,
-                    allDay: true,
-                    status: b.status || 'booked',
-                    branch: 'nairobi',
-                    branchName: branches.find(br => br.id == b.branch_id)?.name || 'Main Branch'
-                  }))}
-                  openBookingDetails={(b) => viewBooking(b.id)}
-                />
-              ) : (
-                <DailyView
-                  selectedDate={selectedDate}
-                  onDateChange={(d) => handleDateSelect(d)}
-                  bookings={{
-                    [toDateKey(selectedDate)]: filteredBookings
-                      .filter(b => toDateKey(b.service_date) === toDateKey(selectedDate))
-                      .map(b => ({
-                        id: b.id,
-                        client: b.client_name || '—',
-                        dest: b.deceased_name || '—',
-                        from: getCoffinName(b.coffin_id, coffins) || '—',
-                        start: 6,
-                        end: 22,
-                        allDay: true,
-                        status: b.status || 'booked',
-                        branch: 'nairobi',
-                        branchName: branches.find(br => br.id == b.branch_id)?.name || 'Main Branch'
-                      }))
-                  }}
-                  onBookingClick={(b) => viewBooking(b.id)}
-                />
-              )}
-
-              {detailDate && (
-                <div className="coffin-detail-panel">
-                  <div className="coffin-detail-title">
-                    <span>
-                      <i className="fa-solid fa-calendar-day" style={{ marginRight: 8, color: S.primary }}></i>
-                      {formatDate(toDateKey(detailDate))} — Bookings
-                    </span>
-                    <button
-                      onClick={closeDetail}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: S.textMuted,
-                        cursor: 'pointer',
-                        fontSize: '16px',
-                      }}
-                    >
-                      <i className="fa-solid fa-times"></i>
-                    </button>
-                  </div>
-                  <div className="coffin-detail-grid">
-                    {filteredBookings
-                      .filter(b => toDateKey(b.service_date) === toDateKey(detailDate))
-                      .map(b => {
-                        const bs = getBookingStatus(b.status);
-                        const coffin = coffins.find(c => (c.coffin_id || c.id) == b.coffin_id);
-                        return (
-                          <div
-                            key={b.id}
-                            className="coffin-detail-card"
-                            onClick={() => viewBooking(b.id)}
-                          >
-                            <div className="coffin-detail-card-head">
-                              <span className="coffin-detail-card-client">{b.client_name}</span>
-                              <span className="coffin-bcard-status" style={{ background: getStatusColor(b.status) }}>{bs.label}</span>
-                            </div>
-                            <div className="coffin-detail-card-meta">
-                              <div><strong>Deceased:</strong> {b.deceased_name || 'N/A'}</div>
-                              <div><strong>Coffin:</strong> {coffin?.name || 'N/A'}</div>
-                              <div><strong>Price:</strong> {formatKES(b.coffin_price || b.price)}</div>
-                              <div><strong>Payment:</strong> <span className={b.paid ? 'coffin-bcard-pay paid' : 'coffin-bcard-pay unpaid'}>{b.paid ? 'Paid' : 'Unpaid'}</span></div>
-                              {b.notes && <div><strong>Notes:</strong> {b.notes}</div>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    {filteredBookings.filter(b => toDateKey(b.service_date) === toDateKey(detailDate)).length === 0 && (
-                      <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: S.textMuted, padding: 20 }}>
-                        <i className="fa-solid fa-calendar-check" style={{ fontSize: 24, opacity: 0.3, marginBottom: 8 }}></i>
-                        <p>No bookings on this day</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-
-            <div style={styles.tableWrap}>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>ID</th>
-                    <th style={styles.th}>Client</th>
-                    <th style={styles.th}>Deceased</th>
-                    <th style={styles.th}>Coffin</th>
-                    <th style={styles.th}>Date</th>
-                    <th style={styles.th}>Payment</th>
-                    <th style={styles.th}>Status</th>
-                    <th style={styles.th}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredBookings.length === 0 ? (
-                    <tr>
-                      <td colSpan={8}>
-                        <div style={styles.es}>
-                          <i className="fa-solid fa-calendar-xmark" style={styles.esIcon}></i>
-                          <p style={styles.esP}>No reservations found</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredBookings.map(b => {
-                      const bs = getBookingStatus(b.status);
-                      const coffin = coffins.find(c => (c.coffin_id || c.id) == b.coffin_id);
-                      return (
-                        <tr key={b.id}>
-                          <td style={{ ...styles.td, fontWeight: 600 }}>#{b.id}</td>
-                          <td style={{ ...styles.td, fontWeight: 600 }}>{b.client_name}</td>
-                          <td style={styles.td}>{b.deceased_name}</td>
-                          <td style={styles.td}>{coffin?.name || 'N/A'}</td>
-                          <td style={styles.td}>{formatDate(b.service_date)}</td>
-                          <td style={styles.td}>
-                            <Tag cls={b.paid ? 'tag-ok' : 'tag-ou'}>{b.paid ? 'Paid' : 'Unpaid'}</Tag>
-                          </td>
-                          <td style={styles.td}><Tag cls={bs.cls}>{bs.label}</Tag></td>
-                          <td style={styles.td}>
-                            <button style={styles.ib} onClick={() => viewBooking(b.id)} title="View Details">
-                              <i className="fa-solid fa-eye"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </>
+      <div
+        style={{
+          height: 'calc(100vh - 300px)',
+          minHeight: 560,
+          borderRadius: 16,
+          overflow: 'hidden',
+          border: `1px solid ${S.border}`,
+          boxShadow: S.shadowMd,
+        }}
+      >
+        <ReservationDashboard
+          bookings={branchBookings}
+          coffins={coffins}
+          branches={branches}
+          formatPrice={formatKES}
+          onNewReservation={() => setModal({ open: true, type: 'booking', data: { service_date: todayKey() } })}
+          onViewBooking={(id) => viewBooking(id)}
+        />
+      </div>
     );
   };
 
-  // ─── Render Transfers Tab ───────────────────────────────────────────
+  // ─── Render Transfers Tab ─────────────────────────────────────────────
   const renderTransfers = () => {
     const pendingCount = stockRequests.filter(r => r.status === 'pending').length;
     const totalIncoming = incomingRequests.length;
@@ -2102,8 +1945,12 @@ const CoffinDashboard = () => {
 
     const TransferRow = ({ r, type }) => {
       const coffin = coffins.find(c => (c.coffin_id || c.id) == r.coffin_id);
-      const fromBranch = branches.find(b => b.id == r.from_branch_id);
-      const toBranch = branches.find(b => b.id == r.to_branch_id);
+      const fromBranchRaw = branches.find(b => b.id == r.from_branch_id);
+      const toBranchRaw = branches.find(b => b.id == r.to_branch_id);
+      // Show the friendly stored branch names (e.g. "Nairobi", "Machakos") so users
+      // never see raw ids; fall back to the branches lookup when names aren't stored.
+      const fromBranch = { ...(fromBranchRaw || {}), name: r.from_branch_name || fromBranchRaw?.name };
+      const toBranch = { ...(toBranchRaw || {}), name: r.to_branch_name || toBranchRaw?.name };
       const isExpanded = expandedTransferId === r.id;
       const origin = type === 'incoming' ? fromBranch : toBranch;
       const dest = type === 'incoming' ? toBranch : fromBranch;
@@ -2366,8 +2213,8 @@ const CoffinDashboard = () => {
             <select
               value={currentBranch || ''}
               onChange={e => {
-                const newBranch = parseInt(e.target.value);
-                setCurrentBranch(newBranch);
+                // Branch ids are strings/UUIDs - do NOT parseInt() (that yields NaN).
+                setCurrentBranch(e.target.value);
               }}
               style={{
                 padding: '8px 12px',
@@ -2437,20 +2284,6 @@ const CoffinDashboard = () => {
               <span style={{ fontSize: 13, fontWeight: 700, color: S.text, whiteSpace: 'nowrap' }}>
                 Reservations <span style={{ color: S.textMuted, fontWeight: 400 }}>({filteredBookings.length})</span>
               </span>
-              <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 10, background: S.bg, border: `1px solid ${S.borderLight}` }}>
-                <button
-                  style={{ ...styles.fn, ...(bkView === 'calendar' ? styles.fnActive : {}) }}
-                  onClick={() => setBkView('calendar')}
-                >
-                  <i className="fa-solid fa-calendar-days" style={{ marginRight: 6 }}></i>Calendar
-                </button>
-                <button
-                  style={{ ...styles.fn, ...(bkView === 'list' ? styles.fnActive : {}) }}
-                  onClick={() => setBkView('list')}
-                >
-                  <i className="fa-solid fa-list" style={{ marginRight: 6 }}></i>List
-                </button>
-              </div>
               <button
                 style={{ ...styles.btn, ...styles.btnP, whiteSpace: 'nowrap' }}
                 onClick={() => setModal({ open: true, type: 'booking', data: { service_date: todayKey() } })}
@@ -2583,20 +2416,80 @@ const CoffinDashboard = () => {
         </div>
       </div>
 
-      {/* Booking Modal */}
+      {/* Booking Modal - Redesigned Reservation UI */}
       <div
         style={{ ...styles.moOverlay, ...(modal.open && modal.type === 'booking' ? styles.moOpen : {}) }}
         onClick={() => setModal({ open: false, type: '', data: {} })}
       >
-        <div style={styles.md} onClick={e => e.stopPropagation()}>
-          <div style={styles.mh}>
+        <div style={{ ...styles.md, maxWidth: 980 }} onClick={e => e.stopPropagation()}>
+          <div style={{ ...styles.mh, alignItems: 'center' }}>
             <h2 style={styles.mh2}>New Reservation</h2>
             <button style={styles.mx} onClick={() => setModal({ open: false, type: '', data: {} })}>&times;</button>
           </div>
-          <form onSubmit={handleCreateBooking}>
-            <div style={styles.mb}>
-              <div style={styles.fr}>
-                <div style={styles.fg}>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 18, padding: '18px 24px' }}>
+            {/* Left: Calendar + Day List */}
+            <div>
+              <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontWeight: 700, color: S.text }}>Select date</div>
+                <div style={{ color: S.textMuted, fontSize: 13 }}>{formatDate(modal.data.service_date || todayKey())}</div>
+              </div>
+
+              <div style={{ background: '#fff', border: `1px solid ${S.border}`, borderRadius: 12, padding: 12 }}>
+                <ReusableCalendar
+                  items={filteredBookings}
+                  dateKey="service_date"
+                  idKey="id"
+                  selectedDate={modal.data.service_date || todayKey()}
+                  onDateSelect={(d) => setModal(prev => ({ ...prev, data: { ...prev.data, service_date: d } }))}
+                  onItemClick={(it) => viewBooking(it.id)}
+                  getItemTitle={(it) => it.client_name || it.deceased_name || 'Reservation'}
+                  getItemSubtitle={(it) => getCoffinName(it.coffin_id, coffins)}
+                  getItemAmount={(it) => it.coffin_price || it.price || 0}
+                  getItemStatus={(it) => it.status}
+                  getIsUrgent={(it) => it.status === 'pending'}
+                  showAddButton={false}
+                />
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  <div style={{ ...styles.statCard, padding: 12, height: 'auto', background: '#fff' }}>
+                    <div style={{ fontSize: 12, color: S.textMuted, fontWeight: 700 }}>Bookings (Month)</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, marginTop: 6 }}>{(() => {
+                      const month = (modal.data.service_date || todayKey()).slice(0,7);
+                      return filteredBookings.filter(b => (b.service_date||'').slice(0,7) === month).length;
+                    })()}</div>
+                    <div style={{ fontSize: 12, color: S.textLight }}>Total reservations in selected month</div>
+                  </div>
+
+                  <div style={{ ...styles.statCard, padding: 12, height: 'auto', background: '#fff' }}>
+                    <div style={{ fontSize: 12, color: S.textMuted, fontWeight: 700 }}>Upcoming</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, marginTop: 6 }}>{filteredBookings.filter(b => (b.service_date || '') >= todayKey()).length}</div>
+                    <div style={{ fontSize: 12, color: S.textLight }}>From today onwards</div>
+                  </div>
+
+                  <div style={{ ...styles.statCard, padding: 12, height: 'auto', background: '#fff' }}>
+                    <div style={{ fontSize: 12, color: S.textMuted, fontWeight: 700 }}>Estimated Revenue</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, marginTop: 6 }}>{(() => {
+                      const month = (modal.data.service_date || todayKey()).slice(0,7);
+                      const total = filteredBookings
+                        .filter(b => (b.service_date||'').slice(0,7) === month)
+                        .reduce((s, b) => s + (parseFloat(b.coffin_price || b.price || 0) || 0), 0);
+                      return formatKES(total);
+                    })()}</div>
+                    <div style={{ fontSize: 12, color: S.textLight }}>Month total (approx)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Compact Reservation Form */}
+            <div style={{ background: '#fff', border: `1px solid ${S.border}`, borderRadius: 12, padding: 16, height: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 800 }}>Reservation details</div>
+
+              <div style={{ display: 'grid', gap: 8 }}>
+                <div>
                   <label style={styles.fl}>Client Name *</label>
                   <input
                     style={styles.fi}
@@ -2606,7 +2499,8 @@ const CoffinDashboard = () => {
                     placeholder="John Doe"
                   />
                 </div>
-                <div style={styles.fg}>
+
+                <div>
                   <label style={styles.fl}>Client Phone</label>
                   <input
                     style={styles.fi}
@@ -2615,147 +2509,71 @@ const CoffinDashboard = () => {
                     placeholder="0712-345-678"
                   />
                 </div>
-              </div>
-              <div style={styles.fg}>
-                <label style={styles.fl}>Deceased Name <span style={{ fontWeight: 400, color: S.textMuted }}>(optional)</span></label>
-                <input
-                  style={styles.fi}
-                  value={modal.data.deceased_name || ''}
-                  onChange={e => setModal({ ...modal, data: { ...modal.data, deceased_name: e.target.value } })}
-                  placeholder="Jane Doe"
-                />
-              </div>
-              <div style={styles.fr}>
-                <div style={styles.fg}>
-                  <label style={styles.fl}>Select Branch *</label>
+
+                <div>
+                  <label style={styles.fl}>Deceased (optional)</label>
+                  <input
+                    style={styles.fi}
+                    value={modal.data.deceased_name || ''}
+                    onChange={e => setModal({ ...modal, data: { ...modal.data, deceased_name: e.target.value } })}
+                    placeholder="Jane Doe"
+                  />
+                </div>
+
+                <div>
+                  <label style={styles.fl}>Select Coffin *</label>
                   <select
                     style={styles.fs}
                     required
-                    value={modal.data.branch_id || currentBranch}
-                    onChange={e => {
-                      const selectedBranchId = e.target.value;
-                      setModal({ ...modal, data: { ...modal.data, branch_id: selectedBranchId, coffin_id: '' } });
-                    }}
+                    value={modal.data.coffin_id || ''}
+                    onChange={e => setModal({ ...modal, data: { ...modal.data, coffin_id: e.target.value } })}
                   >
-                    {branches.map(b => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
+                    <option value="">Select coffin</option>
+                    {(() => {
+                      const selectedBranchId = modal.data.branch_id || currentBranch;
+                      const branchCoffinsList = coffins.filter(c => {
+                        const matchesBranch = !c.branch_id || c.branch_id == selectedBranchId;
+                        const hasStock = (parseInt(c.stock) || 0) > 0;
+                        return matchesBranch && hasStock;
+                      });
+                      return branchCoffinsList.length > 0 ? branchCoffinsList.map(c => (
+                        <option key={c.coffin_id || c.id} value={c.coffin_id || c.id}>
+                          {c.name} — {formatKES(c.price)} ({c.stock} left)
+                        </option>
+                      )) : <option value="" disabled>No coffins available</option>;
+                    })()}
                   </select>
                 </div>
-                <div style={styles.fg}>
-                  <label style={styles.fl}>Service Date *</label>
-                  <input
-                    style={styles.fi}
-                    required
-                    type="date"
-                    value={modal.data.service_date || ''}
-                    onChange={e => setModal({ ...modal, data: { ...modal.data, service_date: e.target.value } })}
-                  />
-                </div>
-              </div>
-              <div style={styles.fg}>
-                <label style={styles.fl}>Coffin *</label>
-                <select
-                  style={styles.fs}
-                  required
-                  value={modal.data.coffin_id || ''}
-                  onChange={e => setModal({ ...modal, data: { ...modal.data, coffin_id: e.target.value } })}
-                >
-                  <option value="">Select coffin</option>
-                  {(() => {
-                    const selectedBranchId = modal.data.branch_id || currentBranch;
-                    // Coffins without a per-branch id (branch_id null/undefined) belong to the
-                    // selected branch's pool, so keep them visible — same rule as the Inventory tab.
-                    const branchCoffinsList = coffins.filter(c => {
-                      const matchesBranch = !c.branch_id || c.branch_id == selectedBranchId;
-                      const hasStock = (parseInt(c.stock) || 0) > 0;
-                      return matchesBranch && hasStock;
-                    });
-                    return branchCoffinsList.length > 0 ? branchCoffinsList.map(c => (
-                      <option key={c.coffin_id || c.id} value={c.coffin_id || c.id}>
-                        {c.name} — {formatKES(c.price)} ({c.stock} left)
-                      </option>
-                    )) : <option value="" disabled>No coffins available in this branch</option>;
-                  })()}
-                </select>
-                {(() => {
-                  const selectedBranchId = modal.data.branch_id || currentBranch;
-                  const availableInBranch = coffins.filter(c => (!c.branch_id || c.branch_id == selectedBranchId) && (parseInt(c.stock) || 0) > 0).length;
-                  if (availableInBranch === 0) {
-                    return (
-                      <div style={{ background: S.warningLight, border: '1px solid #fcd34d', color: '#92400e', padding: 12, borderRadius: 8, marginTop: 8, textAlign: 'center', fontSize: 13 }}>
-                        <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: 6 }}></i>
-                        No stock available in selected branch.
-                        <button
-                          style={{ ...styles.btn, ...styles.btnP, ...styles.btnSm, marginTop: 8 }}
-                          onClick={() => { setModal({ open: false, type: '', data: {} }); openFindStock(); }}
-                          type="button"
-                        >
-                          <i className="fa-solid fa-network-wired"></i> Find in Other Branches
-                        </button>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-              {(() => {
-                const selectedBranchId = modal.data.branch_id || currentBranch;
-                const sel = coffins.find(c => (c.coffin_id || c.id) == modal.data.coffin_id);
-                if (!sel) return null;
-                const selType = sel.type || sel.name;
-                const colorOptions = coffins
-                  .filter(c => (!c.branch_id || c.branch_id == selectedBranchId) && (parseInt(c.stock) || 0) > 0 && (c.type || c.name) === selType && (c.color || '').trim())
-                  .map(c => c.color);
-                const uniqueColors = [...new Set(colorOptions)];
-                if (uniqueColors.length === 0) return null;
-                const currentColor = modal.data.color || sel.color || '';
-                return (
-                  <div style={styles.fg}>
-                    <label style={styles.fl}>
-                      Color {sel.color ? <span style={{ fontWeight: 400, color: S.textMuted }}>(selected: {sel.color})</span> : '(optional)'}
-                    </label>
-                    <select
-                      style={styles.fs}
-                      value={currentColor}
-                      onChange={e => {
-                        const chosen = e.target.value;
-                        const match = coffins.find(c =>
-                          (!c.branch_id || c.branch_id == selectedBranchId) &&
-                          (parseInt(c.stock) || 0) > 0 &&
-                          (c.type || c.name) === selType &&
-                          (c.color || '') === chosen
-                        );
-                        setModal(prev => ({ ...prev, data: {
-                          ...prev.data,
-                          color: chosen,
-                          coffin_id: match ? (match.coffin_id || match.id) : prev.data.coffin_id,
-                          size: match ? (match.size || prev.data.size) : prev.data.size
-                        } }));
-                      }}
-                    >
-                      <option value="">{currentColor ? 'Keep current color' : 'Select color (optional)'}</option>
-                      {uniqueColors.map((cl, i) => <option key={i} value={cl}>{cl}</option>)}
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={styles.fl}>Quantity</label>
+                    <input type="number" min="1" style={styles.fi} value={modal.data.quantity || 1} onChange={e => setModal(prev => ({ ...prev, data: { ...prev.data, quantity: parseInt(e.target.value) || 1 } }))} />
+                  </div>
+                  <div style={{ width: 120 }}>
+                    <label style={styles.fl}>Paid</label>
+                    <select style={styles.fs} value={modal.data.paid ? 'yes' : 'no'} onChange={e => setModal(prev => ({ ...prev, data: { ...prev.data, paid: e.target.value === 'yes' } }))}>
+                      <option value="no">No</option>
+                      <option value="yes">Yes</option>
                     </select>
                   </div>
-                );
-              })()}
-              <div style={styles.fg}>
-                <label style={styles.fl}>Notes</label>
-                <textarea
-                  style={{ ...styles.fi, minHeight: 80, resize: 'vertical' }}
-                  value={modal.data.notes || ''}
-                  onChange={e => setModal({ ...modal, data: { ...modal.data, notes: e.target.value } })}
-                />
+                </div>
+
+                <div>
+                  <label style={styles.fl}>Notes</label>
+                  <textarea style={{ ...styles.fi, minHeight: 80 }} value={modal.data.notes || ''} onChange={e => setModal({ ...modal, data: { ...modal.data, notes: e.target.value } })} />
+                </div>
+              </div>
+
+              <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
+                <button type="button" style={{ ...styles.btn, ...styles.btnG }} onClick={() => setModal({ open: false, type: '', data: {} })}>Cancel</button>
+                <button type="button" style={{ ...styles.btn, ...styles.btnP }} onClick={(e) => { e.preventDefault(); handleCreateBooking({ preventDefault: () => {} }); }} disabled={submitLoading}>
+                  {submitLoading ? 'Saving...' : 'Create Reservation'}
+                </button>
               </div>
             </div>
-            <div style={styles.mf}>
-              <button type="button" style={{ ...styles.btn, ...styles.btnG }} onClick={() => setModal({ open: false, type: '', data: {} })}>Cancel</button>
-              <button type="submit" style={{ ...styles.btn, ...styles.btnP }} disabled={submitLoading}>
-                {submitLoading ? 'Saving...' : 'Create Reservation'}
-              </button>
-            </div>
-          </form>
+          </div>
+
         </div>
       </div>
 

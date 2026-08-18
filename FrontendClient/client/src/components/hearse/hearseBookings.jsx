@@ -24,6 +24,8 @@ const STATUS_CONFIG = {
   maintenance: { label: 'Maintenance', progress: 0, color: '#8b5cf6', bg: '#f3e8ff', dotColor: '#8b5cf6' },
 };
 
+
+
 const STATUS_LIST = Object.keys(STATUS_CONFIG);
 
 const COLORS = {
@@ -128,6 +130,23 @@ const getAuthHeaders = () => {
   return headers;
 };
 
+// Resolve the current user's display name from localStorage (with a
+// sessionStorage fallback). Used everywhere the UI would otherwise fall back to
+// "System" for the "Booked by" / created-by field.
+const getLocalUserName = () => {
+  try {
+    const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
+    if (!raw) return '';
+    const u = JSON.parse(raw);
+    return u?.full_name || u?.username || u?.name || u?.email || '';
+  } catch { return ''; }
+};
+
+const cleanStr = (s) => {
+  if (!s) return '';
+  return String(s).replace(/\s+/g, ' ').trim();
+};
+
 const Icons = {
   truck: <Truck size={16} />,
   car: <Car size={16} />,
@@ -165,9 +184,11 @@ const api = {
     const r = await fetch(`${API_BASE_URL}/hearses`, { headers: { ...getTenantHeaders(), ...getAuthHeaders() } });
     return r.ok ? (await r.json()).hearses || [] : [];
   },
-  updateStatus: async (id, status) => {
+  updateStatus: async (id, status, reason) => {
     const h = getAuthHeaders(); h['Content-Type'] = 'application/json';
-    const r = await fetch(`${API_BASE_URL}/hearse-bookings/${id}/status`, { method: 'PUT', headers: h, body: JSON.stringify({ status }) });
+    const body = { status };
+    if (String(status) === 'cancelled') body.cancel_reason = reason || null;
+    const r = await fetch(`${API_BASE_URL}/hearse-bookings/${id}/status`, { method: 'PUT', headers: h, body: JSON.stringify(body) });
     if (!r.ok) throw new Error('Failed');
     return r.json();
   },
@@ -858,6 +879,11 @@ const HearseBookings = () => {
   });
   const [registerLoading, setRegisterLoading] = useState(false);
 
+  // Cancel-with-reason modal state
+  const [cancelBooking, setCancelBooking] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelLoading, setCancelLoading] = useState(false);
+
   const removeToast = useCallback((id) => setToasts(p => p.filter(t => t.id !== id)), []);
   const showToast = useCallback((msg, type = 'success') => {
     const id = Date.now();
@@ -999,6 +1025,8 @@ const HearseBookings = () => {
         (b.client_name || '').toLowerCase().includes(q) ||
         (b.booking_code || genId(b.booking_id) || '').toLowerCase().includes(q) ||
         (b.destination || '').toLowerCase().includes(q) ||
+        (b.from_location || b.from || '').toLowerCase().includes(q) ||
+        (b.to_location || '').toLowerCase().includes(q) ||
         (b.hearse_name || '').toLowerCase().includes(q)
       );
     }
@@ -1027,30 +1055,43 @@ const HearseBookings = () => {
   const openDrawer = useCallback((b) => { setSelectedBooking(b); setDrawerOpen(true); setActionMenuId(null); }, []);
   const closeDrawer = useCallback(() => { setDrawerOpen(false); setSelectedBooking(null); }, []);
 
-  const changeStatus = useCallback(async (id, status) => {
+  const changeStatus = useCallback(async (id, status, reason) => {
+    const key = String(id);
     try {
-      await api.updateStatus(id, status);
-      setBookings(p => p.map(b => b.booking_id === id ? { ...b, status } : b));
-      if (selectedBooking && (selectedBooking.booking_id === id || selectedBooking.id === id)) {
-        setSelectedBooking(p => ({ ...p, status }));
+      await api.updateStatus(id, status, reason);
+      setBookings(p => p.map(b =>
+        String(b.booking_id ?? b.id) === key
+          ? { ...b, status, ...(status === 'cancelled' ? { cancel_reason: reason || null } : {}) }
+          : b
+      ));
+      if (selectedBooking && (String(selectedBooking.booking_id) === key || String(selectedBooking.id) === key)) {
+        setSelectedBooking(p => ({ ...p, status, ...(status === 'cancelled' ? { cancel_reason: reason || null } : {}) }));
       }
-      showToast(`Status → ${STATUS_CONFIG[status].label}`);
+      showToast(`Status → ${STATUS_CONFIG[status]?.label || status}`);
       setActionMenuId(null);
     } catch { showToast('Failed to update', 'error'); }
   }, [selectedBooking, showToast]);
 
-  const getNextStatuses = (status) => {
-    switch (status) {
-      case 'pending': return ['booked', 'cancelled'];
-      case 'booked': return ['in_transit', 'cancelled'];
-      case 'in_transit': return ['completed'];
-      case 'completed': return [];
-      case 'cancelled': return ['pending'];
-      case 'postponed': return ['booked'];
-      case 'maintenance': return ['booked'];
-      default: return [];
-    }
-  };
+  const openCancelModal = useCallback((b) => {
+    setCancelBooking(b);
+    setCancelReason(b?.cancel_reason || '');
+    setActionMenuId(null);
+  }, []);
+
+  const closeCancelModal = useCallback(() => {
+    setCancelBooking(null);
+    setCancelReason('');
+    setCancelLoading(false);
+  }, []);
+
+  const confirmCancel = useCallback(async () => {
+    if (!cancelBooking) return;
+    if (!cancelReason.trim()) { showToast('Please enter a cancel reason', 'error'); return; }
+    setCancelLoading(true);
+    await changeStatus(cancelBooking.booking_id || cancelBooking.id, 'cancelled', cancelReason.trim());
+    setCancelLoading(false);
+    closeCancelModal();
+  }, [cancelBooking, cancelReason, changeStatus, closeCancelModal, showToast]);
 
   const openNewBooking = useCallback((date) => {
     const dateStr = date || '';
@@ -1163,7 +1204,7 @@ const HearseBookings = () => {
         from_timestamp: firstBookingDate,
         booking_date: firstBookingDate,
         booking_dates: selectedBookingDates,
-        booked_by: user?.email || 'system',
+        booked_by: getLocalUserName() || user?.email || 'System',
         branch_id: newForm.branch_id || user?.branch_id || '',
         branch_code: newForm.branch_code || user?.branch_code || ''
       };
@@ -1496,35 +1537,32 @@ const HearseBookings = () => {
                                 marginTop: '0.25rem'
                               }}>
                                 <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.7rem', fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                  Change Status
+                                  Actions
                                 </div>
-                                <select
-                                  value=""
-                                  onChange={(e) => {
-                                    if (e.target.value) {
-                                      changeStatus(b.booking_id || b.id, e.target.value);
-                                      setActionMenuId(null);
-                                    }
-                                  }}
-                                  style={{
-                                    width: '100%',
-                                    padding: '0.5rem 0.75rem',
-                                    border: 'none',
-                                    background: COLORS.bg,
-                                    color: COLORS.text,
-                                    fontSize: '0.8125rem',
-                                    cursor: 'pointer',
-                                    borderRadius: '0.25rem',
-                                    margin: '0.25rem 0'
-                                  }}
-                                >
-                                  <option value="">Select status...</option>
-                                  {getNextStatuses(b.status).map((s) => (
-                                    <option key={s} value={s}>
-                                      {STATUS_CONFIG[s]?.label || s}
-                                    </option>
-                                  ))}
-                                </select>
+                                {['booked', 'pending', 'confirmed', 'postponed'].includes(b.status) && (
+                                  <button
+                                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', color: '#be185d', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                                    onClick={() => { changeStatus(b.booking_id || b.id, 'in_transit'); setActionMenuId(null); }}
+                                  >
+                                    🚚 In Transit
+                                  </button>
+                                )}
+                                {['booked', 'in_transit', 'confirmed'].includes(b.status) && (
+                                  <button
+                                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', color: '#047857', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                                    onClick={() => { changeStatus(b.booking_id || b.id, 'completed'); setActionMenuId(null); }}
+                                  >
+                                    ✓ Complete
+                                  </button>
+                                )}
+                                {!['completed', 'cancelled'].includes(b.status) && (
+                                  <button
+                                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: 'none', background: 'transparent', color: COLORS.dangerDark, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                                    onClick={() => openCancelModal(b)}
+                                  >
+                                    ✕ Cancel
+                                  </button>
+                                )}
                                 <div style={{ height: 1, background: COLORS.border, margin: '0.25rem 0' }} />
                                 <button
                                   style={{
@@ -1674,7 +1712,7 @@ const HearseBookings = () => {
                   }}>
                     <span style={{ fontSize: '0.75rem', color: COLORS.textSecondary }}>👤</span>
                     <span style={{ fontSize: '0.875rem', color: COLORS.text }}>
-                      Booked by: {selectedBooking.booked_by_name || selectedBooking.booked_by || user?.email || 'System'}
+                      Booked by: {selectedBooking.booked_by || getLocalUserName() || '—'}
                     </span>
                   </div>
                 </div>
@@ -1691,7 +1729,7 @@ const HearseBookings = () => {
                       From Location
                     </div>
                     <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: COLORS.text }}>
-                      {selectedBooking.from_location || '—'}
+                      {selectedBooking.from_location || selectedBooking.from || '—'}
                     </div>
                   </div>
                   <div style={{ padding: '1rem', background: COLORS.bg, borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.border}` }}>
@@ -1771,6 +1809,16 @@ const HearseBookings = () => {
                       {selectedBooking.branch_name || branchOptions.find(b => String(b.branch_id) === String(selectedBooking.branch_id))?.branch_name || selectedBooking.branch_code || '—'}
                     </div>
                   </div>
+                  {selectedBooking.status === 'cancelled' && (
+                    <div style={{ padding: '0.875rem', background: COLORS.dangerLight, borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.dangerLight}`, gridColumn: '1 / -1' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: COLORS.dangerDark, marginBottom: '0.25rem', textTransform: 'uppercase' }}>
+                        ✕ Cancel Reason
+                      </div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 500, color: COLORS.dangerDark }}>
+                        {selectedBooking.cancel_reason || 'No reason provided'}
+                      </div>
+                    </div>
+                  )}
                   {selectedBooking.end_date && (
                     <div style={{ padding: '0.875rem', background: COLORS.bg, borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.border}` }}>
                       <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.25rem', textTransform: 'uppercase' }}>
@@ -1816,22 +1864,108 @@ const HearseBookings = () => {
                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: COLORS.textSecondary, marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Quick Actions
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {getNextStatuses(selectedBooking.status).map((s) => (
-                    <PrimaryButton
-                      key={s}
-                      onClick={() => changeStatus(selectedBooking.booking_id || selectedBooking.id, s)}
-                      style={{ fontSize: '0.8125rem', padding: '0.625rem 1rem' }}
-                    >
-                      Move to {STATUS_CONFIG[s].label}
-                    </PrimaryButton>
-                  ))}
-                </div>
+                {['booked', 'pending', 'postponed', 'confirmed'].includes(selectedBooking.status) && (
+                  <button
+                    onClick={() => changeStatus(selectedBooking.booking_id || selectedBooking.id, 'in_transit')}
+                    style={{ width: '100%', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem 1rem', borderRadius: COLORS.radiusSm, border: 'none', background: '#be185d', color: '#FFFFFF', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    🚚 Mark In Transit
+                  </button>
+                )}
+                {['booked', 'in_transit', 'confirmed'].includes(selectedBooking.status) && (
+                  <button
+                    onClick={() => changeStatus(selectedBooking.booking_id || selectedBooking.id, 'completed')}
+                    style={{ width: '100%', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem 1rem', borderRadius: COLORS.radiusSm, border: 'none', background: COLORS.success, color: '#FFFFFF', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    ✓ Complete Booking
+                  </button>
+                )}
+                {!['completed', 'cancelled'].includes(selectedBooking.status) && (
+                  <button
+                    onClick={() => openCancelModal(selectedBooking)}
+                    style={{ width: '100%', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem 1rem', borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.dangerLight}`, background: COLORS.dangerLight, color: COLORS.dangerDark, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    ✕ Cancel Booking
+                  </button>
+                )}
+                {selectedBooking.status === 'cancelled' && (
+                  <button
+                    onClick={() => changeStatus(selectedBooking.booking_id || selectedBooking.id, 'booked')}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem 1rem', borderRadius: COLORS.radiusSm, border: 'none', background: COLORS.info, color: '#FFFFFF', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    ↺ Reopen Booking
+                  </button>
+                )}
+                {selectedBooking.status === 'in_transit' && (
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: COLORS.textMuted }}>
+                    The hearse is currently en route to the destination.
+                  </div>
+                )}
               </div>
             </DrawerBody>
           </>
         )}
       </Drawer>
+
+      {/* Cancel Reason Modal */}
+      {cancelBooking && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1100,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(15, 23, 42, 0.55)', padding: '1rem'
+        }} onClick={closeCancelModal}>
+          <div
+            style={{
+              width: '100%', maxWidth: '440px', background: COLORS.surface,
+              borderRadius: COLORS.radius, boxShadow: COLORS.shadowLg,
+              padding: '1.5rem', border: `1px solid ${COLORS.border}`
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <div style={{ fontSize: '1.125rem', fontWeight: 700, color: COLORS.text }}>
+                  Cancel Booking
+                </div>
+                <div style={{ fontSize: '0.8125rem', color: COLORS.textSecondary, marginTop: '0.25rem' }}>
+                  {cancelBooking.client_name} · {cancelBooking.booking_code || genId(cancelBooking.booking_id)}
+                </div>
+              </div>
+              <button onClick={closeCancelModal} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: COLORS.textMuted, fontSize: '1.25rem', lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.375rem', textTransform: 'uppercase' }}>
+              Cancel Reason *
+            </div>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="e.g. Family postponed the funeral, hearse no longer needed..."
+              rows={4}
+              style={{
+                width: '100%', padding: '0.75rem', borderRadius: COLORS.radiusSm,
+                border: `1px solid ${COLORS.border}`, fontSize: '0.875rem',
+                color: COLORS.text, background: COLORS.bg, resize: 'vertical',
+                fontFamily: 'inherit', outline: 'none'
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+              <button
+                onClick={closeCancelModal}
+                style={{ padding: '0.625rem 1rem', borderRadius: COLORS.radiusSm, border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text, fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer' }}
+              >
+                Keep Booking
+              </button>
+              <button
+                onClick={confirmCancel}
+                disabled={cancelLoading}
+                style={{ padding: '0.625rem 1.25rem', borderRadius: COLORS.radiusSm, border: 'none', background: COLORS.danger, color: COLORS.white, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', opacity: cancelLoading ? 0.6 : 1 }}
+              >
+                {cancelLoading ? 'Cancelling...' : 'Confirm Cancellation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Register New Hearse Drawer */}
       {registerHearseOpen && <DrawerOverlay onClick={() => setRegisterHearseOpen(false)} />}
@@ -2032,19 +2166,56 @@ const HearseBookings = () => {
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.375rem', fontSize: '0.8125rem', color: COLORS.text }}>
                   Select Hearse *
                 </label>
-                <select
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${COLORS.border}`, borderRadius: COLORS.radiusSm, fontSize: '0.8125rem', color: COLORS.text, background: COLORS.surface }}
-                  value={newForm.hearse_id}
-                  onChange={e => setNewForm(p => ({ ...p, hearse_id: e.target.value }))}
-                  required
-                >
-                  <option value="">— Select —</option>
-                  {allHearses.map(h => (
-                    <option key={h.id} value={h.id}>
-                      {h.hearse_name || 'N/A'} — {h.plate_number || h.number_plate} {h.branch_name ? `(${h.branch_name})` : ''}
-                    </option>
-                  ))}
-                                </select>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem' }}>
+                  {allHearses.map(h => {
+                    const selected = String(h.id) === String(newForm.hearse_id);
+                    return (
+                      <button
+                        key={h.id}
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); setNewForm(p => ({ ...p, hearse_id: h.id })); }}
+                        style={{
+                          textAlign: 'left',
+                          width: '100%',
+                          padding: '0.85rem',
+                          borderRadius: COLORS.radiusSm,
+                          border: selected ? `2px solid ${COLORS.primary}` : `1px solid ${COLORS.border}`,
+                          background: selected ? COLORS.infoLight : COLORS.surface,
+                          cursor: 'pointer',
+                          boxShadow: selected ? COLORS.shadowSm : 'none',
+                          transition: COLORS.transition
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
+                          <div style={{ fontSize: '0.825rem', fontWeight: 700, color: COLORS.text }}>{cleanStr(h.hearse_name) || 'Unnamed Hearse'}</div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.125rem 0.4rem', borderRadius: '4px', whiteSpace: 'nowrap', marginLeft: '0.5rem',
+                            background: h.status === 'available' ? COLORS.successLight : COLORS.warningLight,
+                            color: h.status === 'available' ? COLORS.successDark : COLORS.warningDark }}>
+                            {h.status || 'available'}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: COLORS.textSecondary, marginBottom: '0.25rem' }}>
+                          🚍 {cleanStr(h.plate_number || h.number_plate) || '—'}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: COLORS.textMuted, display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                          <span>Model: {cleanStr(h.model) || '—'}</span>
+                          {h.branch_code && <span>Code: {cleanStr(h.branch_code)}</span>}
+                          {h.branch_name && <span>Branch: {cleanStr(h.branch_name)}</span>}
+                          {h.capacity && <span>Capacity: {h.capacity}</span>}
+                        </div>
+                        {selected && (
+                          <div style={{ marginTop: '0.5rem', fontSize: '0.72rem', fontWeight: 700, color: COLORS.primary }}>✓ Selected</div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {!newForm.hearse_id && (
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: COLORS.textMuted }}>Choose a hearse from the cards above.</div>
+                )}
+                {newForm.hearse_id && (
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.73rem', color: COLORS.textSecondary }}>Selected: {cleanStr(allHearses.find(h => String(h.id) === String(newForm.hearse_id))?.hearse_name) || 'Hearse ' + newForm.hearse_id}</div>
+                )}
                 {newForm.hearse_id && (hearseAvailable === false || checkingAvailability) && (
                   <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600, background: hearseAvailable === false ? COLORS.dangerLight : COLORS.warningLight, color: hearseAvailable === false ? COLORS.danger : COLORS.warningDark }}>
                     {checkingAvailability

@@ -32,7 +32,17 @@ class CoffinModel {
       size: r.size || '',
       material: r.material || '',
       sku: r.coffin_id || r.sku || '',
-      branch_id: r.branch_id ? parseInt(r.branch_id) : null,
+      // Preserve the raw tenant id (may be a UUID like 'dc007c...' or a legacy INT
+      // like '1'). Never parseInt() it - parseInt() on a UUID returns NaN.
+      tenant_id: (r.tenant_id !== null && r.tenant_id !== undefined && String(r.tenant_id).trim() !== '')
+        ? String(r.tenant_id)
+        : null,
+      // Preserve the raw branch id (may be a UUID like 'b7a2-...' or a legacy INT
+      // like '1'). Never parseInt() it - parseInt() on a UUID returns NaN, which is
+      // falsy, causing the frontend to treat the coffin as belonging to every branch.
+      branch_id: (r.branch_id !== null && r.branch_id !== undefined && String(r.branch_id).trim() !== '')
+        ? String(r.branch_id)
+        : null,
       created_at: r.created_at || null,
       images,
       primary_image: images[0] || null,
@@ -50,6 +60,17 @@ class CoffinModel {
     const quantity = parseInt(data.quantity) || 0;
     const exactPrice = parseFloat(data.exact_price ?? data.price) || 0;
 
+    // Persist tenant/branch ids EXACTLY as received (UUID strings). The coffins
+    // table stores these columns as VARCHAR - coercing them to numbers would corrupt
+    // UUIDs (parseInt('55e1190b-...') -> NaN) or truncate them, leaking the coffin
+    // into every branch.
+    const tenantId = (data.tenant_id != null && String(data.tenant_id).trim() !== '')
+      ? String(data.tenant_id).trim()
+      : null;
+    const branchId = (data.branch_id != null && String(data.branch_id).trim() !== '')
+      ? String(data.branch_id).trim()
+      : null;
+
     const coffinId = `COF-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
     const sql = `
@@ -60,7 +81,7 @@ class CoffinModel {
     `;
 
     await coffinQuery(sql, [
-      coffinId, tenantSlug, data.tenant_id || null, data.branch_id || null,
+      coffinId, tenantSlug, tenantId, branchId,
       type, exactPrice, quantity, color, size
     ]);
 
@@ -74,25 +95,38 @@ class CoffinModel {
       quantity,
       stock: quantity,
       color,
-      size
+      size,
+      tenant_id: tenantId,
+      branch_id: branchId
     };
   }
 
   /**
    * Get all coffins for a tenant
    */
-  static async getAll(tenantSlug: string): Promise<any[]> {
+  static async getAll(tenantSlug: string, tenantId: string | null = null): Promise<any[]> {
+    // Multi-branch tenants share ONE tenant_id across every branch. Coffins written
+    // by a branch user carry tenant_slug = <branch slug> while head-office coffins
+    // carry tenant_slug = <parent slug>. Matching tenant_id as well guarantees a
+    // tenant-wide inventory regardless of which slug wrote the row.
+    const params: any[] = [tenantSlug];
+    let tenantClause = 'c.tenant_slug = ?';
+    if (tenantId != null && String(tenantId).trim() !== '') {
+      tenantClause = '(c.tenant_slug = ? OR c.tenant_id = ?)';
+      params.push(String(tenantId).trim());
+    }
+
     const sql = `
-      SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
-      WHERE c.tenant_slug = ? AND c.is_deleted = FALSE
+      WHERE ${tenantClause} AND c.is_deleted = FALSE
       GROUP BY c.coffin_id
       ORDER BY c.created_at DESC
     `;
 
-    const rows: any[] = await coffinQuery(sql, [tenantSlug]);
+    const rows: any[] = await coffinQuery(sql, params);
     return rows.map(row => this.mapRow(row));
 
   }
@@ -104,7 +138,7 @@ class CoffinModel {
    */
   static async getByBranch(tenantSlug: string, _branchDbName?: string | null, _branchSlug?: string | null, branchId: number | null = null): Promise<any[]> {
     const sql = `
-      SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
@@ -116,24 +150,35 @@ class CoffinModel {
     const rows: any[] = await coffinQuery(sql, [tenantSlug]);
     return rows.map(row => ({
       ...this.mapRow(row),
-      branch_id: branchId ? parseInt(String(branchId)) : (row.branch_id ? parseInt(String(row.branch_id)) : null)
+      branch_id: branchId
+        ? String(branchId)
+        : (row.branch_id !== null && row.branch_id !== undefined && String(row.branch_id).trim() !== ''
+            ? String(row.branch_id)
+            : null)
     }));
   }
 
   /**
    * Get coffin by ID
    */
-  static async getById(tenantSlug: string, id: string): Promise<any | null> {
+  static async getById(tenantSlug: string, id: string, tenantId: string | null = null): Promise<any | null> {
+    const params: any[] = [id, tenantSlug];
+    let tenantClause = 'c.tenant_slug = ?';
+    if (tenantId != null && String(tenantId).trim() !== '') {
+      tenantClause = '(c.tenant_slug = ? OR c.tenant_id = ?)';
+      params.push(String(tenantId).trim());
+    }
+
     const sql = `
-      SELECT c.coffin_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
-      WHERE c.coffin_id = ? AND c.tenant_slug = ? AND c.is_deleted = FALSE
+      WHERE c.coffin_id = ? AND ${tenantClause} AND c.is_deleted = FALSE
       GROUP BY c.coffin_id
     `;
 
-    const rows: any[] = await coffinQuery(sql, [id, tenantSlug]);
+    const rows: any[] = await coffinQuery(sql, params);
     return rows.length > 0 ? this.mapRow(rows[0]) : null;
   }
 
@@ -227,16 +272,25 @@ class CoffinModel {
       [parseInt(data.quantity), coffin[0].coffin_id, tenantSlug]
     );
 
+    // Normalise a service date down to YYYY-MM-DD so the DATE column accepts it
+    // (the inventory UI sends e.g. '2026-08-25', possibly as a JS Date ISO string).
+    const serviceDate = data.service_date
+      ? String(data.service_date).slice(0, 10)
+      : null;
+
     const sql = `
-      INSERT INTO coffin_bookings (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size, quantity, booked_by, booked_for, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
+      INSERT INTO coffin_bookings (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size, quantity, booked_by, booked_for, service_date, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
     `;
 
     const result: any = await coffinQuery(sql, [
-      orderId, tenantSlug, data.tenant_id || null, data.branch_id || null,
+      orderId, tenantSlug,
+      (data.tenant_id != null && String(data.tenant_id).trim() !== '') ? String(data.tenant_id).trim() : null,
+      (data.branch_id != null && String(data.branch_id).trim() !== '') ? String(data.branch_id).trim() : null,
       coffin[0].coffin_id, data.coffin_name?.trim() || null,
       data.color ?? null, data.size ?? null, parseInt(data.quantity),
-      data.booked_by?.trim() || null, data.booked_for?.trim() || null
+      data.booked_by?.trim() || null, data.booked_for?.trim() || null,
+      serviceDate
     ]);
 
     return {
@@ -247,7 +301,8 @@ class CoffinModel {
       size: data.size,
       quantity: data.quantity,
       booked_by: data.booked_by,
-      booked_for: data.booked_for
+      booked_for: data.booked_for,
+      service_date: serviceDate
     };
   }
 
@@ -258,25 +313,41 @@ class CoffinModel {
     const requestId = `REQ-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
     const sql = `
-      INSERT INTO stock_requests (request_id, tenant_slug, coffin_name, color, size, requested_by, booked_for, requesting_branch, image_url, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
+      INSERT INTO stock_requests
+        (request_id, tenant_slug, tenant_id, coffin_id, coffin_name, color, size,
+         requested_by, booked_for, requesting_branch, from_branch_id, to_branch_id,
+         from_branch_name, to_branch_name, quantity, req_type, image_url, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
     `;
 
     const result: any = await coffinQuery(sql, [
-      requestId, tenantSlug, data.coffin_name?.trim(), data.color?.trim(),
-      data.size?.trim(), data.requested_by?.trim(), data.booked_for?.trim(),
-      data.requesting_branch?.trim(), data.image_url || null
+      requestId, tenantSlug,
+      (data.tenant_id != null && String(data.tenant_id).trim() !== '') ? String(data.tenant_id).trim() : null,
+      data.coffin_id?.trim() || null,
+      (data.coffin_name || '').trim() || null, (data.color || '').trim() || null,
+      (data.size || '').trim() || null, (data.requested_by || '').trim() || null,
+      (data.booked_for || '').trim() || null, (data.requesting_branch || '').trim() || null,
+      (data.from_branch_id != null && String(data.from_branch_id).trim() !== '') ? String(data.from_branch_id).trim() : null,
+      (data.to_branch_id != null && String(data.to_branch_id).trim() !== '') ? String(data.to_branch_id).trim() : null,
+      data.from_branch_name || null, data.to_branch_name || null,
+      parseInt(data.quantity) || 1, data.req_type || 'replenishment', data.image_url || null
     ]);
 
     return {
       request_id: requestId,
       insertId: result.insertId,
+      coffin_id: data.coffin_id || null,
       coffin_name: data.coffin_name,
       color: data.color,
       size: data.size,
       requested_by: data.requested_by,
       booked_for: data.booked_for,
       requesting_branch: data.requesting_branch,
+      from_branch_id: data.from_branch_id || null,
+      to_branch_id: data.to_branch_id || null,
+      from_branch_name: data.from_branch_name || null,
+      to_branch_name: data.to_branch_name || null,
+      quantity: parseInt(data.quantity) || 1,
       image: data.image_url || null
     };
   }

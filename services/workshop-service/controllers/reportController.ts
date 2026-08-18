@@ -173,13 +173,13 @@ const getProductionReport = async (req: Request, res: Response) => {
         );
 
         const [workerPerformance]: any = await safeTenantQuery(tenantDb,
-            `SELECT u.user_id, u.full_name,
+            `SELECT u.id AS user_id, u.full_name,
                 COUNT(wa.id) as total_assignments,
                 COALESCE(SUM(wa.hours_worked), 0) as total_hours,
                 COALESCE(AVG(wa.hours_worked), 0) as avg_hours_per_task
-             FROM users u LEFT JOIN worker_assignments wa ON u.user_id = wa.user_id
+             FROM workshop_workers u LEFT JOIN worker_assignments wa ON u.id = wa.user_id
              WHERE u.role IN ('worker', 'manager')
-             GROUP BY u.user_id, u.full_name ORDER BY total_hours DESC`
+             GROUP BY u.id, u.full_name ORDER BY total_hours DESC`
         );
 
         const [orderStatus]: any = await safeTenantQuery(tenantDb,

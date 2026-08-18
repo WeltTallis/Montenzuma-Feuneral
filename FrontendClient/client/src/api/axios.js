@@ -181,9 +181,13 @@ api.interceptors.request.use((config) => {
   const slug = getSlug();
   const tenantId = localStorage.getItem('tenantId');
   const userId = getUserId();
-  const branchSlug = localStorage.getItem('branchSlug');
-  const branchDb = localStorage.getItem('branchDb');
-  const branchId = localStorage.getItem('branchId');
+    // Prefer the global auth helpers (getBranchSlug / getBranchId) so the branch is
+  // resolved even when it lives only on the logged-in `user` object and not as a bare
+  // localStorage key. Reading localStorage directly left x-branch-id unset, which made
+  // createCoffin/createOrder store branch_id = NULL -> the coffin leaked into every branch.
+  const branchSlug = getBranchSlug();
+  const branchDb = localStorage.getItem('branchDbName') || localStorage.getItem('branchDb');
+  const branchId = getBranchId();
 
   if (token) config.headers['Authorization'] = `Bearer ${token}`;
   if (slug) config.headers['x-tenant-slug'] = slug;

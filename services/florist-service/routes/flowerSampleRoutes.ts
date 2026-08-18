@@ -8,10 +8,12 @@ import {
     deleteFlowerArrangement,
     getAllFlowerArrangements
 } from '../controllers/flowerSamples.ts';
-const router = Router();
+
 // Import authentication middleware
-// @ts-ignore - authMiddleware is JavaScript, not TypeScript
-const { protect, authorizeAny } = require('../../../services/app-global/middlewares/authMiddleware');
+import authMiddleware from '../../../services/app-global/middlewares/authMiddleware.js';
+const { protect, authorizeAny } = authMiddleware;
+
+const router = Router();
 
 // All routes are protected with JWT authentication
 router.use(protect);
@@ -24,7 +26,7 @@ const upload = multer({
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
-  fileFilter: (req, file, cb) => {
+    fileFilter: (req, file, cb) => {
     // Accept only image files
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
@@ -33,8 +35,6 @@ const upload = multer({
     }
   }
 });
-
-const router = Router();
 
 // Middleware to handle multiple file uploads (max 10 files)
 const uploadMiddleware = (req: any, res: any, next: any) => {

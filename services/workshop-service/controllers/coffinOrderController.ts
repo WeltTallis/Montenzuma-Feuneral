@@ -123,6 +123,10 @@ const createOrder = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Tenant database not resolved' });
         }
 
+        // All coffin_orders rows live in the ONE shared operations DB, isolated via
+        // the tenant_slug column (NOT NULL, no default) — so it MUST be provided here.
+        const tenantSlug = (req as any).tenant?.tenant_slug || (req as any).tenantSlug || 'system_shared';
+
                         const {
             coffin_name, coffin_type, size,
             color, notes,
@@ -140,10 +144,10 @@ const createOrder = async (req: Request, res: Response) => {
         const insertResult: any = await safeTenantExecute(tenantDb,
             `INSERT INTO coffin_orders
             (order_number, coffin_name, coffin_type, size, color,
-             notes, due_date, priority, branch_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             notes, due_date, priority, branch_id, tenant_slug)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [order_number, coffin_name, coffin_type || 'standard', size || null,
-                color, notes, due_date || null, priority || 'normal', branch_id || 1]
+                color, notes, due_date || null, priority || 'normal', branch_id || 1, tenantSlug]
         );
 
         const orderId = insertResult.insertId;

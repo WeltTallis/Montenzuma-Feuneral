@@ -430,6 +430,74 @@ const ReusableCalendar = ({
   const monthLabel = `${MONTH_NAMES[viewMonth]} ${viewYear}`;
   const hasAmount = getItemAmount != null;
 
+  // Week days data for the weekly mobile view
+  const weekDaysData = React.useMemo(() => {
+    try {
+      const base = getWeekMonday(selectedDate ? new Date(selectedDate + 'T12:00:00') : today);
+      const arr = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(base);
+        d.setDate(base.getDate() + i);
+        const ds = toDateString(d);
+        arr.push({
+          dayShort: WEEKDAY_SHORT[d.getDay()],
+          dayNum: d.getDate(),
+          ds,
+          isToday: ds === todayStr,
+          isSelected: ds === selectedDate,
+          isWeekend: d.getDay() === 0 || d.getDay() === 6,
+          count: (itemsByDate[ds] || []).length,
+          items: itemsByDate[ds] || []
+        });
+      }
+      return arr;
+    } catch (e) {
+      return [];
+    }
+  }, [selectedDate, itemsByDate, todayStr]);
+
+  // Mobile nav handlers
+  const handleThisWeekClick = () => {
+    setShowWeekView(prev => {
+      const next = !prev;
+      if (next) {
+        // Set selected date to this week's Monday by default
+        const monday = getWeekMonday(today);
+        setSelectedDate(toDateString(monday));
+      }
+      return next;
+    });
+  };
+
+  const goPrev = () => {
+    if (showWeekView) {
+      // move selectedDate back by 7 days
+      const refDate = selectedDate ? new Date(selectedDate + 'T12:00:00') : today;
+      refDate.setDate(refDate.getDate() - 7);
+      setSelectedDate(toDateString(refDate));
+    } else {
+      let m = viewMonth - 1;
+      let y = viewYear;
+      if (m < 0) { m = 11; y = viewYear - 1; }
+      setViewMonth(m);
+      setViewYear(y);
+    }
+  };
+
+  const goNext = () => {
+    if (showWeekView) {
+      const refDate = selectedDate ? new Date(selectedDate + 'T12:00:00') : today;
+      refDate.setDate(refDate.getDate() + 7);
+      setSelectedDate(toDateString(refDate));
+    } else {
+      let m = viewMonth + 1;
+      let y = viewYear;
+      if (m > 11) { m = 0; y = viewYear + 1; }
+      setViewMonth(m);
+      setViewYear(y);
+    }
+  };
+
   return (
     <div className={`rc-root ${className}`} style={{ '--rc-accent': accentColor }}>
       

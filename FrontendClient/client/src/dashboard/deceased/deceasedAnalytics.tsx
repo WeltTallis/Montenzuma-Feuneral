@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import api from "../../api/axios";
 import {
   AreaChart,
   Area,
@@ -937,15 +938,44 @@ export default function App() {
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 7, 1));
   const [selectedDay, setSelectedDay] = useState(new Date(2026, 7, 15));
   const [selectedEvent, setSelectedEvent] = useState<FuneralEvent | null>(null);
+  const [events, setEvents] = useState<FuneralEvent[]>([]);
+
+  useEffect(() => {
+    const fetchDeceased = async () => {
+      try {
+        const { data } = await api.get('/deceased/deceased-all');
+        const raw = data?.data || data || [];
+        const mapped = raw.map((d: any) => ({
+          id: d.deceased_id || d.id || `UNK-${Math.random()}`,
+          deceasedName: d.full_name || "Unknown",
+          age: d.age || 0,
+          gender: d.gender === 'Female' || d.gender === 'F' ? 'F' : 'M',
+          branch: (d.branch_name?.toLowerCase() || 'nairobi') as BranchId,
+          type: d.admission_status?.toLowerCase() === 'released' ? 'RELEASE' : 'INTAKE',
+          date: d.date_admitted?.split('T')[0] || new Date().toISOString().split('T')[0],
+          time: d.time_admitted || "08:00",
+          cause: d.cause_of_death || "Unknown",
+          nextOfKin: d.next_of_kin || "Unknown",
+          status: (d.admission_status?.toLowerCase() === 'released' ? 'completed' : 'in-progress') as StatusType,
+          caseNumber: d.admission_number || d.deceased_id || "N/A"
+        }));
+        setEvents(mapped.length > 0 ? mapped : EVENTS);
+      } catch (err) {
+        console.error("Failed to fetch deceased events", err);
+        setEvents(EVENTS);
+      }
+    };
+    fetchDeceased();
+  }, []);
 
   const filteredEvents = useMemo(
     () =>
-      EVENTS.filter(
+      events.filter(
         (e) =>
           (branchFilter === "ALL" || e.branch === branchFilter) &&
           (typeFilter === "ALL" || e.type === typeFilter)
       ),
-    [branchFilter, typeFilter]
+    [branchFilter, typeFilter, events]
   );
 
   const dayEvents = useMemo(() => {
@@ -994,9 +1024,9 @@ export default function App() {
   const monthStr = format(currentMonth, "yyyy-MM");
   const monthEvents = filteredEvents.filter((e) => e.date.startsWith(monthStr));
   const todayStr = "2026-08-15";
-  const todayEvents = EVENTS.filter((e) => e.date === todayStr);
-  const activeIntakes = EVENTS.filter((e) => e.type === "INTAKE").length;
-  const completedReleases = EVENTS.filter((e) => e.type === "RELEASE" && e.status === "completed").length;
+  const todayEvents = events.filter((e) => e.date === todayStr);
+  const activeIntakes = events.filter((e) => e.type === "INTAKE").length;
+  const completedReleases = events.filter((e) => e.type === "RELEASE" && e.status === "completed").length;
   const activeCases = activeIntakes - completedReleases;
 
   const headerStats = [

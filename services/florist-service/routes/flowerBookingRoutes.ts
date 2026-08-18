@@ -18,7 +18,8 @@ const router = Router();
 export const flowerBookingRouter = Router();
 // Import authentication middleware
 // @ts-ignore - authMiddleware is JavaScript, not TypeScript
-const { protect, authorizeAny } = require('../../../services/app-global/middlewares/authMiddleware');
+import authMiddleware from '../../../services/app-global/middlewares/authMiddleware.js';
+const { protect, authorizeAny } = authMiddleware;
 
 // All routes are protected with JWT authentication
 router.use(protect);

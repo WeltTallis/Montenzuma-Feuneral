@@ -477,7 +477,7 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
                 console.warn('Failed to emit booking notification:', emitError.message);
             }
 
-            res.status(201).json({
+                                    res.status(201).json({
                 status: 'success',
                 message: 'Hearse booking created successfully.',
                 booking: { ...booking, booking_code: booking_code, status: bookingStatus }
@@ -530,7 +530,7 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
         }
 
         const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id ${whereSQL} ORDER BY hb.created_at DESC`;
+        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id ${whereSQL} ORDER BY hb.created_at DESC`;
 
         const bookings = await safeQuery(query, params);
         let allBranches: any[] = [];
@@ -592,8 +592,10 @@ export const assignDriverToBooking = asyncHandler(async (req: Request, res: Resp
 export const updateBookingStatus = asyncHandler(async (req: Request, res: Response) => {
     try {
         const io = req.app.get('io');
-        const { booking_id } = req.params;
+                const { booking_id } = req.params;
         const { status } = req.body;
+        const cancelReason = String(req.body.cancel_reason || '').trim();
+        const cancelReason = String(req.body.cancel_reason || '').trim();
 
         const validStatuses = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'booked', 'in_transit', 'postponed'];
         if (!validStatuses.includes(status)) {
@@ -608,7 +610,19 @@ export const updateBookingStatus = asyncHandler(async (req: Request, res: Respon
         }
 
         const now = getKenyaTimeISO();
-        await safeQuery('UPDATE hearse_bookings SET status = ?, updated_at = ? WHERE id = ?', [status, now, booking_id]);
+
+        // Persist (or clear) the cancel reason alongside the status change so the
+        // UI can show *why* a booking was cancelled.
+        let statusSet = 'status = ?, updated_at = ?';
+        const statusParams: any[] = [status, now];
+        if (status === 'cancelled') {
+            statusSet += ', cancel_reason = ?';
+            statusParams.push(cancelReason || null);
+        } else {
+            statusSet += ', cancel_reason = NULL';
+        }
+        statusParams.push(booking_id);
+        await safeQuery(`UPDATE hearse_bookings SET ${statusSet} WHERE id = ?`, statusParams);
 
         // Keep the hearse fleet `status` meaningful WITHOUT making it the source of
         // truth. When a booking completes/cancels, recompute from the bookings that
@@ -626,7 +640,7 @@ export const updateBookingStatus = asyncHandler(async (req: Request, res: Respon
             );
         }
 
-        const [updatedBooking] = await safeQuery(`SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`, [booking_id]);
+        const [updatedBooking] = await safeQuery(`SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`, [booking_id]);
 
         if (io && updatedBooking) {
             io.emit('booking_status_updated', { type: 'STATUS_UPDATE', booking_id: parseInt(booking_id as string), status, booking: updatedBooking, timestamp: now, message: `Booking status updated to ${status}` });

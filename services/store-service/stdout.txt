@@ -24,3 +24,5 @@ Error: FATAL: JWT_SECRET environment variable is required
     at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:244:9)
     at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
 [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+
+C:\Users\User\Downloads\restpoint\services\store-service>
