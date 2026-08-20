@@ -50,8 +50,9 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// Routes
+// Routes - support both direct service access and gateway-rewritten requests
 app.use('/api/v1/restpoint/chemicals', chemicalRoutes);
+app.use('/chemicals', chemicalRoutes);
 
 // 404
 app.use((req: Request, res: Response) => {

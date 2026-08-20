@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Mini Store Service - create store_tables
  */
 export async function up(knex) {
-  const hasItems = await knex.schema.hasTable('store_items');
+  const hasItems = await knex.schema.hasTable('mini_store_items');
   if (!hasItems) {
-    await knex.schema.createTable('store_items', function (table) {
+    await knex.schema.createTable('mini_store_items', function (table) {
       table.increments('id').primary();
       table.string('name', 255).notNullable();
       table.string('category', 100).notNullable().defaultTo('Other');
@@ -14,14 +14,14 @@ export async function up(knex) {
       table.string('created_at', 255);
       table.string('updated_at', 255);
 
-      table.index(['name'], 'idx_store_items_name');
-      table.index(['category'], 'idx_store_items_category');
+      table.index(['name'], 'idx_mini_store_items_name');
+      table.index(['category'], 'idx_mini_store_items_category');
     });
   }
 
-  const hasTx = await knex.schema.hasTable('store_transactions');
+  const hasTx = await knex.schema.hasTable('mini_store_transactions');
   if (!hasTx) {
-    await knex.schema.createTable('store_transactions', function (table) {
+    await knex.schema.createTable('mini_store_transactions', function (table) {
       table.increments('id').primary();
       table.integer('item_id').notNullable();
       table.string('item_name', 255).notNullable();
@@ -40,10 +40,10 @@ export async function up(knex) {
     });
   }
 
-  console.log('[STORE MIGRATION] store_items & store_transactions ready');
+  console.log('[STORE MIGRATION] mini_store_items & mini_store_transactions ready');
 }
 
 export async function down(knex) {
-  await knex.schema.dropTableIfExists('store_transactions');
-  await knex.schema.dropTableIfExists('store_items');
+  await knex.schema.dropTableIfExists('mini_store_transactions');
+  await knex.schema.dropTableIfExists('mini_store_items');
 }

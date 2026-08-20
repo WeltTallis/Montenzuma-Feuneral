@@ -20,8 +20,16 @@ import express from 'express';
 import cors from 'cors';
 import knex from 'knex';
 import { getRootPool } from '../../shared/dbConfig.js';
-import { flowerBookingRouter } from './routes/flowerBookingRoutes.ts';
-import flowerSampleRoutes from './routes/flowerSampleRoutes.ts';
+
+// The route modules below transitively import app-global authMiddleware,
+// which reads JWT_SECRET / NODE_ENV from process.env while the module is
+// being evaluated. ES module static imports are hoisted and would execute
+// BEFORE the dotenv.config() above, crashing the service with
+// "FATAL: JWT_SECRET environment variable is required" even though the root
+// .env contains a JWT_SECRET. Load them dynamically so they run after
+// dotenv has populated the environment.
+const { flowerBookingRouter } = await import('./routes/flowerBookingRoutes.ts');
+const flowerSampleRoutes = (await import('./routes/flowerSampleRoutes.ts')).default;
 
 const app = express();
 

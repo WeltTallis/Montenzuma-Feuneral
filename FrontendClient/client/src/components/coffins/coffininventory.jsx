@@ -1082,7 +1082,14 @@ const CoffinDashboard = () => {
   // Coffins registered without a per-branch id (branch_id undefined) belong to the
   // current branch, so keep them visible. Otherwise match the selected branch.
   const branchCoffins = coffins.filter(c => !currentBranch || !c.branch_id || c.branch_id === currentBranch || c.branch_id == currentBranch);
-  const branchBookings = bookings.filter(b => !currentBranch || b.branch_id === currentBranch || b.branch_id == currentBranch);
+    // Mirrors `branchCoffins` above: a booking registered without a per-branch id
+  // (branch_id NULL) is shared central inventory and must stay visible everywhere.
+  // The server already scopes /coffins/orders to the current branch OR NULL, so we
+  // must NOT re-filter out the NULL-branch rows client-side or every central booking
+  // vanishes from the dashboard.
+  const branchBookings = bookings.filter(
+    (b) => !currentBranch || !b.branch_id || b.branch_id === currentBranch || b.branch_id == currentBranch
+  );
 
   const filteredCoffins = branchCoffins.filter(c => {
     if (invQuery) {
@@ -1263,21 +1270,111 @@ const CoffinDashboard = () => {
     }
     historyHtml += `</div>`;
 
+    const storedUser = (() => {
+      try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+    })();
+    const currentUserName = [storedUser.firstName, storedUser.lastName, storedUser.name, storedUser.fullName].filter(Boolean).join(' ') || storedUser.email || 'Current user';
+    const requestorName = r.requested_by_name || r.requester_name || r.requested_by || r.requestedBy || r.client_name || currentUserName;
+    const expectedDateRaw = r.expected_by || r.service_date || r.created_at;
+    const fromBranchName = r.from_branch_name || branches.find(b => b.id == r.from_branch_id)?.name || 'N/A';
+    const toBranchName = r.to_branch_name || branches.find(b => b.id == r.to_branch_id)?.name || 'N/A';
+    const sameBranchRequest = String(r.from_branch_id || '') === String(r.to_branch_id || '');
+    const routeLabel = sameBranchRequest ? 'Self / Internal request' : `${fromBranchName} → ${toBranchName}`;
+
+    const isIncoming = String(r.to_branch_id || '') === String(currentBranch || '');
+    const isOutgoing = String(r.from_branch_id || '') === String(currentBranch || '');
+    const directionLabel = isIncoming ? 'Incoming' : isOutgoing ? 'Outgoing' : 'Internal';
+    const directionColor = isIncoming ? '#dcfce7' : '#dbeafe';
+    const directionText = isIncoming ? '#166534' : '#1d4ed8';
+
     const content = `
+      <div style="margin-bottom:20px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border-radius:999px; background:${directionColor}; color:${directionText}; border:1px solid ${directionText}22; font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase;">${directionLabel}</span>
+            <span style="display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border-radius:999px; background:#f8fafc; color:#475569; border:1px solid ${S.border}; font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;">${sameBranchRequest ? 'Self Request' : 'Inter-branch'}</span>
+          </div>
+          <span style="font-size:11px; color:${S.textMuted}; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;">${r.request_id || r.id}</span>
+        </div>
+
+        <div style="background:linear-gradient(135deg, #111827 0%, #1f2937 100%); color:#fff; border-radius:18px; padding:18px 18px 14px; border:1px solid rgba(148,163,184,0.25); box-shadow:0 16px 30px rgba(15,23,42,0.18); margin-bottom:18px;">
+          <div style="font-size:11px; color:rgba(255,255,255,0.7); font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:8px;">Coffin</div>
+          <div style="font-size:22px; font-weight:800; letter-spacing:-0.04em; margin:0;">${c ? c.name : 'N/A'}</div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-top:18px; flex-wrap:wrap;">
+            <div>
+              <div style="font-size:11px; color:rgba(255,255,255,0.7); font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:4px;">Request</div>
+              <div style="font-size:13px; font-weight:700;">${r.request_id || r.id}</div>
+            </div>
+            <div style="padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:12px; font-weight:700;">${getReqStatus(r.status).label}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; margin-bottom:18px;">
+        <div style="background:linear-gradient(135deg, #eff6ff, #dbeafe); border:1px solid #bfdbfe; border-radius:14px; padding:14px 16px;">
+          <div style="font-size:11px; color:#1d4ed8; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px;">Requested By</div>
+          <div style="font-size:15px; font-weight:700; color:#0f172a; line-height:1.3;">${requestorName}</div>
+        </div>
+        <div style="background:linear-gradient(135deg, #f8fafc, #e2e8f0); border:1px solid #cbd5e1; border-radius:14px; padding:14px 16px;">
+          <div style="font-size:11px; color:#475569; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px;">Expected Date</div>
+          <div style="font-size:15px; font-weight:700; color:#0f172a;">${formatDate(expectedDateRaw)}</div>
+        </div>
+        <div style="background:linear-gradient(135deg, #ecfdf5, #d1fae5); border:1px solid #a7f3d0; border-radius:14px; padding:14px 16px;">
+          <div style="font-size:11px; color:#047857; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px;">Status</div>
+          <div style="font-size:15px; font-weight:700; color:#065f46;">${getReqStatus(r.status).label}</div>
+        </div>
+      </div>
+
+      <div style="${objToStr(styles.detailSection)}">
+        <h4 style="${objToStr(styles.detailSectionH4)}"><i class="fa-solid fa-route"></i> Route</h4>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; background:${S.bg}; border:1px solid ${S.border}; border-radius:12px; margin-bottom:12px;">
+          <div>
+            <div style="font-size:11px; color:${S.textMuted}; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:4px;">Transfer</div>
+            <div style="font-size:15px; font-weight:800; color:${S.text};">${routeLabel}</div>
+          </div>
+          <div style="padding:8px 10px; background:#fff; border:1px solid ${S.border}; border-radius:8px; color:${S.primary}; font-weight:700; font-size:12px;">${sameBranchRequest ? 'Self request' : 'Inter-branch'}</div>
+        </div>
+        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Origin</span><strong style="${objToStr(styles.detailRowStrong)}">${sameBranchRequest ? `${fromBranchName} (self)` : fromBranchName}</strong></div>
+        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Destination</span><strong style="${objToStr(styles.detailRowStrong)}">${sameBranchRequest ? `${toBranchName} (self)` : toBranchName}</strong></div>
+        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Receiver / To</span><strong style="${objToStr(styles.detailRowStrong)}">${sameBranchRequest ? `${toBranchName} (self)` : toBranchName}</strong></div>
+      </div>
+
+      <div style="${objToStr(styles.detailSection)}">
+        <h4 style="${objToStr(styles.detailSectionH4)}"><i class="fa-solid fa-box"></i> Shipment Details</h4>
+        <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px;">
+          <div style="padding:12px; background:${S.bg}; border:1px solid ${S.border}; border-radius:10px;">
+            <div style="font-size:11px; color:${S.textMuted}; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:4px;">Quantity</div>
+            <div style="font-size:14px; font-weight:700; color:${S.text};">${r.quantity || 1} Unit</div>
+          </div>
+          <div style="padding:12px; background:${S.bg}; border:1px solid ${S.border}; border-radius:10px;">
+            <div style="font-size:11px; color:${S.textMuted}; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:4px;">Coffin</div>
+            <div style="font-size:14px; font-weight:700; color:${S.text};">${c ? c.name : 'N/A'}</div>
+          </div>
+          <div style="padding:12px; background:${S.bg}; border:1px solid ${S.border}; border-radius:10px;">
+            <div style="font-size:11px; color:${S.textMuted}; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:4px;">From</div>
+            <div style="font-size:14px; font-weight:700; color:${S.text};">${sameBranchRequest ? `${fromBranchName} (self)` : fromBranchName}</div>
+          </div>
+          <div style="padding:12px; background:${S.bg}; border:1px solid ${S.border}; border-radius:10px;">
+            <div style="font-size:11px; color:${S.textMuted}; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:4px;">To</div>
+            <div style="font-size:14px; font-weight:700; color:${S.text};">${sameBranchRequest ? `${toBranchName} (self)` : toBranchName}</div>
+          </div>
+        </div>
+      </div>
+
       <div style="${objToStr(styles.detailSection)}">
         <h4 style="${objToStr(styles.detailSectionH4)}"><i class="fa-solid fa-exchange-alt"></i> Transfer Info</h4>
         <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Type</span><strong style="${objToStr(styles.detailRowStrong)}">${r.req_type === 'client' ? 'Client Reservation' : 'Stock Replenishment'}</strong></div>
-        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Coffin</span><strong style="${objToStr(styles.detailRowStrong)}">${c ? c.name : 'N/A'}</strong></div>
-        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">From Branch</span><strong style="${objToStr(styles.detailRowStrong)}">${r.from_branch_name || branches.find(b => b.id == r.from_branch_id)?.name || 'N/A'}</strong></div>
-        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">To Branch</span><strong style="${objToStr(styles.detailRowStrong)}">${r.to_branch_name || branches.find(b => b.id == r.to_branch_id)?.name || 'N/A'}</strong></div>
-        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Quantity</span><strong style="${objToStr(styles.detailRowStrong)}">${r.quantity || 1}</strong></div>
+        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Request ID</span><strong style="${objToStr(styles.detailRowStrong)}">${r.request_id || r.id}</strong></div>
+        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Requested By</span><strong style="${objToStr(styles.detailRowStrong)}">${requestorName}</strong></div>
+        <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Expected Date</span><strong style="${objToStr(styles.detailRowStrong)}">${formatDate(expectedDateRaw)}</strong></div>
         <div style="${objToStr(styles.detailRow)}"><span style="${objToStr(styles.detailRowSpan)}">Status</span><strong><span class="inline-tag ${getReqStatus(r.status).cls}">${getReqStatus(r.status).label}</span></strong></div>
       </div>
+
       <div style="${objToStr(styles.detailSection)}">
         <h4 style="${objToStr(styles.detailSectionH4)}"><i class="fa-solid fa-sticky-note"></i> Reason</h4>
         <div style="background:${S.bg}; padding:12px; border-radius:8px; font-size:13px; color:#334155; border:1px solid ${S.border};">${r.notes || 'No reason provided'}</div>
       </div>
-      <h4 style="font-size:13px; font-weight:700; margin-top:24px; margin-bottom:12px; color:${S.textMuted}; text-transform:uppercase; letter-spacing:0.05em;">Progress Tracker</h4>
+      <h4 style="font-size:13px; font-weight:700; margin-top:24px; margin-bottom:12px; color:${S.textMuted}; text-transform:uppercase; letter-spacing:0.05em;">Timeline</h4>
       ${trackerHtml}
       ${historyHtml}
       <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-top:24px;">

@@ -1,5 +1,5 @@
 import React, { Suspense, useState } from 'react';
-import { Navbar, Container, Button, Badge } from 'react-bootstrap';
+import { Navbar, Container, Button } from 'react-bootstrap';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './store.css';
@@ -38,26 +38,23 @@ export default function StoreDashboard() {
         <Navbar
           bg="light"
           variant="light"
-          className="px-3 px-md-4 border-bottom align-items-center"
-          style={{ boxShadow: '0 1px 2px rgba(0,0,0,.04)', height: 64 }}
+          className="store-navbar px-3 px-md-4 align-items-center"
+          style={{ minHeight: 72 }}
         >
           <Container fluid className="px-0">
-            <Navbar.Brand className="d-flex align-items-center gap-2">
-              <span
-                className="d-inline-flex align-items-center justify-content-center rounded-circle"
-                style={{ width: 30, height: 30, background: 'rgba(26,95,122,.1)', color: 'var(--k-primary)' }}
-              >
+            <Navbar.Brand className="store-brand d-flex align-items-center gap-2 me-4">
+              <span className="store-brand-mark d-inline-flex align-items-center justify-content-center rounded-circle">
                 <i className="fa-solid fa-store" />
               </span>
               MiniStore
             </Navbar.Brand>
 
-                        <div className="d-flex align-items-center gap-1 flex-wrap navbar-tabs">
+            <div className="d-flex align-items-center gap-1 flex-wrap navbar-tabs">
               {TABS.map((t) => (
                 <Button
                   key={t.key}
                   variant={store.view === t.key ? 'primary' : 'outline-secondary'}
-                  className="d-inline-flex align-items-center gap-1 mb-1 quick-btn"
+                  className={`store-tab-btn d-inline-flex align-items-center gap-1 mb-1 ${store.view === t.key ? 'active' : ''}`}
                   onClick={() => store.setView(t.key)}
                 >
                   <i className={t.icon} /> {t.label}
@@ -65,23 +62,14 @@ export default function StoreDashboard() {
               ))}
             </div>
 
-                        <div className="d-flex align-items-center gap-3 ms-auto navbar-actions">
+            <div className="d-flex align-items-center gap-3 ms-auto navbar-actions">
               <Button
-                variant="primary"
                 size="sm"
-                className="d-inline-flex align-items-center gap-1 mb-1"
+                className="store-primary-btn d-inline-flex align-items-center gap-1 mb-1"
                 onClick={() => setShowAdd(true)}
               >
                 <i className="fa-solid fa-plus" /> Add Item
               </Button>
-              <Badge bg={store.connected ? 'success' : 'secondary'} className="connection-badge d-inline-flex align-items-center gap-1">
-                <i className={`fa-solid ${store.connected ? 'fa-wifi' : 'fa-wifi-slash'}`} />
-                                {store.connected ? 'Live API' : 'Offline'}
-              </Badge>
-              <div className="d-none d-sm-flex align-items-center gap-2">
-                <span className="rounded-circle d-inline-flex align-items-center justify-content-center text-primary fw-bold" style={{ width: 34, height: 34, background: 'rgba(26,95,122,.1)' }}>AM</span>
-                <span className="d-none sm-inline fw-medium">Ahmed Mansour</span>
-              </div>
             </div>
           </Container>
         </Navbar>

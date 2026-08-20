@@ -5,7 +5,6 @@ import { tenantApi } from '../api/tenant.api';
 import { useTenantStore } from '../modules/seo/useTenantStore';
 import { useAuth } from '../utils/context/AuthContext';
 import ModernSidebar from '../components/layout/ModernSidebar';
-import NotificationBell from '../components/notifications/NotificationBell';
 import FooterComponent from '../components/layout/globalFooter';
 import Loader from '../components/loader/loader';
 
@@ -38,6 +37,8 @@ const BestChurchSoftwareKenya = lazy(() => import('../modules/compare/BestChurch
 const BestSACCOWelfareSoftware = lazy(() => import('../modules/compare/BestSACCOWelfareSoftware'));
 
 // Tools and Resources
+const NairobiFuneralWelfare = lazy(() => import('../modules/locations/NairobiFuneralWelfare'));
+
 const CalculatorsPage = lazy(() => import('../modules/resources/CalculatorsPage'));
 const TemplatesPage = lazy(() => import('../modules/resources/TemplatesPage'));
 const GlossaryPage = lazy(() => import('../modules/resources/GlossaryPage'));
@@ -45,8 +46,6 @@ const LogsPage = lazy(() => import('../modules/resources/LogsPage'));
 
 // Location Pages
 const LocationPage = lazy(() => import('../modules/locations/LocationPage'));
-const NairobiFuneralWelfare = lazy(() => import('../modules/locations/NairobiFuneralWelfare'));
-
 const PrivacyPolicy = lazy(() => import('../modules/pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('../modules/pages/TermsOfService'));
 const AccountDeletion = lazy(() => import('../modules/pages/AccountDeletion'));
@@ -321,7 +320,6 @@ const TenantResolver = () => {
 
 const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
   const { slug: urlSlug } = useParams();
-  const location = useLocation();
 
   // Use the resolved tenant slug from TenantResolver, falling back to URL slug
   const slug = propTenantSlug || urlSlug;
@@ -329,26 +327,23 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
   // Always use DashboardLayout with sidebar for all users
   const Layout = DashboardLayout;
 
-  // Hide notification bell on client-facing pages
-  const isClientPage = location.pathname.includes('/receptionist') || 
-                       location.pathname.includes('/deceased/register') ||
-                       location.pathname.includes('/release-form');
-  const showNotificationBell = !isClientPage;
-
   return (
     <>
-      {showNotificationBell && <NotificationBell />}
       <Routes>
         <Route path="/" element={<Navigate to="all-deceased" replace />} />
 
-        {/* Dashboard - All authenticated users */}
+        {/* Dashboard - Standalone full-screen (no global sidebar); nav via top header drawer */}
         <Route path="dashboard" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}><DashboardPage /></Layout>
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <DashboardPage tenantSlug={slug} tenantData={tenantData} />
+          </Suspense>
         } />
 
-        {/* Analytics - All authenticated users */}
+        {/* Analytics - All authenticated users (same standalone dashboard) */}
         <Route path="analytics" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}><DashboardPage /></Layout>
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <DashboardPage tenantSlug={slug} tenantData={tenantData} />
+          </Suspense>
         } />
 
         {/* Deceased Analytics - All authenticated users */}

@@ -1,8 +1,6 @@
-// Tailwind CSS v3 PostCSS setup (tailwindcss + autoprefixer are already installed).
-// Drives the coffin Reservations dashboard layout utility classes.
+// Tailwind CSS v4 PostCSS setup for Vite.
 module.exports = {
   plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
+    '@tailwindcss/postcss': {},
   },
 };

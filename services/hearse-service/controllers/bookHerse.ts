@@ -594,8 +594,8 @@ export const updateBookingStatus = asyncHandler(async (req: Request, res: Respon
         const io = req.app.get('io');
                 const { booking_id } = req.params;
         const { status } = req.body;
-        const cancelReason = String(req.body.cancel_reason || '').trim();
-        const cancelReason = String(req.body.cancel_reason || '').trim();
+                const cancelReason = String(req.body.cancel_reason || '').trim();
+
 
         const validStatuses = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'booked', 'in_transit', 'postponed'];
         if (!validStatuses.includes(status)) {

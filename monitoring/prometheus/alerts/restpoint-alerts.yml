@@ -2,9 +2,8 @@ groups:
   - name: restpoint_critical
     interval: 30s
     rules:
-      # ============================================
       # SERVICE AVAILABILITY
-      # ============================================
+
       - alert: ServiceDown
         expr: up == 0
         for: 1m
@@ -12,9 +11,9 @@ groups:
           severity: critical
           team: infrastructure
         annotations:
-          summary: "Service {{ $labels.job }} is down"
-          description: "{{ $labels.job }} (instance {{ $labels.instance }}) has been down for more than 1 minute."
-          runbook_url: "https://wiki.restpoint.co.ke/runbooks/service-down"
+          summary: 'Service {{ $labels.job }} is down'
+          description: '{{ $labels.job }} (instance {{ $labels.instance }}) has been down for more than 1 minute.'
+          runbook_url: 'https://wiki.restpoint.co.ke/runbooks/service-down'
 
       - alert: HighErrorRate
         expr: rate(http_requests_total{status_code=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
@@ -23,8 +22,8 @@ groups:
           severity: critical
           team: backend
         annotations:
-          summary: "High error rate on {{ $labels.service }}"
-          description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.service }} (threshold: 5%)"
+          summary: 'High error rate on {{ $labels.service }}'
+          description: 'Error rate is {{ $value | humanizePercentage }} on {{ $labels.service }} (threshold: 5%)'
 
       # ============================================
       # CPU ALERTS
@@ -36,8 +35,8 @@ groups:
           severity: warning
           team: infrastructure
         annotations:
-          summary: "High CPU usage on {{ $labels.instance }}"
-          description: "CPU usage is {{ $value | humanizePercentage }} on {{ $labels.instance }} (threshold: 80%)"
+          summary: 'High CPU usage on {{ $labels.instance }}'
+          description: 'CPU usage is {{ $value | humanizePercentage }} on {{ $labels.instance }} (threshold: 80%)'
 
       - alert: CriticalCPUUsage
         expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
@@ -46,8 +45,8 @@ groups:
           severity: critical
           team: infrastructure
         annotations:
-          summary: "Critical CPU usage on {{ $labels.instance }}"
-          description: "CPU usage is {{ $value | humanizePercentage }} on {{ $labels.instance }} (threshold: 90%)"
+          summary: 'Critical CPU usage on {{ $labels.instance }}'
+          description: 'CPU usage is {{ $value | humanizePercentage }} on {{ $labels.instance }} (threshold: 90%)'
 
       - alert: HighCPULoadAverage
         expr: node_load15 / count by(instance) (node_cpu_seconds_total{mode="idle"}) > 0.8
@@ -56,8 +55,8 @@ groups:
           severity: warning
           team: infrastructure
         annotations:
-          summary: "High CPU load average on {{ $labels.instance }}"
-          description: "15-minute load average is {{ $value }} (threshold: 0.8 * cores)"
+          summary: 'High CPU load average on {{ $labels.instance }}'
+          description: '15-minute load average is {{ $value }} (threshold: 0.8 * cores)'
 
       # ============================================
       # MEMORY ALERTS
@@ -69,8 +68,8 @@ groups:
           severity: warning
           team: infrastructure
         annotations:
-          summary: "High memory usage on {{ $labels.instance }}"
-          description: "Memory usage is {{ $value | humanizePercentage }} (threshold: 80%)"
+          summary: 'High memory usage on {{ $labels.instance }}'
+          description: 'Memory usage is {{ $value | humanizePercentage }} (threshold: 80%)'
 
       - alert: CriticalMemoryUsage
         expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
@@ -79,8 +78,8 @@ groups:
           severity: critical
           team: infrastructure
         annotations:
-          summary: "Critical memory usage on {{ $labels.instance }}"
-          description: "Memory usage is {{ $value | humanizePercentage }} (threshold: 90%)"
+          summary: 'Critical memory usage on {{ $labels.instance }}'
+          description: 'Memory usage is {{ $value | humanizePercentage }} (threshold: 90%)'
 
       - alert: MemoryLeakDetected
         expr: deriv(node_memory_MemAvailable_bytes[30m]) < -104857600
@@ -89,8 +88,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "Possible memory leak on {{ $labels.instance }}"
-          description: "Memory is decreasing at {{ $value | humanizeBytes }}/s for 30 minutes"
+          summary: 'Possible memory leak on {{ $labels.instance }}'
+          description: 'Memory is decreasing at {{ $value | humanizeBytes }}/s for 30 minutes'
 
       - alert: HighSwapUsage
         expr: (1 - (node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes)) * 100 > 50
@@ -99,8 +98,8 @@ groups:
           severity: warning
           team: infrastructure
         annotations:
-          summary: "High swap usage on {{ $labels.instance }}"
-          description: "Swap usage is {{ $value | humanizePercentage }} (threshold: 50%)"
+          summary: 'High swap usage on {{ $labels.instance }}'
+          description: 'Swap usage is {{ $value | humanizePercentage }} (threshold: 50%)'
 
       # ============================================
       # DISK ALERTS
@@ -112,8 +111,8 @@ groups:
           severity: warning
           team: infrastructure
         annotations:
-          summary: "Low disk space on {{ $labels.instance }}"
-          description: "Disk available is {{ $value | humanizePercentage }} (threshold: 15%)"
+          summary: 'Low disk space on {{ $labels.instance }}'
+          description: 'Disk available is {{ $value | humanizePercentage }} (threshold: 15%)'
 
       - alert: DiskSpaceCritical
         expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 5
@@ -122,8 +121,8 @@ groups:
           severity: critical
           team: infrastructure
         annotations:
-          summary: "Critical disk space on {{ $labels.instance }}"
-          description: "Disk available is {{ $value | humanizePercentage }} (threshold: 5%)"
+          summary: 'Critical disk space on {{ $labels.instance }}'
+          description: 'Disk available is {{ $value | humanizePercentage }} (threshold: 5%)'
 
       - alert: DiskFillRateHigh
         expr: predict_linear(node_filesystem_avail_bytes{mountpoint="/"}[6h], 86400) < 0
@@ -132,8 +131,8 @@ groups:
           severity: warning
           team: infrastructure
         annotations:
-          summary: "Disk will fill within 24 hours on {{ $labels.instance }}"
-          description: "Disk is predicted to fill within 24 hours at current rate"
+          summary: 'Disk will fill within 24 hours on {{ $labels.instance }}'
+          description: 'Disk is predicted to fill within 24 hours at current rate'
 
       - alert: HighDiskIO
         expr: rate(node_disk_io_time_seconds_total[5m]) > 0.5
@@ -142,8 +141,8 @@ groups:
           severity: warning
           team: infrastructure
         annotations:
-          summary: "High disk I/O on {{ $labels.instance }}"
-          description: "Disk I/O is at {{ $value | humanizePercentage }} utilization"
+          summary: 'High disk I/O on {{ $labels.instance }}'
+          description: 'Disk I/O is at {{ $value | humanizePercentage }} utilization'
 
       # ============================================
       # NETWORK ALERTS
@@ -155,8 +154,8 @@ groups:
           severity: warning
           team: infrastructure
         annotations:
-          summary: "High network traffic on {{ $labels.instance }}"
-          description: "Network receive rate is {{ $value | humanizeBytes }}/s (threshold: 100MB/s)"
+          summary: 'High network traffic on {{ $labels.instance }}'
+          description: 'Network receive rate is {{ $value | humanizeBytes }}/s (threshold: 100MB/s)'
 
       - alert: NetworkErrors
         expr: rate(node_network_receive_errors_total[5m]) > 0.01
@@ -165,8 +164,8 @@ groups:
           severity: warning
           team: infrastructure
         annotations:
-          summary: "Network errors detected on {{ $labels.instance }}"
-          description: "Network error rate is {{ $value }}/s"
+          summary: 'Network errors detected on {{ $labels.instance }}'
+          description: 'Network error rate is {{ $value }}/s'
 
       # ============================================
       # CONTAINER ALERTS
@@ -178,8 +177,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "Container {{ $labels.name }} is restarting frequently"
-          description: "Container {{ $labels.name }} has restarted {{ $value }} times in 5 minutes"
+          summary: 'Container {{ $labels.name }} is restarting frequently'
+          description: 'Container {{ $labels.name }} has restarted {{ $value }} times in 5 minutes'
 
       - alert: ContainerOOMKilled
         expr: container_oom_events_total > 0
@@ -188,8 +187,8 @@ groups:
           severity: critical
           team: backend
         annotations:
-          summary: "Container {{ $labels.name }} was OOM killed"
-          description: "Container {{ $labels.name }} was killed due to out of memory"
+          summary: 'Container {{ $labels.name }} was OOM killed'
+          description: 'Container {{ $labels.name }} was killed due to out of memory'
 
       - alert: ContainerHighMemory
         expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 85
@@ -198,8 +197,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "Container {{ $labels.name }} memory usage high"
-          description: "Container {{ $labels.name }} memory usage is {{ $value | humanizePercentage }}"
+          summary: 'Container {{ $labels.name }} memory usage high'
+          description: 'Container {{ $labels.name }} memory usage is {{ $value | humanizePercentage }}'
 
       # ============================================
       # DATABASE ALERTS
@@ -211,8 +210,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "MySQL connection pool nearly exhausted"
-          description: "{{ $value | humanizePercentage }} of MySQL connections are in use"
+          summary: 'MySQL connection pool nearly exhausted'
+          description: '{{ $value | humanizePercentage }} of MySQL connections are in use'
 
       - alert: MySQLSlowQueries
         expr: rate(mysql_global_status_slow_queries[5m]) > 0.1
@@ -221,8 +220,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "MySQL slow queries detected"
-          description: "Slow query rate is {{ $value }}/s"
+          summary: 'MySQL slow queries detected'
+          description: 'Slow query rate is {{ $value }}/s'
 
       - alert: MySQLReplicationLag
         expr: mysql_slave_status_seconds_behind_master > 30
@@ -231,8 +230,8 @@ groups:
           severity: critical
           team: backend
         annotations:
-          summary: "MySQL replication lag detected"
-          description: "Replication is {{ $value }} seconds behind master"
+          summary: 'MySQL replication lag detected'
+          description: 'Replication is {{ $value }} seconds behind master'
 
       - alert: MySQLDeadlock
         expr: increase(mysql_global_status_innodb_deadlocks[5m]) > 0
@@ -241,8 +240,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "MySQL deadlock detected"
-          description: "{{ $value }} deadlocks occurred in the last 5 minutes"
+          summary: 'MySQL deadlock detected'
+          description: '{{ $value }} deadlocks occurred in the last 5 minutes'
 
       # ============================================
       # REDIS ALERTS
@@ -254,8 +253,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "Redis memory usage high"
-          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+          summary: 'Redis memory usage high'
+          description: 'Redis memory usage is {{ $value | humanizePercentage }}'
 
       - alert: RedisCacheMissRateHigh
         expr: rate(redis_keyspace_misses_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m])) * 100 > 20
@@ -264,8 +263,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "Redis cache miss rate high"
-          description: "Cache miss rate is {{ $value | humanizePercentage }} (threshold: 20%)"
+          summary: 'Redis cache miss rate high'
+          description: 'Cache miss rate is {{ $value | humanizePercentage }} (threshold: 20%)'
 
       - alert: RedisEvictions
         expr: rate(redis_evicted_keys_total[5m]) > 10
@@ -274,8 +273,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "Redis keys being evicted"
-          description: "Eviction rate is {{ $value }}/s"
+          summary: 'Redis keys being evicted'
+          description: 'Eviction rate is {{ $value }}/s'
 
       - alert: RedisDown
         expr: redis_up == 0
@@ -284,8 +283,8 @@ groups:
           severity: critical
           team: backend
         annotations:
-          summary: "Redis is down"
-          description: "Redis instance {{ $labels.instance }} is not responding"
+          summary: 'Redis is down'
+          description: 'Redis instance {{ $labels.instance }} is not responding'
 
       # ============================================
       # RABBITMQ ALERTS
@@ -297,8 +296,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "RabbitMQ queue depth high"
-          description: "Queue {{ $labels.queue }} has {{ $value }} ready messages"
+          summary: 'RabbitMQ queue depth high'
+          description: 'Queue {{ $labels.queue }} has {{ $value }} ready messages'
 
       - alert: RabbitMQQueueGrowth
         expr: rate(rabbitmq_queue_messages_ready[5m]) > 10
@@ -307,8 +306,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "RabbitMQ queue growing rapidly"
-          description: "Queue {{ $labels.queue }} is growing at {{ $value }}/s"
+          summary: 'RabbitMQ queue growing rapidly'
+          description: 'Queue {{ $labels.queue }} is growing at {{ $value }}/s'
 
       - alert: RabbitMQMemoryHigh
         expr: rabbitmq_node_mem_used / rabbitmq_node_mem_limit * 100 > 80
@@ -317,8 +316,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "RabbitMQ memory usage high"
-          description: "RabbitMQ memory usage is {{ $value | humanizePercentage }}"
+          summary: 'RabbitMQ memory usage high'
+          description: 'RabbitMQ memory usage is {{ $value | humanizePercentage }}'
 
       - alert: RabbitMQDown
         expr: rabbitmq_up == 0
@@ -327,8 +326,8 @@ groups:
           severity: critical
           team: backend
         annotations:
-          summary: "RabbitMQ is down"
-          description: "RabbitMQ instance {{ $labels.instance }} is not responding"
+          summary: 'RabbitMQ is down'
+          description: 'RabbitMQ instance {{ $labels.instance }} is not responding'
 
       - alert: RabbitMQDeadLetterQueue
         expr: rabbitmq_queue_messages{queue=~".*dead.*|.*dlq.*|.*error.*"} > 0
@@ -337,8 +336,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "Dead letter queue has messages"
-          description: "Queue {{ $labels.queue }} has {{ $value }} messages in dead letter queue"
+          summary: 'Dead letter queue has messages'
+          description: 'Queue {{ $labels.queue }} has {{ $value }} messages in dead letter queue'
 
       # ============================================
       # APPLICATION PERFORMANCE ALERTS
@@ -350,8 +349,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "High response time on {{ $labels.service }}"
-          description: "p95 response time is {{ $value | humanizeDuration }} (threshold: 500ms)"
+          summary: 'High response time on {{ $labels.service }}'
+          description: 'p95 response time is {{ $value | humanizeDuration }} (threshold: 500ms)'
 
       - alert: CriticalResponseTime
         expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m])) > 2
@@ -360,8 +359,8 @@ groups:
           severity: critical
           team: backend
         annotations:
-          summary: "Critical response time on {{ $labels.service }}"
-          description: "p99 response time is {{ $value | humanizeDuration }} (threshold: 2s)"
+          summary: 'Critical response time on {{ $labels.service }}'
+          description: 'p99 response time is {{ $value | humanizeDuration }} (threshold: 2s)'
 
       - alert: HighRequestLatency
         expr: rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m]) > 1
@@ -370,8 +369,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "High average request latency on {{ $labels.service }}"
-          description: "Average latency is {{ $value | humanizeDuration }} (threshold: 1s)"
+          summary: 'High average request latency on {{ $labels.service }}'
+          description: 'Average latency is {{ $value | humanizeDuration }} (threshold: 1s)'
 
       - alert: ErrorRateSpike
         expr: sum(rate(http_errors_total[5m])) by (service) > 10
@@ -380,8 +379,8 @@ groups:
           severity: critical
           team: backend
         annotations:
-          summary: "Error rate spike on {{ $labels.service }}"
-          description: "{{ $value }} errors/second on {{ $labels.service }}"
+          summary: 'Error rate spike on {{ $labels.service }}'
+          description: '{{ $value }} errors/second on {{ $labels.service }}'
 
       - alert: UnhandledExceptions
         expr: increase(unhandled_rejection_total[5m]) > 0
@@ -390,8 +389,8 @@ groups:
           severity: critical
           team: backend
         annotations:
-          summary: "Unhandled exceptions on {{ $labels.service }}"
-          description: "{{ $value }} unhandled exceptions on {{ $labels.service }}"
+          summary: 'Unhandled exceptions on {{ $labels.service }}'
+          description: '{{ $value }} unhandled exceptions on {{ $labels.service }}'
 
       - alert: EventLoopLag
         expr: event_loop_lag_seconds > 0.1
@@ -400,8 +399,8 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "Event loop lag on {{ $labels.service }}"
-          description: "Event loop lag is {{ $value | humanizeDuration }} (threshold: 100ms)"
+          summary: 'Event loop lag on {{ $labels.service }}'
+          description: 'Event loop lag is {{ $value | humanizeDuration }} (threshold: 100ms)'
 
       # ============================================
       # SSL CERTIFICATE ALERTS
@@ -413,8 +412,8 @@ groups:
           severity: warning
           team: infrastructure
         annotations:
-          summary: "SSL certificate expiring in 14 days"
-          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value | humanizeDuration }}"
+          summary: 'SSL certificate expiring in 14 days'
+          description: 'SSL certificate for {{ $labels.instance }} expires in {{ $value | humanizeDuration }}'
 
       - alert: SSLCertExpired
         expr: probe_ssl_earliest_cert_expiry - time() < 0
@@ -423,8 +422,8 @@ groups:
           severity: critical
           team: infrastructure
         annotations:
-          summary: "SSL certificate has expired"
-          description: "SSL certificate for {{ $labels.instance }} expired {{ $value | humanizeDuration }} ago"
+          summary: 'SSL certificate has expired'
+          description: 'SSL certificate for {{ $labels.instance }} expired {{ $value | humanizeDuration }} ago'
 
       # ============================================
       # BUSINESS METRICS ALERTS
@@ -436,8 +435,8 @@ groups:
           severity: warning
           team: operations
         annotations:
-          summary: "No deceased registrations in 6 hours"
-          description: "No new deceased registrations in the last 6 hours"
+          summary: 'No deceased registrations in 6 hours'
+          description: 'No new deceased registrations in the last 6 hours'
 
       - alert: InvoiceFailureRate
         expr: rate(invoices_total{status="failed"}[5m]) / rate(invoices_total[5m]) * 100 > 10
@@ -446,8 +445,8 @@ groups:
           severity: warning
           team: billing
         annotations:
-          summary: "High invoice failure rate"
-          description: "Invoice failure rate is {{ $value | humanizePercentage }}"
+          summary: 'High invoice failure rate'
+          description: 'Invoice failure rate is {{ $value | humanizePercentage }}'
 
       - alert: BookingFailureRate
         expr: rate(bookings_total{status="failed"}[5m]) / rate(bookings_total[5m]) * 100 > 10
@@ -456,8 +455,8 @@ groups:
           severity: warning
           team: operations
         annotations:
-          summary: "High booking failure rate"
-          description: "Booking failure rate is {{ $value | humanizePercentage }}"
+          summary: 'High booking failure rate'
+          description: 'Booking failure rate is {{ $value | humanizePercentage }}'
 
       # ============================================
       # SYSTEM PREDICTIVE ALERTS
@@ -469,8 +468,8 @@ groups:
           severity: warning
           team: infrastructure
         annotations:
-          summary: "Disk predicted to fill within 7 days"
-          description: "Disk will fill within 7 days at current rate"
+          summary: 'Disk predicted to fill within 7 days'
+          description: 'Disk will fill within 7 days at current rate'
 
       - alert: MemoryPredictedExhaustion
         expr: predict_linear(node_memory_MemAvailable_bytes[1h], 3600 * 4) < 0
@@ -479,8 +478,8 @@ groups:
           severity: warning
           team: infrastructure
         annotations:
-          summary: "Memory predicted to exhaust within 4 hours"
-          description: "Memory will exhaust within 4 hours at current rate"
+          summary: 'Memory predicted to exhaust within 4 hours'
+          description: 'Memory will exhaust within 4 hours at current rate'
 
   # ============================================
   # DATABASE (MariaDB) ALERTS
@@ -495,8 +494,8 @@ groups:
           severity: critical
           team: database
         annotations:
-          summary: "MariaDB exporter / database is down"
-          description: "Cannot scrape MariaDB metrics (mysql_exporter target {{ $labels.instance }} is down) for more than 1 minute."
+          summary: 'MariaDB exporter / database is down'
+          description: 'Cannot scrape MariaDB metrics (mysql_exporter target {{ $labels.instance }} is down) for more than 1 minute.'
 
       - alert: MariaDBExporterNoMetrics
         expr: up{job="mysql-exporter"} == 1 and mysql_global_variables_port == 0
@@ -505,8 +504,8 @@ groups:
           severity: critical
           team: database
         annotations:
-          summary: "MariaDB exporter is up but returning no metrics"
-          description: "mysql_exporter is reachable but exposed no MariaDB port variable - the exporter user may lack privileges."
+          summary: 'MariaDB exporter is up but returning no metrics'
+          description: 'mysql_exporter is reachable but exposed no MariaDB port variable - the exporter user may lack privileges.'
 
       - alert: MariaDBHighConnectionUsage
         expr: (mysql_global_status_threads_connected / mysql_global_variables_max_connections) * 100 > 80
@@ -515,8 +514,8 @@ groups:
           severity: warning
           team: database
         annotations:
-          summary: "High MariaDB connection usage on {{ $labels.instance }}"
-          description: "{{ $value | humanizePercentage }} of max_connections in use (warning threshold 80%)."
+          summary: 'High MariaDB connection usage on {{ $labels.instance }}'
+          description: '{{ $value | humanizePercentage }} of max_connections in use (warning threshold 80%).'
 
       - alert: MariaDBCriticalConnectionUsage
         expr: (mysql_global_status_threads_connected / mysql_global_variables_max_connections) * 100 > 95
@@ -525,8 +524,8 @@ groups:
           severity: critical
           team: database
         annotations:
-          summary: "Critical MariaDB connection usage on {{ $labels.instance }}"
-          description: "{{ $value | humanizePercentage }} of max_connections in use - new connections may be rejected."
+          summary: 'Critical MariaDB connection usage on {{ $labels.instance }}'
+          description: '{{ $value | humanizePercentage }} of max_connections in use - new connections may be rejected.'
 
       - alert: MariaDBSlowQueries
         expr: rate(mysql_global_status_slow_queries[5m]) > 0.1
@@ -535,8 +534,8 @@ groups:
           severity: warning
           team: database
         annotations:
-          summary: "MariaDB slow query rate rising on {{ $labels.instance }}"
-          description: "{{ $value }} slow queries/sec (queries exceeding long_query_time=1s) over the last 5 minutes."
+          summary: 'MariaDB slow query rate rising on {{ $labels.instance }}'
+          description: '{{ $value }} slow queries/sec (queries exceeding long_query_time=1s) over the last 5 minutes.'
 
       - alert: MariaDBCriticalSlowQueries
         expr: rate(mysql_global_status_slow_queries[5m]) > 1
@@ -545,8 +544,8 @@ groups:
           severity: critical
           team: database
         annotations:
-          summary: "Critical MariaDB slow query rate on {{ $labels.instance }}"
-          description: "{{ $value }} slow queries/sec over the last 5 minutes - investigate query plans."
+          summary: 'Critical MariaDB slow query rate on {{ $labels.instance }}'
+          description: '{{ $value }} slow queries/sec over the last 5 minutes - investigate query plans.'
 
       - alert: MariaDBAbortedConnections
         expr: rate(mysql_global_status_aborted_connects[5m]) > 0.1
@@ -555,5 +554,5 @@ groups:
           severity: warning
           team: database
         annotations:
-          summary: "MariaDB aborted connections on {{ $labels.instance }}"
-          description: "{{ $value }} aborted connection attempts/sec - check credentials / network."
+          summary: 'MariaDB aborted connections on {{ $labels.instance }}'
+          description: '{{ $value }} aborted connection attempts/sec - check credentials / network.'

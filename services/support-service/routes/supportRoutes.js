@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const supportController = require('../controllers/supportController');
-import { protect } from '../../app-global/middlewares/authMiddleware';
+const { protect } = require('../../app-global/middlewares/authMiddleware');
             
 
 // Create a support ticket (public - anyone can submit)

@@ -1,8 +1,8 @@
--- ============================================
+﻿-- ============================================
 -- MINI STORE SERVICE - store_tables
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS store_items (
+CREATE TABLE IF NOT EXISTS mini_store_items (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
     category VARCHAR(100) NOT NULL DEFAULT 'Other',
@@ -11,11 +11,11 @@ CREATE TABLE IF NOT EXISTS store_items (
     min_stock DECIMAL(12,3) NOT NULL DEFAULT 0,
     created_at VARCHAR(255),
     updated_at VARCHAR(255),
-    INDEX idx_store_items_name (name),
-    INDEX idx_store_items_category (category)
+    INDEX idx_mini_store_items_name (name),
+    INDEX idx_mini_store_items_category (category)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS store_transactions (
+CREATE TABLE IF NOT EXISTS mini_store_transactions (
     id INT PRIMARY KEY AUTO_INCREMENT,
     item_id INT NOT NULL,
     item_name VARCHAR(255) NOT NULL,

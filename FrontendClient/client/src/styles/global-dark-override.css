@@ -1,0 +1,123 @@
+/* Global forced dark-mode overrides
+   Applied when <html> has class="dark". This file uses high-specificity rules
+   and !important to override inline/author styles where possible. It is a
+   fast approach — expect to fine-tune colors per-component later.
+*/
+
+html.dark, html.dark body {
+  --background: #0b0f1a;
+  --foreground: #e6eef7;
+  --card: #0f1724;
+  --card-foreground: #e6eef7;
+  --muted: #94a3b8;
+  --border: rgba(255,255,255,0.06);
+  background-color: #0b0f1a !important;
+  color: #e6eef7 !important;
+}
+
+/* Generic page shell */
+html.dark body {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* Dash-root (legacy dashboard CSS) */
+html.dark .dash-root {
+  --d-bg: #0b0f1a !important;
+  --d-card: #0f1724 !important;
+  --d-card-fg: #e6eef7 !important;
+  --d-fg: #e6eef7 !important;
+  --d-muted-fg: #94a3b8 !important;
+  --d-border: rgba(255,255,255,0.06) !important;
+  background: var(--d-bg) !important;
+  color: var(--d-fg) !important;
+}
+
+/* Common card-like surfaces */
+html.dark .card,
+html.dark .dash-card,
+html.dark .nb-panel,
+html.dark .panel,
+html.dark .popover,
+html.dark .modal,
+html.dark .dialog {
+  background: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+  box-shadow: none !important;
+}
+
+/* Header, nav and sidebar */
+html.dark .dash-header,
+html.dark .dash-head-right,
+html.dark .dash-nav-btn,
+html.dark .nb-bell-btn,
+html.dark .sidebar,
+html.dark .group/sidebar-wrapper {
+  background: transparent !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+
+/* Notification Bell */
+html.dark .nb-bell-btn,
+html.dark .nb-panel {
+  background: rgba(8,8,10,0.9) !important;
+  color: var(--foreground) !important;
+  border: 1px solid rgba(255,255,255,0.04) !important;
+}
+
+/* Inputs / selects / textarea */
+html.dark input,
+html.dark textarea,
+html.dark select,
+html.dark .input,
+html.dark .tt-btn {
+  background: rgba(255,255,255,0.02) !important;
+  color: var(--foreground) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+/* Buttons */
+html.dark button,
+html.dark .btn,
+html.dark .dash-nav-btn,
+html.dark .dash-toggle button,
+html.dark .nb-mark-all,
+html.dark .nb-mute-header-btn {
+  background: rgba(255,255,255,0.03) !important;
+  color: var(--foreground) !important;
+  border: 1px solid rgba(255,255,255,0.04) !important;
+}
+
+/* Tables and cards */
+html.dark table,
+html.dark th,
+html.dark td,
+html.dark .dash-stat,
+html.dark .dash-section,
+html.dark .dash-section-head {
+  background: transparent !important;
+  color: var(--foreground) !important;
+  border-color: rgba(255,255,255,0.04) !important;
+}
+
+/* Links */
+html.dark a { color: #8ab4ff !important; }
+
+/* Charts / SVG strokes */
+html.dark svg { color: inherit !important; fill: none !important; }
+html.dark svg path, html.dark svg circle, html.dark svg rect { stroke: currentColor !important; }
+
+/* Utility fine-tunes for components that set inline backgrounds */
+html.dark [style*="background:"] { filter: brightness(0.9) saturate(0.9) !important; }
+
+/* Scrollbars */
+html.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08) !important; }
+
+/* Small-screen spacing to avoid overlapping notification bell */
+@media (max-width: 600px) {
+  html.dark .tt-container { top: 56px !important; }
+}
+
+/* End of global overrides */

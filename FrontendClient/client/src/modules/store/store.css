@@ -1,113 +1,312 @@
-/* Mini Store - Bootstrap styling with the KitchenTrack accent palette (no Tailwind) */
+/* Mini Store - Premium operational dashboard styling */
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 :root {
-  --k-primary: #1a5f7a;
-  --k-primary-dark: #134b5f;
-  --k-primary-light: #2c8ac9;
-  --k-success: #10b981;
-  --k-success-dark: #059669;
-  --k-warning: #f59e0b;
-  --k-warning-dark: #d97706;
-  --k-danger: #ef4444;
-  --k-danger-dark: #dc2626;
-  --k-info: #3b82f6;
-  --k-info-dark: #2563eb;
-  --k-ink: #111827;
-  --k-bg: #f5f7fa;
+ --k-primary: #0e4a6b;
+ --k-primary-soft: #1e6f86;
+ --k-primary-glow: #cfe8ff;
+ --k-primary-light: #eaf6ff;
+ --k-success: #0ea562;
+ --k-success-soft: #e6fbf1;
+  --k-success-dark: #047857;
+ --k-warning: #d97706;
+ --k-warning-soft: #fff7e6;
+  --k-warning-dark: #b45309;
+ --k-danger: #dc2626;
+ --k-danger-soft: #feeaea;
+ --k-danger-dark: #991b1b;
+ --k-info: #2563eb;
+ --k-info-soft: #e8f0ff;
+ --k-info-dark: #1e40af;
+  --k-ink: #0f172a;
+  --k-ink-soft: #475569;
+ --k-bg: #f7fbfc;
   --k-surface: #ffffff;
-  --k-border: #d1d5db;
+ --k-surface-alt: #fbfdff;
+ --k-border: rgba(15, 23, 42, 0.06);
+ --k-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+ --k-shadow-soft: 0 6px 18px rgba(15, 23, 42, 0.04);
 }
 
 .mini-store {
   font-family: 'DM Sans', sans-serif;
-  background: var(--k-bg);
+  background: radial-gradient(circle at top, #f8fbff 0%, #f3f6fb 42%, #eef3f9 100%);
   color: var(--k-ink);
+  min-height: 100vh;
 }
-.mini-store h1, .mini-store h2, .mini-store h3, .mini-store h4,
-.mini-store .navbar-brand, .mini-store .nav-link {
+
+.mini-store h1,
+.mini-store h2,
+.mini-store h3,
+.mini-store h4,
+.mini-store .navbar-brand,
+.mini-store .nav-link,
+.mini-store .store-brand,
+.mini-store .store-tab-btn {
   font-family: 'Space Grotesk', sans-serif;
 }
-.mini-store .navbar-brand { color: var(--k-primary); font-weight: 700; }
 
-.mini-store .nav-link.active {
-  color: var(--k-primary) !important;
-  font-weight: 600;
+.mini-store .store-navbar {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--k-border);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
 }
-.mini-store .nav-link .nav-link { color: var(--k-primary); }
+
+.mini-store .store-brand {
+  color: var(--k-primary) !important;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.mini-store .store-brand-mark {
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(135deg, rgba(31, 41, 55, 0.12), rgba(99, 102, 241, 0.18));
+  color: var(--k-primary);
+  box-shadow: inset 0 0 0 1px rgba(31, 41, 55, 0.08);
+}
+
+.mini-store .navbar-tabs {
+  gap: 0.4rem;
+}
+
+.mini-store .store-tab-btn {
+  background: transparent;
+  border: 1px solid rgba(15,23,42,0.06);
+  color: var(--k-ink-soft);
+  border-radius: 10px;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: all 0.18s ease;
+}
+
+.mini-store .store-tab-btn:hover,
+.mini-store .store-tab-btn.active {
+  background: linear-gradient(90deg, var(--k-primary), #234e63);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(14, 74, 107, 0.12);
+}
+
+.mini-store .store-primary-btn {
+  border: 0;
+  background: linear-gradient(90deg, var(--k-primary), #234e63);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  font-weight: 700;
+  font-size: 0.86rem;
+  box-shadow: 0 10px 22px rgba(14, 74, 107, 0.12);
+}
+
+.mini-store .store-primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(14, 74, 107, 0.14);
+}
+
+.mini-store .connection-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.5rem 0.7rem;
+  letter-spacing: 0.02em;
+}
+
+.mini-store .store-user-pill {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem 0.35rem 0.4rem;
+  color: var(--k-ink);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.mini-store .store-user-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+  color: var(--k-primary);
+  font-size: 0.72rem;
+}
+
+.mini-store .page-bg {
+  background: transparent;
+  min-height: calc(100vh - 72px);
+  padding-top: 1.1rem;
+}
 
 .mini-store .stat-card {
   background: var(--k-surface);
   border: 1px solid var(--k-border);
-  border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 14px;
+  box-shadow: var(--k-shadow-soft);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  padding: 1rem;
+  min-height: 84px;
 }
-.mini-store .stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px rgba(0, 0, 0, 0.08); }
-.mini-store .stat-icon { width: 36px; height: 36px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
 
-.mini-store .stat-card-color { color: #fff; box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16); }
-.mini-store .stat-card-color:hover { transform: translateY(-3px); box-shadow: 0 16px 32px rgba(0, 0, 0, 0.24); }
+.mini-store .stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
+.mini-store .stat-card-color {
+  color: #fff;
+  box-shadow: 0 12px 22px rgba(14, 74, 107, 0.10);
+}
+
+.mini-store .stat-card-color:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 26px rgba(14, 74, 107, 0.12);
+}
+
+.mini-store .stat-icon { width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; }
 .mini-store .stock-gauge { display: block; }
 
-.mini-store .badge-out { background: #fee2e2; color: var(--k-danger-dark); }
-.mini-store .badge-low { background: #fef3c7; color: var(--k-warning-dark); }
-.mini-store .badge-ok { background: #d1fae5; color: var(--k-success-dark); }
-.mini-store .badge-used { background: #fee2e2; color: var(--k-danger-dark); }
-.mini-store .badge-restocked { background: #d1fae5; color: var(--k-success-dark); }
-.mini-store .badge-adjusted { background: #dbeafe; color: var(--k-info-dark); }
+.mini-store .badge-out { background: var(--k-danger-soft); color: var(--k-danger-dark); }
+.mini-store .badge-low { background: var(--k-warning-soft); color: var(--k-warning-dark); }
+.mini-store .badge-ok { background: var(--k-success-soft); color: var(--k-success-dark); }
+.mini-store .badge-used { background: var(--k-danger-soft); color: var(--k-danger-dark); }
+.mini-store .badge-restocked { background: var(--k-success-soft); color: var(--k-success-dark); }
+.mini-store .badge-adjusted { background: var(--k-info-soft); color: var(--k-info-dark); }
 
-.mini-store .table th { font-family: 'Space Grotesk', sans-serif; font-size: .675rem; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
-.mini-store .table td { font-size: .825rem; }
-.mini-store tbody tr:hover { background: rgba(26, 95, 122, 0.02); }
+.mini-store .table th {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  padding-top: 0.95rem;
+  padding-bottom: 0.95rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
 
-.mini-store .btn-brand { background: var(--k-primary); border-color: var(--k-primary); color: #fff; }
-.mini-store .btn-brand:hover { background: var(--k-primary-dark); border-color: var(--k-primary-dark); color: #fff; }
-.mini-store .btn-restock { background: var(--k-surface); border-color: var(--k-success); color: var(--k-success-dark); }
-.mini-store .btn-restock:hover { background: #e8f5e9; }
-.mini-store .form-control:focus, .mini-store .form-select:focus { border-color: var(--k-primary); box-shadow: 0 0 0 .2rem rgba(26, 95, 122, .15); }
+.mini-store .table td {
+  font-size: 0.83rem;
+  color: var(--k-ink);
+  vertical-align: middle;
+  border-color: rgba(148, 163, 184, 0.12);
+}
 
-.mini-store .low-bar { height: 6px; border-radius: 9999px; background: #e5e7eb; overflow: hidden; }
+.mini-store tbody tr:hover {
+  background: rgba(148, 163, 184, 0.04);
+}
+
+.mini-store .panel {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--k-border);
+  border-radius: 20px;
+  box-shadow: var(--k-shadow-soft);
+  overflow: hidden;
+}
+
+.mini-store .card-header {
+  background: rgba(248, 250, 252, 0.9);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.mini-store .form-control,
+.mini-store .form-select,
+.mini-store .input-group-text {
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: none;
+  color: var(--k-ink);
+}
+
+.mini-store .form-control:focus,
+.mini-store .form-select:focus {
+  border-color: rgba(79, 70, 229, 0.5);
+  box-shadow: 0 0 0 0.22rem rgba(79, 70, 229, 0.12);
+  background: #fff;
+}
+
+.mini-store .btn-brand,
+.mini-store .btn-restock {
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.mini-store .btn-brand {
+  background: linear-gradient(135deg, #0f172a 0%, #1f2937 100%);
+  border-color: transparent;
+  color: #fff;
+}
+
+.mini-store .btn-brand:hover {
+  background: linear-gradient(135deg, #111827 0%, #334155 100%);
+  border-color: transparent;
+  color: #fff;
+}
+
+.mini-store .btn-restock {
+  background: var(--k-surface);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: var(--k-success-dark);
+}
+
+.mini-store .btn-restock:hover { background: #ebfff6; }
+
+.mini-store .low-bar {
+  height: 7px;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.24);
+  overflow: hidden;
+}
+
 .mini-store .low-bar .fill { height: 100%; border-radius: 9999px; }
 
 .mini-store .cal-day { width: 32px; height: 32px; }
-.mini-store .connection-badge { font-size: .725rem; font-weight: 600; }
-.mini-store .quick-btn { font-size: .725rem; }
+.mini-store .connection-badge { font-size: .725rem; font-weight: 700; }
+.mini-store .quick-btn {
+  font-size: .72rem;
+  border-radius: 10px;
+  padding: 0.45rem 0.6rem;
+}
 
-.mini-store .panel { background: var(--k-surface); border: 1px solid var(--k-border); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
-.mini-store .page-bg { background: #f5f7fa; min-height: calc(100vh - 64px); }
+.mini-store .modal-content {
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 18px;
+  box-shadow: var(--k-shadow);
+}
 
 /* ============================================================
-   Mobile responsive — the store is used mostly on phones
+   Mobile responsive — premium and comfortable on phones
    ============================================================ */
 @media (max-width: 767.98px) {
-  .mini-store .navbar { padding-top: .5rem; padding-bottom: .5rem; }
-  .mini-store .navbar .container-fluid { flex-wrap: wrap; row-gap: .5rem; }
+  .mini-store .store-navbar {
+   padding-top: 0.65rem;
+   padding-bottom: 0.65rem;
+  }
+
+  .mini-store .navbar .container-fluid { flex-wrap: wrap; row-gap: 0.7rem; }
   .mini-store .navbar .navbar-tabs {
-    order: 3;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    flex-wrap: nowrap;
-    padding-bottom: .25rem;
-    scrollbar-width: none;
+   order: 3;
+   width: 100%;
+   overflow-x: auto;
+   -webkit-overflow-scrolling: touch;
+   flex-wrap: nowrap;
+   padding-bottom: .2rem;
+   scrollbar-width: none;
   }
   .mini-store .navbar .navbar-tabs::-webkit-scrollbar { display: none; }
   .mini-store .navbar .navbar-tabs .btn { white-space: nowrap; }
   .mini-store .navbar .navbar-actions { margin-left: auto; }
 
-  /* bottom-sheet style modal on phones */
   .mini-store .modal-dialog {
-    margin: 0;
-    align-items: flex-end;
-    min-height: calc(100% - 1rem);
+   margin: 0;
+   align-items: flex-end;
+   min-height: calc(100% - 1rem);
   }
   .mini-store .modal-content { border-radius: 18px 18px 0 0; border: 0; max-height: 90vh; }
   .mini-store .modal-body { overflow-y: auto; }
 
-  /* stat cards */
   .mini-store .stat-card-color .card-body { padding: .9rem .4rem; }
-
-  /* tables scroll on narrow screens */
   .mini-store .panel { overflow-x: auto; }
 }

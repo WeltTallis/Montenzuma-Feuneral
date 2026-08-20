@@ -6,11 +6,9 @@ import { getStatus, dateKey } from './seed';
 // ============================================================
 // Mini Store - data layer (React hook)
 //
-// Source of truth = local arrays (items/transactions). They start seeded from
-// the local demo data and, when the store-service is reachable, are replaced by
-// a live fetch. Mutations optimistically update local state then fire a
-// best-effort API call to persist - keeping the UI snappy (identical behaviour
-// to the KitchenTrack demo) while staying connected to the backend.
+// Source of truth = the store API. No seeded demo data is used here.
+// Mutations optimistically update local state then fire a best-effort API call
+// to persist changes while the service remains reachable.
 // ============================================================
 let globalNextId = 31;
 let globalNextTx = 1;
@@ -34,22 +32,28 @@ export const useStore = () => {
     setLoading(true);
     setError('');
     try {
-      // Connectivity is proven by the fetch itself — never seeded with dummy data.
       const itemsRes = await StoreAPI.getItems();
       const txRes = await StoreAPI.getTransactions({ perPage: 10000 });
       const apiItems = Array.isArray(itemsRes?.data) ? itemsRes.data : [];
       const apiTx = Array.isArray(txRes?.data) ? txRes.data : [];
+
       setItems(apiItems);
       setTransactions(apiTx);
       setConnected(true);
-      globalNextId = Math.max(0, ...apiItems.map((i) => i.id)) + 1;
-      globalNextTx = Math.max(0, ...apiTx.map((t) => t.id)) + 1;
+
+      if (apiItems.length) {
+        globalNextId = Math.max(0, ...apiItems.map((i) => Number(i.id) || 0)) + 1;
+      }
+      if (apiTx.length) {
+        globalNextTx = Math.max(0, ...apiTx.map((t) => Number(t.id) || 0)) + 1;
+      }
     } catch (e) {
-      // No data injected here — the UI shows empty / offline states instead.
-      setError(e.friendlyMessage || e.message);
       setItems([]);
       setTransactions([]);
       setConnected(false);
+      setError(e.friendlyMessage || e.message || 'Mini Store service is unavailable.');
+      globalNextId = 1;
+      globalNextTx = 1;
     } finally {
       setLoading(false);
     }

@@ -63,37 +63,7 @@ const DAY_START = 6;
 const DAY_TOTAL = 18;
 const HOUR_PX = 80;
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-const INITIAL_BOOKINGS: Booking[] = [
-  { id: "NBI-001", hearseId: "H-NBI-01", branch: "Nairobi",  status: "completed",  client: "Kamau Family",    pickup: "Kenyatta National Hospital",  dropoff: "Langata Cemetery",        date: "2026-08-10", startHour: 8,  duration: 3,  driver: "John Mwangi",    phone: "+254 712 345 678" },
-  { id: "NBI-002", hearseId: "H-NBI-02", branch: "Nairobi",  status: "completed",  client: "Odhiambo Estate", pickup: "Nairobi Hospital Mortuary",   dropoff: "Kisii via Narok",         date: "2026-08-10", startHour: 7,  duration: 9,  driver: "Peter Ochieng",  phone: "+254 723 456 789" },
-  { id: "NBI-003", hearseId: "H-NBI-01", branch: "Nairobi",  status: "completed",  client: "Wanjiku Family",  pickup: "MP Shah Hospital",            dropoff: "Kiambu Municipal Cemetery",date: "2026-08-11", startHour: 9,  duration: 2,  driver: "John Mwangi",    phone: "+254 712 345 678" },
-  { id: "NBI-004", hearseId: "H-NBI-03", branch: "Nairobi",  status: "completed",  client: "Kariuki Family",  pickup: "Aga Khan Hospital",           dropoff: "St. Austin's, Westlands", date: "2026-08-12", startHour: 10, duration: 4,  driver: "Grace Njeri",    phone: "+254 711 234 567" },
-  { id: "NBI-005", hearseId: "H-NBI-02", branch: "Nairobi",  status: "completed",  client: "Gitau Estate",    pickup: "Karen Hospital",              dropoff: "Karen Blixen Gardens",    date: "2026-08-13", startHour: 8,  duration: 3,  driver: "Peter Ochieng",  phone: "+254 723 456 789" },
-  { id: "NBI-006", hearseId: "H-NBI-01", branch: "Nairobi",  status: "in-transit", client: "Njoroge Family",  pickup: "Kenyatta National Hospital",  dropoff: "Thogoto, Kiambu",         date: "2026-08-14", startHour: 7,  duration: 4,  driver: "John Mwangi",    phone: "+254 712 345 678" },
-  { id: "NBI-007", hearseId: "H-NBI-02", branch: "Nairobi",  status: "delayed",    client: "Otieno Estate",   pickup: "Nairobi Hospital",            dropoff: "Siaya County",            date: "2026-08-14", startHour: 6,  duration: 10, driver: "Peter Ochieng",  phone: "+254 723 456 789" },
-  { id: "NBI-008", hearseId: "H-NBI-03", branch: "Nairobi",  status: "booked",     client: "Muthoni Family",  pickup: "MP Shah Hospital",            dropoff: "Kabete Cemetery",         date: "2026-08-14", startHour: 13, duration: 2,  driver: "Grace Njeri",    phone: "+254 711 234 567" },
-  { id: "NBI-009", hearseId: "H-NBI-01", branch: "Nairobi",  status: "booked",     client: "Akinyi Estate",   pickup: "Aga Khan Hospital",           dropoff: "Mombasa Rd. Memorial",    date: "2026-08-15", startHour: 9,  duration: 3,  driver: "John Mwangi",    phone: "+254 712 345 678" },
-  { id: "NBI-010", hearseId: "H-NBI-02", branch: "Nairobi",  status: "booked",     client: "Kamande Family",  pickup: "KNH Mortuary",                dropoff: "City Park Cemetery",      date: "2026-08-15", startHour: 11, duration: 2,  driver: "Peter Ochieng",  phone: "+254 723 456 789" },
-  { id: "NBI-011", hearseId: "H-NBI-03", branch: "Nairobi",  status: "booked",     client: "Waweru Estate",   pickup: "Nairobi Hospital",            dropoff: "Tigoni, Limuru",          date: "2026-08-16", startHour: 8,  duration: 5,  driver: "Grace Njeri",    phone: "+254 711 234 567" },
-  { id: "NBI-012", hearseId: "H-NBI-01", branch: "Nairobi",  status: "booked",     client: "Nyambura Family", pickup: "MP Shah Hospital",            dropoff: "Ngong Hills",             date: "2026-08-18", startHour: 10, duration: 3,  driver: "John Mwangi",    phone: "+254 712 345 678" },
-  { id: "NBI-013", hearseId: "H-NBI-02", branch: "Nairobi",  status: "booked",     client: "Muriuki Family",  pickup: "Nairobi Hospital",            dropoff: "Ruiru Memorial",          date: "2026-08-20", startHour: 9,  duration: 2,  driver: "Peter Ochieng",  phone: "+254 723 456 789" },
-  { id: "MKS-001", hearseId: "H-MKS-01", branch: "Machakos", status: "completed",  client: "Mutua Family",    pickup: "Machakos Level 5 Hospital",   dropoff: "Mua Hills, Machakos",     date: "2026-08-11", startHour: 9,  duration: 3,  driver: "James Mutua",    phone: "+254 733 567 890" },
-  { id: "MKS-002", hearseId: "H-MKS-02", branch: "Machakos", status: "completed",  client: "Musyoka Estate",  pickup: "Athi River Mission Hospital", dropoff: "Kithimani, Yatta",        date: "2026-08-12", startHour: 7,  duration: 6,  driver: "Mary Kavata",    phone: "+254 744 678 901" },
-  { id: "MKS-003", hearseId: "H-MKS-01", branch: "Machakos", status: "in-transit", client: "Kilonzo Family",  pickup: "Machakos Level 5 Hospital",   dropoff: "Mwala, Machakos",         date: "2026-08-14", startHour: 9,  duration: 4,  driver: "James Mutua",    phone: "+254 733 567 890" },
-  { id: "MKS-004", hearseId: "H-MKS-02", branch: "Machakos", status: "booked",     client: "Ndambuki Estate", pickup: "Machakos District Hospital",  dropoff: "Nziu, Kitui",             date: "2026-08-14", startHour: 14, duration: 5,  driver: "Mary Kavata",    phone: "+254 744 678 901" },
-  { id: "MKS-005", hearseId: "H-MKS-01", branch: "Machakos", status: "booked",     client: "Ngoma Family",    pickup: "Kangundo Referral Hospital",  dropoff: "Matuu, Machakos",         date: "2026-08-15", startHour: 10, duration: 3,  driver: "James Mutua",    phone: "+254 733 567 890" },
-  { id: "MKS-006", hearseId: "H-MKS-02", branch: "Machakos", status: "booked",     client: "Kyalo Estate",    pickup: "Machakos Level 5 Hospital",   dropoff: "Kathiani, Machakos",      date: "2026-08-17", startHour: 8,  duration: 2,  driver: "Mary Kavata",    phone: "+254 744 678 901" },
-  { id: "MKS-007", hearseId: "H-MKS-01", branch: "Machakos", status: "booked",     client: "Nzomo Family",    pickup: "Kathiani Sub-County Hosp.",   dropoff: "Kivaa, Machakos",         date: "2026-08-19", startHour: 9,  duration: 3,  driver: "James Mutua",    phone: "+254 733 567 890" },
-  { id: "THK-001", hearseId: "H-THK-01", branch: "Thika",    status: "completed",  client: "Njenga Family",   pickup: "Thika Level 5 Hospital",      dropoff: "Kamenu, Thika",           date: "2026-08-11", startHour: 8,  duration: 2,  driver: "David Kipchoge", phone: "+254 755 789 012" },
-  { id: "THK-002", hearseId: "H-THK-02", branch: "Thika",    status: "completed",  client: "Githuku Estate",  pickup: "Gatundu District Hospital",   dropoff: "Kiambu Memorial Park",    date: "2026-08-12", startHour: 10, duration: 3,  driver: "Sarah Akinyi",   phone: "+254 766 890 123" },
-  { id: "THK-003", hearseId: "H-THK-01", branch: "Thika",    status: "delayed",    client: "Njuguna Family",  pickup: "Thika Level 5 Hospital",      dropoff: "Maragua, Murang'a",       date: "2026-08-14", startHour: 8,  duration: 5,  driver: "David Kipchoge", phone: "+254 755 789 012" },
-  { id: "THK-004", hearseId: "H-THK-02", branch: "Thika",    status: "booked",     client: "Kabiru Estate",   pickup: "Ruiru Sub-County Hospital",   dropoff: "Garden City, Ruiru",      date: "2026-08-14", startHour: 15, duration: 2,  driver: "Sarah Akinyi",   phone: "+254 766 890 123" },
-  { id: "THK-005", hearseId: "H-THK-01", branch: "Thika",    status: "booked",     client: "Mwangi Family",   pickup: "Thika Level 5 Hospital",      dropoff: "Gatanga, Murang'a",       date: "2026-08-15", startHour: 9,  duration: 4,  driver: "David Kipchoge", phone: "+254 755 789 012" },
-  { id: "THK-006", hearseId: "H-THK-02", branch: "Thika",    status: "booked",     client: "Kimani Estate",   pickup: "Kenol Sub-County Hospital",   dropoff: "Makuyu, Murang'a",        date: "2026-08-16", startHour: 10, duration: 3,  driver: "Sarah Akinyi",   phone: "+254 766 890 123" },
-  { id: "THK-007", hearseId: "H-THK-01", branch: "Thika",    status: "booked",     client: "Wachira Family",  pickup: "Thika Level 5 Hospital",      dropoff: "Juja, Kiambu",            date: "2026-08-20", startHour: 8,  duration: 2,  driver: "David Kipchoge", phone: "+254 755 789 012" },
-  { id: "THK-008", hearseId: "H-THK-02", branch: "Thika",    status: "booked",     client: "Maina Estate",    pickup: "Gatundu District Hospital",   dropoff: "Lari, Kiambu",            date: "2026-08-22", startHour: 11, duration: 3,  driver: "Sarah Akinyi",   phone: "+254 766 890 123" },
-];
+
 
 // ─── StatusPill ───────────────────────────────────────────────────────────────
 function StatusPill({ status }: { status: Status }) {
@@ -125,7 +95,7 @@ function MonthView({ currentDate, bookings, onSelect }: {
     >
       <div className="grid grid-cols-7 shrink-0 border-b" style={{ borderColor: "rgba(148,163,184,0.08)" }}>
         {WEEKDAYS.map(d => (
-          <div key={d} className="py-2 text-center text-xs font-semibold uppercase tracking-widest" style={{ color: "#475569" }}>
+          <div key={d} className=" text-center text-xs font-semibold uppercase tracking-widest" style={{ color: "#475569" }}>
             {d}
           </div>
         ))}

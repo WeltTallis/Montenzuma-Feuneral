@@ -4,6 +4,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
 
+/* Tailwind CSS — utilities + theme only (NO preflight/reset, so existing app
+   styles are not altered). Used by the standalone dashboard chrome. */
+@layer theme, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
 
 /* ==========================================================
    Box Sizing

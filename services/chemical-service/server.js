@@ -131,7 +131,7 @@ app.get('/health', (req, res) => {
 // ============================================
 // TEST ENDPOINT (for debugging)
 // ============================================
-app.get('/api/v1/restpoint/chemicals/test', (req, res) => {
+app.get(['/api/v1/restpoint/chemicals/test', '/chemicals/test'], (req, res) => {
   res.json({
     success: true,
     message: 'Chemical service is running!',
@@ -147,10 +147,11 @@ app.get('/api/v1/restpoint/chemicals/test', (req, res) => {
 });
 
 // ============================================
-// ROUTES - Mount chemical routes at /chemicals
+// ROUTES - Support both direct service URLs and gateway-rewritten URLs
 // ============================================
-// The API Gateway strips /api/v1/restpoint/chemicals prefix and forwards clean paths
-// So we need to mount at /chemicals to handle the full path
+// Some deployments hit /api/v1/restpoint/chemicals directly, while the gateway
+// strips that prefix and forwards clean paths such as /chemicals.
+app.use('/api/v1/restpoint/chemicals', chemicalRoutes);
 app.use('/chemicals', chemicalRoutes);
 
 // ============================================

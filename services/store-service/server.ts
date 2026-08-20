@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Mini Store Service
  * --------------------
  * A self-contained Express service that exposes a small store inventory
@@ -31,7 +31,14 @@ dotenv.config({ path: envPath });
 import express from 'express';
 import cors from 'cors';
 import knex from 'knex';
-import storeRoutes from './routes/storeRoutes.ts';
+
+// storeRoutes transitively imports app-global authMiddleware, which reads
+// JWT_SECRET / NODE_ENV from process.env while the module is being evaluated.
+// Static ES imports are hoisted and would run BEFORE the dotenv.config() above,
+// crashing the service with "FATAL: JWT_SECRET environment variable is required"
+// even though the root .env contains a JWT_SECRET. Load the routes dynamically
+// so they execute after dotenv has populated the environment.
+const { default: storeRoutes } = await import('./routes/storeRoutes.ts');
 
 const app = express();
 
@@ -52,12 +59,16 @@ const buildConfig = () => ({
     port: Number(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'restpoint_main',
+    // Mini Store is an OPERATIONS module: it shares the single operations
+    // database with coffin/hearse/florist/workshop (tenant isolation via
+    // tenant_slug/tenant_id columns). Prefer OPERATIONS_DATABASE (the root
+    // .env default `restpoint_operations`) over the legacy DB_NAME.
+    database: process.env.OPERATIONS_DATABASE || process.env.DB_NAME || 'restpoint_operations',
   },
   pool: { min: 2, max: 10 },
   migrations: {
     directory: path.join(__dirname, 'migrations'),
-    tableName: 'knex_migrations',
+    tableName: 'knex_migrations_store',
   },
 });
 
@@ -67,8 +78,8 @@ const initDatabase = async () => {
     console.log('[STORE] Database connection initialized');
 
     if (!storeKnex) return;
-    const hasMigrationsTable = await storeKnex.schema.hasTable('knex_migrations');
-    if (!hasMigrationsTable || !(await storeKnex.schema.hasTable('store_items'))) {
+    const hasMigrationsTable = await storeKnex.schema.hasTable('knex_migrations_store');
+    if (!hasMigrationsTable || !(await storeKnex.schema.hasTable('mini_store_items'))) {
       await storeKnex.migrate.latest();
       console.log('[STORE] Knex migrations completed successfully');
     } else {
@@ -124,13 +135,15 @@ const startServer = async () => {
 
   app.listen(PORT, HOST, () => {
     console.log('========================================');
-    console.log(`🏪 Mini Store Service`);
+    console.log(`ðŸª Mini Store Service`);
     console.log(`   Port: ${PORT}`);
     console.log(`   Host: ${HOST}`);
     console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`   UI:  http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/`);
     console.log(`   API: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/api/store/...`);
-    console.log(`   DB: ${process.env.DB_NAME || 'not configured'} ${storeKnex ? '🟢 connected' : '🟡 demo-only'}`);
+    console.log(
+      `   DB: ${process.env.DB_NAME || 'not configured'} ${storeKnex ? 'ðŸŸ¢ connected' : 'ðŸŸ¡ demo-only'}`,
+    );
     console.log('========================================');
   });
 };

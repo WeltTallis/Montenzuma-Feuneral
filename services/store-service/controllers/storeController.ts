@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+﻿import type { Request, Response } from 'express';
 import type { ResultSetHeader } from 'mysql2';
 import type { Knex } from 'knex';
 import type {
@@ -21,7 +21,9 @@ import type {
 const getKnex = (req: any): Knex => {
   const db = req.app?.locals?.storeKnex as Knex | null;
   if (!db) {
-    throw new Error('Store database is not available. Is MariaDB running? (mini service runs in demo-only mode)');
+    throw new Error(
+      'Store database is not available. Is MariaDB running? (mini service runs in demo-only mode)',
+    );
   }
   return db;
 };
@@ -69,17 +71,8 @@ export const getItems = async (req: any, res: any): Promise<any> => {
     const db = getKnex(req);
     const { search, category } = req.query;
 
-    let query = db('store_items')
-      .select(
-        'id',
-        'name',
-        'category',
-        'unit',
-        'stock',
-        'min_stock',
-        'created_at',
-        'updated_at',
-      )
+    let query = db('mini_store_items')
+      .select('id', 'name', 'category', 'unit', 'stock', 'min_stock', 'created_at', 'updated_at')
       .orderBy('name', 'asc');
 
     if (search && String(search).trim()) {
@@ -100,8 +93,11 @@ export const getItems = async (req: any, res: any): Promise<any> => {
 export const getCategories = async (req: any, res: any): Promise<any> => {
   try {
     const db = getKnex(req);
-    const rows = await db('store_items').distinct('category').orderBy('category', 'asc');
-    return ok(res, rows.map((r: any) => r.category));
+    const rows = await db('mini_store_items').distinct('category').orderBy('category', 'asc');
+    return ok(
+      res,
+      rows.map((r: any) => r.category),
+    );
   } catch (error: any) {
     return fail(res, 503, error.message);
   }
@@ -114,9 +110,7 @@ export const getItemById = async (req: any, res: any): Promise<any> => {
     const id = parseInt(req.params.id, 10);
     if (!id) return fail(res, 400, 'Invalid item id');
 
-    const row = (await db('store_items').where({ id }).first()) as
-      | StoreItemRecord
-      | undefined;
+    const row = (await db('mini_store_items').where({ id }).first()) as StoreItemRecord | undefined;
     if (!row) return fail(res, 404, `Item ${id} not found`);
     return ok(res, itemToJSON(row));
   } catch (error: any) {
@@ -137,28 +131,34 @@ export const createItem = async (req: any, res: any): Promise<any> => {
     const minStock = Math.max(0, getFloat(body.minStock) ?? 0);
 
     if (!name) return fail(res, 400, 'Item name is required');
-    if (body.stock !== undefined && getFloat(body.stock) === null) return fail(res, 400, 'Invalid stock value');
-    if (body.minStock !== undefined && getFloat(body.minStock) === null) return fail(res, 400, 'Invalid minStock value');
+    if (body.stock !== undefined && getFloat(body.stock) === null)
+      return fail(res, 400, 'Invalid stock value');
+    if (body.minStock !== undefined && getFloat(body.minStock) === null)
+      return fail(res, 400, 'Invalid minStock value');
 
-    const exists = await db('store_items').where({ name }).first();
+    const exists = await db('mini_store_items').where({ name }).first();
     if (exists) return fail(res, 409, `Item "${name}" already exists`);
 
-    const insertResult = (await db('store_items').insert({
+    const insertResult = (await db('mini_store_items').insert({
       name,
       category,
       unit,
       stock,
       min_stock: minStock,
-    })) as ResultSetHeader | ResultSetHeader[];
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })) as ResultSetHeader | ResultSetHeader[] | number[];
 
-    const insertId = Array.isArray(insertResult)
-      ? insertResult[0].insertId
-      : (insertResult as ResultSetHeader).insertId;
+    // knex + mysql2 resolves .insert() to an array of insert ids ([insertId]),
+    // while mysql2's raw ResultSetHeader carries .insertId. Handle both.
+    const first: any = Array.isArray(insertResult) ? insertResult[0] : insertResult;
+    const insertId: number =
+      typeof first === 'number' ? first : Number(first?.insertId ?? insertResult[0]?.insertId);
 
-    const row = (await db('store_items').where({ id: insertId }).first()) as StoreItemRecord;
+    const row = (await db('mini_store_items').where({ id: insertId }).first()) as StoreItemRecord;
 
     if (stock > 0) {
-      await db('store_transactions').insert({
+      await db('mini_store_transactions').insert({
         item_id: row.id,
         item_name: row.name,
         action: 'restocked',
@@ -167,6 +167,7 @@ export const createItem = async (req: any, res: any): Promise<any> => {
         staff: String(body.staff || 'Store Clerk'),
         reason: 'Initial stock',
         remaining: Number(row.stock),
+        created_at: new Date().toISOString(),
       });
     }
 
@@ -183,7 +184,7 @@ export const updateItem = async (req: any, res: any): Promise<any> => {
     const id = parseInt(req.params.id, 10);
     if (!id) return fail(res, 400, 'Invalid item id');
 
-    const row = (await db('store_items').where({ id }).first()) as StoreItemRecord | undefined;
+    const row = (await db('mini_store_items').where({ id }).first()) as StoreItemRecord | undefined;
     if (!row) return fail(res, 404, `Item ${id} not found`);
 
     const body = req.body || {};
@@ -195,7 +196,8 @@ export const updateItem = async (req: any, res: any): Promise<any> => {
     }
     if (body.category !== undefined) patch.category = String(body.category).trim() || 'Other';
     if (body.unit !== undefined) patch.unit = String(body.unit).trim() || 'pcs';
-    if (body.minStock !== undefined) patch.min_stock = Math.max(0, getFloat(body.minStock) ?? Number(row.min_stock));
+    if (body.minStock !== undefined)
+      patch.min_stock = Math.max(0, getFloat(body.minStock) ?? Number(row.min_stock));
 
     let delta = 0;
     if (body.stock !== undefined) {
@@ -204,13 +206,13 @@ export const updateItem = async (req: any, res: any): Promise<any> => {
       patch.stock = newStock;
     }
 
-    await db('store_items')
+    await db('mini_store_items')
       .where({ id })
       .update({ ...patch, updated_at: db.fn.now() });
 
     if (delta !== 0) {
-      const updated = (await db('store_items').where({ id }).first()) as StoreItemRecord;
-      await db('store_transactions').insert({
+      const updated = (await db('mini_store_items').where({ id }).first()) as StoreItemRecord;
+      await db('mini_store_transactions').insert({
         item_id: id,
         item_name: updated.name,
         action: 'adjusted',
@@ -223,7 +225,7 @@ export const updateItem = async (req: any, res: any): Promise<any> => {
       return ok(res, itemToJSON(updated), { message: `"${updated.name}" updated` });
     }
 
-    const final = (await db('store_items').where({ id }).first()) as StoreItemRecord;
+    const final = (await db('mini_store_items').where({ id }).first()) as StoreItemRecord;
     return ok(res, itemToJSON(final), { message: `"${final.name}" updated` });
   } catch (error: any) {
     return fail(res, 503, error.message);
@@ -237,10 +239,10 @@ export const deleteItem = async (req: any, res: any): Promise<any> => {
     const id = parseInt(req.params.id, 10);
     if (!id) return fail(res, 400, 'Invalid item id');
 
-    const row = (await db('store_items').where({ id }).first()) as StoreItemRecord | undefined;
+    const row = (await db('mini_store_items').where({ id }).first()) as StoreItemRecord | undefined;
     if (!row) return fail(res, 404, `Item ${id} not found`);
 
-    await db('store_items').where({ id }).del();
+    await db('mini_store_items').where({ id }).del();
     return ok(res, { id }, { message: `"${row.name}" removed from the store` });
   } catch (error: any) {
     return fail(res, 503, error.message);
@@ -264,7 +266,8 @@ export const pickItem = async (req: any, res: any): Promise<any> => {
     if (!body.staff) return fail(res, 400, 'Staff member is required');
     if (!body.reason) return fail(res, 400, 'Reason is required');
 
-    const item = (await db('store_items').where({ id }).first()) as StoreItemRecord | undefined;
+    const item = (await db('mini_store_items').where({ id }).first()) as
+      StoreItemRecord | undefined;
     if (!item) return fail(res, 404, `Item ${id} not found`);
 
     const currentStock = Number(item.stock);
@@ -273,21 +276,32 @@ export const pickItem = async (req: any, res: any): Promise<any> => {
     }
 
     const newStock = currentStock - qty;
-    await db('store_items').where({ id }).update({ stock: newStock });
+    await db('mini_store_items').where({ id }).update({ stock: newStock });
 
     const reason = body.notes ? `${body.reason} - ${body.notes}` : body.reason;
-    await db('store_transactions').insert({
-      item_id: id, item_name: item.name, action: 'used', quantity: qty, unit: item.unit,
-      staff: String(body.staff), reason: String(reason), remaining: newStock,
+    await db('mini_store_transactions').insert({
+      item_id: id,
+      item_name: item.name,
+      action: 'used',
+      quantity: qty,
+      unit: item.unit,
+      staff: String(body.staff),
+      reason: String(reason),
+      remaining: newStock,
+      created_at: new Date().toISOString(),
     });
 
-    const latest = (await db('store_transactions')
+    const latest = (await db('mini_store_transactions')
       .where({ item_id: id, action: 'used', quantity: qty, remaining: newStock })
-      .orderBy('id', 'desc').first()) as StoreTransactionRecord | undefined;
-    const updated = (await db('store_items').where({ id }).first()) as StoreItemRecord;
+      .orderBy('id', 'desc')
+      .first()) as StoreTransactionRecord | undefined;
+    const updated = (await db('mini_store_items').where({ id }).first()) as StoreItemRecord;
 
-    return ok(res, { item: itemToJSON(updated), transaction: latest ? txToJSON(latest) : null },
-      { message: `Picked ${qty} ${item.unit} of ${item.name}` });
+    return ok(
+      res,
+      { item: itemToJSON(updated), transaction: latest ? txToJSON(latest) : null },
+      { message: `Picked ${qty} ${item.unit} of ${item.name}` },
+    );
   } catch (error: any) {
     return fail(res, 503, error.message);
   }
@@ -304,25 +318,37 @@ export const restockItem = async (req: any, res: any): Promise<any> => {
     if (!id) return fail(res, 400, 'Invalid item id');
     if (qty === null || qty <= 0) return fail(res, 400, 'A valid quantity is required');
 
-    const item = (await db('store_items').where({ id }).first()) as StoreItemRecord | undefined;
+    const item = (await db('mini_store_items').where({ id }).first()) as
+      StoreItemRecord | undefined;
     if (!item) return fail(res, 404, `Item ${id} not found`);
 
     const newStock = Number(item.stock) + qty;
-    await db('store_items').where({ id }).update({ stock: newStock });
+    await db('mini_store_items').where({ id }).update({ stock: newStock });
 
     const reason = body.supplier ? `Supplier: ${body.supplier}` : 'Restocked';
-    await db('store_transactions').insert({
-      item_id: id, item_name: item.name, action: 'restocked', quantity: qty, unit: item.unit,
-      staff: String(body.staff || 'Store Clerk'), reason: String(reason), remaining: newStock,
+    await db('mini_store_transactions').insert({
+      item_id: id,
+      item_name: item.name,
+      action: 'restocked',
+      quantity: qty,
+      unit: item.unit,
+      staff: String(body.staff || 'Store Clerk'),
+      reason: String(reason),
+      remaining: newStock,
+      created_at: new Date().toISOString(),
     });
 
-    const latest = (await db('store_transactions')
+    const latest = (await db('mini_store_transactions')
       .where({ item_id: id, action: 'restocked', quantity: qty, remaining: newStock })
-      .orderBy('id', 'desc').first()) as StoreTransactionRecord | undefined;
-    const updated = (await db('store_items').where({ id }).first()) as StoreItemRecord;
+      .orderBy('id', 'desc')
+      .first()) as StoreTransactionRecord | undefined;
+    const updated = (await db('mini_store_items').where({ id }).first()) as StoreItemRecord;
 
-    return ok(res, { item: itemToJSON(updated), transaction: latest ? txToJSON(latest) : null },
-      { message: `Restocked ${qty} ${item.unit} of ${item.name}` });
+    return ok(
+      res,
+      { item: itemToJSON(updated), transaction: latest ? txToJSON(latest) : null },
+      { message: `Restocked ${qty} ${item.unit} of ${item.name}` },
+    );
   } catch (error: any) {
     return fail(res, 503, error.message);
   }
@@ -338,21 +364,27 @@ export const adjustItem = async (req: any, res: any): Promise<any> => {
     if (!id) return fail(res, 400, 'Invalid item id');
     if (getFloat(body.newStock) === null) return fail(res, 400, 'newStock is required');
 
-    const item = (await db('store_items').where({ id }).first()) as StoreItemRecord | undefined;
+    const item = (await db('mini_store_items').where({ id }).first()) as
+      StoreItemRecord | undefined;
     if (!item) return fail(res, 404, `Item ${id} not found`);
 
     const delta = newStock - Number(item.stock);
-    await db('store_items').where({ id }).update({ stock: newStock });
+    await db('mini_store_items').where({ id }).update({ stock: newStock });
 
     if (delta !== 0) {
-      await db('store_transactions').insert({
-        item_id: id, item_name: item.name, action: 'adjusted', quantity: Math.abs(delta),
-        unit: item.unit, staff: String(body.staff || 'Store Clerk'),
+      await db('mini_store_transactions').insert({
+        item_id: id,
+        item_name: item.name,
+        action: 'adjusted',
+        quantity: Math.abs(delta),
+        unit: item.unit,
+        staff: String(body.staff || 'Store Clerk'),
         reason: `Stock adjusted (${delta > 0 ? '+' : '-'}${delta} ${item.unit}) - ${String(body.reason || 'manual adjustment')}`,
         remaining: newStock,
+        created_at: new Date().toISOString(),
       });
     }
-    const updated = (await db('store_items').where({ id }).first()) as StoreItemRecord;
+    const updated = (await db('mini_store_items').where({ id }).first()) as StoreItemRecord;
     return ok(res, itemToJSON(updated), { message: `"${item.name}" stock adjusted` });
   } catch (error: any) {
     return fail(res, 503, error.message);
@@ -369,7 +401,7 @@ export const getTransactions = async (req: any, res: any): Promise<any> => {
     const db = getKnex(req);
     const { action, itemId, itemName, staff, from, to, page = '1', perPage = '100' } = req.query;
 
-    let query = db('store_transactions').select('*');
+    let query = db('mini_store_transactions').select('*');
     if (action && String(action) !== 'all') query = query.where('action', String(action));
     if (itemId) query = query.where('item_id', parseInt(String(itemId), 10) || 0);
     if (itemName && String(itemName) !== 'all') query = query.where('item_name', String(itemName));
@@ -386,12 +418,18 @@ export const getTransactions = async (req: any, res: any): Promise<any> => {
     const offset = (pg - 1) * per;
 
     const rows = (await query
-      .orderBy('created_at', 'desc').orderBy('id', 'desc')
-      .limit(per).offset(offset)) as StoreTransactionRecord[];
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(per)
+      .offset(offset)) as StoreTransactionRecord[];
 
     return res.status(200).json({
-      success: true, count: rows.length, total: Number(total),
-      page: pg, perPage: per, totalPages,
+      success: true,
+      count: rows.length,
+      total: Number(total),
+      page: pg,
+      perPage: per,
+      totalPages,
       data: rows.map(txToJSON),
     });
   } catch (error: any) {
@@ -403,19 +441,25 @@ export const getTransactions = async (req: any, res: any): Promise<any> => {
 export const getStats = async (req: any, res: any): Promise<any> => {
   try {
     const db = getKnex(req);
-    const [{ cnt: total }] = (await db('store_items').count('id as cnt')) as any[];
-    const lowItems = (await db('store_items').whereRaw('stock <= min_stock').orWhereRaw('stock = 0')) as StoreItemRecord[];
+    const [{ cnt: total }] = (await db('mini_store_items').count('id as cnt')) as any[];
+    const lowItems = (await db('mini_store_items')
+      .whereRaw('stock <= min_stock')
+      .orWhereRaw('stock = 0')) as StoreItemRecord[];
     const inStock = Number(total) - lowItems.length;
     const lowStock = lowItems.filter((i) => Number(i.stock) > 0).length;
     const outOfStock = lowItems.filter((i) => Number(i.stock) === 0).length;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const usedTodayRows = (await db('store_transactions')
-      .where('action', 'used').where('created_at', '>=', today)) as StoreTransactionRecord[];
+    const usedTodayRows = (await db('mini_store_transactions')
+      .where('action', 'used')
+      .where('created_at', '>=', today)) as StoreTransactionRecord[];
 
     const stats: StatsResult = {
-      total: Number(total), inStock, lowStock, outOfStock,
+      total: Number(total),
+      inStock,
+      lowStock,
+      outOfStock,
       usedToday: usedTodayRows.length,
     };
     return ok(res, stats);

@@ -3,20 +3,37 @@
 const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
 
-let GLOBAL_JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
-if (!GLOBAL_JWT_SECRET) {
-  // In development allow a non-fatal fallback to make local dev easier.
-  // This avoids crashing nodemon when JWT_SECRET isn't set locally.
-  if (process.env.NODE_ENV === 'development' || process.env.DEBUG_JWT_FALLBACK === 'true') {
-    console.warn('WARNING: JWT_SECRET not set — using development fallback. Do NOT use in production.');
-    GLOBAL_JWT_SECRET = process.env.DEV_JWT_FALLBACK || 'dev_local_jwt_secret_please_change';
-  } else {
-    throw new Error('FATAL: JWT_SECRET environment variable is required');
-  }
-  
-}
+// JWT secrets are resolved lazily (on the first middleware invocation) instead
+// of at module load time. Several TS/ESM services statically import this module
+// through their route files, and ES module import declarations are hoisted and
+// evaluated BEFORE their server.ts runs dotenv.config(). Reading process.env
+// here at module-load used to crash those services with
+// "FATAL: JWT_SECRET environment variable is required" even though the real
+// .env file contained a JWT_SECRET. Deferring the read fixes that whole class
+// of import-order bugs while still failing loudly (same message) if a secret
+// was genuinely never configured.
+let GLOBAL_JWT_SECRET = null;
+let JWT_SECRET_RESOLVED = false;
 
-const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET;
+const getJwtSecret = () => {
+  if (JWT_SECRET_RESOLVED) {
+    return GLOBAL_JWT_SECRET;
+  }
+  GLOBAL_JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
+  if (!GLOBAL_JWT_SECRET) {
+    // In development allow a non-fatal fallback to make local dev easier.
+    // This avoids crashing nodemon when JWT_SECRET isn't set locally.
+    if (process.env.NODE_ENV === 'development' || process.env.DEBUG_JWT_FALLBACK === 'true') {
+      console.warn('WARNING: JWT_SECRET not set — using development fallback. Do NOT use in production.');
+      GLOBAL_JWT_SECRET = process.env.DEV_JWT_FALLBACK || 'dev_local_jwt_secret_please_change';
+    } else {
+      throw new Error('FATAL: JWT_SECRET environment variable is required');
+    }
+  }
+
+  JWT_SECRET_RESOLVED = true;
+  return GLOBAL_JWT_SECRET;
+};
 
 // Create a root pool for tenant secret lookups (lazy init)
 let rootPool = null;
@@ -43,7 +60,7 @@ const getRootPool = () => {
 const verifyTokenWithFallback = async (token) => {
   // First try: global JWT_SECRET
   try {
-    const decoded = jwt.verify(token, GLOBAL_JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     return { decoded, error: null };
   } catch (e) {
     // Continue to try tenant-specific secrets
@@ -102,6 +119,17 @@ const protect = async (req, res, next) => {
     return res.status(401).json({
       success: false,
       message: 'Not authorized, no token provided'
+    });
+  }
+
+  // Fail fast if the JWT secret isn't configured at all — surface the config
+  // problem as a clear 500 instead of a misleading 401.
+  try {
+    getJwtSecret();
+  } catch (secretError) {
+    return res.status(500).json({
+      success: false,
+      message: secretError.message
     });
   }
 
@@ -164,7 +192,7 @@ const optionalAuth = async (req, res, next) => {
   if (token) {
     try {
       // Use the GLOBAL_JWT_SECRET (with fallback) for optional auth as well
-      const decoded = jwt.verify(token, GLOBAL_JWT_SECRET);
+      const decoded = jwt.verify(token, getJwtSecret());
       req.user = decoded;
     } catch (error) {
       // Token invalid, but we continue anyway (optional auth)
