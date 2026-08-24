@@ -1,22 +1,24 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { ENDPOINTS } from '../../../api/endpoints';
-import env from '../../../utils/config/env';
-import { ToastContainer, toast } from 'react-toastify';
+import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import styled, { keyframes } from 'styled-components';
+import { ENDPOINTS } from '../../../api/endpoints';
+import env from '../../../utils/config/env';
+import OfficialStamp from '../../stamp/stamp';
+import notify from '../../../utils/notify';
 import bwipjs from '@bwip-js/browser';
+import axios from 'axios';
+
 import {
   Check, Loader2, CheckCircle, X, FileText, User,
   RotateCcw, ShieldCheck, AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin
 } from '../../../utils/icons/icons';
-import styled, { keyframes } from 'styled-components';
-import OfficialStamp from '../../stamp/stamp';
-import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 
 // ─── Color Palette ──────────────────────────────────
 const COLORS = {
-  ink: '#15171A',
+  ink: '#03071E',
   bone: '#FAF8F4',
   bone2: '#F3EFE6',
   brass: '#8B7355',
@@ -51,15 +53,11 @@ const spin = keyframes`
 const Container = styled.div`
   min-height: 100vh;
   background: ${COLORS.bone2};
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   color: ${COLORS.ink};
   font-size: 15px;
   line-height: 1.5;
   padding: 0;
-
-  .Toastify__toast-container { width: 380px !important; max-width: 90vw !important; padding: 0 !important; }
-  .Toastify__toast { border-radius: 8px !important; font-family: 'Inter', sans-serif !important; font-size: 0.85rem !important; padding: 10px 14px !important; min-height: 44px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; margin-bottom: 0.5rem !important; }
-  .Toastify__toast-body { padding: 0 !important; margin: 0 !important; font-size: 0.85rem !important; }
 `;
 
 const FormSheet = styled.div`
@@ -335,7 +333,7 @@ const Label = styled.label`
   text-transform: uppercase;
   color: ${COLORS.brass};
   margin-bottom: 0.5rem;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
 `;
 
 const InputFieldWrapper = styled.div`
@@ -355,7 +353,7 @@ const Input = styled.input`
   box-shadow: none;
   background: transparent;
   padding: 0 2rem 0 0;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   font-size: 0.95rem;
   font-weight: 400;
   color: ${COLORS.ink};
@@ -381,7 +379,7 @@ const Input = styled.input`
     opacity: 0.8;
   }
 
-  &::placeholder { color: #a8a29e; font-weight: 400; }
+  &::placeholder { color: #a8a29e;  font-weight: 400; }
 `;
 
 const InputLg = styled(Input)`
@@ -400,7 +398,7 @@ const Select = styled.select`
   box-shadow: none;
   background: transparent;
   padding: 0 2rem 0 0;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   font-size: 0.95rem;
   color: ${COLORS.ink};
   transition: border-color 0.2s ease;
@@ -437,7 +435,7 @@ const ErrorMessage = styled.span`
   font-size: 0.75rem;
   margin-top: 0.3rem;
   display: block;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
 `;
 
 const SigCanvasWrap = styled.div`
@@ -560,7 +558,7 @@ const PrimaryButton = styled.button`
   padding: 1rem 2rem;
   font-size: 0.85rem;
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -596,7 +594,7 @@ const GoldButton = styled.button`
   padding: 1rem 2rem;
   font-size: 0.85rem;
   font-weight: 700;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -636,7 +634,7 @@ const BlackButton = styled.button`
   padding: 1rem 2rem;
   font-size: 0.85rem;
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -679,7 +677,7 @@ const ClearSigButton = styled.button`
   padding: 0.25rem 0;
   cursor: pointer;
   transition: all 0.2s;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
 
   &:hover {
     color: ${COLORS.red};
@@ -815,7 +813,7 @@ const DeceasedRegistrationForm = () => {
     place_of_death: '',
     contact_person: '',
     id_number: '',
-    id_type: '',
+    id_type: 'National ID',
     tel_number: '',
     alternative_phone: '',
     email: '',
@@ -841,7 +839,7 @@ const DeceasedRegistrationForm = () => {
       try {
         const tenantSlug = getTenantSlug();
         const token = getAuthToken();
-        const response = await fetch(
+        const response = await axios.post(
           `${env.FULL_API_URL}${ENDPOINTS.DECEASED.ADMISSION_NUMBER(formData.gender)}`,
           {
             headers: {
@@ -876,34 +874,52 @@ const DeceasedRegistrationForm = () => {
     if (message.text) setMessage({ type: '', text: '' });
   };
 
+  const isValidPhone = (p) => {
+    const digits = String(p || '').replace(/[^\d]/g, '');
+    return digits.length >= 9 && digits.length <= 13;
+  };
+
   const validateForm = () => {
     const newErrors = {};
     if (!formData.full_name.trim()) newErrors.full_name = 'Full name is required';
     if (!formData.gender) newErrors.gender = 'Gender is required';
     if (!formData.date_admitted) newErrors.date_admitted = 'Date admitted is required';
+    if (!formData.received_from.trim()) newErrors.received_from = 'Received from is required';
+    if (!formData.contact_person.trim()) newErrors.contact_person = 'Contact person name is required';
+    if (!formData.relationship.trim()) newErrors.relationship = 'Relationship is required';
+    if (!formData.id_number.trim()) newErrors.id_number = 'National ID number is required';
+    if (!formData.tel_number.trim()) {
+      newErrors.tel_number = 'Telephone number is required';
+    } else if (!isValidPhone(formData.tel_number)) {
+      newErrors.tel_number = 'Please enter a valid telephone number';
+    }
+    if (formData.alternative_phone && !isValidPhone(formData.alternative_phone)) {
+      newErrors.alternative_phone = 'Please enter a valid alternative phone number';
+    }
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
-    }
-
-    if (formData.tel_number && !/^(\+254|0)[17]\d{8}$/.test(formData.tel_number.replace(/\s/g, ''))) {
-      newErrors.tel_number = 'Please enter a valid Kenyan phone number (e.g., +254712345678 or 0712345678)';
-    }
-
-    if (formData.alternative_phone && !/^(\+254|0)[17]\d{8}$/.test(formData.alternative_phone.replace(/\s/g, ''))) {
-      newErrors.alternative_phone = 'Please enter a valid Kenyan phone number';
     }
 
     if (sigPadRef1.current?.isEmpty()) {
       newErrors.signature = 'Signature is required to proceed';
     }
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
-    if (!validateForm()) return;
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      const missingFields = Object.values(validationErrors);
+      notify.info('Missing required details', `Please complete the following: ${missingFields.join(', ')}`);
+      setMessage({
+        type: 'error',
+        text: `Please complete all required fields: ${missingFields.join(', ')}`,
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     setMessage({ type: '', text: '' });
@@ -927,7 +943,7 @@ const DeceasedRegistrationForm = () => {
         gender: formData.gender,
         date_of_death: formData.date_of_death || null,
         place_of_death: formData.place_of_death || null,
-        id_type: formData.id_type || null,
+        id_type: formData.id_type || 'National ID',
         alternative_phone: formData.alternative_phone || null,
         email: formData.email || null,
         receiving_officer: formData.receiving_officer || null,
@@ -968,7 +984,7 @@ const DeceasedRegistrationForm = () => {
       setErrors({});
 
     } catch (error) {
-      toast.error(error.message || 'Registration failed. Please try again.');
+      notify.error('Registration failed', error.message || 'Please check the details and try again.');
       setMessage({
         type: 'error',
         text: error.message || 'Something went wrong. Please try again.',
@@ -998,7 +1014,7 @@ const DeceasedRegistrationForm = () => {
       <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <div style={{ textAlign: 'center' }}>
           <Loader2 size={48} color={COLORS.ink} className="animate-spin" />
-          <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Inter', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Processing Document...</p>
+          <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Saira', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Processing Document...</p>
         </div>
       </Container>
     );
@@ -1006,19 +1022,6 @@ const DeceasedRegistrationForm = () => {
 
   return (
     <Container>
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        limit={3}
-      />
 
       <FormSheet>
         <Watermark>OFFICIAL RECORD</Watermark>
@@ -1140,6 +1143,7 @@ const DeceasedRegistrationForm = () => {
                         </TickIconWrapper>
                       )}
                     </InputFieldWrapper>
+                    {errors.received_from && <ErrorMessage>{errors.received_from}</ErrorMessage>}
                   </Col>
                 </Row>
               </Section>
@@ -1307,6 +1311,7 @@ const DeceasedRegistrationForm = () => {
                         </TickIconWrapper>
                       )}
                     </InputFieldWrapper>
+                    {errors.contact_person && <ErrorMessage>{errors.contact_person}</ErrorMessage>}
                   </Col2>
                   <Col>
                     <Label>Relationship</Label>
@@ -1324,6 +1329,7 @@ const DeceasedRegistrationForm = () => {
                         </TickIconWrapper>
                       )}
                     </InputFieldWrapper>
+                    {errors.relationship && <ErrorMessage>{errors.relationship}</ErrorMessage>}
                   </Col>
                 </Row>
 
@@ -1331,16 +1337,13 @@ const DeceasedRegistrationForm = () => {
                   <Col>
                     <Label>ID Type</Label>
                     <InputFieldWrapper>
-                      <Select
+                      <Input
+                        type="text"
                         name="id_type"
-                        value={formData.id_type}
-                        onChange={handleChange}
-                      >
-                        <option value="">Select Identification</option>
-                        <option value="National ID">National ID</option>
-                        <option value="Passport">Passport</option>
-                        <option value="Alien Card">Alien Card</option>
-                      </Select>
+                        value="National ID"
+                        readOnly
+                        disabled
+                      />
                       {hasValue(formData.id_type) && (
                         <TickIconWrapper>
                           <Check size={16} strokeWidth={2.5} />
@@ -1349,14 +1352,14 @@ const DeceasedRegistrationForm = () => {
                     </InputFieldWrapper>
                   </Col>
                   <Col>
-                    <Label>ID / Passport Number</Label>
+                    <Label>National ID Number</Label>
                     <InputFieldWrapper>
                       <Input
                         type="text"
                         name="id_number"
                         value={formData.id_number}
                         onChange={handleChange}
-                        placeholder="Identification number"
+                        placeholder="National ID number"
                       />
                       {hasValue(formData.id_number) && (
                         <TickIconWrapper>
@@ -1364,6 +1367,7 @@ const DeceasedRegistrationForm = () => {
                         </TickIconWrapper>
                       )}
                     </InputFieldWrapper>
+                    {errors.id_number && <ErrorMessage>{errors.id_number}</ErrorMessage>}
                   </Col>
                 </Row>
 

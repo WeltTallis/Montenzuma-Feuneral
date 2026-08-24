@@ -1,9 +1,5 @@
 /**
  * Tenant Branding Helper
- *
- * Centralizes access to tenant branding data (name, phone, location, logo, email, country)
- * from multiple sources: Zustand store, localStorage, and the user object.
- *
  * This ensures forms (intake, release, etc.) always show the REAL tenant details
  * that were stored at login — no hardcoded/fake data.
  */
@@ -19,13 +15,15 @@ const DEFAULT_BRANDING = {
   country: 'Kenya',
   address: 'Raila Odinga Wy, Nairobi',
   Adress: 'Raila Odinga Wy, Nairobi', // legacy key kept for backward compatibility
-  logoUrl: '/monalisa.png', // Ensure this file exists in your /public folder!
+  logoUrl: '/monalisa.png',
+  fontFamily: "'Saira', sans-serif",
 };
 
-/**
+/*
  * Get tenant branding details from localStorage.
  * These are stored by AuthContext at login time.
  */
+
 export const getTenantBrandingFromStorage = () => {
   try {
     return {
@@ -36,17 +34,19 @@ export const getTenantBrandingFromStorage = () => {
       country: localStorage.getItem('tenantCountry') || '',
       address: localStorage.getItem('tenantAddress') || localStorage.getItem('tenantAdress') || '',
       logoUrl: localStorage.getItem('tenantLogoUrl') || '',
+      fontFamily: localStorage.getItem('tenantFont') || '',
     };
   } catch (error) {
     console.warn('Error reading tenant branding from localStorage:', error);
-    return { 
-      name: '', 
-      email: '', 
-      phone: '', 
-      location: '', 
-      country: '', 
-      address: '', 
-      logoUrl: '' 
+    return {
+      name: '',
+      email: '',
+      phone: '',
+      location: '',
+      country: '',
+      address: '',
+      logoUrl: '',
+      fontFamily: ''
     };
   }
 };
@@ -61,65 +61,74 @@ export const getTenantBrandingFromStorage = () => {
  */
 export const resolveTenantBranding = (tenantData) => {
   const stored = getTenantBrandingFromStorage();
-  
+
   // Get tenant name with fallbacks
-  const name = tenantData?.name 
-    || tenantData?.tenantName 
-    || stored.name 
+  const name = tenantData?.name
+    || tenantData?.tenantName
+    || stored.name
     || DEFAULT_BRANDING.name;
 
   // Get phone with realistic fallbacks
-  const phone = tenantData?.phone 
+  const phone = tenantData?.phone
     || tenantData?.tenantPhone
-    || stored.phone 
+    || stored.phone
     || DEFAULT_BRANDING.phone;
 
   // Get email with realistic fallbacks
-  const email = tenantData?.email 
+  const email = tenantData?.email
     || tenantData?.tenantEmail
-    || stored.email 
+    || stored.email
     || DEFAULT_BRANDING.email;
 
   // Get location with fallbacks
-  const location = tenantData?.location 
+  const location = tenantData?.location
     || tenantData?.tenantLocation
-    || stored.location 
+    || stored.location
     || DEFAULT_BRANDING.location;
 
   // Get country with fallbacks
-  const country = tenantData?.country 
+  const country = tenantData?.country
     || tenantData?.tenantCountry
-    || stored.country 
+    || stored.country
     || DEFAULT_BRANDING.country;
 
   // Get street address with fallbacks (legacy key stored as "Adress")
-  const address = tenantData?.address 
+  const address = tenantData?.address
     || tenantData?.tenantAddress
-    || stored.address 
+    || stored.address
     || DEFAULT_BRANDING.Adress
     || DEFAULT_BRANDING.address;
 
+  // Font family — resolve the tenant brand font. Prefers a per-tenant override, otherwise falls
+  // back to the brand font (Saira) that is already imported in index.css for the tenant pages.
+  const fontFamily = tenantData?.fontFamily
+    || tenantData?.font_family
+    || tenantData?.primaryFont
+    || stored.fontFamily
+    || DEFAULT_BRANDING.fontFamily
+    || '';
+
   // Branch info (first branch) — used for display when available
   const branchInfo = tenantData?.branches?.[0] || {};
-  
+
   // Get branch display values with realistic fallbacks
-  const displayBranch = branchInfo?.branch_name && branchInfo.branch_name !== name 
-    ? branchInfo.branch_name 
+  const displayBranch = branchInfo?.branch_name && branchInfo.branch_name !== name
+    ? branchInfo.branch_name
     : '';
-    
-  const displayLocation = branchInfo?.branch_location 
+
+  const displayLocation = branchInfo?.branch_location
     || branchInfo?.location
-    || location 
+    || location
     || DEFAULT_BRANDING.location;
-    
-  const displayPhone = branchInfo?.branch_phone 
+
+  const displayPhone = branchInfo?.branch_phone
     || branchInfo?.phone
-    || phone 
+    || phone
     || DEFAULT_BRANDING.phone;
-    
-  const displayEmail = branchInfo?.branch_email 
+
+  const displayEmail = branchInfo?.branch_email
     || branchInfo?.email
-    || email 
+    || email
     || DEFAULT_BRANDING.email;
 
   // Logo URL — normalize relative paths to full URL
@@ -128,11 +137,11 @@ export const resolveTenantBranding = (tenantData) => {
     const validLogo = (logo && typeof logo === 'string' && logo.trim() !== '') ? logo : null;
     return validLogo;
   };
-  
-  const rawLogoUrl = getLogoFromTenantData() 
-    || stored.logoUrl 
+
+  const rawLogoUrl = getLogoFromTenantData()
+    || stored.logoUrl
     || DEFAULT_BRANDING.logoUrl;
-  
+
   // Robust URL normalization to prevent malformed URLs
   let tenantLogoUrl = '';
   if (rawLogoUrl) {
@@ -153,41 +162,41 @@ export const resolveTenantBranding = (tenantData) => {
   // Format phone number (if it's a Kenyan number)
   const formatPhoneNumber = (phoneNumber) => {
     if (!phoneNumber) return DEFAULT_BRANDING.phone;
-    
+
     const cleaned = phoneNumber.replace(/[\s\-\(\)]/g, '');
-    
+
     if (cleaned.startsWith('0') && cleaned.length === 10) {
       return `+254${cleaned.slice(1)}`;
     }
-    
+
     if (cleaned.startsWith('7') && cleaned.length === 9) {
       return `+254${cleaned}`;
     }
-    
+
     if (cleaned.startsWith('+')) {
       return cleaned;
     }
-    
+
     if (cleaned.length >= 9 && cleaned.length <= 12) {
       return `+254${cleaned}`;
     }
-    
+
     return phoneNumber || DEFAULT_BRANDING.phone;
   };
 
   // Format email (ensure it's valid)
   const formatEmail = (emailAddress) => {
     if (!emailAddress) return DEFAULT_BRANDING.email;
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (emailRegex.test(emailAddress)) {
       return emailAddress;
     }
-    
+
     if (!emailAddress.includes('@')) {
       return `${emailAddress}@${DEFAULT_BRANDING.email.split('@')[1] || 'restpoint.co.ke'}`;
     }
-    
+
     return emailAddress || DEFAULT_BRANDING.email;
   };
 
@@ -208,30 +217,32 @@ export const resolveTenantBranding = (tenantData) => {
     displayPhone: formattedPhone,
     displayEmail: formattedEmail,
     displayAddress: address || displayLocation || location || DEFAULT_BRANDING.location,
-    
+
     rawLogoUrl,
     tenantLogoUrl,
-    
+
     fullAddress: [displayLocation || location, country].filter(Boolean).join(', '),
+    fontFamily,
     contactInfo: {
       phone: formattedPhone,
       email: formattedEmail,
       location: displayLocation || location,
     },
-    
+
     fallback: {
+      fontFamily: DEFAULT_BRANDING.fontFamily,
       phone: DEFAULT_BRANDING.phone,
       email: DEFAULT_BRANDING.email,
       name: DEFAULT_BRANDING.name,
       location: DEFAULT_BRANDING.location,
       address: DEFAULT_BRANDING.Adress || DEFAULT_BRANDING.address,
     },
-    
+
     hasBranding: !!(name && name !== DEFAULT_BRANDING.name),
     hasPhone: !!(phone && phone !== DEFAULT_BRANDING.phone),
     hasEmail: !!(email && email !== DEFAULT_BRANDING.email),
     hasLocation: !!(location && location !== DEFAULT_BRANDING.location),
-    
+
     getDisplayName: () => displayBranch || name,
     getDisplayPhone: () => formattedPhone,
     getDisplayEmail: () => formattedEmail,

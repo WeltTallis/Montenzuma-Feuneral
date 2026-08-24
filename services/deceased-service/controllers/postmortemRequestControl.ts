@@ -1,14 +1,15 @@
-import { Request, Response } from 'express';
-import { DateTime } from 'luxon';
 
 import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../shared/dbConfig';
+import { getKenyaTimeISO } from "../../../packages/shared-utils/dist/timestamps";
 import Logger from '../../../packages/shared-logger/src/index';
+import { Request, Response } from 'express';
+import { DateTime } from 'luxon';
 
 interface TenantRequest extends Request {
     tenantSlug?: string;
 }
 
-const nowNairobi = (): string => DateTime.now().setZone('Africa/Nairobi').toFormat('yyyy-MM-dd HH:mm:ss');
+const nowNairobi: string | undefined = getKenyaTimeISO();
 
 const getTenantSlugFromReq = (req: TenantRequest): string =>
     ((req.headers['x-slug'] as string) || (req.headers['x-tenant-slug'] as string) || req.tenantSlug || 'system_shared');
@@ -76,7 +77,7 @@ export const createPostmortemRequest = async (req: TenantRequest, res: Response)
             return res.status(400).json({ success: false, message: 'deceased_id, reason and requested_by are required' });
         }
         await ensurePostmortemRequestsTable(dbName);
-        const now = nowNairobi();
+        const now = nowNairobi;
         const requestRef = `PMR-${Date.now()}`;
         const result: any = await safeTenantExecute(dbName, `
             INSERT INTO postmortem_requests
@@ -136,7 +137,7 @@ export const updatePostmortemRequestStatus = async (req: TenantRequest, res: Res
         }
 
         await ensurePostmortemRequestsTable(dbName);
-        const now = nowNairobi();
+        const now = nowNairobi;
 
         let sql = 'UPDATE postmortem_requests SET status = ?, updated_at = ?';
         const params: any[] = [status, now];
@@ -181,7 +182,7 @@ export const sendPostmortemRequest = async (req: TenantRequest, res: Response): 
             return res.status(400).json({ success: false, message: 'Cancelled requests cannot be sent' });
         }
 
-        const now = nowNairobi();
+        const now = nowNairobi;
         await safeTenantExecute(dbName, `UPDATE postmortem_requests SET status = 'sent', sent_at = ?, updated_at = ? WHERE id = ?`, [now, now, id]);
 
         // Mirror into official postmortem table (pending until exam completed)

@@ -1,9 +1,10 @@
 ﻿
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../api/axios';
-import env from '../../utils/config/env';
 import { ENDPOINTS } from '../../api/endpoints';
+import env from '../../utils/config/env';
+import api from '../../api/axios';
+
 
 const THEME = {
     colors: {

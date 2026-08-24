@@ -1,10 +1,5 @@
 import { TEXT3 } from "./theme.js";
 
-/* ------------------------------------------------------------------ *
- *  Date helpers — Kenya-local naive string handling.
- *  Backend dates arrive as 'YYYY-MM-DD' / 'YYYY-MM-DD HH:mm:ss'. We
- *  slice the string prefix and use LOCAL Date components (never UTC).
- * ------------------------------------------------------------------ */
 export const normDate = (val) => {
   if (!val) return null;
   if (val instanceof Date) {

@@ -1,10 +1,9 @@
-import {
-  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
-  eachDayOfInterval, isSameMonth, isToday,
-} from "date-fns";
-import { WEEKDAYS } from "../config";
 import { matchesDay, safeName } from "../utils";
-
+import { WEEKDAYS } from "../config";
+import {
+  format, startOfMonth, endOfMonth, startOfWeek,
+  endOfWeek, eachDayOfInterval, isSameMonth, isToday,
+} from "date-fns";
 const T = {
   bg: "#F4F6F8",
   surface: "#FFFFFF",
@@ -54,7 +53,7 @@ function DeceasedView({ currentDate, bookings, mod, onSelect, onShowDay }) {
           fontFamily: "monospace",
         }}>{items.length}</span>
       </div>
-      <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }}>
+      <div style={{ flex: 1, overflowY: "auto", maxHeight: "calc(100vh - 320px)", minHeight: 160, padding: "12px 14px" }}>
         {items.length === 0 ? (
           <div style={{ textAlign: "center", color: T.textMuted, fontSize: 12, padding: "24px 0" }}>
             No {title.toLowerCase()} records
@@ -150,10 +149,10 @@ function DeceasedView({ currentDate, bookings, mod, onSelect, onShowDay }) {
                     opacity: isSameMonth(day, currentDate) ? 1 : 0.25,
                     background: tod ? mod.accent
                       : hasEvents ? `${mod.accent}18`
-                      : "transparent",
+                        : "transparent",
                     color: tod ? "#fff"
                       : hasEvents ? mod.accent
-                      : T.textSec,
+                        : T.textSec,
                     border: hasEvents && !tod ? `1px solid ${mod.accent}28` : "1px solid transparent",
                     boxShadow: tod ? `0 0 12px ${mod.accent}50` : "none",
                   }}

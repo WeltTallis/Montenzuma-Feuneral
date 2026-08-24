@@ -61,9 +61,8 @@ const getFloat = (v: any): number | null => {
   return Number.isNaN(n) ? null : n;
 };
 
-// ============================================
+
 // ITEMS
-// ============================================
 
 /** GET /api/store/items?search=&category= */
 export const getItems = async (req: any, res: any): Promise<any> => {
@@ -150,7 +149,7 @@ export const createItem = async (req: any, res: any): Promise<any> => {
     })) as ResultSetHeader | ResultSetHeader[] | number[];
 
     // knex + mysql2 resolves .insert() to an array of insert ids ([insertId]),
-    // while mysql2's raw ResultSetHeader carries .insertId. Handle both.
+
     const first: any = Array.isArray(insertResult) ? insertResult[0] : insertResult;
     const insertId: number =
       typeof first === 'number' ? first : Number(first?.insertId ?? insertResult[0]?.insertId);
@@ -249,9 +248,9 @@ export const deleteItem = async (req: any, res: any): Promise<any> => {
   }
 };
 
-// ============================================
+
 // STOCK MOVEMENT
-// ============================================
+
 
 /** POST /api/store/items/:id/pick  body: { quantity, staff, reason, notes } */
 export const pickItem = async (req: any, res: any): Promise<any> => {
@@ -391,11 +390,11 @@ export const adjustItem = async (req: any, res: any): Promise<any> => {
   }
 };
 
-// ============================================
 // HISTORY & STATS
-// ============================================
+
 
 /** GET /api/store/transactions */
+
 export const getTransactions = async (req: any, res: any): Promise<any> => {
   try {
     const db = getKnex(req);

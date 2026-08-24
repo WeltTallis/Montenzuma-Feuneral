@@ -1,23 +1,14 @@
-﻿/**
- * Mini Store Service
- * --------------------
- * A self-contained Express service that exposes a small store inventory
- * REST API (items, pick, restock, adjust, transactions, stats) and also
- * serves the matching standalone Mini Store UI (`mini-store.html`).
- *
- * It follows the same conventions as the other restpoint services:
- *   - ES module + ts-node dev workflow
- *   - dotenv loaded from the repo-root `.env`
- *   - knex + mysql2 migrations
- *   - GET /health  -> { status, service, version }
- *
- * When a database is not reachable the service still starts (demo-only mode)
- * so the UI can be opened straight away.
- */
+﻿
 
+//  MINI   STORE  SERVICE  SERVER.ts
+import { fileURLToPath, pathToFileURL } from 'url';
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
+import express from 'express';
+import cors from 'cors';
+import knex from 'knex';
+
+// import Logger from '../../../packages/shared-logger/src/index';
 
 // Fix __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -28,28 +19,16 @@ const envPath = path.resolve(__dirname, '../../.env');
 console.log(`[STORE] Loading .env from: ${envPath}`);
 dotenv.config({ path: envPath });
 
-import express from 'express';
-import cors from 'cors';
-import knex from 'knex';
 
-// storeRoutes transitively imports app-global authMiddleware, which reads
-// JWT_SECRET / NODE_ENV from process.env while the module is being evaluated.
-// Static ES imports are hoisted and would run BEFORE the dotenv.config() above,
-// crashing the service with "FATAL: JWT_SECRET environment variable is required"
-// even though the root .env contains a JWT_SECRET. Load the routes dynamically
-// so they execute after dotenv has populated the environment.
 const { default: storeRoutes } = await import('./routes/storeRoutes.ts');
-
 const app = express();
-
 // Middleware
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ============================================
 // DATABASE
-// ============================================
+
 let storeKnex: knex.Knex | null = null;
 
 const buildConfig = () => ({
@@ -59,10 +38,6 @@ const buildConfig = () => ({
     port: Number(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    // Mini Store is an OPERATIONS module: it shares the single operations
-    // database with coffin/hearse/florist/workshop (tenant isolation via
-    // tenant_slug/tenant_id columns). Prefer OPERATIONS_DATABASE (the root
-    // .env default `restpoint_operations`) over the legacy DB_NAME.
     database: process.env.OPERATIONS_DATABASE || process.env.DB_NAME || 'restpoint_operations',
   },
   pool: { min: 2, max: 10 },
@@ -112,39 +87,32 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', service: 'store-service', version: '1.0.0' });
 });
 
-// ============================================
+
 // API ROUTES
-// ============================================
+
 app.use('/api/store', (req: any, _res: any, next: any) => {
-  // keep app.locals.storeKnex fresh on every request
   req.app.locals.storeKnex = storeKnex;
   next();
 });
 app.use('/api/store', storeRoutes);
 
-// ============================================
 // START SERVER
-// ============================================
 const startServer = async () => {
   await initDatabase();
-  // re-sync after init (db may have become available)
   app.locals.storeKnex = storeKnex;
 
   const PORT = Number(process.env.STORE_SERVICE_PORT) || Number(process.env.PORT) || 7071;
   const HOST = process.env.HOST || '0.0.0.0';
 
   app.listen(PORT, HOST, () => {
-    console.log('========================================');
-    console.log(`ðŸª Mini Store Service`);
-    console.log(`   Port: ${PORT}`);
-    console.log(`   Host: ${HOST}`);
-    console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`   UI:  http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/`);
-    console.log(`   API: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/api/store/...`);
-    console.log(
-      `   DB: ${process.env.DB_NAME || 'not configured'} ${storeKnex ? 'ðŸŸ¢ connected' : 'ðŸŸ¡ demo-only'}`,
-    );
-    console.log('========================================');
+
+    // Logger.info({
+    //   message: "Mini  store  Service  Up  And   Running",
+    //   port: PORT,
+    //   host: HOST
+    // })
+    console.log(`Mini Store Service`);
+
   });
 };
 

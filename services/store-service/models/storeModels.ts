@@ -47,12 +47,15 @@ export interface CreateItemDTO {
   category?: string;
   unit?: string;
   stock?: number;
+  staff?: string;
+
   minStock?: number;
 }
 
 export interface MovementDTO {
   quantity: number;
   staff?: string;
+  supplier?: string;
   reason?: string;
   notes?: string;
 }

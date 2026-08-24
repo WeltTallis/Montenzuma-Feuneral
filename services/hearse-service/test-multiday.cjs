@@ -1,6 +1,6 @@
-// ============================================
+
 // MULTI-DAY HEARSE BOOKING TEST SUITE
-// ============================================
+
 // Covers every scenario from the multi-day booking specification.
 //   Test 1  : three-day booking                     -> SUCCESS
 //   Test 2  : exact duplicate                       -> 409

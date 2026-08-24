@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { getTenantSlug } from '../../../utils/globalAuth';
@@ -440,7 +440,7 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
       <DetailGrid>
         <DetailItem $full><DetailLabel>Immediate Cause of Death</DetailLabel><DetailValue>{pm.immediate_cause_of_death || '—'}</DetailValue></DetailItem>
         <DetailItem $full><DetailLabel>Underlying Cause of Death</DetailLabel><DetailValue>{pm.underlying_cause_of_death || '—'}</DetailValue></DetailItem>
-        
+
         {/* Only show when available, and make full width */}
         {pm.manner_of_death && (
           <DetailItem $full>
@@ -448,7 +448,7 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
             <DetailValue>{pm.manner_of_death}</DetailValue>
           </DetailItem>
         )}
-        
+
         {/* Only show when available, and make full width */}
         {pm.contributing_conditions && (
           <DetailItem $full>

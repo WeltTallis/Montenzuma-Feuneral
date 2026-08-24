@@ -31,14 +31,14 @@ const COLORS = {
 const Container = styled.div`
   min-height: 100vh;
   background: ${COLORS.white};
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   color: ${COLORS.ink};
   font-size: 15px;
   line-height: 1.5;
   padding: 0;
 
   .Toastify__toast-container { width: 380px !important; max-width: 90vw !important; padding: 0 !important; }
-  .Toastify__toast { border-radius: 8px !important; font-family: 'Inter', sans-serif !important; font-size: 0.85rem !important; padding: 10px 14px !important; min-height: 44px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; margin-bottom: 0.5rem !important; }
+  .Toastify__toast { border-radius: 8px !important; font-family: 'Saira', sans-serif !important; font-size: 0.85rem !important; padding: 10px 14px !important; min-height: 44px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; margin-bottom: 0.5rem !important; }
   .Toastify__toast-body { padding: 0 !important; margin: 0 !important; font-size: 0.85rem !important; }
 `;
 
@@ -339,7 +339,7 @@ const Label = styled.label`
   text-transform: uppercase;
   color: ${COLORS.gray};
   margin-bottom: 0.5rem;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
 `;
 
 const Input = styled.input`
@@ -348,7 +348,7 @@ const Input = styled.input`
   border: 1px solid ${COLORS.border};
   border-radius: 4px;
   padding: 0 0.85rem;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   font-size: 0.95rem;
   font-weight: 400;
   color: ${COLORS.ink};
@@ -387,7 +387,7 @@ const Select = styled.select`
   border: 1px solid ${COLORS.border};
   border-radius: 4px;
   padding: 0 0.85rem;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   font-size: 0.95rem;
   color: ${COLORS.ink};
   background: ${COLORS.white};
@@ -569,7 +569,7 @@ const PrimaryButton = styled.button`
   border: none;
   padding: 0.85rem 2rem;
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -595,7 +595,7 @@ const SecondaryButton = styled.button`
   border: 1px solid ${COLORS.border};
   padding: 0.85rem 2rem;
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -845,7 +845,7 @@ function ReleaseFormPage() {
         <FormSheet>
           <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
             <CheckCircle style={{ width: 64, height: 64, color: COLORS.success, marginBottom: '1rem' }} />
-            <h2 style={{ fontFamily: 'Inter', marginBottom: '0.5rem' }}>Form Submitted Successfully</h2>
+            <h2 style={{ fontFamily: "'Saira', sans-serif", marginBottom: '0.5rem' }}>Form Submitted Successfully</h2>
             <p style={{ color: COLORS.gray, marginBottom: '2rem' }}>
               The release form has been recorded. Reference ID: <strong>{releaseId}</strong>
             </p>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 /* =========================================================
  * DayTimeline — standalone day timeline for Hearse bookings.
@@ -14,23 +15,23 @@ const SH = 6, EH = 23, TH = EH - SH;
 const PAD = 24;
 const CW = 1600;
 const PPH = CW / TH;
-const CARD_W = 130, CARD_H = 78, GAP = 8;
+const CARD_W = 240, CARD_H = 98, GAP = 9;
 
 const h2x = (h) => PAD + (h - SH) * PPH;
 
 /* Colour map (status → card colour) */
 const STATUS_COLOR = {
   pending: '#d97706',
-  booked: '#2563eb',
-  confirmed: '#2563eb',
-  scheduled: '#7c3aed',
-  in_transit: '#7c3aed',
-  in_progress: '#7c3aed',
+  booked: '#00296B',
+  confirmed: '#00296B',
+  scheduled: '#E36414',
+  in_transit: '#E36414',
+  in_progress: '#0c0b0f',
   postponed: '#d97706',
-  completed: '#16a34a',
-  delivered: '#16a34a',
-  cancelled: '#dc2626',
-  maintenance: '#475569',
+  completed: '#5F0F40',
+  delivered: '#132A13',
+  cancelled: '#DD2D4A',
+  maintenance: '#03071E',
 };
 
 /* Format a Date/ISO string to "9:00 AM" style */
@@ -68,7 +69,7 @@ const parseBookingDate = (b, dateKey) => {
       const hit = arr.find((d) => String(d).split('T')[0].slice(0, 10) === dateKey);
       if (hit) return hit;
     }
-  } catch (e) {}
+  } catch (e) { }
   return String(b?.booking_date || '').split('T')[0].slice(0, 10) === dateKey ? b.booking_date : null;
 };
 
@@ -126,8 +127,8 @@ const DayTimeline = ({ date, bookings = [], onClose, onItemClick }) => {
 
   if (!date) return null;
 
-  return (
-    <div className="day-timeline-root" style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(15,17,23,0.28)', display: 'flex', flexDirection: 'column' }}>
+  return createPortal(
+    <div className="day-timeline-root" style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(15,17,23,0.28)', display: 'flex', flexDirection: 'column' }}>
       <style>{`
         .rtl-tl-scroll-x { overflow-x: auto; scrollbar-width: none; }
         .rtl-tl-scroll-x::-webkit-scrollbar { display: none; }
@@ -138,7 +139,7 @@ const DayTimeline = ({ date, bookings = [], onClose, onItemClick }) => {
         .rtl-tl-card:hover{ transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.22); z-index: 12; }
         .rtl-tl-panel-row{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:8px; margin-bottom:5px; }
       `}</style>
-{/* Header bar */}
+      {/* Header bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '12px 16px', background: '#ffffff', borderBottom: '1px solid #e2e4ea',
@@ -232,7 +233,7 @@ const DayTimeline = ({ date, bookings = [], onClose, onItemClick }) => {
           </div>
         </div>
       </div>
-{/* Side detail panel */}
+      {/* Side detail panel */}
       <div
         style={{
           position: 'absolute', top: 0, right: 0, bottom: 0, width: 360, maxWidth: '92vw',
@@ -323,7 +324,8 @@ const DayTimeline = ({ date, bookings = [], onClose, onItemClick }) => {
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

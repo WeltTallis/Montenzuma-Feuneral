@@ -1,24 +1,24 @@
+import { Ctx } from "../components/workshop/pages/WorkshopDashboard";
 import { useState, useEffect, useMemo, useCallback } from "react";
+import HearseBookings from "../components/hearse/hearseBookings";
+import StoreTab from "../components/workshop/pages/StoreTab";
+import Toasts from "../components/workshop/pages/Toasts";
+import MiniActivityCalendar from "./views/MiniCalendar";
+import DayEventsPanel from "./views/DayEventsPanel";
+import { extractArray, matchesDay } from "./utils";
+import FilterSidebar from "./views/FilterSidebar";
+import { useNavigate } from "react-router-dom";
+import ChartsPanel from "./views/ChartsPanel";
+import DetailPanel from "./views/DetailPanel";
+import MonthView from "./views/MonthView";
+import WeekView from "./views/WeekView";
+import DayView from "./views/DayView";
+import api from "../api/axios";
+
 import {
   format, addDays, addMonths, subMonths,
   startOfWeek, endOfWeek, addWeeks, subWeeks,
 } from "date-fns";
-
-import api from "../api/axios";
-import { extractArray, matchesDay } from "./utils";
-
-import FilterSidebar from "./views/FilterSidebar";
-import MonthView from "./views/MonthView";
-import WeekView from "./views/WeekView";
-import DayView from "./views/DayView";
-import ChartsPanel from "./views/ChartsPanel";
-import DetailPanel from "./views/DetailPanel";
-import DayEventsPanel from "./views/DayEventsPanel";
-import MiniActivityCalendar from "./views/MiniCalendar";
-import HearseBookings from "../components/hearse/hearseBookings";
-import StoreTab from "../components/workshop/pages/StoreTab";
-import { Ctx } from "../components/workshop/pages/WorkshopDashboard";
-import Toasts from "../components/workshop/pages/Toasts";
 
 /*  Tokens  */
 const T = {
@@ -208,6 +208,12 @@ export default function ModuleDashboard({ mod }) {
   }, []);
   const storeCtx = { addToast, workers: [] };
 
+  /* ── Router navigation + tenant slug (for Deceased quick actions) ── */
+  const routerNavigate = useNavigate();
+  const tenantSlug = localStorage.getItem("tenantSlug")
+    || window.location.pathname.match(/\/tenant\/([^/]+)/)?.[1]
+    || "";
+
   const loadCalendars = useCallback(async () => {
     if (!showMini && !showHearse) { setCalLoading(false); return; }
     setCalLoading(true);
@@ -375,134 +381,193 @@ export default function ModuleDashboard({ mod }) {
       <main style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
         {/* ── Toolbar ─────────────────────────────────────── */}
         {!showHearse && !showStore && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 8,
-          padding: "10px 18px",
-          background: T.toolbar,
-          borderBottom: `1px solid ${T.border}`,
-          flexShrink: 0,
-        }}>
-          {/* Nav arrows (legacy calendar tabs only) */}
-          {!(showMini || showHearse) && (
-          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <button onClick={() => navigate(-1)}
-              style={{
-                background: "rgba(15,23,42,0.04)", border: `1px solid ${T.border}`,
-                padding: "6px 8px", borderRadius: 8, cursor: "pointer",
-                color: T.textSec, fontSize: 13, lineHeight: 1,
-                transition: "all 0.12s ease",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = T.text; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(15,23,42,0.04)"; e.currentTarget.style.color = T.textSec; }}
-            >‹</button>
-            <button onClick={() => setCurrentDate(new Date())}
-              style={{
-                background: "rgba(15,23,42,0.04)", border: `1px solid ${T.border}`,
-                padding: "6px 10px", borderRadius: 8, cursor: "pointer",
-                color: T.textSec, fontSize: 11, fontWeight: 600,
-                transition: "all 0.12s ease",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = T.text; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(15,23,42,0.04)"; e.currentTarget.style.color = T.textSec; }}
-            >Today</button>
-            <button onClick={() => navigate(1)}
-              style={{
-                background: "rgba(15,23,42,0.04)", border: `1px solid ${T.border}`,
-                padding: "6px 8px", borderRadius: 8, cursor: "pointer",
-                color: T.textSec, fontSize: 13, lineHeight: 1,
-                transition: "all 0.12s ease",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = T.text; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(15,23,42,0.04)"; e.currentTarget.style.color = T.textSec; }}
-            >›</button>
-          </div>
-          )}
-
-          {/* Title */}
-          <div style={{ flex: 1, textAlign: "center" }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>
-              {chartsOpen ? `${mod.label} — Analytics` : calTitle()}
-            </div>
-            {!chartsOpen && (
-              <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2, fontFamily: "monospace" }}>
-                {filtered.length} records · {todayBks.length} today
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 18px",
+            background: T.toolbar,
+            borderBottom: `1px solid ${T.border}`,
+            flexShrink: 0,
+          }}>
+            {/* Nav arrows (legacy calendar tabs only) */}
+            {!(showMini || showHearse) && (
+              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <button onClick={() => navigate(-1)}
+                  style={{
+                    background: "rgba(15,23,42,0.04)", border: `1px solid ${T.border}`,
+                    padding: "6px 8px", borderRadius: 8, cursor: "pointer",
+                    color: T.textSec, fontSize: 13, lineHeight: 1,
+                    transition: "all 0.12s ease",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = T.text; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(15,23,42,0.04)"; e.currentTarget.style.color = T.textSec; }}
+                >‹</button>
+                <button onClick={() => setCurrentDate(new Date())}
+                  style={{
+                    background: "rgba(15,23,42,0.04)", border: `1px solid ${T.border}`,
+                    padding: "6px 10px", borderRadius: 8, cursor: "pointer",
+                    color: T.textSec, fontSize: 11, fontWeight: 600,
+                    transition: "all 0.12s ease",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = T.text; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(15,23,42,0.04)"; e.currentTarget.style.color = T.textSec; }}
+                >Today</button>
+                <button onClick={() => navigate(1)}
+                  style={{
+                    background: "rgba(15,23,42,0.04)", border: `1px solid ${T.border}`,
+                    padding: "6px 8px", borderRadius: 8, cursor: "pointer",
+                    color: T.textSec, fontSize: 13, lineHeight: 1,
+                    transition: "all 0.12s ease",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = T.text; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(15,23,42,0.04)"; e.currentTarget.style.color = T.textSec; }}
+                >›</button>
               </div>
             )}
-          </div>
 
-          {/* View tabs (legacy calendar tabs only) */}
-          {!chartsOpen && !(showMini || showHearse) && (
-            <div style={{
-              display: "flex", alignItems: "center",
-              background: "rgba(255,255,255,0.03)",
-              border: `1px solid ${T.border}`,
-              borderRadius: 11, padding: 3, gap: 2,
-            }}>
-              {VIEWS.map(({ id, label }) => (
-                <ViewBtn
-                  key={id} id={id} label={label}
-                  active={view === id} accent={mod.accent}
-                  onClick={() => setView(id)}
-                />
-              ))}
+            {/* Title */}
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>
+                {chartsOpen ? `${mod.label} — Analytics` : calTitle()}
+              </div>
+              {!chartsOpen && (
+                <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2, fontFamily: "monospace" }}>
+                  {filtered.length} records · {todayBks.length} today
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Right actions */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <ToolBtn
-              onClick={() => setChartsOpen(o => !o)}
-              title={chartsOpen ? "Show Calendar" : "Show Analytics"}
-              active={chartsOpen}
-              accent={mod.accent}
-            >
-              <span style={{ fontSize: 12 }}>📊</span>
-              <span>{chartsOpen ? "Calendar" : "Analytics"}</span>
-            </ToolBtn>
-            <ToolBtn
-              onClick={() => setSidebarOpen(o => !o)}
-              title="Filters"
-              active={sidebarOpen}
-              accent={mod.accent}
-            >
-              <span style={{ fontSize: 12 }}>⚙</span>
-              <span>Filter</span>
-            </ToolBtn>
-            <button onClick={load} title="Refresh"
-              style={{
-                background: "rgba(255,255,255,0.03)", border: `1px solid ${T.border}`,
-                padding: "7px 9px", borderRadius: 10, cursor: "pointer",
-                color: T.textSec, fontSize: 13, lineHeight: 1,
-                transition: "all 0.12s ease",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(15,23,42,0.08)"; e.currentTarget.style.color = T.text; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.textSec; }}
-            >↻</button>
+            {/* View tabs (legacy calendar tabs only) */}
+            {!chartsOpen && !(showMini || showHearse) && (
+              <div style={{
+                display: "flex", alignItems: "center",
+                background: "rgba(255,255,255,0.03)",
+                border: `1px solid ${T.border}`,
+                borderRadius: 11, padding: 3, gap: 2,
+              }}>
+                {VIEWS.map(({ id, label }) => (
+                  <ViewBtn
+                    key={id} id={id} label={label}
+                    active={view === id} accent={mod.accent}
+                    onClick={() => setView(id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Right actions */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <ToolBtn
+                onClick={() => setChartsOpen(o => !o)}
+                title={chartsOpen ? "Show Calendar" : "Show Analytics"}
+                active={chartsOpen}
+                accent={mod.accent}
+              >
+                <span style={{ fontSize: 12 }}>📊</span>
+                <span>{chartsOpen ? "Calendar" : "Analytics"}</span>
+              </ToolBtn>
+              <ToolBtn
+                onClick={() => setSidebarOpen(o => !o)}
+                title="Filters"
+                active={sidebarOpen}
+                accent={mod.accent}
+              >
+                <span style={{ fontSize: 12 }}>⚙</span>
+                <span>Filter</span>
+              </ToolBtn>
+              <button onClick={load} title="Refresh"
+                style={{
+                  background: "rgba(255,255,255,0.03)", border: `1px solid ${T.border}`,
+                  padding: "7px 9px", borderRadius: 10, cursor: "pointer",
+                  color: T.textSec, fontSize: 13, lineHeight: 1,
+                  transition: "all 0.12s ease",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(15,23,42,0.08)"; e.currentTarget.style.color = T.text; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.textSec; }}
+              >↻</button>
+            </div>
           </div>
-        </div>
         )}
 
-        {/* ── KPI strip ──────────────────────────────────────── */}
-        {!showHearse && !showStore && (
-        <div style={{
-          display: "flex", alignItems: "stretch", gap: 12,
-          padding: "14px 18px",
-          background: T.bg,
-          borderBottom: `1px solid ${T.borderSubtle}`,
-          overflowX: "auto", flexShrink: 0,
-          scrollbarWidth: "none",
-        }}>
-          <KpiCard label="Total" value={stats.total || 0} color={mod.accent} Icon={mod.icon} />
-          {mod.kpiFields.map(({ key, label, icon: Icon }) => (
-            <KpiCard
-              key={key}
-              label={label}
-              value={stats[key] || 0}
-              color={SM[key]?.color || mod.accent}
-              Icon={Icon}
-            />
-          ))}
-        </div>
+        {/* ── KPI strip (hidden on Deceased — replaced by quick actions) ── */}
+        {!showHearse && !showStore && mod.id !== "deceased" && (
+          <div style={{
+            display: "flex", alignItems: "stretch", gap: 12,
+            padding: "14px 18px",
+            background: T.bg,
+            borderBottom: `1px solid ${T.borderSubtle}`,
+            overflowX: "auto", flexShrink: 0,
+            scrollbarWidth: "none",
+          }}>
+            <KpiCard label="Total" value={stats.total || 0} color={mod.accent} Icon={mod.icon} />
+            {mod.kpiFields.map(({ key, label, icon: Icon }) => (
+              <KpiCard
+                key={key}
+                label={label}
+                value={stats[key] || 0}
+                color={SM[key]?.color || mod.accent}
+                Icon={Icon}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* ── Deceased quick actions (Intake · Release) ─────── */}
+        {!showHearse && !showStore && mod.id === "deceased" && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "12px 18px",
+            background: T.bg,
+            borderBottom: `1px solid ${T.borderSubtle}`,
+            flexShrink: 0, flexWrap: "wrap",
+          }}>
+            <span style={{
+              fontSize: 11, fontWeight: 700, color: T.textSec,
+              textTransform: "uppercase", letterSpacing: "0.05em",
+              marginRight: 4,
+            }}>
+              Deceased
+            </span>
+            <button
+              onClick={() => routerNavigate(`/tenant/${tenantSlug}/deceased/register`)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "9px 16px",
+                background: "#0F172A",
+                border: "1px solid #0F172A",
+                borderRadius: 10,
+                color: "#FFFFFF",
+                fontSize: 12.5, fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.14s ease",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#1E293B"; e.currentTarget.style.borderColor = "#1E293B"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#0F172A"; e.currentTarget.style.borderColor = "#0F172A"; }}
+              title="Register a new deceased (body intake)"
+            >
+              <span style={{ fontSize: 13, lineHeight: 1 }}>＋</span>
+              Deceased Intake
+            </button>
+            <button
+              onClick={() => routerNavigate(`/tenant/${tenantSlug}/release-form/new`)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "9px 16px",
+                background: "#FFFFFF",
+                border: "1px solid rgba(15,23,42,0.14)",
+                borderRadius: 10,
+                color: "#0F172A",
+                fontSize: 12.5, fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.14s ease",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(15,23,42,0.32)"; e.currentTarget.style.background = "rgba(15,23,42,0.03)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(15,23,42,0.14)"; e.currentTarget.style.background = "#FFFFFF"; }}
+              title="Release a deceased record"
+            >
+              <span style={{ fontSize: 13, lineHeight: 1 }}>↗</span>
+              Release
+            </button>
+          </div>
         )}
 
         {/* ── Main content ──────────────────────────────────── */}

@@ -1,18 +1,23 @@
+import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { ENDPOINTS } from '../../../api/endpoints';
-import env from '../../../utils/config/env';
-import { ToastContainer, toast } from 'react-toastify';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
-import bwipjs from '@bwip-js/browser';
-import {
-  Check, Loader2, CheckCircle, X, FileText, User,
-  RotateCcw, ShieldCheck, AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin
-} from '../../../utils/icons/icons';
+import { ToastContainer, toast } from 'react-toastify';
 import styled, { keyframes } from 'styled-components';
+import { ENDPOINTS } from '../../../api/endpoints';
 import OfficialStamp from '../../stamp/stamp';
-import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
+import env from '../../../utils/config/env';
+import bwipjs from '@bwip-js/browser';
+import notify from '@/utils/notify';
+import axios from 'axios';
+import {
+  Check, Loader2, CheckCircle, X, FileText, User, RotateCcw, ShieldCheck,
+  AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin
+} from '../../../utils/icons/icons';
+import axios from 'axios';
+
+
 
 // ─── Color Palette ──────────────────────────────────
 const COLORS = {
@@ -51,14 +56,14 @@ const spin = keyframes`
 const Container = styled.div`
   min-height: 100vh;
   background: ${COLORS.bone2};
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   color: ${COLORS.ink};
   font-size: 15px;
   line-height: 1.5;
   padding: 0;
 
   .Toastify__toast-container { width: 380px !important; max-width: 90vw !important; padding: 0 !important; }
-  .Toastify__toast { border-radius: 8px !important; font-family: 'Inter', sans-serif !important; font-size: 0.85rem !important; padding: 10px 14px !important; min-height: 44px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; margin-bottom: 0.5rem !important; }
+  .Toastify__toast { border-radius: 8px !important; font-family: 'Saira', sans-serif !important; font-size: 0.85rem !important; padding: 10px 14px !important; min-height: 44px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; margin-bottom: 0.5rem !important; }
   .Toastify__toast-body { padding: 0 !important; margin: 0 !important; font-size: 0.85rem !important; }
 `;
 
@@ -161,7 +166,7 @@ const BrandDetails = styled.div`
 `;
 
 const BrandName = styled.h1`
-  font-family: 'Fraunces', serif;
+  font-family: 'Saira', sans-serif;
   font-size: 1.8rem;
   font-weight: 700;
   margin: 0;
@@ -335,7 +340,7 @@ const Label = styled.label`
   text-transform: uppercase;
   color: ${COLORS.brass};
   margin-bottom: 0.5rem;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
 `;
 
 const InputFieldWrapper = styled.div`
@@ -355,7 +360,7 @@ const Input = styled.input`
   box-shadow: none;
   background: transparent;
   padding: 0 2rem 0 0;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   font-size: 0.95rem;
   font-weight: 400;
   color: ${COLORS.ink};
@@ -400,7 +405,7 @@ const Select = styled.select`
   box-shadow: none;
   background: transparent;
   padding: 0 2rem 0 0;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   font-size: 0.95rem;
   color: ${COLORS.ink};
   transition: border-color 0.2s ease;
@@ -437,7 +442,7 @@ const ErrorMessage = styled.span`
   font-size: 0.75rem;
   margin-top: 0.3rem;
   display: block;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
 `;
 
 const SigCanvasWrap = styled.div`
@@ -560,7 +565,7 @@ const PrimaryButton = styled.button`
   padding: 1rem 2rem;
   font-size: 0.85rem;
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -596,7 +601,7 @@ const GoldButton = styled.button`
   padding: 1rem 2rem;
   font-size: 0.85rem;
   font-weight: 700;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -636,7 +641,7 @@ const BlackButton = styled.button`
   padding: 1rem 2rem;
   font-size: 0.85rem;
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -679,7 +684,7 @@ const ClearSigButton = styled.button`
   padding: 0.25rem 0;
   cursor: pointer;
   transition: all 0.2s;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
 
   &:hover {
     color: ${COLORS.red};
@@ -755,7 +760,7 @@ const TextArea = styled.textarea`
   box-shadow: none;
   background: transparent;
   padding: 0.5rem 0;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Saira', sans-serif;
   font-size: 0.95rem;
   font-weight: 400;
   color: ${COLORS.ink};
@@ -798,11 +803,11 @@ const DeceasedReleaseForm = () => {
   const sigPadRef1 = useRef(null);
 
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
   const [isLoadingDeceasedList, setIsLoadingDeceasedList] = useState(false);
   const [isLoadingDeceased, setIsLoadingDeceased] = useState(false);
-  const [deceasedList, setDeceasedList] = useState([]);
-  const [errors, setErrors] = useState({});
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [deceasedList, setDeceasedList] = useState([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [releaseId, setReleaseId] = useState('');
@@ -820,6 +825,8 @@ const DeceasedReleaseForm = () => {
     tenantLogoUrl,
     fallback
   } = branding;
+
+
 
   const getLoggedInUserEmail = () => {
     try {
@@ -876,6 +883,7 @@ const DeceasedReleaseForm = () => {
       time_received: getCurrentTime(),
       release_time: getCurrentTime(),
     }));
+
   }, []);
 
   // Fetch deceased list for the admission dropdown (only unreleased records)
@@ -884,7 +892,8 @@ const DeceasedReleaseForm = () => {
       const tenantSlug = getTenantSlug();
       setIsLoadingDeceasedList(true);
       try {
-        const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.LIST}`, {
+
+        const response = await axios.get(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.LIST}`, {
           headers: {
             'x-tenant-slug': tenantSlug,
             'Authorization': `Bearer ${getAuthToken()}`,
@@ -1050,7 +1059,8 @@ const DeceasedReleaseForm = () => {
         throw new Error(result.message || 'Release failed');
       }
 
-      setShowSuccess(true);
+      notify.success(true)
+
 
       if (result.data && result.data.release_id) {
         setReleaseId(result.data.release_id);
@@ -1106,7 +1116,7 @@ const DeceasedReleaseForm = () => {
       <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <div style={{ textAlign: 'center' }}>
           <Loader2 size={48} color={COLORS.ink} className="animate-spin" />
-          <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Inter', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Loading Record...</p>
+          <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Saira', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Loading Record...</p>
         </div>
       </Container>
     );
@@ -1117,7 +1127,7 @@ const DeceasedReleaseForm = () => {
       <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <div style={{ textAlign: 'center' }}>
           <Loader2 size={48} color={COLORS.ink} className="animate-spin" />
-          <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Inter', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Processing Release...</p>
+          <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Saira', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Processing Release...</p>
         </div>
       </Container>
     );
