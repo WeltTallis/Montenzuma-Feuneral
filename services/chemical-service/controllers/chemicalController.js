@@ -173,11 +173,16 @@ exports.receiveStock = async (req, res) => {
     const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
-    const { quantity, notes } = req.body;
+    const { quantity, notes, received_by } = req.body;
     if (!quantity || parseFloat(quantity) <= 0) return res.status(400).json({ success: false, message: 'Valid quantity required' });
 
     const chem = await safeTenantQuery(tenantDb, 'SELECT id, current_stock, unit FROM chemicals WHERE id=? AND is_active=1 AND tenant_slug=?', [req.params.id, tenantSlug]);
     if (!chem.length) return res.status(404).json({ success: false, message: 'Chemical not found' });
+
+    // Record who received this stock (same policy as pickups: explicit name
+    // from the client first, then the authenticated user identity)
+    const rawReceivedBy = typeof received_by === 'string' ? received_by.trim() : '';
+    const performedByName = rawReceivedBy || req.user?.full_name || req.user?.name || req.user?.email || null;
 
     const previousStock = parseFloat(chem[0].current_stock);
     const qty = parseFloat(quantity);
@@ -185,9 +190,9 @@ exports.receiveStock = async (req, res) => {
 
     await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [newStock, req.params.id, tenantSlug]);
     await safeTenantExecute(tenantDb,
-      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, notes)
-       VALUES (?, ?, 'received', ?, ?, ?, ?, ?)`,
-      [tenantSlug, req.params.id, qty, chem[0].unit, previousStock, newStock, notes || 'Stock received']
+      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, performed_by_name, notes, created_at)
+       VALUES (?, ?, 'received', ?, ?, ?, ?, ?, ?, NOW())`,
+      [tenantSlug, req.params.id, qty, chem[0].unit, previousStock, newStock, performedByName, notes || 'Stock received']
     );
 
     res.json({ success: true, message: 'Stock received successfully', previous_stock: previousStock, new_stock: newStock });
@@ -211,21 +216,26 @@ exports.adjustStock = async (req, res) => {
     const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
 
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
-    const { new_quantity, reason } = req.body;
+    const { new_quantity, reason, performed_by } = req.body;
 
     if (new_quantity === undefined || parseFloat(new_quantity) < 0) return res.status(400).json({ success: false, message: 'Valid new_quantity required' });
     const chem = await safeTenantQuery(tenantDb, 'SELECT id, current_stock, unit FROM chemicals WHERE id=? AND is_active=1 AND tenant_slug=?', [req.params.id, tenantSlug]);
 
     if (!chem.length) return res.status(404).json({ success: false, message: 'Chemical not found' });
+
+    // Record who performed the adjustment when known
+    const rawPerformedBy = typeof performed_by === 'string' ? performed_by.trim() : '';
+    const performedByName = rawPerformedBy || req.user?.full_name || req.user?.name || req.user?.email || null;
+
     const previousStock = parseFloat(chem[0].current_stock);
 
     const newQty = parseFloat(new_quantity);
     await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [newQty, req.params.id, tenantSlug]);
     
     await safeTenantExecute(tenantDb,
-      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, notes)
-       VALUES (?, ?, 'adjusted', ?, ?, ?, ?, ?)`,
-      [tenantSlug, req.params.id, Math.abs(newQty - previousStock), chem[0].unit, previousStock, newQty, reason || 'Manual stock adjustment']
+      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, performed_by_name, notes, created_at)
+       VALUES (?, ?, 'adjusted', ?, ?, ?, ?, ?, ?, NOW())`,
+      [tenantSlug, req.params.id, Math.abs(newQty - previousStock), chem[0].unit, previousStock, newQty, performedByName, reason || 'Manual stock adjustment']
     );
 
     res.json({ success: true, message: 'Stock adjusted successfully', previous_stock: previousStock, new_stock: newQty });
@@ -274,10 +284,13 @@ exports.getDashboardSummary = async (req, res) => {
       [tenantSlug]
     );
     const recentTransactions = await safeTenantQuery(tenantDb,
-      `SELECT ct.*, c.name as chemical_name FROM chemical_transactions ct 
+      `SELECT ct.*, c.name as chemical_name,
+              COALESCE(cu.used_by_name, ct.performed_by_name) AS performed_by
+       FROM chemical_transactions ct 
        JOIN chemicals c ON c.id = ct.chemical_id
+       LEFT JOIN chemical_usage cu ON cu.transaction_id = ct.id AND cu.tenant_slug = ct.tenant_slug
        WHERE ct.tenant_slug = ?
-       ORDER BY ct.created_at DESC LIMIT 10`,
+       ORDER BY ct.created_at DESC LIMIT 30`,
       [tenantSlug]
     );
     const topUsed = await safeTenantQuery(tenantDb,
@@ -402,10 +415,13 @@ exports.getUsageByBranch = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
     const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
-    if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
+        if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
-    const branchId = req.params.branchId || req.branchId;
-    if (!branchId) return res.status(400).json({ success: false, message: 'Branch ID required' });
+    const branchIdParam = req.params.branchId || req.branchId;
+        let branchId = parseInt(branchIdParam);
+    if (isNaN(branchId)) {
+      branchId = req.numericBranchId || 1;
+    }
 
     const rows = await safeTenantQuery(tenantDb,
       `SELECT cu.*, c.name as chemical_name, c.unit, c.category,
@@ -454,10 +470,11 @@ exports.createPPERequest = async (req, res) => {
       return res.status(400).json({ success: false, message: 'item_name and quantity_requested are required' });
     }
 
+    const ppeBranchId = req.numericBranchId || 1;
     const result = await safeTenantExecute(tenantDb,
       `INSERT INTO ppe_requests (tenant_slug, item_name, quantity_requested, requested_by, branch_id)
-       VALUES (?, ?, ?, ?, 1)`,
-      [tenantSlug, item_name, parseInt(quantity_requested), requested_by || 'Staff']
+       VALUES (?, ?, ?, ?, ?)`,
+      [tenantSlug, item_name, parseInt(quantity_requested), requested_by || 'Staff', ppeBranchId]
     );
 
     res.status(201).json({ success: true, message: 'PPE request submitted successfully', id: result.insertId });

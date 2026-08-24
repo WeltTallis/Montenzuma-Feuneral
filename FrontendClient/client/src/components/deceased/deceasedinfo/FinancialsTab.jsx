@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { C, formatDate } from './theme';
 import { todayKey } from '../../../utils/dates/parseDates';
 import axios from 'axios';
+import env from '../../../utils/config/env';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import { showToast } from '../../../utils/toast';
 
@@ -203,21 +204,48 @@ const StatusTag = styled.span`
   border: 1px solid ${p => p.$success ? '#a7f3d0' : p.$warning ? '#fde68a' : p.$info ? '#bfdbfe' : C.borderLight};
 `;
 
-const FinancialsTab = ({ charges, payments: initialPayments, deceasedId }) => {
+const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, deceasedId, onDataChanged }) => {
   const [payments, setPayments] = useState(initialPayments || []);
+  const [chargeList, setChargeList] = useState(initialCharges || []);
   const [isRecording, setIsRecording] = useState(false);
+  const [deletingChargeId, setDeletingChargeId] = useState(null);
+  const [isAddingCharge, setIsAddingCharge] = useState(false);
+  const [chargeForm, setChargeForm] = useState({
+    charge_type: '',
+    amount: '',
+    currency: 'USD',
+    description: '',
+    service_date: todayKey()
+  });
   const [paymentForm, setPaymentForm] = useState({
     date: todayKey(),
-    payment_method: 'M-Pesa',
+    currency: 'USD',
+    payment_method: 'Cash',
     reference: '',
     amount: '',
     description: ''
   });
 
-  const totalCharges = charges.reduce((s, c) => s + (parseFloat(c.amount || c.charge_amount || 0)), 0);
-  const totalPaid = payments.reduce((s, p) => s + (parseFloat(p.amount || 0)), 0);
-  const balance = totalCharges - totalPaid;
-  const isOverpaid = balance < 0;
+  // Keep local mirrors in sync with parent data
+  useEffect(() => { setChargeList(initialCharges || []); }, [initialCharges]);
+
+  // Currency-aware billing math (USD-first; KES kept as an option)
+  const currencySymbol = (cur) => (cur === 'KES' ? 'KES' : '$');
+  const fmtMoney = (amount, cur) =>
+    `${currencySymbol(cur)} ${parseFloat(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const CURRENCIES = ['USD', 'KES'];
+  const sumBy = (rows, cur, getAmount) => rows
+    .filter(r => (r.currency || 'USD') === cur)
+    .reduce((s, r) => s + (parseFloat(getAmount(r) || 0) || 0), 0);
+
+  const summaryRows = CURRENCIES
+    .map(cur => {
+      const chargesTotal = sumBy(chargeList, cur, c => c.amount ?? c.charge_amount);
+      const paidTotal = sumBy(payments, cur, p => p.amount);
+      return { currency: cur, chargesTotal, paidTotal, balance: chargesTotal - paidTotal };
+    })
+    .filter(r => r.chargesTotal !== 0 || r.paidTotal !== 0 || r.currency === 'USD');
 
   // Load payments from API
   useEffect(() => {
@@ -230,9 +258,8 @@ const FinancialsTab = ({ charges, payments: initialPayments, deceasedId }) => {
     try {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || localStorage.getItem('authToken') || '';
-      const API_GATEWAY_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await axios.get(
-        `${API_GATEWAY_URL}/payments/${deceasedId}`,
+        `${env.FULL_API_URL}/payments/${deceasedId}`,
         { 
           headers: { 
             'x-tenant-slug': tenantSlug,
@@ -274,12 +301,12 @@ const FinancialsTab = ({ charges, payments: initialPayments, deceasedId }) => {
         return 'Unknown';
       })();
       
-      const API_GATEWAY_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await axios.post(
-        `${API_GATEWAY_URL}/payments`,
+        `${env.FULL_API_URL}/payments`,
         {
           deceased_id: deceasedId,
           amount: parseFloat(paymentForm.amount),
+          currency: paymentForm.currency || 'USD',
           payment_method: paymentForm.payment_method,
           reference: paymentForm.reference,
           payment_date: paymentForm.date,
@@ -298,12 +325,14 @@ const FinancialsTab = ({ charges, payments: initialPayments, deceasedId }) => {
         showToast.success('Payment recorded successfully');
         setPaymentForm({
           date: todayKey(),
-          payment_method: 'M-Pesa',
+          currency: paymentForm.currency || 'USD',
+          payment_method: 'Cash',
           reference: '',
           amount: '',
           description: ''
         });
         await loadPayments();
+        if (onDataChanged) onDataChanged();
       }
     } catch (error) {
       console.error('Error recording payment:', error);
@@ -313,31 +342,216 @@ const FinancialsTab = ({ charges, payments: initialPayments, deceasedId }) => {
     }
   };
 
+  // ---------------- Individual charges (bill per deceased, USD-first) --------
+  const handleAddCharge = async (e) => {
+    e.preventDefault();
+    if (!chargeForm.charge_type || !chargeForm.amount || parseFloat(chargeForm.amount) <= 0) {
+      showToast.error('Please provide a charge type and a valid amount');
+      return;
+    }
+
+    setIsAddingCharge(true);
+    try {
+      const tenantSlug = getTenantSlug();
+      const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || localStorage.getItem('authToken') || '';
+
+      const response = await axios.post(
+        `${env.FULL_API_URL}/charges`,
+        {
+          deceased_id: deceasedId,
+          charge_type: chargeForm.charge_type,
+          amount: parseFloat(chargeForm.amount),
+          currency: chargeForm.currency || 'USD',
+          description: chargeForm.description || null,
+          service_date: chargeForm.service_date
+        },
+        {
+          headers: {
+            'x-tenant-slug': tenantSlug,
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data?.success) {
+        showToast.success('Charge added to bill');
+        const created = response.data.data;
+        if (created) setChargeList(prev => [created, ...prev]);
+        setChargeForm({
+          charge_type: '',
+          amount: '',
+          currency: chargeForm.currency || 'USD',
+          description: '',
+          service_date: todayKey()
+        });
+        if (onDataChanged) onDataChanged();
+      } else {
+        throw new Error(response.data?.message || 'Failed to add charge');
+      }
+    } catch (error) {
+      console.error('Error adding charge:', error);
+      showToast.error(error.response?.data?.message || 'Failed to add charge');
+    } finally {
+      setIsAddingCharge(false);
+    }
+  };
+
+  const handleDeleteCharge = async (chargeId) => {
+    if (!window.confirm('Remove this charge from the bill?')) return;
+
+    setDeletingChargeId(chargeId);
+    try {
+      const tenantSlug = getTenantSlug();
+      const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || localStorage.getItem('authToken') || '';
+
+      await axios.delete(`${env.FULL_API_URL}/charges/${chargeId}`, {
+        headers: {
+          'x-tenant-slug': tenantSlug,
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      setChargeList(prev => prev.filter(c => (c.charge_id ?? c.id) !== chargeId));
+      showToast.success('Charge removed');
+      if (onDataChanged) onDataChanged();
+    } catch (error) {
+      console.error('Error deleting charge:', error);
+      showToast.error(error.response?.data?.message || 'Failed to remove charge');
+    } finally {
+      setDeletingChargeId(null);
+    }
+  };
+
   return (
     <>
-      {/* Sleek 3-column Financial Summary */}
+      {/* Sleek 3-column Financial Summary - grouped per currency (USD-first) */}
       <SectionHead $mt0><span>01</span> Financial Summary</SectionHead>
       <SummaryGrid>
-        <DetailItem>
-          <DetailLabel $color="#1e40af">Total Charges</DetailLabel>
-          <DetailValue $color="#1e3a8a">KES {totalCharges.toLocaleString()}</DetailValue>
-        </DetailItem>
-        <DetailItem>
-          <DetailLabel $color="#047857">Amount Paid</DetailLabel>
-          <DetailValue $color="#064e3b">KES {totalPaid.toLocaleString()}</DetailValue>
-        </DetailItem>
-        <DetailItem>
-          <DetailLabel $color={isOverpaid ? '#047857' : '#b91c1c'}>
-            {isOverpaid ? 'Credit / Overpayment' : 'Balance Due'}
-          </DetailLabel>
-          <DetailValue $color={isOverpaid ? '#064e3b' : '#7f1d1d'}>
-            KES {Math.abs(balance).toLocaleString()}
-          </DetailValue>
-        </DetailItem>
+        {summaryRows.map(row => (
+          <React.Fragment key={row.currency}>
+            <DetailItem>
+              <DetailLabel $color="#1e40af">Total Charges ({row.currency})</DetailLabel>
+              <DetailValue $color="#1e3a8a">{fmtMoney(row.chargesTotal, row.currency)}</DetailValue>
+            </DetailItem>
+            <DetailItem>
+              <DetailLabel $color="#047857">Amount Paid ({row.currency})</DetailLabel>
+              <DetailValue $color="#064e3b">{fmtMoney(row.paidTotal, row.currency)}</DetailValue>
+            </DetailItem>
+            <DetailItem>
+              <DetailLabel $color={row.balance < 0 ? '#047857' : '#b91c1c'}>
+                {row.balance < 0 ? 'Credit / Overpayment' : 'Balance Due'}
+              </DetailLabel>
+              <DetailValue $color={row.balance < 0 ? '#064e3b' : '#7f1d1d'}>
+                {fmtMoney(Math.abs(row.balance), row.currency)}
+              </DetailValue>
+            </DetailItem>
+          </React.Fragment>
+        ))}
       </SummaryGrid>
 
+      {/* Individual charges - bill per deceased */}
+      <SectionHead $mt4><span>02</span> Charges on this Deceased</SectionHead>
+      <form onSubmit={handleAddCharge} style={{ marginBottom: '16px' }}>
+        <FormRow>
+          <FormGroup>
+            <FormLabel>Charge Type</FormLabel>
+            <FormInput
+              placeholder="e.g. Storage Fee, Embalming, Hearse"
+              value={chargeForm.charge_type}
+              onChange={(e) => setChargeForm({ ...chargeForm, charge_type: e.target.value })}
+              required
+            />
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>Currency</FormLabel>
+            <FormSelect
+              value={chargeForm.currency}
+              onChange={(e) => setChargeForm({ ...chargeForm, currency: e.target.value })}
+            >
+              <option value="USD">USD ($)</option>
+              <option value="KES">KES</option>
+            </FormSelect>
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>Amount ({chargeForm.currency === 'KES' ? 'KES' : 'USD'})</FormLabel>
+            <FormInput
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={chargeForm.amount}
+              onChange={(e) => setChargeForm({ ...chargeForm, amount: e.target.value })}
+              required
+            />
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>Date</FormLabel>
+            <FormInput
+              type="date"
+              value={chargeForm.service_date}
+              onChange={(e) => setChargeForm({ ...chargeForm, service_date: e.target.value })}
+            />
+          </FormGroup>
+          <FormGroup style={{ flex: 2, minWidth: '200px' }}>
+            <FormLabel>Description (Optional)</FormLabel>
+            <FormInput
+              placeholder="Brief description of the charge"
+              value={chargeForm.description}
+              onChange={(e) => setChargeForm({ ...chargeForm, description: e.target.value })}
+            />
+          </FormGroup>
+        </FormRow>
+        <div style={{ textAlign: 'right', marginBottom: '24px' }}>
+          <Btn $primary type="submit" disabled={isAddingCharge}>
+            {isAddingCharge ? 'Adding...' : '+ Add Charge'}
+          </Btn>
+        </div>
+      </form>
+
+      <DataTable style={{ marginBottom: '40px' }}>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Amount</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {chargeList.length === 0 ? (
+            <tr><td colSpan={6} style={{ textAlign: 'center', color: C.gray, padding: '24px 0' }}>No charges billed yet</td></tr>
+          ) : chargeList.map(c => {
+            const cId = c.charge_id ?? c.id;
+            const cur = c.currency || 'USD';
+            return (
+              <tr key={cId}>
+                <td>{formatDate(c.service_date || c.created_at)}</td>
+                <td><strong>{c.charge_type || '—'}</strong></td>
+                <td>{c.description || c.notes || '—'}</td>
+                <td>
+                  <StatusTag $success={c.status === 'paid'}>{c.status || 'pending'}</StatusTag>
+                </td>
+                <td><strong>{fmtMoney(c.amount ?? c.charge_amount, cur)}</strong></td>
+                <td>
+                  <Btn
+                    type="button"
+                    onClick={() => handleDeleteCharge(cId)}
+                    disabled={deletingChargeId === cId}
+                    style={{ padding: '4px 10px', fontSize: '11px' }}
+                  >
+                    {deletingChargeId === cId ? '...' : 'Remove'}
+                  </Btn>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </DataTable>
+
       {/* Sleek Form without wrapper box */}
-      <SectionHead><span>02</span> Record Payment</SectionHead>
+      <SectionHead><span>03</span> Record Payment</SectionHead>
       <form onSubmit={handleRecordPayment} style={{ marginBottom: '40px' }}>
         <FormRow>
           <FormGroup>
@@ -348,6 +562,16 @@ const FinancialsTab = ({ charges, payments: initialPayments, deceasedId }) => {
               onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
               required
             />
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>Currency</FormLabel>
+            <FormSelect 
+              value={paymentForm.currency}
+              onChange={(e) => setPaymentForm({ ...paymentForm, currency: e.target.value })}
+            >
+              <option value="USD">USD ($)</option>
+              <option value="KES">KES</option>
+            </FormSelect>
           </FormGroup>
           <FormGroup>
             <FormLabel>Payment Method</FormLabel>
@@ -371,7 +595,7 @@ const FinancialsTab = ({ charges, payments: initialPayments, deceasedId }) => {
             />
           </FormGroup>
           <FormGroup>
-            <FormLabel>Amount (KES)</FormLabel>
+            <FormLabel>Amount ({paymentForm.currency === 'KES' ? 'KES' : 'USD'})</FormLabel>
             <FormInput 
               type="number" 
               placeholder="0.00"
@@ -397,7 +621,7 @@ const FinancialsTab = ({ charges, payments: initialPayments, deceasedId }) => {
       </form>
 
       {/* Sleek Table without wrapper box */}
-      <SectionHead $mt4><span>03</span> Payment History</SectionHead>
+      <SectionHead $mt4><span>04</span> Payment History</SectionHead>
       <DataTable>
         <thead>
           <tr>
@@ -422,7 +646,7 @@ const FinancialsTab = ({ charges, payments: initialPayments, deceasedId }) => {
               </td>
               <td>{p.reference || '—'}</td>
               <td>{p.description || p.notes || '—'}</td>
-              <td><strong>KES {parseFloat(p.amount || 0).toLocaleString()}</strong></td>
+              <td><strong>{fmtMoney(p.amount, p.currency)}</strong></td>
               <td>{p.recorded_by || '—'}</td>
             </tr>
           ))}

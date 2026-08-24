@@ -6,8 +6,14 @@
 
   <!-- Prevents White Flash: Instantly applies brand background -->
   <style>
-    html { background-color: #F9FAFB; }
-    body { background: #F9FAFB; margin: 0; }
+    html {
+      background-color: #F9FAFB;
+    }
+
+    body {
+      background: #F9FAFB;
+      margin: 0;
+    }
 
     /* ── Boot loader: shows instantly before React mounts ── */
     #boot-loader {
@@ -49,8 +55,17 @@
       animation: bootspin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
 
-    @keyframes bootspin { to { transform: rotate(360deg); } }
-    @keyframes bootspin-reverse { to { transform: rotate(-360deg); } }
+    @keyframes bootspin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes bootspin-reverse {
+      to {
+        transform: rotate(-360deg);
+      }
+    }
 
     #boot-loader .info {
       display: flex;
@@ -107,17 +122,36 @@
       gap: 14px;
       max-width: 420px;
       width: calc(100% - 28px);
-      box-shadow: 0 4px 30px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
       pointer-events: none;
       /* 0s hidden → 0.4s fade in → 3s hold → 0.35s fade out → gone */
       animation: cookieAuto 3.75s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
     }
 
     @keyframes cookieAuto {
-      0%   { opacity: 0; transform: translateX(-50%) translateY(18px); pointer-events: none; }
-      10%  { opacity: 1; transform: translateX(-50%) translateY(0);    pointer-events: auto; }
-      90%  { opacity: 1; transform: translateX(-50%) translateY(0);    pointer-events: auto; }
-      100% { opacity: 0; transform: translateX(-50%) translateY(14px); pointer-events: none; }
+      0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(18px);
+        pointer-events: none;
+      }
+
+      10% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+        pointer-events: auto;
+      }
+
+      90% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+        pointer-events: auto;
+      }
+
+      100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(14px);
+        pointer-events: none;
+      }
     }
 
     .cookie-banner .c-icon {
@@ -134,7 +168,7 @@
       content: '';
       width: 13px;
       height: 13px;
-      background: rgba(255,255,255,0.35);
+      background: rgba(255, 255, 255, 0.35);
       border-radius: 50%;
       position: absolute;
       top: 50%;
@@ -166,11 +200,11 @@
       margin: 0;
       font-size: 12.5px;
       line-height: 1.5;
-      color: rgba(255,255,255,0.6);
+      color: rgba(255, 255, 255, 0.6);
     }
 
     .cookie-banner .c-text strong {
-      color: rgba(255,255,255,0.9);
+      color: rgba(255, 255, 255, 0.9);
       font-weight: 500;
     }
   </style>
@@ -260,9 +294,9 @@
     content="Kenya's #1 funeral home management software by Peter Mumo at Welt Tallis. Manage cases, insurance claims, and member contributions." />
   <meta property="twitter:image" content="https://restpoint.co.ke/og-image.png" />
 
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <!-- SCHEMA: Organization — Welt Tallis Technologies       -->
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -315,9 +349,9 @@
     }
   </script>
 
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <!-- SCHEMA: Person — Peter Mumo, Software Engineer        -->
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -343,7 +377,7 @@
       },
       "alumniOf": {
         "@type": "EducationalOrganization",
-        "name": "Kenyan University"
+        "name": "FINLAND   CHURCH  AID"
       },
       "knowsAbout": [
         "Software Engineering",
@@ -367,9 +401,9 @@
     }
   </script>
 
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <!-- SCHEMA: SoftwareApplication — Rest Point              -->
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -419,14 +453,14 @@
         {
           "@type": "Offer",
           "name": "Single Tenant",
-          "price": "9200",
+          "price": "15,000",
           "priceCurrency": "KES",
           "description": "For small funeral homes and welfare organizations in Kenya"
         },
         {
           "@type": "Offer",
           "name": "Multi-Tenant",
-          "price": "18900",
+          "price": "40,000",
           "priceCurrency": "KES",
           "description": "For large organizations with multiple branches across Kenya"
         }
@@ -445,9 +479,9 @@
     }
   </script>
 
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <!-- SCHEMA: WebSite — with search action                  -->
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -466,9 +500,9 @@
     }
   </script>
 
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <!-- SCHEMA: LocalBusiness — for Nairobi SEO               -->
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -504,9 +538,9 @@
     }
   </script>
 
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <!-- SCHEMA: FAQPage — keyword-rich Q&A for long-tail SEO  -->
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -541,7 +575,7 @@
           "name": "How much does funeral home management software cost in Kenya?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Rest Point funeral home management software starts from KES 9,200 per month for single tenant plans suitable for small funeral homes, and KES 18,900 per month for multi-tenant plans for large organizations with multiple branches. All plans include M-Pesa integration, SMS notifications, and dedicated support."
+            "text": "Rest Point funeral home management software starts from KES 15,000 per month for single tenant plans suitable for small funeral homes, and KES 18,900 per month for multi-tenant plans for large organizations with multiple branches. All plans include M-Pesa integration, SMS notifications, and dedicated support."
           }
         },
         {
@@ -596,9 +630,9 @@
     }
   </script>
 
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <!-- SCHEMA: BreadcrumbList — for site structure SEO       -->
-  <!-- ══════════════════════════════════════════════════════ -->
+
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -636,7 +670,9 @@
     <div class="spinner"></div>
     <div class="info">
       <span class="text">Loading</span>
-      <div class="bar"><div class="bar-fill" id="boot-fill"></div></div>
+      <div class="bar">
+        <div class="bar-fill" id="boot-fill"></div>
+      </div>
       <span class="pct" id="boot-pct">0%</span>
     </div>
   </div>
@@ -674,14 +710,16 @@
     })();
   </script>
 
-  <!-- ══════════════════════════════════════════════════════ -->
-  <!-- NOSCRIPT: Full SEO content for crawlers without JS    -->
-  <!-- ══════════════════════════════════════════════════════ -->
+
+  <!--  Full SEO content for crawlers     -->
+
   <noscript>
-    <div style="padding:2rem;font-family:sans-serif;max-width:860px;margin:0 auto;background:#15171A;color:#FAF8F4;min-height:100vh;line-height:1.7;">
+    <div
+      style="padding:2rem;font-family:sans-serif;max-width:860px;margin:0 auto;background:#15171A;color:#FAF8F4;min-height:100vh;line-height:1.7;">
 
       <h1 style="font-size:1.8rem;margin-bottom:0.5rem;">Rest Point: Funeral Home Management Software Kenya</h1>
-      <p style="color:#A98F6E;font-size:0.9rem;margin-bottom:2rem;">Built by Peter Mumo, Software Engineer at Welt Tallis Technologies, Nairobi, Kenya</p>
+      <p style="color:#A98F6E;font-size:0.9rem;margin-bottom:2rem;">Built by Peter Mumo, Software Engineer at Welt
+        Tallis Technologies, Nairobi, Kenya</p>
 
       <p>
         Rest Point is Kenya's leading cloud-based funeral home operating system and mortuary management software.
@@ -712,7 +750,8 @@
         funeral cover claims efficiently for members across Kenya.
       </p>
 
-      <h2 style="font-size:1.3rem;margin:2rem 0 0.8rem;">Welfare Management Software for Churches, SACCOs &amp; Chamas</h2>
+      <h2 style="font-size:1.3rem;margin:2rem 0 0.8rem;">Welfare Management Software for Churches, SACCOs &amp; Chamas
+      </h2>
       <p>
         Purpose-built welfare management platform for Kenyan organizations. Manage member registration, monthly
         contribution tracking via M-Pesa, arrears management, beneficiary updates, claims processing, and transparent
@@ -729,12 +768,12 @@
 
       <h2 style="font-size:1.3rem;margin:2rem 0 0.8rem;">Why Funeral Homes in Kenya Choose Rest Point</h2>
       <ul style="padding-left:1.5rem;margin-bottom:1.5rem;">
-        <li>Complete funeral home ERP — cases, billing, chemicals, fleet, and reporting</li>
+        <li>Complete funeral home ERP cases, billing, chemicals, fleet, and reporting</li>
         <li>M-Pesa integration for payments, contributions, and disbursements</li>
         <li>SMS notifications for families, members, and stakeholders</li>
         <li>Multi-branch support for organizations operating across Kenya</li>
         <li>Bank-grade security with AES-256 encryption and 99.9% uptime</li>
-        <li>Mobile-responsive — works on any device</li>
+        <li>Mobile-responsive works on any device</li>
         <li>Affordable pricing from KES 9,200/month</li>
         <li>Free onboarding, training, and data migration support</li>
       </ul>
@@ -742,7 +781,8 @@
       <h2 style="font-size:1.3rem;margin:2rem 0 0.8rem;">About the Developer: Peter Mumo</h2>
       <p>
         <strong style="color:#fff;">Peter Mumo</strong> is a Kenyan software engineer and the founder of
-        <strong style="color:#fff;">Welt Tallis Technologies</strong>. He designed, developed, and architected Rest Point
+        <strong style="color:#fff;">Welt Tallis Technologies</strong>. He designed, developed, and architected Rest
+        Point
         as Kenya's first purpose-built funeral home operating system. Peter specializes in enterprise SaaS platforms,
         cloud architecture, M-Pesa API integration, and management systems for the African market. His work serves over
         500 organizations across Kenya's funeral, insurance, and welfare sectors.

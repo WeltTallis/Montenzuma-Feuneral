@@ -1,684 +1,945 @@
-import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import { api, ENDPOINTS } from '../../api';
-import { MessageSquare, Clock, CheckCircle, AlertCircle, Send, X, Eye, RefreshCw, Filter } from '../../utils/icons/icons';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import styled, { createGlobalStyle, keyframes } from 'styled-components';
+import { api } from '../../api';
+import { useSocket } from '../../utils/context/socketContext';
+import {
+    Headphones, MessageSquare, Search, Send, Clock,
+    CheckCircle2, RefreshCw, LifeBuoy, Wifi, User,
+} from '../../utils/icons/icons';
 
-const COLORS = {
-    primary: '#0A2463',
-    primaryLight: '#1A3A7A',
-    white: '#FFFFFF',
-    bg: '#F5F7FA',
-    border: '#E8ECF0',
-    text: '#1A1D24',
-    textSecondary: '#6B7280',
-    success: '#10B981',
-    warning: '#F59E0B',
-    danger: '#E74C3C',
-    info: '#3B82F6',
+/* ============================================================
+   REST POINT — Support Admin Console (Tickets only · Real-time)
+   Staff view: all tenants' tickets, status control, staff replies.
+   Live updates via Socket.IO: ticket_updated / ticket_response
+   ============================================================ */
+
+const C = {
+    white: '#ffffff',
+    gray50: '#f5f5f5', gray100: '#f0f0f0', gray200: '#e4e4e4',
+    gray300: '#d1d1d1', gray400: '#a3a3a3', gray500: '#737373',
+    gray600: '#525252', gray700: '#404040', gray800: '#262626', gray900: '#171717',
+    accent: '#0d9488', accentLight: '#ccfbf1', accentDark: '#0f766e',
+    red: '#ef4444', redLight: '#fef2f2',
+    amber: '#f59e0b', amberLight: '#fffbeb',
+    green: '#22c55e', greenLight: '#f0fdf4',
+    blue: '#3b82f6', blueLight: '#eff6ff',
 };
 
-const Container = styled.div`
-  max-width: 1400px;
-  margin: 0 auto;
+const STATUS_META = {
+    open: { label: 'Open', color: C.green, bg: C.greenLight },
+    in_progress: { label: 'In Progress', color: C.amber, bg: C.amberLight },
+    resolved: { label: 'Resolved', color: C.accent, bg: C.accentLight },
+    closed: { label: 'Closed', color: C.gray400, bg: C.gray100 },
+};
+
+const TYPE_META = {
+    help: { label: 'Question', color: C.blue, bg: C.blueLight },
+    bug: { label: 'Bug Report', color: C.red, bg: C.redLight },
+    feature: { label: 'Suggestion', color: '#16a34a', bg: C.greenLight },
+    other: { label: 'General', color: C.gray600, bg: C.gray100 },
+};
+
+const FILTERS = [
+    { id: 'all', label: 'All' },
+    { id: 'open', label: 'Open' },
+    { id: 'in_progress', label: 'In Progress' },
+    { id: 'resolved', label: 'Resolved' },
+    { id: 'closed', label: 'Closed' },
+];
+
+function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const diff = Date.now() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(diff / 3600000);
+    if (hrs < 24) return `${hrs}h ago`;
+    return d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function clockTime(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function getInitials(name, email) {
+    const src = (name && name.trim()) || email || '?';
+    const parts = src.replace(/[^\w\s@]/g, '').split(/[\s@._]+/).filter(Boolean);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function getStaff() {
+    try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+}
+const GlobalStyle = createGlobalStyle`
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 `;
 
-const Header = styled.div`
+const fadeInUp = keyframes`
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
+const modalIn = keyframes`
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+`;
+
+const toastIn = keyframes`
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+`;
+
+const livePulse = keyframes`
+  0%, 100% { transform: scale(1); opacity: 0.35; }
+  50% { transform: scale(1.7); opacity: 0; }
+`;
+
+const Shell = styled.div`
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+  height: calc(100vh - 150px);
+  min-height: 600px;
+  background: ${C.white};
+  border: 1px solid ${C.gray200};
+  border-radius: 16px;
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
+  color: ${C.gray800};
+
+  @media (max-width: 860px) {
+    height: calc(100vh - 110px);
+    min-height: 480px;
+    border-radius: 12px;
+  }
 `;
 
-const Title = styled.h1`
-  font-size: 1.75rem;
+const Sidebar = styled.aside`
+  width: 250px;
+  background: ${C.white};
+  border-right: 1px solid ${C.gray200};
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+
+  @media (max-width: 860px) { display: none; }
+`;
+
+const SidebarHeader = styled.div`
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid ${C.gray100};
+`;
+
+const Logo = styled.div`
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 19px;
   font-weight: 700;
-  color: ${COLORS.text};
-  margin: 0;
+  color: ${C.gray900};
+  display: flex;
+  align-items: center;
+  gap: 10px;
 `;
 
-const Subtitle = styled.p`
-  color: ${COLORS.textSecondary};
-  font-size: 0.9rem;
-  margin: 0.25rem 0 0;
-`;
-
-const Button = styled.button`
-  padding: 0.75rem 1.5rem;
-  border: none;
+const LogoIcon = styled.div`
+  width: 32px; height: 32px;
+  background: ${C.gray900};
   border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
-
-  ${props => props.$variant === 'primary' ? `
-    background: ${COLORS.primary};
-    color: ${COLORS.white};
-
-    &:hover:not(:disabled) {
-      background: ${COLORS.primaryLight};
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  ` : `
-    background: ${COLORS.white};
-    color: ${COLORS.text};
-    border: 1px solid ${COLORS.border};
-
-    &:hover {
-      background: ${COLORS.bg};
-    }
-  `}
+  display: flex; align-items: center; justify-content: center;
+  color: ${C.white}; flex-shrink: 0;
 `;
 
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 2rem;
+const SidebarNav = styled.nav`
+  padding: 12px 10px; flex: 1;
+  display: flex; flex-direction: column;
 `;
 
-const StatCard = styled.div`
-  background: ${COLORS.white};
-  padding: 1.25rem;
-  border-radius: 14px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  border: 1px solid ${COLORS.border};
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+const NavLabel = styled.div`
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.2px; color: ${C.gray400}; padding: 12px 12px 6px;
 `;
 
-const StatIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: ${props => props.$color || COLORS.primary};
-  color: ${COLORS.white};
+const NavItem = styled.div`
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px; cursor: pointer;
+  font-size: 13.5px; font-weight: 500; color: ${C.gray600};
+  transition: all 0.2s ease; user-select: none;
+
+  &:hover { background: ${C.gray50}; color: ${C.gray800}; }
+
+  ${p => p.$active && `background: ${C.accentLight}; color: ${C.accentDark};`}
+`;
+
+const NavBadge = styled.span`
+  margin-left: auto;
+  background: ${C.red};
+  color: ${C.white};
+  font-size: 10px; font-weight: 700;
+  padding: 1px 7px; border-radius: 99px;
+  min-width: 18px; text-align: center;
+`;
+
+const LivePill = styled.span`
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.6px;
+  color: ${p => (p.$on ? '#16a34a' : C.gray400)};
+  background: ${p => (p.$on ? C.greenLight : C.gray100)};
+  border-radius: 99px; padding: 2px 8px;
+`;
+
+const LiveDot = styled.span`
+  width: 7px; height: 7px;
+  background: ${p => (p.$on ? C.green : C.gray400)};
+  border-radius: 50%; display: inline-block; position: relative;
+
+  &::before {
+    content: ''; position: absolute; inset: -3px; border-radius: 50%;
+    background: ${p => (p.$on ? C.green : 'transparent')};
+    opacity: 0.3; animation: ${livePulse} 2s ease infinite;
+  }
+`;
+
+const SidebarFooter = styled.div`
+  padding: 14px 16px;
+  border-top: 1px solid ${C.gray100};
+  display: flex; align-items: center; gap: 10px;
+`;
+
+const Avatar = styled.div`
+  width: 34px; height: 34px; border-radius: 50%;
+  background: ${C.accentLight}; color: ${C.accentDark};
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; flex-shrink: 0; position: relative;
+
+  &::after {
+    content: ''; position: absolute; bottom: 0; right: 0;
+    width: 10px; height: 10px;
+    background: ${p => (p.$online ? C.green : C.gray400)};
+    border: 2px solid ${C.white}; border-radius: 50%;
+  }
+`;
+
+const UserInfo = styled.div`flex: 1; min-width: 0;`;
+const UserName = styled.div`
+  font-size: 13px; font-weight: 600; color: ${C.gray800};
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+`;
+const UserRole = styled.div`font-size: 11px; color: ${C.gray400};`;
+const Main = styled.div`
+  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  min-width: 0;
+`;
+
+const Topbar = styled.div`
+  padding: 14px 24px;
+  border-bottom: 1px solid ${C.gray200};
+  display: flex; align-items: center; gap: 14px;
+  background: ${C.white}; flex-shrink: 0; flex-wrap: wrap;
+
+  @media (max-width: 640px) { padding: 12px 16px; }
+`;
+
+const TopbarTitleWrap = styled.div`display: flex; flex-direction: column;`;
+const TopbarTitle = styled.div`
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px; font-weight: 700; color: ${C.gray900}; line-height: 1.2;
+`;
+const TopbarSubtitle = styled.div`
+  font-size: 11.5px; color: ${C.gray400}; margin-top: 2px;
+  display: flex; align-items: center; gap: 6px;
+`;
+
+const SearchBox = styled.div`
+  display: flex; align-items: center; gap: 8px;
+  background: ${C.gray50}; border: 1px solid ${C.gray200};
+  border-radius: 8px; padding: 7px 12px; width: 240px;
+  transition: all 0.2s ease; margin-left: auto;
+
+  &:focus-within {
+    border-color: ${C.accent}; background: ${C.white};
+    box-shadow: 0 0 0 3px rgba(13,148,136,0.08);
+  }
+
+  input {
+    border: none; background: transparent; outline: none;
+    font-size: 13px; color: ${C.gray800}; width: 100%; font-family: inherit;
+    &::placeholder { color: ${C.gray400}; }
+  }
+
+  @media (max-width: 640px) { width: 150px; }
+`;
+
+const Btn = styled.button`
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  border: none; transition: all 0.2s ease;
+  font-family: inherit; white-space: nowrap; user-select: none;
+
+  ${p => p.$variant === 'accent' && `background:${C.accent}; color:${C.white}; &:hover:not(:disabled){background:${C.accentDark};}`}
+  ${p => p.$variant === 'ghost' && `background:transparent; color:${C.gray600}; border:1px solid ${C.gray200}; &:hover:not(:disabled){background:${C.gray50}; border-color:${C.gray300};}`}
+
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+`;
+
+const Content = styled.div`flex: 1; overflow: hidden; display: flex;`;
+
+const ListPane = styled.div`
+  width: 410px;
+  border-right: 1px solid ${C.gray200};
+  display: flex; flex-direction: column; flex-shrink: 0;
+
+  @media (max-width: 860px) { width: 330px; }
+  @media (max-width: 640px) {
+    width: 100%; max-height: 40%;
+    border-right: none; border-bottom: 1px solid ${C.gray200};
+  }
+`;
+
+const Filters = styled.div`
+  padding: 12px 14px; display: flex; gap: 6px;
+  border-bottom: 1px solid ${C.gray100}; flex-shrink: 0; flex-wrap: wrap;
+`;
+
+const FilterChip = styled.div`
+  padding: 4px 12px; border-radius: 99px;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  border: 1px solid ${C.gray200}; background: ${C.white}; color: ${C.gray600};
+  transition: all 0.2s ease; user-select: none;
+
+  &:hover { border-color: ${C.gray300}; }
+
+  ${p => p.$active && `background:${C.gray900}; color:${C.white}; border-color:${C.gray900};`}
+`;
+
+const TicketsScroll = styled.div`
+  flex: 1; overflow-y: auto; padding: 8px;
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: ${C.gray300}; border-radius: 10px; }
+`;
+
+const TicketCard = styled.div`
+  padding: 14px 16px; border-radius: 12px; cursor: pointer;
+  transition: all 0.2s ease; border: 1px solid transparent; margin-bottom: 2px;
+
+  &:hover { background: ${C.gray50}; }
+
+  ${p => p.$active && `background:${C.gray50}; border-color:${C.gray200}; box-shadow:0 1px 2px rgba(0,0,0,0.04);`}
+`;
+
+const CardHeader = styled.div`
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+`;
+
+const TicketId = styled.span`
+  font-size: 11px; font-weight: 600; color: ${C.gray400};
+  font-family: 'Space Grotesk', sans-serif;
+`;
+
+const StatusDot = styled.span`
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: ${p => p.$color || C.gray300};
+`;
+
+const TypeBadge = styled.span`
+  margin-left: auto;
+  font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: 99px; text-transform: uppercase; letter-spacing: 0.5px;
+  background: ${p => p.$bg}; color: ${p => p.$color};
+`;
+
+const CardTitle = styled.div`
+  font-size: 13.5px; font-weight: 600; color: ${C.gray800};
+  margin-bottom: 4px; line-height: 1.4;
+`;
+const CardPreview = styled.div`
+  font-size: 12px; color: ${C.gray400}; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+`;
+
+const CardFooter = styled.div`
+  display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+`;
+
+const MiniAvatar = styled.div`
+  width: 20px; height: 20px; border-radius: 50%;
+  background: ${C.gray200};
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; color: ${C.gray500}; flex-shrink: 0;
+`;
+
+const TenantChip = styled.span`
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.4px;
+  padding: 2px 7px; border-radius: 99px;
+  background: ${C.gray100}; color: ${C.gray600};
+  max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+`;
+
+const Meta = styled.span`
+  font-size: 11px; color: ${C.gray400};
+  display: inline-flex; align-items: center; gap: 4px;
+
+  ${p => p.$right && 'margin-left: auto;'}
+`;
+
+const DetailPane = styled.div`
+  flex: 1; display: flex; flex-direction: column; min-width: 0;
+`;
+
+const DetailHeader = styled.div`
+  padding: 16px 22px;
+  border-bottom: 1px solid ${C.gray200};
   flex-shrink: 0;
 `;
 
-const StatContent = styled.div`
-  flex: 1;
+const DetailRow = styled.div`
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 4px; flex-wrap: wrap;
 `;
 
-const StatLabel = styled.p`
-  font-size: 0.7rem;
-  color: ${COLORS.textSecondary};
-  margin: 0 0 0.25rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 600;
+const DetailTitle = styled.div`
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 19px; font-weight: 700; color: ${C.gray900}; margin-top: 2px;
 `;
 
-const StatValue = styled.p`
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: ${COLORS.text};
-  margin: 0;
+const DetailMeta = styled.div`
+  display: flex; gap: 16px; margin-top: 8px;
+  font-size: 12px; color: ${C.gray400}; flex-wrap: wrap;
+
+  span { display: inline-flex; align-items: center; gap: 5px; }
 `;
 
-const Card = styled.div`
-  background: ${COLORS.white};
-  border-radius: 14px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  border: 1px solid ${COLORS.border};
-  padding: 2rem;
-  margin-bottom: 1.5rem;
+const StatusSelect = styled.select`
+  padding: 4px 8px;
+  border: 1px solid ${C.gray200}; border-radius: 6px;
+  font-size: 12px; font-family: inherit; font-weight: 600;
+  color: ${C.gray700}; background: ${C.white};
+  outline: none; cursor: pointer;
+
+  &:focus { border-color: ${C.accent}; }
 `;
 
-const FilterBar = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
+const Thread = styled.div`
+  flex: 1; overflow-y: auto; padding: 20px 22px;
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: ${C.gray300}; border-radius: 10px; }
 `;
 
-const FilterSelect = styled.select`
-  padding: 0.625rem 0.875rem;
-  border: 1px solid ${COLORS.border};
-  border-radius: 8px;
-  font-size: 0.9rem;
-  color: ${COLORS.text};
-  background: ${COLORS.white};
-  cursor: pointer;
+const Msg = styled.div`
+  display: flex; gap: 12px; margin-bottom: 18px;
+  animation: ${fadeInUp} 0.3s ease;
+`;
 
-  &:focus {
-    outline: none;
-    border-color: ${COLORS.primary};
+const MsgAvatar = styled.div`
+  width: 34px; height: 34px; border-radius: 50%;
+  background: ${p => (p.$staff ? C.accentLight : C.gray200)};
+  color: ${p => (p.$staff ? C.accentDark : C.gray600)};
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+`;
+
+const MsgBody = styled.div`flex: 1; min-width: 0;`;
+const MsgHeader = styled.div`display: flex; align-items: center; gap: 8px; margin-bottom: 4px;`;
+const MsgName = styled.span`font-size: 13px; font-weight: 600; color: ${C.gray800};`;
+
+const StaffTag = styled.span`
+  font-size: 10px; font-weight: 600; padding: 1px 6px;
+  border-radius: 4px; background: ${C.accentLight}; color: ${C.accentDark};
+`;
+
+const MsgTime = styled.span`font-size: 11px; color: ${C.gray400}; margin-left: auto; white-space: nowrap;`;
+
+const MsgText = styled.div`
+  font-size: 13.5px; color: ${C.gray700}; line-height: 1.7;
+  word-break: break-word; white-space: pre-wrap;
+`;
+
+const ReplyBox = styled.div`
+  padding: 14px 22px 16px;
+  border-top: 1px solid ${C.gray200};
+  flex-shrink: 0; background: ${C.white};
+`;
+
+const ReplyArea = styled.div`
+  border: 1px solid ${C.gray200}; border-radius: 12px; overflow: hidden;
+  transition: all 0.2s ease;
+
+  &:focus-within {
+    border-color: ${C.accent};
+    box-shadow: 0 0 0 3px rgba(13,148,136,0.08);
+  }
+
+  textarea {
+    width: 100%; padding: 12px 14px;
+    border: none; outline: none;
+    font-size: 13.5px; font-family: inherit; resize: none;
+    color: ${C.gray800}; background: transparent; line-height: 1.6;
+    min-height: 56px; max-height: 120px;
+    &::placeholder { color: ${C.gray400}; }
   }
 `;
 
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
+const ReplyToolbar = styled.div`
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px; border-top: 1px solid ${C.gray100}; background: ${C.gray50};
 `;
 
-const Th = styled.th`
-  text-align: left;
-  padding: 0.75rem 1rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: ${COLORS.textSecondary};
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: ${COLORS.bg};
-  border-bottom: 1px solid ${COLORS.border};
-`;
-
-const Td = styled.td`
-  padding: 1rem;
-  font-size: 0.9rem;
-  color: ${COLORS.text};
-  border-bottom: 1px solid ${COLORS.border};
-`;
-
-const Tr = styled.tr`
-  &:hover {
-    background: ${COLORS.bg};
-  }
-
-  &:last-child td {
-    border-bottom: none;
-  }
-`;
-
-const Badge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${props => {
-        switch (props.$status) {
-            case 'open': return '#FEF3C7';
-            case 'in_progress': return '#DBEAFE';
-            case 'resolved': return '#D1FAE5';
-            case 'closed': return '#F3F4F6';
-            default: return COLORS.bg;
-        }
-    }};
-  color: ${props => {
-        switch (props.$status) {
-            case 'open': return '#92400E';
-            case 'in_progress': return '#1E40AF';
-            case 'resolved': return '#065F46';
-            case 'closed': return '#6B7280';
-            default: return COLORS.textSecondary;
-        }
-    }};
-`;
-
-const PriorityBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${props => {
-        switch (props.$priority) {
-            case 'urgent': return '#FEE2E2';
-            case 'high': return '#FED7AA';
-            case 'medium': return '#FEF3C7';
-            case 'low': return '#D1FAE5';
-            default: return COLORS.bg;
-        }
-    }};
-  color: ${props => {
-        switch (props.$priority) {
-            case 'urgent': return '#991B1B';
-            case 'high': return '#9A3412';
-            case 'medium': return '#92400E';
-            case 'low': return '#065F46';
-            default: return COLORS.textSecondary;
-        }
-    }};
-`;
-
-const ActionIcon = styled.button`
-  background: transparent;
-  border: none;
-  padding: 0.5rem;
-  cursor: pointer;
-  color: ${COLORS.textSecondary};
-  border-radius: 6px;
-  transition: all 0.2s;
-
-  &:hover {
-    background: ${COLORS.bg};
-    color: ${props => props.$danger ? COLORS.danger : COLORS.primary};
-  }
-`;
-
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-`;
-
-const ModalContent = styled.div`
-  background: ${COLORS.white};
-  border-radius: 14px;
-  padding: 2rem;
-  max-width: 700px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: ${COLORS.text};
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  color: ${COLORS.textSecondary};
-  cursor: pointer;
-  padding: 0.25rem;
-  display: flex;
-  align-items: center;
-
-  &:hover {
-    color: ${COLORS.text};
-  }
-`;
-
+const ReplyHint = styled.span`font-size: 11px; color: ${C.gray400};`;
 const EmptyState = styled.div`
-  text-align: center;
-  padding: 3rem;
-  color: ${COLORS.textSecondary};
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: ${C.gray400}; padding: 40px; text-align: center;
 
-  svg {
-    margin-bottom: 1rem;
-    opacity: 0.3;
-  }
+  p { font-size: 14px; margin-top: 4px; }
+`;
+
+const ToastContainer = styled.div`
+  position: fixed; top: 20px; right: 20px; z-index: 2000;
+  display: flex; flex-direction: column; gap: 8px;
+`;
+
+const Toast = styled.div`
+  padding: 12px 18px;
+  background: ${C.gray900}; color: ${C.white};
+  border-radius: 8px; font-size: 13px; font-weight: 500;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  animation: ${toastIn} 0.3s ease;
+  display: flex; align-items: center; gap: 8px; max-width: 360px;
+`;
+
+const Spinner = styled(RefreshCw)`
+  animation: spin 1s linear infinite;
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
 `;
 
 const AdminSupportDashboard = () => {
+    const { socket, connected } = useSocket();
+
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [selectedTicket, setSelectedTicket] = useState(null);
-    const [replies, setReplies] = useState([]);
-    const [replyMessage, setReplyMessage] = useState('');
-    const [filterStatus, setFilterStatus] = useState('all');
-    const [filterPriority, setFilterPriority] = useState('all');
+    const [filter, setFilter] = useState('all');
+    const [search, setSearch] = useState('');
 
-    useEffect(() => {
-        fetchTickets();
+    const [selectedId, setSelectedId] = useState(null);
+    const [replies, setReplies] = useState([]);
+    const [repliesLoading, setRepliesLoading] = useState(false);
+    const [replyText, setReplyText] = useState('');
+    const [sendingReply, setSendingReply] = useState(false);
+
+    const [toasts, setToasts] = useState([]);
+    const toastSeq = useRef(0);
+    const selectedIdRef = useRef(null);
+    const threadEndRef = useRef(null);
+
+    selectedIdRef.current = selectedId;
+
+    const pushToast = useCallback((message) => {
+        const id = ++toastSeq.current;
+        setToasts(prev => [...prev.slice(-3), { id, message }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
     }, []);
 
-    const fetchTickets = async () => {
+    /* ---------- Data fetching (all tenants) ---------- */
+
+    const fetchTickets = useCallback(async () => {
         try {
-            const response = await api.get(ENDPOINTS.SUPPORT.ALL_TICKETS);
-            if (response?.data?.success) {
-                setTickets(response.data.tickets || []);
+            const res = await api.get('/support/tickets/all');
+            if (res.data?.success && Array.isArray(res.data.tickets)) {
+                setTickets(res.data.tickets);
+            } else if (Array.isArray(res.data)) {
+                setTickets(res.data);
             }
         } catch (err) {
-            console.error('Error fetching tickets:', err);
+            console.warn('[SupportAdmin] Failed to fetch tickets:', err?.message);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const handleViewTicket = async (ticket) => {
-        setSelectedTicket(ticket);
+    const fetchReplies = useCallback(async (ticketId) => {
+        if (!ticketId) return;
         try {
-            const response = await api.get(`${ENDPOINTS.SUPPORT.TICKETS}/${ticket.ticket_id}/replies`);
-            if (response?.data?.success) {
-                setReplies(response.data.replies || []);
+            const res = await api.get(`/support/tickets/${ticketId}/replies`);
+            if (res.data?.success && Array.isArray(res.data.replies)) {
+                if (String(selectedIdRef.current) === String(ticketId)) {
+                    setReplies(res.data.replies);
+                }
             }
         } catch (err) {
-            console.error('Error fetching replies:', err);
+            console.warn('[SupportAdmin] Failed to fetch replies:', err?.message);
         }
-    };
+    }, []);
 
-    const handleStatusChange = async (ticketId, newStatus) => {
-        try {
-            await api.patch(`${ENDPOINTS.SUPPORT.TICKETS}/${ticketId}/status`, { status: newStatus });
+    useEffect(() => { fetchTickets(); }, [fetchTickets]);
+
+    useEffect(() => {
+        const i = setInterval(fetchTickets, 30000);
+        return () => clearInterval(i);
+    }, [fetchTickets]);
+
+    /* ---------- Real-time updates ---------- */
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleUpdated = (data = {}) => {
             fetchTickets();
-            if (selectedTicket && selectedTicket.ticket_id === ticketId) {
-                setSelectedTicket({ ...selectedTicket, status: newStatus });
+            const tid = data.ticketId;
+            if (!tid || String(tid) === String(selectedIdRef.current)) {
+                if (selectedIdRef.current) fetchReplies(selectedIdRef.current);
             }
-        } catch (err) {
-            console.error('Error updating status:', err);
-        }
+        };
+
+        const handleResponse = (data = {}) => {
+            // New customer message on a ticket
+            if (data.userType !== 'admin') {
+                pushToast(data.message || 'New customer message received');
+                fetchTickets();
+                if (!data.ticketId || String(data.ticketId) === String(selectedIdRef.current)) {
+                    if (selectedIdRef.current) fetchReplies(selectedIdRef.current);
+                }
+            }
+        };
+
+        socket.on('ticket_updated', handleUpdated);
+        socket.on('ticket_response', handleResponse);
+        return () => {
+            socket.off('ticket_updated', handleUpdated);
+            socket.off('ticket_response', handleResponse);
+        };
+    }, [socket, fetchTickets, fetchReplies, pushToast]);
+
+    /* ---------- Actions ---------- */
+
+    const openTicket = (ticket) => {
+        setSelectedId(ticket.ticket_id);
+        setReplies([]);
+        setReplyText('');
+        setRepliesLoading(true);
+        fetchReplies(ticket.ticket_id).finally(() => setRepliesLoading(false));
     };
 
-    const handleReply = async (e) => {
-        e.preventDefault();
-        if (!replyMessage.trim()) return;
-
+    const sendReply = async () => {
+        const text = replyText.trim();
+        if (!text || !selectedTicket || sendingReply) return;
+        setSendingReply(true);
         try {
-            await api.post(`${ENDPOINTS.SUPPORT.TICKETS}/${selectedTicket.ticket_id}/reply`, {
-                message: replyMessage,
-                userType: 'admin'
-            });
-
-            setReplyMessage('');
-            const response = await api.get(`${ENDPOINTS.SUPPORT.TICKETS}/${selectedTicket.ticket_id}/replies`);
-            if (response?.data?.success) {
-                setReplies(response.data.replies || []);
-            }
+            await api.post(`/support/tickets/${selectedTicket.ticket_id}/reply`, {
+                message: text,
+                userType: 'admin',
+            }, { headers: { 'x-tenant-slug': selectedTicket.tenant_slug || 'system_shared' } });
+            setReplyText('');
+            pushToast('Reply sent to customer');
+            await fetchReplies(selectedTicket.ticket_id);
+            fetchTickets();
         } catch (err) {
-            console.error('Error adding reply:', err);
+            console.warn('[SupportAdmin] Reply failed:', err?.message);
+            pushToast('Failed to send reply. Please try again.');
+        } finally {
+            setSendingReply(false);
         }
     };
 
-    const getStatusIcon = (status) => {
-        switch (status) {
-            case 'open': return <AlertCircle size={16} color={COLORS.warning} />;
-            case 'in_progress': return <Clock size={16} color={COLORS.info} />;
-            case 'resolved': return <CheckCircle size={16} color={COLORS.success} />;
-            case 'closed': return <CheckCircle size={16} color={COLORS.textSecondary} />;
-            default: return null;
+    const handleReplyKey = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendReply();
         }
     };
 
-    const formatDate = (date) => {
-        if (!date) return '-';
-        return new Date(date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+    const changeStatus = async (ticketId, status) => {
+        const ticket = tickets.find(t => String(t.ticket_id) === String(ticketId));
+        try {
+            await api.request({
+                method: 'PATCH',
+                url: `/support/tickets/${ticketId}`,
+                data: { status },
+                headers: { 'x-tenant-slug': ticket?.tenant_slug || 'system_shared' },
+            });
+            pushToast(`Ticket #${ticketId} marked as ${STATUS_META[status]?.label || status}`);
+            fetchTickets();
+        } catch (err) {
+            console.warn('[SupportAdmin] Status update failed:', err?.message);
+            pushToast('Failed to update status');
+        }
     };
 
-    const filteredTickets = tickets.filter(ticket => {
-        if (filterStatus !== 'all' && ticket.status !== filterStatus) return false;
-        if (filterPriority !== 'all' && ticket.priority !== filterPriority) return false;
-        return true;
+    /* ---------- Derived ---------- */
+
+    const staff = getStaff();
+    const staffName = staff.full_name || staff.name || staff.email || 'Support Agent';
+    const initials = getInitials(staff.full_name || staff.name, staff.email);
+
+    const openCount = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
+
+    const visibleTickets = tickets.filter(t => {
+        if (filter !== 'all' && t.status !== filter) return false;
+        if (!search.trim()) return true;
+        const q = search.toLowerCase();
+        return (
+            String(t.ticket_id).includes(q) ||
+            (t.subject || '').toLowerCase().includes(q) ||
+            (t.message || '').toLowerCase().includes(q) ||
+            (t.user_name || '').toLowerCase().includes(q) ||
+            (t.tenant_name || '').toLowerCase().includes(q)
+        );
     });
 
-    const stats = {
-        total: tickets.length,
-        open: tickets.filter(t => t.status === 'open').length,
-        in_progress: tickets.filter(t => t.status === 'in_progress').length,
-        resolved: tickets.filter(t => t.status === 'resolved').length,
-    };
+    const selectedTicket = tickets.find(t => String(t.ticket_id) === String(selectedId)) || null;
 
-    if (loading) {
-        return (
-            <Container>
-                <div style={{ textAlign: 'center', padding: '3rem', color: COLORS.textSecondary }}>
-                    <div style={{ width: '40px', height: '40px', border: '3px solid #E5E7EB', borderTop: '3px solid #C9A84C', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
-                    <p>Loading tickets...</p>
-                </div>
-            </Container>
-        );
+    const thread = [];
+    if (selectedTicket) {
+        thread.push({
+            key: 'ticket-body',
+            name: selectedTicket.user_name || selectedTicket.user_email || 'Customer',
+            staff: false,
+            text: selectedTicket.message,
+            time: selectedTicket.created_at,
+        });
+        replies.forEach(r => {
+            const isStaff = r.user_type === 'admin';
+            thread.push({
+                key: `reply-${r.reply_id}`,
+                name: isStaff ? 'Support Team' : (selectedTicket.user_name || 'Customer'),
+                staff: isStaff,
+                text: r.message,
+                time: r.created_at,
+            });
+        });
     }
 
+    useEffect(() => {
+        const el = threadEndRef.current;
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, [replies.length, selectedId]);
+
+    /* ---------- Render ---------- */
+
     return (
-        <Container>
-            <Header>
-                <div>
-                    <Title>Support Dashboard</Title>
-                    <Subtitle>Manage and respond to support tickets</Subtitle>
-                </div>
-                <Button $variant="primary" onClick={fetchTickets}>
-                    <RefreshCw size={18} />
-                    Refresh
-                </Button>
-            </Header>
+        <div style={{ padding: '4px 2px' }}>
+            <GlobalStyle />
+            <Shell>
+                <Sidebar>
+                    <SidebarHeader>
+                        <Logo>
+                            <LogoIcon><Headphones size={15} /></LogoIcon>
+                            SupportHub
+                        </Logo>
+                    </SidebarHeader>
+                    <SidebarNav>
+                        <NavLabel>Support Console</NavLabel>
+                        <NavItem $active>
+                            <MessageSquare size={14} /> All Tickets
+                            {openCount > 0 && <NavBadge>{openCount}</NavBadge>}
+                        </NavItem>
+                        <NavLabel style={{ marginTop: 8 }}>Actions</NavLabel>
+                        <NavItem onClick={fetchTickets}>
+                            <RefreshCw size={14} /> Refresh
+                        </NavItem>
+                    </SidebarNav>
+                    <SidebarFooter>
+                        <Avatar $online={connected}>{initials}</Avatar>
+                        <UserInfo>
+                            <UserName>{staffName}</UserName>
+                            <UserRole>Support Agent</UserRole>
+                        </UserInfo>
+                    </SidebarFooter>
+                </Sidebar>
 
-            {/* Stats */}
-            <StatsGrid>
-                <StatCard>
-                    <StatIcon $color={COLORS.info}>
-                        <MessageSquare size={24} />
-                    </StatIcon>
-                    <StatContent>
-                        <StatLabel>Total Tickets</StatLabel>
-                        <StatValue>{stats.total}</StatValue>
-                    </StatContent>
-                </StatCard>
+                <Main>
+                    <Topbar>
+                        <TopbarTitleWrap>
+                            <TopbarTitle>All Tickets</TopbarTitle>
+                            <TopbarSubtitle>
+                                {visibleTickets.length} ticket{visibleTickets.length !== 1 ? 's' : ''}
+                                {' '}· all tenants · live
+                            </TopbarSubtitle>
+                        </TopbarTitleWrap>
+                        <SearchBox>
+                            <Search size={13} />
+                            <input
+                                placeholder="Search tickets, tenants..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </SearchBox>
+                        <LivePill $on={connected}>
+                            <LiveDot $on={connected} />
+                            {connected ? 'LIVE' : 'OFFLINE'}
+                        </LivePill>
+                    </Topbar>
 
-                <StatCard>
-                    <StatIcon $color={COLORS.warning}>
-                        <AlertCircle size={24} />
-                    </StatIcon>
-                    <StatContent>
-                        <StatLabel>Open</StatLabel>
-                        <StatValue>{stats.open}</StatValue>
-                    </StatContent>
-                </StatCard>
-
-                <StatCard>
-                    <StatIcon $color={COLORS.primary}>
-                        <Clock size={24} />
-                    </StatIcon>
-                    <StatContent>
-                        <StatLabel>In Progress</StatLabel>
-                        <StatValue>{stats.in_progress}</StatValue>
-                    </StatContent>
-                </StatCard>
-
-                <StatCard>
-                    <StatIcon $color={COLORS.success}>
-                        <CheckCircle size={24} />
-                    </StatIcon>
-                    <StatContent>
-                        <StatLabel>Resolved</StatLabel>
-                        <StatValue>{stats.resolved}</StatValue>
-                    </StatContent>
-                </StatCard>
-            </StatsGrid>
-
-            {/* Filters */}
-            <Card>
-                <FilterBar>
-                    <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                        <option value="all">All Status</option>
-                        <option value="open">Open</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                        <option value="closed">Closed</option>
-                    </FilterSelect>
-
-                    <FilterSelect value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-                        <option value="all">All Priority</option>
-                        <option value="urgent">Urgent</option>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                    </FilterSelect>
-                </FilterBar>
-
-                {filteredTickets.length === 0 ? (
-                    <EmptyState>
-                        <MessageSquare size={48} />
-                        <p>No tickets found.</p>
-                    </EmptyState>
-                ) : (
-                    <Table>
-                        <thead>
-                            <tr>
-                                <Th>Ticket ID</Th>
-                                <Th>Tenant</Th>
-                                <Th>Subject</Th>
-                                <Th>Priority</Th>
-                                <Th>Status</Th>
-                                <Th>Created</Th>
-                                <Th>Actions</Th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredTickets.map((ticket) => (
-                                <Tr key={ticket.ticket_id}>
-                                    <Td>#{ticket.ticket_id}</Td>
-                                    <Td>{ticket.tenant_name || ticket.tenant_slug}</Td>
-                                    <Td>{ticket.subject}</Td>
-                                    <Td>
-                                        <PriorityBadge $priority={ticket.priority || 'medium'}>
-                                            {ticket.priority || 'medium'}
-                                        </PriorityBadge>
-                                    </Td>
-                                    <Td>
-                                        <Badge $status={ticket.status}>
-                                            {getStatusIcon(ticket.status)}
-                                            {ticket.status.replace('_', ' ')}
-                                        </Badge>
-                                    </Td>
-                                    <Td>{formatDate(ticket.created_at)}</Td>
-                                    <Td>
-                                        <div style={{ display: 'flex', gap: '0.25rem' }}>
-                                            <ActionIcon title="View Details" onClick={() => handleViewTicket(ticket)}>
-                                                <Eye size={16} />
-                                            </ActionIcon>
-                                        </div>
-                                    </Td>
-                                </Tr>
-                            ))}
-                        </tbody>
-                    </Table>
-                )}
-            </Card>
-
-            {/* Ticket Detail Modal */}
-            {selectedTicket && (
-                <Modal>
-                    <ModalContent>
-                        <ModalHeader>
-                            <ModalTitle>Ticket #{selectedTicket.ticket_id}</ModalTitle>
-                            <CloseButton onClick={() => setSelectedTicket(null)}>
-                                <X size={20} />
-                            </CloseButton>
-                        </ModalHeader>
-
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>{selectedTicket.subject}</h3>
-
-                            <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: COLORS.bg, borderRadius: '8px' }}>
-                                    <span style={{ color: COLORS.textSecondary, fontSize: '0.9rem' }}>Tenant:</span>
-                                    <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{selectedTicket.tenant_name || selectedTicket.tenant_slug}</span>
-                                </div>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: COLORS.bg, borderRadius: '8px' }}>
-                                    <span style={{ color: COLORS.textSecondary, fontSize: '0.9rem' }}>Status:</span>
-                                    <select
-                                        value={selectedTicket.status}
-                                        onChange={(e) => handleStatusChange(selectedTicket.ticket_id, e.target.value)}
-                                        style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid ' + COLORS.border }}
+                    <Content>
+                        {/* Tickets list */}
+                        <ListPane>
+                            <Filters>
+                                {FILTERS.map(f => (
+                                    <FilterChip
+                                        key={f.id}
+                                        $active={filter === f.id}
+                                        onClick={() => setFilter(f.id)}
                                     >
-                                        <option value="open">Open</option>
-                                        <option value="in_progress">In Progress</option>
-                                        <option value="resolved">Resolved</option>
-                                        <option value="closed">Closed</option>
-                                    </select>
-                                </div>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: COLORS.bg, borderRadius: '8px' }}>
-                                    <span style={{ color: COLORS.textSecondary, fontSize: '0.9rem' }}>Priority:</span>
-                                    <PriorityBadge $priority={selectedTicket.priority || 'medium'}>
-                                        {selectedTicket.priority || 'medium'}
-                                    </PriorityBadge>
-                                </div>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: COLORS.bg, borderRadius: '8px' }}>
-                                    <span style={{ color: COLORS.textSecondary, fontSize: '0.9rem' }}>Type:</span>
-                                    <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{selectedTicket.type || 'help'}</span>
-                                </div>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: COLORS.bg, borderRadius: '8px' }}>
-                                    <span style={{ color: COLORS.textSecondary, fontSize: '0.9rem' }}>Created:</span>
-                                    <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{formatDate(selectedTicket.created_at)}</span>
-                                </div>
-                            </div>
-
-                            <div style={{ padding: '1rem', background: COLORS.bg, borderRadius: '8px' }}>
-                                <h4 style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.9rem', color: COLORS.textSecondary }}>Message:</h4>
-                                <p style={{ margin: 0, lineHeight: '1.6' }}>{selectedTicket.message}</p>
-                            </div>
-                        </div>
-
-                        {/* Replies */}
-                        {replies.length > 0 && (
-                            <div style={{ marginTop: '2rem', borderTop: '1px solid ' + COLORS.border, paddingTop: '1.5rem' }}>
-                                <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>Replies</h4>
-                                {replies.map((reply) => (
-                                    <div key={reply.reply_id} style={{ padding: '1rem', background: COLORS.bg, borderRadius: '8px', marginBottom: '1rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
-                                            <span style={{ fontWeight: 600, color: COLORS.text }}>
-                                                {reply.user_type === 'admin' ? 'Support Team' : 'Tenant User'}
-                                            </span>
-                                            <span style={{ color: COLORS.textSecondary }}>{formatDate(reply.created_at)}</span>
-                                        </div>
-                                        <p style={{ margin: 0, lineHeight: '1.5' }}>{reply.message}</p>
-                                    </div>
+                                        {f.label}
+                                    </FilterChip>
                                 ))}
-                            </div>
-                        )}
+                            </Filters>
+                            <TicketsScroll>
+                                {loading ? (
+                                    <EmptyState><Spinner size={26} /><p>Loading tickets...</p></EmptyState>
+                                ) : visibleTickets.length === 0 ? (
+                                    <EmptyState>
+                                        <LifeBuoy size={38} />
+                                        <p>No tickets found</p>
+                                    </EmptyState>
+                                ) : visibleTickets.map(t => {
+                                    const st = STATUS_META[t.status] || STATUS_META.open;
+                                    const tp = TYPE_META[t.type] || TYPE_META.help;
+                                    return (
+                                        <TicketCard
+                                            key={t.ticket_id}
+                                            $active={String(selectedId) === String(t.ticket_id)}
+                                            onClick={() => openTicket(t)}
+                                        >
+                                            <CardHeader>
+                                                <StatusDot $color={st.color} />
+                                                <TicketId>#{t.ticket_id}</TicketId>
+                                                <TypeBadge $bg={tp.bg} $color={tp.color}>{tp.label}</TypeBadge>
+                                            </CardHeader>
+                                            <CardTitle>{t.subject}</CardTitle>
+                                            <CardPreview>{t.message}</CardPreview>
+                                            <CardFooter>
+                                                <MiniAvatar>{getInitials(t.user_name, t.user_email)}</MiniAvatar>
+                                                <Meta><User size={10} /> {t.user_name || t.user_email || 'User'}</Meta>
+                                                {t.tenant_name && <TenantChip>{t.tenant_name}</TenantChip>}
+                                                <Meta $right><Clock size={10} /> {timeAgo(t.created_at)}</Meta>
+                                            </CardFooter>
+                                        </TicketCard>
+                                    );
+                                })}
+                            </TicketsScroll>
+                        </ListPane>
 
-                        {/* Reply Form */}
-                        {selectedTicket.status !== 'closed' && (
-                            <div style={{ marginTop: '2rem', borderTop: '1px solid ' + COLORS.border, paddingTop: '1.5rem' }}>
-                                <form onSubmit={handleReply}>
-                                    <div style={{ marginBottom: '1rem' }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: COLORS.text, marginBottom: '0.5rem' }}>
-                                            Add Reply
-                                        </label>
-                                        <textarea
-                                            value={replyMessage}
-                                            onChange={(e) => setReplyMessage(e.target.value)}
-                                            placeholder="Type your response..."
-                                            required
-                                            style={{
-                                                width: '100%',
-                                                padding: '0.625rem 0.875rem',
-                                                border: '1px solid ' + COLORS.border,
-                                                borderRadius: '8px',
-                                                fontSize: '0.9rem',
-                                                minHeight: '120px',
-                                                resize: 'vertical',
-                                                fontFamily: 'inherit'
-                                            }}
-                                        />
-                                    </div>
-                                    <Button type="submit" $variant="primary" disabled={!replyMessage.trim()}>
-                                        <Send size={16} />
-                                        Send Reply
-                                    </Button>
-                                </form>
-                            </div>
-                        )}
-                    </ModalContent>
-                </Modal>
-            )}
-        </Container>
+                        {/* Ticket detail */}
+                        <DetailPane>
+                            {!selectedTicket ? (
+                                <EmptyState>
+                                    <MessageSquare size={40} />
+                                    <p>Select a ticket to view the conversation</p>
+                                </EmptyState>
+                            ) : (
+                                <>
+                                    <DetailHeader>
+                                        <DetailRow>
+                                            <StatusDot $color={(STATUS_META[selectedTicket.status] || STATUS_META.open).color} />
+                                            <TicketId style={{ fontSize: 13 }}>#{selectedTicket.ticket_id}</TicketId>
+                                            <TypeBadge
+                                                $bg={(TYPE_META[selectedTicket.type] || TYPE_META.help).bg}
+                                                $color={(TYPE_META[selectedTicket.type] || TYPE_META.help).color}
+                                            >
+                                                {(TYPE_META[selectedTicket.type] || TYPE_META.help).label}
+                                            </TypeBadge>
+                                            {selectedTicket.tenant_name && (
+                                                <TenantChip>{selectedTicket.tenant_name}</TenantChip>
+                                            )}
+                                            <StatusSelect
+                                                style={{ marginLeft: 'auto' }}
+                                                value={selectedTicket.status || 'open'}
+                                                onChange={(e) => changeStatus(selectedTicket.ticket_id, e.target.value)}
+                                            >
+                                                <option value="open">Open</option>
+                                                <option value="in_progress">In Progress</option>
+                                                <option value="resolved">Resolved</option>
+                                                <option value="closed">Closed</option>
+                                            </StatusSelect>
+                                        </DetailRow>
+                                        <DetailTitle>{selectedTicket.subject}</DetailTitle>
+                                        <DetailMeta>
+                                            <span><User size={11} /> {selectedTicket.user_name || 'User'}</span>
+                                            {selectedTicket.user_email && (
+                                                <span>✉ {selectedTicket.user_email}</span>
+                                            )}
+                                            <span><Clock size={11} /> {timeAgo(selectedTicket.created_at)}</span>
+                                            {connected && <span style={{ color: '#16a34a' }}><Wifi size={11} /> Live</span>}
+                                        </DetailMeta>
+                                    </DetailHeader>
+
+                                    <Thread>
+                                        {repliesLoading && thread.length <= 1 ? (
+                                            <EmptyState style={{ padding: 20 }}><Spinner size={20} /><p>Loading conversation...</p></EmptyState>
+                                        ) : (
+                                            <>
+                                                {thread.map(m => (
+                                                    <Msg key={m.key}>
+                                                        <MsgAvatar $staff={m.staff}>{getInitials(m.name)}</MsgAvatar>
+                                                        <MsgBody>
+                                                            <MsgHeader>
+                                                                <MsgName>{m.name}</MsgName>
+                                                                {m.staff && <StaffTag>STAFF</StaffTag>}
+                                                                <MsgTime>{clockTime(m.time)} · {timeAgo(m.time)}</MsgTime>
+                                                            </MsgHeader>
+                                                            <MsgText>{m.text}</MsgText>
+                                                        </MsgBody>
+                                                    </Msg>
+                                                ))}
+                                                <div ref={threadEndRef} />
+                                            </>
+                                        )}
+                                    </Thread>
+
+                                    <ReplyBox>
+                                        <ReplyArea>
+                                            <textarea
+                                                placeholder="Reply as Support Team... (Enter to send, Shift+Enter for a new line)"
+                                                rows={2}
+                                                value={replyText}
+                                                onChange={(e) => setReplyText(e.target.value)}
+                                                onKeyDown={handleReplyKey}
+                                            />
+                                            <ReplyToolbar>
+                                                <ReplyHint>Customer is notified instantly via live updates</ReplyHint>
+                                                <Btn $variant="accent" onClick={sendReply} disabled={!replyText.trim() || sendingReply}>
+                                                    {sendingReply ? 'Sending...' : (<> Reply <Send size={12} /></>)}
+                                                </Btn>
+                                            </ReplyToolbar>
+                                        </ReplyArea>
+                                    </ReplyBox>
+                                </>
+                            )}
+                        </DetailPane>
+                    </Content>
+                </Main>
+            </Shell>
+
+            {/* Toasts */}
+            <ToastContainer>
+                {toasts.map(t => (
+                    <Toast key={t.id}><CheckCircle2 size={14} /> {t.message}</Toast>
+                ))}
+            </ToastContainer>
+        </div>
     );
 };
 
 export default AdminSupportDashboard;
+
+
+
+
+
+
+
+

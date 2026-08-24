@@ -5,6 +5,7 @@ import { tenantApi } from '../api/tenant.api';
 import { useTenantStore } from '../modules/seo/useTenantStore';
 import { useAuth } from '../utils/context/AuthContext';
 import ModernSidebar from '../components/layout/ModernSidebar';
+import NotificationBell from '../components/notifications/NotificationBell';
 import FooterComponent from '../components/layout/globalFooter';
 import Loader from '../components/loader/loader';
 
@@ -16,6 +17,7 @@ const FuneralHomeSoftware = lazy(() => import('../modules/landing/FuneralHomeSof
 const OnboardingFlow = lazy(() => import('../modules/onboarding/OnboardingFlow'));
 const InsurancePage = lazy(() => import('../modules/insurance/insurance'));
 const MemorialPage = lazy(() => import('../modules/memorial/MemorialPage'));
+const UpcomingIntegrations = lazy(() => import('../modules/integrations/UpcomingIntegrations'));
 
 // SEO Pages - Topic Cluster
 const MortuaryManagementSoftware = lazy(() => import('../modules/seo/MortuaryManagementSoftware'));
@@ -90,6 +92,15 @@ const SettingsPage = lazy(() => import('../components/settings/SettingsPage'));
 const ReleaseFormPage = lazy(() => import('../components/releaseform/ReleaseFormPage'));
 const PostmortemFormPage = lazy(() => import('../components/deceased/deceasedinfo/PostmortemFormPage'));
 const UserManagement = lazy(() => import('../components/modals/users'));
+
+// Landing-page live previews — real modules rendered inside sandboxed iframes
+// by the bento grid on the marketing site (modules/landing/imageCard.jsx)
+const LivePreviewHost = lazy(() => import('../components/common/LivePreviewHost'));
+const BodyIntakePreview = lazy(() => import('../components/deceased/register/deceasedIntake'));
+const FlowerBookingsPreview = lazy(() => import('../components/florists/FlowerBookingsNew'));
+const ReleaseFormPreview = lazy(() => import('../components/releaseform/ReleaseFormPage'));
+const ReceptionPortalPreview = lazy(() => import('../components/reception/ReceptionPortal'));
+
 const PublicMemorialPage = lazy(() => import('../components/memorial/PublicMemorialPage'));
 
 
@@ -104,7 +115,7 @@ const FlowerOrderDetail = lazy(() => import('../components/florists/FlowerOrderD
 const RequestDetail = lazy(() => import('../components/analysis/RequestDetail'));
 
 const HearseBookings = lazy(() => import('../components/hearse/hearseBookings'));
-const DriverPortal = lazy(() => import('../components/hearse/DriverPortal'));
+const DriverPortal = lazy(() => import('../components/Driver/DriverPortal'));
 const LeaveDashboard = lazy(() => import('../components/leave/Dashboard'));
 const ApplyLeave = lazy(() => import('../components/leave/ApplyLeave'));
 const MyLeaves = lazy(() => import('../components/leave/MyLeaves'));
@@ -113,6 +124,22 @@ const MyLeaves = lazy(() => import('../components/leave/MyLeaves'));
 const RouteLoadingFallback = () => (
   <Loader text="Loading" color="#0e3345" />
 );
+
+// System Admin Dashboard — lazy-loaded ONCE at module level (never inside render)
+const AdminSys = lazy(() => import('../components/support/adminsys'));
+
+// Read the logged-in user's role from storage.
+// AuthContext persists `role` in the safe user object at login time.
+const getStoredUserRole = () => {
+  try {
+    const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
+    return raw ? (JSON.parse(raw)?.role || '') : '';
+  } catch {
+    return '';
+  }
+};
+
+const isAdminUser = () => getStoredUserRole() === 'systemadmin';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -320,6 +347,7 @@ const TenantResolver = () => {
 
 const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
   const { slug: urlSlug } = useParams();
+  const location = useLocation();
 
   // Use the resolved tenant slug from TenantResolver, falling back to URL slug
   const slug = propTenantSlug || urlSlug;
@@ -327,15 +355,24 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
   // Always use DashboardLayout with sidebar for all users
   const Layout = DashboardLayout;
 
+  // Hide the notification bell on public-facing client forms (receptionist,
+  // deceased registration and release form pages).
+  const isClientPage =
+    location.pathname.includes('/receptionist') ||
+    location.pathname.includes('/deceased/register') ||
+    location.pathname.includes('/release-form');
+  const showNotificationBell = !isClientPage;
+
   return (
     <>
+      {showNotificationBell && <NotificationBell />}
       <Routes>
         <Route path="/" element={<Navigate to="all-deceased" replace />} />
 
         {/* Dashboard - Standalone full-screen (no global sidebar); nav via top header drawer */}
         <Route path="dashboard" element={
           <Suspense fallback={<RouteLoadingFallback />}>
-            <DashboardPage tenantSlug={slug} tenantData={tenantData} />
+            <DashboardRoleGate tenantSlug={slug} tenantData={tenantData} />
           </Suspense>
         } />
 
@@ -522,6 +559,9 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           <Layout tenantData={tenantData} tenantSlug={slug}><AdminSupportDashboard /></Layout>
         } />
 
+        {/* System Admin Dashboard - role-guarded, reachable under /tenant/:slug/system-admin */}
+        <Route path="system-admin" element={<SystemAdminRoute />} />
+
         {/* 404 */}
         <Route path="*" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><NotFound /></Layout>
@@ -533,18 +573,29 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
 
 // System Admin Route Guard
 const SystemAdminRoute = () => {
-  const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : {};
+  const { user } = useAuth();
   const tenantSlug = localStorage.getItem('tenantSlug') || user?.tenantSlug || '';
 
-  // Only allow systemadmin role
-  if (user?.role !== 'systemadmin') {
+  // Only allow systemadmin role (checks AuthContext user AND persisted storage)
+  if (user?.role !== 'systemadmin' && !isAdminUser()) {
     return <Navigate to={`/tenant/${tenantSlug}/dashboard`} replace />;
   }
 
   // Render the system admin dashboard
-  const AdminSys = lazy(() => import('../components/support/adminsys'));
-  return <AdminSys />;
+  return (
+    <Suspense fallback={<RouteLoadingFallback />}>
+      <AdminSys />
+    </Suspense>
+  );
+};
+
+// Gate on the tenant dashboard route: system admins are bounced to the
+// System Admin console immediately after login instead of the tenant dashboard.
+const DashboardRoleGate = ({ tenantSlug, tenantData }) => {
+  if (isAdminUser()) {
+    return <Navigate to="/system-admin" replace />;
+  }
+  return <DashboardPage tenantSlug={tenantSlug} tenantData={tenantData} />;
 };
 
 const LegacyDeceasedRedirect = () => {
@@ -586,8 +637,8 @@ const DashboardRedirect = () => {
       return;
     }
 
-    if (user?.role === 'systemadmin') {
-      navigate(`/tenant/${finalSlug}/system-admin`, { replace: true });
+    if (user?.role === 'systemadmin' || isAdminUser()) {
+      navigate('/system-admin', { replace: true });
       return;
     }
 
@@ -625,6 +676,7 @@ const AppRouter = () => (
       <Route path="/insurance" element={<InsurancePage />} />
       <Route path="/memorial" element={<MemorialPage />} />
       <Route path="/portal/login" element={<PortalLoginPage />} />
+      <Route path="/integrations" element={<UpcomingIntegrations />} />
 
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
@@ -696,7 +748,16 @@ const AppRouter = () => (
       <Route path="/store" element={<StoreDashboard />} />
       <Route path="/mini-store" element={<StoreDashboard />} />
 
+      {/* Landing-page live previews — real modules shown inside the bento grid
+          cards via sandboxed iframes (see modules/landing/imageCard.jsx).
+          Public on purpose: visitors must see how each module looks. */}
+      <Route path="/preview/body-intake" element={<LivePreviewHost><BodyIntakePreview /></LivePreviewHost>} />
+      <Route path="/preview/flower-bookings" element={<LivePreviewHost><FlowerBookingsPreview /></LivePreviewHost>} />
+      <Route path="/preview/release-form" element={<LivePreviewHost><ReleaseFormPreview /></LivePreviewHost>} />
+      <Route path="/preview/reception-portal" element={<LivePreviewHost><ReceptionPortalPreview /></LivePreviewHost>} />
+
       <Route path="*" element={<LandingPage />} />
+
     </Routes>
   </Suspense>
 );

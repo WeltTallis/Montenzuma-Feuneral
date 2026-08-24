@@ -92,7 +92,6 @@ export async function up(knex) {
   // Worker assignments
   await knex.schema.createTable('worker_assignments', (table) => {
     table.increments('id').primary();
-    table.string('tenant_slug', 100).notNullable().index();
     table.integer('coffin_order_id').unsigned().notNullable();
     table.integer('user_id').unsigned().notNullable();
     table.string('stage', 50).notNullable();

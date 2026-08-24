@@ -308,7 +308,7 @@ export default function DataMigrationPolicy() {
               Data migration is a specialized service that combines automation with careful manual verification. While many parts of the migration process are automated, every migration also requires human review to ensure information is transferred accurately.
             </p>
             <p>
-              This process is intentionally thorough because every funeral home stores information differently, and no two datasets are exactly alike. Our objective is accuracy—not speed at the expense of your records.
+              This process is intentionally thorough because every funeral home stores information differently, and no two datasets are exactly alike. Our objective is accuracy not speed at the expense of your records.
             </p>
           </Reveal>
 
@@ -320,7 +320,7 @@ export default function DataMigrationPolicy() {
                 <div>
                   <h3 style={{ margin: 0, marginBottom: '0.5rem', color: C.ink }}>Our Commitment</h3>
                   <p style={{ margin: 0 }}>
-                    We take this responsibility seriously. Every migration is handled with strict confidentiality, careful verification, and professional attention to detail. All migration personnel operate under a Non-Disclosure Agreement (NDA), and your data is processed solely for the purpose of completing your migration.
+                    We take this responsibility seriously. Every migration is handled with strict confidentiality, careful verification, and professional attention to detail. All migration personnel operate under a Non Disclosure Agreement (NDA), and your data is processed solely for the purpose of completing your migration.
                   </p>
                 </div>
               </div>

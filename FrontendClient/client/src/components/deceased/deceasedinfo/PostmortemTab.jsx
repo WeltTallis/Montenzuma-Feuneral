@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { getTenantSlug } from '../../../utils/globalAuth';
 import { getTenantHeaders } from '../../../api/endpoints';
 import env from '../../../utils/config/env';
 import styled from 'styled-components';
 import { C, formatDate } from './theme';
+import { showToast } from '../../../utils/toast';
 
 const SectionHead = styled.div`
   font-size: 12px; 
@@ -104,10 +106,126 @@ const Btn = styled.button`
   `}
 `;
 
-const PostmortemTab = ({ postmortem, deceasedId }) => {
+// --- Postmortem request tracking (before the official examination exists) ---
+const RequestCard = styled.div`
+  border: 1px solid ${C.borderLight || '#e0e0e0'};
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #ffffff;
+`;
+
+const StatusChip = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  ${p => p.$status === 'sent' && `background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;`}
+  ${p => p.$status === 'initiated' && `background: #fef3c7; color: #92400e; border: 1px solid #fde68a;`}
+  ${p => p.$status === 'cancelled' && `background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; text-decoration: line-through;`}
+`;
+
+const RequestMeta = styled.div`
+  font-size: 12px;
+  color: ${C.gray};
+  margin-top: 4px;
+  line-height: 1.6;
+`;
+
+const FormRow = styled.div`
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+`;
+
+const FormGroup = styled.div`
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const FormLabel = styled.label`
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: ${C.gray};
+`;
+
+const FormInput = styled.input`
+  height: 40px;
+  width: 100%;
+  border: 1px solid ${C.border || '#e0e0e0'};
+  border-radius: 4px;
+  padding: 0 12px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 14px;
+  color: ${C.dark || '#1a1a1a'};
+  background: #ffffff;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: ${C.black};
+  }
+`;
+
+const EmptyNote = styled.p`
+  font-size: 13px;
+  color: ${C.gray};
+  margin: 0 0 16px;
+`;
+
+const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onRequestsChanged }) => {
   const navigate = useNavigate();
   const pm = postmortem || {};
   const tenantSlug = getTenantSlug();
+
+  // Self-managed request tracking - fetches its own data unless a parent
+  // supplies the `requests` prop explicitly.
+  const [ownRequests, setOwnRequests] = useState([]);
+  const requests = requestsProp === undefined ? ownRequests : requestsProp;
+
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [actingRequestId, setActingRequestId] = useState(null);
+  const [requestForm, setRequestForm] = useState({
+    reason: '',
+    requested_by: '',
+    requesting_authority: ''
+  });
+
+  const loadRequests = useCallback(async () => {
+    if (!deceasedId) return;
+    try {
+      const res = await axios.get(`${env.FULL_API_URL}/postmortem-requests`, {
+        headers: getTenantHeaders(),
+        params: { deceased_id: deceasedId },
+      });
+      if (Array.isArray(res.data?.data)) setOwnRequests(res.data.data);
+    } catch (e) { /* no tracked requests yet */ }
+  }, [deceasedId]);
+
+  useEffect(() => {
+    if (requestsProp === undefined) loadRequests();
+  }, [loadRequests, requestsProp]);
+
+  const refreshRequests = async () => {
+    if (onRequestsChanged) await onRequestsChanged();
+    else await loadRequests();
+  };
 
   const hasData = pm.immediate_cause_of_death || pm.manner_of_death || pm.examination_summary;
 
@@ -144,6 +262,77 @@ const PostmortemTab = ({ postmortem, deceasedId }) => {
     }
   };
 
+  // --- Tracked request actions (before the official examination exists) ---
+  const initiateRequest = async (e) => {
+    e.preventDefault();
+    if (!requestForm.reason || !requestForm.requested_by) {
+      showToast.error('Requested-by and reason are required');
+      return;
+    }
+    setSubmittingRequest(true);
+    try {
+      const res = await axios.post(
+        `${env.FULL_API_URL}/postmortem-requests`,
+        { deceased_id: deceasedId, ...requestForm },
+        { headers: getTenantHeaders() }
+      );
+      if (res.data?.success) {
+        showToast.success('Postmortem request initiated');
+        setShowRequestForm(false);
+        setRequestForm({ reason: '', requested_by: '', requesting_authority: '' });
+        await refreshRequests();
+      } else {
+        throw new Error(res.data?.message || 'Failed to initiate request');
+      }
+    } catch (err) {
+      showToast.error(err.response?.data?.message || err.message || 'Failed to initiate postmortem request');
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
+
+  const sendRequest = async (id) => {
+    setActingRequestId(id);
+    try {
+      const res = await axios.post(
+        `${env.FULL_API_URL}/postmortem-requests/${id}/send`,
+        {},
+        { headers: getTenantHeaders() }
+      );
+      if (res.data?.success) {
+        showToast.success('Marked as sent - postmortem is now pending');
+        await refreshRequests();
+      } else {
+        throw new Error(res.data?.message || 'Failed to send request');
+      }
+    } catch (err) {
+      showToast.error(err.response?.data?.message || err.message || 'Failed to send postmortem request');
+    } finally {
+      setActingRequestId(null);
+    }
+  };
+
+  const cancelRequest = async (id) => {
+    setActingRequestId(id);
+    try {
+      const res = await axios.put(
+        `${env.FULL_API_URL}/postmortem-requests/${id}/status`,
+        { status: 'cancelled' },
+        { headers: getTenantHeaders() }
+      );
+      if (res.data?.success) {
+        showToast.success('Postmortem request cancelled');
+        await refreshRequests();
+      } else {
+        throw new Error(res.data?.message || 'Failed to cancel request');
+      }
+    } catch (err) {
+      showToast.error(err.response?.data?.message || err.message || 'Failed to cancel postmortem request');
+    } finally {
+      setActingRequestId(null);
+    }
+  };
+
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24, gap: 12 }}>
@@ -155,7 +344,99 @@ const PostmortemTab = ({ postmortem, deceasedId }) => {
         </Btn>
       </div>
 
-      <SectionHead $mt0 $primary><span>01</span> Official Determination of Death</SectionHead>
+      {/* --- 00: Pre-examination request tracking --- */}
+      <SectionHead $mt0><span>00</span> Postmortem Requests</SectionHead>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <EmptyNote style={{ marginBottom: 0 }}>
+          Track who requested a postmortem before the official examination is carried out.
+        </EmptyNote>
+        {!showRequestForm && (
+          <Btn onClick={() => setShowRequestForm(true)}>+ Initiate Request</Btn>
+        )}
+      </div>
+
+      {showRequestForm && (
+        <form
+          onSubmit={initiateRequest}
+          style={{ border: `1px solid ${C.borderLight || '#e0e0e0'}`, borderRadius: 4, padding: 16, marginBottom: 20 }}
+        >
+          <FormRow>
+            <FormGroup>
+              <FormLabel>Requested By *</FormLabel>
+              <FormInput
+                value={requestForm.requested_by}
+                onChange={(e) => setRequestForm({ ...requestForm, requested_by: e.target.value })}
+                placeholder="e.g. Jane Wambui (Family)"
+                required
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Requesting Authority</FormLabel>
+              <FormInput
+                value={requestForm.requesting_authority}
+                onChange={(e) => setRequestForm({ ...requestForm, requesting_authority: e.target.value })}
+                placeholder="e.g. Kenyatta National Hospital"
+              />
+            </FormGroup>
+          </FormRow>
+          <FormRow>
+            <FormGroup style={{ flex: 2 }}>
+              <FormLabel>Reason *</FormLabel>
+              <FormInput
+                value={requestForm.reason}
+                onChange={(e) => setRequestForm({ ...requestForm, reason: e.target.value })}
+                placeholder="Why is the postmortem being requested?"
+                required
+              />
+            </FormGroup>
+          </FormRow>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+            <Btn type="button" onClick={() => setShowRequestForm(false)}>Cancel</Btn>
+            <Btn $primary type="submit" disabled={submittingRequest}>
+              {submittingRequest ? 'Initiating...' : 'Initiate Request'}
+            </Btn>
+          </div>
+        </form>
+      )}
+
+      {(!requests || requests.length === 0 && !showRequestForm) ? (
+        <EmptyNote>No postmortem requests tracked yet.</EmptyNote>
+      ) : (
+        requests.map((r) => (
+          <RequestCard key={r.id}>
+            <div style={{ minWidth: 220, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <strong style={{ fontSize: 14 }}>{r.request_ref || r.requested_by}</strong>
+                <StatusChip $status={r.status}>{r.status}</StatusChip>
+              </div>
+              <RequestMeta>
+                Requested by <strong>{r.requested_by || '—'}</strong>
+                {r.requesting_authority ? <> · Authority: {r.requesting_authority}</> : null}
+                <br />
+                Reason: {r.reason || '—'}
+                <br />
+                Initiated {formatDate(r.created_at)}
+                {r.sent_at ? ` · Sent ${formatDate(r.sent_at)}` : ''}
+              </RequestMeta>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {r.status === 'initiated' && (
+                <>
+                  <Btn $primary onClick={() => sendRequest(r.id)} disabled={actingRequestId === r.id}>
+                    {actingRequestId === r.id ? 'Sending...' : 'Mark as Sent'}
+                  </Btn>
+                  <Btn onClick={() => cancelRequest(r.id)} disabled={actingRequestId === r.id}>Cancel</Btn>
+                </>
+              )}
+              {r.status === 'sent' && (
+                <span style={{ fontSize: 12, color: C.gray }}>Sent to authority · awaiting examination</span>
+              )}
+            </div>
+          </RequestCard>
+        ))
+      )}
+
+      <SectionHead $primary><span>01</span> Official Determination of Death</SectionHead>
       <DetailGrid>
         <DetailItem $full><DetailLabel>Immediate Cause of Death</DetailLabel><DetailValue>{pm.immediate_cause_of_death || '—'}</DetailValue></DetailItem>
         <DetailItem $full><DetailLabel>Underlying Cause of Death</DetailLabel><DetailValue>{pm.underlying_cause_of_death || '—'}</DetailValue></DetailItem>

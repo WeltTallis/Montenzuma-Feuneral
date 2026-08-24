@@ -126,27 +126,11 @@ export async function autoInitSystemAdmin() {
     `);
         console.log('Ensured users table');
 
-        // NOW check if system admin already exists
-        const [existingUsers] = await connection.query(
-            'SELECT user_id, role FROM users WHERE email = ?',
-            [SYSTEM_ADMIN.email]
-        );
-
-        if (existingUsers.length > 0) {
-            const user = existingUsers[0];
-            if (user.role === 'systemadmin') {
-                console.log('✅ System admin already exists and has correct role');
-                return { success: true, message: 'System admin already initialized', userId: user.user_id };
-            } else {
-                // Update role to systemadmin if it's different
-                await connection.query(
-                    'UPDATE users SET role = ? WHERE email = ?',
-                    ['systemadmin', SYSTEM_ADMIN.email]
-                );
-                console.log('✅ Updated system admin role to systemadmin');
-                return { success: true, message: 'System admin role updated', userId: user.user_id };
-            }
-        }
+        // NOTE: The old early-return for an existing admin was removed.
+        // It skipped the tenant-database mirroring below, which broke logins
+        // ("Invalid email or password") because login reads credentials from
+        // the TENANT database, not from tenant_tracking.users.
+        // The upserts below are idempotent and run on every startup.
 
         // Create or update tenant
         await connection.query(`
@@ -174,6 +158,61 @@ export async function autoInitSystemAdmin() {
 
         if (!tenantId) {
             throw new Error('Failed to get tenant_id');
+        }
+
+        // ================================================================
+        // IMPORTANT: mirror the admin user into the TENANT'S OWN database.
+        // The login flow resolves credentials from `<tenants.db_name>.users`
+        // (see findUserInTenantDB in authController.ts), NOT from
+        // tenant_tracking.users. Without this, logging in with the default
+        // admin credentials fails with "Invalid email or password".
+        // ================================================================
+        try {
+            await connection.query(`CREATE DATABASE IF NOT EXISTS \`${SYSTEM_ADMIN.dbName}\``);
+            await connection.query(`USE \`${SYSTEM_ADMIN.dbName}\``);
+            await connection.query(`
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id INT AUTO_INCREMENT PRIMARY KEY,
+                    email VARCHAR(255) NOT NULL UNIQUE,
+                    username VARCHAR(255) NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    full_name VARCHAR(255) NOT NULL,
+                    phone VARCHAR(20),
+                    role VARCHAR(50) DEFAULT 'admin',
+                    tenant_id INT NULL,
+                    branch_id INT NULL,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    is_verified BOOLEAN DEFAULT TRUE,
+                    last_login_at VARCHAR(255) NULL,
+                    created_at VARCHAR(255),
+                    updated_at VARCHAR(255),
+                    INDEX idx_email (email),
+                    INDEX idx_role (role)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            `);
+            const mirrorHash = bcrypt.hashSync(SYSTEM_ADMIN.password, 10);
+            await connection.query(`
+                INSERT INTO users (email, password_hash, full_name, phone, role, tenant_id, is_active, is_verified)
+                VALUES (?, ?, ?, ?, ?, ?, 1, 1)
+                ON DUPLICATE KEY UPDATE
+                    password_hash = VALUES(password_hash),
+                    role = VALUES(role),
+                    tenant_id = VALUES(tenant_id),
+                    is_active = 1,
+                    is_verified = 1
+            `, [
+                SYSTEM_ADMIN.email,
+                mirrorHash,
+                SYSTEM_ADMIN.fullName,
+                SYSTEM_ADMIN.phone,
+                SYSTEM_ADMIN.role,
+                tenantId
+            ]);
+            await connection.query('USE tenant_tracking');
+            console.log(`✅ System admin ensured inside tenant database '${SYSTEM_ADMIN.dbName}'`);
+        } catch (mirrorErr: any) {
+            try { await connection.query('USE tenant_tracking'); } catch { /* ignore */ }
+            console.warn(`⚠️  Could not mirror admin into tenant DB '${SYSTEM_ADMIN.dbName}': ${mirrorErr?.message || mirrorErr}`);
         }
 
         // Hash password

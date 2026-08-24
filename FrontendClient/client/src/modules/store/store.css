@@ -155,18 +155,40 @@
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
 }
 
-.mini-store .stat-card-color {
+.mini-store .stat-strip { display: flex; align-items: stretch; gap: 10px; margin-bottom: 1.25rem; }
+.mini-store .stat-tile {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 12px;
   color: #fff;
-  box-shadow: 0 12px 22px rgba(14, 74, 107, 0.10);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-
-.mini-store .stat-card-color:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 16px 26px rgba(14, 74, 107, 0.12);
+.mini-store .stat-tile:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18); }
+.mini-store .stat-tile-ico {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
 }
-
-.mini-store .stat-icon { width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; }
-.mini-store .stock-gauge { display: block; }
+.mini-store .stat-tile-info { display: flex; flex-direction: column; min-width: 0; }
+.mini-store .stat-tile-num { font-size: 22px; font-weight: 800; line-height: 1; color: #fff; }
+.mini-store .stat-tile-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 3px;
+}
 
 .mini-store .badge-out { background: var(--k-danger-soft); color: var(--k-danger-dark); }
 .mini-store .badge-low { background: var(--k-warning-soft); color: var(--k-warning-dark); }
@@ -262,7 +284,58 @@
 
 .mini-store .low-bar .fill { height: 100%; border-radius: 9999px; }
 
-.mini-store .cal-day { width: 32px; height: 32px; }
+.mini-store .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mini-store .cal-title { font-size: 13px; font-weight: 700; color: #111827; }
+.mini-store .cal-nav { display: flex; gap: 2px; }
+.mini-store .cal-nav-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #6b7280;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+}
+.mini-store .cal-nav-btn:hover { border-color: #0f766e; color: #0f766e; }
+.mini-store .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; text-align: center; }
+.mini-store .cal-dow {
+  font-size: 9px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 5px 0;
+}
+.mini-store .cal-day {
+  position: relative;
+  font-size: 11px;
+  font-weight: 500;
+  color: #374151;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  padding: 0;
+}
+.mini-store .cal-day:hover:not(:disabled):not(.selected) { background: #f9fafb; }
+.mini-store .cal-day:disabled { opacity: 0.15; cursor: default; }
+.mini-store .cal-day.today { font-weight: 800; color: #0f766e; background: #f0fdfa; }
+.mini-store .cal-day.selected { background: #0f766e; color: #fff; font-weight: 700; }
+.mini-store .cal-dots { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); display: flex; gap: 1.5px; }
+.mini-store .cal-dot { width: 3.5px; height: 3.5px; border-radius: 50%; flex-shrink: 0; }
 .mini-store .connection-badge { font-size: .725rem; font-weight: 700; }
 .mini-store .quick-btn {
   font-size: .72rem;
@@ -307,6 +380,6 @@
   .mini-store .modal-content { border-radius: 18px 18px 0 0; border: 0; max-height: 90vh; }
   .mini-store .modal-body { overflow-y: auto; }
 
-  .mini-store .stat-card-color .card-body { padding: .9rem .4rem; }
+  .mini-store .stat-strip { margin-bottom: 1rem; }
   .mini-store .panel { overflow-x: auto; }
 }

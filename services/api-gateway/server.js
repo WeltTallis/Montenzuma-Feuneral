@@ -290,6 +290,7 @@ const SERVICE_ROUTES = {
   'deceased': SERVICE_URLS.deceased,
   'autopsy': SERVICE_URLS.deceased,
   'postmortem': SERVICE_URLS.deceased,
+  'postmortem-requests': SERVICE_URLS.deceased,
   'charges': SERVICE_URLS.deceased,
   'payments': SERVICE_URLS.deceased,
   'charge-settings': SERVICE_URLS.deceased,

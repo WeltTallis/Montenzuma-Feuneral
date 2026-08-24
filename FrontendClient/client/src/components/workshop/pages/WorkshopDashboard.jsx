@@ -4,11 +4,11 @@ import { workshopService } from '../services/workshopService';
 
 import WorkshopTabs from './WorkshopTabs';
 import DashboardTab from './DashboardTab';
-import OrdersTab from './OrdersTab';
 import MaterialsTab from './MaterialsTab';
-import StoreTab from './StoreTab';
 import AnalyticsTab from './AnalyticsTab';
 import ModalRouter from './ModalRouter';
+import OrdersTab from './OrdersTab';
+import StoreTab from './StoreTab';
 import Toasts from './Toasts';
 
 export const Ctx = createContext(null);
@@ -21,7 +21,7 @@ const STAGES = [
   { name: 'Store', icon: 'fa-warehouse', color: '#059669', bg: '#ECFDF5' },
 ];
 
-const AVATAR_COLORS = ['#1E40AF','#7C3AED','#0891B2','#059669','#D97706','#DB2777','#EA580C','#0D9488'];
+const AVATAR_COLORS = ['#1E40AF', '#7C3AED', '#0891B2', '#059669', '#D97706', '#DB2777', '#EA580C', '#0D9488'];
 
 const STATUS_TO_STAGE = {
   'pending': 0, 'building': 0, 'design': 0,
@@ -138,76 +138,76 @@ const WorkshopDashboard = () => {
   }, [addToast]);
 
   useEffect(() => { loadData(); }, [loadData]);
-// ============================================
-// FIXED: Socket.io Event Handlers with Error Handling
-// ============================================
-useEffect(() => {
-  if (!socket) {
-    console.warn('Socket not available - events not registered');
-    return;
-  }
-
-  // Check if socket is connected
-  if (!socket.connected) {
-    console.warn('Socket not connected - events may not work');
-  }
-
-  // Event handlers with error handling
-  const handlers = {
-    'worker:created': () => {
-      addToast('Worker created successfully', 'success');
-      loadData();
-    },
-    'worker:deleted': () => {
-      addToast('Worker removed successfully', 'info');
-      loadData();
-    },
-    'order:created': () => {
-      addToast('New order created', 'success');
-      loadData();
-    },
-    'order:deleted': () => {
-      addToast('Order deleted', 'info');
-      loadData();
-    },
-    'order:status:changed': (data) => {
-      addToast(`Order status updated to: ${data?.status || 'new status'}`, 'success');
-      loadData();
-    },
-    'production:stage:updated': (data) => {
-      loadData();
-    },
-    'production:stage:done': (data) => {
-      addToast(`Stage ${data?.stage || ''} completed`, 'success');
-      loadData();
-    },
-    'material:used': (data) => {
-      addToast(`Material ${data?.material || ''} used`, 'info');
-      loadData();
-    },
-    // Error handler for socket events
-    'error': (error) => {
-      console.error('Socket error:', error);
-      addToast(`Socket error: ${error?.message || 'Unknown error'}`, 'error');
+  // ============================================
+  // FIXED: Socket.io Event Handlers with Error Handling
+  // ============================================
+  useEffect(() => {
+    if (!socket) {
+      console.warn('Socket not available - events not registered');
+      return;
     }
-  };
 
-  // Register all event listeners
-  Object.entries(handlers).forEach(([event, handler]) => {
-    socket.on(event, handler);
-  });
+    // Check if socket is connected
+    if (!socket.connected) {
+      console.warn('Socket not connected - events may not work');
+    }
 
-  // Cleanup function
-  return () => {
+    // Event handlers with error handling
+    const handlers = {
+      'worker:created': () => {
+        addToast('Worker created successfully', 'success');
+        loadData();
+      },
+      'worker:deleted': () => {
+        addToast('Worker removed successfully', 'info');
+        loadData();
+      },
+      'order:created': () => {
+        addToast('New order created', 'success');
+        loadData();
+      },
+      'order:deleted': () => {
+        addToast('Order deleted', 'info');
+        loadData();
+      },
+      'order:status:changed': (data) => {
+        addToast(`Order status updated to: ${data?.status || 'new status'}`, 'success');
+        loadData();
+      },
+      'production:stage:updated': (data) => {
+        loadData();
+      },
+      'production:stage:done': (data) => {
+        addToast(`Stage ${data?.stage || ''} completed`, 'success');
+        loadData();
+      },
+      'material:used': (data) => {
+        addToast(`Material ${data?.material || ''} used`, 'info');
+        loadData();
+      },
+      // Error handler for socket events
+      'error': (error) => {
+        console.error('Socket error:', error);
+        addToast(`Socket error: ${error?.message || 'Unknown error'}`, 'error');
+      }
+    };
+
+    // Register all event listeners
     Object.entries(handlers).forEach(([event, handler]) => {
-      socket.off(event, handler);
+      socket.on(event, handler);
     });
-  };
-}, [socket, addToast, loadData]);
 
-// ============================================
-// Create Order Function
-// ============================================
+    // Cleanup function
+    return () => {
+      Object.entries(handlers).forEach(([event, handler]) => {
+        socket.off(event, handler);
+      });
+    };
+  }, [socket, addToast, loadData]);
+
+  // ============================================
+  // Create Order Function
+  // ============================================
   const createOrder = async (orderData) => {
     try {
       if (!orderData.coffin_name) {
@@ -220,59 +220,60 @@ useEffect(() => {
         addToast('Failed to create order: ' + msg, 'error');
         return;
       }
-      addToast('Order created successfully', 'success'); setModal(null); loadData(); }
+      addToast('Order created successfully', 'success'); setModal(null); loadData();
+    }
     catch (err) { addToast('Failed to create order: ' + (err.message || 'Unknown error'), 'error'); }
   };
 
-// FIXED: Optional - Add Socket Connection Status
-// ============================================
-useEffect(() => {
-  if (!socket) return;
+  // FIXED: Optional - Add Socket Connection Status
+  // ============================================
+  useEffect(() => {
+    if (!socket) return;
 
-  // Handle connection status
-  const onConnect = () => {
-    console.log('Socket connected - real-time updates active');
-    addToast('Connected to real-time updates', 'info');
-  };
+    // Handle connection status
+    const onConnect = () => {
+      console.log('Socket connected - real-time updates active');
+      addToast('Connected to real-time updates', 'info');
+    };
 
-  const onDisconnect = () => {
-    console.warn('Socket disconnected - real-time updates paused');
-    addToast('Disconnected from real-time updates', 'warning');
-  };
+    const onDisconnect = () => {
+      console.warn('Socket disconnected - real-time updates paused');
+      addToast('Disconnected from real-time updates', 'warning');
+    };
 
-  const onConnectError = (error) => {
-    console.error('Socket connection error:', error);
-    addToast('Real-time updates unavailable', 'warning');
-  };
+    const onConnectError = (error) => {
+      console.error('Socket connection error:', error);
+      addToast('Real-time updates unavailable', 'warning');
+    };
 
-  socket.on('connect', onConnect);
-  socket.on('disconnect', onDisconnect);
-  socket.on('connect_error', onConnectError);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('connect_error', onConnectError);
 
-  return () => {
-    socket.off('connect', onConnect);
-    socket.off('disconnect', onDisconnect);
-    socket.off('connect_error', onConnectError);
-  };
-}, [socket, addToast]);
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('connect_error', onConnectError);
+    };
+  }, [socket, addToast]);
 
-// ============================================
-// OPTIONAL: Add a check if socket is connected before sending
-// ============================================
-const emitSocketEvent = useCallback((event, data) => {
-  if (!socket) {
-    console.warn('Socket not available');
-    return false;
-  }
-  if (!socket.connected) {
-    console.warn('Socket not connected');
-    return false;
-  }
-  
-  socket.emit(event, data);
-  
-  return true;
-}, [socket]);
+  // ============================================
+  // OPTIONAL: Add a check if socket is connected before sending
+  // ============================================
+  const emitSocketEvent = useCallback((event, data) => {
+    if (!socket) {
+      console.warn('Socket not available');
+      return false;
+    }
+    if (!socket.connected) {
+      console.warn('Socket not connected');
+      return false;
+    }
+
+    socket.emit(event, data);
+
+    return true;
+  }, [socket]);
 
   const updateOrderStatus = async (orderId, status) => {
     const result = await workshopService.updateOrderStatus(orderId, status);
@@ -330,29 +331,29 @@ const emitSocketEvent = useCallback((event, data) => {
   if (loading && !orders.length) {
     return (
       <Ctx.Provider value={value}>
-      <div style={{
-        minHeight: '100vh',
-        background: S.bg,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        flexDirection: 'column',
-        fontFamily: S.font,
-        color: S.textMuted,
-      }}>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         <div style={{
-          width: 48,
-          height: 48,
-          border: `4px solid ${S.border}`,
-          borderTopColor: S.primary,
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }} />
-        <div style={{ fontSize: 15, fontWeight: 600, marginTop: 16 }}>
-          Loading workshop data...
+          minHeight: '100vh',
+          background: S.bg,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          flexDirection: 'column',
+          fontFamily: S.font,
+          color: S.textMuted,
+        }}>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <div style={{
+            width: 48,
+            height: 48,
+            border: `4px solid ${S.border}`,
+            borderTopColor: S.primary,
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }} />
+          <div style={{ fontSize: 15, fontWeight: 600, marginTop: 16 }}>
+            Loading workshop data...
+          </div>
         </div>
-      </div>
       </Ctx.Provider>
     );
   }
@@ -361,68 +362,68 @@ const emitSocketEvent = useCallback((event, data) => {
   if (error && !orders.length) {
     return (
       <Ctx.Provider value={value}>
-      <div style={{
-        minHeight: '100vh',
-        background: S.bg,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 24,
-        fontFamily: S.font,
-      }}>
         <div style={{
-          textAlign: 'center',
-          padding: 40,
-          background: '#fff',
-          borderRadius: 16,
-          border: `1px solid ${S.dangerLight}`,
-          boxShadow: S.shadowLg,
-          maxWidth: 420,
+          minHeight: '100vh',
+          background: S.bg,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 24,
+          fontFamily: S.font,
         }}>
           <div style={{
-            width: 56,
-            height: 56,
-            background: S.dangerLight,
-            color: S.danger,
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 20px',
-            fontSize: 24,
+            textAlign: 'center',
+            padding: 40,
+            background: '#fff',
+            borderRadius: 16,
+            border: `1px solid ${S.dangerLight}`,
+            boxShadow: S.shadowLg,
+            maxWidth: 420,
           }}>
-            <i className="fas fa-exclamation-triangle"></i>
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: S.text, marginBottom: 8 }}>
-            Connection Error
-          </div>
-          <div style={{ fontSize: 14, color: S.textMuted, marginBottom: 24, lineHeight: 1.5 }}>
-            {error}
-          </div>
-          <button 
-            onClick={loadData} 
-            style={{
-              background: S.primary,
-              color: '#fff',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: 8,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
+            <div style={{
+              width: 56,
+              height: 56,
+              background: S.dangerLight,
+              color: S.danger,
+              borderRadius: '50%',
+              display: 'flex',
               alignItems: 'center',
-              gap: 8,
-              fontSize: 14,
-              transition: S.transition,
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = S.primaryDark}
-            onMouseLeave={e => e.currentTarget.style.background = S.primary}
-          >
-            <i className="fas fa-redo" style={{ fontSize: 12 }} /> Retry Connection
-          </button>
+              justifyContent: 'center',
+              margin: '0 auto 20px',
+              fontSize: 24,
+            }}>
+              <i className="fas fa-exclamation-triangle"></i>
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: S.text, marginBottom: 8 }}>
+              Connection Error
+            </div>
+            <div style={{ fontSize: 14, color: S.textMuted, marginBottom: 24, lineHeight: 1.5 }}>
+              {error}
+            </div>
+            <button
+              onClick={loadData}
+              style={{
+                background: S.primary,
+                color: '#fff',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: 8,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 14,
+                transition: S.transition,
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = S.primaryDark}
+              onMouseLeave={e => e.currentTarget.style.background = S.primary}
+            >
+              <i className="fas fa-redo" style={{ fontSize: 12 }} /> Retry Connection
+            </button>
+          </div>
         </div>
-      </div>
       </Ctx.Provider>
     );
   }
@@ -430,12 +431,12 @@ const emitSocketEvent = useCallback((event, data) => {
   // ─── Main Render ────────────────────────────────────────────────────
   return (
     <Ctx.Provider value={value}>
-            <style>{`
+      <style>{`
         body { font-family: ${S.font}; background-color: ${S.bg}; }
         * { box-sizing: border-box; }
       `}</style>
-      <div style={{  
-        minHeight: '100vh', 
+      <div style={{
+        minHeight: '100vh',
         background: S.bg,
         color: S.text,
         WebkitFontSmoothing: 'antialiased'
@@ -450,8 +451,8 @@ const emitSocketEvent = useCallback((event, data) => {
             {tab === 'analytics' && <AnalyticsTab />}
           </div>
         </div>
-        {modal && <ModalRouter 
-          type={modal} 
+        {modal && <ModalRouter
+          type={modal}
           onClose={() => setModal(null)}
           onSubmit={modal === 'createWorker' ? createWorker : modal === 'createMaterial' ? addMaterial : modal === 'createOrder' ? createOrder : undefined}
           workers={workers}

@@ -448,6 +448,7 @@ const ExportModal = ({
   isExporting,
   filters,
 }) => {
+
   // Export Options State
   const [reportPeriod, setReportPeriod] = useState('thisMonth');
   const [customStartDate, setCustomStartDate] = useState('');

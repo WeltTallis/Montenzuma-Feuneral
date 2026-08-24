@@ -14,7 +14,6 @@ import OverviewTab from './OverviewTab';
 import AdmissionTab from './AdmissionTab';
 import PostmortemTab from './PostmortemTab';
 import FinancialsTab from './FinancialsTab';
-import BookingsTab from './BookingsTab';
 import ReleaseTab from './ReleaseTab';
 import DocumentsTab from './DocumentsTab';
 import AuditLogTab from './AuditLogTab';
@@ -145,7 +144,6 @@ const TABS = [
   { key: 'admission', label: 'Admission' },
   { key: 'postmortem', label: 'Postmortem' },
   { key: 'financials', label: 'Financials' },
-  { key: 'bookings', label: 'Bookings' },
   { key: 'release', label: 'Release' },
   { key: 'docs', label: 'Documents' },
   { key: 'audit', label: 'Audit Log' },
@@ -344,10 +342,6 @@ const DeceasedDetailPage = () => {
                   Set Charge Rates
                 </ChargeSettingsButton>
                 <FinancialsTab charges={charges} payments={payments} deceasedId={deceasedId} />
-              </TabPane>
-              
-              <TabPane $active={activeTab === 'bookings'}>
-                <BookingsTab deceased={deceased} />
               </TabPane>
               
               <TabPane $active={activeTab === 'release'}>

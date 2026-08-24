@@ -1,4 +1,3 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -17,31 +16,20 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'x-tenant-id', 'x-user-id']
 }));
+
+
 app.use(helmet());
 app.use(express.json());
 
 // ============ GLOBAL UPLOADS CONFIGURATION ============
 // Use global uploads folder (same as coffin service)
 const getGlobalUploadsDir = () => {
-  // 1) Honour the platform-wide configured store FIRST (/opt/storage/uploads),
-  //    shared by every service, instead of a repo-local process.cwd() folder.
-  for (const envDir of [process.env.GLOBAL_UPLOADS_DIR, process.env.UPLOADS_BASE_DIR].filter(Boolean)) {
-    try {
-      fs.mkdirSync(envDir, { recursive: true });
-      return envDir;
-    } catch (e) {
-      console.warn(`[DOCUMENTS] GLOBAL_UPLOADS_DIR/UPLOADS_BASE_DIR (${envDir}) not writable, trying fallback:`, e.message);
-    }
-  }
-
-  // 2) Backward-compatible local fallbacks (project-local)
   const possiblePaths = [
     path.join(process.cwd(), 'uploads'),
     path.join(__dirname, '../../uploads'),
     path.join(__dirname, '../../../uploads'),
   ];
 
-  
   // Return the first path that exists or can be created
   for (const basePath of possiblePaths) {
     try {
@@ -53,7 +41,7 @@ const getGlobalUploadsDir = () => {
       continue;
     }
   }
-  
+
   // Fallback to temp directory
   return path.join(require('os').tmpdir(), 'restpoint-uploads');
 };
@@ -185,7 +173,7 @@ app.get('/api/v1/restpoint/documents/:deceasedId', async (req, res) => {
     }));
   } catch (dbError) {
     console.warn(`[DOCUMENTS] DB query failed for listing, falling back to filesystem: ${dbError.message}`);
-    
+
     // Fallback: List files from filesystem
     const uploadDir = path.join(GLOBAL_UPLOADS_DIR, 'documents', tenantSlug, deceasedId);
     if (fs.existsSync(uploadDir)) {

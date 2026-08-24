@@ -163,6 +163,10 @@ const forceLogout = (message = 'Your session has expired. Please log in again.')
     window.dispatchEvent(new CustomEvent('auth-event', {
       detail: { type: 'logout', reason: message }
     }));
+    // Landing-page live previews run the real modules inside sandboxed iframes
+    // (see components/common/LivePreviewHost.jsx). Never hijack those frames to
+    // /login — let the module render its own empty state instead.
+    if (sessionStorage.getItem('rpPreviewMode') === '1') return;
     window.location.href = '/login';
   }
 };

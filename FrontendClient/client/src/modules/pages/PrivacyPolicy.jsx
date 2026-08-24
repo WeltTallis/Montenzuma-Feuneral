@@ -143,7 +143,7 @@ export default function PrivacyPolicy() {
           <Reveal delay={400}>
             <h2>Contact</h2>
             <div className="contact-box">
-              <p style={{ margin: 0, fontSize: '0.95rem' }}>For privacy-related inquiries:</p>
+              <p style={{ margin: 0, fontSize: '0.95rem' }}>For privacy related inquiries:</p>
               <p style={{ margin: '0.5rem 0 0 0' }}><a href="mailto:privacy@restpoint.co.ke" style={{ color: C.brassLight, textDecoration: 'none', fontWeight: 500 }}>privacy@restpoint.co.ke</a></p>
             </div>
           </Reveal>

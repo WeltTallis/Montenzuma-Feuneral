@@ -17,6 +17,10 @@ const getOrders = async (req: Request, res: Response) => {
         let query = `
             SELECT co.*,
                 COALESCE((SELECT SUM(wa.hours_worked) FROM worker_assignments wa WHERE wa.coffin_order_id = co.id), 0) as total_labor_hours,
+                (SELECT w.id FROM worker_assignments wa
+                 JOIN workshop_workers w ON wa.user_id = w.id
+                 WHERE wa.coffin_order_id = co.id
+                 ORDER BY wa.assigned_at DESC LIMIT 1) as assigned_to,
                 (SELECT w.full_name FROM worker_assignments wa
                  JOIN workshop_workers w ON wa.user_id = w.id
                  WHERE wa.coffin_order_id = co.id
@@ -42,6 +46,30 @@ const getOrders = async (req: Request, res: Response) => {
         query += ' ORDER BY co.created_at DESC';
 
         const rows = await safeTenantQuery(tenantDb, query, params);
+
+        // Attach each order's worker assignments so the front-end analytics
+        // (hours worked, stage breakdown, per-worker production) has real data.
+        // A single bulk query avoids N+1 round-trips; orders without any
+        // assignment simply keep an empty assignments array.
+        if (rows.length) {
+            const ids = rows.map((r: any) => r.id);
+            const placeholders = ids.map(() => '?').join(',');
+            const assignments: any = await safeTenantQuery(
+                tenantDb,
+                `SELECT wa.*, w.id AS user_id, w.full_name
+                 FROM worker_assignments wa
+                 JOIN workshop_workers w ON wa.user_id = w.id
+                 WHERE wa.coffin_order_id IN (${placeholders})
+                 ORDER BY wa.assigned_at`,
+                ids
+            );
+            const byOrder: Record<number, any[]> = {};
+            assignments.forEach((a: any) => {
+                (byOrder[a.coffin_order_id] = byOrder[a.coffin_order_id] || []).push(a);
+            });
+            rows.forEach((r: any) => { r.assignments = byOrder[r.id] || []; });
+        }
+
         res.json(rows);
     } catch (error: any) {
         res.status(500).json({ error: error.message });

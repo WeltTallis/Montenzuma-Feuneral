@@ -1,268 +1,341 @@
 import { Request, Response } from 'express';
-import { query, execute, resolveDatabase, safeTenantExecute, safeTenantQuery } from '../../../shared/dbConfig';
+import { DateTime } from 'luxon';
+
+import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../shared/dbConfig';
 import Logger from '../../../packages/shared-logger/src/index';
 
-// Mock data for development - will be replaced with actual DB queries
-let mockCharges: any[] = [];
-let mockPayments: any[] = [];
+interface TenantRequest extends Request {
+    tenantSlug?: string;
+}
 
-/**     
- * GET /charges/:deceased_id
- * Get all charges for a deceased
- */    
-
-export const getCharges = async (req: Request, res: Response) => {
-  try {
-    const { deceased_id } = req.params;
-    const tenantSlug = (req as any).headers['x-slug'] || (req as any).headers['x-tenant-slug'] || 'system_shared';
-    
-    // Filter charges for this deceased
-    const charges = mockCharges.filter(c => c.deceased_id === deceased_id);
-    
-    return res.json({
-      success: true,
-      data: charges,
-      message: 'Charges retrieved successfully'
-    });
-  } catch (error: any) {
-    console.error('Error getting charges:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to retrieve charges'
-    });
-  }
+const nowNairobi = (): string => {
+    return DateTime.now().setZone('Africa/Nairobi').toFormat('yyyy-MM-dd HH:mm:ss');
 };
 
-/**
- * POST /charges
- * Add a new charge
- */
+const getTenantSlugFromReq = (req: TenantRequest): string => {
+    return ((req.headers['x-slug'] as string) || (req.headers['x-tenant-slug'] as string) || req.tenantSlug || 'system_shared');
+};
 
-export const addCharge = async (req: Request, res: Response) => {
-  try {
-    const chargeData = req.body;
-    const tenantSlug = (req as any).headers['x-slug'] || (req as any).headers['x-tenant-slug'] || 'system_shared';
-    const newCharge = {
-      id: Date.now().toString(),
-      ...chargeData,
-      created_at: new Date().toISOString()
-    };
-    mockCharges.push(newCharge);
-    
-    // ==============================
-    // EMIT CHARGE NOTIFICATION
-    // ==============================
-    try {
-      const axios = require('axios');
-      const configuredUrl = process.env.SOCKETIO_SERVICE_URL || '';
-      const candidateUrls = [
-        configuredUrl,
-        'http://localhost:5018',
-        'http://127.0.0.1:5018',
-      ].filter(Boolean);
+// ---------------------------------------------------------------------------
+// Currency / method normalisation - billing on the deceased profile is USD-first
+// ---------------------------------------------------------------------------
+const ALLOWED_CURRENCIES = ['KES', 'USD', 'EUR', 'GBP'];
+const normalizeCurrency = (c: any): string => {
+    const upper = String(c || '').toUpperCase();
+    return ALLOWED_CURRENCIES.includes(upper) ? upper : 'USD';
+};
 
-      const emitPayload = {
-        tenantSlug,
-        data: {
-          id: `charge-${newCharge.id}-${Date.now()}`,
-          deceasedId: chargeData.deceased_id,
-          chargeId: newCharge.id,
-          amount: chargeData.amount,
-          chargeType: chargeData.charge_type || chargeData.type || 'General',
-          title: 'New Charge Added',
-          message: `New charge of ${chargeData.amount} added for deceased ${chargeData.deceased_id}`,
-          type: 'charge-added',
-          priority: 'medium',
-          fullContent: `Charge ID: ${newCharge.id}\nDeceased ID: ${chargeData.deceased_id}\nAmount: ${chargeData.amount}\nType: ${chargeData.charge_type || chargeData.type || 'General'}\nDate: ${newCharge.created_at}`,
-        }
-      };
+const PAYMENT_METHOD_MAP: Record<string, string> = {
+    'cash': 'cash',
+    'card': 'card',
+    'bank_transfer': 'bank_transfer',
+    'bank transfer': 'bank_transfer',
+    'mobile_money': 'mobile_money',
+    'mobile money': 'mobile_money',
+    'mpesa': 'mobile_money',
+    'm-pesa': 'mobile_money',
+    'check': 'check',
+    'cheque': 'check'
+};
+const normalizePaymentMethod = (m: any): string => {
+    return PAYMENT_METHOD_MAP[String(m || '').toLowerCase().trim()] || 'cash';
+};
 
-      let emitted = false;
-      for (const socketioServiceUrl of candidateUrls) {
+const DISPLAY_METHOD: Record<string, string> = {
+    cash: 'Cash',
+    card: 'Card',
+    bank_transfer: 'Bank Transfer',
+    mobile_money: 'M-Pesa',
+    check: 'Check'
+};
+
+const mapChargeRow = (r: any) => ({ ...r, description: r.description ?? r.notes ?? null });
+const mapPaymentRow = (r: any) => ({
+    ...r,
+    payment_method: DISPLAY_METHOD[r.payment_method] || r.payment_method,
+    reference: r.reference_number ?? r.reference ?? null,
+    description: r.notes ?? null
+});
+
+// ---------------------------------------------------------------------------
+// Table guards (idempotent, FK-free so they work on fresh or migrated tenants)
+// ---------------------------------------------------------------------------
+const ensureExtraChargesTable = async (dbName: string): Promise<void> => {
+    const sql = `
+        CREATE TABLE IF NOT EXISTS extra_charges (
+            charge_id INT NOT NULL AUTO_INCREMENT,
+            tenant_slug VARCHAR(100) NOT NULL,
+            deceased_id VARCHAR(100) NOT NULL,
+            charge_type VARCHAR(100) NOT NULL,
+            amount DECIMAL(15,2) NOT NULL,
+            currency ENUM('KES', 'USD', 'EUR', 'GBP') DEFAULT 'USD',
+            service_date VARCHAR(255) NULL,
+            requested_by VARCHAR(100),
+            status ENUM('pending', 'approved', 'invoiced', 'paid', 'rejected', 'cancelled') DEFAULT 'pending',
+            approval_status ENUM('not_required', 'pending', 'approved', 'rejected') DEFAULT 'not_required',
+            approved_by INT,
+            approved_at VARCHAR(255) NULL,
+            invoice_id VARCHAR(100),
+            notes TEXT,
+            rejection_reason TEXT,
+            created_by INT,
+            created_at VARCHAR(255) NULL,
+            updated_at VARCHAR(255) NULL,
+            is_deleted BOOLEAN DEFAULT FALSE,
+            PRIMARY KEY (charge_id),
+            INDEX idx_ec_deceased_id (deceased_id),
+            INDEX idx_ec_tenant_slug (tenant_slug),
+            INDEX idx_ec_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `;
+    await safeTenantExecute(dbName, sql, []);
+};
+
+const ensurePaymentsTable = async (dbName: string): Promise<void> => {
+    const sql = `
+        CREATE TABLE IF NOT EXISTS payments (
+            payment_id INT AUTO_INCREMENT PRIMARY KEY,
+            deceased_id VARCHAR(50) NOT NULL,
+            invoice_id INT NULL,
+            transaction_id VARCHAR(255),
+            phone_number VARCHAR(20),
+            amount DECIMAL(15, 2) NOT NULL,
+            currency ENUM('KES', 'USD', 'EUR', 'GBP') DEFAULT 'USD',
+            payment_method ENUM('cash', 'card', 'bank_transfer', 'mobile_money', 'check') DEFAULT 'cash',
+            payment_date VARCHAR(255),
+            reference_number VARCHAR(100),
+            receipt_number VARCHAR(100),
+            status ENUM('pending', 'confirmed', 'completed', 'failed', 'refunded') DEFAULT 'completed',
+            message TEXT,
+            notes TEXT,
+            recorded_by VARCHAR(100),
+            created_at VARCHAR(255),
+            updated_at VARCHAR(255),
+            INDEX idx_pay_deceased_id (deceased_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `;
+    await safeTenantExecute(dbName, sql, []);
+    // Tables created by older migrations may miss these columns - add best-effort.
+    const alters = [
+        `ALTER TABLE payments ADD COLUMN recorded_by VARCHAR(100) NULL`,
+        `ALTER TABLE payments ADD COLUMN currency ENUM('KES', 'USD', 'EUR', 'GBP') DEFAULT 'USD'`
+    ];
+    for (const alterSQL of alters) {
         try {
-          await axios.post(`${socketioServiceUrl}/emit/charge-added`, emitPayload, { timeout: 3000 });
-          emitted = true;
-          Logger.info({ message: `Emitted charge-added for ${chargeData.deceased_id} via ${socketioServiceUrl}` });
-          break;
-        } catch (urlError: any) {
-          Logger.warn({ message: `SocketIO URL failed: ${socketioServiceUrl}`, error: urlError.message });
+            await safeTenantExecute(dbName, alterSQL, []);
+        } catch (err: any) {
+            // ER_DUP_FIELDNAME means column already exists - safe to ignore
+            if (!/duplicate/i.test(err?.message || '') && err?.code !== 'ER_DUP_FIELDNAME') {
+                console.warn('[CHARGES] payments ALTER skipped:', err?.message);
+            }
         }
-      }
-
-      if (!emitted) {
-        Logger.warn({ message: `All socketio URLs failed for charge ${newCharge.id}` });
-      }
-    } catch (emitError: any) {
-      Logger.warn({
-        message: `Failed to emit charge-added notification`,
-        error: emitError.message
-      });
     }
-    
-    return res.status(201).json({
-      success: true,
-      data: newCharge,
-      message: 'Charge added successfully'
-    });
-  } catch (error: any) {
-    console.error('Error adding charge:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to add charge'
-    });
-  }
 };
 
-/**
- * PUT /charges/:id
- * Update an existing charge
- */
-export const updateCharge = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const updateData = req.body;
-    
-    const index = mockCharges.findIndex(c => c.id === id);
-    if (index === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'Charge not found'
-      });
+const resolveDbOr400 = async (req: TenantRequest, res: Response): Promise<string | null> => {
+    const tenantSlug = getTenantSlugFromReq(req);
+    const dbName = await resolveDatabase(tenantSlug);
+    if (!dbName) {
+        res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
+        return null;
     }
-    
-    mockCharges[index] = {
-      ...mockCharges[index],
-      ...updateData,
-      updated_at: new Date().toISOString()
-    };
-    
-    return res.json({
-      success: true,
-      data: mockCharges[index],
-      message: 'Charge updated successfully'
-    });
-  } catch (error: any) {
-    console.error('Error updating charge:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to update charge'
-    });
-  }
-}; 
-
-/**
- * GET /payments/:deceased_id
- * Get all payments for a deceased
- */
-export const getPayments = async (req: Request, res: Response) => {
-  try {
-    const { deceased_id } = req.params;
-    const tenantSlug = (req as any).headers['x-slug'] || (req as any).headers['x-tenant-slug'] || 'system_shared';
-    
-    // Filter payments for this deceased
-    const payments = mockPayments.filter(p => p.deceased_id === deceased_id);
-    
-    return res.json({
-      success: true,
-      data: payments,
-      message: 'Payments retrieved successfully'
-    });
-  } catch (error: any) {
-    console.error('Error getting payments:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to retrieve payments'
-    });
-  }
+    return dbName;
 };
 
-/**
- * POST /payments
- * Record a new payment
- */
-export const recordPayment = async (req: Request, res: Response) => {
-  try {
-    const tenantSlug = (req as any).headers['x-slug'] || (req as any).headers['x-tenant-slug'] || 'system_shared';
-    const paymentData = req.body;
-    
-    // Validate required fields
-    if (!paymentData.deceased_id || !paymentData.amount || !paymentData.payment_method) {
-      return res.status(400).json({
-        success: false,
-        message: 'deceased_id, amount, and payment_method are required'
-      });
-    }
-    
-    const newPayment = {
-      id: Date.now().toString(),
-      ...paymentData,
-      recorded_by: paymentData.recorded_by || (req as any).user?.name || (req as any).user?.username || 'System',
-      payment_date: paymentData.payment_date || new Date().toISOString(),
-      created_at: new Date().toISOString()
-    };
-    
-    mockPayments.push(newPayment);
-    
-    // ==============================
-    // EMIT PAYMENT NOTIFICATION
-    // ==============================
+// ---------------------------------------------------------------------------
+// Charges - persisted per-deceased billing items (individual USD billing)
+// ---------------------------------------------------------------------------
+
+/** GET /charges/:deceased_id */
+export const getCharges = async (req: TenantRequest, res: Response): Promise<Response> => {
     try {
-      const axios = require('axios');
-      // Try multiple socketio service URLs (Docker DNS, localhost fallback)
-      const configuredUrl = process.env.SOCKETIO_SERVICE_URL || '';
-      const candidateUrls = [
-        configuredUrl,
-        'http://localhost:5018',
-        'http://127.0.0.1:5018',
-      ].filter(Boolean);
+        const { deceased_id } = req.params;
+        const dbName = await resolveDbOr400(req, res);
+        if (!dbName) return res as unknown as Response;
 
-      const emitPayload = {
-        tenantSlug,
-        data: {
-          id: `payment-${newPayment.id}-${Date.now()}`,
-          deceasedId: paymentData.deceased_id,
-          amount: paymentData.amount,
-          paymentMethod: paymentData.payment_method,
-          title: 'Payment Received',
-          message: `Payment of ${paymentData.amount} received via ${paymentData.payment_method}`,
-          type: 'payment-received',
-          priority: 'high',
-          fullContent: `Payment recorded for deceased ${paymentData.deceased_id}.\nAmount: ${paymentData.amount}\nMethod: ${paymentData.payment_method}\nDate: ${newPayment.payment_date}`,
-        }
-      };
+        await ensureExtraChargesTable(dbName);
+        const rows: any[] = (await safeTenantQuery(
+            dbName,
+            'SELECT * FROM extra_charges WHERE deceased_id = ? AND is_deleted = FALSE ORDER BY charge_id DESC',
+            [deceased_id]
+        )) || [];
 
-      let emitted = false;
-      for (const socketioServiceUrl of candidateUrls) {
-        try {
-          await axios.post(`${socketioServiceUrl}/emit/payment-received`, emitPayload, { timeout: 3000 });
-          emitted = true;
-          Logger.info({ message: `Emitted payment-received for ${paymentData.deceased_id} via ${socketioServiceUrl}` });
-          break;
-        } catch (urlError: any) {
-          Logger.warn({ message: `SocketIO URL failed: ${socketioServiceUrl}`, error: urlError.message });
-        }
-      }
-
-      if (!emitted) {
-        Logger.warn({ message: `All socketio URLs failed for payment ${newPayment.id}` });
-      }
-    } catch (emitError: any) {
-      Logger.warn({
-        message: `Failed to emit payment-received notification`,
-        error: emitError.message
-      });
+        return res.json({ success: true, data: rows.map(mapChargeRow), message: 'Charges retrieved successfully' });
+    } catch (error: any) {
+        console.error('Error getting charges:', error);
+        return res.status(500).json({ success: false, message: error.message || 'Failed to retrieve charges' });
     }
-    
-    return res.status(201).json({
-      success: true,
-      data: newPayment,
-      message: 'Payment recorded successfully'
-    });
-  } catch (error: any) {
-    console.error('Error recording payment:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to record payment'
-    });
-  }
+};
+
+/** POST /charges - add an individual charge for one deceased (USD unless stated) */
+export const addCharge = async (req: TenantRequest, res: Response): Promise<Response> => {
+    try {
+        const { deceased_id, charge_type, amount, description, notes, service_date, currency, requested_by } = req.body || {};
+        if (!deceased_id || !charge_type || !amount || parseFloat(amount) <= 0) {
+            return res.status(400).json({ success: false, message: 'deceased_id, charge_type and a positive amount are required' });
+        }
+
+        const tenantSlug = getTenantSlugFromReq(req);
+        const dbName = await resolveDbOr400(req, res);
+        if (!dbName) return res as unknown as Response;
+
+        await ensureExtraChargesTable(dbName);
+        const now = nowNairobi();
+        const result: any = await safeTenantExecute(dbName, `
+            INSERT INTO extra_charges
+                (tenant_slug, deceased_id, charge_type, amount, currency, service_date, requested_by, status, approval_status, notes, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', 'not_required', ?, ?, ?)
+        `, [
+            tenantSlug,
+            deceased_id,
+            String(charge_type),
+            parseFloat(amount),
+            normalizeCurrency(currency),
+            service_date || now.split(' ')[0],
+            requested_by || null,
+            description || notes || null,
+            now,
+            now
+        ]);
+
+        const rows: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM extra_charges WHERE charge_id = ?', [result?.insertId])) || [];
+        const newCharge = mapChargeRow(rows[0] || { charge_id: result?.insertId, deceased_id, charge_type, amount: parseFloat(amount) });
+
+        try { (global as any).io?.to(`tenant:${tenantSlug}`).emit('charge-added', newCharge); } catch { /* socket optional */ }
+
+        return res.status(201).json({ success: true, data: newCharge, message: 'Charge added successfully' });
+    } catch (error: any) {
+        console.error('Error adding charge:', error);
+        return res.status(500).json({ success: false, message: error.message || 'Failed to add charge' });
+    }
+};
+
+/** PUT /charges/:id */
+export const updateCharge = async (req: TenantRequest, res: Response): Promise<Response> => {
+    try {
+        const { id } = req.params;
+        const body = req.body || {};
+
+        const updates: string[] = [];
+        const params: any[] = [];
+        const setIf = (column: string, value: any) => {
+            if (value !== undefined && value !== null) { updates.push(`${column} = ?`); params.push(value); }
+        };
+
+        setIf('charge_type', body.charge_type);
+        if (body.amount !== undefined && body.amount !== null) setIf('amount', parseFloat(body.amount));
+        setIf('currency', body.currency ? normalizeCurrency(body.currency) : undefined);
+        setIf('service_date', body.service_date);
+        setIf('status', body.status);
+        // The UI sends `description`; the table column is `notes`
+        setIf('notes', body.description ?? body.notes);
+
+        if (!updates.length) {
+            return res.status(400).json({ success: false, message: 'No valid fields provided to update' });
+        }
+
+        const dbName = await resolveDbOr400(req, res);
+        if (!dbName) return res as unknown as Response;
+
+        await ensureExtraChargesTable(dbName);
+        updates.push('updated_at = ?');
+        params.push(nowNairobi(), id);
+
+        await safeTenantExecute(dbName, `UPDATE extra_charges SET ${updates.join(', ')} WHERE charge_id = ? AND is_deleted = FALSE`, params);
+
+        const rows: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM extra_charges WHERE charge_id = ?', [id])) || [];
+        if (!rows.length) return res.status(404).json({ success: false, message: 'Charge not found' });
+        return res.json({ success: true, data: mapChargeRow(rows[0]), message: 'Charge updated successfully' });
+    } catch (error: any) {
+        console.error('Error updating charge:', error);
+        return res.status(500).json({ success: false, message: error.message || 'Failed to update charge' });
+    }
+};
+
+/** DELETE /charges/:id - soft delete so audit trails stay intact */
+export const deleteCharge = async (req: TenantRequest, res: Response): Promise<Response> => {
+    try {
+        const { id } = req.params;
+        const dbName = await resolveDbOr400(req, res);
+        if (!dbName) return res as unknown as Response;
+
+        await ensureExtraChargesTable(dbName);
+        await safeTenantExecute(dbName, 'UPDATE extra_charges SET is_deleted = TRUE, updated_at = ? WHERE charge_id = ?', [nowNairobi(), id]);
+
+        return res.json({ success: true, message: 'Charge deleted successfully' });
+    } catch (error: any) {
+        console.error('Error deleting charge:', error);
+        return res.status(500).json({ success: false, message: error.message || 'Failed to delete charge' });
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Payments - persisted individual payments against one deceased (USD)
+// ---------------------------------------------------------------------------
+
+/** GET /payments/:deceased_id */
+export const getPayments = async (req: TenantRequest, res: Response): Promise<Response> => {
+    try {
+        const { deceased_id } = req.params;
+        const dbName = await resolveDbOr400(req, res);
+        if (!dbName) return res as unknown as Response;
+
+        await ensurePaymentsTable(dbName);
+        const rows: any[] = (await safeTenantQuery(
+            dbName,
+            'SELECT * FROM payments WHERE deceased_id = ? ORDER BY payment_id DESC',
+            [deceased_id]
+        )) || [];
+
+        return res.json({ success: true, data: rows.map(mapPaymentRow), message: 'Payments retrieved successfully' });
+    } catch (error: any) {
+        console.error('Error getting payments:', error);
+        return res.status(500).json({ success: false, message: error.message || 'Failed to retrieve payments' });
+    }
+};
+
+/** POST /payments - record an individual payment for one deceased (USD unless stated) */
+export const recordPayment = async (req: TenantRequest, res: Response): Promise<Response> => {
+    try {
+        const { deceased_id, amount, payment_method, reference, payment_date, description, recorded_by, currency } = req.body || {};
+        if (!deceased_id || !amount || parseFloat(amount) <= 0) {
+            return res.status(400).json({ success: false, message: 'deceased_id and a positive amount are required' });
+        }
+
+        const dbName = await resolveDbOr400(req, res);
+        if (!dbName) return res as unknown as Response;
+
+        await ensurePaymentsTable(dbName);
+        const now = nowNairobi();
+        const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
+        const result: any = await safeTenantExecute(dbName, `
+            INSERT INTO payments
+                (deceased_id, transaction_id, amount, currency, payment_method, payment_date, reference_number, status, notes, recorded_by, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?)
+        `, [
+            deceased_id,
+            transactionId,
+            parseFloat(amount),
+            normalizeCurrency(currency),
+            normalizePaymentMethod(payment_method),
+            payment_date || now,
+            reference || null,
+            description || null,
+            recorded_by || null,
+            now,
+            now
+        ]);
+
+        const rows: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM payments WHERE payment_id = ?', [result?.insertId])) || [];
+
+        return res.status(201).json({
+            success: true,
+            data: mapPaymentRow(rows[0] || { payment_id: result?.insertId, deceased_id, amount: parseFloat(amount) }),
+            message: 'Payment recorded successfully'
+        });
+    } catch (error: any) {
+        console.error('Error recording payment:', error);
+        return res.status(500).json({ success: false, message: error.message || 'Failed to record payment' });
+    }
 };

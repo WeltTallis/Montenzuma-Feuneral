@@ -1,69 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../../api/axios'
 
-// ── Data ─────────────────────────────────────────────────────────────────────
-const ARRANGEMENTS = [
-  {
-    id: 'wreath', name: 'White Rose Wreath', tag: 'Wreath', note: 'Classic · Eternal',
-    desc: 'A hand-tied circular wreath of pristine white roses and eucalyptus. The circle form symbolizes unending love.',
-    img: 'https://images.unsplash.com/photo-1758334587549-0c80dbf4dd3e?w=1600&h=1000&fit=crop&auto=format',
-    portrait: 'https://images.unsplash.com/photo-1758334587549-0c80dbf4dd3e?w=900&h=1200&fit=crop&auto=format',
-    size: '22–39 inches', flowers: "White roses, eucalyptus, baby's breath",
-    weight: '8–15 lbs', display: '~3 ft tall on stand',
-    w: '22–39"', h: '22–39"', d: '4–6"',
-    placement: 'Hangs on a stand at approximately eye level. Ensure at least 3 feet clearance around the full diameter.',
-  },
-  {
-    id: 'cross', name: 'Floral Cross', tag: 'Cross', note: 'Faith · Devotion',
-    desc: 'A striking cross form built from deep crimson roses and white carnations. A declaration of faith and reverence.',
-    img: 'https://images.unsplash.com/photo-1758334587520-a3b772cea4f5?w=1600&h=1000&fit=crop&auto=format',
-    portrait: 'https://images.unsplash.com/photo-1758334587520-a3b772cea4f5?w=900&h=1200&fit=crop&auto=format',
-    size: '30–36 inches', flowers: 'Red roses, white carnations, ivy',
-    weight: '12–20 lbs', display: '~3.5 ft on pedestal',
-    w: '18–24"', h: '30–36"', d: '6–8"',
-    placement: 'Stands on a pedestal at the memorial site. Best positioned with a plain wall background.',
-  },
-  {
-    id: 'standing', name: 'Standing Spray', tag: 'Spray', note: 'Graceful · Serene',
-    desc: 'A tall, sweeping spray of ivory lilies and mixed greens on an easel stand. Quiet grace beside the casket.',
-    img: 'https://images.unsplash.com/photo-1659170704583-962a35464921?w=1600&h=1000&fit=crop&auto=format',
-    portrait: 'https://images.unsplash.com/photo-1659170704583-962a35464921?w=900&h=1200&fit=crop&auto=format',
-    size: '36–48 inches', flowers: 'Ivory lilies, snapdragons, mixed greens',
-    weight: '10–18 lbs', display: '~4.5 ft on easel',
-    w: '18–24"', h: '36–48"', d: '12–16"',
-    placement: 'Placed on a floor easel beside the casket or portrait. Allow 2 feet behind for the easel legs.',
-  },
-  {
-    id: 'spray-entrance', name: 'Entrance Spray', tag: 'Display', note: 'Welcoming · Grand',
-    desc: 'A full, lush arrangement framing the entrance of the service space. A gentle welcome for every mourner.',
-    img: 'https://images.unsplash.com/photo-1759579059917-3277455b1e2c?w=1600&h=1000&fit=crop&auto=format',
-    portrait: 'https://images.unsplash.com/photo-1759579059917-3277455b1e2c?w=900&h=1200&fit=crop&auto=format',
-    size: 'Full entrance width', flowers: 'Seasonal whites and creams',
-    weight: '15–25 lbs', display: '~4 ft, full width',
-    w: '48–72"', h: '36–48"', d: '12–18"',
-    placement: 'Framing the entrance doorway. May require two stands or a custom bracket depending on venue.',
-  },
-  {
-    id: 'casket', name: 'Casket Spray', tag: 'Casket', note: 'Tender · Loving',
-    desc: 'Soft pink roses and white hydrangeas draping across the casket lid. The most intimate of all tributes.',
-    img: 'https://images.unsplash.com/photo-1687487055520-894d8fcc45a6?w=1600&h=1000&fit=crop&auto=format',
-    portrait: 'https://images.unsplash.com/photo-1687487055520-894d8fcc45a6?w=900&h=1200&fit=crop&auto=format',
-    size: 'Full casket length', flowers: 'Pink roses, hydrangeas, garden greenery',
-    weight: '12–20 lbs', display: 'Full casket length',
-    w: '18–24"', h: '8–12"', d: '60–80"',
-    placement: 'Placed directly on the casket lid by the funeral home staff. Full casket length coverage.',
-  },
-  {
-    id: 'bouquet', name: 'Sympathy Bouquet', tag: 'Bouquet', note: 'Intimate · Personal',
-    desc: 'A hand-held bouquet of white lilies and cream freesias, wrapped in silk ribbon. Immeasurable in meaning.',
-    img: 'https://images.unsplash.com/photo-1631407779166-86952be9dbd7?w=1600&h=1000&fit=crop&auto=format',
-    portrait: 'https://images.unsplash.com/photo-1631407779166-86952be9dbd7?w=900&h=1200&fit=crop&auto=format',
-    size: 'Hand-held', flowers: 'White lilies, cream freesias, satin ribbon',
-    weight: '1–2 lbs', display: 'Hand-held',
-    w: '8–12"', h: '12–16"', d: '8–12"',
-    placement: 'Hand-held or placed on a small table. No floor space required. Ideal for graveside placement.',
-  },
-]
 
 const COLOR_ROLES = ['Primary flower', 'Accent flower', 'Ribbon color', 'Foliage']
 
@@ -708,7 +645,7 @@ function StoryItem({ arrangement, isActive, isSelected, size, animDelay, onClick
 // ── Home Preview Panel ────────────────────────────────────────────────────────
 function HomePreview({ selectedIds, onRemove, onProceed, arrangements = [] }) {
   if (!selectedIds.length) return null
-  const allArrangements = arrangements.length > 0 ? arrangements : ARRANGEMENTS
+  const allArrangements = arrangements
   return (
     <div className="home-preview">
       <div className="home-preview-header">
@@ -739,12 +676,13 @@ function HomePreview({ selectedIds, onRemove, onProceed, arrangements = [] }) {
 }
 
 // ── Browse Screen ─────────────────────────────────────────────────────────────
-function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview, arrangements = [] }) {
+function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview, arrangements = [], loading = false }) {
   const [bgIdx, setBgIdx] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
-  const allArrangements = arrangements.length > 0 ? arrangements : ARRANGEMENTS
+  const allArrangements = arrangements
 
   useEffect(() => {
+    if (allArrangements.length === 0) return
     const t = setInterval(() => setBgIdx(i => (i + 1) % allArrangements.length), 6000)
     return () => clearInterval(t)
   }, [allArrangements.length])
@@ -758,8 +696,23 @@ function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview, arrangements =
 
   return (
     <div className="browse">
-      <img key={bgIdx} className="browse-hero" src={bg.img || bg.portrait} alt={bg.name || bg.title} />
+      {bg && <img key={bgIdx} className="browse-hero" src={bg.img || bg.portrait} alt={bg.name || bg.title} />}
       <div className="browse-overlay" />
+
+      {loading && allArrangements.length === 0 && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.7)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          Loading arrangements…
+        </div>
+      )}
+
+      {!loading && allArrangements.length === 0 && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 24px' }}>
+          <h2 style={{ fontFamily: "'Fraunces', serif", fontWeight: 300, fontStyle: 'italic', fontSize: 'clamp(28px, 5vw, 48px)', marginBottom: 12 }}>No arrangements yet</h2>
+          <p style={{ color: 'rgba(255,255,255,0.6)', maxWidth: 420, lineHeight: 1.6, fontSize: 14 }}>
+            The funeral home hasn&apos;t uploaded any flower arrangements at the moment. Please check back soon.
+          </p>
+        </div>
+      )}
 
       <div className="story-strip">
         {allArrangements.map((a, i) => (
@@ -840,7 +793,7 @@ function ColorInputs() {
 // ── Expanded / Detail ─────────────────────────────────────────────────────────
 function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, onPreview, arrangements = [] }) {
   const [tab, setTab] = useState('overview')
-  const allArrangements = arrangements.length > 0 ? arrangements : ARRANGEMENTS
+  const allArrangements = arrangements
   const arr = allArrangements.find(a => a.id === activeId)
   const isSel = selectedIds.includes(activeId)
 
@@ -966,7 +919,7 @@ function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, on
 function BookingForm({ selected, quantities, onBack, onDone, arrangements = [] }) {
   const [form, setForm] = useState({ deceased: '', date: '', location: '', yourName: '', phone: '', email: '', message: '', notes: '' })
   const totalItems = selected.reduce((s, id) => s + (quantities[id] || 1), 0)
-  const allArrangements = arrangements.length > 0 ? arrangements : ARRANGEMENTS
+  const allArrangements = arrangements
 
   const field = (key, placeholder, type = 'text') => ({
     className: 'form-input', type, value: form[key], placeholder,
@@ -1092,29 +1045,33 @@ export default function App() {
           params: { tenant_slug: tenantSlug }
         });
         const data = res.data;
-        if (data.success && data.data && data.data.length > 0) {
-          const transformed = data.data.map((sample, index) => ({
-            id: sample.sample_id || `arr-${index}`,
-            name: sample.title,
-            img: sample.images && sample.images.length > 0 
+        if (data.success && Array.isArray(data.data)) {
+          const transformed = data.data.map((sample, index) => {
+            const firstImage = sample.images && sample.images.length > 0
               ? (typeof sample.images[0] === 'string' ? sample.images[0] : sample.images[0].url)
-              : ARRANGEMENTS[index]?.img || 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=1600&h=1000&fit=crop&auto=format',
-            portrait: sample.images && sample.images.length > 0 
-              ? (typeof sample.images[0] === 'string' ? sample.images[0] : sample.images[0].url)
-              : ARRANGEMENTS[index]?.portrait || 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=900&h=1200&fit=crop&auto=format',
-            tag: sample.types && sample.types.length > 0 ? sample.types[0] : ARRANGEMENTS[index]?.tag || 'Arrangement',
-            note: 'Custom arrangement',
-            desc: sample.description || ARRANGEMENTS[index]?.desc || 'A beautiful floral arrangement.',
-            size: ARRANGEMENTS[index]?.size || 'Standard',
-            flowers: sample.description || 'Fresh flowers',
-            weight: ARRANGEMENTS[index]?.weight || '5–10 lbs',
-            display: ARRANGEMENTS[index]?.display || 'Standard display',
-            w: ARRANGEMENTS[index]?.w || '18–24"', 
-            h: ARRANGEMENTS[index]?.h || '12–18"', 
-            d: ARRANGEMENTS[index]?.d || '12–18"',
-            placement: ARRANGEMENTS[index]?.placement || 'Place at the memorial service.',
-          }));
+              : null;
+            return {
+              id: sample.sample_id || `arr-${index}`,
+              name: sample.title,
+              img: firstImage || 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=1600&h=1000',
+              portrait: firstImage || 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=900&h=1200',
+              tag: sample.types && sample.types.length > 0 ? sample.types[0] : 'Arrangement',
+              note: sample.price != null ? `$${Number(sample.price).toLocaleString()}` : 'Custom arrangement',
+              desc: sample.description || 'A beautiful floral arrangement.',
+              size: 'Standard',
+              flowers: sample.description || 'Fresh flowers',
+              weight: '5–10 lbs',
+              display: 'Standard display',
+              w: '18–24"',
+              h: '12–18"',
+              d: '12–18"',
+              placement: 'Place at the memorial service.',
+              price: sample.price != null ? Number(sample.price) : null,
+            };
+          });
           setArrangements(transformed);
+        } else {
+          setArrangements([]);
         }
       } catch (e) {
         console.error('Failed to load flower samples:', e);
@@ -1142,7 +1099,6 @@ export default function App() {
   }
 
   const totalItems = selected.reduce((s, id) => s + (quantities[id] || 1), 0)
-  const displayArrangements = arrangements.length > 0 ? arrangements : ARRANGEMENTS
 
   return (
     <>
@@ -1156,6 +1112,7 @@ export default function App() {
             onRemove={remove}
             onPreview={() => setStep('form')}
             arrangements={arrangements}
+            loading={loading}
           />
           {expandedId && (
             <ExpandedView

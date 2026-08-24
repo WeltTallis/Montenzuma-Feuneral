@@ -1,4 +1,5 @@
 ﻿import { Request, Response } from 'express';
+import axios from 'axios';
 import CoffinModel from '../models/coffinModel.js';
 import { coffinQuery } from '../db.js';
 import { serviceGet, serviceSet, serviceDel, clearServiceCache } from '@montezuma/shared-services';
@@ -8,6 +9,25 @@ import logger from '@montezuma/shared-logger';
 
 const SERVICE_NAME = 'coffin-service';
 const CACHE_TTL = 300; // 5 minutes
+
+// ─── Notification Emission via Socket.IO service ────────────────────────
+const SOCKETIO_SERVICE_URL =
+  process.env.SOCKETIO_SERVICE_URL ||
+  process.env.SOCKETIO_URL ||
+  'http://localhost:5018';
+
+/**
+ * Emit a real-time notification through the Socket.IO service so it surfaces
+ * in the frontend Notification Bell. Matches the pattern used by the hearse,
+ * deceased, store and support services.
+ */
+async function emitSocketNotification(event: string, data: any, tenantSlug: string) {
+  try {
+    await axios.post(`${SOCKETIO_SERVICE_URL}/emit/${event}`, { tenantSlug, data }, { timeout: 3000 });
+  } catch (error: any) {
+    logger.warn({ msg: `Failed to emit socket notification ${event}`, tenantSlug, error: error?.message });
+  }
+}
 
 // ─── Cache Helpers ──────────────────────────────────────────────────────
 
@@ -592,6 +612,9 @@ export const createOrder = async (req: Request, res: Response) => {
       quantity: finalQuantity,
       booked_by: finalBookedBy,
       booked_for: finalBookedFor,
+      client_phone: ((req as any).body?.client_phone || '').toString().trim() || null,
+      service_time: ((req as any).body?.service_time || '').toString().trim() || null,
+      paid: !!((req as any).body?.paid),
       service_date: service_date || null,
       tenant_id: rTenantId,
       branch_id: rBranchId
@@ -600,6 +623,20 @@ export const createOrder = async (req: Request, res: Response) => {
     await clearCoffinCache(tenantSlug);
 
     logger.info({ msg: 'Coffin order created', tenantSlug, orderId: result.order_id, booked_for: finalBookedFor });
+
+    // Notify the tenant (incl. any branch rooms) that a new coffin reservation was created.
+    await emitSocketNotification('coffin-booking-created', {
+      id: result.order_id || `booking-${Date.now()}`,
+      title: 'New Coffin Reservation',
+      message: `${finalBookedBy || 'Client'} reserved ${finalName} (qty ${finalQuantity})`,
+      fullContent: `Coffin: ${finalName}\nClient: ${finalBookedBy || 'N/A'}\nDeceased: ${finalBookedFor || 'N/A'}\nQuantity: ${finalQuantity}\nBooking ID: ${result.order_id}`,
+      orderId: result.order_id,
+      coffinName: finalName,
+      clientName: finalBookedBy,
+      quantity: finalQuantity,
+      status: 'active',
+      priority: 'medium',
+    }, tenantSlug);
 
     return res.status(201).json({
       success: true,
@@ -656,12 +693,15 @@ export const getAllOrders = async (req: Request, res: Response) => {
     }
 
     const sql = `
-      SELECT order_id, order_id AS id, coffin_name, color, size, quantity,
+      SELECT order_id, order_id AS id, coffin_id, coffin_name, color, size, quantity,
              booked_by, booked_for,
              booked_by AS client_name, booked_for AS deceased_name,
+             client_phone,
              branch_id,
              status,
-             COALESCE(service_date, DATE(created_at)) AS service_date,
+             paid,
+             DATE_FORMAT(COALESCE(service_date, DATE(created_at)), '%Y-%m-%d') AS service_date,
+             service_time,
              created_at
       FROM coffin_bookings cb
       WHERE cb.tenant_slug = ?${branchClause}
@@ -690,12 +730,15 @@ export const getOrderById = async (req: Request, res: Response) => {
 
   try {
     const sql = `
-      SELECT order_id, order_id AS id, coffin_name, color, size, quantity,
+      SELECT order_id, order_id AS id, coffin_id, coffin_name, color, size, quantity,
              booked_by, booked_for,
              booked_by AS client_name, booked_for AS deceased_name,
+             client_phone,
              branch_id,
              status,
-             COALESCE(service_date, DATE(created_at)) AS service_date,
+             paid,
+             DATE_FORMAT(COALESCE(service_date, DATE(created_at)), '%Y-%m-%d') AS service_date,
+             service_time,
              created_at, updated_at
       FROM coffin_bookings
       WHERE order_id = ? AND tenant_slug = ?
@@ -719,15 +762,22 @@ export const getOrderById = async (req: Request, res: Response) => {
 export const updateOrderStatus = async (req: Request, res: Response) => {
   const tenantSlug = (req as any).tenantSlug;
   const id = String(req.params.id);
-  const { status } = (req as any).body;
+  const { status, paid } = (req as any).body;
 
   if (!tenantSlug) {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
   }
 
-  if (!status || !['active', 'booked', 'completed', 'cancelled'].includes(status)) {
+  if (status === undefined && paid === undefined) {
+    return res.status(400).json({ success: false, message: 'No update provided (status or paid required)' });
+  }
+
+  if (status !== undefined && !['active', 'booked', 'completed', 'cancelled'].includes(status)) {
     return res.status(400).json({ success: false, message: 'Invalid status. Must be: active, booked, completed, or cancelled' });
   }
+
+  const updates: string[] = [];
+  const values: any[] = [];
 
   try {
     // If cancelling, return stock to inventory
@@ -745,14 +795,25 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
       }
     }
 
-    const sql = `UPDATE coffin_bookings SET status = ?, updated_at = NOW() WHERE order_id = ? AND tenant_slug = ?`;
-    await coffinQuery(sql, [status, id, tenantSlug]);
+    if (status !== undefined) {
+      updates.push('status = ?');
+      values.push(status);
+    }
+    if (paid !== undefined) {
+      updates.push('paid = ?');
+      values.push(paid ? 1 : 0);
+    }
+
+    updates.push('updated_at = NOW()');
+
+    const sql = `UPDATE coffin_bookings SET ${updates.join(', ')} WHERE order_id = ? AND tenant_slug = ?`;
+    values.push(id, tenantSlug);
+    await coffinQuery(sql, values);
 
     await clearCoffinCache(tenantSlug);
 
-    logger.info({ msg: 'Order status updated', tenantSlug, orderId: id, status });
-
-    return res.status(200).json({ success: true, message: `Order ${status} successfully` });
+    logger.info({ msg: 'Order status updated', tenantSlug, orderId: id, status, paid });
+    return res.status(200).json({ success: true, message: 'Order updated successfully' });
   } catch (error: any) {
     logger.error({ msg: 'Update order status error', tenantSlug, id, error: error.message });
     return res.status(500).json({ success: false, message: error.message });
@@ -837,6 +898,23 @@ export const createStockRequest = async (req: Request, res: Response) => {
     });
 
     logger.info({ msg: 'Stock request created', tenantSlug, requestId: result.request_id });
+
+    // Notify the destination branch that a transfer/stock request was created.
+    const emitReq = {
+      id: result.request_id || `stock-${Date.now()}`,
+      title: 'Stock Transfer Requested',
+      message: `A coffin transfer was requested (${resolvedName || 'Coffin'}, qty ${parseInt(quantity) || 1})`,
+      fullContent: `Coffin: ${resolvedName || 'Coffin'}\nQuantity: ${parseInt(quantity) || 1}\nFrom: ${(from_branch_name || '').toString().trim() || 'Branch'}\nTo: ${(to_branch_name || '').toString().trim() || 'Branch'}\nRequest ID: ${result.request_id}`,
+      requestId: result.request_id,
+      coffinId: coffinIdRaw || null,
+      coffinName: resolvedName || 'Coffin',
+      quantity: parseInt(quantity) || 1,
+      fromBranch: (from_branch_name || '').toString().trim() || null,
+      toBranch: (to_branch_name || '').toString().trim() || null,
+      status: 'pending',
+      priority: 'high',
+    };
+    await emitSocketNotification('coffin-stock-request', emitReq, tenantSlug);
 
     return res.status(201).json({
       success: true,
@@ -991,10 +1069,44 @@ export const updateStockRequestAction = async (req: Request, res: Response) => {
   }
 
   try {
+    // Fetch the request row first so we know who should be notified on status change.
+    const reqRows: any[] = await coffinQuery(
+      `SELECT request_id, coffin_name, quantity, requested_by, requesting_branch,
+              from_branch_id, to_branch_id, from_branch_name, to_branch_name, status
+       FROM stock_requests WHERE request_id = ? AND tenant_slug = ?`,
+      [id, tenantSlug]
+    );
+
     const sql = `UPDATE stock_requests SET status = ? WHERE request_id = ? AND tenant_slug = ?`;
     await coffinQuery(sql, [status, id, tenantSlug]);
 
     logger.info({ msg: 'Stock request action applied', tenantSlug, requestId: id, action, status });
+
+    // Notify the requesting/origin branch when the request moves forward.
+    const prev = reqRows[0];
+    if (reqRows.length > 0 && prev?.status && prev.status !== status) {
+      const statusTitleMap: Record<string, string> = {
+        approved: 'Transfer Approved',
+        rejected: 'Transfer Rejected',
+        transferring: 'Transfer In Transit',
+        delivered: 'Transfer Delivered',
+        completed: 'Transfer Completed',
+        pending: 'Transfer Requested',
+      };
+      await emitSocketNotification('coffin-stock-request', {
+        id: `${id}-${Date.now()}`,
+        title: statusTitleMap[status] || `Transfer ${status}`,
+        message: `${prev.coffin_name || 'Coffin'} (qty ${parseInt(prev.quantity) || 1}) is now ${statusTitleMap[status] || status}`,
+        fullContent: `Coffin: ${prev.coffin_name || 'Coffin'}\nQuantity: ${parseInt(prev.quantity) || 1}\nFrom: ${prev.from_branch_name || 'Branch'}\nTo: ${prev.to_branch_name || 'Branch'}\nStatus: ${statusTitleMap[status] || status}\nRequest ID: ${id}`,
+        requestId: id,
+        coffinName: prev.coffin_name || 'Coffin',
+        quantity: parseInt(prev.quantity) || 1,
+        fromBranch: prev.from_branch_name || null,
+        toBranch: prev.to_branch_name || null,
+        status,
+        priority: status === 'rejected' ? 'high' : 'medium',
+      }, tenantSlug);
+    }
 
     return res.status(200).json({ success: true, message: `Request ${status}`, status });
   } catch (error: any) {

@@ -153,6 +153,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 import autopsyRoutes from './routes/autopsyRoutes';
 import chargesRoutes from './routes/chargesRoutes';
 import chargeSettingsRoutes from './routes/chargeSettingsRoutes';
+import postmortemRequestRoutes from './routes/postmortemRequestRoutes';
 import nextOfKinRoutes from './routes/nextOfKinRoutes';
 import hearseRoutes from './routes/hearseRoutes';
 import documentsRoutes from './routes/documentsRoutes';
@@ -166,6 +167,7 @@ app.use('/', documentsRoutes);
 app.use('/', autopsyRoutes);
 app.use('/', chargesRoutes);
 app.use('/', chargeSettingsRoutes);
+app.use('/', postmortemRequestRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

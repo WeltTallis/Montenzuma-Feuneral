@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import {
   ArrowRight, FileText, Users, ClipboardList, Flower2, ScrollText, Heart,
@@ -429,6 +430,126 @@ const StatTag = styled.span`
 `;
 
 /* ───────────────────────────────────────────────────────────
+   LIVE MODULE PREVIEW
+   Renders the REAL product module (Body Intake, Flower Bookings,
+   Release Form, Reception Portal) inside a sandboxed iframe that
+   is scaled down into the bento card — so visitors see how each
+   module actually looks.
+
+   Safety model:
+   - iframe isolation keeps global CSS (e.g. bootstrap in the
+     reception portal) and error toasts out of the landing page
+   - pointer-events: none keeps all clicks on the card itself
+   - iframes only mount when scrolled into view; the photo below
+     stays as an instant-loading fallback until the frame reports
+     loaded, and remains visible if it never does
+─────────────────────────────────────────────────────────── */
+const PREVIEW_W = 1280;
+const PREVIEW_H = 800;
+
+const LiveViewport = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const LiveFrameBox = styled.div`
+  width: ${PREVIEW_W}px;
+  height: ${PREVIEW_H}px;
+  flex-shrink: 0;
+  transform: scale(${p => p.$scale});
+  transform-origin: center center;
+  box-shadow: 0 18px 60px rgba(21, 23, 26, 0.35);
+`;
+
+const LiveScrim = styled.div`
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(21,23,26,0.25) 0%,
+    rgba(21,23,26,0.45) 55%,
+    rgba(21,23,26,0.82) 100%
+  );
+`;
+
+function CardLivePreview({ url, scrim = false }) {
+  const wrapRef = useRef(null);
+  const [inView, setInView] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [scale, setScale] = useState(0.3);
+
+  /* Only mount the iframe once the card is scrolled near */
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return undefined;
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setInView(true); obs.disconnect(); } },
+      { threshold: 0.05 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  /* Fit the fixed 1280×800 virtual viewport into whatever card size we get */
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0) setScale(r.width / PREVIEW_W);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <LiveViewport ref={wrapRef} aria-hidden="true">
+      {inView && (
+        <LiveFrameBox $scale={scale}>
+          <iframe
+            src={url}
+            title="Module live preview"
+            loading="lazy"
+            tabIndex={-1}
+            onLoad={() => setLoaded(true)}
+            style={{
+              border: 'none',
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              opacity: loaded ? 1 : 0,
+              transition: 'opacity 0.6s ease',
+              background: 'transparent',
+            }}
+          />
+        </LiveFrameBox>
+      )}
+      {scrim && <LiveScrim />}
+    </LiveViewport>
+  );
+}
+
+/* ───────────────────────────────────────────────────────────
+   STAT CARD CONTENT WRAPPER (sits above live-preview backdrops)
+─────────────────────────────────────────────────────────── */
+const StatContent = styled.div`
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+  min-height: 0;
+`;
+
+/* ───────────────────────────────────────────────────────────
    DATA
 ─────────────────────────────────────────────────────────── */
 const IMAGE_CARDS = [
@@ -440,6 +561,7 @@ const IMAGE_CARDS = [
     heading: 'Body Intake Form',
     sub: 'Digital registration with next-of-kin details, verification, and signature capture in one structured flow.',
     image: 'https://picsum.photos/seed/morgue-clinical-intake/900/800',
+    preview: '/preview/body-intake',
     tags: ['Digital Forms', 'Sign-off', 'Auto ID'],
     accentBg: C.verdigris,
     shadow: 'rgba(61,79,71,0.3)',
@@ -453,6 +575,7 @@ const IMAGE_CARDS = [
     heading: 'Flower Bookings',
     sub: 'Families browse, order, and track floral arrangements linked directly to service schedules.',
     image: 'https://picsum.photos/seed/floral-wreath-white/900/400',
+    preview: '/preview/flower-bookings',
     tags: ['Catalogue', 'Orders', 'Delivery'],
     accentBg: C.accent,
     shadow: 'rgba(199,123,94,0.3)',
@@ -466,6 +589,7 @@ const IMAGE_CARDS = [
     heading: 'Release Form Portal',
     sub: 'Families complete release documentation independently — digital forms and e-signature, no staff needed.',
     image: 'https://picsum.photos/seed/document-official-release/900/400',
+    preview: '/preview/release-form',
     tags: ['E-Sign', 'ID Verify', 'Auto-Process'],
     accentBg: C.brass,
     shadow: 'rgba(139,115,85,0.3)',
@@ -496,6 +620,7 @@ const STAT_CARDS = [
     up: true,
     name: 'Walk-in Clients',
     tag: 'Live',
+    preview: '/preview/reception-portal',
     iconBg: 'rgba(61,79,71,0.12)',
     iconBorder: 'rgba(61,79,71,0.15)',
     iconColor: '#7db8a0',
@@ -525,6 +650,7 @@ const STAT_CARDS = [
    COMPONENTS
 ─────────────────────────────────────────────────────────── */
 function ImageCardEl({ m, containerRef }) {
+  const navigate = useNavigate();
   return (
     <ImgCard
       id={`bento-${m.id}`}
@@ -532,8 +658,11 @@ function ImageCardEl({ m, containerRef }) {
       style={{ '--delay': `${m.delay}ms` }}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 20px 48px -12px ${m.shadow}`; }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
+      onClick={m.preview ? () => navigate(m.preview) : undefined}
+      role={m.preview ? 'link' : undefined}
     >
       <img src={m.image} alt={m.heading} loading="lazy" />
+      {m.preview && <CardLivePreview url={m.preview} />}
       <ImgContent className={m.cls}>
         <CardLabel $color={m.labelColor}>{m.label}</CardLabel>
         <CardHeading className={m.cls}>{m.heading}</CardHeading>
@@ -549,6 +678,7 @@ function ImageCardEl({ m, containerRef }) {
 
 function StatCardEl({ m }) {
   const ref = useRef(null);
+  const navigate = useNavigate();
 
   const onMove = useCallback(e => {
     const el = ref.current;
@@ -567,23 +697,28 @@ function StatCardEl({ m }) {
       style={{ '--delay': `${m.delay}ms` }}
       $glow={m.glow}
       onMouseMove={onMove}
+      onClick={m.preview ? () => navigate(m.preview) : undefined}
+      role={m.preview ? 'link' : undefined}
     >
-      <StatTop>
-        <StatLabel>{m.label}</StatLabel>
-        <StatIconBox $bg={m.iconBg} $border={m.iconBorder}>
-          <Icon size={16} color={m.iconColor} />
-        </StatIconBox>
-      </StatTop>
-      <div>
-        <StatNum>
-          <AnimatedNumber end={m.number} />{m.suffix && <span>{m.suffix}</span>}
-        </StatNum>
-        <StatBadge $up={m.up}>{m.change}</StatBadge>
-      </div>
-      <StatBottom>
-        <StatName>{m.name}</StatName>
-        <StatTag>{m.tag}</StatTag>
-      </StatBottom>
+      {m.preview && <CardLivePreview url={m.preview} scrim />}
+      <StatContent>
+        <StatTop>
+          <StatLabel>{m.label}</StatLabel>
+          <StatIconBox $bg={m.iconBg} $border={m.iconBorder}>
+            <Icon size={16} color={m.iconColor} />
+          </StatIconBox>
+        </StatTop>
+        <div>
+          <StatNum>
+            <AnimatedNumber end={m.number} />{m.suffix && <span>{m.suffix}</span>}
+          </StatNum>
+          <StatBadge $up={m.up}>{m.change}</StatBadge>
+        </div>
+        <StatBottom>
+          <StatName>{m.name}</StatName>
+          <StatTag>{m.tag}</StatTag>
+        </StatBottom>
+      </StatContent>
     </StatCard>
   );
 }

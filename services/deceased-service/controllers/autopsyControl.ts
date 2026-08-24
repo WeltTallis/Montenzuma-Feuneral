@@ -26,7 +26,7 @@ const formatFacilityName = (tenantSlug: string): string => {
         .join(' ');
 };
 
-const ensurePostmortemTable = async (dbName: string): Promise<void> => {
+export const ensurePostmortemTable = async (dbName: string): Promise<void> => {
     const createTableSQL = `
         CREATE TABLE IF NOT EXISTS postmortem (
             id INT AUTO_INCREMENT PRIMARY KEY,

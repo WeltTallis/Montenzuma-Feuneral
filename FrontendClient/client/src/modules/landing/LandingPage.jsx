@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, Children } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, TrendingUp, Search, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers } from '../../utils/icons/icons';
+import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, TrendingUp, Search, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy } from '../../utils/icons/icons';
 
 import Footer from '../../components/layout/Footer';
 import LandingPageSEO from '../seo/LandingPageSEO';
 import ModuleGridSection from './imageCard';
+import NewsroomSection from '../newsroom/NewsroomSection';
 
-import   C    from  '../../utils/colors/index'
+import C from '../../utils/colors/index'
 
 
 /* ═══════════════════════════════════════
@@ -202,7 +203,7 @@ const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
       {open && (
         <div className="mobile-menu-container">
           <a href="#features" onClick={() => setOpen(false)} className="mobile-link">Features</a>
-          <a href="#pricing" onClick={() => setOpen(false)} className="mobile-link">Pricing</a>
+          <a href="#modules" onClick={() => setOpen(false)} className="mobile-link">Modules</a>
           <button onClick={() => { navigate('/about'); setOpen(false); }} className="mobile-link">About</button>
           <div className="mobile-policies-header">
             <div className="mono-label" style={{ color: C.brass, padding: '0.6rem 1.2rem' }}>Policies</div>
@@ -368,6 +369,54 @@ const MockDocumentAutomation = () => {
   );
 };
 
+/* ── Support Ticket mock: live conversation between client & support team ── */
+const MockSupport = () => (
+  <div className="mock-inner">
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+      <div>
+        <div className="mono-label" style={{ color: C.verdigris }}>SUPPORT TICKET #1042</div>
+        <div style={{ fontSize: '1.15rem', fontFamily: "'Fraunces', serif", color: C.ink, marginTop: '0.3rem' }}>Hearse booking issue</div>
+      </div>
+      <span style={{
+        fontSize: '0.62rem', fontFamily: "'JetBrains Mono', monospace",
+        padding: '0.3rem 0.6rem', borderRadius: '4px', fontWeight: 600,
+        color: C.brass, background: 'rgba(139,115,85,0.1)',
+      }}>IN PROGRESS</span>
+    </div>
+
+    {/* Client message */}
+    <div style={{ display: 'flex', gap: '0.7rem', marginBottom: '1rem' }}>
+      <div className="avatar" style={{ background: C.accent, width: 30, height: 30, fontSize: '0.7rem', flexShrink: 0 }}>SM</div>
+      <div style={{ background: C.bone2, borderRadius: '10px 10px 10px 2px', padding: '0.75rem 1rem', flex: 1 }}>
+        <div style={{ fontSize: '0.68rem', fontFamily: "'JetBrains Mono', monospace", color: C.gray, marginBottom: '0.3rem' }}>Sarah M. · 10:32 AM</div>
+        <div style={{ fontSize: '0.84rem', color: C.ink, lineHeight: 1.6 }}>Booking freezes when I click confirm on the hearse page.</div>
+      </div>
+    </div>
+
+    {/* Staff reply */}
+    <div style={{ display: 'flex', gap: '0.7rem', marginBottom: '1rem', flexDirection: 'row-reverse' }}>
+      <div className="avatar" style={{ background: C.verdigris, width: 30, height: 30, fontSize: '0.62rem', flexShrink: 0 }}>RP</div>
+      <div style={{ background: C.verdigrisTint || 'rgba(61,79,71,0.08)', border: `1px solid ${C.line}`, borderRadius: '10px 10px 2px 10px', padding: '0.75rem 1rem', flex: 1 }}>
+        <div style={{ fontSize: '0.68rem', fontFamily: "'JetBrains Mono', monospace", color: C.verdigris, marginBottom: '0.3rem', fontWeight: 600 }}>RESTPOINT SUPPORT · 10:35 AM</div>
+        <div style={{ fontSize: '0.84rem', color: C.ink, lineHeight: 1.6 }}>Thanks Sarah — our team is on it. A fix is being deployed now; we'll update you here the moment it's live.</div>
+      </div>
+    </div>
+
+    {/* Live indicator + reply bar */}
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '0.6rem',
+      borderTop: `1px solid ${C.line}`, paddingTop: '0.9rem',
+      fontSize: '0.72rem', fontFamily: "'JetBrains Mono', monospace", color: C.gray,
+    }}>
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.verdigris, display: 'inline-block', animation: 'subtle-pulse 2s ease infinite' }} />
+      Support agent online · replies arrive in real time
+      <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: C.verdigris, fontWeight: 500 }}>
+        <MessageSquare size={12} /> Reply
+      </span>
+    </div>
+  </div>
+);
+
 const Showcase = ({ no, title, desc, reverse, children }) => (
   <Reveal className="showcase-mobile" style={{ display: 'grid', gridTemplateColumns: reverse ? '1fr 1.1fr' : '1.1fr 1fr', gap: '4rem', alignItems: 'center', marginBottom: '6rem' }}>
     <div className="showcase-text" style={{ order: reverse ? 2 : 1 }}>
@@ -390,6 +439,7 @@ const QuickFindSection = () => {
     { icon: Users, label: 'Family Portal', desc: 'Secure access for families to view arrangements', color: C.brass, href: '#features' },
     { icon: Truck, label: 'Dispatch & Fleet', desc: 'Smart route optimization and hearse tracking', color: C.accent, href: '#features' },
     { icon: ShieldCheck, label: 'Funeral Insurance', desc: 'Manage claims, contributions, and payouts', color: C.verdigrisLight, href: '#insurance' },
+    { icon: LifeBuoy, label: 'Real-Time Support', desc: 'Submit issues in-app and get live responses from our team', color: C.brassLight, href: '#features' },
     { icon: Activity, label: 'Analytics & Reports', desc: 'Real-time insights into your operations', color: C.brassLight, href: '#features' },
     { icon: Server, label: 'Enterprise Security', desc: 'Bank-grade encryption and access controls', color: C.grayDark, href: '#infra' },
     { icon: FileText, label: 'Document Automation', desc: 'Auto-generate release forms, receipts, and certificates', color: C.verdigris, href: '#features' },
@@ -428,63 +478,10 @@ const QuickFindSection = () => {
 
 
 /* ═══════════════════════════════════════
-   NEWSROOM
-   ═══════════════════════════════════════ */
-const NewsroomSection = () => {
-  const articles = [
-    { featured: true, category: 'COMING SOON', catColor: C.brass, title: 'RestPay: Unified Payment Processing', excerpt: 'We\'re introducing RestPay, our upcoming payment module that will integrate card payments alongside M-Pesa. Accept all major payment methods through a single, seamless platform. More payment options, less friction for families.', date: 'May 2026', cta: 'Get notified' },
-    { category: 'PRODUCT', catColor: C.verdigris, title: 'Multi-Tenant Architecture Now Available', excerpt: 'Serve multiple funeral homes from a single instance with complete data isolation.', date: 'May 2026' },
-    { category: 'COMING SOON', catColor: C.brass, title: 'M-Pesa Payments - Coming Soon', excerpt: 'Families will soon be able to pay directly through the portal via M-Pesa.', date: 'May 2026' },
-  ];
-  return (
-    <section className="newsroom-section">
-      <div className="wrap">
-        <Reveal style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '3rem' }}>
-          <Newspaper size={20} color={C.verdigris} />
-          <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.4rem)', margin: 0 }}>Newsroom</h2>
-        </Reveal>
-        <div className="newsroom-grid">
-          {articles.filter(a => a.featured).map((a, i) => (
-            <RevealDir key={i} from="left" delay={0}>
-              <div className="newsroom-featured" style={{ '--glow-color': a.catColor }}>
-                <div className="newsroom-featured-shine" />
-                <div className="newsroom-cat" style={{ color: a.catColor }}><span className="newsroom-cat-dot" style={{ background: a.catColor }} />{a.category}</div>
-                <h3 className="newsroom-featured-title">{a.title}</h3>
-                <p className="newsroom-featured-excerpt">{a.excerpt}</p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginTop: 'auto', paddingTop: '1.5rem' }}>
-                  <span className="newsroom-date">{a.date}</span>
-                  <button className="btn btn-brass" style={{ padding: '0.8rem 2rem', fontSize: '0.9rem', borderRadius: '50px' }}>{a.cta} <ArrowRight size={16} /></button>
-                </div>
-              </div>
-            </RevealDir>
-          ))}
-          <div className="newsroom-side">
-            {articles.filter(a => !a.featured).map((a, i) => (
-              <RevealDir key={i} from="right" delay={(i + 1) * 150}>
-                <a href="#" className="newsroom-card" style={{ '--card-accent': a.catColor }}>
-                  <div className="newsroom-card-top">
-                    <div className="newsroom-cat" style={{ color: a.catColor }}><span className="newsroom-cat-dot" style={{ background: a.catColor }} />{a.category}</div>
-                    <ExternalLink size={14} className="newsroom-card-ext" />
-                  </div>
-                  <h4 className="newsroom-card-title">{a.title}</h4>
-                  <p className="newsroom-card-excerpt">{a.excerpt}</p>
-                  <span className="newsroom-date">{a.date}</span>
-                </a>
-              </RevealDir>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-/* ═══════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════ */
 export default function App() {
   const [loaded, setLoaded] = useState(false);
-  const [billing, setBilling] = useState('monthly');
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
 
@@ -496,9 +493,33 @@ export default function App() {
   useEffect(() => { const t = setTimeout(() => setLoaded(true), 60); return () => clearTimeout(t); }, []);
   useEffect(() => { const onScroll = () => setScrolled(window.scrollY > 50); window.addEventListener('scroll', onScroll, { passive: true }); return () => window.removeEventListener('scroll', onScroll); }, []);
 
-  const plans = [
-    { name: 'Single Tenant', monthly: '9,200', annual: '101,200', features: ['Up to 20 users', 'Unlimited cases & documents', 'Family portal', 'Analytics & reporting', 'Case management & billing', 'Standard support', 'Daily backups'] },
-    { name: 'Multi-Tenant', monthly: '18,900', annual: '189,000', featured: true, features: ['Unlimited users', 'Unlimited cases & documents', 'All Single features +', 'Advanced analytics', 'Priority 24/7 support', 'Custom integrations', 'Hourly backups'] },
+  const landingModules = [
+    {
+      dark: true,
+      to: true,
+      category: 'NEW · INTEGRATED',
+      accent: C.brass,
+      title: 'Leave Management',
+      excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve and track time off in real time — no spreadsheets, no external HR tools.',
+      status: 'NOW LIVE',
+    },
+    {
+      static: true,
+      category: 'SELF SERVICE',
+      accent: C.verdigris,
+      title: 'Floral Booking',
+      excerpt: 'Clients walk in, select their floral arrangements at the front desk, and the booking appears right on your computer. Give your florist access to view every order.',
+      status: 'RECEPTIONIST PORTAL',
+    },
+    {
+      dark: true,
+      to: true,
+      category: 'NEW · SUPPORT CENTER',
+      accent: C.brass,
+      title: 'Real-Time Customer Support',
+      excerpt: 'Submit issues directly through the platform and our support agents receive, respond, and resolve them in real time — with full status tracking and communication history.',
+      status: 'NOW LIVE',
+    },
   ];
 
   const infraFeatures = [
@@ -507,7 +528,7 @@ export default function App() {
     { icon: Zap, title: 'Seamless Integrations', desc: 'Connect with local payment gateways, accounting software, and communication tools effortlessly.' },
   ];
 
-  const marqueeItems = ['Case Management', 'Family Portal', 'Smart Dispatch', 'Fleet Tracking', 'Funeral Insurance', 'Billing & Invoicing', 'Analytics & Reports', 'Welfare Schemes'];
+  const marqueeItems = ['Case Management', 'Family Portal', 'Smart Dispatch', 'Fleet Tracking', 'Funeral Insurance', 'Real-Time Support', 'Billing & Invoicing', 'Analytics & Reports', 'Welfare Schemes'];
 
   return (
     <>
@@ -790,68 +811,38 @@ export default function App() {
         .showcase-mobile{display:grid;grid-template-columns:1.1fr 1fr;gap:4rem;align-items:center;margin-bottom:6rem}
         .about-section{background:${C.bone};padding:clamp(3rem,6vw,4rem) 0;border-top:1px solid ${C.line}}
         .about-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
-        .pricing-section{padding:clamp(4rem,8vw,6rem) 0;background:${C.bone};border-top:1px solid ${C.line}}
-        .pricing-header{text-align:center;margin-bottom:2.5rem;padding:0 1rem}
-        .billing-toggle{display:inline-flex;align-items:center;background:${C.bone2};border-radius:50px;padding:4px;margin:2rem 0;border:1px solid ${C.line}}
-        .billing-btn{padding:0.6rem 1.5rem;border:none;background:transparent;cursor:pointer;font-size:0.85rem;color:${C.gray};border-radius:50px;transition:all 0.3s ease;font-family:'Inter',sans-serif;font-weight:500}
-        .billing-btn.active{background:${C.ink};color:${C.bone};box-shadow:0 4px 10px rgba(21,23,26,0.1)}
-        .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.5rem;max-width:800px;margin:0 auto}
-        .pricing-card{border:1px solid ${C.line};padding:2rem;position:relative;border-radius:8px;transition:all 0.3s ease;background:${C.bone}}
-        .pricing-card:hover{transform:translateY(-5px);box-shadow:0 20px 40px rgba(21,23,26,0.08)}
-        .pricing-card.featured{background:${C.verdigrisDark};border-color:${C.brass};box-shadow:0 20px 40px rgba(46,63,55,0.2)}
-        .pricing-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:${C.brass};color:${C.bone};padding:0.3rem 1rem;font-size:0.65rem;font-family:'JetBrains Mono',monospace;letter-spacing:0.08em;border-radius:20px;font-weight:500}
-        .pricing-name{font-size:1.2rem;font-family:'Fraunces',serif;margin-bottom:0.4rem}
-        .pricing-amount{font-size:clamp(2rem,5vw,2.6rem);font-family:'Fraunces',serif;font-weight:600;margin-bottom:0.25rem;letter-spacing:-0.02em}
-        .pricing-period{font-size:0.85rem;color:${C.gray};font-family:'Inter',sans-serif;font-weight:400;margin-left:0.2rem}
-        .pricing-card.featured .pricing-name,.pricing-card.featured .pricing-amount{color:${C.bone}}
-        .pricing-card.featured .pricing-period{color:rgba(250,248,244,0.6)}
-        .pricing-card.featured .pricing-feature{color:rgba(250,248,244,0.8)}
-        .pricing-btn{width:100%;padding:0.9rem;margin-bottom:1.5rem;font-size:0.85rem;font-weight:600;cursor:pointer;border-radius:6px;transition:all 0.2s;border:1px solid transparent;font-family:'Inter',sans-serif}
-        .pricing-features{list-style:none;padding:0;margin:0}
-        .pricing-feature{display:flex;gap:0.7rem;margin-bottom:0.8rem;font-size:0.88rem;align-items:flex-start;color:${C.gray}}
-        .pricing-feature svg{flex-shrink:0;margin-top:2px}
+        .modules-section{padding:clamp(4rem,8vw,6rem) 0;background:${C.bone};border-top:1px solid ${C.line}}
+        .modules-header{text-align:center;margin-bottom:3rem;padding:0 1rem}
+        .modules-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;max-width:900px;margin:0 auto;align-items:stretch}
+        .modules-grid>div{display:flex}
+        .module-card{flex:1;width:100%;display:flex;flex-direction:column;padding:1.5rem;border:1px solid ${C.line};border-radius:12px;background:${C.bone};transition:all 0.4s cubic-bezier(0.16,1,0.3,1);cursor:pointer;text-decoration:none}
+        .module-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 10%,transparent)}
+        .module-card.dark{background:${C.ink};border-color:rgba(250,248,244,0.12)}
+        .module-card.dark:hover{box-shadow:0 8px 24px rgba(21,23,26,0.35)}
+        .module-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem}
+        .module-cat{display:flex;align-items:center;gap:0.5rem;font-family:'JetBrains Mono',monospace;font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:500}
+        .module-dot{width:6px;height:6px;border-radius:50%;display:inline-block;animation:module-pulse 2s ease-in-out infinite}
+        .module-ext{color:${C.gray};opacity:0;transform:translate(-4px,4px);transition:all 0.3s ease}
+        .module-card:hover .module-ext{opacity:1;transform:translate(0,0);color:var(--accent)}
+        .module-title{font-size:1.05rem;font-weight:600;color:${C.ink};margin:0 0 0.5rem;line-height:1.35;font-family:'Inter',sans-serif}
+        .module-excerpt{font-size:0.85rem;color:${C.gray};line-height:1.65;flex:1;margin:0}
+        .module-status{font-size:0.75rem;color:${C.gray};font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;margin-top:1rem}
+        .module-card.dark .module-title{color:${C.bone}}
+        .module-card.dark .module-excerpt{color:rgba(250,248,244,0.62)}
+        .module-card.dark .module-status{color:rgba(250,248,244,0.45)}
+        .module-card.dark .module-ext{color:rgba(250,248,244,0.5)}
+        .module-card.static{cursor:default}
+        @keyframes module-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.7)}}
+        @keyframes subtle-pulse{0%,100%{box-shadow:0 0 0 0 rgba(61,79,71,0.4)}70%{box-shadow:0 0 0 6px rgba(61,79,71,0)}}
 
         /* ── CTA ── */
-        .cta-wrapper{background:${C.bone};padding:clamp(4rem,8vw,7rem) 0}
-        .cta-card{position:relative;background:linear-gradient(135deg,${C.ink} 0%,${C.verdigrisDark} 100%);border-radius:24px;padding:clamp(3rem,6vw,5rem) 2rem;text-align:center;overflow:hidden;border:1px solid ${C.lineDark};box-shadow:0 40px 80px -20px rgba(21,23,26,0.3)}
-        .cta-card::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background-image:radial-gradient(circle at 50% 0%,rgba(139,115,85,0.15) 0%,transparent 50%),linear-gradient(rgba(250,248,244,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(250,248,244,0.03) 1px,transparent 1px);background-size:100% 100%,40px 40px,40px 40px;pointer-events:none}
-        .cta-content{position:relative;z-index:2;max-width:700px;margin:0 auto}
-        .cta-content h2{color:${C.bone};margin-bottom:1.5rem;font-size:clamp(2rem,4.5vw,3rem);line-height:1.2}
-        .cta-content p{color:rgba(250,248,244,0.8);font-size:1.1rem;line-height:1.8;margin-bottom:2.5rem}
-        .cta-avatars{display:flex;justify-content:center;margin-bottom:2.5rem}
-        .avatar-circle{width:48px;height:48px;border-radius:50%;border:2px solid ${C.ink};display:flex;align-items:center;justify-content:center;color:${C.bone};font-family:'Fraunces',serif;font-weight:600;margin-left:-15px;box-shadow:0 4px 10px rgba(0,0,0,0.2)}
-        .avatar-circle:first-child{margin-left:0}
-        .cta-buttons{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
-        .btn-ghost{background:transparent;color:${C.bone};border:1px solid rgba(250,248,244,0.3)}
-        .btn-ghost:hover{background:rgba(250,248,244,0.1);border-color:${C.bone}}
-        .cta-microcopy{margin-top:1.5rem;font-size:0.8rem;color:rgba(250,248,244,0.5);font-family:'JetBrains Mono',monospace;letter-spacing:0.05em}
-
-        /* ── Newsroom ── */
-        .newsroom-section{padding:clamp(4rem,8vw,6rem) 0;background:${C.bone};border-top:1px solid ${C.line}}
-        .newsroom-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:1.5rem;align-items:start}
-        .newsroom-featured{position:relative;background:${C.ink};border-radius:16px;padding:clamp(2rem,4vw,3rem);display:flex;flex-direction:column;overflow:hidden;border:1px solid ${C.lineDark};transition:all 0.4s ease;min-height:380px}
-        .newsroom-featured:hover{transform:translateY(-4px);box-shadow:0 20px 50px rgba(21,23,26,0.2)}
-        .newsroom-featured-shine{position:absolute;top:0;left:-100%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(250,248,244,0.03),transparent);animation:shine 6s ease-in-out infinite 2s;pointer-events:none}
-        .newsroom-cat{display:flex;align-items:center;gap:0.5rem;font-family:'JetBrains Mono',monospace;font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:1rem;font-weight:500}
-        .newsroom-cat-dot{width:6px;height:6px;border-radius:50%;display:inline-block;animation:pulse-dot 2s ease-in-out infinite}
-        .newsroom-featured-title{color:${C.bone};font-size:clamp(1.5rem,3vw,2rem);line-height:1.25;margin-bottom:1rem}
-        .newsroom-featured-excerpt{color:rgba(250,248,244,0.7);font-size:0.95rem;line-height:1.8;flex:1}
-        .newsroom-date{font-size:0.75rem;color:${C.gray};font-family:'JetBrains Mono',monospace;letter-spacing:0.05em}
-        .newsroom-side{display:flex;flex-direction:column;gap:1rem}
-        .newsroom-card{display:flex;flex-direction:column;padding:1.5rem;border:1px solid ${C.line};border-radius:12px;background:${C.bone};transition:all 0.4s cubic-bezier(0.16,1,0.3,1);cursor:pointer;text-decoration:none}
-        .newsroom-card:hover{border-color:var(--card-accent);transform:translateY(-3px);box-shadow:0 8px 24px color-mix(in srgb,var(--card-accent) 10%,transparent)}
-        .newsroom-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem}
-        .newsroom-card-ext{color:${C.gray};opacity:0;transform:translate(-4px,4px);transition:all 0.3s ease}
-        .newsroom-card:hover .newsroom-card-ext{opacity:1;transform:translate(0,0);color:var(--card-accent)}
-        .newsroom-card-title{font-size:1rem;font-weight:600;color:${C.ink};margin-bottom:0.5rem;line-height:1.35;font-family:'Inter',sans-serif}
-        .newsroom-card-excerpt{font-size:0.82rem;color:${C.gray};line-height:1.6;flex:1}
+        /* ── Newsroom moved to modules/newsroom ── */
 
         /* ── Keyframes ── */
         @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-25%)}}
         @keyframes shine{0%{left:-100%}50%,100%{left:200%}}
         @keyframes subtle-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
         @keyframes float-orb{0%,100%{transform:translate(0,0) scale(1)}25%{transform:translate(30px,-20px) scale(1.1)}50%{transform:translate(-20px,20px) scale(0.95)}75%{transform:translate(10px,10px) scale(1.05)}}
-        @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.7)}}
         @keyframes gradient-text{0%{background-position:0% center}50%{background-position:100% center}100%{background-position:0% center}}
         @keyframes truckMove{from{left:30%}to{left:60%}}
 
@@ -863,15 +854,12 @@ export default function App() {
           .showcase-mobile .showcase-text{order:2!important}
           .showcase-mobile .showcase-visual{order:1!important;justify-content:center!important}
           .insurance-grid{grid-template-columns:1fr;gap:2rem}
+          .modules-grid{grid-template-columns:1fr}
           .about-grid{grid-template-columns:1fr;gap:2rem}
           .hero-buttons{flex-direction:column;width:100%}
           .hero-buttons .btn{width:100%;justify-content:center}
-          .cta-buttons{flex-direction:column;width:100%}
-          .cta-buttons .btn{width:100%;justify-content:center}
           .window-body{padding:1.5rem}
           .quickfind-grid{grid-template-columns:1fr}
-          .newsroom-grid{grid-template-columns:1fr}
-          .newsroom-featured{min-height:auto}
           .sales-banner-content{position:relative;bottom:auto;left:auto;padding:1.5rem;background:${C.ink}}
           .sales-banner-overlay{display:none}
           .unified-bento{grid-template-columns:1fr!important}
@@ -895,7 +883,7 @@ export default function App() {
             </div>
             <div className="nav-links">
               <a href="#features" className="nav-link">Features</a>
-              <a href="#pricing" className="nav-link">Pricing</a>
+              <a href="#modules" className="nav-link">Modules</a>
               <button onClick={goAbout} className="nav-link">About</button>
               <PolicyDropdown navigate={navigate} goTerms={goTerms} />
             </div>
@@ -990,6 +978,9 @@ export default function App() {
             <Showcase no="05" title="Document automation engine" desc="Generate release forms, autopsy records, death certificates, and burial permits automatically. Digital signatures included." reverse={false}>
               <AppWindow title="restpoint.app/documents" dark><MockDocumentAutomation /></AppWindow>
             </Showcase>
+            <Showcase no="06" title="Real-Time Customer Support" desc="Clients can submit issues directly through the platform, while support agents receive, respond to, and resolve requests in real time. The system provides status tracking, communication history, and centralized issue management — so no question ever goes unanswered." reverse={true}>
+              <AppWindow title="restpoint.app/support"><MockSupport /></AppWindow>
+            </Showcase>
           </div>
         </section>
 
@@ -1080,76 +1071,34 @@ export default function App() {
           </div>
         </section>
 
-        {/* ── Pricing ── */}
-        <section id="pricing" className="pricing-section">
+        {/* ── Modules ── */}
+        <section id="modules" className="modules-section">
           <div className="wrap">
-            <div className="pricing-header">
+            <div className="modules-header">
               <Reveal>
-                <div className="label" style={{ marginBottom: '1rem' }}>Pricing</div>
-                <h2>Simple, transparent pricing</h2>
+                <div className="label" style={{ marginBottom: '1rem' }}>Modules</div>
+                <h2>Powerful modules, built right in</h2>
               </Reveal>
-              <div className="billing-toggle">
-                <button className={`billing-btn ${billing === 'monthly' ? 'active' : ''}`} onClick={() => setBilling('monthly')}>Monthly</button>
-                <button className={`billing-btn ${billing === 'annual' ? 'active' : ''}`} onClick={() => setBilling('annual')}>
-                  Annual
-                  <span className="save-badge">Save 14%</span>
-                </button>
-              </div>
             </div>
-            <div className="pricing-grid">
-              {plans.map((plan, i) => (
-                <Reveal key={i} delay={i * 100}>
-                  <div className={`pricing-card ${plan.featured ? 'featured' : ''}`}>
-                    {plan.featured && <div className="pricing-badge">MOST POPULAR</div>}
-                    <div className="pricing-name">{plan.name}</div>
-                    <div className="pricing-amount">
-                      KES {billing === 'monthly' ? plan.monthly : plan.annual}
-                      <span className="pricing-period">/{billing === 'monthly' ? 'mo' : 'yr'}</span>
+            <div className="modules-grid">
+              {landingModules.map((m, i) => (
+                <Reveal key={i} delay={i * 120}>
+                  <a
+                    className={`module-card${m.dark ? ' dark' : ''}${m.static ? ' static' : ''}`}
+                    style={{ '--accent': m.accent }}
+                    onClick={m.to ? goStart : undefined}
+                  >
+                    <div className="module-card-top">
+                      <div className="module-cat" style={{ color: m.accent }}><span className="module-dot" style={{ background: m.accent }} />{m.category}</div>
+                      <ExternalLink size={14} className="module-ext" />
                     </div>
-                    <button
-                      className={`pricing-btn ${plan.featured ? 'btn-brass' : 'btn-dark'}`}
-                      onClick={goStart}
-                    >Get started</button>
-                    <ul className="pricing-features">
-                      {plan.features.map((f, j) => (
-                        <li key={j} className="pricing-feature">
-                          <Check size={15} color={plan.featured ? '#A98F6E' : C.verdigris} />{f}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                    <h4 className="module-title">{m.title}</h4>
+                    <p className="module-excerpt">{m.excerpt}</p>
+                    <span className="module-status">{m.status}</span>
+                  </a>
                 </Reveal>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* ── CTA ── */}
-        <section className="cta-wrapper">
-          <div className="wrap">
-            <Reveal>
-              <div className="cta-card">
-                <div className="cta-content">
-                  <div className="cta-avatars">
-                    {[
-                      { bg: C.verdigris, t: 'JO' },
-                      { bg: C.brass, t: 'MW' },
-                      { bg: C.accent, t: 'KA' },
-                      { bg: C.verdigrisLight, t: 'NO' },
-                    ].map((a, i) => (
-                      <div key={i} className="avatar-circle" style={{ background: a.bg }}>{a.t}</div>
-                    ))}
-                  </div>
-                  <h2>Ready to transform how you serve families?</h2>
-                  <p>Join 500+ organizations already using Rest Point to deliver dignified, efficient funeral services.</p>
-                  <div className="cta-buttons">
-                    <button className="btn btn-brass" onClick={goStart}>Request access <ArrowRight size={16} /></button>
-                    <button className="btn btn-ghost" onClick={goLogin}>Log in</button>
-                  </div>
-                  <div className="cta-microcopy">Free onboarding · No credit card required · Cancel anytime</div>
-                </div>
-              </div>
-            </Reveal>
           </div>
         </section>
 

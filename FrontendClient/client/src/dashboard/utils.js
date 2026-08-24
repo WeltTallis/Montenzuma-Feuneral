@@ -55,6 +55,7 @@ export const safeName = (booking, mod) =>
 
 /* ---------- Presentational helpers ---------- */
 
+/* Resolve an event's start hour to a number for timeline placement. */
 export const hourOf = (bk) => {
   const h = bk.start_hour ?? bk.pickup_hour;
   if (typeof h === "string") {
@@ -66,18 +67,5 @@ export const hourOf = (bk) => {
   return 8;
 };
 
-/* A small colored status pill used across day/detail surfaces. */
-export function StatusPill({ status, mod }) {
-  const cfg = mod.statusMap[status] || { label: status, color: TEXT3 };
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 6,
-      padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700,
-      backgroundColor: `${cfg.color}1a`, color: cfg.color,
-      border: `1px solid ${cfg.color}40`,
-    }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: cfg.color }} />
-      {cfg.label}
-    </span>
-  );
-}
+/* The fallback colour applied to unknown statuses (imported by StatusPill). */
+export const UNKNOWN_COLOR = TEXT3;

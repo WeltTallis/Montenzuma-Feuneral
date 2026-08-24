@@ -12,7 +12,7 @@ import cors from 'cors';
 import http from 'http';
 import knex from 'knex';
 import { initSocket } from './socket';
-import { workshopRouter } from './controllers/routes/workshopRouter';
+import { workshopRouter } from './routes/workshopRouter';
 
 const app = express();
 const server = http.createServer(app);

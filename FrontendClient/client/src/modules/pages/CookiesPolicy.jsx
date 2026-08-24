@@ -177,7 +177,7 @@ export default function CookiesPolicy() {
 
                     <Reveal delay={350}>
                         <h2>Third-Party Cookies</h2>
-                        <p>Some cookies are placed by third-party services that appear on our pages. We do not control these cookies. These may include analytics services (like Google Analytics) and advertising networks. We encourage you to review the privacy policies of these third parties.</p>
+                        <p>Some cookies are placed by third party services that appear on our pages. We do not control these cookies. These may include analytics services (like Google Analytics) and advertising networks. We encourage you to review the privacy policies of these third parties.</p>
                     </Reveal>
 
                     <Reveal delay={400}>

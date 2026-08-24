@@ -2,7 +2,6 @@ const path = require('path');
 const fs = require('fs');
 const { lookupTenantDatabase, safeTenantQuery } = require('../../shared/dbConfig');
 const { getKenyaTimeISO } = require('../../../packages/shared-utils/dist/timestamps');
-
 /**
  * Resolve the canonical global uploads directory, honouring the platform
  * GLOBAL_UPLOADS_DIR / UPLOADS_BASE_DIR env vars first (same logic as server.js)
@@ -17,6 +16,8 @@ function resolveGlobalUploadsDir() {
       console.warn(`[DOCUMENTS] GLOBAL_UPLOADS_DIR not writable (${envDir}):`, e.message);
     }
   }
+
+
   for (const basePath of [
     path.join(process.cwd(), 'uploads'),
     path.join(__dirname, '../../uploads'),
@@ -25,7 +26,7 @@ function resolveGlobalUploadsDir() {
     try {
       fs.mkdirSync(basePath, { recursive: true });
       return basePath;
-    } catch (e) {}
+    } catch (e) { }
   }
   return path.join(require('os').tmpdir(), 'restpoint-uploads');
 }
@@ -44,7 +45,6 @@ function absoluteStoredPath(storedPath) {
   const rel = String(storedPath || '').replace(/^\/?(uploads[\\/])*/, '');
   return path.join(GLOBAL_UPLOADS_DIR, rel);
 }
-
 /**
  * Ensure folder exists with retry mechanism
  */
@@ -66,16 +66,15 @@ function ensureFolderExists(dir, retries = 3, delay = 100) {
     attempt();
   });
 }
-
 /**
  * Convert absolute path to relative URL for browser/DB
  */
 function normalizePath(filePath) {
   return filePath
     ? filePath.replace(
-        /^.*[\\/]uploads[\\/]documents[\\/]/,
-        '/uploads/documents/',
-      )
+      /^.*[\\/]uploads[\\/]documents[\\/]/,
+      '/uploads/documents/',
+    )
     : null;
 }
 
@@ -86,7 +85,6 @@ function normalizePath(filePath) {
 function getTenantSlug(req) {
   return req.headers['x-tenant-slug'] || req.headers['x-tenant-id'] || 'system_shared';
 }
-
 /**
  * Upload a document for a deceased record
  * Multi-tenant aware: files are stored in tenant-specific folders, DB records in tenant DB
@@ -95,13 +93,11 @@ const uploadDocument = async (req, res) => {
   try {
     // Get tenant slug for multi-tenancy isolation
     const tenantSlug = getTenantSlug(req);
-    
     // Resolve tenant database
     const dbName = await lookupTenantDatabase(tenantSlug);
     if (!dbName) {
       return res.status(404).json({ message: 'Tenant database not found' });
     }
-
     // FIX: Use deceased_idd instead of deceasedId to match your database
     const { deceased_idd } = req.params;
     const { type } = req.body;
@@ -114,7 +110,6 @@ const uploadDocument = async (req, res) => {
     if (!type) {
       return res.status(400).json({ message: 'Document type is required' });
     }
-
     // Check if deceased exists in tenant database
     const deceasedCheck = await safeTenantQuery(
       dbName,
@@ -138,8 +133,7 @@ const uploadDocument = async (req, res) => {
         message: 'Invalid file type. Only PDF and image files are allowed.',
       });
     }
-
-        // Multi-tenant folder structure: {GLOBAL_UPLOADS_DIR}/documents/{tenantSlug}/{deceased_idd}/
+    // Multi-tenant folder structure: {GLOBAL_UPLOADS_DIR}/documents/{tenantSlug}/{deceased_idd}/
     const uploadDir = documentsDir(tenantSlug, deceased_idd);
     await ensureFolderExists(uploadDir);
 
@@ -178,6 +172,8 @@ const uploadDocument = async (req, res) => {
       uploaded_at: uploadedAt,
       tenant: tenantSlug,
     });
+
+
   } catch (error) {
     console.error('Upload Error:', error);
     return res.status(500).json({
@@ -205,7 +201,7 @@ const getDocuments = async (req, res) => {
     const documents = await safeTenantQuery(
       dbName,
       `SELECT 
-         document_id AS id,
+        id,
         document_type,
         file_name as document_name,
         file_path,
@@ -314,7 +310,7 @@ const deleteDocument = async (req, res) => {
     }
 
     // Delete record from database
-        await safeTenantQuery(dbName, `DELETE FROM documents WHERE document_id = ?`, [documentId]);
+    await safeTenantQuery(dbName, `DELETE FROM documents WHERE document_id = ?`, [documentId]);
 
     return res.status(200).json({
       message: 'Document deleted successfully',
@@ -334,4 +330,3 @@ module.exports = {
   downloadDocument,
   deleteDocument,
 };
-

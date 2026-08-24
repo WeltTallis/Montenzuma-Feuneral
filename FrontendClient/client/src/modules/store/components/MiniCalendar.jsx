@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Card, Button } from 'react-bootstrap';
+import { Card } from 'react-bootstrap';
 import { useStoreContext } from '../storeContext';
 import { dateKey, monthName, formatTime } from '../seed';
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const ACTION_COLOR = { used: '#dc2626', restocked: '#16a34a', adjusted: '#64748b' };
 
 export default function MiniCalendar() {
   const { transactions } = useStoreContext();
@@ -19,12 +20,16 @@ export default function MiniCalendar() {
   const prevDays = new Date(year, month, 0).getDate();
 
   const activity = useMemo(() => {
-    const m = {};
+    const counts = {};
+    const colors = {};
     transactions.forEach((t) => {
       const k = dateKey(t.date);
-      m[k] = (m[k] || 0) + 1;
+      counts[k] = (counts[k] || 0) + 1;
+      const col = ACTION_COLOR[t.action] || '#0f766e';
+      if (!colors[k]) colors[k] = [];
+      if (!colors[k].includes(col)) colors[k].push(col);
     });
-    return m;
+    return { counts, colors };
   }, [transactions]);
 
   const cells = useMemo(() => {
@@ -32,7 +37,7 @@ export default function MiniCalendar() {
     for (let i = firstDay - 1; i >= 0; i--) arr.push({ outside: true, label: prevDays - i });
     for (let d = 1; d <= daysInMonth; d++) {
       const k = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      arr.push({ day: d, key: k, active: !!activity[k], selected: k === sel, today: k === dateKey(new Date()) });
+      arr.push({ day: d, key: k, active: !!activity.counts[k], selected: k === sel, today: k === dateKey(new Date()) });
     }
     while (arr.length % 7) arr.push({ outside: true, label: '' });
     return arr;
@@ -50,34 +55,38 @@ export default function MiniCalendar() {
   return (
     <Card className="panel mb-3">
       <Card.Body className="p-3">
-        <div className="d-flex align-items-center justify-content-between mb-2">
-          <Button variant="outline-secondary" size="sm" onClick={() => changeMonth(-1)}>
-            <i className="fa-solid fa-chevron-left" />
-          </Button>
-          <h6 className="mb-0 fw-bold">{monthName(year, month)}</h6>
-          <Button variant="outline-secondary" size="sm" onClick={() => changeMonth(1)}>
-            <i className="fa-solid fa-chevron-right" />
-          </Button>
+        <div className="cal-head">
+          <span className="cal-title">{monthName(year, month)}</span>
+          <div className="cal-nav">
+            <button type="button" className="cal-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">
+              <i className="fa-solid fa-chevron-left" />
+            </button>
+            <button type="button" className="cal-nav-btn" onClick={() => changeMonth(1)} aria-label="Next month">
+              <i className="fa-solid fa-chevron-right" />
+            </button>
+          </div>
         </div>
-        <div className="row g-1 small text-uppercase text-muted mb-1" style={{ letterSpacing: '.03em' }}>
-          {WEEKDAYS.map((w) => <div key={w} className="col text-center">{w}</div>)}
+        <div className="cal-grid mb-1">
+          {WEEKDAYS.map((w) => <div key={w} className="cal-dow">{w}</div>)}
         </div>
-        <div className="d-grid" style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
+        <div className="cal-grid">
           {cells.map((c, i) => (
             <button
               key={i}
               type="button"
               disabled={c.outside}
-              className={`btn btn-sm cal-day ${c.outside ? 'text-muted' : ''} ${c.today && !c.selected ? 'border border-primary' : ''} ${c.selected ? 'bg-primary text-white' : 'btn-light'} ${c.active && !c.selected ? 'fw-bold' : ''}`}
-              style={{
-                width: 32,
-                height: 32,
-                color: c.active && !c.selected && !c.outside ? 'var(--k-primary-dark)' : undefined,
-              }}
+              className={`cal-day${c.today && !c.selected ? ' today' : ''}${c.selected ? ' selected' : ''}`}
               onClick={() => !c.outside && c.key && setSel(c.key === sel ? null : c.key)}
-              title={c.active ? `${activity[c.key]} events` : undefined}
+              title={c.active ? `${activity.counts[c.key]} event${activity.counts[c.key] > 1 ? 's' : ''}` : undefined}
             >
-              {c.day ?? c.label}
+              <span>{c.day ?? c.label}</span>
+              {c.active && (
+                <span className="cal-dots">
+                  {(activity.colors[c.key] || []).slice(0, 3).map((col, j) => (
+                    <span key={j} className="cal-dot" style={{ background: c.selected ? 'rgba(255,255,255,.85)' : col }} />
+                  ))}
+                </span>
+              )}
             </button>
           ))}
         </div>

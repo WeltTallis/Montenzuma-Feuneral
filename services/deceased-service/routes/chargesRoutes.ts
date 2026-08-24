@@ -3,6 +3,7 @@ import {
     getCharges,
     addCharge,
     updateCharge,
+    deleteCharge,
     getPayments,
     recordPayment
 } from '../controllers/chargesControl';
@@ -20,5 +21,6 @@ router.post('/payments', recordPayment);
 router.get('/charges/:deceased_id', getCharges);
 router.post('/charges', addCharge);
 router.put('/charges/:id', updateCharge);
+router.delete('/charges/:id', deleteCharge);
 
 export default router;

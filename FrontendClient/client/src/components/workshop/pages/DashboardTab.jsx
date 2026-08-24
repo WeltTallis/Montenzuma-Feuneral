@@ -41,11 +41,6 @@ const DashboardTab = () => {
   const lowStock = materials.filter(m => m.quantity <= m.minLevel).length;
   const stageCounts = STAGES.map((_, i) => orders.filter(o => o.stageIndex === i).length);
 
-  // Orders already dispatched/picked up from the Store stage (status = delivered / dispatched / collected)
-  const dispatched = orders
-    .filter(o => ['delivered', 'dispatched', 'collected'].includes((o.status || '').toLowerCase()))
-    .map(o => o.dbId);
-
   const handleAdvanceClick = (order) => {
     setAdvancingOrder(order);
     setShowAdvanceModal(true);
@@ -160,8 +155,9 @@ const DashboardTab = () => {
 
         <div style={{ padding: 16, overflowX: 'auto' }}>
           <div style={{ display: 'flex', gap: 12, minWidth: 1100 }}>
-            {STAGES.map((stage, si) => {
-              const stageOrders = orders.filter(o => o.stageIndex === si && (si < 4 || !dispatched.includes(o.dbId)));
+            {/* Only production stages — Store is hidden here because stored orders live on the Store tab */}
+            {STAGES.slice(0, 4).map((stage, si) => {
+              const stageOrders = orders.filter(o => o.stageIndex === si);
               return (
                 <div key={si} style={{ flex: 1, minWidth: 200, background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 9, display: 'flex', flexDirection: 'column', maxHeight: 500 }}>
                   <div style={{ padding: '12px 14px', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: stage.bg }}>
@@ -178,7 +174,9 @@ const DashboardTab = () => {
                         <i className="fas fa-inbox" style={{ fontSize: 22, opacity: 0.4 }} /> Empty
                       </div>
                     ) : stageOrders.map(order => {
-                      const assignee = workers.find(w => w.id === order.assignedTo) || { name: 'Unassigned', color: '#94A3B8' };
+                      const assignee = workers.find(w => w.id === order.assignedTo)
+                        || workers.find(w => w.name && order.assignedToName && w.name === order.assignedToName)
+                        || { name: order.assignedToName || 'Unassigned', color: '#94A3B8' };
                       return (
                         <div key={order.dbId} style={{ position: 'relative', padding: '12px 13px', background: '#ffffff', borderRadius: 10, border: `1px solid ${stage.color}30`, borderTop: `3px solid ${stage.color}`, boxShadow: '0 1px 3px rgba(15,23,42,0.07)', transition: 'transform 0.15s ease, box-shadow 0.15s ease', display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>

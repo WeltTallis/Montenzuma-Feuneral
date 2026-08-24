@@ -378,7 +378,8 @@ export default function AboutPage() {
                     </div>
                   </div>
                   <p style={{ fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.7 }}>
-                    Rest Point is the complete operating system for funeral homes — case management, family communication, dispatch, and billing in one dignified platform.
+                    Rest Point is the complete operating system for funeral homes 
+                     case management, family communication, dispatch, and billing in one dignified platform.
                   </p>
                   <a href="/" className="link-arrow">
                     Visit Rest Point <ArrowRight size={14} />

@@ -16,7 +16,7 @@ const getHeaders = () => {
     try {
         const tenantSlug = localStorage.getItem('tenantSlug') || sessionStorage.getItem('tenantSlug');
         const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
-        const branchId = localStorage.getItem('branch_id');
+                const branchId = localStorage.getItem('branchId');
 
         if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
         if (token) headers['Authorization'] = `Bearer ${token}`;

@@ -1,1486 +1,1029 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import styled, { keyframes } from 'styled-components';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import api from '../../api/axios';
+import { useSocket } from '../../utils/context/socketContext';
+import {
+    Headphones, MessageSquare, Search, Send, Clock, RefreshCw,
+    CheckCircle2, User, Users, AlertTriangle,
+} from '../../utils/icons/icons';
 
-// ─── Animations ──────────────────────────────────────────────────────
-const fadeIn = keyframes`
-  from { opacity: 0; transform: translateY(20px); }
+/* ============================================================
+   REST POINT — System Admin Console (light theme · tickets-first)
+   Default tab = Support Tickets with full conversations & replies.
+   Real-time via Socket.IO: ticket_updated / ticket_response
+   ============================================================ */
+
+const C = {
+    white: '#ffffff', pageBg: '#f5f6f8',
+    gray50: '#f5f5f5', gray100: '#f0f0f0', gray200: '#e4e4e4',
+    gray300: '#d1d1d1', gray400: '#a3a3a3', gray500: '#737373',
+    gray600: '#525252', gray700: '#404040', gray800: '#262626', gray900: '#171717',
+    accent: '#0d9488', accentLight: '#ccfbf1', accentDark: '#0f766e',
+    red: '#ef4444', redLight: '#fef2f2',
+    amber: '#f59e0b', amberLight: '#fffbeb',
+    green: '#22c55e', greenLight: '#f0fdf4',
+    blue: '#3b82f6', blueLight: '#eff6ff',
+};
+
+const STATUS_META = {
+    open: { label: 'Open', color: C.green, bg: C.greenLight },
+    in_progress: { label: 'In Progress', color: C.amber, bg: C.amberLight },
+    resolved: { label: 'Resolved', color: C.accent, bg: C.accentLight },
+    closed: { label: 'Closed', color: C.gray400, bg: C.gray100 },
+};
+
+const TYPE_META = {
+    help: { label: 'Question', color: C.blue, bg: C.blueLight },
+    bug: { label: 'Bug Report', color: C.red, bg: C.redLight },
+    feature: { label: 'Suggestion', color: '#16a34a', bg: C.greenLight },
+    other: { label: 'General', color: C.gray600, bg: C.gray100 },
+};
+
+const FILTERS = [
+    { id: 'all', label: 'All' },
+    { id: 'open', label: 'Open' },
+    { id: 'in_progress', label: 'In Progress' },
+    { id: 'resolved', label: 'Resolved' },
+    { id: 'closed', label: 'Closed' },
+];
+
+function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const diff = Date.now() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(diff / 3600000);
+    if (hrs < 24) return `${hrs}h ago`;
+    return d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function clockTime(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function getInitials(name, email) {
+    const src = (name && name.trim()) || email || '?';
+    const parts = src.replace(/[^\w\s@]/g, '').split(/[\s@._]+/).filter(Boolean);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+const GlobalStyle = createGlobalStyle`
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+`;
+
+const fadeInUp = keyframes`
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 `;
 
-const pulse = keyframes`
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-`;
-
-const glow = keyframes`
-  0%, 100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); }
-  50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); }
-`;
-
-const slideIn = keyframes`
-  from { opacity: 0; transform: translateX(-20px); }
+const toastIn = keyframes`
+  from { opacity: 0; transform: translateX(20px); }
   to { opacity: 1; transform: translateX(0); }
 `;
 
-// ─── Color Palette ───────────────────────────────────────────────────
-const Colors = {
-  primary: '#3B82F6',
-  primaryDark: '#1E40AF',
-  primaryLight: '#60A5FA',
-  secondary: '#8B5CF6',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  info: '#06B6D4',
+const livePulse = keyframes`
+  0%, 100% { transform: scale(1); opacity: 0.35; }
+  50% { transform: scale(1.7); opacity: 0; }
+`;
 
-  dark: {
-    bg: '#0F172A',
-    card: '#1E293B',
-    border: '#334155',
-    text: {
-      primary: '#F1F5F9',
-      secondary: '#94A3B8',
-      muted: '#64748B'
-    }
-  }
-};
+const spinAnim = keyframes`
+  from { transform: rotate(0deg); } to { transform: rotate(360deg); }
+`;
 
-// ─── Styled Components ───────────────────────────────────────────────
-const DashboardContainer = styled.div`
+const Page = styled.div`
   min-height: 100vh;
-  background: linear-gradient(135deg, ${Colors.dark.bg} 0%, #1a202c 100%);
-  color: ${Colors.dark.text.primary};
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  padding: 1rem;
-  
-  @media (min-width: 768px) {
-    padding: 2rem;
-  }
+  background: ${C.pageBg};
+  font-family: 'DM Sans', sans-serif;
+  color: ${C.gray800};
+  padding: 20px;
+
+  @media (max-width: 640px) { padding: 12px; }
 `;
 
-const DashboardHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  animation: ${fadeIn} 0.6s ease-out;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
-  }
-`;
-
-const HeaderLeft = styled.div`
-  h1 {
-    font-size: 2.5rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, ${Colors.primary} 0%, ${Colors.secondary} 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin: 0;
-    
-    @media (max-width: 768px) {
-      font-size: 1.8rem;
-    }
-  }
-  
-  .last-update {
-    color: ${Colors.dark.text.secondary};
-    font-size: 0.9rem;
-    margin-top: 0.5rem;
-  }
-`;
-
-const HeaderControls = styled.div`
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  
-  @media (max-width: 768px) {
-    width: 100%;
-    justify-content: space-between;
-  }
-`;
-
-const RefreshToggle = styled.button`
-  background: ${props => props.active ? Colors.primary : 'transparent'};
-  color: ${props => props.active ? 'white' : Colors.primary};
-  border: 2px solid ${Colors.primary};
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.3s ease;
-  
-  &:hover {
-    background: ${Colors.primary};
-    color: white;
-    transform: translateY(-2px);
-  }
-  
-  ${props => props.active && `
-    animation: ${glow} 2s infinite;
-  `}
-`;
-
-const RefreshButton = styled.button`
-  background: linear-gradient(135deg, ${Colors.secondary} 0%, #7C3AED 100%);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.3s ease;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
-  }
-`;
-
-const DashboardTabs = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-  background: ${Colors.dark.card};
-  padding: 0.5rem;
+const Panel = styled.div`
+  background: ${C.white};
+  border: 1px solid ${C.gray200};
   border-radius: 16px;
-  animation: ${fadeIn} 0.8s ease-out;
-  overflow-x: auto;
-  
-  @media (max-width: 768px) {
-    flex-wrap: nowrap;
-  }
+  overflow: hidden;
 `;
 
-const TabButton = styled.button`
-  flex: 1;
-  min-width: 120px;
-  background: ${props => props.active ? Colors.primary : 'transparent'};
-  color: ${props => props.active ? 'white' : Colors.dark.text.secondary};
-  border: none;
-  padding: 1rem 1.5rem;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
+const Header = styled.div`
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  
-  &:hover {
-    background: ${props => props.active ? Colors.primary : 'rgba(59, 130, 246, 0.1)'};
-    color: ${props => props.active ? 'white' : Colors.primary};
-  }
-  
-  .tab-badge {
-    background: ${Colors.danger};
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    margin-left: auto;
-  }
+  gap: 14px;
+  padding: 16px 22px;
+  border-bottom: 1px solid ${C.gray200};
+  flex-wrap: wrap;
 `;
 
-const TabContent = styled.div`
-  animation: ${fadeIn} 0.6s ease-out;
+const Logo = styled.div`
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: ${C.gray900};
+  display: flex;
+  align-items: center;
+  gap: 10px;
 `;
 
-const OverviewGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+const LogoIcon = styled.div`
+  width: 32px; height: 32px;
+  background: ${C.gray900};
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: ${C.white}; flex-shrink: 0;
 `;
 
-const MetricCard = styled.div`
-  background: linear-gradient(135deg, ${Colors.dark.card} 0%, #273449 100%);
-  border: 1px solid ${Colors.dark.border};
-  border-radius: 20px;
-  padding: 1.5rem;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  
-  &:hover {
-    transform: translateY(-5px);
-    border-color: ${Colors.primary};
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  }
-  
+const HeaderSub = styled.div`font-size: 11.5px; color: ${C.gray400}; margin-top: 2px;`;
+
+const LivePill = styled.span`
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.6px;
+  color: ${p => (p.$on ? '#16a34a' : C.gray400)};
+  background: ${p => (p.$on ? C.greenLight : C.gray100)};
+  border-radius: 99px; padding: 3px 9px;
+`;
+
+const LiveDot = styled.span`
+  width: 7px; height: 7px; border-radius: 50%;
+  background: ${p => (p.$on ? C.green : C.gray400)};
+  position: relative; display: inline-block;
+
   &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, ${props => props.color || Colors.primary} 0%, ${props => props.colorEnd || Colors.primaryDark} 100%);
+    content: ''; position: absolute; inset: -3px; border-radius: 50%;
+    background: ${p => (p.$on ? C.green : 'transparent')};
+    opacity: 0.3; animation: ${livePulse} 2s ease infinite;
   }
+`;
+
+const Tabs = styled.div`
+  display: flex; gap: 4px; padding: 10px 16px;
+  border-bottom: 1px solid ${C.gray200}; flex-wrap: wrap;
+  background: ${C.gray50};
+`;
+
+const TabBtn = styled.button`
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 16px; border-radius: 8px;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; border: none; transition: all 0.2s ease;
+  background: transparent; color: ${C.gray600};
+
+  &:hover { background: ${C.gray100}; color: ${C.gray800}; }
+
+  ${p => p.$active && `background:${C.white}; color:${C.accentDark}; box-shadow:0 1px 2px rgba(0,0,0,0.06); border:1px solid ${C.gray200};`}
+`;
+
+const TabBadge = styled.span`
+  background: ${C.red}; color: ${C.white};
+  font-size: 10px; font-weight: 700;
+  min-width: 17px; text-align: center;
+  padding: 1px 6px; border-radius: 99px;
+`;
+
+const Btn = styled.button`
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 15px; border-radius: 8px;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; border: none; transition: all 0.2s ease; white-space: nowrap;
+
+  ${p => p.$variant === 'accent' && `background:${C.accent}; color:${C.white}; &:hover:not(:disabled){background:${C.accentDark};}`}
+  ${p => p.$variant === 'ghost' && `background:${C.white}; color:${C.gray600}; border:1px solid ${C.gray200}; &:hover:not(:disabled){background:${C.gray50};}`}
+  ${p => p.$variant === 'danger' && `background:${C.white}; color:${C.red}; border:1px solid #fecaca; &:hover:not(:disabled){background:${C.redLight};}`}
+
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+`;
+
+const Content = styled.div`
+  display: flex;
+  min-height: calc(100vh - 210px);
+
+  @media (max-width: 760px) { flex-direction: column; }
+`;
+
+const ListPane = styled.div`
+  width: 400px;
+  border-right: 1px solid ${C.gray200};
+  display: flex; flex-direction: column; flex-shrink: 0;
+
+  @media (max-width: 1100px) { width: 330px; }
+  @media (max-width: 760px) {
+    width: 100%; max-height: 45vh;
+    border-right: none; border-bottom: 1px solid ${C.gray200};
+  }
+`;
+
+const Filters = styled.div`
+  padding: 12px 14px; display: flex; gap: 6px; align-items: center;
+  border-bottom: 1px solid ${C.gray100}; flex-wrap: wrap;
+`;
+
+const FilterChip = styled.button`
+  padding: 4px 12px; border-radius: 99px;
+  font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer;
+  border: 1px solid ${C.gray200}; background: ${C.white}; color: ${C.gray600};
+  transition: all 0.2s ease;
+
+  &:hover { border-color: ${C.gray300}; }
+
+  ${p => p.$active && `background:${C.gray900}; color:${C.white}; border-color:${C.gray900};`}
+`;
+
+const TicketsScroll = styled.div`
+  flex: 1; overflow-y: auto; padding: 8px;
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: ${C.gray300}; border-radius: 10px; }
+`;
+
+const TicketCard = styled.div`
+  padding: 14px 16px; border-radius: 12px; cursor: pointer;
+  transition: all 0.2s ease; border: 1px solid transparent; margin-bottom: 2px;
+
+  &:hover { background: ${C.gray50}; }
+
+  ${p => p.$active && `background:${C.gray50}; border-color:${C.gray200};`}
 `;
 
 const CardHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  
-  h3 {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+`;
+
+const TicketId = styled.span`
+  font-size: 11px; font-weight: 600; color: ${C.gray400};
+  font-family: 'Space Grotesk', sans-serif;
+`;
+
+const StatusDot = styled.span`
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: ${p => p.$color || C.gray300};
+`;
+
+const TypeBadge = styled.span`
+  margin-left: auto;
+  font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: 99px; text-transform: uppercase; letter-spacing: 0.5px;
+  background: ${p => p.$bg}; color: ${p => p.$color};
+`;
+
+const CardTitle = styled.div`
+  font-size: 13.5px; font-weight: 600; color: ${C.gray800};
+  margin-bottom: 4px; line-height: 1.4;
+`;
+
+const CardPreview = styled.div`
+  font-size: 12px; color: ${C.gray400}; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+`;
+
+const CardFooter = styled.div`
+  display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+`;
+
+const MiniAvatar = styled.div`
+  width: 20px; height: 20px; border-radius: 50%;
+  background: ${C.gray200};
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; color: ${C.gray500}; flex-shrink: 0;
+`;
+
+const TenantChip = styled.span`
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.4px;
+  padding: 2px 7px; border-radius: 99px;
+  background: ${C.gray100}; color: ${C.gray600};
+  max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+`;
+
+const Meta = styled.span`
+  font-size: 11px; color: ${C.gray400};
+  display: inline-flex; align-items: center; gap: 4px;
+
+  ${p => p.$right && 'margin-left: auto;'}
+`;
+
+const DetailPane = styled.div`
+  flex: 1; display: flex; flex-direction: column; min-width: 0;
+
+  @media (max-width: 760px) { min-height: 55vh; }
+`;
+
+const DetailHeader = styled.div`
+  padding: 16px 22px;
+  border-bottom: 1px solid ${C.gray200}; flex-shrink: 0;
+`;
+
+const DetailRow = styled.div`
+  display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap;
+`;
+
+const DetailTitle = styled.div`
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 19px; font-weight: 700; color: ${C.gray900}; margin-top: 2px;
+`;
+
+const DetailMeta = styled.div`
+  display: flex; gap: 16px; margin-top: 8px;
+  font-size: 12px; color: ${C.gray400}; flex-wrap: wrap;
+
+  span { display: inline-flex; align-items: center; gap: 5px; }
+`;
+
+const StatusSelect = styled.select`
+  padding: 4px 8px; border: 1px solid ${C.gray200}; border-radius: 6px;
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  color: ${C.gray700}; background: ${C.white};
+  outline: none; cursor: pointer;
+
+  &:focus { border-color: ${C.accent}; }
+`;
+
+const Thread = styled.div`
+  flex: 1; overflow-y: auto; padding: 20px 22px;
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: ${C.gray300}; border-radius: 10px; }
+`;
+
+const Msg = styled.div`
+  display: flex; gap: 12px; margin-bottom: 18px;
+  animation: ${fadeInUp} 0.3s ease;
+`;
+
+const MsgAvatar = styled.div`
+  width: 34px; height: 34px; border-radius: 50%;
+  background: ${p => (p.$staff ? C.accentLight : C.gray200)};
+  color: ${p => (p.$staff ? C.accentDark : C.gray600)};
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+`;
+
+const MsgBody = styled.div`flex: 1; min-width: 0;`;
+const MsgHeader = styled.div`display: flex; align-items: center; gap: 8px; margin-bottom: 4px;`;
+const MsgName = styled.span`font-size: 13px; font-weight: 600; color: ${C.gray800};`;
+
+const StaffTag = styled.span`
+  font-size: 10px; font-weight: 600; padding: 1px 6px;
+  border-radius: 4px; background: ${C.accentLight}; color: ${C.accentDark};
+`;
+
+const MsgTime = styled.span`font-size: 11px; color: ${C.gray400}; margin-left: auto; white-space: nowrap;`;
+
+const MsgText = styled.div`
+  font-size: 13.5px; color: ${C.gray700}; line-height: 1.7;
+  word-break: break-word; white-space: pre-wrap;
+`;
+
+const ReplyBox = styled.div`
+  padding: 14px 22px 16px;
+  border-top: 1px solid ${C.gray200}; flex-shrink: 0; background: ${C.gray50};
+`;
+
+const ReplyArea = styled.div`
+  border: 1px solid ${C.gray200}; border-radius: 12px; overflow: hidden;
+  transition: all 0.2s ease; background: ${C.white};
+
+  &:focus-within {
+    border-color: ${C.accent};
+    box-shadow: 0 0 0 3px rgba(13,148,136,0.08);
+  }
+
+  textarea {
+    width: 100%; padding: 12px 14px;
+    border: none; outline: none;
+    font-family: inherit; font-size: 13.5px; resize: none;
+    color: ${C.gray800}; line-height: 1.6;
+    min-height: 56px; max-height: 120px;
+    &::placeholder { color: ${C.gray400}; }
   }
 `;
 
-const StatusBadge = styled.span`
-  background: ${props => {
-    switch (props.status) {
-      case 'active': return Colors.success;
-      case 'trial': return Colors.info;
-      case 'suspended': return Colors.warning;
-      case 'cancelled': case 'deleted': return Colors.danger;
-      default: return Colors.dark.text.muted;
-    }
-  }};
-  color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
+const ReplyToolbar = styled.div`
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px; border-top: 1px solid ${C.gray100};
 `;
 
-const MetricValue = styled.div`
-  font-size: 3rem;
-  font-weight: 800;
-  margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, ${Colors.dark.text.primary} 0%, ${Colors.dark.text.secondary} 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+const ReplyHint = styled.span`font-size: 11px; color: ${C.gray400};`;
+
+const EmptyState = styled.div`
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: ${C.gray400}; padding: 40px; text-align: center;
+
+  p { font-size: 14px; margin-top: 4px; }
 `;
 
-const MetricLabel = styled.div`
-  color: ${Colors.dark.text.secondary};
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
+const Spinner = styled(RefreshCw)`
+  animation: ${spinAnim} 1s linear infinite;
 `;
 
-// ─── Tenant List Styles ──────────────────────────────────────────────
-const TenantTableContainer = styled.div`
-  background: ${Colors.dark.card};
-  border: 1px solid ${Colors.dark.border};
-  border-radius: 20px;
-  overflow: hidden;
+/* ─── Tenants / Overview ─── */
+
+const TabContent = styled.div`padding: 20px 22px; overflow-y: auto;`;
+
+const StatsGrid = styled.div`
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px; margin-bottom: 22px;
 `;
 
-const TableHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid ${Colors.dark.border};
-  
-  h3 {
-    margin: 0;
-    font-size: 1.2rem;
-    font-weight: 700;
+const StatCard = styled.div`
+  background: ${C.white}; border: 1px solid ${C.gray200};
+  border-radius: 12px; padding: 16px 18px;
+
+  .label { font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+    text-transform: uppercase; color: ${C.gray400}; }
+  .value { font-family: 'Space Grotesk', sans-serif;
+    font-size: 26px; font-weight: 700; color: ${C.gray900}; margin-top: 6px; }
+`;
+
+const SearchRow = styled.div`
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+`;
+
+const SearchBox = styled.div`
+  display: flex; align-items: center; gap: 8px;
+  background: ${C.white}; border: 1px solid ${C.gray200};
+  border-radius: 8px; padding: 8px 12px; width: 280px;
+
+  &:focus-within {
+    border-color: ${C.accent};
+    box-shadow: 0 0 0 3px rgba(13,148,136,0.08);
   }
-  
-  .search-box {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: ${Colors.dark.bg};
-    border: 1px solid ${Colors.dark.border};
-    border-radius: 10px;
-    padding: 0.5rem 1rem;
-    
-    input {
-      background: transparent;
-      border: none;
-      color: ${Colors.dark.text.primary};
-      font-size: 0.9rem;
-      outline: none;
-      width: 200px;
-      
-      &::placeholder {
-        color: ${Colors.dark.text.muted};
-      }
-    }
+
+  input {
+    border: none; background: transparent; outline: none;
+    font-size: 13px; color: ${C.gray800}; width: 100%; font-family: inherit;
+    &::placeholder { color: ${C.gray400}; }
   }
 `;
 
 const TenantRow = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid ${Colors.dark.border};
-  transition: all 0.3s ease;
-  animation: ${slideIn} 0.3s ease-out;
-  animation-delay: ${props => props.delay || '0s'};
-  
-  &:hover {
-    background: rgba(59, 130, 246, 0.05);
-  }
-  
-  &:last-child {
-    border-bottom: none;
-  }
-  
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-  }
-`;
-
-const TenantName = styled.div`
-  .name {
-    font-weight: 700;
-    font-size: 1rem;
-    color: ${Colors.dark.text.primary};
-  }
-  
-  .email {
-    color: ${Colors.dark.text.muted};
-    font-size: 0.85rem;
-    margin-top: 0.25rem;
-  }
-  
-  .location {
-    color: ${Colors.dark.text.secondary};
-    font-size: 0.8rem;
-    margin-top: 0.15rem;
-  }
-`;
-
-const TenantStat = styled.div`
-  text-align: center;
-  
-  .stat-value {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: ${Colors.primary};
-  }
-  
-  .stat-label {
-    font-size: 0.75rem;
-    color: ${Colors.dark.text.muted};
-    margin-top: 0.25rem;
-  }
-`;
-
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 0.5rem;
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px; border: 1px solid ${C.gray200};
+  border-radius: 12px; margin-bottom: 8px; background: ${C.white};
   flex-wrap: wrap;
 `;
 
-const ActionBtn = styled.button`
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  
-  ${props => props.variant === 'suspend' && `
-    background: ${Colors.warning};
-    color: white;
-    &:hover:not(:disabled) { background: #D97706; transform: translateY(-1px); }
-  `}
-  
-  ${props => props.variant === 'activate' && `
-    background: ${Colors.success};
-    color: white;
-    &:hover:not(:disabled) { background: #059669; transform: translateY(-1px); }
-  `}
-  
-  ${props => props.variant === 'stop' && `
-    background: ${Colors.danger};
-    color: white;
-    &:hover:not(:disabled) { background: #DC2626; transform: translateY(-1px); }
-  `}
-  
-  ${props => props.variant === 'view' && `
-    background: ${Colors.primary};
-    color: white;
-    &:hover:not(:disabled) { background: ${Colors.primaryDark}; transform: translateY(-1px); }
-  `}
+const TenantName = styled.div`
+  font-size: 13.5px; font-weight: 600; color: ${C.gray800};
 `;
 
-// ─── Detail Modal ────────────────────────────────────────────────────
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: ${fadeIn} 0.3s ease-out;
-  padding: 1rem;
+const TenantSub = styled.div`
+  font-size: 11.5px; color: ${C.gray400};
 `;
 
-const ModalContent = styled.div`
-  background: ${Colors.dark.card};
-  border: 1px solid ${Colors.dark.border};
-  border-radius: 20px;
-  max-width: 800px;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
-  padding: 2rem;
-  
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: ${Colors.dark.border};
-    border-radius: 3px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${Colors.primary};
-    border-radius: 3px;
-  }
+const StatusPill = styled.span`
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+  padding: 3px 9px; border-radius: 99px;
+
+  ${p => p.$status === 'active' && `background:${C.greenLight}; color:#16a34a;`}
+  ${p => p.$status === 'suspended' && `background:${C.amberLight}; color:${C.amber};`}
+  ${p => p.$status === 'stopped' && `background:${C.redLight}; color:${C.red};`}
+  ${p => !['active', 'suspended', 'stopped'].includes(p.$status) && `background:${C.gray100}; color:${C.gray600};`}
 `;
 
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  
-  h2 {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: 700;
-  }
-  
-  .close-btn {
-    background: ${Colors.danger};
-    color: white;
-    border: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    font-size: 1.2rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    
-    &:hover {
-      transform: scale(1.1);
-    }
-  }
+const ToastContainer = styled.div`
+  position: fixed; top: 20px; right: 20px; z-index: 3000;
+  display: flex; flex-direction: column; gap: 8px;
 `;
 
-const DetailGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  
-  @media (max-width: 600px) {
-    grid-template-columns: 1fr;
-  }
+const Toast = styled.div`
+  padding: 12px 18px; border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  animation: ${toastIn} 0.3s ease;
+  display: flex; align-items: center; gap: 8px; max-width: 380px;
+
+  ${p => p.$type === 'error' && `background:${C.redLight}; color:#991b1b; border:1px solid #fecaca;`}
+  ${p => p.$type === 'warning' && `background:${C.amberLight}; color:#92400e; border:1px solid #fde68a;`}
+  ${p => (!p.$type || p.$type === 'success') && `background:${C.gray900}; color:${C.white};`}
 `;
 
-const DetailItem = styled.div`
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  
-  .label {
-    color: ${Colors.dark.text.muted};
-    font-size: 0.85rem;
-    margin-bottom: 0.25rem;
-  }
-  
-  .value {
-    color: ${Colors.dark.text.primary};
-    font-weight: 600;
-    font-size: 1.1rem;
-  }
-`;
+/* ============================================================
+   Component
+   ============================================================ */
 
-// ─── Loading & Empty States ──────────────────────────────────────────
-const LoadingContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 50vh;
-  flex-direction: column;
-  gap: 1rem;
-`;
+const AdminSysConsole = () => {
+    const { socket, connected } = useSocket();
 
-const Spinner = styled.div`
-  width: 50px;
-  height: 50px;
-  border: 3px solid ${Colors.primary};
-  borderTop: 3px solid transparent;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-`;
+    const [activeTab, setActiveTab] = useState('support'); // tickets FIRST
+    const [lastUpdated, setLastUpdated] = useState(new Date());
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 4rem;
-  color: ${Colors.dark.text.secondary};
-`;
+    // Tickets
+    const [tickets, setTickets] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState('all');
+    const [search, setSearch] = useState('');
+    const [selectedId, setSelectedId] = useState(null);
+    const [replies, setReplies] = useState([]);
+    const [repliesLoading, setRepliesLoading] = useState(false);
+    const [replyText, setReplyText] = useState('');
+    const [sendingReply, setSendingReply] = useState(false);
 
-const formatCurrency = (amount) => {
-  if (!amount || isNaN(amount)) return 'KES 0';
-  return `KES ${new Intl.NumberFormat().format(Math.round(amount))}`;
-};
+    // Tenants / stats
+    const [tenants, setTenants] = useState([]);
+    const [stats, setStats] = useState(null);
+    const [tenantsLoading, setTenantsLoading] = useState(true);
+    const [tenantSearch, setTenantSearch] = useState('');
+    const [actionLoading, setActionLoading] = useState(null);
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return 'N/A';
-  return new Date(dateStr).toLocaleDateString('en-KE', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-};
+    const [toasts, setToasts] = useState([]);
+    const toastSeq = useRef(0);
+    const selectedIdRef = useRef(null);
+    const threadEndRef = useRef(null);
 
-// ─── Main Component ──────────────────────────────────────────────────
-const PerformanceDashboard = () => {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [tenants, setTenants] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isAutoRefresh, setIsAutoRefresh] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [actionLoading, setActionLoading] = useState(null);
-  const [selectedTenant, setSelectedTenant] = useState(null);
-  const [detailModal, setDetailModal] = useState(null);
-  const [toast, setToast] = useState(null);
+    selectedIdRef.current = selectedId;
 
-  // ─── Support Tickets ──────────────────────────────────────────────
-  const [allTickets, setAllTickets] = useState([]);
-  const [ticketsLoading, setTicketsLoading] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState(null);
-  const [replyText, setReplyText] = useState('');
-  const [replying, setReplying] = useState(false);
-  const [updatingStatus, setUpdatingStatus] = useState(null);
+    const pushToast = useCallback((message, type = 'success') => {
+        const id = ++toastSeq.current;
+        setToasts(prev => [...prev.slice(-3), { id, message, type }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+    }, []);
 
-  // ─── Show toast notification ──────────────────────────────────────
-  const showToast = useCallback((message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  }, []);
+    /* ---------- Data ---------- */
 
-  // ─── Fetch dashboard stats ────────────────────────────────────────
-  const fetchDashboard = useCallback(async () => {
-    try {
-      const response = await api.get('/system-admin/dashboard');
-      if (response.data.success) {
-        setDashboardData(response.data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard:', error);
-    }
-  }, []);
+    const fetchTickets = useCallback(async () => {
+        try {
+            const res = await api.get('/support/tickets/all');
+            if (res.data?.success && Array.isArray(res.data.tickets)) {
+                setTickets(res.data.tickets);
+            }
+        } catch (err) {
+            console.warn('[AdminSys] tickets:', err?.message);
+        } finally {
+            setLoading(false);
+            setLastUpdated(new Date());
+        }
+    }, []);
 
-  // ─── Fetch all tenants ────────────────────────────────────────────
-  const fetchTenants = useCallback(async () => {
-    try {
-      const response = await api.get('/system-admin/tenants');
-      if (response.data.success) {
-        setTenants(response.data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching tenants:', error);
-    }
-  }, []);
+    const fetchReplies = useCallback(async (ticketId) => {
+        if (!ticketId) return;
+        try {
+            const res = await api.get(`/support/tickets/${ticketId}/replies`);
+            if (res.data?.success && Array.isArray(res.data.replies)
+                && String(selectedIdRef.current) === String(ticketId)) {
+                setReplies(res.data.replies);
+            }
+        } catch (err) {
+            console.warn('[AdminSys] replies:', err?.message);
+        }
+    }, []);
 
-  // ─── Initial data load ────────────────────────────────────────────
-  useEffect(() => {
-    const loadAll = async () => {
-      setLoading(true);
-      await Promise.all([fetchDashboard(), fetchTenants()]);
-      setLoading(false);
-    };
-    loadAll();
-  }, [fetchDashboard, fetchTenants]);
+    const fetchTenants = useCallback(async () => {
+        setTenantsLoading(true);
+        try {
+            const res = await api.get('/system-admin/tenants');
+            if (res.data?.success) setTenants(Array.isArray(res.data.data) ? res.data.data : []);
+        } catch (err) {
+            console.warn('[AdminSys] tenants:', err?.message);
+        } finally {
+            setTenantsLoading(false);
+        }
+    }, []);
 
-  // ─── Auto-refresh ─────────────────────────────────────────────────
-  useEffect(() => {
-    if (isAutoRefresh) {
-      const interval = setInterval(() => {
-        fetchDashboard();
+    const fetchStats = useCallback(async () => {
+        try {
+            const res = await api.get('/system-admin/dashboard');
+            if (res.data?.success) setStats(res.data.data || null);
+        } catch (err) {
+            console.warn('[AdminSys] dashboard:', err?.message);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchTickets();
         fetchTenants();
-      }, 10000);
-      return () => clearInterval(interval);
+        fetchStats();
+    }, [fetchTickets, fetchTenants, fetchStats]);
+
+    // Live: socket events + polling fallback while the console is open
+    useEffect(() => {
+        const i = setInterval(fetchTickets, 15000);
+        return () => clearInterval(i);
+    }, [fetchTickets]);
+
+    useEffect(() => {
+        if (!socket) return;
+        const refresh = (data = {}) => {
+            fetchTickets();
+            const tid = data.ticketId;
+            if (!tid || String(tid) === String(selectedIdRef.current)) {
+                if (selectedIdRef.current) fetchReplies(selectedIdRef.current);
+            }
+        };
+        socket.on('ticket_updated', refresh);
+        socket.on('ticket_response', refresh);
+        return () => {
+            socket.off('ticket_updated', refresh);
+            socket.off('ticket_response', refresh);
+        };
+    }, [socket, fetchTickets, fetchReplies]);
+
+    /* ---------- Actions ---------- */
+
+    const openTicket = (ticket) => {
+        setSelectedId(ticket.ticket_id);
+        setReplies([]);
+        setReplyText('');
+        setRepliesLoading(true);
+        fetchReplies(ticket.ticket_id).finally(() => setRepliesLoading(false));
+    };
+
+    const sendReply = async () => {
+        const text = replyText.trim();
+        if (!text || !selectedId || sendingReply) return;
+        setSendingReply(true);
+        try {
+            const ticket = tickets.find(t => String(t.ticket_id) === String(selectedId));
+            await api.post(`/support/tickets/${selectedId}/reply`, {
+                message: text,
+                userType: 'admin',
+            }, { headers: { 'x-tenant-slug': ticket?.tenant_slug || 'system_shared' } });
+            setReplyText('');
+            pushToast('Reply sent — the user sees it instantly');
+            await fetchReplies(selectedId);
+            fetchTickets();
+        } catch (err) {
+            pushToast('Failed to send reply', 'error');
+        } finally {
+            setSendingReply(false);
+        }
+    };
+
+    const handleReplyKey = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); }
+    };
+
+    const changeStatus = async (ticketId, status) => {
+        try {
+            const ticket = tickets.find(t => String(t.ticket_id) === String(ticketId));
+            await api.patch(`/support/tickets/${ticketId}`, { status }, {
+                headers: { 'x-tenant-slug': ticket?.tenant_slug || 'system_shared' },
+            });
+            pushToast(`Ticket #${ticketId} marked as ${STATUS_META[status]?.label || status}`);
+            fetchTickets();
+        } catch (err) {
+            pushToast('Failed to update status', 'error');
+        }
+    };
+
+    const tenantAction = async (tenant, action) => {
+        const label = action === 'suspend' ? 'SUSPEND' : 'ACTIVATE';
+        if (!window.confirm(`Are you sure you want to ${label} "${tenant.tenant_name}"?`)) return;
+        setActionLoading(tenant.id || tenant.tenant_id);
+        try {
+            await api.post(`/system-admin/tenants/${tenant.id || tenant.tenant_id}/${action}`);
+            pushToast(`"${tenant.tenant_name}" ${action === 'suspend' ? 'suspended' : 'activated'}`,
+                action === 'suspend' ? 'warning' : 'success');
+            fetchTenants();
+            fetchStats();
+        } catch (err) {
+            pushToast(`Failed to ${action} tenant`, 'error');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    /* ---------- Derived ---------- */
+
+    const openCount = tickets.filter(t => t.status === 'open').length;
+
+    const visibleTickets = tickets.filter(t => {
+        if (filter !== 'all' && t.status !== filter) return false;
+        if (!search.trim()) return true;
+        const q = search.toLowerCase();
+        return (
+            String(t.ticket_id).includes(q) ||
+            (t.subject || '').toLowerCase().includes(q) ||
+            (t.message || '').toLowerCase().includes(q) ||
+            (t.user_name || '').toLowerCase().includes(q) ||
+            (t.tenant_name || '').toLowerCase().includes(q)
+        );
+    });
+
+    // Auto-select the first ticket so the conversation is visible right away
+    useEffect(() => {
+        if (!selectedId && visibleTickets.length > 0) openTicket(visibleTickets[0]);
+    }, [visibleTickets.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const selectedTicket = tickets.find(t => String(t.ticket_id) === String(selectedId)) || null;
+
+    const thread = [];
+    if (selectedTicket) {
+        thread.push({
+            key: 'ticket-body',
+            name: selectedTicket.user_name || selectedTicket.user_email || 'Customer',
+            staff: false,
+            text: selectedTicket.message,
+            time: selectedTicket.created_at,
+        });
+        replies.forEach(r => thread.push({
+            key: `reply-${r.reply_id}`,
+            name: r.user_type === 'admin' ? 'Support Team' : (selectedTicket.user_name || 'Customer'),
+            staff: r.user_type === 'admin',
+            text: r.message,
+            time: r.created_at,
+        }));
     }
-  }, [isAutoRefresh, fetchDashboard, fetchTenants]);
 
-  // ─── Suspend tenant ───────────────────────────────────────────────
-  const handleSuspend = async (tenantId, tenantName) => {
-    if (!window.confirm(`Are you sure you want to SUSPEND "${tenantName}"? All users will be deactivated.`)) return;
+    useEffect(() => {
+        const el = threadEndRef.current;
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, [replies.length, selectedId]);
 
-    setActionLoading(tenantId);
-    try {
-      const response = await api.post(`/system-admin/tenants/${tenantId}/suspend`);
-      if (response.data.success) {
-        showToast(`"${tenantName}" has been suspended`, 'warning');
-        await Promise.all([fetchDashboard(), fetchTenants()]);
-      }
-    } catch (error) {
-      showToast('Failed to suspend tenant', 'error');
-    } finally {
-      setActionLoading(null);
-    }
-  };
+    const filteredTenants = tenants.filter(t => {
+        const term = tenantSearch.toLowerCase();
+        if (!term) return true;
+        return (
+            (t.tenant_name || '').toLowerCase().includes(term) ||
+            (t.email || '').toLowerCase().includes(term) ||
+            (t.tenant_slug || '').toLowerCase().includes(term)
+        );
+    });
 
-  // ─── Activate tenant ──────────────────────────────────────────────
-  const handleActivate = async (tenantId, tenantName) => {
-    if (!window.confirm(`Activate "${tenantName}"? All users will be re-enabled.`)) return;
+    const overview = stats?.overview || {};
 
-    setActionLoading(tenantId);
-    try {
-      const response = await api.post(`/system-admin/tenants/${tenantId}/activate`);
-      if (response.data.success) {
-        showToast(`"${tenantName}" has been activated`, 'success');
-        await Promise.all([fetchDashboard(), fetchTenants()]);
-      }
-    } catch (error) {
-      showToast('Failed to activate tenant', 'error');
-    } finally {
-      setActionLoading(null);
-    }
-  };
+    /* ---------- Render ---------- */
 
-  // ─── Stop (soft-delete) tenant ────────────────────────────────────
-  const handleStop = async (tenantId, tenantName) => {
-    if (!window.confirm(`⚠️ WARNING: This will STOP "${tenantName}" entirely. This is a soft-delete. Continue?`)) return;
-
-    setActionLoading(tenantId);
-    try {
-      const response = await api.post(`/system-admin/tenants/${tenantId}/stop`);
-      if (response.data.success) {
-        showToast(`"${tenantName}" has been stopped`, 'error');
-        await Promise.all([fetchDashboard(), fetchTenants()]);
-      }
-    } catch (error) {
-      showToast('Failed to stop tenant', 'error');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  // ─── View tenant details ──────────────────────────────────────────
-  const handleViewDetails = async (tenantId) => {
-    try {
-      const response = await api.get(`/system-admin/tenants/${tenantId}`);
-      if (response.data.success) {
-        setDetailModal(response.data.data);
-      }
-    } catch (error) {
-      showToast('Failed to load tenant details', 'error');
-    }
-  };
-
-  // ─── Fetch all support tickets ────────────────────────────────────
-  const fetchAllTickets = useCallback(async () => {
-    setTicketsLoading(true);
-    try {
-      const res = await api.get('/support/tickets/all');
-      if (res.data?.success && Array.isArray(res.data.tickets)) {
-        setAllTickets(res.data.tickets);
-      }
-    } catch (err) {
-      console.warn('[Admin] Failed to fetch tickets:', err);
-    } finally {
-      setTicketsLoading(false);
-    }
-  }, []);
-
-  // ─── Reply to ticket ──────────────────────────────────────────────
-  const handleAdminReply = async (e) => {
-    e.preventDefault();
-    if (!replyText.trim() || !selectedTicket) return;
-    setReplying(true);
-    try {
-      await api.post('/support/tickets/' + selectedTicket.ticket_id + '/reply', {
-        message: replyText.trim(), userType: 'admin', is_admin: true,
-      });
-      setReplyText('');
-      showToast('Reply sent! User will see it instantly.', 'success');
-      fetchAllTickets();
-    } catch (err) {
-      showToast('Failed to send reply', 'error');
-    } finally {
-      setReplying(false);
-    }
-  };
-
-  // ─── Update ticket status ─────────────────────────────────────────
-  const handleUpdateStatus = async (ticketId, status) => {
-    setUpdatingStatus(ticketId);
-    try {
-      await api.patch('/support/tickets/' + ticketId, { status });
-      showToast(`Ticket marked as ${status}`, 'success');
-      fetchAllTickets();
-    } catch (err) {
-      showToast('Failed to update status', 'error');
-    } finally {
-      setUpdatingStatus(null);
-    }
-  };
-
-  // Fetch tickets when support tab is active
-  useEffect(() => {
-    if (activeTab === 'support') fetchAllTickets();
-  }, [activeTab, fetchAllTickets]);
-
-  // ─── Filter tenants ───────────────────────────────────────────────
-  const filteredTenants = tenants.filter(t => {
-    const term = searchTerm.toLowerCase();
     return (
-      t.tenant_name?.toLowerCase().includes(term) ||
-      t.email?.toLowerCase().includes(term) ||
-      t.country?.toLowerCase().includes(term) ||
-      t.status?.toLowerCase().includes(term)
+        <Page>
+            <GlobalStyle />
+            <Panel>
+                <Header>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <Logo>
+                            <LogoIcon><Headphones size={15} /></LogoIcon>
+                            System Administrator
+                        </Logo>
+                        <LivePill $on={connected}>
+                            <LiveDot $on={connected} />
+                            {connected ? 'LIVE' : 'OFFLINE'}
+                        </LivePill>
+                    </div>
+                    <HeaderSub style={{ marginLeft: 'auto' }}>
+                        Updated {lastUpdated.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}
+                        {' '}· auto-refresh every 15s
+                    </HeaderSub>
+                    <Btn $variant="ghost" onClick={() => { fetchTickets(); fetchTenants(); fetchStats(); }}>
+                        <RefreshCw size={13} /> Refresh
+                    </Btn>
+                </Header>
+
+                <Tabs>
+                    <TabBtn $active={activeTab === 'support'} onClick={() => setActiveTab('support')}>
+                        <MessageSquare size={14} /> Support Tickets
+                        {openCount > 0 && <TabBadge>{openCount}</TabBadge>}
+                    </TabBtn>
+                    <TabBtn $active={activeTab === 'tenants'} onClick={() => setActiveTab('tenants')}>
+                        <Users size={14} /> Tenants ({tenants.length})
+                    </TabBtn>
+                    <TabBtn $active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
+                        📊 Overview
+                    </TabBtn>
+                </Tabs>
+
+                {/* ═══ SUPPORT TICKETS (default) ═══ */}
+                {activeTab === 'support' && (
+                    <Content>
+                        <ListPane>
+                            <Filters>
+                                {FILTERS.map(f => (
+                                    <FilterChip key={f.id} $active={filter === f.id} onClick={() => setFilter(f.id)}>
+                                        {f.label}
+                                    </FilterChip>
+                                ))}
+                            </Filters>
+                            <Filters>
+                                <SearchBox style={{ width: '100%' }}>
+                                    <Search size={13} />
+                                    <input placeholder="Search tickets, tenants, users..." value={search}
+                                        onChange={(e) => setSearch(e.target.value)} />
+                                </SearchBox>
+                            </Filters>
+                            <TicketsScroll>
+                                {loading ? (
+                                    <EmptyState><Spinner size={26} /><p>Loading tickets...</p></EmptyState>
+                                ) : visibleTickets.length === 0 ? (
+                                    <EmptyState>
+                                        <MessageSquare size={38} />
+                                        <p>No support tickets found</p>
+                                        <p style={{ fontSize: 12 }}>New tickets from tenants appear here instantly.</p>
+                                    </EmptyState>
+                                ) : visibleTickets.map(t => {
+                                    const st = STATUS_META[t.status] || STATUS_META.open;
+                                    const tp = TYPE_META[t.type] || TYPE_META.help;
+                                    return (
+                                        <TicketCard key={t.ticket_id}
+                                            $active={String(selectedId) === String(t.ticket_id)}
+                                            onClick={() => openTicket(t)}>
+                                            <CardHeader>
+                                                <StatusDot $color={st.color} />
+                                                <TicketId>#{t.ticket_id}</TicketId>
+                                                <TypeBadge $bg={tp.bg} $color={tp.color}>{tp.label}</TypeBadge>
+                                            </CardHeader>
+                                            <CardTitle>{t.subject}</CardTitle>
+                                            <CardPreview>{t.message}</CardPreview>
+                                            <CardFooter>
+                                                <MiniAvatar>{getInitials(t.user_name, t.user_email)}</MiniAvatar>
+                                                <Meta><User size={10} /> {t.user_name || t.user_email || 'User'}</Meta>
+                                                {t.tenant_name && <TenantChip>{t.tenant_name}</TenantChip>}
+                                                <Meta $right><Clock size={10} /> {timeAgo(t.created_at)}</Meta>
+                                            </CardFooter>
+                                        </TicketCard>
+                                    );
+                                })}
+                            </TicketsScroll>
+                        </ListPane>
+
+                        {/* Conversation */}
+                        <DetailPane>
+                            {!selectedTicket ? (
+                                <EmptyState>
+                                    <MessageSquare size={40} />
+                                    <p>Select a ticket to view the conversation</p>
+                                </EmptyState>
+                            ) : (
+                                <>
+                                    <DetailHeader>
+                                        <DetailRow>
+                                            <StatusDot $color={(STATUS_META[selectedTicket.status] || STATUS_META.open).color} />
+                                            <TicketId style={{ fontSize: 13 }}>#{selectedTicket.ticket_id}</TicketId>
+                                            <TypeBadge
+                                                $bg={(TYPE_META[selectedTicket.type] || TYPE_META.help).bg}
+                                                $color={(TYPE_META[selectedTicket.type] || TYPE_META.help).color}>
+                                                {(TYPE_META[selectedTicket.type] || TYPE_META.help).label}
+                                            </TypeBadge>
+                                            {selectedTicket.tenant_name && <TenantChip>{selectedTicket.tenant_name}</TenantChip>}
+                                            <StatusSelect
+                                                style={{ marginLeft: 'auto' }}
+                                                value={selectedTicket.status || 'open'}
+                                                onChange={(e) => changeStatus(selectedTicket.ticket_id, e.target.value)}>
+                                                <option value="open">Open</option>
+                                                <option value="in_progress">In Progress</option>
+                                                <option value="resolved">Resolved</option>
+                                                <option value="closed">Closed</option>
+                                            </StatusSelect>
+                                        </DetailRow>
+                                        <DetailTitle>{selectedTicket.subject}</DetailTitle>
+                                        <DetailMeta>
+                                            <span><User size={11} /> {selectedTicket.user_name || 'User'}</span>
+                                            {selectedTicket.user_email && <span>✉ {selectedTicket.user_email}</span>}
+                                            <span><Clock size={11} /> {timeAgo(selectedTicket.created_at)}</span>
+                                            <span><MessageSquare size={11} /> {replies.length} repl{replies.length === 1 ? 'y' : 'ies'}</span>
+                                        </DetailMeta>
+                                    </DetailHeader>
+
+                                    <Thread>
+                                        {repliesLoading && thread.length <= 1 ? (
+                                            <EmptyState style={{ padding: 20 }}><Spinner size={20} /><p>Loading conversation...</p></EmptyState>
+                                        ) : (
+                                            <>
+                                                {thread.map(m => (
+                                                    <Msg key={m.key}>
+                                                        <MsgAvatar $staff={m.staff}>{getInitials(m.name)}</MsgAvatar>
+                                                        <MsgBody>
+                                                            <MsgHeader>
+                                                                <MsgName>{m.name}</MsgName>
+                                                                {m.staff && <StaffTag>SUPPORT</StaffTag>}
+                                                                <MsgTime>{clockTime(m.time)} · {timeAgo(m.time)}</MsgTime>
+                                                            </MsgHeader>
+                                                            <MsgText>{m.text}</MsgText>
+                                                        </MsgBody>
+                                                    </Msg>
+                                                ))}
+                                                <div ref={threadEndRef} />
+                                            </>
+                                        )}
+                                    </Thread>
+
+                                    <ReplyBox>
+                                        <ReplyArea>
+                                            <textarea
+                                                placeholder="Reply as Support Team... (Enter to send, Shift+Enter for new line)"
+                                                rows={2}
+                                                value={replyText}
+                                                onChange={(e) => setReplyText(e.target.value)}
+                                                onKeyDown={handleReplyKey}
+                                            />
+                                            <ReplyToolbar>
+                                                <ReplyHint>The tenant is notified instantly via live updates</ReplyHint>
+                                                <Btn $variant="accent" onClick={sendReply} disabled={!replyText.trim() || sendingReply}>
+                                                    {sendingReply ? 'Sending...' : (<> Reply <Send size={12} /></>)}
+                                                </Btn>
+                                            </ReplyToolbar>
+                                        </ReplyArea>
+                                    </ReplyBox>
+                                </>
+                            )}
+                        </DetailPane>
+                    </Content>
+                )}
+
+                {/* ═══ TENANTS ═══ */}
+                {activeTab === 'tenants' && (
+                    <TabContent>
+                        <SearchRow>
+                            <SearchBox>
+                                <Search size={13} />
+                                <input placeholder="Search tenants..." value={tenantSearch}
+                                    onChange={(e) => setTenantSearch(e.target.value)} />
+                            </SearchBox>
+                            <span style={{ fontSize: 12, color: C.gray400 }}>{filteredTenants.length} of {tenants.length}</span>
+                        </SearchRow>
+                        {tenantsLoading ? (
+                            <EmptyState><Spinner size={24} /><p>Loading tenants...</p></EmptyState>
+                        ) : filteredTenants.length === 0 ? (
+                            <EmptyState><Users size={38} /><p>No tenants found</p></EmptyState>
+                        ) : filteredTenants.map(t => {
+                            const id = t.id ?? t.tenant_id;
+                            const status = (t.status || '').toLowerCase();
+                            return (
+                                <TenantRow key={id}>
+                                    <div style={{
+                                        width: 36, height: 36, borderRadius: 10,
+                                        background: C.accentLight, color: C.accentDark,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontWeight: 700, fontSize: 13, flexShrink: 0,
+                                    }}>
+                                        {getInitials(t.tenant_name)}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 150 }}>
+                                        <TenantName>{t.tenant_name}</TenantName>
+                                        <TenantSub>{t.email} · {t.tenant_slug} · {t.country || '—'}</TenantSub>
+                                    </div>
+                                    <StatusPill $status={status}>{status || 'unknown'}</StatusPill>
+                                    {actionLoading === id ? (
+                                        <Spinner size={14} />
+                                    ) : status === 'active' ? (
+                                        <Btn $variant="danger" onClick={() => tenantAction(t, 'suspend')}>Suspend</Btn>
+                                    ) : (
+                                        <Btn $variant="accent" onClick={() => tenantAction(t, 'activate')}>Activate</Btn>
+                                    )}
+                                </TenantRow>
+                            );
+                        })}
+                    </TabContent>
+                )}
+
+                {/* ═══ OVERVIEW ═══ */}
+                {activeTab === 'overview' && (
+                    <TabContent>
+                        <StatsGrid>
+                            <StatCard><div className="label">Total Tenants</div>
+                                <div className="value">{overview.totalTenants ?? tenants.length}</div></StatCard>
+                            <StatCard><div className="label">Active</div>
+                                <div className="value">{overview.activeTenants ?? tenants.filter(t => (t.status || '').toLowerCase() === 'active').length}</div></StatCard>
+                            <StatCard><div className="label">Suspended</div>
+                                <div className="value">{overview.suspendedTenants ?? tenants.filter(t => (t.status || '').toLowerCase() === 'suspended').length}</div></StatCard>
+                            <StatCard><div className="label">Open Tickets</div>
+                                <div className="value" style={{ color: openCount > 0 ? C.amber : C.gray900 }}>{openCount}</div></StatCard>
+                            <StatCard><div className="label">Total Tickets</div>
+                                <div className="value">{tickets.length}</div></StatCard>
+                            <StatCard><div className="label">Resolved</div>
+                                <div className="value">{tickets.filter(t => t.status === 'resolved').length}</div></StatCard>
+                        </StatsGrid>
+                        {!stats && (
+                            <div style={{
+                                display: 'flex', gap: 10, alignItems: 'flex-start',
+                                padding: '14px 16px', borderRadius: 12,
+                                background: C.amberLight, border: '1px solid #fde68a',
+                                fontSize: 13, color: '#92400e', marginBottom: 14,
+                            }}>
+                                <AlertTriangle size={16} />
+                                <span>Live platform stats are unavailable right now ({'/system-admin/dashboard'} did not respond). Ticket counts above come directly from the support database and are always live.</span>
+                            </div>
+                        )}
+                    </TabContent>
+                )}
+            </Panel>
+
+            {/* Toasts */}
+            <ToastContainer>
+                {toasts.map(t => (
+                    <Toast key={t.id} $type={t.type}>
+                        {t.type === 'error' ? <AlertTriangle size={14} /> : <CheckCircle2 size={14} />}
+                        {t.message}
+                    </Toast>
+                ))}
+            </ToastContainer>
+        </Page>
     );
-  });
-
-  // ─── Loading state ────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <DashboardContainer>
-        <LoadingContainer>
-          <Spinner />
-          <p style={{ color: Colors.dark.text.secondary }}>Loading System Admin Dashboard...</p>
-        </LoadingContainer>
-      </DashboardContainer>
-    );
-  }
-
-  const { overview, subscriptions } = dashboardData || {};
-
-  return (
-    <DashboardContainer>
-      {/* Toast */}
-      {toast && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          zIndex: 2000,
-          padding: '1rem 2rem',
-          borderRadius: '12px',
-          background: toast.type === 'success' ? Colors.success : toast.type === 'warning' ? Colors.warning : Colors.danger,
-          color: 'white',
-          fontWeight: 600,
-          animation: 'fadeIn 0.3s ease-out',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-        }}>
-          {toast.message}
-        </div>
-      )}
-
-      {/* Header */}
-      <DashboardHeader>
-        <HeaderLeft>
-          <h1>🚀 System Administrator</h1>
-          <p className="last-update">
-            Last updated: {new Date().toLocaleTimeString()}
-            {overview && ` • ${overview.totalTenants} tenants total`}
-          </p>
-        </HeaderLeft>
-
-        <HeaderControls>
-          <RefreshToggle
-            active={isAutoRefresh}
-            onClick={() => setIsAutoRefresh(!isAutoRefresh)}
-          >
-            🔄 Auto-refresh: {isAutoRefresh ? 'ON' : 'OFF'}
-          </RefreshToggle>
-          <RefreshButton onClick={() => { setLoading(true); Promise.all([fetchDashboard(), fetchTenants()]).then(() => setLoading(false)); }}>
-            ↻ Refresh Now
-          </RefreshButton>
-        </HeaderControls>
-      </DashboardHeader>
-
-      {/* Tabs */}
-      <DashboardTabs>
-        <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
-          📊 Overview
-        </TabButton>
-        <TabButton active={activeTab === 'tenants'} onClick={() => setActiveTab('tenants')}>
-          🏢 All Tenants
-          {tenants.length > 0 && <span className="tab-badge">{tenants.length}</span>}
-        </TabButton>
-        <TabButton active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')}>
-          💳 Subscriptions
-        </TabButton>
-        <TabButton active={activeTab === 'earnings'} onClick={() => setActiveTab('earnings')}>
-          💰 Earnings
-        </TabButton>
-        <TabButton active={activeTab === 'support'} onClick={() => setActiveTab('support')}>
-          🎫 Support Tickets
-          {allTickets.filter(t => t.status === 'open').length > 0 && <span className="tab-badge">{allTickets.filter(t => t.status === 'open').length}</span>}
-        </TabButton>
-      </DashboardTabs>
-
-      {/* ═══════════════ OVERVIEW TAB ═══════════════ */}
-      {activeTab === 'overview' && overview && (
-        <TabContent>
-          <OverviewGrid>
-            <MetricCard color={Colors.primary} colorEnd={Colors.primaryDark}>
-              <CardHeader>
-                <h3>🏢 Total Tenants</h3>
-                <StatusBadge status="active">LIVE</StatusBadge>
-              </CardHeader>
-              <MetricValue>{overview.totalTenants}</MetricValue>
-              <MetricLabel>All registered organizations</MetricLabel>
-            </MetricCard>
-
-            <MetricCard color={Colors.success} colorEnd="#059669">
-              <CardHeader>
-                <h3>✅ Active Tenants</h3>
-                <StatusBadge status="active">ACTIVE</StatusBadge>
-              </CardHeader>
-              <MetricValue>{overview.activeTenants}</MetricValue>
-              <MetricLabel>Currently running</MetricLabel>
-            </MetricCard>
-
-            <MetricCard color={Colors.warning} colorEnd="#D97706">
-              <CardHeader>
-                <h3>⚠️ Suspended</h3>
-                <StatusBadge status="suspended">SUSPENDED</StatusBadge>
-              </CardHeader>
-              <MetricValue>{overview.suspendedTenants}</MetricValue>
-              <MetricLabel>Temporarily stopped</MetricLabel>
-            </MetricCard>
-
-            <MetricCard color={Colors.info} colorEnd="#0891B2">
-              <CardHeader>
-                <h3>👥 Total Users</h3>
-                <StatusBadge status="trial">ALL</StatusBadge>
-              </CardHeader>
-              <MetricValue>{overview.totalUsers}</MetricValue>
-              <MetricLabel>Across all tenants</MetricLabel>
-            </MetricCard>
-
-            <MetricCard color={Colors.secondary} colorEnd="#7C3AED">
-              <CardHeader>
-                <h3>⚰️ Total Deceased</h3>
-                <StatusBadge status="trial">RECORDS</StatusBadge>
-              </CardHeader>
-              <MetricValue>{overview.totalDeceased}</MetricValue>
-              <MetricLabel>Records managed</MetricLabel>
-            </MetricCard>
-
-            <MetricCard color={Colors.danger} colorEnd="#DC2626">
-              <CardHeader>
-                <h3>💰 Total Revenue</h3>
-                <StatusBadge status="active">EARNINGS</StatusBadge>
-              </CardHeader>
-              <MetricValue style={{ fontSize: '2rem' }}>{formatCurrency(overview.totalRevenue)}</MetricValue>
-              <MetricLabel>Platform-wide revenue</MetricLabel>
-            </MetricCard>
-          </OverviewGrid>
-
-          {/* Subscription breakdown */}
-          {subscriptions && (
-            <div style={{
-              background: Colors.dark.card,
-              borderRadius: '20px',
-              padding: '2rem',
-              border: `1px solid ${Colors.dark.border}`,
-              marginBottom: '2rem'
-            }}>
-              <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.2rem' }}>💳 Subscription Breakdown</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '2rem', fontWeight: 800, color: Colors.success }}>{subscriptions.active}</div>
-                  <div style={{ color: Colors.dark.text.secondary }}>Active</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(6, 182, 212, 0.1)', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '2rem', fontWeight: 800, color: Colors.info }}>{subscriptions.trial}</div>
-                  <div style={{ color: Colors.dark.text.secondary }}>Trial</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '2rem', fontWeight: 800, color: Colors.warning }}>{subscriptions.suspended}</div>
-                  <div style={{ color: Colors.dark.text.secondary }}>Suspended</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '2rem', fontWeight: 800, color: Colors.danger }}>{subscriptions.cancelled}</div>
-                  <div style={{ color: Colors.dark.text.secondary }}>Cancelled</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Recent tenants */}
-          {dashboardData?.recentTenants && (
-            <div style={{
-              background: Colors.dark.card,
-              borderRadius: '20px',
-              padding: '2rem',
-              border: `1px solid ${Colors.dark.border}`
-            }}>
-              <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.2rem' }}>🕐 Recent Tenants</h3>
-              {dashboardData.recentTenants.map((t, i) => (
-                <div key={t.tenant_id} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '0.75rem 0',
-                  borderBottom: i < dashboardData.recentTenants.length - 1 ? `1px solid ${Colors.dark.border}` : 'none',
-                  animation: `${slideIn} 0.3s ease-out`,
-                  animationDelay: `${i * 0.05}s`,
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{t.tenant_name}</div>
-                    <div style={{ color: Colors.dark.text.muted, fontSize: '0.85rem' }}>{t.email}</div>
-                  </div>
-                  <StatusBadge status={t.status}>{t.status}</StatusBadge>
-                </div>
-              ))}
-            </div>
-          )}
-        </TabContent>
-      )}
-
-      {/* ═══════════════ TENANTS TAB ═══════════════ */}
-      {activeTab === 'tenants' && (
-        <TabContent>
-          <TenantTableContainer>
-            <TableHeader>
-              <h3>🏢 All Tenants ({filteredTenants.length})</h3>
-              <div className="search-box">
-                <span>🔍</span>
-                <input
-                  type="text"
-                  placeholder="Search tenants..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </TableHeader>
-
-            {/* Column headers */}
-            <TenantRow style={{
-              borderBottom: `2px solid ${Colors.dark.border}`,
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              color: Colors.dark.text.muted,
-              textTransform: 'uppercase',
-            }}>
-              <div>Tenant</div>
-              <div style={{ textAlign: 'center' }}>Users</div>
-              <div style={{ textAlign: 'center' }}>Deceased</div>
-              <div style={{ textAlign: 'center' }}>Status</div>
-              <div style={{ textAlign: 'center' }}>Subscription</div>
-              <div style={{ textAlign: 'center' }}>Actions</div>
-            </TenantRow>
-
-            {filteredTenants.length === 0 ? (
-              <EmptyState>
-                <h3>No tenants found</h3>
-                <p>{searchTerm ? 'Try a different search term' : 'No tenants registered yet'}</p>
-              </EmptyState>
-            ) : (
-              filteredTenants.map((tenant, index) => (
-                <TenantRow key={tenant.tenant_id} delay={`${index * 0.03}s`}>
-                  <TenantName>
-                    <div className="name">{tenant.tenant_name}</div>
-                    <div className="email">{tenant.email}</div>
-                    <div className="location">📍 {tenant.country || 'Unknown'} • Created {formatDate(tenant.created_at)}</div>
-                  </TenantName>
-
-                  <TenantStat>
-                    <div className="stat-value">{tenant.stats?.totalUsers || 0}</div>
-                    <div className="stat-label">Users</div>
-                  </TenantStat>
-
-                  <TenantStat>
-                    <div className="stat-value">{tenant.stats?.totalDeceased || 0}</div>
-                    <div className="stat-label">Records</div>
-                  </TenantStat>
-
-                  <div style={{ textAlign: 'center' }}>
-                    <StatusBadge status={tenant.status}>{tenant.status}</StatusBadge>
-                  </div>
-
-                  <div style={{ textAlign: 'center' }}>
-                    <StatusBadge status={tenant.subscription_status}>{tenant.subscription_status}</StatusBadge>
-                  </div>
-
-                  <ActionButtons>
-                    <ActionBtn variant="view" onClick={() => handleViewDetails(tenant.tenant_id)}>
-                      👁️ View
-                    </ActionBtn>
-
-                    {(tenant.status === 'active' || tenant.subscription_status === 'active' || tenant.subscription_status === 'trial') ? (
-                      <ActionBtn
-                        variant="suspend"
-                        onClick={() => handleSuspend(tenant.tenant_id, tenant.tenant_name)}
-                        disabled={actionLoading === tenant.tenant_id}
-                      >
-                        ⏸️ Suspend
-                      </ActionBtn>
-                    ) : (
-                      <ActionBtn
-                        variant="activate"
-                        onClick={() => handleActivate(tenant.tenant_id, tenant.tenant_name)}
-                        disabled={actionLoading === tenant.tenant_id}
-                      >
-                        ▶️ Activate
-                      </ActionBtn>
-                    )}
-
-                    <ActionBtn
-                      variant="stop"
-                      onClick={() => handleStop(tenant.tenant_id, tenant.tenant_name)}
-                      disabled={actionLoading === tenant.tenant_id || tenant.status === 'deleted'}
-                    >
-                      🛑 Stop
-                    </ActionBtn>
-                  </ActionButtons>
-                </TenantRow>
-              ))
-            )}
-          </TenantTableContainer>
-        </TabContent>
-      )}
-
-      {/* ═══════════════ SUBSCRIPTIONS TAB ═══════════════ */}
-      {activeTab === 'subscriptions' && (
-        <TabContent>
-          <div style={{
-            background: Colors.dark.card,
-            borderRadius: '20px',
-            padding: '2rem',
-            border: `1px solid ${Colors.dark.border}`
-          }}>
-            <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.2rem' }}>💳 Subscription Management</h3>
-
-            {tenants.length === 0 ? (
-              <EmptyState><h3>No tenants found</h3></EmptyState>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {tenants.map((tenant, index) => (
-                  <div key={tenant.tenant_id} style={{
-                    display: 'grid',
-                    gridTemplateColumns: '2fr 1fr 1fr 1fr',
-                    alignItems: 'center',
-                    padding: '1rem 1.5rem',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    borderRadius: '12px',
-                    border: `1px solid ${Colors.dark.border}`,
-                    animation: `${slideIn} 0.3s ease-out`,
-                    animationDelay: `${index * 0.03}s`,
-                    '@media (max-width: 768px)': {
-                      gridTemplateColumns: '1fr',
-                    }
-                  }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1rem' }}>{tenant.tenant_name}</div>
-                      <div style={{ color: Colors.dark.text.muted, fontSize: '0.85rem' }}>{tenant.email}</div>
-                    </div>
-
-                    <div style={{ textAlign: 'center' }}>
-                      <StatusBadge status={tenant.subscription_status}>{tenant.subscription_status}</StatusBadge>
-                    </div>
-
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ color: Colors.dark.text.secondary, fontSize: '0.8rem' }}>Expires</div>
-                      <div style={{ fontWeight: 600 }}>{formatDate(tenant.subscription_expires_at)}</div>
-                    </div>
-
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ color: Colors.dark.text.secondary, fontSize: '0.8rem' }}>Revenue</div>
-                      <div style={{ fontWeight: 600, color: Colors.success }}>
-                        {formatCurrency(tenant.stats?.totalRevenue)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </TabContent>
-      )}
-
-      {/* ═══════════════ EARNINGS TAB ═══════════════ */}
-      {activeTab === 'earnings' && (
-        <TabContent>
-          <OverviewGrid>
-            <MetricCard color={Colors.success} colorEnd="#059669">
-              <CardHeader>
-                <h3>💰 Total Platform Revenue</h3>
-              </CardHeader>
-              <MetricValue style={{ fontSize: '2rem' }}>{formatCurrency(overview?.totalRevenue || 0)}</MetricValue>
-              <MetricLabel>Across all tenants</MetricLabel>
-            </MetricCard>
-
-            <MetricCard color={Colors.primary} colorEnd={Colors.primaryDark}>
-              <CardHeader>
-                <h3>📊 Average per Tenant</h3>
-              </CardHeader>
-              <MetricValue style={{ fontSize: '2rem' }}>
-                {formatCurrency(overview?.activeTenants ? (overview.totalRevenue / overview.activeTenants) : 0)}
-              </MetricValue>
-              <MetricLabel>Active tenant average</MetricLabel>
-            </MetricCard>
-          </OverviewGrid>
-
-          <div style={{
-            background: Colors.dark.card,
-            borderRadius: '20px',
-            padding: '2rem',
-            border: `1px solid ${Colors.dark.border}`
-          }}>
-            <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.2rem' }}>💰 Revenue by Tenant</h3>
-
-            {tenants.filter(t => t.status !== 'deleted').length === 0 ? (
-              <EmptyState><h3>No active tenants</h3></EmptyState>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {tenants
-                  .filter(t => t.status !== 'deleted')
-                  .sort((a, b) => (b.stats?.totalRevenue || 0) - (a.stats?.totalRevenue || 0))
-                  .map((tenant, index) => {
-                    const revenue = tenant.stats?.totalRevenue || 0;
-                    const maxRevenue = Math.max(...tenants.map(t => t.stats?.totalRevenue || 0), 1);
-                    const barWidth = (revenue / maxRevenue) * 100;
-
-                    return (
-                      <div key={tenant.tenant_id} style={{
-                        padding: '1rem',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        borderRadius: '12px',
-                        animation: `${slideIn} 0.3s ease-out`,
-                        animationDelay: `${index * 0.03}s`,
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                          <div>
-                            <span style={{ fontWeight: 700 }}>{tenant.tenant_name}</span>
-                            <span style={{ color: Colors.dark.text.muted, marginLeft: '0.5rem', fontSize: '0.85rem' }}>
-                              ({tenant.stats?.totalUsers || 0} users, {tenant.stats?.totalDeceased || 0} records)
-                            </span>
-                          </div>
-                          <span style={{ fontWeight: 700, color: Colors.success, fontSize: '1.1rem' }}>
-                            {formatCurrency(revenue)}
-                          </span>
-                        </div>
-                        <div style={{
-                          width: '100%',
-                          height: '8px',
-                          background: Colors.dark.border,
-                          borderRadius: '4px',
-                          overflow: 'hidden',
-                        }}>
-                          <div style={{
-                            width: `${barWidth}%`,
-                            height: '100%',
-                            background: `linear-gradient(90deg, ${Colors.success} 0%, ${Colors.primary} 100%)`,
-                            borderRadius: '4px',
-                            transition: 'width 0.5s ease',
-                          }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-        </TabContent>
-      )}
-
-      {/* ═══════════════ SUPPORT TICKETS TAB ═══════════════ */}
-      {activeTab === 'support' && (
-        <TabContent>
-          <div style={{
-            background: Colors.dark.card,
-            borderRadius: '20px',
-            border: `1px solid ${Colors.dark.border}`,
-            overflow: 'hidden',
-          }}>
-            <div style={{ padding: '1.5rem', borderBottom: `1px solid ${Colors.dark.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
-                🎫 All Support Tickets ({allTickets.length})
-              </h3>
-              <button onClick={fetchAllTickets} style={{
-                padding: '0.5rem 1rem', background: Colors.primary, color: 'white',
-                border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem',
-              }}>↻ Refresh</button>
-            </div>
-
-            {ticketsLoading ? (
-              <div style={{ padding: '3rem', textAlign: 'center', color: Colors.dark.text.muted }}>
-                <div style={{ width: '32px', height: '32px', border: '3px solid ' + Colors.dark.border, borderTop: '3px solid ' + Colors.primary, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
-                Loading tickets...
-              </div>
-            ) : allTickets.length === 0 ? (
-              <EmptyState>
-                <h3>No support tickets yet</h3>
-                <p>When users submit questions, they'll appear here.</p>
-              </EmptyState>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {allTickets.map((ticket, idx) => (
-                  <div key={ticket.ticket_id} style={{
-                    borderBottom: idx < allTickets.length - 1 ? `1px solid ${Colors.dark.border}` : 'none',
-                    animation: `${slideIn} 0.3s ease-out`,
-                    animationDelay: `${idx * 0.03}s`,
-                  }}>
-                    <div
-                      onClick={() => setSelectedTicket(selectedTicket?.ticket_id === ticket.ticket_id ? null : ticket)}
-                      style={{
-                        padding: '1rem 1.5rem', cursor: 'pointer',
-                        background: selectedTicket?.ticket_id === ticket.ticket_id ? 'rgba(59,130,246,0.08)' : 'transparent',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.3rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <span style={{
-                            padding: '0.15rem 0.5rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600,
-                            background: ticket.status === 'open' ? 'rgba(245,158,11,0.2)' :
-                              ticket.status === 'in_progress' ? 'rgba(59,130,246,0.2)' :
-                                ticket.status === 'resolved' ? 'rgba(16,185,129,0.2)' : 'rgba(100,116,139,0.2)',
-                            color: ticket.status === 'open' ? Colors.warning :
-                              ticket.status === 'in_progress' ? Colors.primary :
-                                ticket.status === 'resolved' ? Colors.success : Colors.dark.text.muted,
-                          }}>
-                            {ticket.status || 'open'}
-                          </span>
-                          <span style={{ fontSize: '0.7rem', color: Colors.dark.text.muted, fontFamily: 'monospace' }}>
-                            #{ticket.ticket_id}
-                          </span>
-                          {ticket.tenant_name && (
-                            <span style={{ fontSize: '0.7rem', color: Colors.secondary, fontWeight: 500 }}>
-                              {ticket.tenant_name}
-                            </span>
-                          )}
-                        </div>
-                        <span style={{ fontSize: '0.7rem', color: Colors.dark.text.muted, whiteSpace: 'nowrap' }}>
-                          {formatDate(ticket.created_at)}
-                        </span>
-                      </div>
-                      <p style={{ fontSize: '0.85rem', color: Colors.dark.text.primary, lineHeight: 1.5, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {ticket.message || ticket.subject}
-                      </p>
-                      {ticket.user_email && (
-                        <div style={{ marginTop: '0.3rem', fontSize: '0.72rem', color: Colors.dark.text.muted }}>
-                          📧 {ticket.user_email} {ticket.user_name && `· ${ticket.user_name}`}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Expanded reply section */}
-                    {selectedTicket?.ticket_id === ticket.ticket_id && (
-                      <div style={{ padding: '0 1.5rem 1rem 1.5rem', borderTop: `1px solid ${Colors.dark.border}`, marginTop: '0.5rem' }}>
-                        {/* Status actions */}
-                        <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-                          {['open', 'in_progress', 'resolved', 'closed'].map(s => (
-                            <button key={s} onClick={() => handleUpdateStatus(ticket.ticket_id, s)}
-                              disabled={updatingStatus === ticket.ticket_id || ticket.status === s}
-                              style={{
-                                padding: '0.3rem 0.6rem', border: 'none', borderRadius: '6px', cursor: 'pointer',
-                                fontSize: '0.7rem', fontWeight: 600, textTransform: 'capitalize',
-                                background: ticket.status === s ? Colors.primary : 'rgba(255,255,255,0.08)',
-                                color: ticket.status === s ? 'white' : Colors.dark.text.secondary,
-                                opacity: updatingStatus === ticket.ticket_id ? 0.5 : 1,
-                              }}>
-                              {s === 'open' ? '🟡' : s === 'in_progress' ? '🔵' : s === 'resolved' ? '🟢' : '⚪'} {s.replace('_', ' ')}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Reply form */}
-                        <form onSubmit={handleAdminReply}>
-                          <textarea
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            placeholder="Type your reply as support staff..."
-                            rows={3}
-                            style={{
-                              width: '100%', padding: '0.6rem 0.8rem', border: `1px solid ${Colors.dark.border}`,
-                              borderRadius: '8px', fontSize: '0.82rem', fontFamily: 'inherit',
-                              color: Colors.dark.text.primary, background: Colors.dark.bg,
-                              resize: 'vertical', outline: 'none', marginBottom: '0.5rem',
-                            }}
-                          />
-                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <button type="submit" disabled={!replyText.trim() || replying}
-                              style={{
-                                padding: '0.5rem 1rem', border: 'none', borderRadius: '8px', cursor: 'pointer',
-                                fontSize: '0.8rem', fontWeight: 600,
-                                background: Colors.primary, color: 'white',
-                                opacity: !replyText.trim() || replying ? 0.5 : 1,
-                              }}>
-                              {replying ? 'Sending...' : 'Reply as Support'}
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </TabContent>
-      )}
-
-      {/* ═══════════════ DETAIL MODAL ═══════════════ */}
-      {detailModal && (
-        <ModalOverlay onClick={() => setDetailModal(null)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <h2>🏢 {detailModal.tenant_name}</h2>
-              <button className="close-btn" onClick={() => setDetailModal(null)}>✕</button>
-            </ModalHeader>
-
-            <DetailGrid>
-              <DetailItem>
-                <div className="label">Email</div>
-                <div className="value">{detailModal.email}</div>
-              </DetailItem>
-              <DetailItem>
-                <div className="label">Phone</div>
-                <div className="value">{detailModal.phone || 'N/A'}</div>
-              </DetailItem>
-              <DetailItem>
-                <div className="label">Location</div>
-                <div className="value">{detailModal.location || 'N/A'}</div>
-              </DetailItem>
-              <DetailItem>
-                <div className="label">Country</div>
-                <div className="value">{detailModal.country || 'N/A'}</div>
-              </DetailItem>
-              <DetailItem>
-                <div className="label">Status</div>
-                <div className="value"><StatusBadge status={detailModal.status}>{detailModal.status}</StatusBadge></div>
-              </DetailItem>
-              <DetailItem>
-                <div className="label">Subscription</div>
-                <div className="value"><StatusBadge status={detailModal.subscription_status}>{detailModal.subscription_status}</StatusBadge></div>
-              </DetailItem>
-              <DetailItem>
-                <div className="label">Created</div>
-                <div className="value">{formatDate(detailModal.created_at)}</div>
-              </DetailItem>
-              <DetailItem>
-                <div className="label">Database</div>
-                <div className="value" style={{ fontSize: '0.85rem' }}>{detailModal.db_name}</div>
-              </DetailItem>
-            </DetailGrid>
-
-            {/* Stats */}
-            {detailModal.stats && (
-              <div style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>📊 Statistics</h3>
-                <DetailGrid>
-                  <DetailItem>
-                    <div className="label">Total Users</div>
-                    <div className="value">{detailModal.stats.users?.length || 0}</div>
-                  </DetailItem>
-                  <DetailItem>
-                    <div className="label">Total Deceased Records</div>
-                    <div className="value">{detailModal.stats.totalDeceased}</div>
-                  </DetailItem>
-                  <DetailItem>
-                    <div className="label">Total Branches</div>
-                    <div className="value">{detailModal.stats.branches?.length || 0}</div>
-                  </DetailItem>
-                  <DetailItem>
-                    <div className="label">Total Revenue</div>
-                    <div className="value" style={{ color: Colors.success }}>{formatCurrency(detailModal.stats.totalRevenue)}</div>
-                  </DetailItem>
-                </DetailGrid>
-              </div>
-            )}
-
-            {/* Users list */}
-            {detailModal.stats?.users?.length > 0 && (
-              <div style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>👥 Users</h3>
-                {detailModal.stats.users.map((user, i) => (
-                  <div key={i} style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '0.5rem 0',
-                    borderBottom: `1px solid ${Colors.dark.border}`,
-                  }}>
-                    <div>
-                      <span style={{ fontWeight: 600 }}>{user.full_name}</span>
-                      <span style={{ color: Colors.dark.text.muted, marginLeft: '0.5rem', fontSize: '0.85rem' }}>
-                        {user.email}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <span style={{
-                        padding: '0.2rem 0.5rem',
-                        borderRadius: '6px',
-                        fontSize: '0.75rem',
-                        background: user.role === 'admin' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-                        color: user.role === 'admin' ? Colors.secondary : Colors.primary,
-                        fontWeight: 600,
-                      }}>
-                        {user.role}
-                      </span>
-                      <span style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        background: user.is_active ? Colors.success : Colors.danger,
-                      }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </ModalContent>
-        </ModalOverlay>
-      )}
-    </DashboardContainer>
-  );
 };
 
-export default PerformanceDashboard;
+export default AdminSysConsole;
+
+
+
+
+
+
+
+

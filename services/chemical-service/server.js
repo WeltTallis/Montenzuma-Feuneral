@@ -15,7 +15,7 @@ const { validateTenantActive } = require('../../shared/tenancy');
 const chemicalRoutes = require('./routes/chemicalRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 5016;
+const PORT = process.env.PORT || 5019;
 
 // Enable CORS for gateway
 app.use(cors({
@@ -79,7 +79,12 @@ app.use(async (req, res, next) => {
     };
     console.log(`[CHEMICAL] Tenant resolved — operations DB: ${req.tenant.db_name}, main DB: ${mainDbName}`);
 
-    // Resolve branch if not provided
+        // Resolve branch if not provided.
+    // NOTE: The tenant branches table stores branch_id as VARCHAR(36) (UUID),
+    // but the chemical tables' branch_id columns are INT. We resolve the UUID
+    // for informational/tenant purposes, but set req.numericBranchId to the
+    // integer id from the branches table (or fall back to 1) for use in INT
+    // columns. This prevents "Out of range value for column 'branch_id'".
     if (!req.branchId && mainDbName) {
       const lastDash = tenantSlug.lastIndexOf('-');
       if (lastDash > 0) {
@@ -87,18 +92,23 @@ app.use(async (req, res, next) => {
         try {
           const branches = await safeTenantQuery(
             mainDbName,
-            'SELECT branch_id FROM branches WHERE branch_slug LIKE ? OR branch_name LIKE ? LIMIT 1',
+            'SELECT branch_id, branch_code FROM branches WHERE branch_slug LIKE ? OR branch_name LIKE ? LIMIT 1',
             [`%${branchPart}%`, `%${branchPart}%`]
           );
           if (branches.length > 0) {
-            req.branchId = branches[0].branch_id.toString();
-            console.log(`[CHEMICAL] Branch resolved: ${req.branchId}`);
+            const resolvedUuid = branches[0].branch_id.toString();
+            req.branchId = resolvedUuid;
+            // branch_code holds the integer branch id in the chemical schema,
+            // falling back to 1 (the default INT branch for shared data).
+            const numericBranchId = parseInt(branches[0].branch_code) || 1;
+            req.numericBranchId = numericBranchId;
+            console.log(`[CHEMICAL] Branch resolved: UUID=${resolvedUuid}, numeric=${numericBranchId}`);
           }
         } catch (e) {
           console.log('[CHEMICAL] Branch resolution skipped:', e.message);
         }
       }
-    }
+        }
   } catch (err) {
     console.error('[CHEMICAL] Tenant resolution error:', err.message);
     // Always fall back to the central operations DB rather than blocking
@@ -108,6 +118,17 @@ app.use(async (req, res, next) => {
       tenant_slug: tenantSlug,
       name: tenantSlug
     };
+  }
+
+  // Ensure numericBranchId always has a sane default for INT columns.
+  // If the header carried a UUID (not an integer), discard it to avoid
+  // "Out of range value for column 'branch_id'" on INT columns.
+  if (!req.numericBranchId) {
+    if (req.branchId && /^-?\d+$/.test(String(req.branchId))) {
+      req.numericBranchId = parseInt(req.branchId);
+    } else {
+      req.numericBranchId = 1;
+    }
   }
 
   next();
@@ -231,6 +252,7 @@ CREATE TABLE IF NOT EXISTS chemical_transactions (
   reference_type VARCHAR(50) DEFAULT NULL,
   reference_id INT DEFAULT NULL,
   performed_by INT DEFAULT NULL,
+  performed_by_name VARCHAR(255) DEFAULT NULL,
   notes TEXT DEFAULT NULL,
   created_at VARCHAR(255),
   FOREIGN KEY (chemical_id) REFERENCES chemicals(id) ON DELETE CASCADE,
@@ -252,6 +274,7 @@ CREATE TABLE IF NOT EXISTS chemical_usage (
   unit VARCHAR(50) NOT NULL DEFAULT 'liters',
   transaction_id INT DEFAULT NULL,
   used_by INT DEFAULT NULL,
+  used_by_name VARCHAR(255) DEFAULT NULL,
   usage_notes TEXT DEFAULT NULL,
   created_at VARCHAR(255),
   FOREIGN KEY (chemical_id) REFERENCES chemicals(id) ON DELETE CASCADE,
@@ -340,6 +363,45 @@ async function normalizePPERequestsSchema(connection, dbName) {
   }
 }
 
+// Ensure pickup performer name columns exist on pre-existing databases so the
+// Staff Pickup Analysis can show who picked up each chemical.
+async function ensurePickupNameColumns(connection, dbName) {
+  const columnFixes = [
+    { table: 'chemical_transactions', column: 'performed_by_name', ddl: "ALTER TABLE chemical_transactions ADD COLUMN performed_by_name VARCHAR(255) DEFAULT NULL AFTER performed_by" },
+    { table: 'chemical_usage', column: 'used_by_name', ddl: "ALTER TABLE chemical_usage ADD COLUMN used_by_name VARCHAR(255) DEFAULT NULL AFTER used_by" },
+  ];
+  for (const fix of columnFixes) {
+    try {
+      const [cols] = await connection.query(`SHOW COLUMNS FROM \`${fix.table}\` LIKE '${fix.column}'`);
+      if (!cols.length) {
+        await connection.query(fix.ddl);
+        console.log(`   Added ${fix.column} to ${fix.table} in ${dbName}`);
+      }
+    } catch (error) {
+      console.warn(`  Pickup name column warning for ${dbName}: ${error.message}`);
+    }
+  }
+}
+
+// Backfill missing created_at values on legacy rows. Rows inserted before
+// created_at was populated explicitly have NULL dates, which makes every
+// date-based calculation in the analytics UI resolve to 1970 (epoch).
+async function backfillTransactionDates(connection, dbName) {
+  const tables = ['chemical_transactions', 'chemical_usage'];
+  for (const table of tables) {
+    try {
+      const [result] = await connection.query(
+        `UPDATE \`${table}\` SET created_at = DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s') WHERE created_at IS NULL OR created_at = ''`
+      );
+      if (result.affectedRows > 0) {
+        console.log(`   Backfilled created_at on ${result.affectedRows} legacy row(s) in ${table} (${dbName})`);
+      }
+    } catch (error) {
+      console.warn(`  created_at backfill warning for ${dbName}: ${error.message}`);
+    }
+  }
+}
+
 async function ensureChemicalTables(dbName) {
   let connection;
   try {
@@ -371,6 +433,8 @@ async function ensureChemicalTables(dbName) {
     }
 
     await normalizePPERequestsSchema(connection, dbName);
+    await ensurePickupNameColumns(connection, dbName);
+    await backfillTransactionDates(connection, dbName);
 
     console.log(`Chemical tables ensured in database: ${dbName} (${count} tables)`);
     return true;

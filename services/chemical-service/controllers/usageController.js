@@ -1,21 +1,29 @@
 const { safeTenantQuery, safeTenantExecute } = require('../../../shared/dbConfig');
 
-// ============================================
 // RECORD CHEMICAL USAGE
-// ============================================
+
 exports.recordUsage = async (req, res) => {
+
   try {
+
     const tenantDb = req.tenant?.db_name;
     const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
-    const { chemical_id, quantity_used, usage_notes, branch_id, reference_type, reference_id } = req.body;
+    const { chemical_id, quantity_used, usage_notes, branch_id, reference_type, reference_id, used_by } = req.body;
 
     if (!chemical_id || !quantity_used || parseFloat(quantity_used) <= 0) {
       return res.status(400).json({ success: false, message: 'chemical_id and quantity_used (>0) are required' });
     }
 
-    const effectiveBranchId = branch_id || req.branchId || 1;
+    const rawBranchId = branch_id || req.branchId || 1;
+    // Chemical branch_id columns are INT, but branch system uses UUID strings.
+
+    let effectiveBranchId = rawBranchId;
+
+    if (isNaN(parseInt(rawBranchId)) || String(rawBranchId).length > 11) {
+      effectiveBranchId = req.numericBranchId || 1;
+    }
 
     // Check chemical exists and has stock (scoped by tenant_slug)
     const chem = await safeTenantQuery(tenantDb,
@@ -37,21 +45,26 @@ exports.recordUsage = async (req, res) => {
     const qty = parseFloat(quantity_used);
     const newStock = previousStock - qty;
 
+    // Resolve who performed this pickup: prefer the explicit name sent by the
+    // client ("Picked By" field), fall back to the authenticated user identity.
+    const rawUsedBy = typeof used_by === 'string' ? used_by.trim() : '';
+    const usedByName = rawUsedBy || req.user?.full_name || req.user?.name || req.user?.email || null;
+
     // Deduct from stock
     await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [newStock, chemical_id, tenantSlug]);
 
     // Record stock transaction
     const txnResult = await safeTenantExecute(tenantDb,
-      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, branch_id, transaction_type, quantity, unit, previous_stock, new_stock, reference_type, reference_id, notes)
-       VALUES (?, ?, ?, 'consumed', ?, ?, ?, ?, ?, ?, ?)`,
-      [tenantSlug, chemical_id, effectiveBranchId, qty, chem[0].unit, previousStock, newStock, reference_type || null, reference_id || null, usage_notes || 'General usage']
+      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, branch_id, transaction_type, quantity, unit, previous_stock, new_stock, reference_type, reference_id, performed_by_name, notes, created_at)
+       VALUES (?, ?, ?, 'consumed', ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [tenantSlug, chemical_id, effectiveBranchId, qty, chem[0].unit, previousStock, newStock, reference_type || null, reference_id || null, usedByName, usage_notes || 'General usage']
     );
 
     // Record the usage (generic consumption record - not deceased-specific)
     await safeTenantExecute(tenantDb,
-      `INSERT INTO chemical_usage (tenant_slug, branch_id, reference_type, reference_id, chemical_id, quantity_used, unit, transaction_id, used_by, usage_notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tenantSlug, effectiveBranchId, reference_type || null, reference_id || null, chemical_id, qty, chem[0].unit, txnResult.insertId, req.user?.id || null, usage_notes || null]
+      `INSERT INTO chemical_usage (tenant_slug, branch_id, reference_type, reference_id, chemical_id, quantity_used, unit, transaction_id, used_by, used_by_name, usage_notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [tenantSlug, effectiveBranchId, reference_type || null, reference_id || null, chemical_id, qty, chem[0].unit, txnResult.insertId, req.user?.id || null, usedByName, usage_notes || null]
     );
 
     res.status(201).json({
@@ -71,9 +84,8 @@ exports.recordUsage = async (req, res) => {
   }
 };
 
-// ============================================
 // GET USAGE BY REFERENCE (e.g. a deceased/case id)
-// ============================================
+
 exports.getByReference = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
@@ -106,9 +118,8 @@ exports.getByReference = async (req, res) => {
   }
 };
 
-// ============================================
 // GET USAGE BY CHEMICAL
-// ============================================
+
 exports.getByChemical = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
@@ -131,9 +142,9 @@ exports.getByChemical = async (req, res) => {
   }
 };
 
-// ============================================
+
 // GET USAGE REPORT
-// ============================================
+
 exports.getUsageReport = async (req, res) => {
   try {
     const tenantDb = req.tenant?.db_name;
@@ -150,10 +161,16 @@ exports.getUsageReport = async (req, res) => {
       WHERE cu.tenant_slug = ?`;
     const params = [tenantSlug];
 
+            
     if (start_date) { sql += ' AND cu.created_at >= ?'; params.push(start_date); }
     if (end_date) { sql += ' AND cu.created_at <= ?'; params.push(end_date); }
-    if (branch_id) { sql += ' AND cu.branch_id = ?'; params.push(parseInt(branch_id)); }
-    else if (req.branchId) { sql += ' AND cu.branch_id = ?'; params.push(parseInt(req.branchId)); }
+    if (branch_id) {
+      const parsedBranchId = parseInt(branch_id);
+      if (!isNaN(parsedBranchId)) { sql += ' AND cu.branch_id = ?'; params.push(parsedBranchId); }
+    } else if (req.numericBranchId) {
+      sql += ' AND cu.branch_id = ?'; params.push(req.numericBranchId);
+    }
+
 
     sql += ' ORDER BY cu.created_at DESC';
     if (limit) sql += ' LIMIT ?';

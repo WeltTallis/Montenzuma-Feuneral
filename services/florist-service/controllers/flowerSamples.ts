@@ -199,6 +199,21 @@ const toArray = (value: any): any[] => {
 // ============================================
 
 /**
+ * Existing tenant databases were created before the price column existed.
+ * Idempotent (MariaDB supports ADD COLUMN IF NOT EXISTS) - no-op when present.
+ */
+const ensurePriceColumn = async (req: any): Promise<void> => {
+  try {
+    await execute(req, 'ALTER TABLE flower_samples ADD COLUMN IF NOT EXISTS price DECIMAL(12,2) DEFAULT NULL AFTER sizes', []);
+  } catch (err: any) {
+    // ER_DUP_FIELDNAME means the column already exists - safe to ignore
+    if (err?.code !== 'ER_DUP_FIELDNAME' && !/duplicate/i.test(err?.message || '')) {
+      console.warn('[FLOWERS] price column guard skipped:', err?.message);
+    }
+  }
+};
+
+/**
  * CREATE - Create a new flower arrangement
  */
 export const createFlowerArrangement = async (req: any, res: any): Promise<any> => {
@@ -220,6 +235,9 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
     const types = toArray(req.body.types);
     const colors = toArray(req.body.colors);
     const sizes = toArray(req.body.sizes);
+    const price = req.body.price !== undefined && req.body.price !== null && req.body.price !== ''
+      ? parseFloat(req.body.price)
+      : null;
 
     // Validate required fields
     if (!title || !description || !types || !colors || !sizes) {
@@ -287,8 +305,8 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
 
   const sql = `
     INSERT INTO flower_samples 
-    (arrangement_id, title, description, types, colors, sizes, images, tenant_slug, created_at, updated_at) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+    (arrangement_id, title, description, types, colors, sizes, images, price, tenant_slug, created_at, updated_at) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
   `;
 
   await execute(req, sql, [
@@ -299,6 +317,7 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
     data.colors,
     data.sizes,
     data.images,
+    price,
     tenantSlug
   ]);
 
@@ -402,11 +421,18 @@ export const updateFlowerArrangement = async (req: any, res: any): Promise<any> 
       });
     }
 
+    // Ensure the price column exists on older tenant databases
+    await ensurePriceColumn(req);
+
     const updates: any = {};
     const { title, description, images: providedImages } = req.body;
 
     if (title) updates.title = title;
     if (description) updates.description = description;
+    if (req.body.price !== undefined && req.body.price !== null && req.body.price !== '') {
+      const parsedPrice = parseFloat(req.body.price);
+      if (!isNaN(parsedPrice)) updates.price = parsedPrice;
+    }
     const types = toArray(req.body.types);
     const colors = toArray(req.body.colors);
     const sizes = toArray(req.body.sizes);

@@ -6,33 +6,6 @@ import {
   actionBadge, formatDate, formatTime, todayKey, dateKey, getStatus,
 } from '../seed';
 
-function StockGauge({ pct = 0, color = '#ffffff', size = 56 }) {
-  const r = 25;
-  const c = 2 * Math.PI * r;
-  const p = Math.max(0, Math.min(100, Number(pct) || 0));
-  return (
-    <svg width={size} height={size} viewBox="0 0 64 64" className="stock-gauge">
-      <circle cx="32" cy="32" r={r} fill="rgba(255,255,255,.18)" />
-      <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="6" />
-      <circle
-        cx="32"
-        cy="32"
-        r={r}
-        fill="none"
-        stroke={color}
-        strokeWidth="6"
-        strokeLinecap="round"
-        strokeDasharray={c}
-        strokeDashoffset={c * (1 - p / 100)}
-        transform="rotate(-90 32 32)"
-      />
-      <text x="32" y="37" textAnchor="middle" fill="#fff" fontWeight="700" fontSize="13">
-        {Math.round(p)}%
-      </text>
-    </svg>
-  );
-}
-
 export default function DashboardView() {
   const { stats, items, transactions } = useStoreContext();
 
@@ -42,51 +15,29 @@ export default function DashboardView() {
   const lowItems = items.filter((i) => getStatus(i) !== 'ok').sort((a, b) => a.stock - b.stock);
   const recent = [...transactions].slice(0, 12);
 
-  const total = Math.max(1, stats.total);
-  const pctOf = (n) => Math.max(0, Math.min(100, Math.round((Number(n) / total) * 100)));
   const cards = [
-    {
-      label: 'Total Items', value: stats.total, icon: 'fa-solid fa-cubes',
-      pct: 100, bg: 'linear-gradient(135deg, #1a5f7a, #2c8ac9)',
-    },
-    {
-      label: 'In Stock', value: stats.inStock, icon: 'fa-solid fa-check',
-      pct: pctOf(stats.inStock), bg: 'linear-gradient(135deg, #059669, #34d399)',
-    },
-    {
-      label: 'Low Stock', value: stats.lowStock, icon: 'fa-solid fa-triangle-exclamation',
-      pct: pctOf(stats.lowStock), bg: 'linear-gradient(135deg, #d97706, #f59e0b)',
-    },
-    {
-      label: 'Out of Stock', value: stats.outOfStock, icon: 'fa-solid fa-xmark',
-      pct: pctOf(stats.outOfStock), bg: 'linear-gradient(135deg, #dc2626, #f87171)',
-    },
-    {
-      label: 'Picked Today', value: usedToday, icon: 'fa-solid fa-arrow-trend-down',
-      pct: pctOf(usedToday), bg: 'linear-gradient(135deg, #2563eb, #60a5fa)',
-    },
+    { label: 'Total Items', value: stats.total, icon: 'fa-solid fa-cubes', bg: '#0f766e' },
+    { label: 'In Stock', value: stats.inStock, icon: 'fa-solid fa-check', bg: '#0891b2' },
+    { label: 'Low Stock', value: stats.lowStock, icon: 'fa-solid fa-triangle-exclamation', bg: '#d97706' },
+    { label: 'Out of Stock', value: stats.outOfStock, icon: 'fa-solid fa-xmark', bg: '#dc2626' },
+    { label: 'Picked Today', value: usedToday, icon: 'fa-solid fa-arrow-trend-down', bg: '#475569' },
   ];
 
   return (
     <>
-      <Row className="g-3 mb-4">
+      <div className="stat-strip">
         {cards.map((c) => (
-          <Col key={c.label} xs={6} lg={2}>
-            <Card className="stat-card stat-card-color h-100" style={{ background: c.bg, border: 0 }}>
-              <Card.Body className="d-flex flex-column align-items-center justify-content-center gap-1 text-center py-3">
-                <StockGauge pct={c.pct} color="rgba(255,255,255,.95)" size={56} />
-                <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{c.value}</div>
-                <div
-                  className="text-uppercase"
-                  style={{ fontSize: 10, letterSpacing: '.08em', opacity: 0.9, fontWeight: 600 }}
-                >
-                  {c.label}
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
+          <div key={c.label} className="stat-tile" style={{ background: c.bg }}>
+            <div className="stat-tile-ico">
+              <i className={c.icon} />
+            </div>
+            <div className="stat-tile-info">
+              <div className="stat-tile-num">{c.value}</div>
+              <div className="stat-tile-label">{c.label}</div>
+            </div>
+          </div>
         ))}
-      </Row>
+      </div>
 
       <Row className="g-3">
         <Col lg={4} xl={3}>

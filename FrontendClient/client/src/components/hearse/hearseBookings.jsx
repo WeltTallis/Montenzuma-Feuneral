@@ -3,6 +3,7 @@ import styled, { keyframes } from 'styled-components';
 import { useSocket } from '../../utils/context/socketContext';
 import env from '../../utils/config/env';
 import HearseCalendar from './HearseCalendar';
+import DayTimeline from './DayTimeline';
 import useAuthStore from '../../utils/store/useAuthStore';
 import { getTenantHeaders } from '../../api/endpoints';
 import { getTenantId, getBranchId, getBranchSlug } from '../../utils/globalAuth';
@@ -11,7 +12,7 @@ import { Truck, Car, Clock, Check, Search, Plus, RefreshCw, MoreVertical, Chevro
 const API_BASE_URL = import.meta.env.PROD
   ? 'https://restpoint.co.ke/api/v1/restpoint'
   : (env.FULL_API_URL || 'http://localhost:5000/api/v1/restpoint');
-  
+
 const RESULTS_PER_PAGE = 10;
 
 const STATUS_CONFIG = {
@@ -23,7 +24,6 @@ const STATUS_CONFIG = {
   postponed: { label: 'Postponed', progress: 15, color: '#f59e0b', bg: '#fef3c7', dotColor: '#f59e0b' },
   maintenance: { label: 'Maintenance', progress: 0, color: '#8b5cf6', bg: '#f3e8ff', dotColor: '#8b5cf6' },
 };
-
 
 
 const STATUS_LIST = Object.keys(STATUS_CONFIG);
@@ -177,7 +177,7 @@ const api = {
       return r.ok ? (await r.json()).data || [] : [];
     } catch { return []; }
   },
-    getAllHearses: async () => {
+  getAllHearses: async () => {
     // Merge getTenantHeaders (tenantId, branchId, branchSlug) with the local
     // getAuthHeaders (robust tenantSlug + Authorization) so the listing is
     // scoped to the current tenant/branch stored in localStorage.
@@ -849,6 +849,7 @@ const HearseBookings = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState('calendar');
   const [selectedDate, setSelectedDate] = useState(formatDateStr(new Date()));
+  const [timelineDate, setTimelineDate] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [newBookingOpen, setNewBookingOpen] = useState(false);
@@ -863,7 +864,7 @@ const HearseBookings = () => {
   const [newForm, setNewForm] = useState({
     hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: [], branch_id: '', booking_date: ''
   });
-    const [selectedBookingDates, setSelectedBookingDates] = useState([]);
+  const [selectedBookingDates, setSelectedBookingDates] = useState([]);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [tempDateSelection, setTempDateSelection] = useState([]);
   const [pickerMonth, setPickerMonth] = useState(() => new Date().getMonth());
@@ -927,7 +928,7 @@ const HearseBookings = () => {
   // the backend re-checks atomically on submit, so a last-second conflict still
   // returns 409. We never trust the pre-check alone.
   const checkAvailability = useCallback(async (hearseId, dates) => {
-          if (!hearseId || !dates || dates.length === 0) {
+    if (!hearseId || !dates || dates.length === 0) {
       setHearseAvailable(null);
       setAvailabilityConflict(null);
       return;
@@ -1613,12 +1614,22 @@ const HearseBookings = () => {
                 onItemClick={openDrawer}
                 onCreateBooking={onCreateBooking}
                 selectedDate={selectedDate}
-                onDateSelect={setSelectedDate}
+                onDateSelect={(d) => { setSelectedDate(d); setTimelineDate(d); }}
               />
             </div>
           )}
         </TableCard>
       </MainContent>
+
+      {/* Day Timeline Overlay (opens when a date is clicked) */}
+      {timelineDate && (
+        <DayTimeline
+          date={timelineDate}
+          bookings={bookings}
+          onClose={() => setTimelineDate(null)}
+          onItemClick={openDrawer}
+        />
+      )}
 
       {/* Detail Drawer */}
       {drawerOpen && <DrawerOverlay onClick={closeDrawer} />}
@@ -1985,7 +1996,7 @@ const HearseBookings = () => {
               return;
             }
             setRegisterLoading(true);
-                        try {
+            try {
               // Attach the hearse name + full tenant/branch context stored in
               // localStorage so the backend can scope the hearse to the correct
               // tenant (tenant id/slug), branch (branch id/slug/code) and resolve
@@ -2166,7 +2177,7 @@ const HearseBookings = () => {
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.375rem', fontSize: '0.8125rem', color: COLORS.text }}>
                   Select Hearse *
                 </label>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem' }}>
                   {allHearses.map(h => {
                     const selected = String(h.id) === String(newForm.hearse_id);
                     return (
@@ -2188,9 +2199,11 @@ const HearseBookings = () => {
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
                           <div style={{ fontSize: '0.825rem', fontWeight: 700, color: COLORS.text }}>{cleanStr(h.hearse_name) || 'Unnamed Hearse'}</div>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.125rem 0.4rem', borderRadius: '4px', whiteSpace: 'nowrap', marginLeft: '0.5rem',
+                          <div style={{
+                            fontSize: '0.75rem', fontWeight: 700, padding: '0.125rem 0.4rem', borderRadius: '4px', whiteSpace: 'nowrap', marginLeft: '0.5rem',
                             background: h.status === 'available' ? COLORS.successLight : COLORS.warningLight,
-                            color: h.status === 'available' ? COLORS.successDark : COLORS.warningDark }}>
+                            color: h.status === 'available' ? COLORS.successDark : COLORS.warningDark
+                          }}>
                             {h.status || 'available'}
                           </div>
                         </div>

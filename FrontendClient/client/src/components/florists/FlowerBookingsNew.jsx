@@ -1073,6 +1073,36 @@ const FlowerBookingsNew = () => {
                   textTransform: 'uppercase',
                   color: 'rgba(255,255,255,0.35)',
                   marginBottom: '8px'
+                }}>Price (USD)</label>
+                <input
+                  type="number"
+                  name="price"
+                  min="0"
+                  step="0.01"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontFamily: "'DM Sans', system-ui, sans-serif",
+                    background: 'rgba(255,255,255,0.02)',
+                    color: '#fff',
+                    outline: 'none'
+                  }}
+                  placeholder="e.g., 45.00"
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.35)',
+                  marginBottom: '8px'
                 }}>Types (comma-separated)</label>
                 <input
                   type="text"

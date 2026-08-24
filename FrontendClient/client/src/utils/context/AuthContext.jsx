@@ -111,6 +111,8 @@ export const AuthProvider = ({ children }) => {
             dbName: userData.dbName,
             isActive: userData.isActive,
             isVerified: userData.isVerified,
+            // Role is required by route guards (e.g. system admin dashboard)
+            role: userData.role || userData.user_role || null,
           };
           localStorage.setItem('user', JSON.stringify(safeUserData));
           sessionStorage.setItem('user', JSON.stringify(safeUserData));

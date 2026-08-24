@@ -61,6 +61,11 @@ router.patch('/orders/:id/status', coffinController.updateOrderStatus);
 // Alias used by the frontend inventory page (/coffins/bookings/:id/status)
 router.patch('/bookings/:id/status', coffinController.updateOrderStatus);
 
+// PUT alias so the reservation dashboard "Mark as Paid" flow persists to the DB
+// (it calls PUT /coffins/orders/:id with { paid: true }).
+router.put('/orders/:id', coffinController.updateOrderStatus);
+router.put('/bookings/:id', coffinController.updateOrderStatus);
+
 // ============================================================
 // STOCK REQUESTS
 // ============================================================

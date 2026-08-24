@@ -400,7 +400,7 @@ export default function SLAPolicy() {
           <Reveal>
             <h2>Our Promise</h2>
             <p>
-              At RestPoint, reliability is not a feature—it is a responsibility. We understand that when our system is unavailable, your work does not simply slow down; it can affect the smooth operation of your entire organization.
+              At RestPoint, reliability is not a feature it is a responsibility. We understand that when our system is unavailable, your work does not simply slow down; it can affect the smooth operation of your entire organization.
             </p>
             <p>
               Our <strong>PM2 cluster deployment architecture</strong> ensures that system updates and maintenance occur without any service interruption. New code is deployed seamlessly while existing operations continue uninterrupted, guaranteeing zero downtime during updates.

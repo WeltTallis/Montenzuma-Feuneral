@@ -253,11 +253,15 @@ const FLORIST_SERVICE_MIGRATIONS = [
     },
     {
         name: '162_create_flower_samples_table',
-        sql: 'CREATE TABLE IF NOT EXISTS flower_samples (id INT AUTO_INCREMENT PRIMARY KEY, arrangement_id VARCHAR(100) UNIQUE NOT NULL, title VARCHAR(255) NOT NULL, description TEXT, types JSON, colors JSON, sizes JSON, images JSON, tenant_slug VARCHAR(100) NOT NULL, created_at VARCHAR(255), updated_at VARCHAR(255), INDEX idx_arrangement_id (arrangement_id), INDEX idx_tenant_slug (tenant_slug)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+        sql: 'CREATE TABLE IF NOT EXISTS flower_samples (id INT AUTO_INCREMENT PRIMARY KEY, arrangement_id VARCHAR(100) UNIQUE NOT NULL, title VARCHAR(255) NOT NULL, description TEXT, types JSON, colors JSON, sizes JSON, price DECIMAL(12,2) DEFAULT NULL, images JSON, tenant_slug VARCHAR(100) NOT NULL, created_at VARCHAR(255), updated_at VARCHAR(255), INDEX idx_arrangement_id (arrangement_id), INDEX idx_tenant_slug (tenant_slug)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
     },
     {
         name: '163_add_flower_booking_extras',
         sql: 'ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 1 AFTER amount, ADD COLUMN IF NOT EXISTS arrangements TEXT AFTER quantity, ADD COLUMN IF NOT EXISTS primary_color VARCHAR(50) DEFAULT NULL AFTER arrangements, ADD COLUMN IF NOT EXISTS accent_color VARCHAR(50) DEFAULT NULL AFTER primary_color, ADD COLUMN IF NOT EXISTS ribbon_color VARCHAR(50) DEFAULT NULL AFTER accent_color',
+    },
+    {
+        name: '164_add_price_to_flower_samples',
+        sql: 'ALTER TABLE flower_samples ADD COLUMN IF NOT EXISTS price DECIMAL(12,2) DEFAULT NULL AFTER sizes',
     },
 ];
 // ─── Extra Services Migrations ───────────────────────────────────────────────
