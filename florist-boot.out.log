@@ -1050,3 +1050,197 @@
 [FLORIST] Tenant resolved → db: restpoint_operations [single]
 [FLORIST] Ensuring florist tables in: restpoint_operations
 [FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /florist/flower-samples/
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /florist/bookings
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /florist/flower-samples/
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] Request: GET /florist/bookings
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /florist/flower-samples/
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /florist/bookings
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] Request: GET /florist/flower-samples/
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /florist/bookings
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] Request: GET /florist/flower-samples/
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /florist/bookings
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /florist/flower-samples/
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /florist/bookings
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /florist/flower-samples/
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] Request: GET /florist/bookings
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /florist/flower-samples/
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /florist/bookings
+[FLORIST] Tenant: montenzuma-monalisa-feuneral-machakos, Branch: 55e1190b-683a-4cef-a697-86508b3232f4
+[FLORIST] Tenant resolved → db: restpoint_operations [single]
+[FLORIST] Ensuring florist tables in: restpoint_operations
+[FLORIST] ✓ Florist tables ready in: restpoint_operations
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)

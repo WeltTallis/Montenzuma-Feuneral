@@ -305,7 +305,7 @@ const FlowerBookingsNew = () => {
   const renderToolbar = () => {
     const d = calDate;
     return (
-      <div style={styles.toolbar}>
+      <div className="fb-toolbar">
         <div style={styles.nav}>
           <div style={styles.title}>
             <button style={styles.arrowBtn} onClick={() => calNav(-1)}>
@@ -373,7 +373,7 @@ const FlowerBookingsNew = () => {
       const dateObj = date === 'unscheduled' ? null : new Date(date + 'T00:00:00');
       return (
         <div key={date} style={{ marginBottom: '32px' }}>
-          <div style={styles.feedDateHeader}>
+          <div className="fb-dateHdr">
             <Calendar size={14} />
             {dateObj
               ? dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
@@ -418,41 +418,37 @@ const FlowerBookingsNew = () => {
 
     return (
       <div
-        style={{ ...styles.bookingCard, background: cardBg, borderColor: cardBorder }}
+        className="fb-card"
+        style={{ background: cardBg, borderColor: cardBorder }}
         onClick={() => viewBooking(b.id)}
       >
-        <div style={styles.mediaThumb}>
+        <div className="fb-thumb">
           {product.images?.length > 0 ? (
             <img src={product.images[0]?.url || product.images[0]} alt={product.title} />
           ) : (
-            <div style={styles.mediaThumbPlaceholder}>{product.title?.charAt(0) || 'F'}</div>
+            <div className="fb-thumbPh">{product.title?.charAt(0) || 'F'}</div>
           )}
         </div>
-        <div style={styles.bookingInfo}>
-          <div style={styles.bookingName}>{product.title}</div>
-          <div style={styles.bookingMeta}>
+        <div className="fb-info">
+          <div className="fb-name">{product.title}</div>
+          <div className="fb-meta">
             <div><User size={12} /> {b.deceased_name}</div>
             <div><User size={12} /> Booked by {b.booked_by || b.customer}</div>
             <div><Home size={12} /> Flowers from: {b.branch || 'Not specified'}</div>
           </div>
         </div>
-        <div style={styles.bookingRight}>
-          <div style={{
-            fontSize: '11px',
-            fontWeight: 700,
-            marginBottom: '6px',
-            color: overdue ? '#B91C1C' : '#574F47'
-          }}>
+        <div className="fb-right">
+          <div className={`fb-expected${overdue ? ' fb-overdue' : ''}`} style={overdue ? { color: '#B91C1C' } : undefined}>
             <Clock size={11} /> {expectedBy
               ? `Expected by ${expectedBy.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${expectedBy.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`
               : 'No deadline set'}
             {overdue ? ' · OVERDUE' : ''}
           </div>
-          <div style={styles.pillsRow}>
-            <span style={{ ...styles.priorityPill, background: b.priority === 'High' ? '#FEE2E2' : b.priority === 'Low' ? '#DCFCE7' : '#F1F5F9', color: b.priority === 'High' ? '#B91C1C' : b.priority === 'Low' ? '#166534' : '#475569' }}>
+          <div className="fb-pills">
+            <span className="fb-priority" style={{ background: b.priority === 'High' ? '#FEE2E2' : b.priority === 'Low' ? '#DCFCE7' : '#F1F5F9', color: b.priority === 'High' ? '#B91C1C' : b.priority === 'Low' ? '#166534' : '#475569' }}>
               {b.priority}
             </span>
-            <span style={{ ...styles.statusPill, background: statusCfg.bg, color: statusCfg.color }}>{statusCfg.label}</span>
+            <span className="fb-pill" style={{ background: statusCfg.bg, color: statusCfg.color }}>{statusCfg.label}</span>
           </div>
         </div>
       </div>
@@ -779,9 +775,11 @@ const FlowerBookingsNew = () => {
                 <User size={18} />
                 <input
                   type="text"
-                  placeholder="Booked By (Your Name)"
-                  value={newBooking.booked_by}
-                  onChange={e => setNewBooking(prev => ({ ...prev, booked_by: e.target.value }))}
+                  placeholder="Booked By"
+                  value={newBooking.booked_by || getLocalUserName()}
+                  readOnly
+                  title="Auto-filled from your account"
+                  style={{ background: '#FAF9F7', color: '#574F47' }}
                 />
               </div>
             </div>
