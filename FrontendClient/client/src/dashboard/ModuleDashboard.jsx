@@ -12,10 +12,12 @@ import FilterSidebar from "./views/FilterSidebar";
 import { useNavigate } from "react-router-dom";
 import ChartsPanel from "./views/ChartsPanel";
 import DetailPanel from "./views/DetailPanel";
+import DeceasedSidePanel from "./views/DeceasedSidePanel";
 import MonthView from "./views/MonthView";
 import WeekView from "./views/WeekView";
 import DayView from "./views/DayView";
 import api from "../api/axios";
+import GlobalLoader from "../components/loader/loader";
 
 import {
   format, addDays, addMonths, subMonths,
@@ -336,45 +338,9 @@ export default function ModuleDashboard({ mod }) {
   /* ── Loading ───────────────────────────────────────────────── */
   if (loading && !showStore) {
     return (
-      <div style={{
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        flex: 1, gap: 16, background: T.bg,
-        fontFamily: T.font,
-      }}>
-        <div style={{
-          width: 56, height: 56, borderRadius: 18,
-          background: `linear-gradient(135deg, ${mod.accent}28, ${mod.accent}08)`,
-          border: `1px solid ${mod.accent}28`,
-          boxShadow: `0 0 40px ${mod.accent}18`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <mod.icon size={22} color={mod.accent} />
-        </div>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#334155" }}>
-            Loading {mod.label}
-          </div>
-          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>
-            Fetching latest data…
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          {[0, 1, 2].map(i => (
-            <div key={i} style={{
-              width: 6, height: 6, borderRadius: "50%",
-              background: mod.accent,
-              animation: "bounce 1.2s ease infinite",
-              animationDelay: `${i * 0.18}s`,
-            }} />
-          ))}
-        </div>
-        <style>{`
-          @keyframes bounce {
-            0%, 100% { transform: translateY(0); opacity: 1; }
-            50% { transform: translateY(-8px); opacity: 0.6; }
-          }
-        `}</style>
+      <div style={{ flex: 1, background: T.bg, fontFamily: T.font, position: "relative" }}>
+        {/* Global loader — single consistent app-wide spinner */}
+        <GlobalLoader text={`Loading ${mod.label}`} color={mod.accent} fullScreen={false} size="large" />
       </div>
     );
   }
@@ -586,7 +552,11 @@ export default function ModuleDashboard({ mod }) {
         {showStore ? (
           <>
             <Ctx.Provider value={storeCtx}>
-              <StoreTab />
+              {/* Scrollable wrapper — main is overflow:hidden, so StoreTab's
+                  content must scroll inside its own flex:1 container. */}
+              <div style={{ flex: 1, overflow: "auto", background: T.bg }}>
+                <StoreTab />
+              </div>
             </Ctx.Provider>
             <Toasts toasts={storeToasts} />
           </>
@@ -642,6 +612,18 @@ export default function ModuleDashboard({ mod }) {
                         sources={calSources}
                         loading={calLoading}
                         onClose={() => setCalDay(null)}
+                        onSelect={(item, sectionKey) => {
+                          /* Only deceased records open the side panel */
+                          if (sectionKey === "intakes" || sectionKey === "releases" || sectionKey === "postmortems") {
+                            const rec = (calSources.deceased || []).find((r) => {
+                              const num = r?.admission_number;
+                              return num && (
+                                item.id === `in-${num}` || item.id === `rel-${num}` || item.id === `pm-${num}`
+                              );
+                            });
+                            if (rec) { setSelected(rec); }
+                          }
+                        }}
                       />
                     </div>
                   )}
@@ -691,7 +673,10 @@ export default function ModuleDashboard({ mod }) {
           onSelect={setSelected} onClose={() => setDayEvents(null)}
         />
       )}
-      {selected && (
+      {selected && mod.id === "deceased" && (
+        <DeceasedSidePanel booking={selected} onClose={() => setSelected(null)} />
+      )}
+      {selected && mod.id !== "deceased" && (
         <DetailPanel booking={selected} mod={mod} onClose={() => setSelected(null)} />
       )}
     </div>

@@ -1,4 +1,9 @@
-import { Truck, Package, Flower2, Users, Calendar, Check, Wrench } from "lucide-react";
+/* Module icons come from ./icons.jsx (inline SVGs — see file header for
+   why lucide-react is no longer imported here). */
+import {
+  TruckIcon, PackageIcon, FlowerIcon, UsersIcon,
+  CalendarIcon, CheckIcon, WrenchIcon,
+} from "./icons";
 
 /* ---------------------------------------------------------------------------
  * Module definitions — each entry describes one bookable module rendered on
@@ -9,7 +14,7 @@ export const MODULES = [
   {
     id: "hearse",
     label: "Hearse Bookings",
-    icon: Truck,
+        icon: TruckIcon,
     accent: "#818cf8",
     apiEndpoint: "/hearse-bookings",
     statusMap: {
@@ -27,16 +32,16 @@ export const MODULES = [
     clientField: "client_name",
     idField: "booking_id",
     kpiFields: [
-      { key: "pending", label: "Pending", icon: Calendar },
-      { key: "in_transit", label: "In Transit", icon: Truck },
-      { key: "completed", label: "Completed", icon: Check },
-      { key: "cancelled", label: "Cancelled", icon: Package },
+      { key: "pending", label: "Pending", icon: CalendarIcon },
+      { key: "in_transit", label: "In Transit", icon: TruckIcon },
+      { key: "completed", label: "Completed", icon: CheckIcon },
+      { key: "cancelled", label: "Cancelled", icon: PackageIcon },
     ],
   },
   {
     id: "coffin",
     label: "Coffin Bookings",
-    icon: Package,
+    icon: PackageIcon,
     accent: "#fb923c",
     apiEndpoint: "/coffins/orders",
     statusMap: {
@@ -53,16 +58,16 @@ export const MODULES = [
     clientField: "deceased_name",
     idField: "order_id",
     kpiFields: [
-      { key: "active", label: "Active", icon: Package },
-      { key: "booked", label: "Booked", icon: Calendar },
-      { key: "completed", label: "Completed", icon: Check },
-      { key: "cancelled", label: "Cancelled", icon: Package },
+      { key: "active", label: "Active", icon: PackageIcon },
+      { key: "booked", label: "Booked", icon: CalendarIcon },
+      { key: "completed", label: "Completed", icon: CheckIcon },
+      { key: "cancelled", label: "Cancelled", icon: PackageIcon },
     ],
   },
   {
     id: "flower",
     label: "Flower Bookings",
-    icon: Flower2,
+    icon: FlowerIcon,
     accent: "#34d399",
     apiEndpoint: "/florist/bookings",
     statusMap: {
@@ -104,15 +109,15 @@ export const MODULES = [
     clientField: "full_name",
     idField: "admission_number",
     kpiFields: [
-      { key: "admitted", label: "Admitted", icon: Users },
-      { key: "released", label: "Released", icon: Check },
-      { key: "buried", label: "Buried", icon: Truck },
+      { key: "admitted", label: "Admitted", icon: UsersIcon },
+      { key: "released", label: "Released", icon: CheckIcon },
+      { key: "buried", label: "Buried", icon: TruckIcon },
     ],
   },
   {
     id: "workshop",
     label: "Workshop",
-    icon: Wrench,
+    icon: WrenchIcon,
     accent: "#f472b6",
     apiEndpoint: "/workshop/jobs",
     statusMap: {
@@ -125,10 +130,10 @@ export const MODULES = [
     clientField: "client_name",
     idField: "job_id",
     kpiFields: [
-      { key: "pending", label: "Pending", icon: Calendar },
-      { key: "in_progress", label: "In Progress", icon: Wrench },
-      { key: "completed", label: "Completed", icon: Check },
-      { key: "cancelled", label: "Cancelled", icon: Package },
+      { key: "pending", label: "Pending", icon: CalendarIcon },
+      { key: "in_progress", label: "In Progress", icon: WrenchIcon },
+      { key: "completed", label: "Completed", icon: CheckIcon },
+      { key: "cancelled", label: "Cancelled", icon: PackageIcon },
     ],
   },
 ];

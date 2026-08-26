@@ -928,14 +928,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
   return (
     <Shell>
-      <Legend>
-        {Object.entries(STATUS_CONFIG).map(([key, val]) => (
-          <LegendItem key={key}>
-            <LegendDot color={val.color} />
-            {val.label}
-          </LegendItem>
-        ))}
-      </Legend>
+
 
       {calendarView === 'timeGridDay' && selectedDate && dailyStats.total > 0 && (
         <StatsBar>

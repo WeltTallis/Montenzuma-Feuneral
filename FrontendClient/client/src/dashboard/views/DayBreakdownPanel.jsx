@@ -90,6 +90,7 @@ export default function DayBreakdownPanel({
   sources = { coffins: [], deceased: [] },
   loading = false,
   onClose,
+  onSelect,
 }) {
   const tk = todayKey();
   const activeKey = dateKey || tk;
@@ -282,7 +283,7 @@ export default function DayBreakdownPanel({
                 </div>
                 {/* Rows */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {sec.items.map((it) => (
+                                    {sec.items.map((it) => (
                     <div
                       key={it.id}
                       style={{
@@ -290,7 +291,9 @@ export default function DayBreakdownPanel({
                         padding: "8px 11px", borderRadius: 11,
                         border: "1px solid rgba(15,23,42,0.05)", background: "#FBFCFE",
                         transition: "background 0.12s ease",
+                        cursor: onSelect ? "pointer" : "default",
                       }}
+                      onClick={onSelect ? (e) => { e.stopPropagation(); onSelect(it, sec.key); } : undefined}
                       onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = "#FBFCFE"; }}
                     >

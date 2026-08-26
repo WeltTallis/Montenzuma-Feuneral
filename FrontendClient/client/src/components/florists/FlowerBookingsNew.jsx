@@ -4,7 +4,7 @@ import ReusableCalendar from '../../utils/calender/calender';
 import { useSocket } from '../../utils/context/socketContext'
 import api from '../../api/axios'
 import { Flower2, MapPin, User, Calendar, Clock, ChevronLeft, ChevronRight, X, Check, Truck, Home, Package, AlertTriangle } from '../../utils/icons/icons';
-import { toDateKey, todayKey, parseDate } from '../../utils/dates/parseDates';
+import { toDateKey, todayKey, parseDate as parseUtilDate } from '../../utils/dates/parseDates';
 
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -117,7 +117,7 @@ const parseWhen = (b) => {
   return { date: null, time: '' };
 };
 const toTimeOnly = v => {
-  const d = parseDate(v);
+  const d = parseUtilDate(v);
   return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '';
 };
 
@@ -275,7 +275,9 @@ const FlowerBookingsNew = () => {
   const bookingDateKey = (b) => parseWhen(b).date || toDateOnly(b?.delivery_date || b?.date);
 
   const getEventsForDate = useCallback((dateStr) => {
-    return bookings.filter(b => bookingDateKey(b) === dateStr);
+    // Full Calendar: an order appears under the day it was BOOKED (created),
+    // never under its Expected-By delivery deadline.
+    return bookings.filter(b => (toDateOnly(b?.created_at) || bookingDateKey(b)) === dateStr);
   }, [bookings]);
 
   const getBookingDotColor = (b) => {
@@ -287,7 +289,12 @@ const FlowerBookingsNew = () => {
   };
 
   const calendarItems = useMemo(() => {
-    return bookings.map(b => ({ ...b, _calDate: bookingDateKey(b) }));
+    // Full Calendar places each order on the day it was BOOKED (created) —
+    // never on its Expected-By delivery deadline.
+    return bookings.map(b => ({
+      ...b,
+      _calDate: toDateOnly(b?.created_at) || bookingDateKey(b),
+    }));
   }, [bookings]);
 
   // Order-count per date — powers the mini-calendar dots & mobile date strip
@@ -308,7 +315,7 @@ const FlowerBookingsNew = () => {
 
   const calToday = useCallback(() => {
     setCalDate(new Date());
-    setSelectedDate(fmtDateStr(new Date()));
+    setSelectedDate(todayKey());
   }, []);
 
   const openDayList = useCallback((dateStr) => {
@@ -615,7 +622,7 @@ const FlowerBookingsNew = () => {
     const startOff = (first.getDay() + 6) % 7;
     const days = [];
     for (let i = 0; i < 42; i++) days.push(addDays(first, -startOff + i));
-    const todayStr = fmtDateStr(new Date());
+    const todayStr = todayKey();
 
     return (
       <div>
@@ -672,6 +679,8 @@ const FlowerBookingsNew = () => {
     start.setHours(0, 0, 0, 0);
     const strip = [];
     for (let i = 0; i < 45; i++) strip.push(addDays(start, i));
+    // Today's key comes from the central date utility (no UTC shift)
+    const todayStr = todayKey();
     return (
       <div className="flx-strip" ref={stripRef}>
         {strip.map(day => {
@@ -796,7 +805,7 @@ const FlowerBookingsNew = () => {
     const gridStart = addDays(first, -startOffset);
     const days = [];
     for (let i = 0; i < 42; i++) days.push(addDays(gridStart, i));
-    const todayStr = fmtDateStr(new Date());
+    const todayStr = todayKey();
 
     return (
       <div>
