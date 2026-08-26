@@ -84,14 +84,14 @@ export const MODULES = [
     clientField: "deceased_name",
     idField: "booking_id",
     kpiFields: [
-      { key: "booked", label: "Booked", icon: Calendar },
-      { key: "completed", label: "Completed", icon: Check },
+      { key: "booked", label: "Booked", icon: CalendarIcon },
+      { key: "completed", label: "Completed", icon: CheckIcon },
     ],
   },
   {
     id: "deceased",
     label: "Deceased Register",
-    icon: Users,
+    icon: UsersIcon,
     accent: "#f472b6",
     apiEndpoint: "/deceased/deceased-all",
     statusMap: {
