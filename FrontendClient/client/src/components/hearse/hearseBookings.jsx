@@ -130,9 +130,35 @@ const getTenantSlug = () => {
   } catch { return ''; }
 };
 
+// ── Tenant-wide scoping helpers ─────────────────────────────────────────────
+// Hearses & hearse bookings live in ONE shared operations database across ALL
+// branches of a tenant. They must ALWAYS be scoped by the tenant ID (never by
+// branch slug/db), otherwise a multi-branch tenant only ever sees its own
+// branch's fleet and bookings instead of everything in one place.
+const resolveTenantId = () => {
+  const direct = localStorage.getItem('tenantId');
+  if (direct && direct !== 'undefined' && direct !== 'null') return direct;
+  try {
+    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    const fromUser = u.tenantId || u.tenant_id || u.tenant?.id || u.tenant?.tenantId;
+    if (fromUser) return String(fromUser);
+  } catch { /* ignore */ }
+  // Last resort: read tenantId straight from the auth token payload
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken') || '';
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (payload?.tenantId) return String(payload.tenantId);
+  } catch { /* ignore */ }
+  return null;
+};
+
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken') || '';
   const headers = { 'x-tenant-slug': getTenantSlug() };
+  // ALWAYS send the tenant id — this is what makes bookings & the fleet
+  // tenant-wide (all branches appear in one place).
+  const tenantId = resolveTenantId();
+  if (tenantId) headers['x-tenant-id'] = tenantId;
   if (token) headers['Authorization'] = `Bearer ${token}`;
   return headers;
 };
@@ -773,14 +799,10 @@ const HearseBookings = () => {
     }
     setRegisterLoading(true);
     try {
-      const userStr = localStorage.getItem('user');
-      const u = userStr ? JSON.parse(userStr) : {};
-      const dbName = u?.dbName || u?.branchDbName || '';
-      await api.registerHearse({
-        ...hearseForm,
-        branch_id: u?.branch_id || '',
-        branch_code: dbName.split('-').pop() || hearseForm.branch_code || '',
-      });
+      // Register at TENANT level only — no branch stamping. The x-tenant-id
+      // header sent by api.registerHearse() is what scopes this hearse to the
+      // whole tenant, so every branch sees the same shared fleet.
+      await api.registerHearse({ ...hearseForm });
       notify.success('Hearse registered successfully!');
       setRegisterHearseOpen(false);
       setHearseForm({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_code: '' });

@@ -1,6 +1,7 @@
 import { Ctx } from "../components/workshop/pages/WorkshopDashboard";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import HearseBookings from "../components/hearse/hearseBookings";
+import FlowerBookingsNew from "../components/florists/FlowerBookingsNew";
 import StoreTab from "../components/workshop/pages/StoreTab";
 import Toasts from "../components/workshop/pages/Toasts";
 import MiniActivityCalendar from "./views/MiniCalendar";
@@ -192,6 +193,9 @@ export default function ModuleDashboard({ mod }) {
      Hearse FullCalendar → hearse tab only                        */
   const showMini = mod.id === "coffin" || mod.id === "deceased";
   const showHearse = mod.id === "hearse";
+  // Flower tab renders the dedicated FlowerBookings module (same pattern as
+  // hearse) instead of the generic calendar builder.
+  const showFlower = mod.id === "flower";
   const showStore = mod.id === "workshop";
   const [miniEvents, setMiniEvents] = useState({});
   const [calLoading, setCalLoading] = useState(true);
@@ -220,7 +224,7 @@ export default function ModuleDashboard({ mod }) {
     || "";
 
   const loadCalendars = useCallback(async () => {
-    if (!showMini && !showHearse) { setCalLoading(false); return; }
+    if (!showMini && !showHearse && !showFlower) { setCalLoading(false); return; }
     setCalLoading(true);
     try {
       const keyOf = (v) => {
@@ -283,7 +287,7 @@ export default function ModuleDashboard({ mod }) {
     } finally {
       setCalLoading(false);
     }
-  }, [showMini, showHearse]);
+  }, [showMini, showHearse, showFlower]);
 
   useEffect(() => { loadCalendars(); }, [loadCalendars]);
 
@@ -388,7 +392,7 @@ export default function ModuleDashboard({ mod }) {
 
       <main style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
         {/* ── Toolbar ─────────────────────────────────────── */}
-        {!showHearse && !showStore && (
+        {!showHearse && !showStore && !showFlower && (
           <div style={{
             display: "flex", alignItems: "center", gap: 8,
             padding: "10px 18px",
@@ -497,7 +501,7 @@ export default function ModuleDashboard({ mod }) {
         )}
 
         {/* ── KPI strip (hidden on Deceased — replaced by quick actions) ── */}
-        {!showHearse && !showStore && mod.id !== "deceased" && (
+        {!showHearse && !showStore && !showFlower && mod.id !== "deceased" && (
           <div style={{
             display: "flex", alignItems: "stretch", gap: 12,
             padding: "14px 18px",
@@ -595,7 +599,7 @@ export default function ModuleDashboard({ mod }) {
         ) : (
           <div style={{ flex: 1, overflow: "auto", padding: 16, background: T.bg, position: "relative" }}>
             {/* ── Scoped calendars: mini (coffins · deceased tabs) + hearse FullCalendar (hearse tab) ── */}
-            {(showMini || showHearse) && (
+            {(showMini || showHearse || showFlower) && (
               <>
                 <style>{`
                   .unified-cal{display:flex;gap:16px;margin-bottom:16px;align-items:flex-start}
@@ -648,12 +652,19 @@ export default function ModuleDashboard({ mod }) {
                       <HearseBookings />
                     </div>
                   )}
+                  {showFlower && (
+                    <div style={{ width: "100%", minWidth: 0 }}>
+                      {/* The full flower bookings module — mini calendar rail,
+                          order list, samples and detail views render together. */}
+                      <FlowerBookingsNew />
+                    </div>
+                  )}
                 </div>
               </>
             )}
 
             {/* ── Legacy module calendar — only on tabs without a scoped calendar ── */}
-            {!(showMini || showHearse) && (
+            {!(showMini || showHearse || showFlower) && (
               <>
                 {view === "month" && (
                   <MonthView currentDate={currentDate} bookings={filtered} mod={mod}

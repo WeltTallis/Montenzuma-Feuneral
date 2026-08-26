@@ -66,11 +66,12 @@ export const MODULES = [
     accent: "#34d399",
     apiEndpoint: "/florist/bookings",
     statusMap: {
-      pending: { label: "Pending", color: "#3b82f6" },
-      confirmed: { label: "Confirmed", color: "#8b5cf6" },
-      preparing: { label: "Preparing", color: "#f59e0b" },
-      delivering: { label: "Delivering", color: "#f59e0b" },
-      delivered: { label: "Delivered", color: "#22c55e" },
+      booked: { label: "Booked", color: "#f59e0b" },
+      pending: { label: "Booked", color: "#f59e0b" },       // legacy aliases
+      sourced: { label: "Booked", color: "#f59e0b" },
+      preparing: { label: "Booked", color: "#f59e0b" },
+      confirmed: { label: "Booked", color: "#f59e0b" },
+      transit: { label: "Booked", color: "#f59e0b" },
       completed: { label: "Completed", color: "#22c55e" },
       cancelled: { label: "Cancelled", color: "#64748b" },
     },
@@ -78,10 +79,8 @@ export const MODULES = [
     clientField: "deceased_name",
     idField: "booking_id",
     kpiFields: [
-      { key: "pending", label: "Pending", icon: Calendar },
-      { key: "delivering", label: "Delivering", icon: Truck },
-      { key: "delivered", label: "Delivered", icon: Check },
-      { key: "cancelled", label: "Cancelled", icon: Package },
+      { key: "booked", label: "Booked", icon: Calendar },
+      { key: "completed", label: "Completed", icon: Check },
     ],
   },
   {

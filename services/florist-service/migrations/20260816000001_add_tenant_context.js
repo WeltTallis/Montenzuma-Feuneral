@@ -32,5 +32,5 @@ export async function up(knex) {
 }
 
 export async function down(knex) {
-  // Non-destructive: columns are simply kept as nullable VARCHAR.
+
 }

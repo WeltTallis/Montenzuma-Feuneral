@@ -1,22 +1,35 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Flower2, MapPin, User, Calendar, Clock, ChevronLeft, ChevronRight, X, Check, Truck, Home, Package, AlertTriangle } from '../../utils/icons/icons';
-import api from '../../api/axios'
-import { useSocket } from '../../utils/context/socketContext'
 import { getBranchSlug, getBranchId, getBranches, getTenantId } from '../../utils/globalAuth';
 import ReusableCalendar from '../../utils/calender/calender';
+import { useSocket } from '../../utils/context/socketContext'
+import api from '../../api/axios'
+import { Flower2, MapPin, User, Calendar, Clock, ChevronLeft, ChevronRight, X, Check, Truck, Home, Package, AlertTriangle } from '../../utils/icons/icons';
+import { toDateKey, todayKey, parseDate } from '../../utils/dates/parseDates';
+
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-const STATUS_FLOW = ['pending', 'sourced', 'transit', 'completed'];
+// Flower orders have exactly TWO statuses — nothing else.
+const STATUS_FLOW = ['booked', 'completed'];
+
 const STATUS_LABELS = {
-  pending: 'Order Placed',
-  sourced: 'Flowers Sourced',
-  transit: 'Out for Delivery',
-  completed: 'Delivered'
+  booked: 'Booked',
+  completed: 'Completed',
+  // Older rows may still carry these — they simply display as Booked
+  pending: 'Booked',
+  sourced: 'Booked',
+  preparing: 'Booked',
+  confirmed: 'Booked',
+  transit: 'Booked'
 };
-
-
+// Normalise ANY historical status onto the two-value flow
+const normStatus = s => {
+  const v = String(s || '').toLowerCase();
+  if (v === 'completed') return 'completed';
+  if (v === 'cancelled') return 'cancelled';
+  return 'booked';
+};
 
 const STATUS_DESC = {
   pending: 'We have received your order details.',
@@ -25,16 +38,92 @@ const STATUS_DESC = {
   completed: 'Successfully delivered to the specified location.'
 };
 
+// Distinct card tint per order status — the whole card communicates its state
+// Distinct card tint per order status — exactly TWO statuses for flowers
+const STATUS_CARD_STYLES = {
+  booked: { bg: '#EFF1F3', border: '#EFF1F3' },      // soft amber
+  pending: { bg: '#EFF1F3', border: '#EFF1F3' },     // legacy aliases → Booked
+  sourced: { bg: '#FDF4E3', border: '#F0DDB0' },
+  preparing: { bg: '#FDF4E3', border: '#F0DDB0' },
+  confirmed: { bg: '#FDF4E3', border: '#F0DDB0' },
+  transit: { bg: '#FDF4E3', border: '#F0DDB0' },
+  completed: { bg: '#FFCCD5', border: '#E3E0D9' },   // muted neutral
+  cancelled: { bg: '#FFCCD5', border: '#F0CDCB' },   // soft red
+};
+
 const pad = n => String(n).padStart(2, '0');
-const fmtDateStr = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+// Delegate to the central date utility — no UTC shift, one format app-wide
+const fmtDateStr = d => toDateKey(d) || '';
 const parseDate = s => { const d = new Date(s); return isNaN(d) ? null : d; };
 const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
-const fmtTime = s => s ? new Date(s).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+const fmtTime = s => {
+  if (!s) return '';
+  const raw = String(s).trim();
+  // Raw HH:mm / HH:mm:ss strings (as stored in TIME columns) can't be parsed
+  // by new Date() — handle them directly to avoid "Invalid Date".
+  const m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(raw);
+  if (m) {
+    let h = parseInt(m[1], 10);
+    const ap = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${m[2]} ${ap}`;
+  }
+  const d = new Date(raw);
+  return isNaN(d) ? '' : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+};
 const fmtDateTime = s => s ? new Date(s).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
 const fmtDateOnly = s => s ? new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
+// Normalise a JSON/array field (types, colors, sizes…) into a plain array —
+// older rows may store them as JSON strings.
+const asList = v => {
+  if (Array.isArray(v)) return v.filter(Boolean);
+  if (typeof v === 'string' && v.trim()) {
+    try {
+      const p = JSON.parse(v);
+      return Array.isArray(p) ? p.filter(Boolean) : [p];
+    } catch { return v.split(',').map(s => s.trim()).filter(Boolean); }
+  }
+  return [];
+};
+// Normalise ANY date-ish value (DATE, DATETIME, ISO, Date obj) → 'YYYY-MM-DD'
+// via the central util — handles naive datetimes & instants without shifting.
+const toDateOnly = v => toDateKey(v);
+// Parse an order's flower-type line items. Priority:
+//   1) `arrangements` JSON column (new backend)
+//   2) [TYPES:a|b|c] token embedded in notes (works on ANY backend version)
+//   3) legacy single flower_type
+const parseLineItems = (b) => {
+  let arr = null;
+  try {
+    arr = typeof b?.arrangements === 'string' ? JSON.parse(b.arrangements) : b?.arrangements;
+  } catch { arr = null; }
+  if (Array.isArray(arr) && arr.length > 0) {
+    return arr.filter(Boolean).map(x =>
+      typeof x === 'string' ? { name: x } : { name: x.name || x.title || 'Flower', arrangement_id: x.arrangement_id ?? null }
+    );
+  }
+  const tok = /\[TYPES:([^\]]+)\]/i.exec(String(b?.notes || ''));
+  if (tok) {
+    return tok[1].split('|').map(s => s.trim()).filter(Boolean).map(name => ({ name }));
+  }
+  return [{ name: b?.flower_type || 'Custom Arrangement', arrangement_id: b?.arrangement_id || null }];
+};
+// The EXACT date/time the user picked rides back inside notes as
+// [WHEN:YYYY-MM-DD HH:mm] — immune to server-side timezone conversions that
+// otherwise shift bookings a day forward/backward between write and read.
+const parseWhen = (b) => {
+  const m = /\[WHEN\s*:\s*(\d{4}-\d{2}-\d{2})(?:\s+(\d{1,2}:\d{2}(?::\d{2})?))?\s*\]/i.exec(String(b?.notes || ''));
+  if (m) return { date: m[1], time: m[2] ? toTimeOnly(m[2]) : '' };
+  return { date: null, time: '' };
+};
+const toTimeOnly = v => {
+  const d = parseDate(v);
+  return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '';
+};
 
 // Resolve the name of the branch the logged-in user belongs to (flowers are
 // coming from this branch). Uses the branch context stored at login.
+
 const resolveBranchName = () => {
   const slug = getBranchSlug();
   const bid = getBranchId();
@@ -49,6 +138,7 @@ const resolveBranchName = () => {
 // Real logged-in username straight from localStorage (`user` is written at
 // login with { username, fullName, email, ... }). Used to auto-fill the
 // "Booked By" field instead of asking the user to type their own name.
+
 const getLocalUserName = () => {
   try {
     const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
@@ -67,11 +157,15 @@ const FlowerBookingsNew = () => {
   const [activeBookingId, setActiveBookingId] = useState(null);
   const [detailImageIndex, setDetailImageIndex] = useState(0);
   const [newBooking, setNewBooking] = useState({
-    arrangement_id: null,
-    arrangement_name: '',
+    arrangements: [],       // MULTI-SELECT: one order can book many flower types
+    custom_input: '',       // typing buffer for adding a free-text flower type
+    custom_types: [],       // committed list of free-text types (e.g. CASKET SPRAY)
+    ribbon: '',             // ribbon colour chosen for this order
+    size: '',               // flower size chosen for this order
+    remarks: '',            // special remarks / instructions
     deceased_name: '',
     booked_by: getLocalUserName(),
-    date: '',
+    date: fmtDateStr(new Date()),   // Expected By — required so calendar tracks every order
     time: '10:00',
     priority: 'Normal'
   });
@@ -79,11 +173,17 @@ const FlowerBookingsNew = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showArrangementPicker, setShowArrangementPicker] = useState(false);
   const [arrangements, setArrangements] = useState([]);
+  // Guards against double-click / double-submit creating duplicate orders
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const placingRef = useRef(false);
+  // Auto-scrolls the mobile date strip so today's chip is in view
+  const stripRef = useRef(null);
 
   const loadArrangements = useCallback(async () => {
     try {
       // Explicit tenant scoping — the florist service filters flower_samples by
       // the x-tenant-id header (also sent) and the tenant_id query param.
+
       const res = await api.get('/florist/flower-samples/', {
         params: { tenant_id: getTenantId() || undefined },
       });
@@ -102,15 +202,16 @@ const FlowerBookingsNew = () => {
   const loadBookings = useCallback(async () => {
     setLoading(true);
     try {
+
       // TENANT-WIDE fetch: scoped by tenant id ONLY (never branch), so ALL
       // flower bookings from every branch appear together in this one space.
-      // The florist service builds its WHERE clause from the x-tenant-id
-      // header / tenant_id param and ignores branch entirely.
+
       const res = await api.get('/florist/bookings', {
         params: { tenant_id: getTenantId() || undefined },
       });
       setBookings(res.data.data || []);
     } catch (e) {
+      console.error('[FlowerBookings] Failed to load bookings:', e?.response?.status, e?.response?.data || e.message);
       showToast(e.friendlyMessage || 'Failed to load bookings', 'error');
     }
     setLoading(false);
@@ -157,34 +258,46 @@ const FlowerBookingsNew = () => {
     loadBookings();
   }, [loadBookings, loadArrangements]);
 
+  // Auto-scroll the mobile date strip so today's chip is centred in view
+  useEffect(() => {
+    if (view !== 'list') return;
+    const t = setTimeout(() => {
+      const el = stripRef.current?.querySelector('[data-today="1"]');
+      if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [view, calDate]);
+
   // The API returns the expected date in `date` (older rows may carry it as
-  // `delivery_date`) — normalise so list + calendar agree on one key.
-  const bookingDateKey = (b) => b?.delivery_date || b?.date || null;
+  // `delivery_date`, sometimes as a full DATETIME) — always normalise to a
+  // clean YYYY-MM-DD key so list, cards and calendar agree. The [WHEN:…]
+  // token stamped at booking time wins over anything the server shifted.
+  const bookingDateKey = (b) => parseWhen(b).date || toDateOnly(b?.delivery_date || b?.date);
 
   const getEventsForDate = useCallback((dateStr) => {
     return bookings.filter(b => bookingDateKey(b) === dateStr);
   }, [bookings]);
 
   const getBookingDotColor = (b) => {
-    switch (b.status) {
-      case 'pending': return '#d97706';
-      case 'confirmed': return '#0284c7';
-      case 'preparing': return '#6366f1';
+    switch (normStatus(b.status)) {
       case 'completed': return '#059669';
       case 'cancelled': return '#dc2626';
-      default: return '#1d4ed8';
+      default: return '#d97706';   // Booked / any pre-completion state
     }
   };
 
   const calendarItems = useMemo(() => {
-    return bookings.map(b => {
-      let ds = bookingDateKey(b);
-      if (!ds) return { ...b, _calDate: null };
-      if (ds instanceof Date) {
-        ds = `${ds.getFullYear()}-${String(ds.getMonth() + 1).padStart(2, '0')}-${String(ds.getDate()).padStart(2, '0')}`;
-      }
-      return { ...b, _calDate: ds };
+    return bookings.map(b => ({ ...b, _calDate: bookingDateKey(b) }));
+  }, [bookings]);
+
+  // Order-count per date — powers the mini-calendar dots & mobile date strip
+  const evCountByDate = useMemo(() => {
+    const m = {};
+    bookings.forEach(b => {
+      const k = bookingDateKey(b);
+      if (k) m[k] = (m[k] || 0) + 1;
     });
+    return m;
   }, [bookings]);
 
   const calNav = useCallback((dir) => {
@@ -221,61 +334,128 @@ const FlowerBookingsNew = () => {
 
   const submitBooking = useCallback(async (e) => {
     e.preventDefault();
-    if (!newBooking.arrangement_name || !newBooking.deceased_name) {
-      return showToast('Please fill all required fields', 'error');
-    }
+    // Re-entry guard — a double-click must NEVER place the order twice
+    if (placingRef.current) return;
+    if (!newBooking.deceased_name?.trim()) return showToast('Please enter the deceased name', 'error');
+    if (!newBooking.date || !newBooking.time) return showToast('Expected By date and time are required', 'error');
+    placingRef.current = true;
+    setPlacingOrder(true);
+
+    // Build the order's flower-type line items: selected arrangements + typed types
+    const items = [
+      ...newBooking.arrangements.map(a => ({ arrangement_id: a.arrangement_id, name: a.title })),
+      ...newBooking.custom_types.map(t => ({ arrangement_id: null, name: t }))
+    ];
+    if (items.length === 0) return showToast('Select an arrangement or add at least one flower type', 'error');
 
     try {
-      // Find the selected arrangement to get its slug
-      const selectedArrangement = arrangements.find(a => a.arrangement_id === newBooking.arrangement_id);
-      const flowerTypeSlug = selectedArrangement?.arrangement_id || selectedArrangement?.title || newBooking.arrangement_name;
-
-      const payload = {
-        arrangement_name: newBooking.arrangement_name,
-        deceased_name: newBooking.deceased_name,
+      // ONE row = ONE order containing ALL its flower types. The full list is
+      // stored as JSON in the `arrangements` column; ribbon gets its dedicated
+      const clean = s => String(s || '').replace(/\|/g, '/').replace(/[[\]]/g, '').trim();
+      // [TYPES:…] keeps every flower name · [WHEN:…] pins the exact chosen
+      // date+time so server timezone handling can never shift it a day.
+      const notesValue = [
+        `[TYPES:${items.map(i => clean(i.name)).join('|')}]`,
+        `[WHEN:${newBooking.date} ${newBooking.time}]`,
+        newBooking.size ? `Size: ${newBooking.size}` : '',
+        newBooking.remarks?.trim() || ''
+      ].filter(Boolean).join(' ');
+      await api.post('/florist/bookings', {
+        arrangement_name: items[0].name,
+        arrangement_id: items[0].arrangement_id,
+        flower_type: items[0].name,
+        arrangements: items,
+        ribbon_color: newBooking.ribbon && newBooking.ribbon !== 'None' ? newBooking.ribbon : null,
+        deceased_name: newBooking.deceased_name.trim(),
         booked_by: newBooking.booked_by || getLocalUserName() || 'System',
         branch: resolveBranchName() || undefined,
-        date: newBooking.date || null,
-        time: newBooking.time || null,
+        funeral_home: resolveBranchName() || undefined,
+        date: newBooking.date,
+        time: newBooking.time,
         priority: newBooking.priority,
-        arrangement_id: newBooking.arrangement_id,
-        flower_type: flowerTypeSlug
-      };
-      await api.post('/florist/bookings', payload);
+        notes: notesValue.trim() || null
+      });
 
-      showToast('Booking placed successfully!');
+      showToast(items.length > 1 ? `${items.length} flower orders placed!` : 'Booking placed successfully!');
       await loadBookings();
       setView('list');
       setNewBooking({
-        arrangement_id: null,
-        arrangement_name: '',
+        arrangements: [],
+        custom_input: '',
+        custom_types: [],
+        ribbon: '',
+        size: '',
+        remarks: '',
         deceased_name: '',
         booked_by: getLocalUserName(),
-        date: '',
+        date: fmtDateStr(new Date()),
         time: '10:00',
         priority: 'Normal'
       });
     } catch (e) {
-      showToast(e.friendlyMessage || 'Failed to create booking', 'error');
+      console.error('[FlowerBookings] Place order FAILED:', e?.response?.status, e?.response?.data || e.message);
+      showToast(e.response?.data?.message || e.friendlyMessage || 'Failed to create booking', 'error');
+    } finally {
+      placingRef.current = false;
+      setPlacingOrder(false);
     }
-  }, [newBooking, arrangements, showToast, loadBookings]);
+  }, [newBooking, showToast, loadBookings]);
 
-  const selectArrangement = useCallback((arrangement) => {
+  // Toggle an arrangement in/out of the multi-select list
+  const toggleArrangement = useCallback((arrangement) => {
+    setNewBooking(prev => {
+      const exists = prev.arrangements.some(a => a.arrangement_id === arrangement.arrangement_id);
+      return {
+        ...prev,
+        arrangements: exists
+          ? prev.arrangements.filter(a => a.arrangement_id !== arrangement.arrangement_id)
+          : [...prev.arrangements, { arrangement_id: arrangement.arrangement_id, title: arrangement.title }]
+      };
+    });
+  }, []);
+
+  // Commit the typed flower type into the order list (Enter or "+ Add")
+  const addCustomType = useCallback(() => {
+    const v = newBooking.custom_input?.trim();
+    if (!v) return;
+    if (newBooking.custom_types.some(t => t.toLowerCase() === v.toLowerCase())) {
+      showToast('That type is already in the list', 'error');
+      return;
+    }
     setNewBooking(prev => ({
       ...prev,
-      arrangement_id: arrangement.arrangement_id,
-      arrangement_name: arrangement.title
+      custom_types: [...prev.custom_types, v],
+      custom_input: ''
     }));
-    setShowArrangementPicker(false);
+  }, [newBooking, showToast]);
+
+  const removeCustomType = useCallback((t) => {
+    setNewBooking(prev => ({ ...prev, custom_types: prev.custom_types.filter(x => x !== t) }));
   }, []);
 
   const updateStatus = useCallback(async (id, nextStatus) => {
+    const url = `/florist/bookings/${id}/status`;
+    console.info(`[FlowerBookings] PATCH ${url} →`, nextStatus);
     try {
-      await api.put(`/florist/bookings/${id}/status`, { status: nextStatus });
-      showToast(`Status updated to ${STATUS_LABELS[nextStatus]}`);
+      await api.patch(url, { status: nextStatus });
+      showToast(`Status updated to ${STATUS_LABELS[nextStatus] || nextStatus}`);
       await loadBookings();
     } catch (e) {
-      showToast(e.friendlyMessage || 'Failed to update status', 'error');
+      // Full diagnostics in the console so failures are never silent
+      console.error('[FlowerBookings] Status update FAILED:', {
+        url,
+        nextStatus,
+        httpStatus: e?.response?.status,
+        serverSaid: e?.response?.data,
+        message: e?.message
+      });
+      showToast(
+        e.response?.data?.message ||
+        e.response?.data?.error ||
+        e.friendlyMessage ||
+        `Failed to update status${e?.response ? ` (HTTP ${e.response.status})` : ''}`,
+        'error'
+      );
     }
   }, [showToast, loadBookings]);
 
@@ -305,8 +485,8 @@ const FlowerBookingsNew = () => {
   const renderToolbar = () => {
     const d = calDate;
     return (
-      <div className="fb-toolbar">
-        <div style={styles.nav}>
+      <div className="flx-toolbar" style={styles.toolbar}>
+        <div className="flx-nav" style={styles.nav}>
           <div style={styles.title}>
             <button style={styles.arrowBtn} onClick={() => calNav(-1)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
@@ -318,17 +498,17 @@ const FlowerBookingsNew = () => {
           </div>
           <button style={styles.todayBtn} onClick={calToday}>Today</button>
         </div>
-        <div style={styles.viewToggle}>
+        <div className="flx-toggle" style={styles.viewToggle}>
           <button style={styles.viewBtn(view === 'list')} onClick={() => setView('list')}>List</button>
           <button style={styles.viewBtn(view === 'calendar')} onClick={() => setView('calendar')}>Calendar</button>
           <button style={styles.viewBtn(view === 'samples')} onClick={() => setView('samples')}>Samples</button>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="flx-actions" style={{ display: 'flex', gap: '8px' }}>
           <button
             style={{
               ...styles.placeBookingBtn,
               background: '#475A43',
-              boxShadow: '0 4px 12px rgba(71,90,67,0.25)'
+              boxShadow: 'none'
             }}
             onClick={() => setShowCreateModal(true)}
           >
@@ -345,8 +525,8 @@ const FlowerBookingsNew = () => {
   };
 
   const renderList = () => {
-    // Group orders by their "Expected By" date. Orders placed without a
-    // deadline land in the "Awaiting Date" group at the end.
+    // Group orders by their "Expected By" date (normalised key). Orders without
+    // a deadline land in the "Awaiting Date" group at the end.
     const sorted = [...bookings].sort((a, b) => {
       const da = a.date ? new Date(a.date).getTime() : Infinity;
       const db = b.date ? new Date(b.date).getTime() : Infinity;
@@ -354,101 +534,254 @@ const FlowerBookingsNew = () => {
     });
     const groups = {};
     sorted.forEach(b => {
-      const key = b.date || 'unscheduled';
+      const key = bookingDateKey(b) || 'unscheduled';
       if (!groups[key]) groups[key] = [];
       groups[key].push(b);
     });
 
-    if (Object.keys(groups).length === 0) {
+    // A tapped mini-calendar / strip date narrows the feed to that day only
+    let entries = Object.entries(groups);
+    if (selectedDate) entries = entries.filter(([date]) => date === selectedDate);
+
+    if (entries.length === 0) {
       return (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9C9389' }}>
           <Flower2 size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
-          <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', color: '#574F47', marginBottom: '6px' }}>No bookings yet</h3>
-          <p style={{ fontSize: '14px' }}>Click "Place Booking" to create your first one.</p>
+          <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', color: '#574F47', marginBottom: '6px' }}>
+            {selectedDate ? `Nothing on ${fmtDateOnly(selectedDate)}` : 'No bookings yet'}
+          </h3>
+          <p style={{ fontSize: '14px' }}>
+            {selectedDate ? 'Pick another date, or view every order.' : 'Click "Place Booking" to create your first one.'}
+          </p>
+          {selectedDate && (
+            <button
+              onClick={() => setSelectedDate(null)}
+              style={{
+                marginTop: '14px', padding: '8px 16px', borderRadius: 0,
+                border: '1px solid #E3DFD8', background: '#fff', cursor: 'pointer',
+                fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em',
+                textTransform: 'uppercase', color: '#574F47'
+              }}
+            >
+              Show All Dates
+            </button>
+          )}
         </div>
       );
     }
 
-    return Object.entries(groups).map(([date, dayBookings]) => {
-      const dateObj = date === 'unscheduled' ? null : new Date(date + 'T00:00:00');
-      return (
-        <div key={date} style={{ marginBottom: '32px' }}>
-          <div className="fb-dateHdr">
-            <Calendar size={14} />
-            {dateObj
-              ? dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-              : 'No Expected Date Yet'}
+    return (
+      <>
+        {selectedDate && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: '10px', background: '#f0f7f4', border: '1px solid #CBE0D4',
+            padding: '10px 14px', borderRadius: 0, marginBottom: '18px'
+          }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#2F4F3E' }}>
+              Filtered · {fmtDateOnly(selectedDate)}
+            </span>
+            <button
+              onClick={() => setSelectedDate(null)}
+              style={{ background: 'none', border: 'none', color: '#2F4F3E', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer' }}
+            >
+              Clear ✕
+            </button>
           </div>
-          {dayBookings.map(b => renderBookingCard(b))}
+        )}
+        {entries.map(([date, dayBookings]) => {
+          const dateObj = date === 'unscheduled' ? null : new Date(date + 'T00:00:00');
+          return (
+            <div key={date} style={{ marginBottom: '32px' }}>
+              <div style={styles.feedDateHeader}>
+                <Calendar size={14} />
+                {dateObj
+                  ? dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+                  : 'No Expected Date Yet'}
+              </div>
+              {dayBookings.map(bk => renderBookingCard(bk))}
+            </div>
+          );
+        })}
+      </>
+    );
+  };
+
+  /* ── Mini calendar rail (desktop) ── compact month grid beside the list ── */
+  const renderMiniCalendar = () => {
+    const d = calDate;
+    const y = d.getFullYear(), mo = d.getMonth();
+    const first = new Date(y, mo, 1);
+    const startOff = (first.getDay() + 6) % 7;
+    const days = [];
+    for (let i = 0; i < 42; i++) days.push(addDays(first, -startOff + i));
+    const todayStr = fmtDateStr(new Date());
+
+    return (
+      <div>
+        <div style={styles.mcHead}>
+          <strong style={styles.mcTitle}>{MONTHS[mo].slice(0, 3)} {y}</strong>
+          <div style={styles.mcNav}>
+            <button style={styles.arrowBtn} onClick={() => calNav(-1)}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <button style={styles.arrowBtn} onClick={() => calNav(1)}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
+          </div>
         </div>
-      );
-    });
+        <div style={styles.mcWkRow}>
+          {WEEKDAYS.map(w => <span key={w} style={styles.mcWk}>{w}</span>)}
+        </div>
+        <div style={styles.mcGrid}>
+          {days.map(day => {
+            const ds = fmtDateStr(day);
+            const out = day.getMonth() !== mo;
+            const cnt = evCountByDate[ds] || 0;
+            const sel = selectedDate === ds;
+            const isT = ds === todayStr;
+            const cell = { ...styles.mcCell };
+            if (out && !sel) cell.color = '#D8D2C8';
+            if (cnt > 0 && !sel) cell.background = '#f0f7f4';
+            if (isT && !sel) { cell.borderColor = '#2F4F3E'; cell.color = '#2F4F3E'; }
+            if (sel) { cell.background = '#2F4F3E'; cell.color = '#fff'; cell.borderColor = '#2F4F3E'; }
+            return (
+              <button
+                key={ds}
+                type="button"
+                title={`${ds}${cnt ? ` · ${cnt} order${cnt > 1 ? 's' : ''}` : ''}`}
+                onClick={() => setSelectedDate(sel ? null : ds)}
+                style={cell}
+              >
+                {day.getDate()}
+                {cnt > 0 && !sel && <span style={styles.mcDot} />}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ marginTop: '10px', fontSize: '10px', color: '#9C9389', letterSpacing: '0.04em' }}>
+          Tap a date to filter the list
+        </div>
+      </div>
+    );
+  };
+
+  /* ── Horizontal date strip (phones) ── ALWAYS starts at the current date ── */
+  const renderDateStrip = () => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const strip = [];
+    for (let i = 0; i < 45; i++) strip.push(addDays(start, i));
+    return (
+      <div className="flx-strip" ref={stripRef}>
+        {strip.map(day => {
+          const ds = fmtDateStr(day);
+          const cnt = evCountByDate[ds] || 0;
+          const sel = selectedDate === ds;
+          const isT = ds === todayStr;
+          const chip = { ...styles.stripDay };
+          if (isT) { chip.borderColor = '#2F4F3E'; }
+          if (sel) { chip.background = '#2F4F3E'; chip.color = '#fff'; chip.borderColor = '#2F4F3E'; }
+          return (
+            <button
+              key={ds}
+              type="button"
+              data-today={isT ? '1' : undefined}
+              onClick={() => setSelectedDate(sel ? null : ds)}
+              style={chip}
+            >
+              <span style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: sel ? 0.85 : 0.6 }}>
+                {WEEKDAYS[(day.getDay() + 6) % 7]}
+              </span>
+              <span style={{ fontSize: '16px', fontWeight: 700, lineHeight: 1 }}>{day.getDate()}</span>
+              <span style={{
+                width: '5px', height: '5px', borderRadius: '50%',
+                background: cnt > 0 ? (sel ? '#fff' : getBookingDotColor({ status: bookings.find(x => bookingDateKey(x) === ds)?.status })) : 'transparent'
+              }} />
+            </button>
+          );
+        })}
+      </div>
+    );
   };
 
   const renderBookingCard = (b) => {
-    // Match booking with arrangement by name (flower_type stores the arrangement name)
-    const product = arrangements.find(a => a.title === b.flower_type) || arrangements[0] || {
-      title: b.flower_type || 'Custom Arrangement',
+    const lineItems = parseLineItems(b);
+    const firstName = lineItems[0]?.name || b.flower_type || '';
+    // Match the arrangement ONLY by exact title — never fall back to a random
+    // sample. Custom-typed orders (e.g. "CASKET SPRAY") must show their own
+    // typed name, not some unrelated arrangement's data.
+    const matchedSample = arrangements.find(a => a.title === firstName);
+    const product = matchedSample || {
+      title: firstName || 'Custom Arrangement',
       images: [],
-      types: ['Custom']
+      types: [],
+      colors: [],
+      sizes: []
     };
-    const statusCfg = STATUS_FLOW.indexOf(b.status) >= 0 ? { label: STATUS_LABELS[b.status], color: '#2F4F3E', bg: '#f0f7f4' } : { label: b.status, color: '#64748b', bg: '#f1f5f9' };
+    const statusCfg = STATUS_FLOW.indexOf(normStatus(b.status)) >= 0 ? { label: STATUS_LABELS[normStatus(b.status)] || b.status, color: '#2F4F3E', bg: '#f0f7f4' } : { label: b.status, color: '#64748b', bg: '#f1f5f9' };
 
-    // ── Expected By deadline ──
-    const expectedBy = b.date ? new Date(b.date + 'T' + (b.time || '00:00')) : null;
+    // ── Expected By deadline ── (the [WHEN:…] stamp beats server-side shifts)
+    const when = parseWhen(b);
+    const dateKey = when.date || bookingDateKey(b);
+    const timeVal = when.time || toTimeOnly(b.time || b.delivery_time);
+    const expectedTs = dateKey ? new Date(`${dateKey}T${timeVal || '00:00'}:00`).getTime() : null;
     const isDone = b.status === 'completed';
-    const overdue = expectedBy && !isDone && expectedBy.getTime() < Date.now();
+    const overdue = expectedTs && !isDone && expectedTs < Date.now();
 
-    // ── Card background by state ──
-    //   critical (high priority, still pending) -> pinkish
-    //   dispatched / out for delivery           -> green
-    //   completed                               -> muted neutral
-    let cardBg = '#fff';
-    let cardBorder = '#EAE7E2';
-    if (b.priority === 'High' && b.status === 'pending') {
-      cardBg = '#FDEDF1';
-      cardBorder = '#F5C2CE';
-    } else if (b.status === 'transit') {
-      cardBg = '#E9F7EF';
-      cardBorder = '#BFE5D2';
-    } else if (isDone) {
-      cardBg = '#F6F5F2';
-      cardBorder = '#E5E2DC';
-    }
+    // ── Card background by status ──
+    // Every order status gets its own distinct tint so the list can be read
+    // at a glance without opening a single card.
+    const cardStyle = STATUS_CARD_STYLES[b.status] || { bg: '#fff', border: '#EAE7E2' };
+    let cardBg = cardStyle.bg;
+    let cardBorder = cardStyle.border;
 
     return (
       <div
         className="fb-card"
-        style={{ background: cardBg, borderColor: cardBorder }}
+        style={{
+          ...styles.bookingCard,
+          background: cardBg,
+          borderColor: cardBorder,
+        }}
         onClick={() => viewBooking(b.id)}
       >
-        <div className="fb-thumb">
+        <div className="fb-card-thumb" style={styles.mediaThumb}>
           {product.images?.length > 0 ? (
-            <img src={product.images[0]?.url || product.images[0]} alt={product.title} />
+            <img
+              src={product.images[0]?.url || product.images[0]}
+              alt={product.title}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           ) : (
-            <div className="fb-thumbPh">{product.title?.charAt(0) || 'F'}</div>
+            <div style={styles.mediaThumbPlaceholder}>{product.title?.charAt(0) || 'F'}</div>
           )}
         </div>
-        <div className="fb-info">
-          <div className="fb-name">{product.title}</div>
-          <div className="fb-meta">
-            <div><User size={12} /> {b.deceased_name}</div>
-            <div><User size={12} /> Booked by {b.booked_by || b.customer}</div>
-            <div><Home size={12} /> Flowers from: {b.branch || 'Not specified'}</div>
+        <div style={styles.bookingInfo}>
+          <div className="fb-booking-name" style={styles.bookingName}>
+            {product.title}{lineItems.length > 1 ? ` +${lineItems.length - 1} more` : ''}
+          </div>
+          <div className="fb-card-meta" style={styles.bookingMeta}>
+            {lineItems.length > 1 && (
+              <div style={styles.metaRow}>Flowers: {lineItems.map(i => i.name).join(' · ')}</div>
+            )}
+            <div style={styles.metaRow}><User size={12} /> {b.deceased_name}</div>
+            <div style={styles.metaRow}><User size={12} /> Booked by {b.booked_by || b.customer}</div>
+            <div style={styles.metaRow}><Home size={12} /> Flowers from: {b.branch || 'Not specified'}</div>
           </div>
         </div>
-        <div className="fb-right">
-          <div className={`fb-expected${overdue ? ' fb-overdue' : ''}`} style={overdue ? { color: '#B91C1C' } : undefined}>
-            <Clock size={11} /> {expectedBy
-              ? `Expected by ${expectedBy.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${expectedBy.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`
+        <div className="flx-card-right" style={styles.bookingRight}>
+          <div className="flx-expected" style={{ ...styles.expectedBy, ...(overdue ? { color: '#B91C1C' } : null) }}>
+            <Clock size={11} /> {dateKey
+              ? `Expected by ${fmtDateOnly(dateKey)}${timeVal ? `, ${fmtTime(timeVal)}` : ''}`
               : 'No deadline set'}
             {overdue ? ' · OVERDUE' : ''}
           </div>
-          <div className="fb-pills">
-            <span className="fb-priority" style={{ background: b.priority === 'High' ? '#FEE2E2' : b.priority === 'Low' ? '#DCFCE7' : '#F1F5F9', color: b.priority === 'High' ? '#B91C1C' : b.priority === 'Low' ? '#166534' : '#475569' }}>
+          <div style={styles.pillsRow}>
+            <span style={{ ...styles.priorityPill, background: b.priority === 'High' ? '#FEE2E2' : b.priority === 'Low' ? '#DCFCE7' : '#F1F5F9', color: b.priority === 'High' ? '#B91C1C' : b.priority === 'Low' ? '#166534' : '#475569' }}>
               {b.priority}
             </span>
-            <span className="fb-pill" style={{ background: statusCfg.bg, color: statusCfg.color }}>{statusCfg.label}</span>
+            <span style={{ ...styles.statusPill, background: statusCfg.bg, color: statusCfg.color }}>{statusCfg.label}</span>
           </div>
         </div>
       </div>
@@ -506,14 +839,13 @@ const FlowerBookingsNew = () => {
                   <span style={isToday ? styles.todayNum : {}}>{day.getDate()}</span>
                 </div>
                 {visible.map(b => {
-                  const product = arrangements.find(a => a.title === b.flower_type) || arrangements[0] || {
-                    title: b.flower_type || 'Custom Arrangement',
-                    images: [],
-                    types: ['Custom']
-                  };
+                  // Exact name only — never substitute another arrangement
+                  const matchedSample = arrangements.find(a => a.title === b.flower_type);
+                  const evTitle = matchedSample?.title || b.flower_type || 'Order';
+                  const evColor = getBookingDotColor(b);
                   return (
-                    <div key={b.id} style={styles.calEvent}>
-                      {b.time ? b.time.slice(0, 5) : ''} {product.title.split(' ')[0]}
+                    <div key={b.id} style={{ ...styles.calEvent, background: `${evColor}1A`, color: evColor }}>
+                      {b.time ? String(b.time).slice(0, 5) : ''} {evTitle.split(' ')[0]}
                     </div>
                   );
                 })}
@@ -604,8 +936,12 @@ const FlowerBookingsNew = () => {
                 </div>
                 <button
                   onClick={() => {
-                    selectArrangement(arrangement);
+                    // Pre-select this arrangement (adds to the multi-select list)
+                    setNewBooking(prev => prev.arrangements.some(a => a.arrangement_id === arrangement.arrangement_id)
+                      ? prev
+                      : { ...prev, arrangements: [...prev.arrangements, { arrangement_id: arrangement.arrangement_id, title: arrangement.title }] });
                     setView('new');
+                    setShowArrangementPicker(true);
                   }}
                   style={{
                     width: '100%',
@@ -630,198 +966,233 @@ const FlowerBookingsNew = () => {
   };
 
   const renderNewBooking = () => {
+    // Shared styling tokens — mirror the Create Arrangement panel exactly
+    const lbl = { display: 'block', fontSize: '9px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#9C9389', marginBottom: '8px' };
+    const inp = { width: '100%', padding: '12px 14px', border: '1px solid #EAE7E2', borderRadius: '8px', fontSize: '13px', fontFamily: "'DM Sans', system-ui, sans-serif", background: '#FAF9F7', color: '#1C1A17', outline: 'none' };
+    const ribbonOptions = ['None', 'Red', 'White', 'Cream', 'Gold', 'Blue', 'Purple', 'Pink', 'Green'];
+
     return (
       <div style={styles.formContainer}>
-        <div style={styles.formHeader}>
-          <button style={styles.calArrow} onClick={() => setView('list')}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-          </button>
-          <h2 style={styles.formTitle}>Place Order</h2>
-        </div>
-
-        <div style={styles.formSection}>
-          <label style={styles.formLabel}>1. Select Arrangement</label>
-
-          {/* Arrangement Picker Button */}
+        {/* Header — same pattern as Create Arrangement */}
+        <div style={{ padding: '24px 28px', borderBottom: '1px solid #EAE7E2', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: 600, color: '#1C1A17', margin: 0 }}>Place Flower Order</h2>
           <button
-            style={{
-              ...styles.inputIcon,
-              cursor: 'pointer',
-              justifyContent: 'space-between',
-              width: '100%',
-              marginBottom: '12px'
-            }}
-            onClick={() => setShowArrangementPicker(!showArrangementPicker)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Flower2 size={18} />
-              <span style={{ color: newBooking.arrangement_id ? '#1C1A17' : '#9C9389' }}>
-                {newBooking.arrangement_id ? `${newBooking.arrangement_name} (ID: ${newBooking.arrangement_id})` : 'Choose from available arrangements'}
-              </span>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showArrangementPicker ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </button>
+            type="button"
+            onClick={() => setView('list')}
+            style={{ background: 'none', border: 'none', color: '#9C9389', fontSize: '28px', cursor: 'pointer', padding: 0, width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >×</button>
+        </div>
 
-          {/* Arrangement Picker Dropdown */}
-          {showArrangementPicker && (
-            <div style={{
-              background: '#fff',
-              border: '1px solid #EAE7E2',
-              borderRadius: '14px',
-              padding: '12px',
-              marginBottom: '12px',
-              maxHeight: '300px',
-              overflowY: 'auto'
-            }}>
-              {arrangements.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#9C9389', fontSize: '13px' }}>
-                  No arrangements available. Create one first.
-                </div>
-              ) : (
-                <div style={styles.productGrid}>
-                  {arrangements.map(arrangement => (
-                    <div
-                      key={arrangement.arrangement_id}
-                      style={{
-                        ...styles.productCard,
-                        border: newBooking.arrangement_id === arrangement.arrangement_id
-                          ? '2px solid #2F4F3E'
-                          : '1px solid #EAE7E2',
-                        background: newBooking.arrangement_id === arrangement.arrangement_id
-                          ? '#f0f7f4'
-                          : '#fff'
-                      }}
-                      onClick={() => selectArrangement(arrangement)}
-                    >
-                      {newBooking.arrangement_id === arrangement.arrangement_id && (
-                        <div style={styles.productCheck}>
-                          <Check size={14} />
-                        </div>
+        <form onSubmit={submitBooking} style={{ padding: '24px 28px 40px' }}>
+          {/* ── 1 · Flower Types ── */}
+          <label style={{ ...lbl, marginBottom: '12px' }}>Flower Types *</label>
+          {arrangements.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '20px', color: '#9C9389', fontSize: '13px', border: '1px dashed #EAE7E2', borderRadius: '8px', marginBottom: '16px' }}>
+              No arrangements available yet — click "Create Arrangement" first.
+            </div>
+          ) : (
+            <div style={{ ...styles.productGrid, marginBottom: '14px' }}>
+              {arrangements.map(arrangement => {
+                const selected = newBooking.arrangements.some(a => a.arrangement_id === arrangement.arrangement_id);
+                return (
+                  <div
+                    key={arrangement.arrangement_id}
+                    style={{ ...styles.productCard, border: selected ? '2px solid #2F4F3E' : '1px solid #EAE7E2', background: selected ? '#f0f7f4' : '#fff' }}
+                    onClick={() => toggleArrangement(arrangement)}
+                  >
+                    {selected && (<div style={styles.productCheck}><Check size={14} /></div>)}
+                    <div style={styles.productMedia}>
+                      {arrangement.images?.length > 0 ? (
+                        <img
+                          src={arrangement.images[0]?.url || arrangement.images[0]}
+                          alt={arrangement.title}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div style={styles.productMediaPlaceholder}>{arrangement.title?.charAt(0) || 'F'}</div>
                       )}
-                      <div style={styles.productMedia}>
-                        {arrangement.images?.length > 0 ? (
-                          <img
-                            src={arrangement.images[0]?.url || arrangement.images[0]}
-                            alt={arrangement.title}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        ) : (
-                          <div style={styles.productMediaPlaceholder}>
-                            {arrangement.title?.charAt(0) || 'F'}
-                          </div>
-                        )}
-                      </div>
-                      <div style={styles.productName}>{arrangement.title}</div>
-                      <div style={styles.productPrice}>
-                        {arrangement.types?.[0] || 'Custom'} · ID: {arrangement.arrangement_id}
-                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div style={styles.productName}>{arrangement.title}</div>
+                    <div style={styles.productPrice}>
+                      {[asList(arrangement.colors)[0], asList(arrangement.sizes)[0]].filter(Boolean).join(' · ') || 'Custom'}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          {/* Manual Entry (if no arrangement selected) */}
-          <div style={styles.inputGroup}>
-            <div style={styles.inputIcon}>
-              <Flower2 size={18} />
-              <input
-                type="text"
-                placeholder="Arrangement Name (or type custom)"
-                value={newBooking.arrangement_name}
-                onChange={e => setNewBooking(prev => ({ ...prev, arrangement_name: e.target.value, arrangement_id: null }))}
-                required
-              />
-            </div>
+          {/* ── Free-text flower-type list — book ANY types by name, many at once ── */}
+          <label style={lbl}>Or Add Your Own Types — book many at once</label>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <input
+              type="text"
+              style={{ ...inp, flex: 1 }}
+              placeholder="e.g., CASKET SPRAY, MUM WREATH, HAND HELD FLOWER…"
+              value={newBooking.custom_input}
+              onChange={e => setNewBooking(prev => ({ ...prev, custom_input: e.target.value }))}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomType(); } }}
+            />
+            <button
+              type="button"
+              onClick={addCustomType}
+              style={{
+                padding: '0 18px',
+                borderRadius: '8px',
+                background: '#2F4F3E',
+                color: '#fff',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              + Add
+            </button>
           </div>
 
-          {/* Show selected arrangement slug */}
-          {newBooking.arrangement_id && (
-            <div style={{
-              background: '#f0f7f4',
-              border: '1px solid #2F4F3E',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              fontSize: '11px',
-              color: '#2F4F3E',
-              fontWeight: 600,
-              marginTop: '8px'
-            }}>
-              ✓ Using arrangement slug: <strong>{newBooking.arrangement_id}</strong>
+          {newBooking.custom_types.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '22px' }}>
+              {newBooking.custom_types.map(t => (
+                <span
+                  key={t}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '7px 8px 7px 14px',
+                    borderRadius: '99px',
+                    background: '#f0f7f4',
+                    border: '1px solid #CBE0D4',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color: '#2F4F3E',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.03em'
+                  }}
+                >
+                  {t}
+                  <button
+                    type="button"
+                    onClick={() => removeCustomType(t)}
+                    title={`Remove ${t}`}
+                    style={{ width: 20, height: 20, borderRadius: '50%', border: 'none', background: '#2F4F3E', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                  >
+                    <X size={11} strokeWidth={3} />
+                  </button>
+                </span>
+              ))}
             </div>
           )}
-        </div>
 
-        <div style={styles.formSection}>
-          <label style={styles.formLabel}>2. Booking Details</label>
-          <div style={styles.formGrid}>
-            <div style={styles.inputGroup}>
-              <div style={styles.inputIcon}>
-                <Flower2 size={18} />
-                <input
-                  type="text"
-                  placeholder="Deceased Name"
-                  value={newBooking.deceased_name}
-                  onChange={e => setNewBooking(prev => ({ ...prev, deceased_name: e.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-            <div style={styles.inputGroup}>
-              <div style={styles.inputIcon}>
-                <User size={18} />
-                <input
-                  type="text"
-                  placeholder="Booked By"
-                  value={newBooking.booked_by || getLocalUserName()}
-                  readOnly
-                  title="Auto-filled from your account"
-                  style={{ background: '#FAF9F7', color: '#574F47' }}
-                />
-              </div>
-            </div>
+          {/* ── 2 · Ribbon Colour ── */}
+          <label style={lbl}>Ribbon Colour</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '22px' }}>
+            {ribbonOptions.map(r => {
+              const active = (newBooking.ribbon || 'None') === r;
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setNewBooking(prev => ({ ...prev, ribbon: r }))}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '99px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: active ? '#2F4F3E' : '#fff',
+                    color: active ? '#fff' : '#574F47',
+                    border: `1px solid ${active ? '#2F4F3E' : '#EAE7E2'}`
+                  }}
+                >
+                  {r}
+                </button>
+              );
+            })}
           </div>
-          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9C9389', margin: '10px 0 6px' }}>
-            Expected By — when should the flowers be ready? (optional)
-          </div>
-          <div style={styles.formGrid}>
-            <div style={styles.inputGroup}>
-              <div style={styles.inputIcon}>
-                <Calendar size={18} />
-                <input
-                  type="date"
-                  value={newBooking.date}
-                  onChange={e => setNewBooking(prev => ({ ...prev, date: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div style={styles.inputGroup}>
-              <div style={styles.inputIcon}>
-                <Clock size={18} />
-                <input
-                  type="time"
-                  value={newBooking.time}
-                  onChange={e => setNewBooking(prev => ({ ...prev, time: e.target.value }))}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <div style={styles.formSection}>
-          <label style={styles.formLabel}>3. Priority Level</label>
+          {/* ── Flower Size ── */}
+          <label style={lbl}>Flower Size</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '22px' }}>
+            {['Small', 'Medium', 'Large'].map(sz => {
+              const active = newBooking.size === sz;
+              return (
+                <button
+                  key={sz}
+                  type="button"
+                  onClick={() => setNewBooking(prev => ({ ...prev, size: active ? '' : sz }))}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '99px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: active ? '#2F4F3E' : '#fff',
+                    color: active ? '#fff' : '#574F47',
+                    border: `1px solid ${active ? '#2F4F3E' : '#EAE7E2'}`
+                  }}
+                >
+                  {sz}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── 3 · Special Remarks ── */}
+          <label style={lbl}>Special Remarks</label>
+          <textarea
+            rows={3}
+            style={{ ...inp, resize: 'vertical', marginBottom: '22px' }}
+            placeholder="e.g., Add a small gold cross, deliver to the chapel entrance…"
+            value={newBooking.remarks}
+            onChange={e => setNewBooking(prev => ({ ...prev, remarks: e.target.value }))}
+          />
+
+          {/* ── 4 · Booking Details ── */}
+          <label style={lbl}>Deceased Name *</label>
+          <input
+            type="text"
+            style={{ ...inp, marginBottom: '16px' }}
+            placeholder="Name of the deceased"
+            value={newBooking.deceased_name}
+            onChange={e => setNewBooking(prev => ({ ...prev, deceased_name: e.target.value }))}
+            required
+          />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div>
+              <label style={lbl}>Expected By Date *</label>
+              <input type="date" style={inp} value={newBooking.date} onChange={e => setNewBooking(prev => ({ ...prev, date: e.target.value }))} required />
+            </div>
+            <div>
+              <label style={lbl}>Ready At Time *</label>
+              <input type="time" style={inp} value={newBooking.time} onChange={e => setNewBooking(prev => ({ ...prev, time: e.target.value }))} required />
+            </div>
+          </div>
+
+          <label style={{ ...lbl, marginTop: '6px' }}>Booked By</label>
+          <input
+            type="text"
+            readOnly
+            title="Auto-filled from your account"
+            style={{ ...inp, marginBottom: '22px', color: '#574F47' }}
+            value={newBooking.booked_by || getLocalUserName()}
+          />
+
+          {/* ── 5 · Priority Level ── */}
+          <label style={lbl}>Priority Level</label>
           <div style={styles.priorityGroup}>
             {['High', 'Normal', 'Low'].map(p => (
               <button
                 key={p}
+                type="button"
                 style={{
                   ...styles.priorityBtn,
-                  background: newBooking.priority === p ? '#1C1A17' : '#fff',
+                  background: newBooking.priority === p ? '#2F4F3E' : '#fff',
                   color: newBooking.priority === p ? '#fff' : '#574F47',
-                  border: `1px solid ${newBooking.priority === p ? '#1C1A17' : '#EAE7E2'}`
+                  border: `1px solid ${newBooking.priority === p ? '#2F4F3E' : '#EAE7E2'}`
                 }}
                 onClick={() => setNewBooking(prev => ({ ...prev, priority: p }))}
               >
@@ -830,12 +1201,54 @@ const FlowerBookingsNew = () => {
               </button>
             ))}
           </div>
-        </div>
 
-        <button style={styles.submitBtn} onClick={submitBooking}>
-          <Check size={18} />
-          Confirm & Place Booking
-        </button>
+          {/* Footer actions — mirrors Create Arrangement */}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', paddingTop: '20px', marginTop: '24px', borderTop: '1px solid #EAE7E2' }}>
+            <button
+              type="button"
+              onClick={() => setView('list')}
+              style={{
+                padding: '11px 20px',
+                borderRadius: '8px',
+                background: 'transparent',
+                color: '#574F47',
+                fontSize: '10px',
+                fontWeight: 600,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                border: '1px solid #EAE7E2',
+                cursor: 'pointer',
+                fontFamily: "'DM Sans', system-ui, sans-serif"
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={placingOrder}
+              style={{
+                padding: '11px 24px',
+                borderRadius: '8px',
+                background: '#475A43',
+                color: '#fff',
+                fontSize: '10px',
+                fontWeight: 600,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                border: 'none',
+                cursor: placingOrder ? 'not-allowed' : 'pointer',
+                fontFamily: "'DM Sans', system-ui, sans-serif",
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                opacity: placingOrder ? 0.65 : 1
+              }}
+            >
+              <Check size={14} />
+              {placingOrder ? 'Placing Order…' : 'Place Order'}
+            </button>
+          </div>
+        </form>
       </div>
     );
   };
@@ -843,37 +1256,45 @@ const FlowerBookingsNew = () => {
   const renderDetail = () => {
     const b = bookings.find(x => x.id === activeBookingId);
     if (!b) return '';
-    const product = arrangements.find(a => a.title === b.flower_type) || arrangements[0] || {
-      title: b.flower_type || 'Custom Arrangement',
-      images: [],
-      types: ['Custom']
-    };
-    const currentStatusIdx = STATUS_FLOW.indexOf(b.status);
-    const timelineHtml = STATUS_FLOW.map((status, idx) => {
-      let stepClass = '';
-      if (idx < currentStatusIdx) stepClass = 'done';
-      else if (idx === currentStatusIdx) stepClass = 'active';
-
-      return (
-        <div key={status} style={styles.tlStep}>
-          <div style={styles.tlStepContent}>
-            <div style={styles.tlStepInfo}>
-              <div style={styles.tlStepTitle}>{STATUS_LABELS[status]}</div>
-              <div style={styles.tlStepDesc}>{STATUS_DESC[status]}</div>
-            </div>
-          </div>
-        </div>
-      );
+    const dKey = parseWhen(b).date || bookingDateKey(b);
+    const tStr = parseWhen(b).time || toTimeOnly(b.time || b.delivery_time);
+    const lineItems = parseLineItems(b);
+    // Exact match only — a custom-typed type must NEVER borrow another
+    // arrangement's name/photos. The booking's own fields are the truth.
+    const matchedSample = arrangements.find(a => a.title === b.flower_type);
+    const productName = b.flower_type || b.arrangement_name || matchedSample?.title || 'Custom Arrangement';
+    const product = matchedSample || { title: productName, images: [], types: [], colors: [], sizes: [] };
+    // Notes carry machine tokens ([TYPES:…], "Size: …") plus human text.
+    // Strip the TYPES token FIRST — it contains '|' separators that would
+    // otherwise shatter the remark parsing.
+    const humanNotes = String(b.notes || '').replace(/\[TYPES:[^\]]*\]/gi, '');
+    const noteParts = humanNotes.split('|').map(s => s.trim()).filter(Boolean);
+    let sizeNote = '';
+    const remarksList = [];
+    noteParts.forEach(p => {
+      const sm = /^size\s*:\s*(.+)$/i.exec(p);
+      if (sm) { sizeNote = sm[1].trim(); return; }
+      if (/^ribbon\s*:/i.test(p)) return;   // legacy rows only
+      remarksList.push(p);
     });
+    const ribbonNote = (noteParts.find(p => /^ribbon\s*:/i.test(p)) || '').replace(/^ribbon\s*:\s*/i, '');
+    const ribbonVal = (b.ribbon_color && b.ribbon_color !== 'None') ? b.ribbon_color : ribbonNote;
+    const colourText = [...asList(product.colors), ...(ribbonVal ? [ribbonVal] : [])].join(', ');
+    const currentStatusIdx = STATUS_FLOW.indexOf(normStatus(b.status));
 
     let actionBtnHtml = '';
-    if (currentStatusIdx < STATUS_FLOW.length - 1) {
+    if (normStatus(b.status) === 'cancelled') {
+      actionBtnHtml = (
+        <button style={styles.actionBtnOutline} disabled>
+          <X size={18} style={{ color: '#ef4444' }} />
+          Order Cancelled
+        </button>
+      );
+    } else if (currentStatusIdx < STATUS_FLOW.length - 1) {
       const nextStatus = STATUS_FLOW[currentStatusIdx + 1];
       actionBtnHtml = (
         <button style={styles.actionBtn} onClick={() => updateStatus(b.id, nextStatus)}>
-          {nextStatus === 'transit' && <Truck size={18} />}
-          {nextStatus === 'sourced' && <Package size={18} />}
-          {nextStatus === 'completed' && <Home size={18} />}
+          {nextStatus === 'completed' ? <Home size={18} /> : <Check size={18} />}
           Mark as {STATUS_LABELS[nextStatus]}
         </button>
       );
@@ -886,58 +1307,126 @@ const FlowerBookingsNew = () => {
       );
     }
 
+    const hasImages = product.images?.length > 0;
     return (
-      <div style={styles.detailContainer}>
-        <div style={styles.detailHero}>
-          <div style={styles.carouselTrack}>
-            {product.images?.map((img, idx) => (
-              <div key={idx} style={styles.carouselSlide}>
-                <img src={img.url || img} alt={product.title} />
-              </div>
-            ))}
+      <>
+        <div style={styles.panelScrim} onClick={backToList} />
+        <aside style={{ ...styles.formContainer, padding: 0, width: 'min(540px, 100vw)' }}>
+          {/* Sticky header — Back + Close always visible */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '14px 18px', borderBottom: '1px solid #EAE7E2', position: 'sticky', top: 0, background: '#fff', zIndex: 2 }}>
+            <button style={styles.backPill} onClick={backToList}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
+              Back to Orders
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={styles.detailCrumb}>{b.booking_id}</span>
+              <button onClick={backToList} aria-label="Close details" style={{ background: 'none', border: 'none', color: '#9C9389', fontSize: '26px', lineHeight: 1, cursor: 'pointer', padding: 0 }}>×</button>
+            </div>
           </div>
-          <button style={styles.detailBack} onClick={backToList}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
-          </button>
-        </div>
+          {hasImages && (
+          <div style={styles.detailHero}>
+            <div style={styles.carouselTrack}>
+              {product.images.map((img, idx) => (
+                <div key={idx} style={styles.carouselSlide}>
+                  <img src={img.url || img} alt={product.title} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div style={styles.detailBody}>
           <div style={styles.chipRow}>
             <div style={styles.chipPrimary}>{b.booking_id}</div>
-            <div style={styles.chip}>{product.types?.[0] || 'Custom'}</div>
-            {b.time && <div style={styles.chip}>{fmtTime(b.date ? b.date + 'T' + b.time : null)}</div>}
             <span style={{ ...styles.priorityPill, fontSize: '12px', padding: '6px 12px' }}>{b.priority} Priority</span>
           </div>
 
           <h2 style={styles.detailTitle}>{product.title}</h2>
-          <p style={styles.detailSubtitle}>Sympathy Floral Tribute</p>
+          <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#9C9389' }}>
+            {asList(product.types).join(' · ') || 'Custom Arrangement'}
+          </p>
 
-          <div style={styles.trackingCard}>
-            <div style={styles.trackingHeader}>
-              <div style={styles.trackingTitle}>Live Delivery Tracking</div>
-              <div style={styles.trackingStatus}>
-                <Truck size={14} />
-                {STATUS_LABELS[b.status] || b.status}
-              </div>
+          {/* Compact horizontal status tracker — replaces the tall vertical card */}
+          <div style={styles.trackRow}>
+            {STATUS_FLOW.map((status, idx) => {
+              const done = idx < currentStatusIdx;
+              const active = idx === currentStatusIdx;
+              return (
+                <React.Fragment key={status}>
+                  {idx > 0 && <div style={styles.trackArrow}>›</div>}
+                  <div style={{
+                    ...styles.trackStep,
+                    background: active ? '#2F4F3E' : done ? '#EAF2EC' : '#FAF9F7',
+                    color: active ? '#fff' : done ? '#2F4F3E' : '#B9B2A8',
+                    borderColor: active ? '#2F4F3E' : done ? '#CBE0D4' : '#EAE7E2',
+                  }}>
+                    {done ? <Check size={11} strokeWidth={3} /> : <span style={styles.trackNum}>{idx + 1}</span>}
+                    {STATUS_LABELS[status]}
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          {/* ── Flower types in this order (line items) ── */}
+          <div style={{ background: '#fff', border: '1px solid #EAE7E2', borderRadius: '14px', padding: '14px 16px', marginBottom: '24px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9C9389', marginBottom: '10px' }}>
+              Flower Types in this Order ({lineItems.length})
             </div>
-            <div style={styles.timeline}>
-              <div style={styles.timelineLine} />
-              {timelineHtml}
-            </div>
+            {lineItems.map((li, i) => {
+              const s = arrangements.find(a => a.title === li.name);
+              return (
+                <div
+                  key={`${li.name}-${i}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0',
+                    borderBottom: i < lineItems.length - 1 ? '1px solid #F3F1EC' : 'none'
+                  }}
+                >
+                  <div style={{ ...styles.mediaThumb, width: '44px', height: '44px', borderRadius: '10px' }}>
+                    {s?.images?.length > 0 ? (
+                      <img src={s.images[0]?.url || s.images[0]} alt={li.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ ...styles.mediaThumbPlaceholder, fontSize: '16px' }}>{(li.name || 'F').charAt(0)}</div>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#1C1A17' }}>{li.name}</div>
+                    <div style={{ fontSize: '11px', color: '#9C9389' }}>
+                      {[asList(s?.colors).slice(0, 3).join(', '), asList(s?.sizes)[0] ? `${asList(s?.sizes)[0]} size` : ''].filter(Boolean).join(' · ') || 'Custom arrangement'}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div style={styles.detailGrid}>
             <div style={styles.detailItem}>
               <div style={styles.detailItemIcon}><Flower2 size={22} /></div>
               <div style={styles.detailItemInfo}>
-                <div style={styles.detailLabel}>Deceased Name</div>
-                <div style={styles.detailValue}>{b.deceased_name}</div>
+                <div style={styles.detailLabel}>Colours / Ribbon</div>
+                <div style={styles.detailValue}>{colourText || '—'}</div>
+              </div>
+            </div>
+            <div style={styles.detailItem}>
+              <div style={styles.detailItemIcon}><Package size={22} /></div>
+              <div style={styles.detailItemInfo}>
+                <div style={styles.detailLabel}>Flower Size</div>
+                <div style={styles.detailValue}>{asList(product.sizes).join(', ') || sizeNote || '—'}</div>
               </div>
             </div>
             <div style={styles.detailItem}>
               <div style={styles.detailItemIcon}><User size={22} /></div>
               <div style={styles.detailItemInfo}>
-                <div style={styles.detailLabel}>Booked By</div>
-                <div style={styles.detailValue}>{b.booked_by || b.customer}</div>
+                <div style={styles.detailLabel}>Deceased Name</div>
+                <div style={styles.detailValue}>{b.deceased_name || '—'}</div>
+              </div>
+            </div>
+            <div style={styles.detailItem}>
+              <div style={styles.detailItemIcon}><Calendar size={22} /></div>
+              <div style={styles.detailItemInfo}>
+                <div style={styles.detailLabel}>Expected By</div>
+                <div style={styles.detailValue}>{dKey ? `${fmtDateOnly(dKey)}${tStr ? ' · ' + fmtTime(tStr) : ''}` : 'Awaiting scheduling'}</div>
               </div>
             </div>
             <div style={styles.detailItem}>
@@ -948,19 +1437,31 @@ const FlowerBookingsNew = () => {
               </div>
             </div>
             <div style={styles.detailItem}>
-              <div style={styles.detailItemIcon}><Calendar size={22} /></div>
+              <div style={styles.detailItemIcon}><User size={22} /></div>
               <div style={styles.detailItemInfo}>
-                <div style={styles.detailLabel}>Expected By</div>
-                <div style={styles.detailValue}>{b.date ? `${fmtDateOnly(b.date)}${b.time ? ' · ' + fmtTime(b.date + 'T' + b.time) : ''}` : 'Awaiting scheduling'}</div>
+                <div style={styles.detailLabel}>Booked By</div>
+                <div style={styles.detailValue}>{b.booked_by || b.customer || '—'}</div>
               </div>
             </div>
+            {remarksList.length > 0 && (
+              <div style={{ ...styles.detailItem, gridColumn: '1 / -1', alignItems: 'flex-start' }}>
+                <div style={styles.detailItemIcon}><Flower2 size={22} /></div>
+                <div style={styles.detailItemInfo}>
+                  <div style={styles.detailLabel}>Special Remarks</div>
+                  <div style={{ ...styles.detailValue, fontWeight: 500, whiteSpace: 'pre-wrap' }}>
+                    {remarksList.join('\n')}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div style={styles.detailActions}>
             {actionBtnHtml}
           </div>
-        </div>
-      </div>
+          </div>
+        </aside>
+      </>
     );
   };
 
@@ -976,17 +1477,36 @@ const FlowerBookingsNew = () => {
     <div style={styles.container}>
       {renderToolbar()}
 
-      <div style={styles.content}>
-        {view === 'list' && renderList()}
-        {view === 'calendar' && renderCalendar()}
-        {view === 'samples' && renderSamples()}
-        {view === 'new' && (
-          <>
-            <div style={styles.panelScrim} onClick={() => setView('list')} />
-            {renderNewBooking()}
-          </>
-        )}
-      </div>
+      {view === 'list' && (
+        <>
+          {/* Phones: horizontal date strip · Desktop: mini calendar rail */}
+          {renderDateStrip()}
+          <div className="flx-split" style={styles.splitWrap}>
+            <aside className="flx-rail flx-minical" style={styles.railInner}>
+              {renderMiniCalendar()}
+            </aside>
+            <div style={{ minWidth: 0 }}>
+              {renderList()}
+            </div>
+          </div>
+        </>
+      )}
+      {view === 'calendar' && (
+        <div className="flx-content" style={styles.content}>
+          {renderCalendar()}
+        </div>
+      )}
+      {view === 'samples' && (
+        <div className="flx-content" style={styles.content}>
+          {renderSamples()}
+        </div>
+      )}
+      {view === 'new' && (
+        <>
+          <div style={styles.panelScrim} onClick={() => setView('list')} />
+          {renderNewBooking()}
+        </>
+      )}
 
       {view === 'detail' && renderDetail()}
 
@@ -1002,6 +1522,48 @@ const FlowerBookingsNew = () => {
       <style>{`
         @keyframes floristPanelIn { from { transform: translateX(48px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes floristFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* ── Small-phone guards: kill every horizontal overflow source ── */
+        .flx-toolbar { row-gap: 8px; }
+        @media (max-width: 720px) {
+          .flx-toolbar { padding: 10px 12px !important; gap: 8px; }
+          .flx-nav { width: 100%; justify-content: space-between; margin-right: 0 !important; }
+          .flx-toggle { flex: 1 1 100%; }
+          .flx-toggle button { flex: 1; padding-left: 4px !important; padding-right: 4px !important; }
+          .flx-actions { width: 100%; }
+          .flx-actions > button { flex: 1 1 auto; min-width: 0; padding-left: 6px !important; padding-right: 6px !important; font-size: 10px !important; }
+          .flx-content { padding: 18px 12px !important; }
+          .flx-card-right { align-items: flex-start !important; }
+          .flx-expected { white-space: normal !important; }
+          .fb-booking-name { white-space: normal !important; }
+          .fb-booking-meta { flex-direction: column !important; }
+
+          /* Compact order cards on phones */
+          .fb-card { padding: 10px !important; gap: 10px !important; border-radius: 14px !important; }
+          .fb-card-thumb { width: 52px !important; height: 52px !important; border-radius: 12px !important; }
+          .fb-card-name { font-size: 14px !important; }
+          .fb-card-meta { font-size: 11px !important; gap: 1px !important; }
+          .flx-card-right { gap: 5px !important; }
+        }
+
+        /* ── Split layout: sticky mini-calendar rail beside the list ── */
+        .flx-split { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 22px; align-items: start; }
+        .flx-rail { position: sticky; top: 74px; }
+        .flx-strip { display: none; }
+        @media (max-width: 1180px) {
+          .flx-split { grid-template-columns: 250px minmax(0, 1fr); gap: 16px; }
+        }
+        @media (max-width: 1023px) {
+          .flx-split { display: block; }
+          .flx-rail { display: none !important; }
+          .flx-strip {
+            display: flex; gap: 8px; overflow-x: auto;
+            padding: 2px 2px 14px; margin-bottom: 8px;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+          }
+          .flx-strip::-webkit-scrollbar { display: none; }
+        }
       `}</style>
 
       {/* Create Arrangement Side Panel */}
@@ -1302,89 +1864,100 @@ const styles = {
     position: 'sticky',
     top: 0,
     zIndex: 50,
-    background: 'rgba(245, 244, 241, 0.9)',
-    backdropFilter: 'blur(20px)',
-    padding: '16px 24px',
+    background: 'rgba(245, 244, 241, 0.92)',
+    backdropFilter: 'blur(16px)',
+    padding: '10px 14px',
     borderBottom: '1px solid #EAE7E2',
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: '16px',
+    gap: '10px',
     flexWrap: 'wrap',
+    rowGap: '8px',
   },
   nav: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
+    gap: '8px',
+    marginRight: 'auto',
   },
   title: {
     fontFamily: "'Playfair Display', serif",
-    fontSize: '18px',
+    fontSize: '15px',
     fontWeight: 600,
-    display: 'flex',
+    display: 'inline-flex',
     alignItems: 'center',
-    gap: '10px',
+    gap: '6px',
     color: '#1C1A17',
+    whiteSpace: 'nowrap',
   },
   arrowBtn: {
-    width: '32px',
-    height: '32px',
-    borderRadius: '8px',
-    border: '1px solid #cbd5e1',
+    width: '28px',
+    height: '28px',
+    borderRadius: 0,
+    border: '1px solid #E3DFD8',
     background: '#fff',
-    color: '#334155',
+    color: '#574F47',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    transition: 'all .2s ease',
+    transition: 'all .15s ease',
   },
   todayBtn: {
-    padding: '6px 12px',
-    borderRadius: '8px',
+    padding: '7px 12px',
+    borderRadius: 0,
     background: '#fff',
-    border: '1px solid #cbd5e1',
-    fontSize: '11px',
-    fontWeight: 600,
-    color: '#334155',
+    border: '1px solid #E3DFD8',
+    fontSize: '10px',
+    fontWeight: 700,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: '#574F47',
     cursor: 'pointer',
   },
   viewToggle: {
     display: 'flex',
-    background: '#FAF9F7',
-    border: '1px solid #EAE7E2',
-    borderRadius: '99px',
-    padding: '3px',
-    gap: '2px',
+    background: '#fff',
+    border: '1px solid #E3DFD8',
+    borderRadius: 0,
+    padding: 0,
+    gap: 0,
   },
   viewBtn: (active) => ({
-    padding: '6px 14px',
-    borderRadius: '99px',
+    padding: '8px 16px',
+    borderRadius: 0,
     fontSize: '11px',
-    fontWeight: 600,
+    fontWeight: 700,
+    letterSpacing: '0.05em',
+    textTransform: 'uppercase',
     color: active ? '#fff' : '#9C9389',
-    background: active ? '#1C1A17' : 'transparent',
+    background: active ? '#2F4F3E' : 'transparent',
     border: 'none',
     cursor: 'pointer',
   }),
   placeBookingBtn: {
     background: '#2F4F3E',
     color: '#fff',
-    padding: '10px 20px',
-    borderRadius: '99px',
-    fontSize: '13px',
-    fontWeight: 600,
+    padding: '9px 14px',
+    borderRadius: 0,
+    fontSize: '11px',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
     border: 'none',
     cursor: 'pointer',
-    display: 'flex',
+    display: 'inline-flex',
     alignItems: 'center',
-    gap: '8px',
-    boxShadow: '0 8px 20px rgba(47,79,62,.15)',
+    justifyContent: 'center',
+    gap: '6px',
+    whiteSpace: 'nowrap',
   },
   content: {
-    padding: '32px 24px',
+    padding: '24px 16px',
     maxWidth: '1100px',
     margin: '0 auto',
+    width: '100%',
+    boxSizing: 'border-box',
   },
   feedDateHeader: {
     fontSize: '12px',
@@ -1447,6 +2020,21 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '2px',
+  },
+  metaRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    minWidth: 0,
+  },
+  expectedBy: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#574F47',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    whiteSpace: 'nowrap',
   },
   bookingRight: {
     display: 'flex',
@@ -1901,6 +2489,18 @@ const styles = {
     position: 'relative',
     paddingBottom: '28px',
   },
+  tlDot: {
+    position: 'absolute',
+    left: '-28px',
+    top: '2px',
+    width: '16px',
+    height: '16px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
   tlStepContent: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -1998,6 +2598,156 @@ const styles = {
     justifyContent: 'center',
     gap: '8px',
     opacity: 0.6,
+  },
+  trackRow: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '6px',
+    rowGap: '8px',
+    background: '#fff',
+    border: '1px solid #EAE7E2',
+    borderRadius: '14px',
+    padding: '12px 14px',
+    marginBottom: '24px',
+  },
+  trackStep: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    padding: '6px 11px',
+    borderRadius: '99px',
+    border: '1px solid #EAE7E2',
+    fontSize: '11px',
+    fontWeight: 700,
+    letterSpacing: '0.02em',
+    whiteSpace: 'nowrap',
+  },
+  trackNum: {
+    fontSize: '10px',
+    fontWeight: 800,
+  },
+  trackArrow: {
+    color: '#C9C2B8',
+    fontWeight: 800,
+    fontSize: '15px',
+    lineHeight: 1,
+  },
+  detailTopBar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+    marginBottom: '16px',
+  },
+  splitWrap: {
+    width: '100%',
+    boxSizing: 'border-box',
+  },
+  railInner: {
+    background: '#fff',
+    border: '1px solid #EAE7E2',
+    borderRadius: '14px',
+    padding: '14px',
+    position: 'sticky',
+    top: '74px',
+  },
+  mcHead: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '10px',
+  },
+  mcTitle: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: '15px',
+    fontWeight: 600,
+    color: '#1C1A17',
+  },
+  mcNav: {
+    display: 'flex',
+    gap: '6px',
+  },
+  mcWkRow: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(7, 1fr)',
+    gap: '4px',
+    marginBottom: '4px',
+  },
+  mcWk: {
+    textAlign: 'center',
+    fontSize: '9px',
+    fontWeight: 700,
+    color: '#B9B2A8',
+    textTransform: 'uppercase',
+  },
+  mcGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(7, 1fr)',
+    gap: '4px',
+  },
+  mcCell: {
+    position: 'relative',
+    aspectRatio: '1 / 1',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#574F47',
+    background: 'transparent',
+    border: '1px solid transparent',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    transition: 'all .15s ease',
+    padding: 0,
+  },
+  mcDot: {
+    position: 'absolute',
+    bottom: '5px',
+    left: '50%',
+    marginLeft: '-2px',
+    width: '4px',
+    height: '4px',
+    borderRadius: '50%',
+    background: '#2F4F3E',
+  },
+  stripDay: {
+    flex: '0 0 auto',
+    minWidth: '54px',
+    padding: '10px 10px 12px',
+    borderRadius: 0,
+    border: '1px solid #EAE7E2',
+    background: '#fff',
+    textAlign: 'center',
+    cursor: 'pointer',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '3px',
+    color: '#574F47',
+    transition: 'all .15s ease',
+  },
+  backPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '7px',
+    padding: '9px 16px',
+    borderRadius: '99px',
+    background: '#fff',
+    border: '1px solid #EAE7E2',
+    color: '#574F47',
+    fontSize: '12px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'all .15s ease',
+  },
+  detailCrumb: {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#9C9389',
+    letterSpacing: '0.05em',
   },
   toastContainer: {
     position: 'fixed',

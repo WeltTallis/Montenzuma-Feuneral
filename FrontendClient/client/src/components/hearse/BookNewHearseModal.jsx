@@ -37,9 +37,31 @@ const getTenantSlug = () => {
   try { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.parentTenantSlug || u.tenantSlug || u.tenant?.slug || ''; } catch { return ''; }
 };
 
+// Resolve the TENANT-level id (never branch-scoped) — hearses & bookings are
+// stored in one shared operations DB and must be scoped by tenant id so all
+// branches of a multi-branch tenant share one fleet & one booking list.
+const resolveTenantId = () => {
+  const direct = localStorage.getItem('tenantId');
+  if (direct && direct !== 'undefined' && direct !== 'null') return direct;
+  try {
+    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    const fromUser = u.tenantId || u.tenant_id || u.tenant?.id || u.tenant?.tenantId;
+    if (fromUser) return String(fromUser);
+  } catch { /* ignore */ }
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken') || '';
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (payload?.tenantId) return String(payload.tenantId);
+  } catch { /* ignore */ }
+  return null;
+};
+
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken') || '';
   const h = { 'x-tenant-slug': getTenantSlug() };
+  // Tenant id makes new bookings visible to EVERY branch in one list
+  const tenantId = resolveTenantId();
+  if (tenantId) h['x-tenant-id'] = tenantId;
   if (token) h['Authorization'] = `Bearer ${token}`;
   return h;
 };

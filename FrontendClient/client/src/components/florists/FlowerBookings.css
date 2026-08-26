@@ -1,16 +1,16 @@
 /* ─── FlowerBookings.css ─── */
 /* Root variables — shadcn-inspired warm stone palette with forest green accent */
 :root {
+    --fb-ring: rgba(38, 107, 82, 0.2);
+    --fb-accent-light: #d9ede3;
+    --fb-accent-hover: #1f5a44;
+    --fb-muted-fg: #78716c;
+    --fb-border: #e7e5e4;
+    --fb-accent: #266b52;
     --fb-bg: #fafaf9;
     --fb-fg: #1c1917;
     --fb-muted: #a8a29e;
-    --fb-muted-fg: #78716c;
     --fb-card: #ffffff;
-    --fb-border: #e7e5e4;
-    --fb-accent: #266b52;
-    --fb-accent-light: #d9ede3;
-    --fb-accent-hover: #1f5a44;
-    --fb-ring: rgba(38, 107, 82, 0.2);
     --fb-radius: 0.5rem;
     --fb-radius-lg: 0.75rem;
 }
@@ -1522,6 +1522,7 @@
 
 /* ─── Responsive ─── */
 @media (max-width: 1024px) {
+
     .fb-stats-grid,
     .fb-stats-grid-5 {
         grid-template-columns: repeat(2, 1fr);
