@@ -4,8 +4,9 @@
  */
 
 // @ts-ignore
-import { getTenantDB, safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig.js';
+import { safeQuery, safeExecute } from '../database.ts';
 import axios from 'axios';
+import crypto from 'crypto';
 
 interface Booking {
     id?: number;
@@ -28,6 +29,66 @@ interface Booking {
 }
 
 // ============================================
+// TENANT HELPERS
+//   Bookings are scoped by TENANT ID ONLY - never by branch.
+//   The tenant id is sent by the UI as the `x-tenant-id` header (the UI reads
+//   `tenantId` from localStorage after login, see AuthContext/authApi.js).
+//   `tenant_slug` is kept as a legacy fallback for rows that have not been
+//   back-filled with a tenant_id yet.
+// ============================================
+
+const tenantIdOf = (req: any): string | null =>
+    req.tenantId || req.headers?.['x-tenant-id'] || req.headers?.['x-tenant_id'] || null;
+
+const tenantSlugOf = (req: any): string | null =>
+    req.tenant?.tenant_slug || req.tenantSlug || null;
+
+/**
+ * Build a tenant WHERE fragment used by every booking query.
+ * Uses ONLY the tenant id when available; falls back to tenant_slug.
+ */
+const buildTenantScope = (req: any): { clause: string; params: any[] } => {
+    const tenantId = tenantIdOf(req);
+    const tenantSlug = tenantSlugOf(req);
+
+    if (tenantId) {
+        return { clause: 'tenant_id = ?', params: [tenantId] };
+    }
+    if (tenantSlug && tenantSlug !== 'system_shared') {
+        return { clause: 'tenant_slug = ?', params: [tenantSlug] };
+    }
+    return { clause: '1=1', params: [] };
+};
+
+/**
+ * Parse a JSON column value that was selected with CAST(... AS CHAR).
+ * Tolerates legacy non-JSON text (e.g. "WREATHS,SPRAYS").
+ */
+const parseJsonArray = (value: any): any[] => {
+    if (value == null || value === '') return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [String(parsed)];
+        } catch (e) {
+            return value.split(',').map((s: string) => s.trim()).filter(Boolean);
+        }
+    }
+    return [value];
+};
+
+/**
+ * Globally-unique booking id. The old count-based scheme
+ * (FLW-{24000 + tenantCount + 1}) collided across tenants and after deletions.
+ */
+const generateBookingId = (): string => {
+    const timestamp = Date.now().toString().slice(-6);
+    const random = crypto.randomBytes(3).toString('hex').toUpperCase();
+    return `FLW-${timestamp}-${random}`;
+};
+
+// ============================================
 // BOOKINGS
 // ============================================
 
@@ -37,17 +98,19 @@ interface Booking {
  */
 export const getBookings = async (req: any, res: any) => {
     try {
-        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
-        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
+        const tenantId = tenantIdOf(req);
+        const tenantSlug = tenantSlugOf(req);
         const { status, branch, flower_type, date_from, date_to, search, page = '1', limit = '20' } = req.query;
 
         let whereClause = 'WHERE 1=1';
         const params: any[] = [];
 
-        // Add tenant isolation if not system_shared
-        if (tenantSlug && tenantSlug !== 'system_shared') {
-            whereClause += ' AND tenant_slug = ?';
-            params.push(tenantSlug);
+        // Tenant isolation: use ONLY the tenant id (no branches). Falls back
+        // to tenant_slug for legacy rows that have no tenant_id yet.
+        const tenantScope = buildTenantScope(req);
+        if (tenantScope.clause !== '1=1') {
+            whereClause += ` AND ${tenantScope.clause}`;
+            params.push(...tenantScope.params);
         }
 
         if (status) {
@@ -77,8 +140,7 @@ export const getBookings = async (req: any, res: any) => {
         }
 
         // Count total
-        const countResult = await safeTenantQuery(
-            dbName,
+        const countResult = await safeQuery(
             `SELECT COUNT(*) as total FROM flower_bookings ${whereClause}`,
             params
         );
@@ -89,8 +151,7 @@ export const getBookings = async (req: any, res: any) => {
         const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
         const offset = (pageNum - 1) * limitNum;
 
-        const bookings = await safeTenantQuery(
-            dbName,
+        const bookings = await safeQuery(
             `SELECT * FROM flower_bookings ${whereClause} ORDER BY date DESC, time ASC LIMIT ? OFFSET ?`,
             [...params, limitNum, offset]
         );
@@ -99,13 +160,18 @@ export const getBookings = async (req: any, res: any) => {
         const enrichedBookings = await Promise.all(
             bookings.map(async (booking: any) => {
                 try {
-                    const arrangementQuery = `SELECT title, types, images FROM flower_samples WHERE arrangement_id = ? AND tenant_slug = ? LIMIT 1`;
-                    const arrangements = await safeTenantQuery(dbName, arrangementQuery, [booking.arrangement_id, tenantSlug]);
+                    const arrangementQuery = `SELECT title, CAST(types AS CHAR) AS types, CAST(images AS CHAR) AS images FROM flower_samples WHERE arrangement_id = ? AND (tenant_id = ? OR tenant_slug = ?) LIMIT 1`;
+                    const arrangements = await safeQuery(arrangementQuery, [booking.arrangement_id, tenantId, tenantSlug]);
                     
                     if (arrangements && arrangements.length > 0) {
+                        const arr = arrangements[0];
                         return {
                             ...booking,
-                            arrangement: arrangements[0]
+                            arrangement: {
+                                ...arr,
+                                types: parseJsonArray(arr.types),
+                                images: parseJsonArray(arr.images)
+                            }
                         };
                     }
                     return booking;
@@ -137,14 +203,12 @@ export const getBookings = async (req: any, res: any) => {
  */
 export const getBookingById = async (req: any, res: any) => {
     try {
-        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
-        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
+        const tenantScope = buildTenantScope(req);
         const { id } = req.params;
 
-        const bookings = await safeTenantQuery(
-            dbName,
-            'SELECT * FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND tenant_slug = ? LIMIT 1',
-            [id, id, tenantSlug]
+        const bookings = await safeQuery(
+            `SELECT * FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND ${tenantScope.clause} LIMIT 1`,
+            [id, id, ...tenantScope.params]
         );
 
         if (bookings.length === 0) {
@@ -164,11 +228,11 @@ export const getBookingById = async (req: any, res: any) => {
  */
 export const createBooking = async (req: any, res: any) => {
     try {
-        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
-        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
+        const tenantId = tenantIdOf(req);
+        const tenantSlug = tenantSlugOf(req);
         const {
             arrangement_name, arrangement_id, deceased_name, booked_by,
-            funeral_home, date, time, notes, phone, email
+            funeral_home, date, time, notes, phone, email, branch: branchFromPayload
         } = req.body;
 
         // Map frontend fields to backend schema
@@ -177,43 +241,37 @@ export const createBooking = async (req: any, res: any) => {
         const customer = booked_by || 'Guest';
         const customer_phone = phone || '';
         const customer_email = email || '';
-        const branch = funeral_home || 'Not specified';
+        // Branch the flowers are coming from - resolved by the UI from the
+        // logged-in user's branch context; optional.
+        const branch = branchFromPayload || funeral_home || 'Not specified';
 
-        // Validation
-        if (!date || !time || !customer) {
+        // Validation - "Expected By" (date/time) is NOT a must
+        if (!customer) {
             return res.status(400).json({
                 success: false,
-                error: 'Missing required fields: date, time, and customer name are required'
+                error: 'Missing required field: booked by (customer name) is required'
             });
         }
 
-        // Generate booking ID
-        const countResult = await safeTenantQuery(
-            dbName,
-            'SELECT COUNT(*) as total FROM flower_bookings WHERE tenant_slug = ?',
-            [tenantSlug]
-        );
-        const count = countResult[0]?.total || 0;
-        const booking_id = `FLW-${24000 + count + 1}`;
+                // Generate a globally-unique booking ID
+        const booking_id = generateBookingId();
 
-        const result = await safeTenantQuery(
-            dbName,
+        const result = await safeExecute(
             `INSERT INTO flower_bookings 
-            (booking_id, tenant_slug, flower_type, flower_description, customer, 
+            (booking_id, tenant_slug, tenant_id, flower_type, flower_description, customer, 
              customer_phone, customer_email, deceased_name, branch, 
              arrangement_id, date, time, status, notes, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
             [
-                booking_id, tenantSlug, flower_type, flower_description, customer,
+                booking_id, tenantSlug, tenantId, flower_type, flower_description, customer,
                 customer_phone || '', customer_email || '', deceased_name || '', branch,
-                arrangement_id || null, date, time || '10:00', notes || '', req.tenantSlug || 'system'
+                arrangement_id || null, date || null, time || null, notes || '', req.tenantSlug || 'system'
             ]
         );
 
-        const newBooking = await safeTenantQuery(
-            dbName,
-            'SELECT * FROM flower_bookings WHERE booking_id = ? AND tenant_slug = ? LIMIT 1',
-            [booking_id, tenantSlug]
+        const newBooking = await safeQuery(
+            `SELECT * FROM flower_bookings WHERE booking_id = ? AND ${tenantId ? 'tenant_id = ?' : 'tenant_slug = ?'} LIMIT 1`,
+            tenantId ? [booking_id, tenantId] : [booking_id, tenantSlug || 'system_shared']
         );
 
         res.status(201).json({ success: true, data: newBooking[0], message: 'Booking created successfully' });
@@ -229,16 +287,14 @@ export const createBooking = async (req: any, res: any) => {
  */
 export const updateBooking = async (req: any, res: any) => {
     try {
-        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
-        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
+        const tenantScope = buildTenantScope(req);
         const { id } = req.params;
         const updates = req.body;
 
         // Check booking exists
-        const existing = await safeTenantQuery(
-            dbName,
-            'SELECT * FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND tenant_slug = ? LIMIT 1',
-            [id, id, tenantSlug]
+        const existing = await safeQuery(
+            `SELECT * FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND ${tenantScope.clause} LIMIT 1`,
+            [id, id, ...tenantScope.params]
         );
 
         if (existing.length === 0) {
@@ -267,18 +323,16 @@ export const updateBooking = async (req: any, res: any) => {
         }
 
         params.push(existing[0].id);
-        params.push(tenantSlug);
+        params.push(...tenantScope.params);
 
-        await safeTenantQuery(
-            dbName,
-            `UPDATE flower_bookings SET ${setClauses.join(', ')} WHERE id = ? AND tenant_slug = ?`,
+        await safeExecute(
+            `UPDATE flower_bookings SET ${setClauses.join(', ')} WHERE id = ? AND ${tenantScope.clause}`,
             params
         );
 
-        const updated = await safeTenantQuery(
-            dbName,
-            'SELECT * FROM flower_bookings WHERE id = ? AND tenant_slug = ? LIMIT 1',
-            [existing[0].id, tenantSlug]
+        const updated = await safeQuery(
+            `SELECT * FROM flower_bookings WHERE id = ? AND ${tenantScope.clause} LIMIT 1`,
+            [existing[0].id, ...tenantScope.params]
         );
 
         res.json({ success: true, data: updated[0], message: 'Booking updated successfully' });
@@ -294,8 +348,7 @@ export const updateBooking = async (req: any, res: any) => {
  */
 export const updateBookingStatus = async (req: any, res: any) => {
     try {
-        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
-        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
+        const tenantScope = buildTenantScope(req);
         const { id } = req.params;
         const { status } = req.body;
 
@@ -307,20 +360,18 @@ export const updateBookingStatus = async (req: any, res: any) => {
             });
         }
 
-        const result = await safeTenantExecute(
-            dbName,
-            'UPDATE flower_bookings SET status = ? WHERE (id = ? OR booking_id = ?) AND tenant_slug = ?',
-            [status, id, id, tenantSlug]
+        const result = await safeExecute(
+            `UPDATE flower_bookings SET status = ? WHERE (id = ? OR booking_id = ?) AND ${tenantScope.clause}`,
+            [status, id, id, ...tenantScope.params]
         );
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ success: false, error: 'Booking not found' });
         }
 
-        const updated = await safeTenantQuery(
-            dbName,
-            'SELECT * FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND tenant_slug = ? LIMIT 1',
-            [id, id, tenantSlug]
+        const updated = await safeQuery(
+            `SELECT * FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND ${tenantScope.clause} LIMIT 1`,
+            [id, id, ...tenantScope.params]
         );
 
         // Emit notification for booking status update
@@ -358,14 +409,12 @@ export const updateBookingStatus = async (req: any, res: any) => {
  */
 export const deleteBooking = async (req: any, res: any) => {
     try {
-        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
-        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
+        const tenantScope = buildTenantScope(req);
         const { id } = req.params;
 
-        const result = await safeTenantExecute(
-            dbName,
-            'DELETE FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND tenant_slug = ?',
-            [id, id, tenantSlug]
+        const result = await safeExecute(
+            `DELETE FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND ${tenantScope.clause}`,
+            [id, id, ...tenantScope.params]
         );
 
         if (result.affectedRows === 0) {
@@ -409,16 +458,14 @@ export const deleteBooking = async (req: any, res: any) => {
  */
 export const getStats = async (req: any, res: any) => {
     try {
-        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
-        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
+        const tenantScope = buildTenantScope(req);
 
-        const totalResult = await safeTenantQuery(dbName, 'SELECT COUNT(*) as total FROM flower_bookings WHERE tenant_slug = ?', [tenantSlug]);
+        const totalResult = await safeQuery(`SELECT COUNT(*) as total FROM flower_bookings WHERE ${tenantScope.clause}`, tenantScope.params);
         const total = totalResult[0]?.total || 0;
 
-        const statusCounts = await safeTenantQuery(
-            dbName,
-            'SELECT status, COUNT(*) as count FROM flower_bookings WHERE tenant_slug = ? GROUP BY status',
-            [tenantSlug]
+        const statusCounts = await safeQuery(
+            `SELECT status, COUNT(*) as count FROM flower_bookings WHERE ${tenantScope.clause} GROUP BY status`,
+            tenantScope.params
         );
 
         const statusMap: Record<string, number> = {};
@@ -448,20 +495,18 @@ export const getStats = async (req: any, res: any) => {
  */
 export const getMonthlyTrend = async (req: any, res: any) => {
     try {
-        const dbName = process.env.OPERATIONS_DATABASE || req.tenant?.db_name || 'restpoint_operations';
-        const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
+        const tenantScope = buildTenantScope(req);
 
-        const trend = await safeTenantQuery(
-            dbName,
+        const trend = await safeQuery(
             `SELECT 
                 DATE_FORMAT(date, '%Y-%m') as month,
                 COUNT(*) as count
              FROM flower_bookings
-             WHERE tenant_slug = ?
+             WHERE ${tenantScope.clause}
                AND date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
              GROUP BY DATE_FORMAT(date, '%Y-%m')
              ORDER BY month ASC`,
-            [tenantSlug]
+            tenantScope.params
         );
 
         res.json({ success: true, data: trend });

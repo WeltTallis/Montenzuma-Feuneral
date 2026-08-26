@@ -15,9 +15,6 @@ import {
   Check, Loader2, CheckCircle, X, FileText, User, RotateCcw, ShieldCheck,
   AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin
 } from '../../../utils/icons/icons';
-import axios from 'axios';
-
-
 
 // ─── Color Palette ──────────────────────────────────
 const COLORS = {

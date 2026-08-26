@@ -5,6 +5,7 @@ import StoreTab from "../components/workshop/pages/StoreTab";
 import Toasts from "../components/workshop/pages/Toasts";
 import MiniActivityCalendar from "./views/MiniCalendar";
 import DayEventsPanel from "./views/DayEventsPanel";
+import DayBreakdownPanel from "./views/DayBreakdownPanel";
 import { extractArray, matchesDay } from "./utils";
 import FilterSidebar from "./views/FilterSidebar";
 import { useNavigate } from "react-router-dom";
@@ -194,6 +195,10 @@ export default function ModuleDashboard({ mod }) {
   const showStore = mod.id === "workshop";
   const [miniEvents, setMiniEvents] = useState({});
   const [calLoading, setCalLoading] = useState(true);
+  /* Raw sources for the day-breakdown panel (uncapped, per-category) */
+  const [calSources, setCalSources] = useState({ coffins: [], deceased: [] });
+  /* Day picked on the mini calendar — null → panel shows today */
+  const [calDay, setCalDay] = useState(null);
 
   /* ── Workshop tab renders the store (StoreTab) — provide the
      minimal Ctx context it needs (addToast + workers). ───────── */
@@ -269,6 +274,9 @@ export default function ModuleDashboard({ mod }) {
           });
         });
         setMiniEvents(events);
+        /* Keep the raw rows so the day-breakdown panel can categorise
+           EVERY event (intakes / releases / postmortems / coffins). */
+        setCalSources({ coffins: orders, deceased });
       }
     } catch (e) {
       console.warn("[Dashboard] calendars load failed:", e?.message);
@@ -612,7 +620,25 @@ export default function ModuleDashboard({ mod }) {
                           </span>
                         </span>
                       </div>
-                      <MiniActivityCalendar events={miniEvents} loading={calLoading} />
+                      <MiniActivityCalendar
+                        events={miniEvents}
+                        loading={calLoading}
+                        onPickDate={setCalDay}
+                      />
+                    </div>
+                  )}
+                  {showMini && (
+                    /* Day-breakdown panel — fills the previously empty slot
+                       beside the mini calendar. Shows EVERY event of the
+                       picked day grouped into Intakes / Releases /
+                       Postmortem Requests / Coffin Bookings (today by default). */
+                    <div className="cal-wide-card" style={{ alignSelf: "stretch" }}>
+                      <DayBreakdownPanel
+                        dateKey={calDay}
+                        sources={calSources}
+                        loading={calLoading}
+                        onClose={() => setCalDay(null)}
+                      />
                     </div>
                   )}
                   {showHearse && (

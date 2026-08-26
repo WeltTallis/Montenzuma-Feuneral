@@ -17,6 +17,10 @@ router.use(protect);
 router.use(authorizeAny as any);
 
 // Charge Settings routes
+// NOTE: the frontend calls `/deceased/charge-settings/:id` (see api/endpoints.js),
+// so those prefixed paths are the canonical ones.
+router.get('/deceased/charge-settings/:id', getChargeSettings);
+router.put('/deceased/charge-settings/:id', updateChargeSettings);
 router.get('/', getChargeSettings);
 router.put('/:id', updateChargeSettings);
 router.get('/billing-summary/:id', getBillingSummary);

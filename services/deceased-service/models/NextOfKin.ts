@@ -34,6 +34,8 @@ export interface CreateNextOfKinDTO {
   is_primary?: boolean;
   address?: string;
   alternative_contact?: string;
+  id_number?: string | null;
+  id_type?: string | null;
   signature?: string;
   created_by?: string;
 }
@@ -62,44 +64,49 @@ export class NextOfKinModel {
       );
     }
 
-    // Check if signature column exists in the table
-    let hasSignatureColumn = true;
+    // Discover which columns this tenant's next_of_kin table actually has —
+    // older databases may be missing signature / id_number / id_type.
+    let existingCols = new Set<string>();
     try {
-      const columns = await query(req,
-        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'next_of_kin' AND COLUMN_NAME = 'signature'`
+      const rows = await query(req,
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'next_of_kin'`
       );
-      hasSignatureColumn = columns.length > 0;
+      existingCols = new Set((rows as any[]).map((r) => String(r.COLUMN_NAME).toLowerCase()));
     } catch {
-      hasSignatureColumn = true; // Default to true if we can't check
+      // Assume the full modern schema if introspection fails
+      ['signature', 'alternative_contact', 'id_number', 'id_type', 'created_by'].forEach((c) => existingCols.add(c));
     }
+    const has = (col: string) => existingCols.has(col);
 
-    let result;
-    if (hasSignatureColumn) {
-      result = await execute(req,
-        `INSERT INTO next_of_kin (
-          deceased_id, full_name, relationship, contact, email,
-          is_primary, address, alternative_contact, signature, created_by, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-        [
-          data.deceased_id, data.full_name, data.relationship, data.contact,
-          data.email || null, data.is_primary || false, data.address || null,
-          data.alternative_contact || null, data.signature || null, data.created_by || null
-        ]
-      );
-    } else {
-      result = await execute(req,
-        `INSERT INTO next_of_kin (
-          deceased_id, full_name, relationship, contact, email,
-          is_primary, address, alternative_contact, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-        [
-          data.deceased_id, data.full_name, data.relationship, data.contact,
-          data.email || null, data.is_primary || false, data.address || null,
-          data.alternative_contact || null, data.created_by || null
-        ]
-      );
-    }
+    // tenant_slug is NOT NULL in the schema — derive it from the request so the
+    // insert can never fail with "Field 'tenant_slug' doesn't have a default value".
+    const rawSlug = req?.headers?.['x-tenant-slug'] || req?.headers?.['x-slug'] || data.tenant_slug || '';
+    const tenantSlug = (Array.isArray(rawSlug) ? rawSlug[0] : String(rawSlug)).slice(0, 255);
+
+    const columns: string[] = ['deceased_id', 'tenant_slug', 'full_name', 'relationship', 'contact', 'email', 'is_primary'];
+    const values: any[] = [
+      data.deceased_id,
+      tenantSlug,
+      data.full_name,
+      data.relationship || 'Not Specified',
+      data.contact || '',
+      data.email || null,
+      data.is_primary || false,
+    ];
+
+    if (has('address')) { columns.push('address'); values.push(data.address ?? null); }
+    if (has('alternative_contact')) { columns.push('alternative_contact'); values.push(data.alternative_contact ?? null); }
+    if (has('id_number')) { columns.push('id_number'); values.push(data.id_number ?? null); }
+    if (has('id_type')) { columns.push('id_type'); values.push(data.id_type ?? null); }
+    if (has('signature')) { columns.push('signature'); values.push(data.signature ?? null); }
+    if (has('created_by')) { columns.push('created_by'); values.push(data.created_by ?? null); }
+
+    const placeholders = columns.map(() => '?').join(', ');
+    columns.push('created_at');
+    const sql = `INSERT INTO next_of_kin (${columns.join(', ')}) VALUES (${placeholders}, NOW())`;
+
+    const result = await execute(req, sql, values);
 
     return this.getById(req, (result as ResultSetHeader).insertId);
   }

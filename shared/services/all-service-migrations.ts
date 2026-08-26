@@ -99,8 +99,45 @@ const DECEASED_SERVICE_MIGRATIONS: Migration[] = [
     sql: 'ALTER TABLE next_of_kin ADD COLUMN IF NOT EXISTS is_primary BOOLEAN DEFAULT FALSE AFTER email, ADD COLUMN IF NOT EXISTS is_notified BOOLEAN DEFAULT FALSE AFTER is_primary, ADD COLUMN IF NOT EXISTS notified_at VARCHAR(255) NULL AFTER is_notified, ADD COLUMN IF NOT EXISTS alternative_contact VARCHAR(50) NULL AFTER address, ADD COLUMN IF NOT EXISTS created_by VARCHAR(100) NULL AFTER alternative_contact, ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE AFTER created_at, ADD COLUMN IF NOT EXISTS deleted_at VARCHAR(255) NULL AFTER is_deleted, ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(100) NULL AFTER deleted_at, ADD COLUMN IF NOT EXISTS updated_at VARCHAR(255) AFTER created_at',
   },
   {
+    name: '011b_fix_next_of_kin_tenant_slug_and_id_columns',
+    sql: `ALTER TABLE next_of_kin MODIFY COLUMN tenant_slug VARCHAR(255) NOT NULL DEFAULT '';
+ALTER TABLE next_of_kin ADD COLUMN IF NOT EXISTS id_number VARCHAR(100) NULL AFTER email;
+ALTER TABLE next_of_kin ADD COLUMN IF NOT EXISTS id_type ENUM('national-id', 'passport', 'voters-card', 'other') NULL AFTER id_number`,
+  },
+  {
+    // Backfill next_of_kin rows for every deceased registered before auto-
+    // registration existed, so legacy records show kin details too.
+    name: '011c_backfill_next_of_kin_from_deceased',
+    sql: `INSERT INTO next_of_kin (deceased_id, tenant_slug, full_name, relationship, contact, alternative_contact, id_number, id_type, is_primary, created_at)
+SELECT d.deceased_id, LEFT(DATABASE(), 255),
+       COALESCE(NULLIF(d.contact_person, ''), 'Not Provided'),
+       COALESCE(NULLIF(d.relationship, ''), 'Not Specified'),
+       COALESCE(d.phone_number, ''),
+       d.alternative_phone,
+       d.national_id,
+       CASE WHEN d.national_id IS NULL OR d.national_id = '' THEN NULL ELSE 'national-id' END,
+       TRUE,
+       COALESCE(d.created_at, NOW())
+FROM deceased d
+WHERE (d.is_deleted = 0 OR d.is_deleted IS NULL)
+  AND NOT EXISTS (SELECT 1 FROM next_of_kin k WHERE k.deceased_id = d.deceased_id AND k.is_deleted = FALSE)
+  AND (NULLIF(d.phone_number, '') IS NOT NULL OR NULLIF(d.relationship, '') IS NOT NULL OR NULLIF(d.national_id, '') IS NOT NULL)`,
+  },
+  {
     name: '013_create_postmortem_table',
-    sql: `CREATE TABLE IF NOT EXISTS postmortem (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, pathologist_name VARCHAR(255), external_pathologist_name VARCHAR(255), external_pathologist_mobile VARCHAR(20), external_pathologist_id VARCHAR(50), examination_summary TEXT, cause_of_death TEXT, immediate_cause_of_death TEXT, underlying_cause_of_death TEXT, contributing_conditions TEXT, manner_of_death VARCHAR(50), requesting_authority VARCHAR(100), findings JSON, head_findings TEXT, chest_findings TEXT, abdomen_findings TEXT, extremities_findings TEXT, toxicology_findings TEXT, custom_findings JSON, report_pdf_url VARCHAR(500), staff_username VARCHAR(255), mortuary_name VARCHAR(255), status VARCHAR(50) DEFAULT 'pending', requested_by VARCHAR(255), requested_at VARCHAR(255), completed_at VARCHAR(255), created_at VARCHAR(255), updated_at VARCHAR(255), created_by INT, updated_by INT, FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE, INDEX idx_deceased_id (deceased_id), INDEX idx_status (status), INDEX idx_created_at (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    sql: `CREATE TABLE IF NOT EXISTS postmortem (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, pathologist_name VARCHAR(255), external_pathologist_name VARCHAR(255), external_pathologist_mobile VARCHAR(20), external_pathologist_id VARCHAR(50), examination_summary TEXT, cause_of_death TEXT, immediate_cause_of_death TEXT, underlying_cause_of_death TEXT, contributing_conditions TEXT, manner_of_death VARCHAR(50), requesting_authority VARCHAR(100), findings JSON, head_findings TEXT, chest_findings TEXT, abdomen_findings TEXT, extremities_findings TEXT, toxicology_findings TEXT, custom_findings JSON, signature LONGTEXT NULL, report_pdf_url VARCHAR(500), staff_username VARCHAR(255), mortuary_name VARCHAR(255), status VARCHAR(50) DEFAULT 'pending', requested_by VARCHAR(255), requested_at VARCHAR(255), completed_at VARCHAR(255), created_at VARCHAR(255), updated_at VARCHAR(255), created_by INT, updated_by INT, FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE, INDEX idx_deceased_id (deceased_id), INDEX idx_status (status), INDEX idx_created_at (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  },
+  {
+    name: '013b_add_signature_to_postmortem',
+    sql: `ALTER TABLE postmortem ADD COLUMN IF NOT EXISTS signature LONGTEXT NULL AFTER custom_findings`,
+  },
+  {
+    name: '013a_create_postmortem_requests_table',
+    sql: `CREATE TABLE IF NOT EXISTS postmortem_requests (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, request_ref VARCHAR(60) NULL, requested_by VARCHAR(150) NULL, requesting_authority VARCHAR(200) NULL, reason TEXT, notes TEXT, status ENUM('initiated', 'sent', 'cancelled') DEFAULT 'initiated', initiated_by VARCHAR(150) NULL, sent_at VARCHAR(255) NULL, cancelled_at VARCHAR(255) NULL, created_at VARCHAR(255) NULL, updated_at VARCHAR(255) NULL, INDEX idx_pmr_deceased_id (deceased_id), INDEX idx_pmr_status (status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  },
+  {
+    name: '013c_create_charge_settings_table',
+    sql: `CREATE TABLE IF NOT EXISTS charge_settings (deceased_id VARCHAR(100) NOT NULL PRIMARY KEY, rate_profile VARCHAR(50) DEFAULT 'standard', currency ENUM('KES','USD') DEFAULT 'KES', charge_type ENUM('daily','hourly') DEFAULT 'daily', daily_rate DECIMAL(12,2) DEFAULT 3000.00, hourly_rate DECIMAL(12,2) DEFAULT 125.00, usd_rate DECIMAL(12,2) DEFAULT 130.00, updated_by VARCHAR(150) NULL, created_at VARCHAR(255) NULL, updated_at VARCHAR(255) NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
   {
     name: '014_create_charges_table',

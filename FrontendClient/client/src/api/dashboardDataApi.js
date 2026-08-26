@@ -727,8 +727,9 @@ export const fetchBranchNetworkData = async (date) => {
       .filter((r) => search(r?.status, ['in-transit', 'in_transit', 'delivered', 'pending']))
       .slice(0, 4)
       .map((r) => ({
-        from: r?.requesting_branch || 'Branch',
-        to: r?.booked_for || 'HQ',
+        // Exact branch names only (booked_for is a person, not a branch)
+        from: r?.from_branch_name || r?.requesting_branch || 'Branch',
+        to: r?.to_branch_name || 'HQ',
         item: `${r?.coffin_name || 'Coffin'}${r?.quantity ? ` x${r?.quantity}` : ''}`,
         eta: toKey(r?.created_at) || '—',
         status: search(r?.status, ['delivered', 'in_transit', 'in-transit']) ? 'En route' : 'Pending',
@@ -870,8 +871,11 @@ export const fetchBranchRequestsData = async () => {
       const qty = Number(r?.quantity) || 1;
       return {
         id: r?.request_id || `REQ-${String(r?.id || i).padStart(4, '0')}`,
-        from: r?.requesting_branch || 'Branch',
-        to: r?.booked_for || 'HQ',
+        // Exact branch names only — from = source branch holding the stock,
+        // to = destination branch that requested it (booked_for is a PERSON,
+        // never a branch, so it must not be used here).
+        from: r?.from_branch_name || r?.requesting_branch || 'Branch',
+        to: r?.to_branch_name || 'HQ',
         coffin: r?.coffin_name || 'Coffin',
         qty,
         neededBy: toKey(r?.created_at) || '—',
@@ -948,9 +952,9 @@ export const fetchRecentActivityData = async (date) => {
         activities.push({
           type: 'transfer',
           title: 'Branch stock request',
-          detail: `${r?.coffin_name || 'Coffin'} from ${r?.requesting_branch || 'branch'}`,
+          detail: `${r?.coffin_name || 'Coffin'} from ${r?.from_branch_name || r?.requesting_branch || 'branch'}`,
           time: 'Today',
-          branch: r?.requesting_branch || 'Branch',
+          branch: r?.to_branch_name || r?.requesting_branch || 'Branch',
         });
       });
 

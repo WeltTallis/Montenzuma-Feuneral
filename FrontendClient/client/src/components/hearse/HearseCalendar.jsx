@@ -1,30 +1,37 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
-import styled from 'styled-components';
+
 import { toDateKey, formatTimeAmPm } from '../../utils/dates/parseDates';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import interactionPlugin from '@fullcalendar/interaction';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import FullCalendar from '@fullcalendar/react';
+import styled from 'styled-components';
 
 // ===== SHARED CONSTANTS =====
 export const COLORS = {
-  primary: '#1a5f7a',
+  textSecondary: '#6b7280',
+  successLight: '#d1fae5',
   primaryLight: '#2c8ac9',
   primaryDark: '#134b5f',
-  white: '#FFFFFF',
-  bg: '#f5f7fa',
-  surface: '#ffffff',
-  border: '#d1d5db',
   borderLight: '#e5e7eb',
+
+  white: '#FFFFFF',
+  surface: '#ffffff',
+  primary: '#1a5f7a',
+  border: '#d1d5db',
   text: '#111827',
-  textSecondary: '#6b7280',
+  bg: '#f5f7fa',
+
+
+
   textMuted: '#9ca3af',
   success: '#10b981',
-  successLight: '#d1fae5',
+
   successDark: '#059669',
-  warning: '#f59e0b',
   warningLight: '#fef3c7',
   warningDark: '#d97706',
+  warning: '#f59e0b',
+
   danger: '#ef4444',
   dangerLight: '#fee2e2',
   dangerDark: '#dc2626',
@@ -635,14 +642,14 @@ const StatItem = styled.div`
 `;
 
 // ===== MAIN CALENDAR COMPONENT =====
-const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedDate, onDateSelect }) => {
+const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedDate, onDateSelect, onDateClick }) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const calendarRef = useRef(null);
 
   // Convert bookings to FullCalendar events with rich data
   const events = useMemo(() => {
     if (!Array.isArray(bookings)) return [];
-    
+
     return bookings
       .map((b) => {
         const status = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
@@ -665,7 +672,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           if (!isNaN(ed.getTime())) {
             endTime = ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
-        } catch (e) {}
+        } catch (e) { }
 
         return {
           id: b.booking_id || b.id || `booking-${Math.random()}`,
@@ -700,7 +707,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   // Calculate daily stats for the selected date
   const getDailyStats = useCallback(() => {
     if (!selectedDate) return { total: 0, booked: 0, transit: 0, pending: 0, completed: 0 };
-    
+
     const dateStr = selectedDate.split('T')[0];
     const dayBookings = bookings.filter((b) => {
       const dates = getBookingDates(b);
@@ -726,7 +733,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   const handleDateClick = useCallback((info) => {
     const dateStr = info.dateStr.split('T')[0];
     if (onDateSelect) onDateSelect(dateStr);
-  }, [onDateSelect]);
+    if (onDateClick) onDateClick(dateStr);
+  }, [onDateSelect, onDateClick]);
 
   // Handle event click
   const handleEventClick = useCallback((info) => {
@@ -744,7 +752,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     const isMonthView = calendarView === 'dayGridMonth';
     const props = eventInfo.event.extendedProps;
     const isAllDay = eventInfo.event.allDay;
-    
+
     // Month view - hide events (show dots instead)
     if (isMonthView) {
       return null;
@@ -752,7 +760,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
     // Week/Day view - show full card with all details
     return (
-      <div style={{ 
+      <div style={{
         padding: isAllDay ? '4px 8px' : '6px 8px',
         width: '100%',
         height: '100%',
@@ -763,9 +771,9 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         gap: '2px'
       }}>
         {!isAllDay && props.startTime && (
-          <div style={{ 
-            fontSize: '10px', 
-            fontWeight: 600, 
+          <div style={{
+            fontSize: '10px',
+            fontWeight: 600,
             opacity: 0.9,
             display: 'flex',
             alignItems: 'center',
@@ -774,8 +782,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             🕐 {props.startTime}{props.endTime ? ` - ${props.endTime}` : ''}
           </div>
         )}
-        <div style={{ 
-          fontWeight: 700, 
+        <div style={{
+          fontWeight: 700,
           fontSize: isAllDay ? '13px' : '13px',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
@@ -786,8 +794,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         }}>
           {props.clientName}
           {props.statusLabel && (
-            <span style={{ 
-              fontSize: '8px', 
+            <span style={{
+              fontSize: '8px',
               fontWeight: 600,
               padding: '1px 8px',
               borderRadius: '4px',
@@ -801,8 +809,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           )}
         </div>
         {props.dest && props.dest !== '—' && (
-          <div style={{ 
-            fontSize: '10px', 
+          <div style={{
+            fontSize: '10px',
             opacity: 0.85,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -815,8 +823,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           </div>
         )}
         {props.from && props.from !== '—' && !isAllDay && (
-          <div style={{ 
-            fontSize: '9px', 
+          <div style={{
+            fontSize: '9px',
             opacity: 0.7,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -829,8 +837,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           </div>
         )}
         {props.plate && props.plate !== '—' && (
-          <div style={{ 
-            fontSize: '9px', 
+          <div style={{
+            fontSize: '9px',
             opacity: 0.7,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -843,8 +851,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           </div>
         )}
         {props.phone && props.phone !== '—' && !isAllDay && (
-          <div style={{ 
-            fontSize: '8px', 
+          <div style={{
+            fontSize: '8px',
             opacity: 0.6,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -863,9 +871,9 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   // Custom day cell renderer for month view dots
   const renderDayCell = useCallback((info) => {
     if (calendarView !== 'dayGridMonth') return;
-    
+
     const dateStr = info.date.toISOString().split('T')[0];
-    
+
     const dayEvents = bookings.filter((b) => {
       const dates = getBookingDates(b);
       return dates.some(d => {
@@ -874,6 +882,12 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         return dStr === dateStr;
       });
     });
+
+    // Highlight booked dates with a red background
+    if (dayEvents.length > 0) {
+      info.el.style.setProperty('background-color', 'rgba(239, 68, 68, 0.12)', 'important');
+      info.el.style.setProperty('border-radius', '6px', 'important');
+    }
 
     if (dayEvents.length === 0) return;
 

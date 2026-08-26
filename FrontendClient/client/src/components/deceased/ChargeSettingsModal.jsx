@@ -440,8 +440,12 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
   const getDaysInMorgue = () => {
     if (!deceasedData?.date_admitted) return 0;
     const admissionDate = new Date(deceasedData.date_admitted);
-    const today = new Date();
-    return Math.ceil((today - admissionDate) / (1000 * 60 * 60 * 24));
+    if (isNaN(admissionDate.getTime())) return 0;
+    // Calendar-day difference, clamped at 0 — same-day admission = 0 days,
+    // never -1 (raw hour math goes negative across timezones).
+    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const days = Math.floor((startOfDay(new Date()) - startOfDay(admissionDate)) / (1000 * 60 * 60 * 24));
+    return Math.max(0, days);
   };
 
   if (!isOpen) return null;

@@ -2,15 +2,15 @@
 // @ts-ignore
 import type { Request, Response } from 'express';
 import type { ResultSetHeader } from 'mysql2';
-import type { 
-  FlowerSample, 
-  FlowerSampleRecord, 
+import type {
+  FlowerSample,
+  FlowerSampleRecord,
   CreateFlowerSampleDTO,
-  Image 
+  Image
 } from '../models/flowerSamplesModel.ts';
 
-// Import your database utilities
-import { query, execute } from '../../../shared/dbConfig.js';
+// Import your local database utilities (direct restpoint_operations pool)
+import { safeQuery, safeExecute } from '../database.ts';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -20,6 +20,36 @@ import os from 'os';
 
 // Fix __dirname for ES modules
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// ============================================
+// TENANT HELPERS
+//   Flower samples are scoped by TENANT ID ONLY (no branches). The tenant id
+//   comes from the `x-tenant-id` header sent by the UI (read from localStorage
+//   after login). tenant_slug is the legacy fallback for rows that have no
+//   tenant_id yet.
+// ============================================
+
+const tenantIdOf = (req: any): string | null =>
+  req.tenantId || req.headers?.['x-tenant-id'] || req.headers?.['x-tenant_id'] || null;
+
+const tenantSlugOf = (req: any): string | null =>
+  req.tenantSlug || req.tenant?.tenant_slug || null;
+
+/**
+ * Build a tenant WHERE fragment. Uses ONLY the tenant id when available.
+ */
+const buildTenantScope = (req: any): { clause: string; params: any[] } => {
+  const tenantId = tenantIdOf(req);
+  const tenantSlug = tenantSlugOf(req);
+
+  if (tenantId) {
+    return { clause: 'tenant_id = ?', params: [tenantId] };
+  }
+  if (tenantSlug && tenantSlug !== 'system_shared') {
+    return { clause: 'tenant_slug = ?', params: [tenantSlug] };
+  }
+  return { clause: '1=1', params: [] };
+};
 
 // ============================================
 // CONFIGURATION
@@ -102,8 +132,8 @@ const ensureUploadDir = async (tenantSlug: string): Promise<string> => {
 
 // ─── Image compression ───
 const compressAndSaveImage = async (
-  buffer: Buffer, 
-  filename: string, 
+  buffer: Buffer,
+  filename: string,
   tenantSlug: string
 ): Promise<string> => {
   const dir = await ensureUploadDir(tenantSlug);
@@ -129,7 +159,7 @@ const compressAndSaveImage = async (
         brightness: 1.05,
         saturation: 1.1
       })
-      .webp({ 
+      .webp({
         quality: 92,
         effort: 6,
         lossless: false
@@ -147,16 +177,37 @@ const compressAndSaveImage = async (
 };
 
 // ─── Helper to parse JSON strings from DB ───
+// Helper to parse JSON values from DB.
+// mysql2 already parses `json`-typed columns into arrays/objects, so only
+// attempt JSON.parse when the value is still a string.
+const parseValue = (value: any): any => {
+  if (value == null || value === '') return [];
+  if (Array.isArray(value) || typeof value === 'object') return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) || typeof parsed === 'object' ? parsed : [parsed];
+    } catch (e) {
+      // Not valid JSON - fall back to comma-separated parsing
+      return toArray(value);
+    }
+  }
+  return [value];
+};
+
 const parseJSONFields = (record: any): any => {
   return {
     id: record.id,
     arrangement_id: record.arrangement_id,
     title: record.title,
     description: record.description,
-    types: JSON.parse(record.types),
-    colors: JSON.parse(record.colors),
-    sizes: JSON.parse(record.sizes),
-    images: JSON.parse(record.images),
+    price: record.price ?? null,
+    types: parseValue(record.types),
+    colors: parseValue(record.colors),
+    sizes: parseValue(record.sizes),
+    images: parseValue(record.images),
+    tenant_slug: record.tenant_slug,
+    tenant_id: record.tenant_id,
     created_at: record.created_at,
     updated_at: record.updated_at
   };
@@ -204,7 +255,7 @@ const toArray = (value: any): any[] => {
  */
 const ensurePriceColumn = async (req: any): Promise<void> => {
   try {
-    await execute(req, 'ALTER TABLE flower_samples ADD COLUMN IF NOT EXISTS price DECIMAL(12,2) DEFAULT NULL AFTER sizes', []);
+    await safeExecute('ALTER TABLE flower_samples ADD COLUMN IF NOT EXISTS price DECIMAL(12,2) DEFAULT NULL AFTER sizes', []);
   } catch (err: any) {
     // ER_DUP_FIELDNAME means the column already exists - safe to ignore
     if (err?.code !== 'ER_DUP_FIELDNAME' && !/duplicate/i.test(err?.message || '')) {
@@ -218,16 +269,17 @@ const ensurePriceColumn = async (req: any): Promise<void> => {
  */
 export const createFlowerArrangement = async (req: any, res: any): Promise<any> => {
   const tenantSlug = req.tenantSlug;
+  const tenantId = tenantIdOf(req);
 
   if (!tenantSlug) {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
   }
 
   try {
-    const { 
-      title, 
-      description, 
-      images: providedImages 
+    const {
+      title,
+      description,
+      images: providedImages
     }: CreateFlowerSampleDTO = req.body;
 
     // Multipart form fields arrive as comma-separated (or JSON) strings —
@@ -235,15 +287,12 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
     const types = toArray(req.body.types);
     const colors = toArray(req.body.colors);
     const sizes = toArray(req.body.sizes);
-    const price = req.body.price !== undefined && req.body.price !== null && req.body.price !== ''
-      ? parseFloat(req.body.price)
-      : null;
 
     // Validate required fields
     if (!title || !description || !types || !colors || !sizes) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Missing required fields: title, description, types, colors, sizes' 
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: title, description, types, colors, sizes'
       });
     }
 
@@ -263,7 +312,7 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
 
     // Prepare images array
     let images: Image[] = [];
-    
+
     // Handle uploaded files
     if (req.files && Array.isArray(req.files)) {
       const uploadedFiles = req.files as Express.Multer.File[];
@@ -303,26 +352,26 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
       images
     });
 
-  const sql = `
+    const sql = `
     INSERT INTO flower_samples 
-    (arrangement_id, title, description, types, colors, sizes, images, price, tenant_slug, created_at, updated_at) 
+    (arrangement_id, title, description, types, colors, sizes, images, tenant_slug, tenant_id, created_at, updated_at) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
   `;
 
-  await execute(req, sql, [
-    arrangementId,
-    title,
-    description,
-    data.types,
-    data.colors,
-    data.sizes,
-    data.images,
-    price,
-    tenantSlug
-  ]);
+    await safeExecute(sql, [
+      arrangementId,
+      title,
+      description,
+      data.types,
+      data.colors,
+      data.sizes,
+      data.images,
+      tenantSlug,
+      tenantId
+    ]);
 
-  // Clear cache for this tenant
-  clearCache(tenantSlug);
+    // Clear cache for this tenant
+    clearCache(tenantSlug);
 
     // Clear cache
     clearCache(tenantSlug);
@@ -355,11 +404,11 @@ export const getFlowerArrangementById = async (req: any, res: any): Promise<any>
 
   try {
     const arrangement = await getFlowerArrangementByIdInternal(req, id, tenantSlug);
-    
+
     if (!arrangement) {
-      return res.status(404).json({ 
-        success: false, 
-        message: `Flower arrangement with ID ${id} not found` 
+      return res.status(404).json({
+        success: false,
+        message: `Flower arrangement with ID ${id} not found`
       });
     }
 
@@ -376,27 +425,36 @@ export const getFlowerArrangementById = async (req: any, res: any): Promise<any>
 
 // Internal helper to get arrangement by ID
 const getFlowerArrangementByIdInternal = async (
-  req: any, 
-  id: string, 
+  req: any,
+  id: string,
   tenantSlug: string
 ): Promise<any | null> => {
   const cacheKey = `arrangement_${tenantSlug}_${id}`;
   let cached = getCached(cacheKey);
-  
+
   if (cached) {
     return cached;
   }
 
-  const sql = 'SELECT * FROM flower_samples WHERE arrangement_id = ? AND tenant_slug = ?';
-  const records = await query(req, sql, [id, tenantSlug]);
-  
+  const tenantScope = buildTenantScope(req);
+  // CAST json columns to CHAR - legacy rows may hold non-JSON text
+  const sql = `
+    SELECT id, arrangement_id, title, description,
+           CAST(types  AS CHAR) AS types,
+           CAST(colors AS CHAR) AS colors,
+           CAST(sizes  AS CHAR) AS sizes,
+           CAST(images AS CHAR) AS images,
+           tenant_slug, tenant_id, created_at, updated_at
+    FROM flower_samples WHERE arrangement_id = ? AND ${tenantScope.clause} LIMIT 1`;
+  const records = await safeQuery(sql, [id, ...tenantScope.params]);
+
   if (!records || records.length === 0) {
     return null;
   }
 
   const arrangement = parseJSONFields(records[0]);
   setCached(cacheKey, arrangement);
-  
+
   return arrangement;
 };
 
@@ -415,9 +473,9 @@ export const updateFlowerArrangement = async (req: any, res: any): Promise<any> 
     // Check if arrangement exists
     const existingArrangement = await getFlowerArrangementByIdInternal(req, id, tenantSlug);
     if (!existingArrangement) {
-      return res.status(404).json({ 
-        success: false, 
-        message: `Flower arrangement with ID ${id} not found` 
+      return res.status(404).json({
+        success: false,
+        message: `Flower arrangement with ID ${id} not found`
       });
     }
 
@@ -472,15 +530,16 @@ export const updateFlowerArrangement = async (req: any, res: any): Promise<any> 
 
     // Build update query
     const updateFields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
-    const updateParams = [...Object.values(updates), id, tenantSlug];
+    const tenantScope = buildTenantScope(req);
+    const updateParams = [...Object.values(updates), id, ...tenantScope.params];
 
     const sql = `
       UPDATE flower_samples 
       SET ${updateFields}, updated_at = NOW() 
-      WHERE arrangement_id = ? AND tenant_slug = ?
+      WHERE arrangement_id = ? AND ${tenantScope.clause}
     `;
 
-    await execute(req, sql, updateParams);
+    await safeExecute(sql, updateParams);
 
     // Clear cache
     clearCache(tenantSlug);
@@ -515,9 +574,9 @@ export const deleteFlowerArrangement = async (req: any, res: any): Promise<any> 
     // Check if arrangement exists
     const existingArrangement = await getFlowerArrangementByIdInternal(req, id, tenantSlug);
     if (!existingArrangement) {
-      return res.status(404).json({ 
-        success: false, 
-        message: `Flower arrangement with ID ${id} not found` 
+      return res.status(404).json({
+        success: false,
+        message: `Flower arrangement with ID ${id} not found`
       });
     }
 
@@ -525,15 +584,16 @@ export const deleteFlowerArrangement = async (req: any, res: any): Promise<any> 
     for (const image of existingArrangement.images) {
       try {
         const imagePath = path.join(process.cwd(), 'public', image.url);
-        await fs.unlink(imagePath).catch(() => {});
+        await fs.unlink(imagePath).catch(() => { });
       } catch (err) {
         console.warn(`[FLOWER] Could not delete image: ${image.url}`);
       }
     }
 
     // Delete from database
-    const sql = 'DELETE FROM flower_samples WHERE arrangement_id = ? AND tenant_slug = ?';
-    await execute(req, sql, [id, tenantSlug]);
+    const tenantScope = buildTenantScope(req);
+    const sql = `DELETE FROM flower_samples WHERE arrangement_id = ? AND ${tenantScope.clause}`;
+    await safeExecute(sql, [id, ...tenantScope.params]);
 
     // Clear cache
     clearCache(tenantSlug);
@@ -570,7 +630,7 @@ export const getAllFlowerArrangements = async (req: any, res: any): Promise<any>
     // Build cache key based on filters
     const cacheKey = `all_arrangements_${tenantSlug}_${color || 'all'}_${type || 'all'}_${size || 'all'}`;
     let cached = getCached(cacheKey);
-    
+
     if (cached) {
       return res.status(200).json({
         success: true,
@@ -579,8 +639,18 @@ export const getAllFlowerArrangements = async (req: any, res: any): Promise<any>
     }
 
     // Build query with filters
-    let sql = 'SELECT * FROM flower_samples WHERE tenant_slug = ?';
-    const params: any[] = [tenantSlug];
+    const tenantScope = buildTenantScope(req);
+    // CAST json columns to CHAR so mysql2 never wire-parses them - legacy rows
+    // may contain non-JSON text, which would otherwise throw inside the driver.
+    let sql = `
+    SELECT id, arrangement_id, title, description,
+           CAST(types  AS CHAR) AS types,
+           CAST(colors AS CHAR) AS colors,
+           CAST(sizes  AS CHAR) AS sizes,
+           CAST(images AS CHAR) AS images,
+           tenant_slug, tenant_id, created_at, updated_at
+    FROM flower_samples WHERE ${tenantScope.clause}`;
+    const params: any[] = [...tenantScope.params];
 
     // Filter by color - check if the color exists in the JSON array
     if (color && typeof color === 'string') {
@@ -605,8 +675,8 @@ export const getAllFlowerArrangements = async (req: any, res: any): Promise<any>
 
     sql += ' ORDER BY created_at DESC';
 
-    const records = await query(req, sql, params);
-    
+    const records = await safeQuery(sql, params);
+
     const arrangements = records.map(record => parseJSONFields(record));
 
     // Cache the results

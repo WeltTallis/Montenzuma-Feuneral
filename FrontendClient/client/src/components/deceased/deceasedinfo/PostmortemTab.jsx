@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { getTenantSlug } from '../../../utils/globalAuth';
 import { getTenantHeaders } from '../../../api/endpoints';
+import { showToast } from '../../../utils/toast';
+import { useNavigate } from 'react-router-dom';
 import env from '../../../utils/config/env';
 import styled from 'styled-components';
 import { C, formatDate } from './theme';
-import { showToast } from '../../../utils/toast';
+import axios from 'axios';
+
 
 const SectionHead = styled.div`
   font-size: 12px; 
@@ -188,6 +189,39 @@ const EmptyNote = styled.p`
   margin: 0 0 16px;
 `;
 
+const StatsRow = styled.div`
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+`;
+
+const StatBox = styled.div`
+  flex: 1;
+  min-width: 150px;
+  border: 1px solid ${C.borderLight || '#e0e0e0'};
+  border-left: 3px solid ${p => p.$accent || C.black};
+  border-radius: 4px;
+  padding: 12px 16px;
+  background: #fafaf9;
+`;
+
+const StatValue = styled.div`
+  font-size: 24px;
+  font-weight: 700;
+  color: ${C.black};
+  line-height: 1.2;
+`;
+
+const StatLabel = styled.div`
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: ${C.gray};
+  margin-top: 4px;
+`;
+
 const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onRequestsChanged }) => {
   const navigate = useNavigate();
   const pm = postmortem || {};
@@ -196,7 +230,12 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
   // Self-managed request tracking - fetches its own data unless a parent
   // supplies the `requests` prop explicitly.
   const [ownRequests, setOwnRequests] = useState([]);
-  const requests = requestsProp === undefined ? ownRequests : requestsProp;
+  // Prefer the parent's copy when it has data; otherwise fall back to our own
+  // fetch — the request list can never blank out because of a parent hiccup.
+  const visibleRequests =
+    requestsProp && requestsProp.length > 0 ? requestsProp
+      : ownRequests.length > 0 ? ownRequests
+        : (requestsProp || ownRequests);
 
   const [showRequestForm, setShowRequestForm] = useState(false);
   const [submittingRequest, setSubmittingRequest] = useState(false);
@@ -206,6 +245,16 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
     requested_by: '',
     requesting_authority: ''
   });
+
+  // Tenant-wide postmortem analytics (requested vs carried out)
+  const [stats, setStats] = useState(null);
+  const loadStats = useCallback(() => {
+    return axios.get(`${env.FULL_API_URL}/postmortem-requests/stats`, { headers: getTenantHeaders() })
+      .then((res) => { if (res.data?.success) setStats(res.data.data || null); })
+      .catch(() => { /* stats are optional */ });
+  }, []);
+
+  useEffect(() => { loadStats(); }, [loadStats]);
 
   const loadRequests = useCallback(async () => {
     if (!deceasedId) return;
@@ -218,13 +267,25 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
     } catch (e) { /* no tracked requests yet */ }
   }, [deceasedId]);
 
-  useEffect(() => {
-    if (requestsProp === undefined) loadRequests();
-  }, [loadRequests, requestsProp]);
+  // Always self-load as well — belt & suspenders alongside the parent's copy.
+  useEffect(() => { loadRequests(); }, [loadRequests]);
+
+  const openRequestForm = () => {
+    // Prefill "Requested By" with the signed-in user so every request card,
+    // notification and audit entry shows WHO requested the postmortem.
+    let defaultBy = '';
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      defaultBy = [u.first_name, u.last_name].filter(Boolean).join(' ')
+        || u.full_name || u.name || u.username || u.email || '';
+    } catch { /* no user record */ }
+    setRequestForm((f) => ({ ...f, requested_by: f.requested_by || defaultBy }));
+    setShowRequestForm(true);
+  };
 
   const refreshRequests = async () => {
-    if (onRequestsChanged) await onRequestsChanged();
-    else await loadRequests();
+    try { if (onRequestsChanged) await onRequestsChanged(); } catch { /* parent refresh optional */ }
+    await Promise.all([loadRequests(), loadStats()]);
   };
 
   const hasData = pm.immediate_cause_of_death || pm.manner_of_death || pm.examination_summary;
@@ -346,12 +407,34 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
 
       {/* --- 00: Pre-examination request tracking --- */}
       <SectionHead $mt0><span>00</span> Postmortem Requests</SectionHead>
+
+      {stats && (
+        <StatsRow>
+          <StatBox $accent="#d97706">
+            <StatValue>{stats.initiated ?? 0}</StatValue>
+            <StatLabel>Requested Now</StatLabel>
+          </StatBox>
+          <StatBox $accent="#2563eb">
+            <StatValue>{stats.sent ?? 0}</StatValue>
+            <StatLabel>Sent · Awaiting Exam</StatLabel>
+          </StatBox>
+          <StatBox $accent="#7c3aed">
+            <StatValue>{stats.official_completed ?? 0}</StatValue>
+            <StatLabel>Completed Exams</StatLabel>
+          </StatBox>
+          <StatBox $accent="#6b7280">
+            <StatValue>{stats.cancelled ?? 0}</StatValue>
+            <StatLabel>Cancelled</StatLabel>
+          </StatBox>
+        </StatsRow>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <EmptyNote style={{ marginBottom: 0 }}>
           Track who requested a postmortem before the official examination is carried out.
         </EmptyNote>
         {!showRequestForm && (
-          <Btn onClick={() => setShowRequestForm(true)}>+ Initiate Request</Btn>
+          <Btn onClick={openRequestForm}>+ Initiate Request</Btn>
         )}
       </div>
 
@@ -399,10 +482,10 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
         </form>
       )}
 
-      {(!requests || requests.length === 0 && !showRequestForm) ? (
+      {visibleRequests.length === 0 && !showRequestForm ? (
         <EmptyNote>No postmortem requests tracked yet.</EmptyNote>
       ) : (
-        requests.map((r) => (
+        visibleRequests.map((r) => (
           <RequestCard key={r.id}>
             <div style={{ minWidth: 220, flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>

@@ -3,6 +3,7 @@ import api from '../../api/axios';
 import { ENDPOINTS, getTenantHeaders } from '../../api/endpoints';
 import { useSocket } from '../../utils/context/socketContext';
 import { getTenantSlug } from '../../utils/globalAuth';
+import notify from '../../utils/notify';
 import {
   Bell, CheckCircle, X, Clock, Trash2,
   UserPlus, Truck, DollarSign, AlertTriangle,
@@ -491,6 +492,81 @@ const NotificationBell = () => {
         pendingNotificationsRef.current.push(formatted);
       }
 
+      // Postmortem results ready (prefixed from socketio-service or raw)
+      else if (eventName === 'postmortem-results-ready' || eventName === 'notification:postmortem-results-ready') {
+        const who = data.deceasedName || data.fullName || '';
+        formatted = {
+          // Stable id per deceased — repeat deliveries collapse instead of duplicating
+          id: `pm-results-${data.deceasedId || data.id || Date.now()}`,
+          type: 'postmortem_results',
+          title: data.title || 'Postmortem Results Available',
+          message: who
+            ? `Postmortem results for ${who} (${data.deceasedId || ''}) are now available`
+            : (data.message || 'Postmortem results are now available'),
+          fullContent: data.fullContent || 'No details available',
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: data.priority || 'high',
+          data,
+        };
+        pendingNotificationsRef.current.push(formatted);
+
+        // Visible toast popup with the full details
+        try {
+          notify.success(
+            formatted.title,
+            [
+              who && `Deceased: ${who}`,
+              data.pathologistName && `Pathologist: ${data.pathologistName}`,
+              data.causeOfDeath && `Cause of Death: ${data.causeOfDeath}`,
+              data.mannerOfDeath && `Manner: ${data.mannerOfDeath}`,
+            ].filter(Boolean).join(' · ') || formatted.message
+          );
+        } catch { /* toast optional */ }
+      }
+
+      // Postmortem completed — recorded in the list only. The results-ready
+      // toast above already announces completion, so no second popup here.
+      else if (eventName === 'postmortem-completed' || eventName === 'notification:postmortem-completed') {
+        const who = data.deceasedName || data.fullName || '';
+        formatted = {
+          id: `pm-completed-${data.deceasedId || data.id || Date.now()}`,
+          type: 'postmortem-completed',
+          title: data.title || 'Postmortem Completed',
+          message: who
+            ? `Postmortem examination completed for ${who}`
+            : (data.message || 'Postmortem examination completed'),
+          fullContent: data.fullContent || '',
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: data.priority || 'medium',
+          data,
+        };
+        pendingNotificationsRef.current.push(formatted);
+      }
+
+      // Postmortem request initiated / sent / status change (from deceased-service)
+      else if (
+        eventName === 'notification:postmortem-request-created' ||
+        eventName === 'postmortem-request-created' ||
+        eventName === 'notification:postmortem-request-sent' ||
+        eventName === 'postmortem-request-sent' ||
+        eventName === 'notification:postmortem-request-status'
+      ) {
+        formatted = {
+          id: data.id || `pm-request-${Date.now()}`,
+          type: 'postmortem_results',
+          title: data.title || 'Postmortem Request',
+          message: data.message || 'Postmortem request update',
+          fullContent: data.fullContent || '',
+          is_read: 0,
+          created_at: data.timestamp || new Date().toISOString(),
+          priority: data.priority || 'high',
+          data,
+        };
+        pendingNotificationsRef.current.push(formatted);
+      }
+
       // General fallback for any other registered notification event
       else {
         const meta = eventTypeMap[eventName];
@@ -530,6 +606,10 @@ const NotificationBell = () => {
       'coffin-booking-created', 'notification:coffin-booking-created',
       'coffin-stock-request', 'notification:coffin-stock-request',
       'body-released', 'postmortem-results-ready',
+      'postmortem-completed',
+      'notification:postmortem-request-created', 'postmortem-request-created',
+      'notification:postmortem-request-sent', 'postmortem-request-sent',
+      'notification:postmortem-request-status',
     ];
 
     const handlers = {};

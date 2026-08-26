@@ -28,6 +28,10 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    // Guarantee a single copy of React across the whole module graph, even if
+    // some dependency resolves its own copy. Prevents the classic invalid
+    // hook call crash: "Cannot read properties of null (reading 'useState')".
+    dedupe: ['react', 'react-dom'],
   },
 
   build: {

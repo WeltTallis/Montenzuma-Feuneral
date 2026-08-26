@@ -2,10 +2,11 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { Flower2, MapPin, User, Calendar, Clock, ChevronLeft, ChevronRight, X, Check, Truck, Home, Package, AlertTriangle } from '../../utils/icons/icons';
 import api from '../../api/axios'
 import { useSocket } from '../../utils/context/socketContext'
+import { getBranchSlug, getBranchId, getBranches, getTenantId } from '../../utils/globalAuth';
 import ReusableCalendar from '../../utils/calender/calender';
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const STATUS_FLOW = ['pending', 'sourced', 'transit', 'completed'];
 const STATUS_LABELS = {
@@ -14,6 +15,9 @@ const STATUS_LABELS = {
   transit: 'Out for Delivery',
   completed: 'Delivered'
 };
+
+
+
 const STATUS_DESC = {
   pending: 'We have received your order details.',
   sourced: 'Florist has prepared the arrangement.',
@@ -22,12 +26,36 @@ const STATUS_DESC = {
 };
 
 const pad = n => String(n).padStart(2, '0');
-const fmtDateStr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const fmtDateStr = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const parseDate = s => { const d = new Date(s); return isNaN(d) ? null : d; };
-const addDays = (d,n) => { const x = new Date(d.getTime()); x.setDate(x.getDate()+n); return x; };
-const fmtTime = s => s ? new Date(s).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true}) : '';
-const fmtDateTime = s => s ? new Date(s).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : 'N/A';
-const fmtDateOnly = s => s ? new Date(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'N/A';
+const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
+const fmtTime = s => s ? new Date(s).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+const fmtDateTime = s => s ? new Date(s).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+const fmtDateOnly = s => s ? new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
+
+// Resolve the name of the branch the logged-in user belongs to (flowers are
+// coming from this branch). Uses the branch context stored at login.
+const resolveBranchName = () => {
+  const slug = getBranchSlug();
+  const bid = getBranchId();
+  const branches = getBranches();
+  const match = branches.find(b =>
+    (b.branchSlug || b.branch_slug) === slug ||
+    String(b.branchId || b.branch_id) === String(bid || '')
+  );
+  return (match && (match.branchName || match.branch_name)) || slug || '';
+};
+
+// Real logged-in username straight from localStorage (`user` is written at
+// login with { username, fullName, email, ... }). Used to auto-fill the
+// "Booked By" field instead of asking the user to type their own name.
+const getLocalUserName = () => {
+  try {
+    const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
+    const u = raw ? JSON.parse(raw) : {};
+    return u?.fullName || u?.full_name || u?.username || u?.name || u?.email || '';
+  } catch { return ''; }
+};
 
 const FlowerBookingsNew = () => {
   const { socket, connected } = useSocket()
@@ -41,10 +69,8 @@ const FlowerBookingsNew = () => {
   const [newBooking, setNewBooking] = useState({
     arrangement_id: null,
     arrangement_name: '',
-    arrangement_price: '',
     deceased_name: '',
-    booked_by: '',
-    funeral_home: '',
+    booked_by: getLocalUserName(),
     date: '',
     time: '10:00',
     priority: 'Normal'
@@ -56,7 +82,11 @@ const FlowerBookingsNew = () => {
 
   const loadArrangements = useCallback(async () => {
     try {
-      const res = await api.get('/florist/flower-samples/');
+      // Explicit tenant scoping — the florist service filters flower_samples by
+      // the x-tenant-id header (also sent) and the tenant_id query param.
+      const res = await api.get('/florist/flower-samples/', {
+        params: { tenant_id: getTenantId() || undefined },
+      });
       setArrangements(res.data.data || []);
     } catch (e) {
       console.error('Failed to load arrangements:', e);
@@ -72,7 +102,13 @@ const FlowerBookingsNew = () => {
   const loadBookings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/florist/bookings');
+      // TENANT-WIDE fetch: scoped by tenant id ONLY (never branch), so ALL
+      // flower bookings from every branch appear together in this one space.
+      // The florist service builds its WHERE clause from the x-tenant-id
+      // header / tenant_id param and ignores branch entirely.
+      const res = await api.get('/florist/bookings', {
+        params: { tenant_id: getTenantId() || undefined },
+      });
       setBookings(res.data.data || []);
     } catch (e) {
       showToast(e.friendlyMessage || 'Failed to load bookings', 'error');
@@ -116,13 +152,17 @@ const FlowerBookingsNew = () => {
     };
   }, [socket, connected, showToast, loadBookings]);
 
-  useEffect(() => { 
+  useEffect(() => {
     loadArrangements();
-    loadBookings(); 
+    loadBookings();
   }, [loadBookings, loadArrangements]);
 
+  // The API returns the expected date in `date` (older rows may carry it as
+  // `delivery_date`) — normalise so list + calendar agree on one key.
+  const bookingDateKey = (b) => b?.delivery_date || b?.date || null;
+
   const getEventsForDate = useCallback((dateStr) => {
-    return bookings.filter(b => b.delivery_date === dateStr);
+    return bookings.filter(b => bookingDateKey(b) === dateStr);
   }, [bookings]);
 
   const getBookingDotColor = (b) => {
@@ -138,7 +178,7 @@ const FlowerBookingsNew = () => {
 
   const calendarItems = useMemo(() => {
     return bookings.map(b => {
-      let ds = b.delivery_date;
+      let ds = bookingDateKey(b);
       if (!ds) return { ...b, _calDate: null };
       if (ds instanceof Date) {
         ds = `${ds.getFullYear()}-${String(ds.getMonth() + 1).padStart(2, '0')}-${String(ds.getDate()).padStart(2, '0')}`;
@@ -181,7 +221,7 @@ const FlowerBookingsNew = () => {
 
   const submitBooking = useCallback(async (e) => {
     e.preventDefault();
-    if (!newBooking.arrangement_name || !newBooking.deceased_name || !newBooking.funeral_home || !newBooking.date) {
+    if (!newBooking.arrangement_name || !newBooking.deceased_name) {
       return showToast('Please fill all required fields', 'error');
     }
 
@@ -192,16 +232,14 @@ const FlowerBookingsNew = () => {
 
       const payload = {
         arrangement_name: newBooking.arrangement_name,
-        arrangement_price: newBooking.arrangement_price,
         deceased_name: newBooking.deceased_name,
-        booked_by: newBooking.booked_by,
-        funeral_home: newBooking.funeral_home,
-        date: newBooking.date,
-        time: newBooking.time,
+        booked_by: newBooking.booked_by || getLocalUserName() || 'System',
+        branch: resolveBranchName() || undefined,
+        date: newBooking.date || null,
+        time: newBooking.time || null,
         priority: newBooking.priority,
         arrangement_id: newBooking.arrangement_id,
-        flower_type: flowerTypeSlug,
-        amount: parseFloat(newBooking.arrangement_price) || 0
+        flower_type: flowerTypeSlug
       };
       await api.post('/florist/bookings', payload);
 
@@ -211,10 +249,8 @@ const FlowerBookingsNew = () => {
       setNewBooking({
         arrangement_id: null,
         arrangement_name: '',
-        arrangement_price: '',
         deceased_name: '',
-        booked_by: '',
-        funeral_home: '',
+        booked_by: getLocalUserName(),
         date: '',
         time: '10:00',
         priority: 'Normal'
@@ -228,8 +264,7 @@ const FlowerBookingsNew = () => {
     setNewBooking(prev => ({
       ...prev,
       arrangement_id: arrangement.arrangement_id,
-      arrangement_name: arrangement.title,
-      arrangement_price: arrangement.price || ''
+      arrangement_name: arrangement.title
     }));
     setShowArrangementPicker(false);
   }, []);
@@ -248,12 +283,12 @@ const FlowerBookingsNew = () => {
     e.preventDefault();
     const form = e.target;
     const formData = new FormData(form);
-    
+
     try {
       const res = await api.post('/florist/flower-samples', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      
+
       const data = res.data;
       if (data.success) {
         showToast('Arrangement created successfully!');
@@ -274,11 +309,11 @@ const FlowerBookingsNew = () => {
         <div style={styles.nav}>
           <div style={styles.title}>
             <button style={styles.arrowBtn} onClick={() => calNav(-1)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
             </button>
             {MONTHS[d.getMonth()]} {d.getFullYear()}
             <button style={styles.arrowBtn} onClick={() => calNav(1)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
             </button>
           </div>
           <button style={styles.todayBtn} onClick={calToday}>Today</button>
@@ -289,7 +324,7 @@ const FlowerBookingsNew = () => {
           <button style={styles.viewBtn(view === 'samples')} onClick={() => setView('samples')}>Samples</button>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button 
+          <button
             style={{
               ...styles.placeBookingBtn,
               background: '#475A43',
@@ -297,11 +332,11 @@ const FlowerBookingsNew = () => {
             }}
             onClick={() => setShowCreateModal(true)}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             Create Arrangement
           </button>
           <button style={styles.placeBookingBtn} onClick={() => openNewBookingForm('')}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             Place Booking
           </button>
         </div>
@@ -310,11 +345,18 @@ const FlowerBookingsNew = () => {
   };
 
   const renderList = () => {
-    const sorted = [...bookings].sort((a, b) => new Date(a.delivery_date) - new Date(b.delivery_date));
+    // Group orders by their "Expected By" date. Orders placed without a
+    // deadline land in the "Awaiting Date" group at the end.
+    const sorted = [...bookings].sort((a, b) => {
+      const da = a.date ? new Date(a.date).getTime() : Infinity;
+      const db = b.date ? new Date(b.date).getTime() : Infinity;
+      return da - db;
+    });
     const groups = {};
     sorted.forEach(b => {
-      if (!groups[b.delivery_date]) groups[b.delivery_date] = [];
-      groups[b.delivery_date].push(b);
+      const key = b.date || 'unscheduled';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(b);
     });
 
     if (Object.keys(groups).length === 0) {
@@ -328,12 +370,14 @@ const FlowerBookingsNew = () => {
     }
 
     return Object.entries(groups).map(([date, dayBookings]) => {
-      const dateObj = new Date(date + 'T00:00:00');
+      const dateObj = date === 'unscheduled' ? null : new Date(date + 'T00:00:00');
       return (
         <div key={date} style={{ marginBottom: '32px' }}>
           <div style={styles.feedDateHeader}>
             <Calendar size={14} />
-            {dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            {dateObj
+              ? dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+              : 'No Expected Date Yet'}
           </div>
           {dayBookings.map(b => renderBookingCard(b))}
         </div>
@@ -345,14 +389,38 @@ const FlowerBookingsNew = () => {
     // Match booking with arrangement by name (flower_type stores the arrangement name)
     const product = arrangements.find(a => a.title === b.flower_type) || arrangements[0] || {
       title: b.flower_type || 'Custom Arrangement',
-      price: b.amount || 0,
       images: [],
       types: ['Custom']
     };
     const statusCfg = STATUS_FLOW.indexOf(b.status) >= 0 ? { label: STATUS_LABELS[b.status], color: '#2F4F3E', bg: '#f0f7f4' } : { label: b.status, color: '#64748b', bg: '#f1f5f9' };
 
+    // ── Expected By deadline ──
+    const expectedBy = b.date ? new Date(b.date + 'T' + (b.time || '00:00')) : null;
+    const isDone = b.status === 'completed';
+    const overdue = expectedBy && !isDone && expectedBy.getTime() < Date.now();
+
+    // ── Card background by state ──
+    //   critical (high priority, still pending) -> pinkish
+    //   dispatched / out for delivery           -> green
+    //   completed                               -> muted neutral
+    let cardBg = '#fff';
+    let cardBorder = '#EAE7E2';
+    if (b.priority === 'High' && b.status === 'pending') {
+      cardBg = '#FDEDF1';
+      cardBorder = '#F5C2CE';
+    } else if (b.status === 'transit') {
+      cardBg = '#E9F7EF';
+      cardBorder = '#BFE5D2';
+    } else if (isDone) {
+      cardBg = '#F6F5F2';
+      cardBorder = '#E5E2DC';
+    }
+
     return (
-      <div style={styles.bookingCard} onClick={() => viewBooking(b.id)}>
+      <div
+        style={{ ...styles.bookingCard, background: cardBg, borderColor: cardBorder }}
+        onClick={() => viewBooking(b.id)}
+      >
         <div style={styles.mediaThumb}>
           {product.images?.length > 0 ? (
             <img src={product.images[0]?.url || product.images[0]} alt={product.title} />
@@ -364,11 +432,22 @@ const FlowerBookingsNew = () => {
           <div style={styles.bookingName}>{product.title}</div>
           <div style={styles.bookingMeta}>
             <div><User size={12} /> {b.deceased_name}</div>
-            <div><MapPin size={12} /> {b.funeral_home} - {b.delivery_time}</div>
+            <div><User size={12} /> Booked by {b.booked_by || b.customer}</div>
+            <div><Home size={12} /> Flowers from: {b.branch || 'Not specified'}</div>
           </div>
         </div>
         <div style={styles.bookingRight}>
-          <div style={styles.bookingPrice}>${b.amount?.toFixed(2) || '---'}</div>
+          <div style={{
+            fontSize: '11px',
+            fontWeight: 700,
+            marginBottom: '6px',
+            color: overdue ? '#B91C1C' : '#574F47'
+          }}>
+            <Clock size={11} /> {expectedBy
+              ? `Expected by ${expectedBy.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${expectedBy.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`
+              : 'No deadline set'}
+            {overdue ? ' · OVERDUE' : ''}
+          </div>
           <div style={styles.pillsRow}>
             <span style={{ ...styles.priorityPill, background: b.priority === 'High' ? '#FEE2E2' : b.priority === 'Low' ? '#DCFCE7' : '#F1F5F9', color: b.priority === 'High' ? '#B91C1C' : b.priority === 'Low' ? '#166534' : '#475569' }}>
               {b.priority}
@@ -396,10 +475,10 @@ const FlowerBookingsNew = () => {
           <div style={styles.calTitle}>{MONTHS[month]} {year}</div>
           <div style={styles.calNav}>
             <button style={styles.calArrow} onClick={() => calNav(-1)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
             </button>
             <button style={styles.calArrow} onClick={() => calNav(1)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
             </button>
           </div>
         </div>
@@ -433,13 +512,12 @@ const FlowerBookingsNew = () => {
                 {visible.map(b => {
                   const product = arrangements.find(a => a.title === b.flower_type) || arrangements[0] || {
                     title: b.flower_type || 'Custom Arrangement',
-                    price: b.amount || 0,
                     images: [],
                     types: ['Custom']
                   };
                   return (
                     <div key={b.id} style={styles.calEvent}>
-                      {b.delivery_time} - {product.title.split(' ')[0]}
+                      {b.time ? b.time.slice(0, 5) : ''} {product.title.split(' ')[0]}
                     </div>
                   );
                 })}
@@ -509,8 +587,8 @@ const FlowerBookingsNew = () => {
                   background: '#1C1A17'
                 }}>
                   {arrangement.images?.length > 0 ? (
-                    <img 
-                      src={arrangement.images[0]?.url || arrangement.images[0]} 
+                    <img
+                      src={arrangement.images[0]?.url || arrangement.images[0]}
                       alt={arrangement.title}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
@@ -525,10 +603,10 @@ const FlowerBookingsNew = () => {
                     {arrangement.title}
                   </div>
                   <div style={{ fontSize: '13px', color: '#9C9389', marginBottom: '12px' }}>
-                    {arrangement.types?.[0] || 'Custom'} · ${arrangement.price || '0.00'}
+                    {arrangement.types?.[0] || 'Custom'}
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => {
                     selectArrangement(arrangement);
                     setView('new');
@@ -560,16 +638,16 @@ const FlowerBookingsNew = () => {
       <div style={styles.formContainer}>
         <div style={styles.formHeader}>
           <button style={styles.calArrow} onClick={() => setView('list')}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
           </button>
           <h2 style={styles.formTitle}>Place Order</h2>
         </div>
 
         <div style={styles.formSection}>
           <label style={styles.formLabel}>1. Select Arrangement</label>
-          
+
           {/* Arrangement Picker Button */}
-          <button 
+          <button
             style={{
               ...styles.inputIcon,
               cursor: 'pointer',
@@ -586,7 +664,7 @@ const FlowerBookingsNew = () => {
               </span>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showArrangementPicker ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-              <path d="m6 9 6 6 6-6"/>
+              <path d="m6 9 6 6 6-6" />
             </svg>
           </button>
 
@@ -612,11 +690,11 @@ const FlowerBookingsNew = () => {
                       key={arrangement.arrangement_id}
                       style={{
                         ...styles.productCard,
-                        border: newBooking.arrangement_id === arrangement.arrangement_id 
-                          ? '2px solid #2F4F3E' 
+                        border: newBooking.arrangement_id === arrangement.arrangement_id
+                          ? '2px solid #2F4F3E'
                           : '1px solid #EAE7E2',
-                        background: newBooking.arrangement_id === arrangement.arrangement_id 
-                          ? '#f0f7f4' 
+                        background: newBooking.arrangement_id === arrangement.arrangement_id
+                          ? '#f0f7f4'
                           : '#fff'
                       }}
                       onClick={() => selectArrangement(arrangement)}
@@ -628,8 +706,8 @@ const FlowerBookingsNew = () => {
                       )}
                       <div style={styles.productMedia}>
                         {arrangement.images?.length > 0 ? (
-                          <img 
-                            src={arrangement.images[0]?.url || arrangement.images[0]} 
+                          <img
+                            src={arrangement.images[0]?.url || arrangement.images[0]}
                             alt={arrangement.title}
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />
@@ -651,34 +729,19 @@ const FlowerBookingsNew = () => {
           )}
 
           {/* Manual Entry (if no arrangement selected) */}
-          <div style={styles.formGrid}>
-            <div style={styles.inputGroup}>
-              <div style={styles.inputIcon}>
-                <Flower2 size={18} />
-                <input
-                  type="text"
-                  placeholder="Arrangement Name (or type custom)"
-                  value={newBooking.arrangement_name}
-                  onChange={e => setNewBooking(prev => ({ ...prev, arrangement_name: e.target.value, arrangement_id: null }))}
-                  required
-                />
-              </div>
-            </div>
-            <div style={styles.inputGroup}>
-              <div style={styles.inputIcon}>
-                <span style={{ fontSize: '16px', fontWeight: 600, color: '#9C9389' }}>$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Price"
-                  value={newBooking.arrangement_price}
-                  onChange={e => setNewBooking(prev => ({ ...prev, arrangement_price: e.target.value }))}
-                />
-              </div>
+          <div style={styles.inputGroup}>
+            <div style={styles.inputIcon}>
+              <Flower2 size={18} />
+              <input
+                type="text"
+                placeholder="Arrangement Name (or type custom)"
+                value={newBooking.arrangement_name}
+                onChange={e => setNewBooking(prev => ({ ...prev, arrangement_name: e.target.value, arrangement_id: null }))}
+                required
+              />
             </div>
           </div>
-          
+
           {/* Show selected arrangement slug */}
           {newBooking.arrangement_id && (
             <div style={{
@@ -723,17 +786,8 @@ const FlowerBookingsNew = () => {
               </div>
             </div>
           </div>
-          <div style={styles.inputGroup}>
-            <div style={styles.inputIcon}>
-              <MapPin size={18} />
-              <input
-                type="text"
-                placeholder="Funeral Home Location"
-                value={newBooking.funeral_home}
-                onChange={e => setNewBooking(prev => ({ ...prev, funeral_home: e.target.value }))}
-                required
-              />
-            </div>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9C9389', margin: '10px 0 6px' }}>
+            Expected By — when should the flowers be ready? (optional)
           </div>
           <div style={styles.formGrid}>
             <div style={styles.inputGroup}>
@@ -743,7 +797,6 @@ const FlowerBookingsNew = () => {
                   type="date"
                   value={newBooking.date}
                   onChange={e => setNewBooking(prev => ({ ...prev, date: e.target.value }))}
-                  required
                 />
               </div>
             </div>
@@ -781,11 +834,6 @@ const FlowerBookingsNew = () => {
           </div>
         </div>
 
-        <div style={styles.summaryCard}>
-          <div style={styles.summaryTotal}>Total Amount</div>
-          <div style={styles.summaryPrice}>${parseFloat(newBooking.arrangement_price) ? parseFloat(newBooking.arrangement_price).toFixed(2) : '0.00'}</div>
-        </div>
-
         <button style={styles.submitBtn} onClick={submitBooking}>
           <Check size={18} />
           Confirm & Place Booking
@@ -799,7 +847,6 @@ const FlowerBookingsNew = () => {
     if (!b) return '';
     const product = arrangements.find(a => a.title === b.flower_type) || arrangements[0] || {
       title: b.flower_type || 'Custom Arrangement',
-      price: b.amount || 0,
       images: [],
       types: ['Custom']
     };
@@ -843,28 +890,28 @@ const FlowerBookingsNew = () => {
 
     return (
       <div style={styles.detailContainer}>
-          <div style={styles.detailHero}>
-            <div style={styles.carouselTrack}>
-              {product.images?.map((img, idx) => (
-                <div key={idx} style={styles.carouselSlide}>
-                  <img src={img.url || img} alt={product.title} />
-                </div>
-              ))}
-            </div>
+        <div style={styles.detailHero}>
+          <div style={styles.carouselTrack}>
+            {product.images?.map((img, idx) => (
+              <div key={idx} style={styles.carouselSlide}>
+                <img src={img.url || img} alt={product.title} />
+              </div>
+            ))}
+          </div>
           <button style={styles.detailBack} onClick={backToList}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
           </button>
         </div>
         <div style={styles.detailBody}>
           <div style={styles.chipRow}>
             <div style={styles.chipPrimary}>{b.booking_id}</div>
             <div style={styles.chip}>{product.types?.[0] || 'Custom'}</div>
-            <div style={styles.chip}>{b.delivery_time}</div>
+            {b.time && <div style={styles.chip}>{fmtTime(b.date ? b.date + 'T' + b.time : null)}</div>}
             <span style={{ ...styles.priorityPill, fontSize: '12px', padding: '6px 12px' }}>{b.priority} Priority</span>
           </div>
 
           <h2 style={styles.detailTitle}>{product.title}</h2>
-          <p style={styles.detailSubtitle}>Sympathy Floral Tribute · ${b.amount?.toFixed(2) || '0.00'}</p>
+          <p style={styles.detailSubtitle}>Sympathy Floral Tribute</p>
 
           <div style={styles.trackingCard}>
             <div style={styles.trackingHeader}>
@@ -898,15 +945,15 @@ const FlowerBookingsNew = () => {
             <div style={styles.detailItem}>
               <div style={styles.detailItemIcon}><MapPin size={22} /></div>
               <div style={styles.detailItemInfo}>
-                <div style={styles.detailLabel}>Funeral Home</div>
-                <div style={styles.detailValue}>{b.funeral_home || b.branch}</div>
+                <div style={styles.detailLabel}>Flowers Coming From</div>
+                <div style={styles.detailValue}>{b.branch || b.funeral_home || 'Not specified'}</div>
               </div>
             </div>
             <div style={styles.detailItem}>
               <div style={styles.detailItemIcon}><Calendar size={22} /></div>
               <div style={styles.detailItemInfo}>
-                <div style={styles.detailLabel}>Service Date</div>
-                <div style={styles.detailValue}>{fmtDateOnly(b.delivery_date)}</div>
+                <div style={styles.detailLabel}>Expected By</div>
+                <div style={styles.detailValue}>{b.date ? `${fmtDateOnly(b.date)}${b.time ? ' · ' + fmtTime(b.date + 'T' + b.time) : ''}` : 'Awaiting scheduling'}</div>
               </div>
             </div>
           </div>
@@ -935,7 +982,12 @@ const FlowerBookingsNew = () => {
         {view === 'list' && renderList()}
         {view === 'calendar' && renderCalendar()}
         {view === 'samples' && renderSamples()}
-        {view === 'new' && renderNewBooking()}
+        {view === 'new' && (
+          <>
+            <div style={styles.panelScrim} onClick={() => setView('list')} />
+            {renderNewBooking()}
+          </>
+        )}
       </div>
 
       {view === 'detail' && renderDetail()}
@@ -949,32 +1001,37 @@ const FlowerBookingsNew = () => {
         ))}
       </div>
 
-      {/* Create Arrangement Modal */}
+      <style>{`
+        @keyframes floristPanelIn { from { transform: translateX(48px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes floristFadeIn { from { opacity: 0; } to { opacity: 1; } }
+      `}</style>
+
+      {/* Create Arrangement Side Panel */}
       {showCreateModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '24px'
-        }} onClick={() => setShowCreateModal(false)}>
+        <>
           <div style={{
-            background: '#0a0b0c',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '16px',
-            maxWidth: '650px',
-            width: '100%',
-            maxHeight: '90vh',
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(28,26,23,0.45)',
+            backdropFilter: 'blur(2px)',
+            zIndex: 1000,
+            animation: 'floristFadeIn .2s ease'
+          }} onClick={() => setShowCreateModal(false)} />
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: 'min(520px, 100vw)',
+            background: '#fff',
+            zIndex: 1001,
             overflowY: 'auto',
-            animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
-          }} onClick={(e) => e.stopPropagation()}>
+            boxShadow: '-24px 0 60px rgba(28,26,23,0.14)',
+            animation: 'floristPanelIn .32s cubic-bezier(0.16,1,0.3,1)'
+          }}>
             <div style={{
               padding: '24px 28px',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              borderBottom: '1px solid #EAE7E2',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
@@ -983,15 +1040,15 @@ const FlowerBookingsNew = () => {
                 fontFamily: "'Playfair Display', serif",
                 fontSize: '24px',
                 fontWeight: 600,
-                color: '#fff',
+                color: '#1C1A17',
                 margin: 0
               }}>Create New Arrangement</h2>
-              <button 
+              <button
                 onClick={() => setShowCreateModal(false)}
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'rgba(255,255,255,0.4)',
+                  color: '#9C9389',
                   fontSize: '28px',
                   cursor: 'pointer',
                   padding: 0,
@@ -1012,7 +1069,7 @@ const FlowerBookingsNew = () => {
                   fontWeight: 600,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.35)',
+                  color: '#9C9389',
                   marginBottom: '8px'
                 }}>Title *</label>
                 <input
@@ -1022,12 +1079,12 @@ const FlowerBookingsNew = () => {
                   style={{
                     width: '100%',
                     padding: '12px 14px',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    border: '1px solid #EAE7E2',
                     borderRadius: '8px',
                     fontSize: '13px',
                     fontFamily: "'DM Sans', system-ui, sans-serif",
-                    background: 'rgba(255,255,255,0.02)',
-                    color: '#fff',
+                    background: '#FAF9F7',
+                    color: '#1C1A17',
                     outline: 'none'
                   }}
                   placeholder="e.g., White Rose Wreath"
@@ -1041,7 +1098,7 @@ const FlowerBookingsNew = () => {
                   fontWeight: 600,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.35)',
+                  color: '#9C9389',
                   marginBottom: '8px'
                 }}>Description *</label>
                 <textarea
@@ -1051,12 +1108,12 @@ const FlowerBookingsNew = () => {
                   style={{
                     width: '100%',
                     padding: '12px 14px',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    border: '1px solid #EAE7E2',
                     borderRadius: '8px',
                     fontSize: '13px',
                     fontFamily: "'DM Sans', system-ui, sans-serif",
-                    background: 'rgba(255,255,255,0.02)',
-                    color: '#fff',
+                    background: '#FAF9F7',
+                    color: '#1C1A17',
                     outline: 'none',
                     resize: 'vertical'
                   }}
@@ -1071,37 +1128,7 @@ const FlowerBookingsNew = () => {
                   fontWeight: 600,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.35)',
-                  marginBottom: '8px'
-                }}>Price (USD)</label>
-                <input
-                  type="number"
-                  name="price"
-                  min="0"
-                  step="0.01"
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontFamily: "'DM Sans', system-ui, sans-serif",
-                    background: 'rgba(255,255,255,0.02)',
-                    color: '#fff',
-                    outline: 'none'
-                  }}
-                  placeholder="e.g., 45.00"
-                />
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '9px',
-                  fontWeight: 600,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.35)',
+                  color: '#9C9389',
                   marginBottom: '8px'
                 }}>Types (comma-separated)</label>
                 <input
@@ -1111,12 +1138,12 @@ const FlowerBookingsNew = () => {
                   style={{
                     width: '100%',
                     padding: '12px 14px',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    border: '1px solid #EAE7E2',
                     borderRadius: '8px',
                     fontSize: '13px',
                     fontFamily: "'DM Sans', system-ui, sans-serif",
-                    background: 'rgba(255,255,255,0.02)',
-                    color: '#fff',
+                    background: '#FAF9F7',
+                    color: '#1C1A17',
                     outline: 'none'
                   }}
                   placeholder="e.g., Wreath, Spray, Bouquet"
@@ -1130,7 +1157,7 @@ const FlowerBookingsNew = () => {
                   fontWeight: 600,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.35)',
+                  color: '#9C9389',
                   marginBottom: '8px'
                 }}>Colors (comma-separated)</label>
                 <input
@@ -1140,12 +1167,12 @@ const FlowerBookingsNew = () => {
                   style={{
                     width: '100%',
                     padding: '12px 14px',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    border: '1px solid #EAE7E2',
                     borderRadius: '8px',
                     fontSize: '13px',
                     fontFamily: "'DM Sans', system-ui, sans-serif",
-                    background: 'rgba(255,255,255,0.02)',
-                    color: '#fff',
+                    background: '#FAF9F7',
+                    color: '#1C1A17',
                     outline: 'none'
                   }}
                   placeholder="e.g., White, Red, Pink"
@@ -1159,7 +1186,7 @@ const FlowerBookingsNew = () => {
                   fontWeight: 600,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.35)',
+                  color: '#9C9389',
                   marginBottom: '8px'
                 }}>Sizes (comma-separated)</label>
                 <input
@@ -1169,12 +1196,12 @@ const FlowerBookingsNew = () => {
                   style={{
                     width: '100%',
                     padding: '12px 14px',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    border: '1px solid #EAE7E2',
                     borderRadius: '8px',
                     fontSize: '13px',
                     fontFamily: "'DM Sans', system-ui, sans-serif",
-                    background: 'rgba(255,255,255,0.02)',
-                    color: '#fff',
+                    background: '#FAF9F7',
+                    color: '#1C1A17',
                     outline: 'none'
                   }}
                   placeholder="e.g., Small, Medium, Large"
@@ -1188,7 +1215,7 @@ const FlowerBookingsNew = () => {
                   fontWeight: 600,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.35)',
+                  color: '#9C9389',
                   marginBottom: '8px'
                 }}>Images (multiple)</label>
                 <input
@@ -1199,15 +1226,15 @@ const FlowerBookingsNew = () => {
                   style={{
                     width: '100%',
                     padding: '12px 14px',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    border: '1px solid #EAE7E2',
                     borderRadius: '8px',
                     fontSize: '13px',
                     fontFamily: "'DM Sans', system-ui, sans-serif",
-                    background: 'rgba(255,255,255,0.02)',
-                    color: '#fff'
+                    background: '#FAF9F7',
+                    color: '#1C1A17'
                   }}
                 />
-                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '6px' }}>
+                <p style={{ fontSize: '11px', color: '#B9B3AA', marginTop: '6px' }}>
                   You can select multiple images for this arrangement
                 </p>
               </div>
@@ -1217,28 +1244,28 @@ const FlowerBookingsNew = () => {
                 gap: '12px',
                 justifyContent: 'flex-end',
                 paddingTop: '20px',
-                borderTop: '1px solid rgba(255,255,255,0.06)'
+                borderTop: '1px solid #EAE7E2'
               }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setShowCreateModal(false)}
                   style={{
                     padding: '11px 20px',
                     borderRadius: '8px',
                     background: 'transparent',
-                    color: 'rgba(255,255,255,0.5)',
+                    color: '#574F47',
                     fontSize: '10px',
                     fontWeight: 600,
                     letterSpacing: '0.12em',
                     textTransform: 'uppercase',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid #EAE7E2',
                     cursor: 'pointer',
                     fontFamily: "'DM Sans', system-ui, sans-serif"
                   }}
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   style={{
                     padding: '11px 24px',
@@ -1259,7 +1286,7 @@ const FlowerBookingsNew = () => {
               </div>
             </form>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
@@ -1573,8 +1600,25 @@ const styles = {
     gap: '4px',
   },
   formContainer: {
-    maxWidth: '700px',
-    margin: '0 auto',
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 'min(560px, 100vw)',
+    background: '#fff',
+    zIndex: 1001,
+    overflowY: 'auto',
+    padding: '28px 28px 40px',
+    boxShadow: '-24px 0 60px rgba(28,26,23,0.14)',
+    animation: 'floristPanelIn .32s cubic-bezier(0.16,1,0.3,1)',
+  },
+  panelScrim: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(28,26,23,0.45)',
+    backdropFilter: 'blur(2px)',
+    zIndex: 1000,
+    animation: 'floristFadeIn .2s ease',
   },
   formHeader: {
     display: 'flex',

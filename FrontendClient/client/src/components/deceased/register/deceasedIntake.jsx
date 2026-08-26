@@ -5,18 +5,18 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { ENDPOINTS } from '../../../api/endpoints';
-import env from '../../../utils/config/env';
 import OfficialStamp from '../../stamp/stamp';
+import env from '../../../utils/config/env';
 import notify from '../../../utils/notify';
 import bwipjs from '@bwip-js/browser';
 import axios from 'axios';
 
 import {
-  Check, Loader2, CheckCircle, X, FileText, User,
-  RotateCcw, ShieldCheck, AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin
+  Check, Loader2, CheckCircle, X, FileText, User, RotateCcw, ShieldCheck,
+  AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin
 } from '../../../utils/icons/icons';
 
-// ─── Color Palette ──────────────────────────────────
+// ─── Color Palette ──
 const COLORS = {
   ink: '#03071E',
   bone: '#FAF8F4',

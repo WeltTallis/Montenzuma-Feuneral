@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import http from 'http';
+import path from 'path';
 import { Server as SocketIOServer } from 'socket.io';
 
 dotenv.config();

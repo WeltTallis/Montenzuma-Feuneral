@@ -1,23 +1,18 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 /* =========================================================
  * DayTimeline — standalone day timeline for Hearse bookings.
- *   - sticky hour header (06:00 → 22:00)
- *   - horizontal scrollable timeline with vertical grid
- *   - color-coded booking cards positioned by start time
- *   - click a card → right slide-in detail panel
- * Faithful React port of the compact day-timeline layout.
+ * Strictly fits 100% of the available width on ALL devices 
+ * without horizontal overflow using CSS percentages.
  * ========================================================= */
 
 /* Constants */
-const SH = 6, EH = 23, TH = EH - SH;
+const SH = 6;            // start hour 6 AM
+const EH = 23;           // end hour 11 PM
+const TH = EH - SH;
 const PAD = 24;
-const CW = 1600;
-const PPH = CW / TH;
-const CARD_W = 240, CARD_H = 98, GAP = 9;
-
-const h2x = (h) => PAD + (h - SH) * PPH;
+const CARD_H = 98, GAP = 9;
 
 /* Colour map (status → card colour) */
 const STATUS_COLOR = {
@@ -42,21 +37,39 @@ const fmtTime = (raw) => {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 
-/* Parse booking start hour as a decimal (0-24), or null if untimed */
+/* Parse booking hour as a decimal (0-24). */
 const bookingHour = (b) => {
-  const raw = String(b?.estimated_departure_time || b?.booking_date || b?.start_time || b?.start || '');
-  const m = raw.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (raw && m) {
-    let h = parseInt(m[1], 10);
-    const min = parseInt(m[2], 10);
-    const ap = m[3].toUpperCase();
-    if (ap === 'AM' && h === 12) h = 0;
-    if (ap === 'PM' && h !== 12) h += 12;
-    return h + min / 60;
-  }
-  if (raw) {
-    const d = new Date(raw);
-    if (!isNaN(d.getTime())) return d.getHours() + d.getMinutes() / 60;
+  const candidates = [
+    b?.estimated_departure_time,
+    b?.booking_date,
+    b?.start_time,
+    b?.start,
+    b?.created_at,
+    b?.createdAt,
+  ].filter(Boolean);
+
+  for (const raw of candidates) {
+    const r = String(raw).trim();
+    if (!r) continue;
+
+    const m = r.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (m) {
+      let h = parseInt(m[1], 10);
+      const min = parseInt(m[2], 10);
+      const ap = m[3].toUpperCase();
+      if (ap === 'AM' && h === 12) h = 0;
+      if (ap === 'PM' && h !== 12) h += 12;
+      return h + min / 60;
+    }
+
+    const d = new Date(r);
+    if (!isNaN(d.getTime())) {
+      const h = d.getHours();
+      const min = d.getMinutes();
+      if (r.includes('T') || r.includes(':') || h !== 0 || min !== 0) {
+        return h + min / 60;
+      }
+    }
   }
   return null;
 };
@@ -69,8 +82,10 @@ const parseBookingDate = (b, dateKey) => {
       const hit = arr.find((d) => String(d).split('T')[0].slice(0, 10) === dateKey);
       if (hit) return hit;
     }
-  } catch (e) { }
-  return String(b?.booking_date || '').split('T')[0].slice(0, 10) === dateKey ? b.booking_date : null;
+  } catch (e) { /* ignore */ }
+  const bd = b?.booking_date;
+  if (bd && String(bd).split('T')[0].slice(0, 10) === dateKey) return bd;
+  return null;
 };
 
 const dateKeyOf = (b) => {
@@ -84,8 +99,40 @@ const fmtDateLabel = (d) => {
   return new Date(d).toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 };
 
+/* Time-of-day label for a given hour */
+const timeOfDayLabel = (hour) => {
+  if (hour === null || hour === undefined) return 'Unscheduled';
+  if (hour < 12) return 'Morning';
+  if (hour < 14) return 'Midday';
+  if (hour < 17) return 'Afternoon';
+  if (hour < 21) return 'Evening';
+  return 'Night';
+};
+
+const hourToPercent = (h) => ((h - SH) / TH) * 100;
+
 const DayTimeline = ({ date, bookings = [], onClose, onItemClick }) => {
   const [selected, setSelected] = useState(null);
+  const scrollRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+
+  /* Track exact container width to dynamically adjust card sizes */
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const updateWidth = () => {
+      const newWidth = el.clientWidth;
+      setContainerWidth((prev) => (Math.abs(newWidth - prev) > 1 ? newWidth : prev));
+    };
+
+    updateWidth(); // Initial measurement
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(el);
+    
+    return () => observer.disconnect();
+  }, []);
 
   /* Bookings that fall on the selected date */
   const dayBookings = useMemo(() => {
@@ -103,11 +150,20 @@ const DayTimeline = ({ date, bookings = [], onClose, onItemClick }) => {
       .map((b) => ({ b, hour: bookingHour(b) }))
       .sort((a, z) => (a.hour ?? 12) - (z.hour ?? 12));
 
+    const cw = Math.max(320, containerWidth - PAD * 2); // Available width inside padding
+    const CARD_W_LOCAL = Math.max(120, Math.min(220, (cw / TH) * 3)); // Responsive card width
+
     const rows = [];
     return sorted.map(({ b, hour }) => {
-      const cx = h2x(hour ?? 12);
-      const x1 = cx - CARD_W / 2;
-      const x2 = cx + CARD_W / 2;
+      const effectiveHour = hour ?? 12;
+      const percent = hourToPercent(effectiveHour); // 0% to 100%
+      
+      let leftPx = (percent / 100) * cw - CARD_W_LOCAL / 2;
+      // Clamp strictly to viewport bounds
+      leftPx = Math.max(0, Math.min(leftPx, cw - CARD_W_LOCAL));
+      
+      const x1 = leftPx;
+      const x2 = leftPx + CARD_W_LOCAL;
       let row = 0;
       while (true) {
         const rowItems = rows[row] || (rows[row] = []);
@@ -115,30 +171,23 @@ const DayTimeline = ({ date, bookings = [], onClose, onItemClick }) => {
         if (!clash) { rowItems.push([x1, x2]); break; }
         row++;
       }
-      return { b, hour, x: cx - CARD_W / 2, y: row * (CARD_H + GAP) };
+      return { b, hour: effectiveHour, x: leftPx, y: row * (CARD_H + GAP), cardW: CARD_W_LOCAL };
     });
-  }, [dayBookings]);
-
-  useEffect(() => {
-    if (!date) return;
-    const el = document.getElementById('day-timeline-scroll');
-    if (el) el.scrollTo({ left: Math.max(0, h2x(13) - el.clientWidth / 2), behavior: 'smooth' });
-  }, [date]);
+  }, [dayBookings, containerWidth]);
 
   if (!date) return null;
 
   return createPortal(
-    <div className="day-timeline-root" style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(15,17,23,0.28)', display: 'flex', flexDirection: 'column' }}>
+    <div className="day-timeline-root" style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(15,17,23,0.28)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <style>{`
-        .rtl-tl-scroll-x { overflow-x: auto; scrollbar-width: none; }
-        .rtl-tl-scroll-x::-webkit-scrollbar { display: none; }
         .rtl-tl-card{
-          position: absolute; width: ${CARD_W}px; padding: 10px 12px; border-radius: 10px;
+          position: absolute; padding: 10px 12px; border-radius: 10px;
           cursor: pointer; transition: transform .15s, box-shadow .15s; z-index: 10;
         }
         .rtl-tl-card:hover{ transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.22); z-index: 12; }
         .rtl-tl-panel-row{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:8px; margin-bottom:5px; }
       `}</style>
+
       {/* Header bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12,
@@ -163,76 +212,140 @@ const DayTimeline = ({ date, bookings = [], onClose, onItemClick }) => {
 
       {/* Body */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff', overflow: 'hidden' }}>
-        {/* Time header */}
-        <div className="rtl-tl-scroll-x" style={{ background: '#fff', borderBottom: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', minWidth: PAD * 2 + CW, padding: '0 0 12px', position: 'relative' }}>
-            {(() => {
-              const marks = [];
-              for (let h = SH; h <= EH; h += 2) {
-                const label = h === 0 ? '12 AM' : h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h - 12} PM`;
-                const major = h % 2 === 0;
-                marks.push(
-                  <div key={h} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: PPH * 2, flexShrink: 0, padding: '0 8px' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: major ? '#1a1a2e' : '#a0a3b1' }}>{label}</span>
-                    <div style={{ width: 1, height: major ? 10 : 6, background: major ? '#a0a3b1' : '#d4d6de', marginTop: 4 }} />
-                  </div>
-                );
-              }
-              return marks;
-            })()}
-          </div>
-        </div>
-        <div style={{ borderBottom: '1px solid #e2e4ea' }} />
-
-        {/* Timeline scrollable body */}
+        
+        {/* Timeline scrollable body (Only vertical scroll allowed) */}
         <div
+          ref={scrollRef}
           id="day-timeline-scroll"
-          style={{ flex: 1, overflowX: 'auto', overflowY: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#e2e4ea transparent' }}
+          style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'thin', scrollbarColor: '#e2e4ea transparent' }}
         >
-          <div style={{ position: 'relative', minWidth: PAD * 2 + CW, minHeight: cards.length * (CARD_H + GAP) + 24 }}>
-            {(() => {
-              const grid = [];
-              for (let h = SH; h <= EH; h += 1) {
-                grid.push(
-                  <div key={h} style={{
-                    position: 'absolute', top: 0, bottom: 0, left: h2x(h), width: 1,
-                    background: h % 2 === 0 ? '#e7e9ef' : '#f0f1f4', pointerEvents: 'none',
-                  }} />
-                );
-              }
-              return grid;
-            })()}
+          {/* Inner wrapper takes exactly 100% width */}
+          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            
+            {/* Sticky Time Header */}
+            <div style={{ position: 'sticky', top: 0, zIndex: 20, background: '#fff', height: 40, borderBottom: '1px solid #e2e4ea', marginBottom: 10 }}>
+              {/* Apply padding wrapper so 0% aligns perfectly with timeline body */}
+              <div style={{ position: 'relative', width: '100%', height: '100%', padding: `0 ${PAD}px`, boxSizing: 'border-box' }}>
+                {(() => {
+                  const marks = [];
+                  for (let h = SH; h <= EH; h += 2) {
+                    const label = h === 0 ? '12 AM' : h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h - 12} PM`;
+                    const major = h % 2 === 0;
+                    marks.push(
+                      <div key={h} style={{ 
+                        position: 'absolute', 
+                        bottom: 4,
+                        left: `${hourToPercent(h)}%`, 
+                        transform: 'translateX(-50%)', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center',
+                        pointerEvents: 'none'
+                      }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: major ? '#1a1a2e' : '#a0a3b1' }}>{label}</span>
+                        <div style={{ width: 1, height: major ? 10 : 6, background: major ? '#a0a3b1' : '#d4d6de', marginTop: 4 }} />
+                      </div>
+                    );
+                  }
+                  return marks;
+                })()}
+              </div>
+            </div>
 
-            {cards.map(({ b, hour, x, y }) => {
-              const statusC = STATUS_COLOR[b?.status] || '#475569';
-              const startLabel = fmtTime(parseBookingDate(b, String(date).slice(0, 10)) || b?.booking_date || b?.estimated_departure_time);
-              const cat = b?.status || 'booked';
-              return (
-                <div
-                  key={b.booking_id || b.id || `${x}-${y}`}
-                  className="rtl-tl-card"
-                  style={{ left: x, top: y, background: statusC, opacity: 0.95 }}
-                  onClick={() => setSelected(b)}
-                >
-                  <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.55, color: '#fff', marginBottom: 1 }}>
-                    ⏰ {startLabel}
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {b.client_name || b.client || 'Client'}
-                  </div>
-                  <span style={{
-                    display: 'inline-block', fontSize: 9, fontWeight: 700, padding: '2px 7px',
-                    borderRadius: 20, marginTop: 5, textTransform: 'uppercase', letterSpacing: '.3px',
-                    background: 'rgba(255,255,255,0.22)', color: 'rgba(255,255,255,0.92)',
-                  }}>
-                    {cat}
-                  </span>
-                </div>
-              );
-            })}
+            {/* Timeline Body */}
+            <div style={{ position: 'relative', width: '100%', minHeight: Math.max(cards.length * (CARD_H + GAP) + 24, 200) }}>
+              {/* Apply padding wrapper so absolute positions match header */}
+              <div style={{ position: 'relative', width: '100%', height: '100%', padding: `0 ${PAD}px`, boxSizing: 'border-box' }}>
+                
+                {/* Vertical grid lines */}
+                {(() => {
+                  const grid = [];
+                  for (let h = SH; h <= EH; h += 1) {
+                    grid.push(
+                      <div key={h} style={{
+                        position: 'absolute', top: 0, bottom: 0, 
+                        left: `${hourToPercent(h)}%`, 
+                        transform: 'translateX(-50%)',
+                        width: 1,
+                        background: h % 2 === 0 ? '#e7e9ef' : '#f0f1f4', pointerEvents: 'none',
+                      }} />
+                    );
+                  }
+                  return grid;
+                })()}
+
+                {/* Time-of-day band labels (Morning / Midday / Afternoon / Evening) */}
+                {[
+                  { from: 6,  to: 12, label: 'Morning',    color: '#fef3c7' },
+                  { from: 12, to: 14, label: 'Midday',     color: '#dbeafe' },
+                  { from: 14, to: 17, label: 'Afternoon',  color: '#e0e7ff' },
+                  { from: 17, to: 21, label: 'Evening',    color: '#ede9fe' },
+                  { from: 21, to: 23, label: 'Night',      color: '#f3f4f6' },
+                ].map((band) => (
+                  <div key={band.label} style={{
+                    position: 'absolute', top: 0, bottom: 0,
+                    left: `${hourToPercent(band.from)}%`, 
+                    width: `${hourToPercent(band.to) - hourToPercent(band.from)}%`,
+                    background: band.color, opacity: 0.35, pointerEvents: 'none',
+                  }} />
+                ))}
+                {[
+                  { from: 6,  to: 12, label: 'MORNING' },
+                  { from: 12, to: 14, label: 'MIDDAY' },
+                  { from: 14, to: 17, label: 'AFTERNOON' },
+                  { from: 17, to: 21, label: 'EVENING' },
+                  { from: 21, to: 23, label: 'NIGHT' },
+                ].map((band) => (
+                  <div key={`lbl-${band.label}`} style={{
+                    position: 'absolute', top: 6,
+                    left: `${hourToPercent(band.from)}%`, 
+                    transform: 'translateX(4px)',
+                    pointerEvents: 'none',
+                    fontSize: 9, fontWeight: 800, letterSpacing: '1.2px',
+                    color: 'rgba(0,0,0,0.35)', textTransform: 'uppercase',
+                  }}>{band.label}</div>
+                ))}
+
+                {/* Booking cards */}
+                {cards.map(({ b, hour, x, y, cardW }) => {
+                  const statusC = STATUS_COLOR[b?.status] || '#475569';
+                  const startLabel = fmtTime(
+                    parseBookingDate(b, String(date).slice(0, 10)) ||
+                    b?.estimated_departure_time ||
+                    b?.booking_date ||
+                    b?.created_at
+                  ) || 'All day';
+                  const cat = b?.status || 'booked';
+                  const tod = timeOfDayLabel(hour);
+                  return (
+                    <div
+                      key={b.booking_id || b.id || `${x}-${y}`}
+                      className="rtl-tl-card"
+                      style={{ left: x, top: y, width: cardW, background: statusC, opacity: 0.95 }}
+                      onClick={() => setSelected(b)}
+                    >
+                      <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.7, color: '#fff', marginBottom: 1 }}>
+                        ⏰ {startLabel} · {tod}
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {b.client_name || b.client || 'Client'}
+                      </div>
+                      <span style={{
+                        display: 'inline-block', fontSize: 9, fontWeight: 700, padding: '2px 7px',
+                        borderRadius: 20, marginTop: 5, textTransform: 'uppercase', letterSpacing: '.3px',
+                        background: 'rgba(255,255,255,0.22)', color: 'rgba(255,255,255,0.92)',
+                      }}>
+                        {cat}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
       {/* Side detail panel */}
       <div
         style={{
@@ -277,12 +390,13 @@ const DayTimeline = ({ date, bookings = [], onClose, onItemClick }) => {
                 Booking Details
               </div>
               {[
-                { id: 'id', label: 'Booking ID', value: selected.booking_code || selected.booking_id || '—', icon: '🗓' },
-                { id: 'time', label: 'Time', value: fmtTime(selected.estimated_departure_time || selected.booking_date || '') || 'All day', icon: '⏰' },
-                { id: 'from', label: 'From', value: selected.from_location || selected.from || selected.origin || '—', icon: '📍' },
-                { id: 'loc', label: 'Location', value: selected.destination || selected.to_location || '—', icon: '🏁' },
-                { id: 'plate', label: 'Hearse', value: `${selected.hearse_name || ''} ${selected.plate_number || selected.number_plate || selected.hearse_plate || ''}`.trim() || '—', icon: '🚚' },
-                { id: 'branch', label: 'Branch', value: selected.branch_name || selected.branch || '—', icon: '🏢' },
+                { label: 'Booking ID', value: selected.booking_code || selected.booking_id || '—', icon: '🗓' },
+                { label: 'Time', value: fmtTime(selected.estimated_departure_time || selected.booking_date || selected.created_at) || 'All day', icon: '⏰' },
+                { label: 'Time of Day', value: timeOfDayLabel(bookingHour(selected)), icon: '🌤' },
+                { label: 'From', value: selected.from_location || selected.from || selected.origin || '—', icon: '📍' },
+                { label: 'Location', value: selected.destination || selected.to_location || '—', icon: '🏁' },
+                { label: 'Hearse', value: `${selected.hearse_name || ''} ${selected.plate_number || selected.number_plate || selected.hearse_plate || ''}`.trim() || '—', icon: '🚚' },
+                { label: 'Branch', value: selected.branch_name || selected.branch || '—', icon: '🏢' },
               ].map((r) => (
                 <div key={r.label} className="rtl-tl-panel-row" style={{ background: '#f9f9fb' }}>
                   <div style={{ width: 30, height: 30, borderRadius: 7, background: STATUS_COLOR[selected.status] || '#475569', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>
@@ -295,7 +409,7 @@ const DayTimeline = ({ date, bookings = [], onClose, onItemClick }) => {
                 </div>
               ))}
 
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.7px', color: '#c0c2cc', marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.7px', color: '#c0c2cc', marginBottom: 8, marginTop: 12 }}>
                 Client Contact
               </div>
               <div className="rtl-tl-panel-row" style={{ background: '#f9f9fb' }}>

@@ -1,11 +1,12 @@
+
+import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
+import { todayKey } from '../../../utils/dates/parseDates';
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { C, formatDate } from './theme';
-import { todayKey } from '../../../utils/dates/parseDates';
-import axios from 'axios';
 import env from '../../../utils/config/env';
-import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import { showToast } from '../../../utils/toast';
+import axios from 'axios';
 
 const SectionHead = styled.div`
   font-size: 12px; 
@@ -245,7 +246,10 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
       const paidTotal = sumBy(payments, cur, p => p.amount);
       return { currency: cur, chargesTotal, paidTotal, balance: chargesTotal - paidTotal };
     })
-    .filter(r => r.chargesTotal !== 0 || r.paidTotal !== 0 || r.currency === 'USD');
+    // Only show currencies that actually have billing/payment activity.
+    // This hides the all-zero row (e.g. "USD 0.00 / Balance Due 0.00")
+    // when everything is billed and paid in KES.
+    .filter(r => r.chargesTotal !== 0 || r.paidTotal !== 0);
 
   // Load payments from API
   useEffect(() => {
@@ -260,11 +264,11 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || localStorage.getItem('authToken') || '';
       const response = await axios.get(
         `${env.FULL_API_URL}/payments/${deceasedId}`,
-        { 
-          headers: { 
+        {
+          headers: {
             'x-tenant-slug': tenantSlug,
             'Authorization': `Bearer ${token}`
-          } 
+          }
         }
       );
       if (response.data?.success) {
@@ -277,7 +281,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
 
   const handleRecordPayment = async (e) => {
     e.preventDefault();
-    
+
     if (!paymentForm.amount || !paymentForm.reference) {
       showToast.error('Please fill in all required fields');
       return;
@@ -287,7 +291,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
     try {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || localStorage.getItem('authToken') || '';
-      
+
       const userEmail = (() => {
         try {
           const userStr = localStorage.getItem('user');
@@ -300,7 +304,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
         }
         return 'Unknown';
       })();
-      
+
       const response = await axios.post(
         `${env.FULL_API_URL}/payments`,
         {
@@ -313,11 +317,11 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           description: paymentForm.description || null,
           recorded_by: userEmail
         },
-        { 
-          headers: { 
+        {
+          headers: {
             'x-tenant-slug': tenantSlug,
             'Authorization': `Bearer ${token}`
-          } 
+          }
         }
       );
 
@@ -427,26 +431,33 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
       {/* Sleek 3-column Financial Summary - grouped per currency (USD-first) */}
       <SectionHead $mt0><span>01</span> Financial Summary</SectionHead>
       <SummaryGrid>
-        {summaryRows.map(row => (
-          <React.Fragment key={row.currency}>
-            <DetailItem>
-              <DetailLabel $color="#1e40af">Total Charges ({row.currency})</DetailLabel>
-              <DetailValue $color="#1e3a8a">{fmtMoney(row.chargesTotal, row.currency)}</DetailValue>
-            </DetailItem>
-            <DetailItem>
-              <DetailLabel $color="#047857">Amount Paid ({row.currency})</DetailLabel>
-              <DetailValue $color="#064e3b">{fmtMoney(row.paidTotal, row.currency)}</DetailValue>
-            </DetailItem>
-            <DetailItem>
-              <DetailLabel $color={row.balance < 0 ? '#047857' : '#b91c1c'}>
-                {row.balance < 0 ? 'Credit / Overpayment' : 'Balance Due'}
-              </DetailLabel>
-              <DetailValue $color={row.balance < 0 ? '#064e3b' : '#7f1d1d'}>
-                {fmtMoney(Math.abs(row.balance), row.currency)}
-              </DetailValue>
-            </DetailItem>
-          </React.Fragment>
-        ))}
+        {summaryRows.length === 0 ? (
+          <DetailItem>
+            <DetailLabel $color={C.gray}>No charges or payments recorded yet</DetailLabel>
+            <DetailValue style={{ fontSize: '1rem' }} $color={C.gray}>—</DetailValue>
+          </DetailItem>
+        ) : (
+          summaryRows.map(row => (
+            <React.Fragment key={row.currency}>
+              <DetailItem>
+                <DetailLabel $color="#1e40af">Total Charges ({row.currency})</DetailLabel>
+                <DetailValue $color="#1e3a8a">{fmtMoney(row.chargesTotal, row.currency)}</DetailValue>
+              </DetailItem>
+              <DetailItem>
+                <DetailLabel $color="#047857">Amount Paid ({row.currency})</DetailLabel>
+                <DetailValue $color="#064e3b">{fmtMoney(row.paidTotal, row.currency)}</DetailValue>
+              </DetailItem>
+              <DetailItem>
+                <DetailLabel $color={row.balance < 0 ? '#047857' : '#b91c1c'}>
+                  {row.balance < 0 ? 'Credit / Overpayment' : 'Balance Due'}
+                </DetailLabel>
+                <DetailValue $color={row.balance < 0 ? '#064e3b' : '#7f1d1d'}>
+                  {fmtMoney(Math.abs(row.balance), row.currency)}
+                </DetailValue>
+              </DetailItem>
+            </React.Fragment>
+          ))
+        )}
       </SummaryGrid>
 
       {/* Individual charges - bill per deceased */}
@@ -556,8 +567,8 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
         <FormRow>
           <FormGroup>
             <FormLabel>Date</FormLabel>
-            <FormInput 
-              type="date" 
+            <FormInput
+              type="date"
               value={paymentForm.date}
               onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
               required
@@ -565,7 +576,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           </FormGroup>
           <FormGroup>
             <FormLabel>Currency</FormLabel>
-            <FormSelect 
+            <FormSelect
               value={paymentForm.currency}
               onChange={(e) => setPaymentForm({ ...paymentForm, currency: e.target.value })}
             >
@@ -575,7 +586,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           </FormGroup>
           <FormGroup>
             <FormLabel>Payment Method</FormLabel>
-            <FormSelect 
+            <FormSelect
               value={paymentForm.payment_method}
               onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
             >
@@ -587,7 +598,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           </FormGroup>
           <FormGroup>
             <FormLabel>Reference Number</FormLabel>
-            <FormInput 
+            <FormInput
               placeholder="e.g. QXR89YU72"
               value={paymentForm.reference}
               onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
@@ -596,8 +607,8 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           </FormGroup>
           <FormGroup>
             <FormLabel>Amount ({paymentForm.currency === 'KES' ? 'KES' : 'USD'})</FormLabel>
-            <FormInput 
-              type="number" 
+            <FormInput
+              type="number"
               placeholder="0.00"
               value={paymentForm.amount}
               onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
@@ -606,7 +617,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           </FormGroup>
           <FormGroup style={{ flex: 2, minWidth: '200px' }}>
             <FormLabel>Description / Notes (Optional)</FormLabel>
-            <FormInput 
+            <FormInput
               placeholder="e.g. Facility fee, Coffin, Embalming, etc."
               value={paymentForm.description}
               onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}

@@ -259,21 +259,27 @@ export const registerNewDeceased = async (
         // AUTO-REGISTER NEXT OF KIN - REMOVED verified_by
         // ==============================
         let nextOfKinRegistered = false;
-        if (data.contact_person || data.tell_no) {
+        const hasNokInfo = !!(data.contact_person || data.tell_no || data.relationship || data.national_id);
+        if (hasNokInfo) {
             try {
+                // Normalize the ID type to the next_of_kin ENUM values
+                const rawIdType = String(data.id_type || '').toLowerCase().replace(/\s+/g, '-');
+                const validIdType = ['national-id', 'passport', 'voters-card', 'other'].includes(rawIdType)
+                    ? rawIdType
+                    : (rawIdType ? 'other' : null);
+
                 const nextOfKinData = {
                     deceased_id,
                     full_name: data.contact_person || 'Not Provided',
                     relationship: data.relationship || 'Not Specified',
                     contact: data.tell_no || '',
                     email: data.email || null,
-                    alternative_phone: data.alternative_phone || null,
+                    alternative_contact: data.alternative_phone || null,
                     id_number: data.national_id || null,
-                    id_type: data.id_type || null,
+                    id_type: validIdType,
                     address: null,
                     signature: signaturePath,
                     is_primary: true,
-                    // REMOVED: created_by: data.verified_by || null
                 };
 
                 await NextOfKinModel.create(req, nextOfKinData);

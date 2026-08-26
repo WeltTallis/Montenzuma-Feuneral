@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hearse Daily Dispatch</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fff;
+            --bg-s: #FAFAFA;
+            --bg-h: #F5F5F5;
+            --bdr: #EEEEEE;
+            --bdr-l: #F0F0F0;
+            --tx: #000;
+            --mt: #888;
+            --dm: #BBB;
+            --gn: #059669;
+            --rd: #DC2626;
+            --bl: #2563EB;
+            --am: #D97706;
+            --pp: #7C3AED;
+            --or: #EA580C;
+            --r: 12px;
+            --rs: 8px;
+            --sw: 440px;
+            --sh: 0 4px 16px rgba(0, 0, 0, .06);
+            --sh-lg: 0 12px 40px rgba(0, 0, 0, .1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--tx);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column
+        }
+
+        .topbar {
+            height: 58px;
+            border-bottom: 1px solid var(--bdr);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            flex-shrink: 0;
+            z-index: 20
+        }
+
+        .tb-l {
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        .logo {
+            width: 30px;
+            height: 30px;
+            background: var(--tx);
+            border-radius: 7px;
+            display: grid;
+            place-items: center
+        }
+
+        .logo svg {
+            width: 13px;
+            height: 13px
+        }
+
+        .brand {
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: -.4px
+        }
+
+        .brand span {
+            color: var(--mt);
+            font-weight: 500
+        }
+
+        .tb-c {
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .nbtn {
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--bdr);
+            background: var(--bg);
+            border-radius: var(--rs);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            transition: all .15s
+        }
+
+        .nbtn:hover {
+            background: var(--tx);
+            color: #fff;
+            border-color: var(--tx)
+        }
+
+        .dlbl {
+            font-size: 13px;
+            font-weight: 700;
+            min-width: 260px;
+            text-align: center;
+            letter-spacing: -.2px
+        }
+
+        .tbtn {
+            padding: 5px 11px;
+            border: 1px solid var(--bdr);
+            background: var(--bg);
+            border-radius: var(--rs);
+            font-size: 9px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .15s;
+            font-family: inherit
+        }
+
+        .tbtn:hover {
+            background: var(--tx);
+            color: #fff;
+            border-color: var(--tx)
+        }
+
+        .abtn {
+            padding: 5px 14px;
+            background: var(--tx);
+            color: #fff;
+            border: none;
+            border-radius: var(--rs);
+            font-size: 9px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all .15s;
+            font-family: inherit
+        }
+
+        .abtn:hover {
+            background: #222;
+            transform: translateY(-1px);
+            box-shadow: var(--sh)
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative
+        }
+
+        .cal {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            transition: margin-right .35s cubic-bezier(.22, 1, .36, 1);
+            overflow: hidden
+        }
+
+        .cal.sh {
+            margin-right: var(--sw)
+        }
+
+        .srow {
+            display: flex;
+            gap: 6px;
+            padding: 12px 28px 4px;
+            flex-shrink: 0
+        }
+
+        .sc {
+            flex: 1;
+            background: var(--bg-s);
+            border: 1px solid var(--bdr);
+            border-radius: var(--r);
+            padding: 9px 12px 9px 14px;
+            position: relative;
+            overflow: hidden
+        }
+
+        .sc::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%
+        }
+
+        .sc-b::after {
+            background: var(--bl)
+        }
+
+        .sc-r::after {
+            background: var(--rd)
+        }
+
+        .sc-g::after {
+            background: var(--gn)
+        }
+
+        .sc-a::after {
+            background: var(--am)
+        }
+
+        .sc-p::after {
+            background: var(--pp)
+        }
+
+        .sl {
+            font-size: 7px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: var(--mt);
+            margin-bottom: 0
+        }
+
+        .sv {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -.4px
+        }
+
+        .brow {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 0 28px 6px;
+            flex-shrink: 0;
+            flex-wrap: wrap
+        }
+
+        .bi {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 8px;
+            font-weight: 600;
+            color: var(--mt)
+        }
+
+        .bdd {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%
+        }
+
+        .gw {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 28px 20px;
+            position: relative
+        }
+
+        .gw::-webkit-scrollbar {
+            width: 4px
+        }
+
+        .gw::-webkit-scrollbar-track {
+            background: transparent
+        }
+
+        .gw::-webkit-scrollbar-thumb {
+            background: var(--bdr);
+            border-radius: 2px
+        }
+
+        .fl {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 15;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            pointer-events: none
+        }
+
+        .fb {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 50px;
+            font-size: 8px;
+            font-weight: 700;
+            box-shadow: var(--sh-lg);
+            animation: fi .5s cubic-bezier(.22, 1, .36, 1) both;
+            pointer-events: auto;
+            white-space: nowrap;
+            background: #fff;
+            border: 1px solid var(--bdr)
+        }
+
+        .fp {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            position: relative;
+            flex-shrink: 0
+        }
+
+        .fp::after {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            opacity: .4;
+            animation: pu 2s ease-in-out infinite
+        }
+
+        @keyframes pu {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: .4
+            }
+
+            50% {
+                transform: scale(1.8);
+                opacity: 0
+            }
+        }
+
+        @keyframes fi {
+            from {
+                opacity: 0;
+                transform: translateX(14px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0)
+            }
+        }
+
+        .dh {
+            display: grid;
+            grid-template-columns: 56px 1fr;
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 8;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--bdr)
+        }
+
+        .dhs {
+            border-right: 1px solid var(--bdr-l)
+        }
+
+        .dhc {
+            padding: 5px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        .dhc .dn {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--dm);
+            text-transform: uppercase;
+            letter-spacing: .7px
+        }
+
+        .dhc .dd {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -.5px
+        }
+
+        .dhc .dd.tm {
+            color: var(--gn)
+        }
+
+        .dhc .db {
+            padding: 2px 8px;
+            border-radius: 50px;
+            font-size: 8px;
+            font-weight: 700;
+            background: var(--bg-s);
+            border: 1px solid var(--bdr);
+            color: var(--mt)
+        }
+
+        .dhc .dr {
+            margin-left: auto;
+            font-size: 8px;
+            font-weight: 600;
+            color: var(--dm);
+            letter-spacing: .3px
+        }
+
+        .tg {
+            display: grid;
+            grid-template-columns: 56px 1fr;
+            position: relative
+        }
+
+        .tl {
+            height: 68px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-end;
+            padding: 0 8px 0 0;
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--dm);
+            border-right: 1px solid var(--bdr-l);
+            transform: translateY(-5px)
+        }
+
+        .dc {
+            position: relative
+        }
+
+        .hc {
+            height: 68px;
+            border-bottom: 1px solid var(--bdr-l);
+            cursor: pointer;
+            transition: background .1s;
+            position: relative
+        }
+
+        .hc:hover {
+            background: var(--bg-h)
+        }
+
+        .hc::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            border-bottom: 1px dashed rgba(0, 0, 0, .03);
+            pointer-events: none
+        }
+
+        .bb {
+            position: absolute;
+            border-radius: 6px;
+            padding: 5px 7px;
+            font-size: 11px;
+            cursor: pointer;
+            overflow: hidden;
+            z-index: 5;
+            color: #fff;
+            transition: all .18s;
+            animation: bi .35s cubic-bezier(.22, 1, .36, 1) both;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .18)
+        }
+
+        .bb:hover {
+            transform: scale(1.012);
+            z-index: 9;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, .28)
+        }
+
+        @keyframes bi {
+            from {
+                opacity: 0;
+                transform: scaleY(.88) translateY(3px)
+            }
+
+            to {
+                opacity: 1;
+                transform: scaleY(1) translateY(0)
+            }
+        }
+
+        .bb-br {
+            font-size: 6px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            opacity: .85;
+            margin-bottom: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .bb-cl {
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .bb-tm {
+            font-size: 7px;
+            opacity: .8;
+            font-weight: 500;
+            margin-top: 0
+        }
+
+        .bb-ds {
+            font-size: 7px;
+            opacity: .7;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 0
+        }
+
+        .bb-dt {
+            font-size: 7px;
+            opacity: .65;
+            margin-top: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .bb-sp {
+            position: absolute;
+            top: 3px;
+            right: 4px;
+            padding: 1px 5px;
+            border-radius: 50px;
+            font-size: 5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, .22);
+            letter-spacing: .2px
+        }
+
+        .bb-pl {
+            position: absolute;
+            bottom: 3px;
+            right: 4px;
+            font-size: 6px;
+            font-weight: 700;
+            opacity: .7
+        }
+
+        .nl {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--gn);
+            z-index: 10;
+            pointer-events: none
+        }
+
+        .nl::before {
+            content: '';
+            position: absolute;
+            left: -4px;
+            top: -3px;
+            width: 8px;
+            height: 8px;
+            background: var(--gn);
+            border-radius: 50%
+        }
+
+        .nl-l {
+            position: absolute;
+            right: 0;
+            top: -16px;
+            font-size: 7px;
+            font-weight: 700;
+            color: var(--gn);
+            background: var(--bg);
+            padding: 0 3px;
+            border-radius: 2px
+        }
+
+        .sov {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .1);
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .3s
+        }
+
+        .sov.op {
+            opacity: 1;
+            pointer-events: auto
+        }
+
+        .sb {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: var(--sw);
+            height: 100vh;
+            background: var(--bg);
+            border-left: 1px solid var(--bdr);
+            z-index: 60;
+            transform: translateX(100%);
+            transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+            display: flex;
+            flex-direction: column;
+            box-shadow: -8px 0 40px rgba(0, 0, 0, .04)
+        }
+
+        .sb.op {
+            transform: translateX(0)
+        }
+
+        .sbh {
+            padding: 18px 22px 14px;
+            border-bottom: 1px solid var(--bdr);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0
+        }
+
+        .sbh h3 {
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: -.3px
+        }
+
+        .cbtn {
+            width: 26px;
+            height: 26px;
+            border: 1px solid var(--bdr);
+            background: var(--bg);
+            border-radius: var(--rs);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            transition: all .15s;
+            flex-shrink: 0
+        }
+
+        .cbtn:hover {
+            background: var(--tx);
+            color: #fff;
+            border-color: var(--tx)
+        }
+
+        .sbd {
+            flex: 1;
+            overflow-y: auto;
+            padding: 18px 22px
+        }
+
+        .sbd::-webkit-scrollbar {
+            width: 3px
+        }
+
+        .sbd::-webkit-scrollbar-thumb {
+            background: var(--bdr);
+            border-radius: 2px
+        }
+
+        .scb {
+            height: 3px;
+            border-radius: 2px;
+            margin-bottom: 14px
+        }
+
+        .sbs {
+            margin-bottom: 18px
+        }
+
+        .sbst {
+            font-size: 7px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: var(--dm);
+            margin-bottom: 6px
+        }
+
+        .sig {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px
+        }
+
+        .sic {
+            background: var(--bg-s);
+            border: 1px solid var(--bdr);
+            border-radius: var(--rs);
+            padding: 9px
+        }
+
+        .sil {
+            font-size: 7px;
+            font-weight: 600;
+            color: var(--dm);
+            text-transform: uppercase;
+            margin-bottom: 1px
+        }
+
+        .siv {
+            font-size: 11px;
+            font-weight: 700
+        }
+
+        .sdr {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 7px 0;
+            border-bottom: 1px solid var(--bdr-l)
+        }
+
+        .sdr:last-child {
+            border-bottom: none
+        }
+
+        .sdl {
+            font-size: 11px;
+            color: var(--mt);
+            font-weight: 500
+        }
+
+        .sdvl {
+            font-size: 11px;
+            font-weight: 700
+        }
+
+        .srt {
+            display: flex;
+            align-items: stretch;
+            gap: 9px;
+            background: var(--bg-s);
+            border: 1px solid var(--bdr);
+            border-radius: var(--r);
+            padding: 12px
+        }
+
+        .srl {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 2px 0
+        }
+
+        .srdt {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            border: 2px solid;
+            flex-shrink: 0
+        }
+
+        .srdsh {
+            flex: 1;
+            width: 2px;
+            background: var(--bdr)
+        }
+
+        .sri {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between
+        }
+
+        .srpt {
+            font-size: 11px;
+            font-weight: 700
+        }
+
+        .srsb {
+            font-size: 9px;
+            color: var(--mt);
+            font-weight: 500
+        }
+
+        .stl {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            position: relative;
+            padding-left: 20px
+        }
+
+        .stl::before {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 5px;
+            bottom: 5px;
+            width: 2px;
+            background: var(--bdr)
+        }
+
+        .sts {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 0;
+            position: relative
+        }
+
+        .std {
+            position: absolute;
+            left: -20px;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--bdr);
+            border: 2px solid var(--bg);
+            z-index: 2
+        }
+
+        .sts.dn .std {
+            background: var(--gn)
+        }
+
+        .sts.ac .std {
+            background: var(--tx);
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, .08)
+        }
+
+        .stt {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--dm)
+        }
+
+        .sts.dn .stt,
+        .sts.ac .stt {
+            color: var(--tx)
+        }
+
+        .sbf {
+            padding: 12px 22px;
+            border-top: 1px solid var(--bdr);
+            display: flex;
+            gap: 5px;
+            flex-shrink: 0
+        }
+
+        .sbb {
+            flex: 1;
+            padding: 8px;
+            border-radius: var(--rs);
+            font-size: 9px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .15s;
+            font-family: inherit;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px
+        }
+
+        .sbg {
+            background: transparent;
+            border: 1px solid var(--bdr);
+            color: var(--mt)
+        }
+
+        .sbg:hover {
+            background: var(--bg-h);
+            color: var(--tx)
+        }
+
+        .sbdn {
+            background: #FEF2F2;
+            border: 1px solid rgba(220, 38, 38, .1);
+            color: var(--rd)
+        }
+
+        .sbdn:hover {
+            background: rgba(220, 38, 38, .1)
+        }
+
+        .sbp {
+            background: var(--tx);
+            border: 1px solid var(--tx);
+            color: #fff
+        }
+
+        .sbp:hover {
+            background: #222
+        }
+
+        .mov {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .15);
+            backdrop-filter: blur(3px);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center
+        }
+
+        .mov.op {
+            display: flex
+        }
+
+        .mod {
+            background: var(--bg);
+            border: 1px solid var(--bdr);
+            border-radius: 12px;
+            padding: 22px 24px;
+            width: 440px;
+            max-width: 92vw;
+            box-shadow: var(--sh-lg);
+            animation: mu .3s cubic-bezier(.22, 1, .36, 1)
+        }
+
+        @keyframes mu {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(.97)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1)
+            }
+        }
+
+        .moh {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px
+        }
+
+        .moh h3 {
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: -.3px
+        }
+
+        .fg {
+            margin-bottom: 10px
+        }
+
+        .fg label {
+            display: block;
+            font-size: 7px;
+            font-weight: 700;
+            color: var(--mt);
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            margin-bottom: 3px
+        }
+
+        .fg input,
+        .fg select {
+            width: 100%;
+            padding: 7px 9px;
+            background: var(--bg-s);
+            border: 1px solid var(--bdr);
+            border-radius: var(--rs);
+            font-size: 11px;
+            font-family: inherit;
+            font-weight: 500;
+            color: var(--tx);
+            outline: none;
+            transition: border-color .15s
+        }
+
+        .fg input:focus,
+        .fg select:focus {
+            border-color: var(--tx)
+        }
+
+        .fr {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px
+        }
+
+        .brpk {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap
+        }
+
+        .brc {
+            padding: 4px 9px;
+            border-radius: 50px;
+            font-size: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all .15s;
+            color: #fff
+        }
+
+        .brc:hover {
+            transform: scale(1.05)
+        }
+
+        .brc.sel {
+            border-color: var(--tx);
+            box-shadow: 0 0 0 2px var(--bg)
+        }
+
+        .moa {
+            display: flex;
+            gap: 5px;
+            margin-top: 16px;
+            justify-content: flex-end
+        }
+
+        .ta {
+            position: fixed;
+            bottom: 18px;
+            right: 18px;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            gap: 4px
+        }
+
+        .tm {
+            padding: 8px 12px;
+            background: var(--tx);
+            color: #fff;
+            border-radius: var(--rs);
+            font-size: 9px;
+            font-weight: 600;
+            box-shadow: var(--sh-lg);
+            animation: ts .3s cubic-bezier(.22, 1, .36, 1), tf .3s ease 2.5s forwards;
+            display: flex;
+            align-items: center;
+            gap: 4px
+        }
+
+        @keyframes ts {
+            from {
+                opacity: 0;
+                transform: translateX(14px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0)
+            }
+        }
+
+        @keyframes tf {
+            to {
+                opacity: 0;
+                transform: translateX(14px)
+            }
+        }
+
+        .empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: var(--dm)
+        }
+
+        .empty svg {
+            margin-bottom: 10px;
+            opacity: .25
+        }
+
+        .empty p {
+            font-size: 12px;
+            font-weight: 600
+        }
+
+        @media(max-width:768px) {
+            :root {
+                --sw: 100vw
+            }
+
+            .srow {
+                flex-wrap: wrap;
+                padding: 8px 12px;
+                gap: 5px
+            }
+
+            .sc {
+                min-width: calc(50% - 3px)
+            }
+
+            .gw {
+                padding: 0 8px 16px
+            }
+
+            .topbar {
+                padding: 0 12px
+            }
+
+            .brow {
+                padding: 0 12px 5px
+            }
+
+            .dlbl {
+                font-size: 11px;
+                min-width: 160px
+            }
+        }
+
+        @media(prefers-reduced-motion:reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0s !important;
+                transition-duration: 0s !important
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="topbar">
+        <div class="tb-l">
+            <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+                    <rect x="3" y="6" width="18" height="12" rx="3" />
+                    <path d="M7 6V4a2 2 0 012-2h6a2 2 0 012 2v2" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                </svg></div>
+            <div class="brand">Dispatch <span>Board</span></div>
+        </div>
+        <div class="tb-c">
+            <button class="nbtn" id="prevDay" aria-label="Previous day"><svg width="11" height="11" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6" />
+                </svg></button>
+            <div class="dlbl" id="dayLabel"></div>
+            <button class="nbtn" id="nextDay" aria-label="Next day"><svg width="11" height="11" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="9 18 15 12 9 6" />
+                </svg></button>
+            <button class="tbtn" id="todayBtn">Today</button>
+        </div>
+        <div><button class="abtn" id="addBtn"><svg width="9" height="9" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="3">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg> New Booking</button></div>
+    </header>
+
+    <div class="main">
+        <div class="cal" id="calArea">
+            <div class="srow" id="statsRow"></div>
+            <div class="brow" id="branchRow"></div>
+            <div class="gw" id="gridWrap">
+                <div class="fl" id="floats"></div>
+                <div class="dh" id="dayHeader"></div>
+                <div class="tg" id="timeGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sov" id="sidebarOv"></div>
+    <aside class="sb" id="sidebar" role="dialog" aria-label="Booking details">
+        <div class="sbh">
+            <h3>Booking Details</h3><button class="cbtn" id="sbClose" aria-label="Close"><svg width="10" height="10"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg></button>
+        </div>
+        <div class="sbd" id="sbBody"></div>
+        <div class="sbf" id="sbFoot"></div>
+    </aside>
+
+    <div class="mov" id="addModal">
+        <div class="mod" role="dialog" aria-label="Add booking">
+            <div class="moh">
+                <h3 id="mTitle">New Booking</h3><button class="cbtn" id="mClose" aria-label="Close"><svg width="10"
+                        height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg></button>
+            </div>
+            <div class="fg"><label>Client Name</label><input type="text" id="fClient" placeholder="e.g. John Doe"></div>
+            <div class="fr">
+                <div class="fg"><label>Destination</label><input type="text" id="fDest"
+                        placeholder="e.g. Greenwood Cemetery"></div>
+                <div class="fg"><label>Departure From</label><input type="text" id="fFrom"
+                        placeholder="e.g. City Mortuary"></div>
+            </div>
+            <div class="fr">
+                <div class="fg"><label>Start Time</label><select id="fStart"></select></div>
+                <div class="fg"><label>End Time</label><select id="fEnd"></select></div>
+            </div>
+            <div class="fr">
+                <div class="fg"><label>Vehicle Plate</label><input type="text" id="fPlate" placeholder="e.g. HF-001">
+                </div>
+                <div class="fg"><label>Client Phone</label><input type="text" id="fPhone" placeholder="e.g. 555-0100">
+                </div>
+            </div>
+            <div class="fg"><label>Branch</label>
+                <div class="brpk" id="brPick"></div>
+            </div>
+            <div class="fg"><label>Status</label>
+                <div class="brpk" id="stPick"></div>
+            </div>
+            <div class="moa"><button class="sbb sbg" style="flex:none;padding:7px 16px"
+                    id="mCancel">Cancel</button><button class="sbb sbp" style="flex:none;padding:7px 20px"
+                    id="mSave">Save Booking</button></div>
+        </div>
+    </div>
+
+    <div class="ta" id="toastArea"></div>
+
+    <script>
+        const HH = 68;
+        const DF = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const MN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const BR = { nairobi: { name: 'Nairobi', color: '#DC2626' }, thika: { name: 'Thika', color: '#16A34A' }, mombasa: { name: 'Mombasa', color: '#2563EB' }, nakuru: { name: 'Nakuru', color: '#7C3AED' }, kisumu: { name: 'Kisumu', color: '#EA580C' } };
+        const SM = { pending: 'Pending', booked: 'Booked', transit: 'In Transit', completed: 'Completed', reserved: 'Reserved', standby: 'Standby' };
+        const SC = { pending: '#D97706', booked: '#2563EB', transit: '#DC2626', completed: '#059669', reserved: '#7C3AED', standby: '#0D9488' };
+
+        let curDay = new Date(); curDay.setHours(0, 0, 0, 0);
+        let bookings = {};
+        let selBr = 'nairobi', selSt = 'booked';
+        let editingId = null, viewingId = null;
+        let toastId = 0;
+
+        const dk = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const ft = h => { const hr = Math.floor(h), mn = Math.round((h - hr) * 60), ap = hr >= 12 ? 'PM' : 'AM', h12 = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr; return `${h12}:${String(mn).padStart(2, '0')} ${ap}` };
+
+        /* Compute dynamic start/end hours from the day's bookings */
+        function getDayRange(bks) {
+            if (!bks || !bks.length) return { sh: 6, eh: 22 };
+            let mn = 24, mx = 0;
+            bks.forEach(b => { if (b.start < mn) mn = b.start; if (b.end > mx) mx = b.end });
+            return { sh: Math.max(0, Math.floor(mn) - 1), eh: Math.min(24, Math.ceil(mx) + 1) };
+        }
+
+        /* Overlap layout */
+        function layout(arr) {
+            if (!arr.length) return [];
+            const s = [...arr].sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+            const cols = [];
+            s.forEach(b => { let c = cols.findIndex(l => b.start >= l.end); if (c === -1) { c = cols.length; cols.push(b) } else cols[c] = b; b._c = c });
+            s.forEach(b => { let mx = b._c; s.forEach(o => { if (o.id !== b.id && o.start < b.end && o.end > b.start && o._c > mx) mx = o._c }); b._t = mx + 1 });
+            return s;
+        }
+
+        /* Seed */
+        function seed() {
+            const samples = [
+                { cl: 'John Doe', ds: 'Greenwood Cemetery', fm: 'City Mortuary', s: 7, e: 8.5, st: 'completed', ph: '555-0100', pl: 'HF-001', br: 'nairobi' },
+                { cl: 'Sarah Mitchell', ds: 'Hillside Memorial', fm: 'St. Mary\'s Chapel', s: 8, e: 9.5, st: 'transit', ph: '555-0101', pl: 'HF-002', br: 'thika' },
+                { cl: 'Robert Chen', ds: 'Ocean View Gardens', fm: 'Central Mortuary', s: 8.5, e: 10, st: 'booked', ph: '555-0102', pl: 'HF-003', br: 'mombasa' },
+                { cl: 'Alice Wambui', ds: 'Kenyatta Memorial', fm: 'City Mortuary', s: 9, e: 10.5, st: 'booked', ph: '555-0119', pl: 'HF-004', br: 'nairobi' },
+                { cl: 'Maria Garcia', ds: 'Rosewood Park', fm: 'General Hospital', s: 9.5, e: 11, st: 'pending', ph: '555-0103', pl: 'HF-005', br: 'thika' },
+                { cl: 'James Wilson', ds: 'State Mausoleum', fm: 'City Mortuary', s: 10, e: 11.5, st: 'reserved', ph: '555-0104', pl: 'HF-006', br: 'nakuru' },
+                { cl: 'Patricia Brown', ds: 'Evergreen Fields', fm: 'Private Residence', s: 11, e: 12.5, st: 'standby', ph: '555-0105', pl: 'HF-007', br: 'mombasa' },
+                { cl: 'David Lee', ds: 'Mountain Rest', fm: 'Valley Funeral Home', s: 12, e: 13.5, st: 'booked', ph: '555-0106', pl: 'HF-001', br: 'kisumu' },
+                { cl: 'Linda Taylor', ds: 'Harbor Memorial', fm: 'City Mortuary', s: 13, e: 14.5, st: 'booked', ph: '555-0107', pl: 'HF-008', br: 'nairobi' },
+                { cl: 'Michael Scott', ds: 'Westlands Chapel', fm: 'Scranton Mortuary', s: 13.5, e: 15, st: 'pending', ph: '555-0108', pl: 'HF-002', br: 'thika' },
+                { cl: 'Emily Davis', ds: 'Lakeside Gardens', fm: 'St. John\'s Church', s: 14, e: 15.5, st: 'transit', ph: '555-0109', pl: 'HF-003', br: 'nakuru' },
+                { cl: 'Thomas Moore', ds: 'Sunset Valley', fm: 'Central Mortuary', s: 15, e: 16.5, st: 'booked', ph: '555-0110', pl: 'HF-004', br: 'mombasa' },
+                { cl: 'Karen White', ds: 'Pine Ridge Cemetery', fm: 'City Mortuary', s: 16, e: 17, st: 'completed', ph: '555-0111', pl: 'HF-005', br: 'nairobi' },
+                { cl: 'Andrew Clark', ds: 'Heritage Park', fm: 'Private Residence', s: 17, e: 18.5, st: 'booked', ph: '555-0112', pl: 'HF-006', br: 'kisumu' },
+                { cl: 'Faith Njeri', ds: 'Rift Valley Gardens', fm: 'Naivasha Mortuary', s: 18, e: 19.5, st: 'pending', ph: '555-0120', pl: 'HF-007', br: 'nakuru' },
+            ];
+            const td = new Date(); td.setHours(0, 0, 0, 0);
+            /* Today gets full set */
+            const tk = dk(td);
+            bookings[tk] = samples.map((s, i) => ({ id: `${tk}-${i}`, client: s.cl, dest: s.ds, from: s.fm, start: s.s, end: s.e, status: s.st, phone: s.ph, plate: s.pl, branch: s.br }));
+            /* Other days get sparse bookings at varied times */
+            for (let d = -4; d <= 4; d++) {
+                if (d === 0) continue;
+                const dd = new Date(td); dd.setDate(dd.getDate() + d); const k = dk(dd);
+                if (bookings[k]) continue;
+                const pick = samples.filter((_, i) => i % 3 === Math.abs(d) % 3);
+                bookings[k] = pick.map((s, i) => {
+                    const offset = Math.abs(d) * 1.5;
+                    const ns = Math.min(22, Math.max(5, s.s + offset + (i % 2) * 2));
+                    const ne = Math.min(23.5, ns + 1 + Math.random());
+                    return { ...s, id: `${k}-${i}`, start: ns, end: ne, status: ['pending', 'booked', 'reserved', 'completed'][i % 4] };
+                });
+            }
+        }
+
+        function findB(id) { for (const k in bookings) { const f = bookings[k].find(b => b.id === id); if (f) return f } return null }
+
+        /* ── Render ── */
+        function render() {
+            renderLabel(); renderDayHeader(); renderGrid(); renderStats(); renderBranches(); renderFloats();
+        }
+
+        function renderLabel() {
+            const td = new Date(); td.setHours(0, 0, 0, 0);
+            const isToday = curDay.getTime() === td.getTime();
+            document.getElementById('dayLabel').textContent = `${isToday ? 'Today, ' : ''}${DF[curDay.getDay()]}, ${MN[curDay.getMonth()]} ${curDay.getDate()}, ${curDay.getFullYear()}`;
+        }
+
+        function renderDayHeader() {
+            const td = new Date(); td.setHours(0, 0, 0, 0);
+            const isToday = curDay.getTime() === td.getTime();
+            const k = dk(curDay); const bks = bookings[k] || [];
+            const cnt = bks.length;
+            const range = getDayRange(bks);
+            document.getElementById('dayHeader').innerHTML = `
+    <div class="dhs"></div>
+    <div class="dhc">
+      <span class="dn">${isToday ? 'Today' : DF[curDay.getDay()]}</span>
+      <span class="dd ${isToday ? 'tm' : ''}">${curDay.getDate()}</span>
+      <span class="db">${cnt} booking${cnt !== 1 ? 's' : ''}</span>
+      <span class="dr">${ft(range.sh)} — ${ft(range.eh)}</span>
+    </div>`;
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('timeGrid');
+            const k = dk(curDay); const dayBks = bookings[k] || [];
+            const range = getDayRange(dayBks);
+            const { sh, eh } = range;
+            const laid = layout(dayBks);
+
+            let html = '';
+            for (let h = sh; h < eh; h++) {
+                const l = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
+                html += `<div class="tl">${l}</div>`;
+                html += `<div class="dc"><div class="hc" data-hour="${h}" style="position:relative"></div></div>`;
+            }
+            grid.innerHTML = html;
+
+            if (!laid.length) {
+                const dc = grid.querySelector('.dc');
+                if (dc) {
+                    const empty = document.createElement('div');
+                    empty.style.cssText = 'grid-column:2;grid-row:1/-1;display:grid;place-items:center;min-height:300px';
+                    empty.innerHTML = '<div class="empty"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><p>No bookings for this day</p></div>';
+                    dc.appendChild(empty);
+                }
+                renderNowLine(grid, sh, eh); return;
+            }
+
+            const dc = grid.querySelector('.dc');
+            laid.forEach((b, i) => {
+                const top = (b.start - sh) * HH;
+                const height = Math.max(HH * .2, (Math.min(b.end, eh) - Math.max(b.start, sh)) * HH);
+                const wp = 100 / b._t;
+                const lp = b._c * wp;
+                const br = BR[b.branch] || BR.nairobi;
+                const showTm = height > 30;
+                const showDs = height > 48;
+                const showDt = height > 66;
+                const showPl = height > 42;
+
+                const el = document.createElement('div');
+                el.className = 'bb';
+                el.style.cssText = `top:${top}px;height:${height}px;left:calc(${lp}% + 2px);width:calc(${wp}% - 4px);background:${br.color};animation-delay:${i * .04}s`;
+                el.innerHTML = `
+      <div class="bb-sp">${SM[b.status] || b.status}</div>
+      <div class="bb-br">${br.name}</div>
+      <div class="bb-cl">${b.client}</div>
+      ${showTm ? `<div class="bb-tm">${ft(b.start)} – ${ft(b.end)}</div>` : ''}
+      ${showDs ? `<div class="bb-ds">${b.dest}</div>` : ''}
+      ${showDt ? `<div class="bb-dt">${b.from}</div>` : ''}
+      ${showPl ? `<div class="bb-pl">${b.plate}</div>` : ''}
+    `;
+                el.addEventListener('click', e => { e.stopPropagation(); openSidebar(b.id) });
+                dc.appendChild(el);
+            });
+
+            renderNowLine(grid, sh, eh);
+        }
+
+        function renderNowLine(grid, sh, eh) {
+            const now = new Date();
+            const td = new Date(); td.setHours(0, 0, 0, 0);
+            if (td.getTime() !== curDay.getTime()) return;
+            const nh = now.getHours() + now.getMinutes() / 60;
+            if (nh < sh || nh >= eh) return;
+            const line = document.createElement('div');
+            line.className = 'nl';
+            line.style.top = (nh - sh) * HH + 'px';
+            line.style.gridColumn = '1 / -1'; line.style.gridRow = '1 / -1';
+            line.innerHTML = `<span class="nl-l">${ft(nh)}</span>`;
+            grid.appendChild(line);
+        }
+
+        function renderStats() {
+            const k = dk(curDay); const bks = bookings[k] || [];
+            document.getElementById('statsRow').innerHTML = `
+    <div class="sc sc-b"><div class="sl">Total Bookings</div><div class="sv">${bks.length}</div></div>
+    <div class="sc sc-r"><div class="sl">In Transit</div><div class="sv">${bks.filter(b => b.status === 'transit').length}</div></div>
+    <div class="sc sc-g"><div class="sl">Completed</div><div class="sv">${bks.filter(b => b.status === 'completed').length}</div></div>
+    <div class="sc sc-a"><div class="sl">Hearses Available</div><div class="sv">${Math.max(0, 5 - bks.filter(b => b.status === 'transit').length)}</div></div>
+    <div class="sc sc-p"><div class="sl">Pending</div><div class="sv">${bks.filter(b => b.status === 'pending').length}</div></div>
+  `;
+        }
+
+        function renderBranches() {
+            const k = dk(curDay); const bks = bookings[k] || [];
+            document.getElementById('branchRow').innerHTML = Object.entries(BR).map(([key, br]) => {
+                const cnt = bks.filter(b => b.branch === key).length;
+                return `<div class="bi"><div class="bdd" style="background:${br.color}"></div>${br.name} (${cnt})</div>`;
+            }).join('');
+        }
+
+        function renderFloats() {
+            const k = dk(curDay); const bks = bookings[k] || [];
+            const tr = bks.filter(b => b.status === 'transit').length;
+            const av = Math.max(0, 5 - tr); const pn = bks.filter(b => b.status === 'pending').length;
+            let h = '';
+            if (av > 0) h += `<div class="fb" style="animation-delay:0s"><div class="fp" style="background:#059669;color:#059669"></div><span style="color:#059669">${av} Hearse${av > 1 ? 's' : ''} Available Now</span></div>`;
+            if (tr > 0) h += `<div class="fb" style="animation-delay:.1s"><div class="fp" style="background:#DC2626;color:#DC2626"></div><span style="color:#DC2626">${tr} In Transit</span></div>`;
+            if (pn > 0) h += `<div class="fb" style="animation-delay:.2s"><div class="fp" style="background:#D97706;color:#D97706"></div><span style="color:#D97706">${pn} Pending Confirmation</span></div>`;
+            if (!bks.length) h += `<div class="fb" style="animation-delay:0s"><div class="fp" style="background:#2563EB;color:#2563EB"></div><span style="color:#2563EB">All Clear Today</span></div>`;
+            document.getElementById('floats').innerHTML = h;
+        }
+
+        /* ── Sidebar ── */
+        function openSidebar(id) {
+            const b = findB(id); if (!b) return; viewingId = id;
+            const br = BR[b.branch] || BR.nairobi;
+            const dur = b.end - b.start; const dh = Math.floor(dur), dm = Math.round((dur - dh) * 60);
+            const ds = `${dh > 0 ? dh + 'h ' : ''}${dm > 0 ? dm + 'm' : ''}`.trim() || '0m';
+            const steps = [
+                { l: 'Booking Created', dn: true },
+                { l: 'Confirmed & Assigned', dn: ['booked', 'transit', 'completed', 'reserved', 'standby'].includes(b.status) },
+                { l: 'Hearse Dispatched', dn: ['transit', 'completed'].includes(b.status), ac: b.status === 'transit' },
+                { l: 'Arrived at Destination', dn: b.status === 'completed' },
+                { l: 'Service Completed', dn: b.status === 'completed', ac: b.status === 'completed' },
+            ];
+            document.getElementById('sbBody').innerHTML = `
+    <div class="scb" style="background:${br.color}"></div>
+    <div class="sbs"><div class="sbst">Client Information</div><div class="sig"><div class="sic"><div class="sil">Client</div><div class="siv">${b.client}</div></div><div class="sic"><div class="sil">Phone</div><div class="siv">${b.phone}</div></div></div></div>
+    <div class="sbs"><div class="sbst">Schedule</div>
+      <div class="sdr"><span class="sdl">Date</span><span class="sdvl">${DF[curDay.getDay()]}, ${MN[curDay.getMonth()]} ${curDay.getDate()}</span></div>
+      <div class="sdr"><span class="sdl">Time</span><span class="sdvl">${ft(b.start)} — ${ft(b.end)}</span></div>
+      <div class="sdr"><span class="sdl">Duration</span><span class="sdvl">${ds}</span></div>
+      <div class="sdr"><span class="sdl">Status</span><span class="sdvl" style="color:${SC[b.status] || '#000'}">${SM[b.status] || b.status}</span></div>
+      <div class="sdr"><span class="sdl">Branch</span><span class="sdvl" style="color:${br.color}">${br.name}</span></div>
+    </div>
+    <div class="sbs"><div class="sbst">Route</div><div class="srt"><div class="srl"><div class="srdt" style="border-color:${br.color}"></div><div class="srdsh"></div><div class="srdt" style="border-color:${br.color}"></div></div><div class="sri"><div><div class="srpt">${b.from}</div><div class="srsb">Departure Point</div></div><div><div class="srpt">${b.dest}</div><div class="srsb">Destination</div></div></div></div></div>
+    <div class="sbs"><div class="sbst">Vehicle</div><div class="sig"><div class="sic"><div class="sil">Plate</div><div class="siv">${b.plate}</div></div><div class="sic"><div class="sil">Type</div><div class="siv">Hearse</div></div></div></div>
+    <div class="sbs"><div class="sbst">Progress</div><div class="stl">${steps.map(s => `<div class="sts${s.dn ? ' dn' : ''}${s.ac ? ' ac' : ''}"><div class="std"></div><div class="stt">${s.l}</div></div>`).join('')}</div></div>
+  `;
+            document.getElementById('sbFoot').innerHTML = `
+    <button class="sbb sbdn" id="sbDel"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>Delete</button>
+    <button class="sbb sbg" id="sbEdt"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>
+    <button class="sbb sbp" id="sbClsBtn">Close</button>
+  `;
+            document.getElementById('sbDel').onclick = deleteBooking;
+            document.getElementById('sbEdt').onclick = () => { const bk = findB(viewingId); closeSidebar(); if (bk) setTimeout(() => openEditModal(bk), 250) };
+            document.getElementById('sbClsBtn').onclick = closeSidebar;
+            document.getElementById('sidebar').classList.add('op');
+            document.getElementById('sidebarOv').classList.add('op');
+            document.getElementById('calArea').classList.add('sh');
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('op');
+            document.getElementById('sidebarOv').classList.remove('op');
+            document.getElementById('calArea').classList.remove('sh'); viewingId = null;
+        }
+
+        function deleteBooking() {
+            if (!viewingId) return;
+            for (const k in bookings) bookings[k] = bookings[k].filter(b => b.id !== viewingId);
+            closeSidebar(); render(); toast('Booking deleted');
+        }
+
+        /* ── Modal ── */
+        function populateForm() {
+            const ss = document.getElementById('fStart'), se = document.getElementById('fEnd');
+            ss.innerHTML = ''; se.innerHTML = '';
+            for (let h = 0; h < 24; h++)for (let m = 0; m < 60; m += 15) {
+                const t = h + m / 60; const l = ft(t);
+                ss.innerHTML += `<option value="${t}">${l}</option>`;
+                se.innerHTML += `<option value="${t}">${l}</option>`;
+            }
+            se.innerHTML += `<option value="24">12:00 AM</option>`;
+            ss.value = 9; se.value = 10;
+
+            document.getElementById('brPick').innerHTML = Object.entries(BR).map(([k, v]) => `<div class="brc${selBr === k ? ' sel' : ''}" style="background:${v.color}" data-br="${k}">${v.name}</div>`).join('');
+            document.getElementById('brPick').querySelectorAll('.brc').forEach(c => c.onclick = () => {
+                document.getElementById('brPick').querySelectorAll('.brc').forEach(x => x.classList.remove('sel'));
+                c.classList.add('sel'); selBr = c.dataset.br;
+            });
+            document.getElementById('stPick').innerHTML = Object.entries(SM).map(([k, v]) => `<div class="brc${selSt === k ? ' sel' : ''}" style="background:${SC[k]}" data-st="${k}">${v}</div>`).join('');
+            document.getElementById('stPick').querySelectorAll('.brc').forEach(c => c.onclick = () => {
+                document.getElementById('stPick').querySelectorAll('.brc').forEach(x => x.classList.remove('sel'));
+                c.classList.add('sel'); selSt = c.dataset.st;
+            });
+        }
+
+        function openAddModal(hour) {
+            editingId = null;
+            document.getElementById('mTitle').textContent = 'New Booking';
+            document.getElementById('mSave').textContent = 'Save Booking';
+            populateForm();
+            if (hour !== undefined) { document.getElementById('fStart').value = hour; document.getElementById('fEnd').value = Math.min(24, hour + 1) }
+            document.getElementById('fClient').value = ''; document.getElementById('fDest').value = '';
+            document.getElementById('fFrom').value = ''; document.getElementById('fPlate').value = ''; document.getElementById('fPhone').value = '';
+            selBr = 'nairobi'; selSt = 'booked';
+            document.getElementById('brPick').querySelectorAll('.brc').forEach((c, i) => c.classList.toggle('sel', i === 0));
+            document.getElementById('stPick').querySelectorAll('.brc').forEach((c, i) => c.classList.toggle('sel', i === 0));
+            document.getElementById('addModal').classList.add('op');
+            setTimeout(() => document.getElementById('fClient').focus(), 100);
+        }
+
+        function openEditModal(b) {
+            editingId = b.id;
+            document.getElementById('mTitle').textContent = 'Edit Booking';
+            document.getElementById('mSave').textContent = 'Update Booking';
+            populateForm();
+            document.getElementById('fStart').value = b.start; document.getElementById('fEnd').value = b.end;
+            document.getElementById('fClient').value = b.client; document.getElementById('fDest').value = b.dest;
+            document.getElementById('fFrom').value = b.from; document.getElementById('fPlate').value = b.plate; document.getElementById('fPhone').value = b.phone;
+            selBr = b.branch; selSt = b.status;
+            document.getElementById('brPick').querySelectorAll('.brc').forEach(c => c.classList.toggle('sel', c.dataset.br === b.branch));
+            document.getElementById('stPick').querySelectorAll('.brc').forEach(c => c.classList.toggle('sel', c.dataset.st === b.status));
+            document.getElementById('addModal').classList.add('op');
+            setTimeout(() => document.getElementById('fClient').focus(), 100);
+        }
+
+        function closeAddModal() { document.getElementById('addModal').classList.remove('op'); editingId = null }
+
+        function saveBooking() {
+            const client = document.getElementById('fClient').value.trim();
+            const dest = document.getElementById('fDest').value.trim();
+            const from = document.getElementById('fFrom').value.trim() || 'TBD';
+            const plate = document.getElementById('fPlate').value.trim() || 'TBD';
+            const phone = document.getElementById('fPhone').value.trim() || '—';
+            const start = parseFloat(document.getElementById('fStart').value);
+            const end = parseFloat(document.getElementById('fEnd').value);
+            if (!client) { toast('Enter client name'); return }
+            if (!dest) { toast('Enter destination'); return }
+            if (end <= start) { toast('End must be after start'); return }
+            const k = dk(curDay); if (!bookings[k]) bookings[k] = [];
+            if (editingId) {
+                for (const x in bookings) bookings[x] = bookings[x].filter(b => b.id !== editingId);
+                bookings[k].push({ id: editingId, client, dest, from, start, end, status: selSt, phone, plate, branch: selBr });
+                toast('Booking updated');
+            } else {
+                bookings[k].push({ id: `${k}-${Date.now()}`, client, dest, from, start, end, status: selSt, phone, plate, branch: selBr });
+                toast('Booking created');
+            }
+            closeAddModal(); render();
+        }
+
+        function toast(msg) {
+            const id = ++toastId; const el = document.createElement('div'); el.className = 'tm';
+            el.innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>${msg}`;
+            document.getElementById('toastArea').appendChild(el);
+            setTimeout(() => { if (el.parentNode) el.remove() }, 3000);
+        }
+
+        /* ── Events ── */
+        document.getElementById('prevDay').onclick = () => { curDay.setDate(curDay.getDate() - 1); render() };
+        document.getElementById('nextDay').onclick = () => { curDay.setDate(curDay.getDate() + 1); render() };
+        document.getElementById('todayBtn').onclick = () => { curDay = new Date(); curDay.setHours(0, 0, 0, 0); render(); setTimeout(scrollToNow, 60) };
+        document.getElementById('addBtn').onclick = () => openAddModal();
+        document.getElementById('sidebarOv').onclick = closeSidebar;
+        document.getElementById('sbClose').onclick = closeSidebar;
+        document.getElementById('mClose').onclick = closeAddModal;
+        document.getElementById('mCancel').onclick = closeAddModal;
+        document.getElementById('mSave').onclick = saveBooking;
+        document.getElementById('addModal').onclick = e => { if (e.target === document.getElementById('addModal')) closeAddModal() };
+
+        document.getElementById('timeGrid').addEventListener('click', e => {
+            const cell = e.target.closest('.hc');
+            if (cell) openAddModal(parseFloat(cell.dataset.hour));
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { closeAddModal(); closeSidebar() }
+            if (e.key === 'Enter' && document.getElementById('addModal').classList.contains('op')) saveBooking();
+        });
+
+        function scrollToNow() {
+            const now = new Date(); const nh = now.getHours() + now.getMinutes() / 60;
+            const k = dk(curDay); const bks = bookings[k] || [];
+            const range = getDayRange(bks);
+            if (nh >= range.sh && nh < range.eh) {
+                document.getElementById('gridWrap').scrollTo({ top: Math.max(0, (nh - range.sh - 1.5) * HH), behavior: 'smooth' });
+            }
+        }
+
+        /* ── Init ── */
+        seed(); render();
+        setTimeout(scrollToNow, 250);
+        setInterval(() => render(), 60000);
+    </script>
+</body>
+
+</html>

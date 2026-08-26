@@ -17,7 +17,7 @@ import FinancialsTab from './FinancialsTab';
 import ReleaseTab from './ReleaseTab';
 import DocumentsTab from './DocumentsTab';
 import AuditLogTab from './AuditLogTab';
-import ChargeSettingsModal from './ChargeSettingsModal';
+import ChargeSettingsModal from '../ChargeSettingsModal';
 
 const BASE_URL = `${env.FULL_API_URL}/deceased`;
 
@@ -159,6 +159,8 @@ const DeceasedDetailPage = () => {
   const [nextOfKin, setNextOfKin] = useState(null);
   const [payments, setPayments] = useState([]);
   const [charges, setCharges] = useState([]);
+  const [requests, setRequests] = useState([]);
+
   const [showChargeModal, setShowChargeModal] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -208,12 +210,44 @@ const DeceasedDetailPage = () => {
       // 3) Next of kin
       try {
         const nokRes = await axios.get(`${BASE_URL}/${deceasedId}/next-of-kin`, { headers });
-        if (nokRes.data?.data) {
+        const nokList = Array.isArray(nokRes.data?.data) ? nokRes.data.data : (nokRes.data?.data ? [nokRes.data.data] : []);
+        if (nokList.length > 0) {
           // data is an array - use the first (primary) next of kin
-          const nokData = Array.isArray(nokRes.data.data) ? nokRes.data.data[0] : nokRes.data.data;
-          setNextOfKin(nokData);
+          setNextOfKin(nokList[0]);
+        } else {
+          // FALLBACK: older registrations never wrote a next_of_kin row.
+          // Synthesize one from the deceased record so the panel still shows
+          // whatever kin details were captured at intake.
+          const src = decRes.data?.data;
+          if (src && (src.contact_person || src.phone_number || src.relationship || src.national_id)) {
+            setNextOfKin({
+              full_name: src.contact_person || '',
+              relationship: src.relationship || '',
+              contact: src.tel_number || src.phone_number || '',
+              alternative_contact: src.alternative_phone || '',
+              id_number: src.national_id || '',
+              email: src.email || '',
+              is_primary: 1,
+              _synthetic: true, // read-only hint for UI
+            });
+          }
         }
-      } catch (e) { /* no nok yet */ }
+      } catch (e) {
+        // no nok endpoint/response — fall back to deceased fields
+        const src = decRes.data?.data;
+        if (src && (src.contact_person || src.phone_number || src.relationship || src.national_id)) {
+          setNextOfKin({
+            full_name: src.contact_person || '',
+            relationship: src.relationship || '',
+            contact: src.tel_number || src.phone_number || '',
+            alternative_contact: src.alternative_phone || '',
+            id_number: src.national_id || '',
+            email: src.email || '',
+            is_primary: 1,
+            _synthetic: true,
+          });
+        }
+      }
 
       // 4) Documents - fetch from documents service (port 8112) directly
       try {
@@ -268,6 +302,15 @@ const DeceasedDetailPage = () => {
           setDeceased(prev => prev ? { ...prev, releaseData: relRes.data.data } : prev);
         }
       } catch (e) { /* no release yet */ }
+
+      // 7) Postmortem request lifecycle (Postmortem tab + Audit Log trail)
+      try {
+        const pmReqRes = await axios.get(`${env.FULL_API_URL}/postmortem-requests`, {
+          headers,
+          params: { deceased_id: deceasedId },
+        });
+        if (Array.isArray(pmReqRes.data?.data)) setRequests(pmReqRes.data.data);
+      } catch (e) { /* no tracked requests yet */ }
 
     } catch (err) {
       console.error('Error fetching deceased detail:', err);
@@ -329,7 +372,7 @@ const DeceasedDetailPage = () => {
               </TabPane>
               
               <TabPane $active={activeTab === 'postmortem'}>
-                <PostmortemTab postmortem={postmortem} deceasedId={deceasedId} />
+                <PostmortemTab postmortem={postmortem} deceasedId={deceasedId} requests={requests} onRequestsChanged={fetchData} />
               </TabPane>
               
               <TabPane $active={activeTab === 'financials'}>
@@ -359,6 +402,7 @@ const DeceasedDetailPage = () => {
                   charges={charges}
                   payments={payments}
                   releaseData={deceased?.releaseData || null}
+                  requests={requests}
                 />
               </TabPane>
             </TabContent>
@@ -375,7 +419,13 @@ const DeceasedDetailPage = () => {
         </ProfileLayout>
 
         {showChargeModal && (
-          <ChargeSettingsModal onClose={() => setShowChargeModal(false)} />
+          <ChargeSettingsModal
+            isOpen={showChargeModal}
+            onClose={() => setShowChargeModal(false)}
+            deceasedId={deceasedId}
+            deceasedData={deceased}
+            onUpdate={fetchData}
+          />
         )}
       </AppContainer>
     </>

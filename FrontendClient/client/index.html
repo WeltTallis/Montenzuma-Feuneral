@@ -807,6 +807,43 @@
     </div>
   </noscript>
 
+  <!-- PWA Service Worker: registered HERE ONLY (never inside React code).     -->
+  <!-- A cached service worker must never run against the Vite dev server: it  -->
+  <!-- serves stale /src/* and /node_modules/.vite/deps/* modules, which mixes -->
+  <!-- two dependency snapshots (two React copies) and crashes every page with -->
+  <!-- "TypeError: Cannot read properties of null (reading 'useState')".       -->
+  <script>
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+
+      var isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+      if (isLocal) {
+        // Dev server: unregister any leftover service workers from previous
+        // sessions and wipe their caches so modules always load fresh.
+        navigator.serviceWorker.getRegistrations()
+          .then(function (regs) {
+            regs.forEach(function (reg) { reg.unregister(); });
+          })
+          .catch(function () { });
+
+        if (window.caches && caches.keys) {
+          caches.keys()
+            .then(function (keys) {
+              keys.forEach(function (key) { caches.delete(key); });
+            })
+            .catch(function () { });
+        }
+        return;
+      }
+
+      // Production: register normally once the page has loaded.
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').catch(function () { });
+      });
+    })();
+  </script>
+
   <script type="module" src="/src/main.jsx"></script>
 </body>
 

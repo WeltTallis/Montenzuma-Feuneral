@@ -879,6 +879,68 @@ export const createStockRequest = async (req: Request, res: Response) => {
       }
     }
 
+    // ─── Branch resolution: EXACT BRANCH NAME ONLY (never slugs) ───
+    // The client sends from/to branch names (+ ids for reference). Every
+    // ref is resolved against the branches table so the stored
+    // from_branch_name / to_branch_name are ALWAYS the exact DB names.
+    const cleanStr = (v: any) => (v == null ? '' : String(v).trim());
+    let fromId = cleanStr(from_branch_id) || null;
+    let toId = cleanStr(to_branch_id) || null;
+    let fromName = cleanStr(from_branch_name);
+    let toName = cleanStr(to_branch_name);
+
+    if (fromName || toName || fromId || toId) {
+      let allBranches: any[] = [];
+      try {
+        allBranches = await coffinQuery(
+          'SELECT * FROM branches WHERE tenant_slug = ?',
+          [tenantSlug]
+        );
+      } catch {
+        // Schema variants whose branches table lacks tenant_slug —
+        // fall through and match purely by exact branch name.
+        try { allBranches = await coffinQuery('SELECT * FROM branches'); } catch { allBranches = []; }
+      }
+      const normName = (s: any) => String(s || '').trim().toLowerCase();
+      const branchByName = (list: any[], n: string) =>
+        list.find((b) => normName(b?.branch_name ?? b?.name) === normName(n));
+      const branchById = (list: any[], idVal: any) =>
+        list.find((b) => String(b?.branch_id ?? b?.id ?? '') === String(idVal));
+      const canonicalName = (b: any) => String(b?.branch_name ?? b?.name ?? '').trim();
+
+      // SOURCE branch — exact name wins; the id is only used to recover
+      // the canonical name when the client sent an id without a name.
+      if (fromName) {
+        const m = branchByName(allBranches, fromName);
+        if (m) {
+          fromName = canonicalName(m);
+          if (!fromId) fromId = String(m.branch_id ?? m.id);
+        } else {
+          logger.warn({ msg: 'Stock request source branch not matched by exact name — keeping provided name', tenantSlug, providedFromName: fromName });
+        }
+      } else if (fromId) {
+        const m = branchById(allBranches, fromId);
+        if (m) fromName = canonicalName(m);
+      }
+
+      // DESTINATION branch — same rules
+      if (toName) {
+        const m = branchByName(allBranches, toName);
+        if (m) {
+          toName = canonicalName(m);
+          if (!toId) toId = String(m.branch_id ?? m.id);
+        } else {
+          logger.warn({ msg: 'Stock request destination branch not matched by exact name — keeping provided name', tenantSlug, providedToName: toName });
+        }
+      } else if (toId) {
+        const m = branchById(allBranches, toId);
+        if (m) toName = canonicalName(m);
+      }
+    }
+
+    // The requesting branch IS the receiver of the stock — store its exact name.
+    const requestingBranchName = cleanStr(requesting_branch) || toName || null;
+
     const result = await CoffinModel.requestStock(tenantSlug, {
       coffin_id: coffinIdRaw || null,
       coffin_name: resolvedName || 'Coffin',
@@ -886,11 +948,11 @@ export const createStockRequest = async (req: Request, res: Response) => {
       size: resolvedSize,
       requested_by: (requested_by || '').toString().trim() || (client_name || '').toString().trim() || null,
       booked_for: (booked_for || '').toString().trim() || (deceased_name || '').toString().trim() || null,
-      requesting_branch: (requesting_branch || '').toString().trim() || null,
-      from_branch_id: (from_branch_id || '').toString().trim() || null,
-      to_branch_id: (to_branch_id || '').toString().trim() || null,
-      from_branch_name: (from_branch_name || '').toString().trim() || null,
-      to_branch_name: (to_branch_name || '').toString().trim() || null,
+      requesting_branch: requestingBranchName,
+      from_branch_id: fromId,
+      to_branch_id: toId,
+      from_branch_name: fromName || null,
+      to_branch_name: toName || null,
       quantity,
       req_type: (req_type || '').toString().trim() || null,
       tenant_id: (req as any).tenantId || (req as any).body?.tenant_id || null,
@@ -904,13 +966,13 @@ export const createStockRequest = async (req: Request, res: Response) => {
       id: result.request_id || `stock-${Date.now()}`,
       title: 'Stock Transfer Requested',
       message: `A coffin transfer was requested (${resolvedName || 'Coffin'}, qty ${parseInt(quantity) || 1})`,
-      fullContent: `Coffin: ${resolvedName || 'Coffin'}\nQuantity: ${parseInt(quantity) || 1}\nFrom: ${(from_branch_name || '').toString().trim() || 'Branch'}\nTo: ${(to_branch_name || '').toString().trim() || 'Branch'}\nRequest ID: ${result.request_id}`,
+      fullContent: `Coffin: ${resolvedName || 'Coffin'}\nQuantity: ${parseInt(quantity) || 1}\nFrom: ${fromName || 'Branch'}\nTo: ${toName || 'Branch'}\nRequest ID: ${result.request_id}`,
       requestId: result.request_id,
       coffinId: coffinIdRaw || null,
       coffinName: resolvedName || 'Coffin',
       quantity: parseInt(quantity) || 1,
-      fromBranch: (from_branch_name || '').toString().trim() || null,
-      toBranch: (to_branch_name || '').toString().trim() || null,
+      fromBranch: fromName || null,
+      toBranch: toName || null,
       status: 'pending',
       priority: 'high',
     };
@@ -927,7 +989,7 @@ export const createStockRequest = async (req: Request, res: Response) => {
         size: result.size,
         requested_by: (requested_by || '').toString().trim() || (client_name || '').toString().trim() || null,
         booked_for: (booked_for || '').toString().trim() || (deceased_name || '').toString().trim() || null,
-        requesting_branch: (requesting_branch || '').toString().trim() || null,
+        requesting_branch: requestingBranchName,
         from_branch_id: result.from_branch_id,
         to_branch_id: result.to_branch_id,
         from_branch_name: result.from_branch_name,

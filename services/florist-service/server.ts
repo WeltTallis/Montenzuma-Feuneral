@@ -19,7 +19,6 @@ dotenv.config({ path: envPath });
 import express from 'express';
 import cors from 'cors';
 import knex from 'knex';
-import { getRootPool } from '../../shared/dbConfig.js';
 
 // The route modules below transitively import app-global authMiddleware,
 // which reads JWT_SECRET / NODE_ENV from process.env while the module is
@@ -118,67 +117,10 @@ const runMigrations = async () => {
 // FLOWER DATABASE RESOLUTION
 //   ALL flower data lives in the ONE central
 //   `restpoint_operations` database shared by
-//   every tenant. Isolated via tenant_slug.
+//   every tenant. Isolated via tenant_slug
+//   (and tenant_id) columns inside that database.
 // ============================================
 const FLOWER_MAIN_DB = (): string => process.env.OPERATIONS_DATABASE || 'restpoint_operations';
-
-async function getTenantRecord(tenantSlug: string): Promise<any> {
-    try {
-        const pool = await getRootPool(); // connects to tenant_tracking
-        const [rows]: any = await pool.query(
-            'SELECT tenant_slug, db_name, tenant_name, deployment_type, status FROM tenants WHERE tenant_slug = ? LIMIT 1',
-            [tenantSlug]
-        );
-        return rows && rows[0] ? rows[0] : null;
-    } catch (e: any) {
-        // deployment_type column may not exist in every tenants schema — retry without it
-        try {
-            const pool = await getRootPool();
-            const [rows]: any = await pool.query(
-                'SELECT tenant_slug, db_name, tenant_name, status FROM tenants WHERE tenant_slug = ? LIMIT 1',
-                [tenantSlug]
-            );
-            const rec = rows && rows[0] ? rows[0] : null;
-            if (rec) rec.deployment_type = null;
-            return rec;
-        } catch (e2: any) {
-            console.error('[FLORIST] getTenantRecord error:', e2.message);
-            return null;
-        }
-    }
-}
-
-async function countTenantBranches(tenantSlug: string): Promise<number> {
-    try {
-        const pool = await getRootPool();
-        const [rows]: any = await pool.query('SELECT COUNT(*) AS c FROM branches WHERE tenant_slug = ?', [tenantSlug]);
-        return rows && rows[0] ? Number(rows[0].c) : 0;
-    } catch (e) { return 0; }
-}
-
-// A tenant is multi-branch when deployment_type = 'multi', or (fallback)
-// when more than one branch row exists in the registry (handles schemas
-// without the deployment_type column).
-async function isMultiBranchTenant(tenantSlug: string, tenant: any): Promise<boolean> {
-    if (tenant?.deployment_type === 'multi') return true;
-    const branchCount = await countTenantBranches(tenantSlug);
-    return branchCount > 1;
-}
-
-async function createFlowerDatabaseIfMissing(dbName: string) {
-    const pool = await getRootPool();
-    try {
-        await pool.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-        console.log(`[FLORIST]  Dedicated flower database ready: ${dbName}`);
-    } catch (e: any) {
-        console.error(`[FLORIST] Failed to create flower database ${dbName}:`, e.message);
-    }
-    try {
-        const dbUser = process.env.DB_USER || 'restpoint_user';
-        await pool.query(`GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${dbUser}'@'%'`);
-        await pool.query('FLUSH PRIVILEGES').catch(() => { });
-    } catch (e) { /* optional privileges, ignore */ }
-}
 
 // Resolves the database that stores flower (florist) data for a tenant.
 // In the new architecture ALL florist data lives in the ONE central
@@ -198,6 +140,7 @@ app.use(async (req: any, res: any, next: any) => {
   const branchId = req.headers['x-branch-id'] || null;
 
   req.tenantSlug = tenantSlug;
+  req.tenantId = req.headers['x-tenant-id'] || req.headers['x-tenant_id'] || null;
   req.branchId = branchId;
 
   console.log(`[FLORIST] Request: ${req.method} ${req.path}`);
@@ -386,6 +329,27 @@ async function ensureFloristTables(dbName: string) {
             await tenantKnex.schema.alterTable('flower_samples', (table) => {
                 table.string('arrangement_id', 50).after('id');
             });
+        }
+
+        // Ensure tenant_id columns exist (tenant-id based scoping)
+        if (!(await tenantKnex.schema.hasColumn('flower_bookings', 'tenant_id'))) {
+            await tenantKnex.schema.alterTable('flower_bookings', (table) => {
+                table.string('tenant_id', 36);
+            });
+        }
+        if (!(await tenantKnex.schema.hasColumn('flower_samples', 'tenant_id'))) {
+            await tenantKnex.schema.alterTable('flower_samples', (table) => {
+                table.string('tenant_id', 36);
+            });
+        }
+
+        // "Expected By" deadline is optional - allow bookings that do not have
+        // a date/time chosen yet.
+        try {
+            await tenantKnex.raw('ALTER TABLE `flower_bookings` MODIFY COLUMN `date` DATE NULL');
+            await tenantKnex.raw('ALTER TABLE `flower_bookings` MODIFY COLUMN `time` TIME NULL');
+        } catch (e) {
+            console.warn('[FLORIST] Could not relax date/time columns:', (e as any).message);
         }
 
         console.log(`[FLORIST] ✓ Florist tables ready in: ${dbName}`);

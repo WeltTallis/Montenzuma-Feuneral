@@ -82,7 +82,7 @@ const CSS = `
   @keyframes macpop{0%{transform:scale(0)}100%{transform:scale(1)}}
 `;
 
-export default function MiniActivityCalendar({ events = {}, loading = false }) {
+export default function MiniActivityCalendar({ events = {}, loading = false, onPickDate }) {
   const now = new Date();
   const [view, setView] = useState("month");
   const [sel, setSel] = useState(null);
@@ -127,7 +127,10 @@ export default function MiniActivityCalendar({ events = {}, loading = false }) {
     [wStart, sel, events, todayKey]
   );
 
-  const clearPanel = () => setSel(null);
+  const clearPanel = () => {
+    setSel(null);
+    onPickDate?.(null);
+  };
 
   const navPrev = () => {
     if (view === "month") { if (vM === 0) { setVM(11); setVY((y) => y - 1); } else setVM((m) => m - 1); }
@@ -148,6 +151,8 @@ export default function MiniActivityCalendar({ events = {}, loading = false }) {
     setWStart(s);
     // Only pre-select today when it actually has activities — no empty panels
     setSel((events[todayKey] || []).length ? todayKey : null);
+    // The day-breakdown panel always falls back to showing today
+    onPickDate?.(todayKey);
   };
 
   const toggleView = (v) => {
@@ -161,9 +166,16 @@ export default function MiniActivityCalendar({ events = {}, loading = false }) {
   };
 
   const pick = (k) => {
-    // Days without activities are inert — never open an empty "nothing scheduled" panel
-    if (!(events[k] || []).length) { setSel(null); return; }
-    setSel((cur) => (cur === k ? null : k));
+    // Days without activities are inert unless a parent listens for picks —
+    // with a listener the day panel still opens (shows "no activity").
+    if (!(events[k] || []).length && !onPickDate) { setSel(null); return; }
+    if (sel === k) {
+      setSel(null);
+      onPickDate?.(null); // panel falls back to today
+      return;
+    }
+    setSel(k);
+    onPickDate?.(k);
   };
 
   let label;

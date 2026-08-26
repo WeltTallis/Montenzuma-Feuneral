@@ -35,5 +35,9 @@ export const getDaysInMorgue = (admittedDate) => {
   if (!admittedDate) return 0;
   const parsed = new Date(admittedDate);
   if (isNaN(parsed.getTime())) return 0;
-  return Math.floor((new Date() - parsed) / (1000 * 60 * 60 * 24));
+  // Compare calendar dates (ignoring clock time) so a body admitted today
+  // counts as day 0 — never -1 from timezone/hour offsets.
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.floor((startOfDay(new Date()) - startOfDay(parsed)) / (1000 * 60 * 60 * 24));
+  return Math.max(0, days);
 };

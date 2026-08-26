@@ -50,6 +50,8 @@ const C = {
 const STATUS_CONFIG = {
   active: { label: 'Active', color: '#1e3a8a', bg: '#e0e7ff' },
   'in morgue': { label: 'In Morgue', color: '#1e3a8a', bg: '#e0e7ff' },
+  'postmortem requested': { label: 'Postmortem Requested', color: '#6d28d9', bg: '#f3e8ff' },
+  'pending autopsy': { label: 'Pending Autopsy', color: '#b45309', bg: '#fffbeb' },
   pending: { label: 'Pending', color: '#b45309', bg: '#fffbeb' },
   released: { label: 'Released', color: '#047857', bg: '#ecfdf5' },
   transferred: { label: 'Transferred', color: '#6b7280', bg: '#f3f4f6' },

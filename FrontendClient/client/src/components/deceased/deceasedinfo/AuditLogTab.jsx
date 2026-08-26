@@ -17,7 +17,7 @@ const DataTable = styled.table`
   td { padding: 12px; font-size: 13px; border-bottom: 1px solid ${C.borderLight}; vertical-align: middle; }
 `;
 
-const AuditLogTab = ({ deceased, postmortem, charges, payments, releaseData }) => {
+const AuditLogTab = ({ deceased, postmortem, charges, payments, releaseData, requests }) => {
   const d = deceased || {};
 
   const auditLog = [
@@ -95,10 +95,39 @@ const AuditLogTab = ({ deceased, postmortem, charges, payments, releaseData }) =
           action: `Body Status Changed: ${d.body_status}`,
           user: d.updated_by || d.admitted_by || 'System',
           role: 'Mortuary Attendant',
-          timestamp: d.updated_at,
+          timestamp: d.updated_at || d.date_admitted || d.created_at,
         }]
       : []),
+
+    // 9. Postmortem request lifecycle (initiated / sent / cancelled)
+    ...(Array.isArray(requests)
+      ? requests.map(r => {
+          const when =
+            r.status === 'cancelled' ? (r.cancelled_at || r.updated_at || r.created_at)
+            : r.status === 'sent' ? (r.sent_at || r.updated_at || r.created_at)
+            : (r.created_at || r.updated_at);
+          const actionLabel =
+            r.status === 'sent' ? 'Postmortem Request Sent to Authority'
+            : r.status === 'cancelled' ? 'Postmortem Request Cancelled'
+            : 'Postmortem Request Initiated';
+          return {
+            action: `${actionLabel}${r.request_ref ? ` (${r.request_ref})` : ''}`,
+            user: r.initiated_by || r.requested_by || 'System',
+            role: 'Requesting Party',
+            timestamp: when,
+          };
+        })
+      : []),
   ].filter(Boolean);
+
+  // Show newest events first; entries with no parsable timestamp sink to the bottom.
+  const toTs = (t) => {
+    if (!t) return 0;
+    const normalized = String(t).includes('T') ? t : String(t).replace(' ', 'T');
+    const ms = Date.parse(normalized);
+    return Number.isNaN(ms) ? 0 : ms;
+  };
+  auditLog.sort((a, b) => toTs(b.timestamp) - toTs(a.timestamp));
 
   return (
     <>
