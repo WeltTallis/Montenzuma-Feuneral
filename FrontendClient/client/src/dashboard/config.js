@@ -14,7 +14,7 @@ export const MODULES = [
   {
     id: "hearse",
     label: "Hearse Bookings",
-        icon: TruckIcon,
+    icon: TruckIcon,
     accent: "#818cf8",
     apiEndpoint: "/hearse-bookings",
     statusMap: {
@@ -72,7 +72,7 @@ export const MODULES = [
     apiEndpoint: "/florist/bookings",
     statusMap: {
       booked: { label: "Booked", color: "#f59e0b" },
-      pending: { label: "Booked", color: "#f59e0b" },       // legacy aliases
+      pending: { label: "Booked", color: "#f59e0b" },
       sourced: { label: "Booked", color: "#f59e0b" },
       preparing: { label: "Booked", color: "#f59e0b" },
       confirmed: { label: "Booked", color: "#f59e0b" },

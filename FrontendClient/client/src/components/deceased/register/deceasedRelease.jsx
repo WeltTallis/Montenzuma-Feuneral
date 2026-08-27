@@ -43,6 +43,7 @@ const COLORS = {
   gold: '#C9A227',
   goldDark: '#A8851C',
   tickBlue: '#2564eb1b',
+  green: '#22c55e',
 };
 
 const spin = keyframes`
@@ -434,6 +435,36 @@ const TickIconWrapper = styled.div`
   pointer-events: none;
 `;
 
+// Green spinning loader rendered INSIDE the admission number input while searching
+const SpinIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: ${COLORS.green};
+
+  svg {
+    animation: ${spin} 0.8s linear infinite;
+  }
+`;
+
+const SearchStatus = styled.span`
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: ${COLORS.green};
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+`;
+
 const ErrorMessage = styled.span`
   color: ${COLORS.red};
   font-size: 0.75rem;
@@ -803,6 +834,8 @@ const DeceasedReleaseForm = () => {
   const [errors, setErrors] = useState({});
   const [isLoadingDeceasedList, setIsLoadingDeceasedList] = useState(false);
   const [isLoadingDeceased, setIsLoadingDeceased] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isFound, setIsFound] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [deceasedList, setDeceasedList] = useState([]);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -897,12 +930,12 @@ const DeceasedReleaseForm = () => {
           },
         });
 
-        const result = await response.json();
-        if (response.ok && result.data) {
-          const unreleased = result.data.filter((d) =>
+        const result = response.data?.data || response.data || [];
+        if (Array.isArray(result) && result.length > 0) {
+          const unreleased = result.filter((d) =>
             d.body_status !== 'Released' && d.body_status !== 'Transferred'
           );
-          setDeceasedList(unreleased || []);
+          setDeceasedList(unreleased);
         }
       } catch (error) {
         console.error('Error fetching deceased list:', error);
@@ -936,10 +969,9 @@ const DeceasedReleaseForm = () => {
 
         const result = await response.json();
         if (response.ok && result.data) {
+          fillDeceasedIntoForm(result.data);
           setFormData(prev => ({
             ...prev,
-            ...result.data,
-            admission_number: result.data.admission_number || prev.admission_number,
             release_date: new Date().toISOString().split('T')[0],
             release_time: getCurrentTime(),
           }));
@@ -960,35 +992,104 @@ const DeceasedReleaseForm = () => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+    if (name === 'admission_number' && isFound) setIsFound(false);
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
     if (message.text) setMessage({ type: '', text: '' });
   };
 
-  const handleAdmissionChange = (e) => {
-    const admissionNumber = e.target.value;
-    const selectedDeceased = deceasedList.find(d => d.admission_number === admissionNumber);
-
+  const fillDeceasedIntoForm = (deceased) => {
+    setErrors(prev => ({ ...prev, admission_number: '', full_name: '', gender: '' }));
+    setIsFound(true);
     setFormData(prev => ({
       ...prev,
-      admission_number: admissionNumber,
-      ...(selectedDeceased && {
-        full_name: selectedDeceased.full_name || '',
-        gender: selectedDeceased.gender || '',
-        age: selectedDeceased.age || '',
-        date_of_birth: selectedDeceased.date_of_birth || '',
-        date_of_death: selectedDeceased.date_of_death || '',
-        cause_of_death: selectedDeceased.cause_of_death || '',
-        place_of_death: selectedDeceased.place_of_death || '',
-        next_kin: selectedDeceased.contact_person || selectedDeceased.next_kin || '',
-        contact_person: selectedDeceased.contact_person || '',
-        relationship: selectedDeceased.relationship || '',
-        id_number: selectedDeceased.national_id || selectedDeceased.id_number || '',
-        tel_number: selectedDeceased.tell_no || selectedDeceased.tel_number || '',
-        date_admitted: selectedDeceased.date_admitted || prev.date_admitted,
-      }),
+      admission_number: deceased.admission_number || prev.admission_number,
+      full_name: deceased.full_name || deceased.name_of_deceased || '',
+      gender: deceased.gender || '',
+      age: deceased.age || '',
+      date_of_birth: deceased.date_of_birth || '',
+      date_of_death: deceased.date_of_death || '',
+      cause_of_death: deceased.cause_of_death || '',
+      place_of_death: deceased.place_of_death || deceased.death_location || '',
+      next_kin: deceased.contact_person || deceased.next_kin || deceased.next_of_kin || '',
+      contact_person: deceased.contact_person || deceased.next_kin || '',
+      relationship: deceased.relationship || deceased.kin_relationship || '',
+      id_number: deceased.national_id || deceased.id_number || deceased.nationalId || '',
+      tel_number: deceased.tell_no || deceased.tel_number || deceased.phone_number || deceased.contact || '',
+      date_admitted: deceased.date_admitted || prev.date_admitted,
+      date_of_removal: deceased.date_of_removal || prev.date_of_removal,
     }));
+  };
+
+  const handleAdmissionSearch = async () => {
+    const admissionNumber = String(formData.admission_number || '').trim();
+
+    if (!admissionNumber) {
+      setErrors(prev => ({ ...prev, admission_number: 'Enter an admission number to search' }));
+      return;
+    }
+
+    setIsSearching(true);
+    setIsFound(false);
+    setErrors(prev => ({ ...prev, admission_number: '' }));
+    setMessage({ type: '', text: '' });
+
+    // Keep the green "Searching..." loader visible inside the input for at least
+    // 900ms so the user always sees the search phase, even on instant responses.
+    const minDelay = new Promise((resolve) => setTimeout(resolve, 900));
+
+    try {
+      const tenantSlug = getTenantSlug();
+      const request = axios.get(
+        `${env.FULL_API_URL}${ENDPOINTS.DECEASED.BY_ADMISSION(encodeURIComponent(admissionNumber))}`,
+        {
+          headers: {
+            'x-tenant-slug': tenantSlug,
+            'Authorization': `Bearer ${getAuthToken()}`,
+          },
+        }
+      );
+      const response = await Promise.all([request, minDelay]).then(([res]) => res);
+
+      const result = response.data;
+      const deceased = result?.data || (result && result.full_name ? result : null);
+
+      if (!deceased) {
+        // Fall back to the locally-loaded list in case the API shape changes
+        const local = deceasedList.find(
+          (d) => String(d.admission_number).trim() === admissionNumber
+        );
+        if (local) {
+          fillDeceasedIntoForm(local);
+          return;
+        }
+        throw new Error('not-found');
+      }
+
+      fillDeceasedIntoForm(deceased);
+    } catch (error) {
+      // Even on a fast failure, hold the loader up briefly so the state change is visible
+      await minDelay;
+      // Fall back to the locally-loaded list before reporting a failure
+      const local = deceasedList.find(
+        (d) => String(d.admission_number).trim() === admissionNumber
+      );
+      if (local) {
+        fillDeceasedIntoForm(local);
+        return;
+      }
+      const apiError = error?.response?.data?.message || error?.message || 'Search failed';
+      setIsFound(false);
+      setErrors(prev => ({
+        ...prev,
+        admission_number: apiError === 'No-checkout' || /not found/i.test(String(apiError))
+          ? `No deceased record found for admission number "${admissionNumber}".`
+          : apiError,
+      }));
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const validateForm = () => {
@@ -1104,6 +1205,8 @@ const DeceasedReleaseForm = () => {
     setErrors({});
     setMessage({ type: '', text: '' });
     setReleaseId('');
+    setIsFound(false);
+    setIsSearching(false);
     sigPadRef1.current?.clear();
   };
 
@@ -1179,7 +1282,7 @@ const DeceasedReleaseForm = () => {
                 <FileIdText>
                   File ID:
                   <span>
-                    {isLoadingDeceasedList ? 'Loading...' : (formData.admission_number || 'Select deceased')}
+                    {isLoadingDeceasedList ? 'Loading...' : (formData.admission_number || 'Enter admission number')}
                   </span>
                 </FileIdText>
               </BarcodeWrapper>
@@ -1199,28 +1302,40 @@ const DeceasedReleaseForm = () => {
                   <Col2>
                     <Label>Admission Number <span style={{ color: COLORS.red }}>*</span></Label>
                     <InputFieldWrapper>
-                      <Select
+                      <InputLg
+                        type="text"
                         name="admission_number"
                         value={formData.admission_number}
-                        onChange={handleAdmissionChange}
-                        disabled={!!id || !!location.state?.deceasedId || !!location.state?.deceasedData}
-                      >
-                        <option value="">Select deceased record</option>
-                        {isLoadingDeceasedList ? (
-                          <option value="" disabled>Loading records...</option>
-                        ) : (
-                          deceasedList.map((deceased) => (
-                            <option key={deceased.deceased_id} value={deceased.admission_number}>
-                              {deceased.admission_number} — {deceased.full_name}
-                            </option>
-                          ))
-                        )}
-                      </Select>
-                      {hasValue(formData.admission_number) && (
-                        <TickIconWrapper>
-                          <Check size={16} strokeWidth={2.5} />
-                        </TickIconWrapper>
-                      )}
+                        onChange={handleChange}
+                        onBlur={handleAdmissionSearch}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAdmissionSearch();
+                          }
+                        }}
+                        placeholder="Enter admission number to search the database"
+                        autoComplete="off"
+                      />
+                      {isSearching ? (
+                        <SearchStatus>
+                          <SpinIcon>
+                            <Loader2 size={14} />
+                          </SpinIcon>
+                          Searching...
+                        </SearchStatus>
+                      ) : hasValue(formData.admission_number) && isFound
+                        ? (
+                          <TickIconWrapper style={{ color: COLORS.green }}>
+                            <Check size={16} strokeWidth={2.5} />
+                            <span style={{ fontSize: '0.65rem', color: COLORS.success, fontWeight: 700, marginLeft: '0.3rem' }}>Found</span>
+                          </TickIconWrapper>
+                        ) : !isSearching && hasValue(formData.admission_number) && !isFound && errors.admission_number
+                          ? (
+                            <SearchStatus style={{ color: COLORS.red }}>
+                              <X size={14} /> Not Found
+                            </SearchStatus>
+                          ) : null}
                     </InputFieldWrapper>
                     {errors.admission_number && <ErrorMessage>{errors.admission_number}</ErrorMessage>}
                   </Col2>
@@ -1766,7 +1881,7 @@ const DeceasedReleaseForm = () => {
               <FileIdText>
                 File ID:
                 <span>
-                  {isLoadingDeceasedList ? 'Loading...' : (formData.admission_number || 'Select deceased')}
+                  {isLoadingDeceasedList ? 'Loading...' : (formData.admission_number || 'Enter admission number')}
                 </span>
               </FileIdText>
             </BarcodeWrapper>

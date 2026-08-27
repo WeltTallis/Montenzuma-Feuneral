@@ -243,12 +243,35 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
 
         const now = getKenyaTimeISO();
 
-        // Generate a booking code
+        // Generate a human-readable booking code:
+        //   BK-<hearseCode>-<clientCode>-<dateCode>-<random5>
+        // e.g. BK-H1-Kariuki-20250815-A3F9K
         let booking_code: string;
         try {
-            const [idResult] = await safeQuery('SELECT COUNT(*) as count FROM hearse_bookings', []);
-            const bookingNumber = String((idResult.count || 0) + 1).padStart(3, '0');
-            booking_code = `BK-${bookingNumber}`;
+            // Fetch hearse name/plate for the code (optional — degrades gracefully)
+            let hearseCode = 'H';
+            if (hearse_id) {
+                try {
+                    const [hRow] = await safeQuery(
+                        'SELECT hearse_name, plate_number FROM hearses WHERE id = ?',
+                        [hearse_id]
+                    );
+                    const hn = hRow?.hearse_name || hRow?.plate_number || '';
+                    hearseCode = hn ? hn.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase() || 'H' : 'H';
+                } catch (hearseErr) { hearseCode = 'H'; }
+            }
+
+            // Client name → first 8 chars without spaces
+            const clientCode = (client_name || 'client').replace(/[^A-Za-z0-9]/g, '').slice(0, 8).toUpperCase() || 'CLIENT';
+
+            // Booking date → YYYYMMDD (use first selected date)
+            const d = finalBookingDates[0];
+            const dateCode = d ? toDateKey(d) : Date.now().toString().slice(-8);
+
+            // 5-char random suffix
+            const random = Math.random().toString(36).slice(2, 7).toUpperCase();
+
+            booking_code = `BK-${hearseCode}-${clientCode}-${dateCode}-${random}`;
         } catch (err) {
             booking_code = `BK-${Date.now().toString().slice(-6)}`;
         }

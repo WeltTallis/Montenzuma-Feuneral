@@ -381,7 +381,7 @@ export default function ReservationDashboard(props) {
   ].join('\n');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', background: BG, color: TX, fontFamily: FONT, WebkitFontSmoothing: 'antialiased' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', width: '100%', overflow: 'visible', background: BG, color: TX, fontFamily: FONT, WebkitFontSmoothing: 'antialiased' }}>
       <style dangerouslySetInnerHTML={{ __html: css }} />
 
       {/* Toolbar */}
@@ -568,7 +568,7 @@ export default function ReservationDashboard(props) {
               })}
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto' }}>
+            <div style={{ flex: 1 }}>
               {visible.length === 0 ? (
                 <div className="cb-empty">
                   <div className="cb-empty-ico">{IC.cal}</div>

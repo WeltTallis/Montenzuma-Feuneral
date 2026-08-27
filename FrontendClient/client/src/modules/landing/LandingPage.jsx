@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, Children } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, TrendingUp, Search, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy } from '../../utils/icons/icons';
+import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, Search, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy } from '../../utils/icons/icons';
 
 import Footer from '../../components/layout/Footer';
 import LandingPageSEO from '../seo/LandingPageSEO';
@@ -270,18 +270,6 @@ const MockHearse = () => (
         <span className={`fleet-status ${h.s}`}>{h.s.charAt(0).toUpperCase() + h.s.slice(1)}</span>
       </div>
     ))}
-  </div>
-);
-
-const MockInsurance = () => (
-  <div className="mock-inner">
-    <div style={{ marginBottom: '1.5rem' }}><div className="mono-label" style={{ color: C.brassLight }}>WELFARE SCHEME</div><div style={{ fontSize: '1.4rem', fontFamily: "'Fraunces', serif", color: C.bone, marginTop: '0.3rem' }}>Contributions & Payouts</div></div>
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-      <div className="stat-card"><Users size={16} color={C.brass} /><div className="stat-value">320</div><div className="stat-label">Active Members</div></div>
-      <div className="stat-card"><TrendingUp size={16} color={C.brass} /><div className="stat-value">150K</div><div className="stat-label">Total Coverage</div></div>
-    </div>
-    <div className="chart-container">{[40, 65, 50, 85, 70, 90].map((h, i) => <div key={i} className="chart-bar" style={{ height: `${h}%`, background: (i === 3 || i === 5) ? C.brass : undefined }} />)}</div>
-    <div className="progress-section"><div className="progress-header"><span>Monthly Claims Processed</span><span>72%</span></div><div className="progress-track"><div className="progress-fill" /></div></div>
   </div>
 );
 
@@ -678,31 +666,52 @@ export default function App() {
            INSURANCE — REDESIGNED (LIGHT)
            ══════════════════════════════════ */
         .insurance-section{
-          padding:clamp(5rem,10vw,7rem) 0;background:${C.bone};
-          border-top:1px solid ${C.line};position:relative;overflow:hidden;
+          padding:clamp(5rem,10vw,7rem) 0;position:relative;overflow:hidden;
+          background-image:url('/Funeral_Plan_hero.webp');
+          background-size:cover;background-position:center;background-repeat:no-repeat;
+          background-attachment:fixed;
+          border-top:1px solid ${C.line};
+        }
+        .insurance-scrim{
+          position:absolute;inset:0;z-index:0;
+          background:linear-gradient(180deg,rgba(250,248,244,0.95) 0%,rgba(250,248,244,0.88) 100%);
         }
         .insurance-accent-bar{
-          position:absolute;top:0;left:0;right:0;height:3px;
+          position:absolute;top:0;left:0;right:0;height:3px;z-index:2;
           background:linear-gradient(90deg,${C.brass},${C.brassLight},${C.accent},${C.brass});
           background-size:200% 100%;animation:gradient-text 4s ease infinite;
         }
-        .insurance-decor-circle{
-          position:absolute;width:500px;height:500px;border-radius:50%;
-          border:1px solid rgba(139,115,85,0.08);right:-200px;top:50%;transform:translateY(-50%);
-          pointer-events:none;
+        .insurance-content{
+          position:relative;z-index:1;text-align:left;max-width:720px;
         }
-        .insurance-decor-circle::after{
-          content:'';position:absolute;inset:40px;border-radius:50%;
-          border:1px solid rgba(139,115,85,0.06);
+        .insurance-grid{
+          display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));
+          gap:1.25rem;margin-top:3rem;text-align:left;
         }
-        .insurance-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:4rem;align-items:center;position:relative;z-index:1}
-        .insurance-badge-row{display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:2rem}
-        .insurance-badge{
-          display:inline-flex;align-items:center;gap:0.4rem;padding:0.4rem 1rem;
-          border-radius:50px;font-size:0.72rem;font-family:'JetBrains Mono',monospace;
-          letter-spacing:0.08em;text-transform:uppercase;font-weight:500;
-          border:1px solid ${C.line};background:${C.bone2};color:${C.brass};
+        .insurance-card{
+          background:rgba(250,248,244,0.92);border:1px solid ${C.line};border-radius:14px;
+          padding:1.8rem;transition:all 0.4s cubic-bezier(0.16,1,0.3,1);
+          position:relative;overflow:hidden;
         }
+        .insurance-card::before{
+          content:'';position:absolute;top:0;left:0;right:0;height:2px;
+          background:linear-gradient(90deg,transparent,${C.brass},transparent);
+          opacity:0;transition:opacity 0.5s ease;
+        }
+        .insurance-card:hover{
+          border-color:${C.brass};transform:translateY(-4px);
+          box-shadow:0 16px 36px -10px rgba(21,23,26,0.16);
+        }
+        .insurance-card:hover::before{opacity:1}
+        .insurance-icon{
+          width:48px;height:48px;border-radius:12px;
+          background:${C.verdigrisTint};display:flex;align-items:center;justify-content:center;
+          margin-bottom:1.1rem;color:${C.verdigris};transition:all 0.4s ease;
+        }
+        .insurance-card:hover .insurance-icon{background:${C.verdigris};color:${C.bone}}
+        .insurance-card h3{font-family:'Inter',sans-serif;font-size:1.05rem;font-weight:600;color:${C.ink};margin-bottom:0.5rem}
+        .insurance-card p{font-size:0.86rem;color:${C.gray};line-height:1.7}
+        .insurance-card:hover p{color:${C.ink}}
 
         /* ══════════════════════════════════
            INFRASTRUCTURE — BLACK REDESIGN
@@ -853,7 +862,7 @@ export default function App() {
           .showcase-mobile{grid-template-columns:1fr!important;gap:2rem!important;margin-bottom:4rem!important}
           .showcase-mobile .showcase-text{order:2!important}
           .showcase-mobile .showcase-visual{order:1!important;justify-content:center!important}
-          .insurance-grid{grid-template-columns:1fr;gap:2rem}
+          .insurance-content{max-width:100%}
           .modules-grid{grid-template-columns:1fr}
           .about-grid{grid-template-columns:1fr;gap:2rem}
           .hero-buttons{flex-direction:column;width:100%}
@@ -866,7 +875,8 @@ export default function App() {
           .unified-bento-card{grid-column:span 1!important}
           .unified-heading{font-size:clamp(1.8rem,6vw,3rem)}
           .unified-watermark{font-size:clamp(4rem,14vw,8rem)}
-          .insurance-decor-circle{display:none}
+          .insurance-overlay{background:linear-gradient(180deg,rgba(12,12,12,0.88) 0%,rgba(12,12,12,0.72) 100%)}
+          .insurance-section{background-attachment:scroll}
         }
         @media(max-width:480px){
           .hero{padding-top:100px}
@@ -935,7 +945,7 @@ export default function App() {
             </div>
             <div style={{ opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(30px)', transition: 'opacity 0.9s cubic-bezier(0.16,1,0.3,1) 350ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) 350ms' }}>
               <div className="sales-banner" style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', marginTop: '3rem', boxShadow: '0 30px 60px -15px rgba(21,23,26,0.2)', border: `1px solid ${C.line}` }}>
-                <img src="/sales-export-img.png" alt="Rest Point - Complete Software Solution" style={{ width: '100%', height: 'clamp(250px,35vw,420px)', objectFit: 'cover', display: 'block', transition: 'transform 8s ease' }} />
+                <img src="/sales-export-img.jpg" alt="Rest Point - Complete Software Solution" style={{ width: '100%', height: 'clamp(250px,35vw,420px)', objectFit: 'cover', display: 'block', transition: 'transform 8s ease' }} />
                 <div style={{ position: 'absolute', inset: 0, background: 'transparent', pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', top: 0, left: '-100%', width: '60%', height: '100%', background: 'linear-gradient(90deg, transparent, rgba(250,248,244,0.08), transparent)', animation: 'shine 5s ease-in-out infinite 3s', pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', bottom: 'clamp(1.5rem,4vw,3rem)', left: 'clamp(1.5rem,4vw,3rem)', zIndex: 2, maxWidth: '550px' }}>
@@ -989,29 +999,20 @@ export default function App() {
             ══════════════════════════════════ */}
         <section id="insurance" className="insurance-section">
           <div className="insurance-accent-bar" />
-          <div className="insurance-decor-circle" />
           <div className="wrap">
-            <div className="insurance-grid">
+            <div className="insurance-content">
               <Reveal>
-                <div className="label" style={{ color: C.brass, marginBottom: '1rem' }}>Funeral Insurance & Welfare Management</div>
-                <h2 style={{ marginBottom: '1.5rem', fontSize: 'clamp(2rem, 4.5vw, 2.8rem)', lineHeight: 1.25 }}>We understand the pain and financial burden families face</h2>
-                <div className="insurance-badge-row">
-                  {['Churches', 'SACCOs', 'Chamas', 'NGOs', 'Companies'].map(b => (
-                    <span key={b} className="insurance-badge">{b}</span>
-                  ))}
-                </div>
-                <p style={{ color: C.gray, lineHeight: 1.9, marginBottom: '1.5rem', fontSize: '1.02rem' }}>
+                <div className="label" style={{ color: '#E8D5B5', marginBottom: '1.1rem' }}>Funeral Insurance & Welfare Management</div>
+                <h2 style={{ color: '#FFFFFF', marginBottom: '1.2rem', fontSize: 'clamp(2rem, 4.5vw, 3rem)', lineHeight: 1.2 }}>We understand the pain and financial burden families face</h2>
+                <p style={{ color: 'rgba(255,255,255,0.92)', lineHeight: 1.9, marginBottom: '1.4rem', fontSize: '1.05rem', maxWidth: '640px' }}>
                   Families go through immense pain when they lose a loved one, only to be burdened with huge hospital bills and funeral expenses. We break down these barriers by bringing comprehensive funeral insurance solutions directly to your organization.
                 </p>
-                <p style={{ color: C.gray, lineHeight: 1.9, marginBottom: '2.5rem', fontSize: '1.02rem' }}>
+                <p style={{ color: 'rgba(255,255,255,0.78)', lineHeight: 1.9, marginBottom: '2.5rem', fontSize: '1.05rem', maxWidth: '640px' }}>
                   Rest Point now includes funeral insurance management and welfare scheme administration tools — claims, contributions, member tracking, and automated payouts all in one place.
                 </p>
-                <button className="btn btn-dark" onClick={() => navigate('/insurance')} style={{ padding: '1rem 2rem' }}>
-                  Learn about funeral insurance <ArrowRight size={16} />
+                <button className="btn btn-brass" onClick={() => navigate('/insurance')} style={{ padding: '1rem 2.4rem' }}>
+                  View More <ArrowRight size={16} />
                 </button>
-              </Reveal>
-              <Reveal delay={150}>
-                <AppWindow title="restpoint.app/insurance" dark><MockInsurance /></AppWindow>
               </Reveal>
             </div>
           </div>

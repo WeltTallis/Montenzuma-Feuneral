@@ -233,28 +233,28 @@ const MainContent = styled.div`
 
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.6rem;
   margin-bottom: 1rem;
 `;
 
 const StatCard = styled.div`
   background: ${props => props.$bg || COLORS.surface};
   border-radius: ${COLORS.radiusSm};
-  box-shadow: ${COLORS.shadowMd};
+  box-shadow: ${COLORS.shadowSm};
   border: none;
-  padding: 1rem 1.25rem;
+  padding: 0.7rem 0.9rem;
   transition: ${COLORS.transition};
   position: relative;
   overflow: hidden;
-  &:hover { transform: translateY(-2px); box-shadow: ${COLORS.shadowLg}; }
+  &:hover { transform: translateY(-2px); box-shadow: ${COLORS.shadowMd}; }
 `;
 
-const StatHeader = styled.div`display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;`;
-const StatLabel = styled.div`font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.9);text-transform:uppercase;letter-spacing:0.04em;`;
-const StatIcon = styled.div`width:32px;height:32px;border-radius:${COLORS.radiusXs};display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.2);color:#ffffff;`;
-const StatValue = styled.div`font-size:1.75rem;font-weight:800;color:#ffffff;line-height:1.2;margin-bottom:0.25rem;`;
-const StatSubtext = styled.div`font-size:0.7rem;color:rgba(255,255,255,0.8);font-weight:500;`;
+const StatHeader = styled.div`display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;`;
+const StatLabel = styled.div`font-size:0.62rem;font-weight:700;color:rgba(255,255,255,0.9);text-transform:uppercase;letter-spacing:0.05em;`;
+const StatIcon = styled.div`width:22px;height:22px;border-radius:${COLORS.radiusXs};display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.2);color:#ffffff;`;
+const StatValue = styled.div`font-size:1.25rem;font-weight:800;color:#ffffff;line-height:1.2;margin-bottom:0.15rem;`;
+const StatSubtext = styled.div`font-size:0.64rem;color:rgba(255,255,255,0.8);font-weight:500;`;
 
 const FilterCard = styled.div`
   background: ${COLORS.surface};

@@ -28,6 +28,33 @@ function DeceasedView({ currentDate, bookings, mod, onSelect, onShowDay }) {
   const release = bookings.filter(b => ["released", "completed", "dispatched"].includes(b.status));
   const postmortem = bookings.filter(b => ["transferred", "ready"].includes(b.status));
 
+  /* ── Flower-style card tints (mirror of FlowerBookingsNew STATUS_CARD_STYLES) ──
+     Every status tier gets its own glanceable tint. Released-tier records reuse
+     the EXACT soft-red (#FFCCD5) that flower COMPLETED/CANCELLED orders use. */
+  const DECEASED_CARD_TINTS = {
+    pending:     { bg: "#EFF1F3", border: "#E3E0D9" },
+    admitted:    { bg: "#EFF1F3", border: "#E3E0D9" },
+    admitting:   { bg: "#FDF4E3", border: "#F0DDB0" },
+    ready:       { bg: "#FDF4E3", border: "#F0DDB0" },
+    transferred: { bg: "#FDF4E3", border: "#F0DDB0" },
+    released:    { bg: "#FFCCD5", border: "#F0CDCB" },
+    dispatched:  { bg: "#FFCCD5", border: "#F0CDCB" },
+    buried:      { bg: "#FFCCD5", border: "#F0CDCB" },
+    completed:   { bg: "#FFCCD5", border: "#F0CDCB" },
+  };
+
+  const fmtAdmDate = (bk) => {
+    const raw = bk.date_admitted || bk.adm_date || bk.date_key || bk.created_at;
+    if (!raw) return "";
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? "" : format(d, "MMM d, yyyy");
+  };
+
+  const initialsOf = (bk) =>
+    String(safeName(bk, mod)).trim().split(/\s+/).slice(0, 2)
+      .map(w => w.charAt(0).toUpperCase()).join("") || "?";
+
+
   const renderList = (title, items, dotColor, icon) => (
     <div style={{
       display: "flex", flexDirection: "column",
@@ -58,39 +85,74 @@ function DeceasedView({ currentDate, bookings, mod, onSelect, onShowDay }) {
           <div style={{ textAlign: "center", color: T.textMuted, fontSize: 12, padding: "24px 0" }}>
             No {title.toLowerCase()} records
           </div>
-        ) : items.map(bk => (
-          <div key={bk[mod.idField] || bk.id}
-            onClick={() => onSelect(bk)}
-            style={{
-              padding: "12px 14px", marginBottom: 8,
-              borderRadius: 12, cursor: "pointer",
-              background: "rgba(255,255,255,0.025)",
-              border: `1px solid ${T.borderSubtle}`,
-              transition: "all 0.14s ease",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = `${dotColor}30`; e.currentTarget.style.background = `${dotColor}08`; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = T.borderSubtle; e.currentTarget.style.background = "rgba(255,255,255,0.025)"; }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>
-                {safeName(bk, mod)}
-              </span>
-              <span style={{ fontSize: 10, fontFamily: "monospace", color: T.textMuted }}>
-                {bk[mod.idField] || "—"}
+        ) : items.map(bk => {
+          const stCfg = SM[bk.status];
+          const stColor = stCfg?.color || dotColor;
+          const tint = DECEASED_CARD_TINTS[bk.status]
+            || { bg: "#FFFFFF", border: "#EAE7E2" };
+          const admDate = fmtAdmDate(bk);
+          return (
+            <div key={bk[mod.idField] || bk.id}
+              onClick={() => onSelect(bk)}
+              style={{
+                display: "flex", gap: 12, alignItems: "center",
+                padding: "11px 13px", marginBottom: 10,
+                borderRadius: 20, cursor: "pointer",
+                background: tint.bg,
+                border: `1px solid ${tint.border}`,
+                boxShadow: "0 1px 3px rgba(28,26,23,0.04)",
+                transition: "all .25s ease",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 16px rgba(28,26,23,0.10)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(28,26,23,0.04)"; e.currentTarget.style.transform = "translateY(0)"; }}
+            >
+              {/* Initials thumb — mirrors the flower card's media thumbnail */}
+              <div style={{
+                width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+                background: "#1C1A17",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <span style={{
+                  fontFamily: "'Playfair Display', serif",
+                  fontSize: 18, fontWeight: 700, color: "#B08D57",
+                }}>
+                  {initialsOf(bk)}
+                </span>
+              </div>
+
+              {/* Name + meta */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontFamily: "'Playfair Display', serif",
+                  fontSize: 15, fontWeight: 600, color: "#1C1A17",
+                  marginBottom: 3,
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>
+                  {safeName(bk, mod)}
+                </div>
+                <div style={{
+                  display: "flex", flexWrap: "wrap", gap: "2px 12px",
+                  fontSize: 11, fontWeight: 600, color: "#574F47",
+                }}>
+                  <span>{bk[mod.idField] ? `№ ${bk[mod.idField]}` : "No ID"}</span>
+                  {admDate && <span>Admitted {admDate}</span>}
+                </div>
+              </div>
+
+              {/* Status pill */}
+              <span style={{
+                flexShrink: 0, padding: "4px 10px", borderRadius: 99,
+                fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                background: `${stColor}18`,
+                border: `1px solid ${stColor}30`,
+                color: stColor,
+              }}>
+                {stCfg?.label || bk.status}
               </span>
             </div>
-            <span style={{
-              display: "inline-block",
-              padding: "2px 8px", borderRadius: 99,
-              fontSize: 10, fontWeight: 600,
-              background: `${SM[bk.status]?.color || dotColor}18`,
-              color: SM[bk.status]?.color || dotColor,
-              border: `1px solid ${SM[bk.status]?.color || dotColor}28`,
-            }}>
-              {SM[bk.status]?.label || bk.status}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

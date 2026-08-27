@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { MODULES, DASH_NAV } from "./config";
 import ModuleDashboard from "./ModuleDashboard";
 import DashboardNav from "./DashboardNav";
+import ReservationDashboard from "../components/coffins/ReservationDashboard";
 
 /* ─── Design tokens (matches workshop palette) ─────────────────── */
 const T = {
@@ -131,6 +132,7 @@ function ActivityDrawer({ mod, onClose }) {
 
 /* ─── Main Dashboard Shell ─────────────────────────────────────── */
 export default function Dashboard({ tenantSlug = "", tenantData }) {
+
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("hearse");
   const [navOpen, setNavOpen] = useState(false);
@@ -150,18 +152,32 @@ export default function Dashboard({ tenantSlug = "", tenantData }) {
       color: T.text,
       fontFamily: T.font,
     }}>
-      {/* ── Top Navigation (standalone) ──────────────────────────── */}
+
+      {/* ── Top Navigation (standalone) ─── */}
       <DashboardNav
         tabs={MODULES}
         active={activeTab}
         onSelect={setActiveTab}
         badge={3}
       />
+
       <div style={{ height: 0 }} />
 
-      {/* ── Module content ───────────────────────────────────────── */}
+      {/* ── Module content ─ */}
+
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        {mod && <ModuleDashboard key={activeTab} mod={mod} />}
+        {/* Coffin tab: render the standalone ReservationDashboard (self-fetches
+            orders/inventory) INSTEAD of the generic ModuleDashboard content. */}
+        {mod && (
+          activeTab === "coffin"
+            ? (
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
+                <ReservationDashboard />
+              </div>
+            )
+            : <ModuleDashboard key={activeTab} mod={mod} />
+        )}
+
       </div>
 
       {/* ── Navigation Drawer ──────────────────────────────────── */}
@@ -304,11 +320,14 @@ export default function Dashboard({ tenantSlug = "", tenantData }) {
             </div>
           </aside>
         </div>
+
       )}
 
-      {/* ── Activity Drawer ─────────────────────────────────────── */}
+      {/* ── Activity Drawer ─── */}
       {activityOpen && (
+
         <ActivityDrawer mod={mod} onClose={() => setActivityOpen(false)} />
+
       )}
 
       <style>{`

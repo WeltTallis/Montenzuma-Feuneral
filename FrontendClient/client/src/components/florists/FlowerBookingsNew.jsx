@@ -121,18 +121,68 @@ const toTimeOnly = v => {
   return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '';
 };
 
-// Resolve the name of the branch the logged-in user belongs to (flowers are
-// coming from this branch). Uses the branch context stored at login.
-
-const resolveBranchName = () => {
-  const slug = getBranchSlug();
-  const bid = getBranchId();
+// Resolve a branch name from a branch reference (id, slug, or name).
+// Used to convert the raw branch_id stored on bookings back to a
+// human-readable branch name. If no argument is given it returns the
+// name of the branch the logged-in user belongs to.
+const resolveBranchName = (branchRef) => {
   const branches = getBranches();
+
+  // No argument → resolve the current user's own branch.
+  if (!branchRef) {
+    const slug = getBranchSlug();
+    const bid = getBranchId();
+    const match = branches.find(b =>
+      (b.branchSlug || b.branch_slug) === slug ||
+      String(b.branchId || b.branch_id) === String(bid || '')
+    );
+    return (match && (match.branchName || match.branch_name)) || slug || '';
+  }
+
+  // Caller passed an explicit branch reference — resolve it to a name.
+  const ref = String(branchRef);
+
+  // 1) It's already a plain name (not a UUID/slug).
+  if (branches.find(b => (b.branchName || b.branch_name || b.name) === branchRef)) {
+    return branchRef;
+  }
+
+  // 2) Match against branch id or slug.
   const match = branches.find(b =>
-    (b.branchSlug || b.branch_slug) === slug ||
-    String(b.branchId || b.branch_id) === String(bid || '')
+    String(b.branchId || b.branch_id || b.id) === ref ||
+    String(b.branchSlug || b.branch_slug) === ref
   );
-  return (match && (match.branchName || match.branch_name)) || slug || '';
+  if (match) {
+    return match.branchName || match.branch_name || match.name || branchRef;
+  }
+
+  // 3) Fallback — return the original value (it may already be a name).
+  return branchRef;
+};
+
+// Convert a raw DB booking_id (usually a UUID) into a short, readable code
+// like:  BK-M-Kariuki-20250815-A3F9K
+// so users can recognise it in toasts, detail crumbs, etc.
+const shortBookingCode = (b) => {
+  if (!b || !b.booking_id) return '—';
+  if (b.booking_code) return b.booking_code; // already provided by backend
+
+  const parts = [];
+  if (b.branch && typeof b.branch === 'string' && b.branch.length >= 1) {
+    parts.push(b.branch.charAt(0).toUpperCase());
+  } else if (b.deceased_name) {
+    parts.push(b.deceased_name.charAt(0).toUpperCase());
+  }
+  if (b.deceased_name) {
+    parts.push(b.deceased_name.replace(/\s+/g, '').slice(0, 12));
+  }
+  const d = parseDate(b.date || b.delivery_date);
+  if (d) {
+    parts.push(fmtDateStr(d)); // YYYYMMDD
+  }
+  // 5-char random suffix
+  parts.push(Math.random().toString(36).slice(2, 7).toUpperCase());
+  return `BK-${parts.join('-')}`;
 };
 
 // Real logged-in username straight from localStorage (`user` is written at
@@ -776,7 +826,7 @@ const FlowerBookingsNew = () => {
             )}
             <div style={styles.metaRow}><User size={12} /> {b.deceased_name}</div>
             <div style={styles.metaRow}><User size={12} /> Booked by {b.booked_by || b.customer}</div>
-            <div style={styles.metaRow}><Home size={12} /> Flowers from: {b.branch || 'Not specified'}</div>
+                        <div style={styles.metaRow}><Home size={12} /> Flowers from: {resolveBranchName(b.branch) || resolveBranchName(b.funeral_home) || 'Not specified'}</div>
           </div>
         </div>
         <div className="flx-card-right" style={styles.bookingRight}>
@@ -1328,7 +1378,7 @@ const FlowerBookingsNew = () => {
               Back to Orders
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={styles.detailCrumb}>{b.booking_id}</span>
+                            <span style={styles.detailCrumb}>{shortBookingCode(b)}</span>
               <button onClick={backToList} aria-label="Close details" style={{ background: 'none', border: 'none', color: '#9C9389', fontSize: '26px', lineHeight: 1, cursor: 'pointer', padding: 0 }}>×</button>
             </div>
           </div>
@@ -1345,7 +1395,7 @@ const FlowerBookingsNew = () => {
         )}
         <div style={styles.detailBody}>
           <div style={styles.chipRow}>
-            <div style={styles.chipPrimary}>{b.booking_id}</div>
+                        <div style={styles.chipPrimary}>{shortBookingCode(b)}</div>
             <span style={{ ...styles.priorityPill, fontSize: '12px', padding: '6px 12px' }}>{b.priority} Priority</span>
           </div>
 
@@ -1442,7 +1492,7 @@ const FlowerBookingsNew = () => {
               <div style={styles.detailItemIcon}><MapPin size={22} /></div>
               <div style={styles.detailItemInfo}>
                 <div style={styles.detailLabel}>Flowers Coming From</div>
-                <div style={styles.detailValue}>{b.branch || b.funeral_home || 'Not specified'}</div>
+                                <div style={styles.detailValue}>{resolveBranchName(b.branch) || resolveBranchName(b.funeral_home) || 'Not specified'}</div>
               </div>
             </div>
             <div style={styles.detailItem}>

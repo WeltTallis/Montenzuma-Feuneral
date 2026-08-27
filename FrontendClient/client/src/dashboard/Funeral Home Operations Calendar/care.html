@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Care Registry — Aldermoor &amp; Daughters Funeral Home</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        /* ————————————————— foundation ————————————————— */
+        :root {
+            --paper: #F5F1E8;
+            --lift: #FBF8F1;
+            --sunken: #ECE6D8;
+            --ink: #211E18;
+            --soft: #6B655A;
+            --hair: #DCD5C6;
+            --edge: #B9AF9C;
+            --ox: #7A2F26;
+            /* oxblood accent */
+            --serif: "Fraunces", Georgia, serif;
+            --mono: "IBM Plex Mono", ui-monospace, monospace;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html {
+            scroll-behavior: smooth
+        }
+
+        body {
+            margin: 0;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: var(--serif);
+            font-optical-sizing: auto;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::selection {
+            background: var(--ox);
+            color: var(--lift)
+        }
+
+        svg.lucide {
+            width: 16px;
+            height: 16px;
+            stroke-width: 1.75
+        }
+
+        button {
+            font: inherit;
+            color: inherit
+        }
+
+        /* ————————————————— masthead ————————————————— */
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 42px 100px
+        }
+
+        .masthead {
+            padding-top: 56px
+        }
+
+        .masthead>* {
+            animation: rise .7s cubic-bezier(.2, .7, .2, 1) backwards
+        }
+
+        .masthead>*:nth-child(2) {
+            animation-delay: .07s
+        }
+
+        .masthead>*:nth-child(3) {
+            animation-delay: .14s
+        }
+
+        .masthead>*:nth-child(4) {
+            animation-delay: .21s
+        }
+
+        .masthead>*:nth-child(5) {
+            animation-delay: .28s
+        }
+
+        .brandbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 1px solid var(--ink);
+            padding-bottom: 14px
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 13px
+        }
+
+        .emblem {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--ink);
+            border-radius: 50%;
+            display: grid;
+            place-items: center
+        }
+
+        .emblem svg.lucide {
+            width: 17px;
+            height: 17px;
+            stroke-width: 1.4
+        }
+
+        .brand small {
+            display: block;
+            font: 600 10.5px var(--mono);
+            letter-spacing: .34em;
+            text-transform: uppercase
+        }
+
+        .brand span {
+            display: block;
+            font: italic 400 13px var(--serif);
+            color: var(--soft);
+            margin-top: 3px
+        }
+
+        .today {
+            text-align: right;
+            font: 400 12px var(--mono);
+            color: var(--soft);
+            line-height: 1.7
+        }
+
+        .today b {
+            color: var(--ink);
+            font-weight: 600
+        }
+
+        h1 {
+            font-size: clamp(46px, 7vw, 78px);
+            font-weight: 340;
+            line-height: 1.02;
+            letter-spacing: -.015em;
+            margin: 38px 0 14px;
+        }
+
+        h1 em {
+            font-style: italic;
+            font-weight: 380;
+            color: var(--ox)
+        }
+
+        .lede {
+            font: italic 400 18px/1.55 var(--serif);
+            color: var(--soft);
+            max-width: 56ch;
+            margin: 0
+        }
+
+        .lede a {
+            color: inherit;
+            text-decoration-color: var(--edge);
+            text-underline-offset: 3px
+        }
+
+        .lede a:hover {
+            color: var(--ink)
+        }
+
+        .jump {
+            display: flex;
+            gap: 26px;
+            margin-top: 26px;
+            font: 500 11px var(--mono);
+            letter-spacing: .14em;
+            text-transform: uppercase
+        }
+
+        .jump a {
+            color: var(--soft);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            padding-bottom: 3px
+        }
+
+        .jump a:hover {
+            color: var(--ink);
+            border-color: var(--ink)
+        }
+
+        .jump i {
+            font-style: normal;
+            color: var(--ox);
+            margin-right: 7px
+        }
+
+        /* ————————————————— summary figures ————————————————— */
+        .figs {
+            display: flex;
+            gap: 52px;
+            flex-wrap: wrap;
+            margin: 40px 0 8px;
+            padding-top: 24px;
+            border-top: 1px solid var(--hair)
+        }
+
+        .fig b {
+            display: block;
+            font: 400 44px/1 var(--serif);
+            font-weight: 360;
+            letter-spacing: -.02em
+        }
+
+        .fig span {
+            display: block;
+            margin-top: 6px;
+            font: 500 10.5px var(--mono);
+            letter-spacing: .16em;
+            text-transform: uppercase;
+            color: var(--soft)
+        }
+
+        /* ————————————————— sections ————————————————— */
+        .section {
+            scroll-margin-top: 30px;
+            opacity: 0;
+            transform: translateY(18px);
+            transition: opacity .7s ease, transform .7s cubic-bezier(.2, .7, .2, 1)
+        }
+
+        .section.vis {
+            opacity: 1;
+            transform: none
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin: 72px 0
+        }
+
+        .divider span {
+            flex: 1;
+            height: 1px;
+            background: var(--edge)
+        }
+
+        .divider i {
+            width: 7px;
+            height: 7px;
+            background: var(--ox);
+            transform: rotate(45deg)
+        }
+
+        .sec-head {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 22px;
+            flex-wrap: wrap;
+            margin-bottom: 16px
+        }
+
+        .sec-title {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px
+        }
+
+        .numeral {
+            font: italic 350 46px/0.9 var(--serif);
+            color: var(--ox)
+        }
+
+        .sec-title h2 {
+            font: 400 27px/1.1 var(--serif);
+            letter-spacing: -.01em;
+            margin: 2px 0 7px
+        }
+
+        .sec-sub {
+            margin: 0;
+            font: 400 12px var(--mono);
+            color: var(--soft)
+        }
+
+        .sec-sub b {
+            color: var(--ink);
+            font-weight: 600
+        }
+
+        .controls {
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            flex-wrap: wrap
+        }
+
+        .search {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            border-bottom: 1px solid var(--edge);
+            padding: 7px 2px;
+            width: 188px;
+            transition: border-color .2s
+        }
+
+        .search:focus-within {
+            border-color: var(--ink)
+        }
+
+        .search svg {
+            width: 14px;
+            height: 14px;
+            color: var(--soft);
+            flex: none
+        }
+
+        .search input {
+            flex: 1;
+            min-width: 0;
+            border: 0;
+            background: none;
+            outline: none;
+            font: 400 12.5px var(--mono);
+            color: var(--ink)
+        }
+
+        .search input::placeholder {
+            color: #9d968a
+        }
+
+        .sel {
+            position: relative;
+            border-bottom: 1px solid var(--edge)
+        }
+
+        .sel:focus-within {
+            border-color: var(--ink)
+        }
+
+        .sel select {
+            appearance: none;
+            -webkit-appearance: none;
+            background: none;
+            border: 0;
+            outline: none;
+            cursor: pointer;
+            font: 500 11px var(--mono);
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--ink);
+            padding: 10px 24px 10px 2px
+        }
+
+        .sel svg {
+            position: absolute;
+            right: 2px;
+            top: 50%;
+            translate: 0 -50%;
+            width: 13px;
+            height: 13px;
+            color: var(--soft);
+            pointer-events: none
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            background: none;
+            border: 1px solid var(--edge);
+            padding: 9px 15px;
+            font: 600 10.5px var(--mono);
+            letter-spacing: .13em;
+            text-transform: uppercase;
+            color: var(--ink);
+            transition: background .18s, color .18s, border-color .18s;
+        }
+
+        .btn svg {
+            width: 13px;
+            height: 13px
+        }
+
+        .btn:hover {
+            background: var(--ink);
+            border-color: var(--ink);
+            color: var(--lift)
+        }
+
+        .btn.solid {
+            background: var(--ink);
+            border-color: var(--ink);
+            color: var(--lift)
+        }
+
+        .btn.solid:hover {
+            background: var(--ox);
+            border-color: var(--ox)
+        }
+
+        .btn.quiet {
+            border-color: transparent;
+            color: var(--soft);
+            padding-inline: 8px
+        }
+
+        .btn.quiet:hover {
+            background: none;
+            color: var(--ox);
+            border-color: transparent
+        }
+
+        .btn.danger {
+            border-color: var(--ox);
+            color: var(--ox)
+        }
+
+        .btn.danger:hover {
+            background: var(--ox);
+            border-color: var(--ox);
+            color: var(--lift)
+        }
+
+        .btn:disabled {
+            opacity: .45;
+            cursor: not-allowed
+        }
+
+        .btn:disabled:hover {
+            background: none;
+            color: var(--ink)
+        }
+
+        /* ————————————————— tables ————————————————— */
+        .tbl-zone {
+            overflow-x: auto
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        thead th {
+            font: 600 10.5px var(--mono);
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--soft);
+            text-align: left;
+            padding: 11px 14px;
+            border-bottom: 1.5px solid var(--ink);
+            white-space: nowrap;
+        }
+
+        thead th.sortable {
+            cursor: pointer;
+            user-select: none
+        }
+
+        thead th.sortable:hover {
+            color: var(--ink)
+        }
+
+        thead th[data-active] {
+            color: var(--ink)
+        }
+
+        thead th[data-dir="1"]::after {
+            content: " ↑"
+        }
+
+        thead th[data-dir="-1"]::after {
+            content: " ↓"
+        }
+
+        thead th::after {
+            font-size: 11px
+        }
+
+        tbody td {
+            padding: 15px 14px;
+            border-bottom: 1px solid var(--hair);
+            vertical-align: middle;
+            font: 400 12.5px var(--mono);
+            color: #3b372e
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: background .15s
+        }
+
+        tbody tr:hover {
+            background: var(--sunken)
+        }
+
+        tr.flash {
+            animation: flash 1.8s ease-out
+        }
+
+        @keyframes flash {
+
+            0%,
+            25% {
+                background: #EBDFBF
+            }
+
+            100% {
+                background: transparent
+            }
+        }
+
+        .dname {
+            font: 500 17px var(--serif);
+            color: var(--ink);
+            letter-spacing: -.005em
+        }
+
+        .dim {
+            color: var(--soft)
+        }
+
+        .sm {
+            font-size: 11.5px
+        }
+
+        .sub {
+            display: block;
+            font-size: 10.5px;
+            color: var(--soft);
+            margin-top: 3px
+        }
+
+        .mono-id {
+            white-space: nowrap;
+            font-weight: 500;
+            color: var(--ink)
+        }
+
+        .gocell {
+            width: 34px
+        }
+
+        .gocell svg {
+            color: var(--edge);
+            transition: .2s
+        }
+
+        tr:hover .gocell svg {
+            color: var(--ink);
+            transform: translate(2px, -2px)
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font: 500 10px var(--mono);
+            letter-spacing: .09em;
+            text-transform: uppercase;
+            white-space: nowrap
+        }
+
+        .status i {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex: none
+        }
+
+        .tag {
+            display: inline-block;
+            font: 600 9.5px var(--mono);
+            letter-spacing: .14em;
+            border: 1px solid;
+            padding: 3px 8px;
+            white-space: nowrap
+        }
+
+        .empty-box {
+            display: none;
+            border: 1px dashed var(--edge);
+            padding: 44px 20px;
+            text-align: center
+        }
+
+        .tbl-zone.none+.empty-box {
+            display: block
+        }
+
+        .tbl-zone.none table {
+            display: none
+        }
+
+        .empty-box p {
+            font: italic 400 16px var(--serif);
+            color: var(--soft);
+            margin: 0 0 12px
+        }
+
+        .empty-box button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font: 600 10.5px var(--mono);
+            letter-spacing: .13em;
+            text-transform: uppercase;
+            color: var(--ox);
+            border-bottom: 1px solid var(--ox);
+            padding: 0 0 2px
+        }
+
+        /* ————————————————— drawer ————————————————— */
+        #scrim {
+            position: fixed;
+            inset: 0;
+            background: rgba(24, 21, 15, .45);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .35s;
+            z-index: 90
+        }
+
+        #scrim.on {
+            opacity: 1;
+            pointer-events: auto
+        }
+
+        #drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: min(500px, 94vw);
+            z-index: 100;
+            background: var(--lift);
+            border-left: 1px solid var(--edge);
+            box-shadow: -28px 0 70px rgba(30, 25, 15, .22);
+            transform: translateX(calc(100% + 40px));
+            transition: transform .5s cubic-bezier(.32, .72, .22, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #drawer.open {
+            transform: none
+        }
+
+        .dr-head {
+            padding: 26px 32px 20px;
+            border-bottom: 1px solid var(--hair);
+            flex: none
+        }
+
+        .dr-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px
+        }
+
+        .icobtn {
+            display: inline-grid;
+            place-items: center;
+            width: 32px;
+            height: 32px;
+            border: 1px solid transparent;
+            background: none;
+            cursor: pointer;
+            color: var(--soft);
+            transition: .18s
+        }
+
+        .icobtn:hover {
+            color: var(--ink);
+            border-color: var(--edge);
+            background: var(--paper)
+        }
+
+        .icobtn svg {
+            width: 15px;
+            height: 15px
+        }
+
+        .dr-head .dname {
+            font-size: 29px;
+            line-height: 1.15;
+            display: block;
+            margin: 14px 0 8px
+        }
+
+        .dr-life {
+            font: 400 12px var(--mono);
+            color: var(--soft)
+        }
+
+        .dr-body {
+            overflow-y: auto;
+            flex: 1;
+            padding: 24px 32px 30px
+        }
+
+        .dr-body::-webkit-scrollbar {
+            width: 9px
+        }
+
+        .dr-body::-webkit-scrollbar-thumb {
+            background: var(--edge);
+            border: 3px solid var(--lift)
+        }
+
+        .dr-actions {
+            flex: none;
+            padding: 18px 32px 26px;
+            border-top: 1px solid var(--hair);
+            background: var(--lift);
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center
+        }
+
+        .dr-actions:empty {
+            display: none
+        }
+
+        .note {
+            display: flex;
+            gap: 11px;
+            align-items: flex-start;
+            border: 1px solid var(--edge);
+            background: var(--paper);
+            padding: 13px 15px;
+            margin-top: 4px
+        }
+
+        .note svg {
+            width: 15px;
+            height: 15px;
+            flex: none;
+            margin-top: 1px;
+            color: var(--ox)
+        }
+
+        .note p {
+            margin: 0;
+            font: italic 400 13.5px/1.5 var(--serif);
+            color: #4a453a
+        }
+
+        .kv {
+            display: grid;
+            grid-template-columns: 112px 1fr;
+            gap: 11px 20px;
+            margin: 6px 0 4px
+        }
+
+        .kv dt {
+            font: 600 9.5px var(--mono);
+            letter-spacing: .16em;
+            text-transform: uppercase;
+            color: var(--soft);
+            padding-top: 3px
+        }
+
+        .kv dd {
+            margin: 0;
+            font-size: 13.5px
+        }
+
+        .mini-form {
+            width: 100%;
+            margin-top: 6px
+        }
+
+        .mini-form h4,
+        .modal h4 {
+            font: 400 17px var(--serif);
+            margin: 0 0 4px
+        }
+
+        .mini-form .hint,
+        .modal .hint {
+            font: italic 400 12.5px var(--serif);
+            color: var(--soft);
+            margin: 0 0 14px
+        }
+
+        .fields {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 13px 14px;
+            margin-bottom: 16px
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px
+        }
+
+        .field.wide {
+            grid-column: 1/-1
+        }
+
+        .field label {
+            font: 600 9.5px var(--mono);
+            letter-spacing: .15em;
+            text-transform: uppercase;
+            color: var(--soft)
+        }
+
+        .field input,
+        .field select,
+        .field textarea {
+            border: 1px solid var(--edge);
+            background: #FFFEF9;
+            padding: 10px 12px;
+            font: 400 13px var(--mono);
+            color: var(--ink);
+            outline: none;
+            width: 100%;
+        }
+
+        .field textarea {
+            resize: vertical;
+            min-height: 64px;
+            font-family: var(--serif);
+            font-size: 14px
+        }
+
+        .field :is(input, select, textarea):focus {
+            border-color: var(--ink)
+        }
+
+        .field.err :is(input) {
+            border-color: var(--ox)
+        }
+
+        .field .msg {
+            font: 500 10px var(--mono);
+            color: var(--ox);
+            letter-spacing: .05em;
+            display: none
+        }
+
+        .field.err .msg {
+            display: block
+        }
+
+        /* timeline */
+        .timeline {
+            list-style: none;
+            position: relative;
+            margin: 20px 0 10px;
+            padding: 0 0 0 4px
+        }
+
+        .timeline::before {
+            content: "";
+            position: absolute;
+            left: 8px;
+            top: 6px;
+            bottom: 10px;
+            width: 1px;
+            background: var(--edge)
+        }
+
+        .timeline li {
+            position: relative;
+            padding: 0 0 17px 28px;
+            animation: rise .45s cubic-bezier(.2, .7, .2, 1) backwards
+        }
+
+        .timeline li:nth-child(1) {
+            animation-delay: .05s
+        }
+
+        .timeline li:nth-child(2) {
+            animation-delay: .13s
+        }
+
+        .timeline li:nth-child(3) {
+            animation-delay: .21s
+        }
+
+        .timeline li:nth-child(4) {
+            animation-delay: .29s
+        }
+
+        .tdot {
+            position: absolute;
+            left: 0;
+            top: 4px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--lift);
+            border: 2px solid var(--ink)
+        }
+
+        .timeline li:first-child .tdot {
+            border-color: var(--ox);
+            background: var(--ox)
+        }
+
+        .timeline strong {
+            display: block;
+            font: 500 14px var(--serif)
+        }
+
+        .timeline span {
+            display: block;
+            font: 400 11px var(--mono);
+            color: var(--soft);
+            margin-top: 3px
+        }
+
+        .tblock {
+            margin-top: 26px
+        }
+
+        .tblock>h5 {
+            font: 600 9.5px var(--mono);
+            letter-spacing: .2em;
+            text-transform: uppercase;
+            color: var(--soft);
+            margin: 0 0 4px
+        }
+
+        @keyframes rise {
+            from {
+                opacity: 0;
+                transform: translateY(14px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        /* ————————————————— modal ————————————————— */
+        .modal {
+            position: fixed;
+            z-index: 110;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .3s;
+        }
+
+        .modal.open {
+            opacity: 1;
+            pointer-events: auto
+        }
+
+        .modal-card {
+            width: min(560px, 100%);
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            background: var(--lift);
+            border: 1px solid var(--edge);
+            box-shadow: 0 40px 90px rgba(30, 25, 15, .35);
+            padding: 34px 36px;
+            transform: translateY(14px) scale(.985);
+            transition: transform .35s cubic-bezier(.2, .7, .2, 1);
+        }
+
+        .modal.open .modal-card {
+            transform: none
+        }
+
+        /* ————————————————— toast ————————————————— */
+        #toasts {
+            position: fixed;
+            left: 50%;
+            bottom: 28px;
+            translate: -50% 0;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            background: var(--ink);
+            color: var(--lift);
+            padding: 13px 20px;
+            font: 400 12.5px var(--mono);
+            box-shadow: 0 16px 40px rgba(20, 16, 8, .35);
+            opacity: 0;
+            transform: translateY(12px);
+            transition: .35s cubic-bezier(.2, .7, .2, 1);
+            max-width: min(560px, 90vw);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: none
+        }
+
+        .toast svg {
+            width: 15px;
+            height: 15px;
+            color: #B7C9AC;
+            flex: none
+        }
+
+        footer {
+            border-top: 1px solid var(--hair);
+            margin-top: 8px;
+            padding-top: 22px;
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap
+        }
+
+        footer p {
+            margin: 0;
+            font: 400 11px var(--mono);
+            color: var(--soft);
+            line-height: 1.8
+        }
+
+        /* hide-on-small helpers */
+        @media (max-width:1060px) {
+            .h-lg {
+                display: none
+            }
+        }
+
+        @media (max-width:760px) {
+            .wrap {
+                padding: 0 20px 80px
+            }
+
+            .brandbar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px
+            }
+
+            .today {
+                text-align: left
+            }
+
+            .figs {
+                gap: 34px
+            }
+
+            .numeral {
+                font-size: 34px
+            }
+
+            .h-md {
+                display: none
+            }
+
+            tbody td {
+                font-size: 11.5px;
+                padding: 13px 10px
+            }
+
+            thead th {
+                padding: 10px
+            }
+
+            .fields {
+                grid-template-columns: 1fr
+            }
+        }
+
+        @media print {
+
+            .controls,
+            .jump,
+            #drawer,
+            #scrim,
+            #toasts,
+            .modal,
+            footer .noprint {
+                display: none !important
+            }
+
+            body {
+                background: #fff
+            }
+
+            .section {
+                opacity: 1 !important;
+                transform: none !important
+            }
+        }
+
+        @media (prefers-reduced-motion:reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: .001s !important;
+                transition-duration: .001s !important
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="wrap">
+
+        <!-- ======================= MASTHEAD ======================= -->
+        <header class="masthead">
+            <div class="brandbar">
+                <div class="brand">
+                    <span class="emblem"><i data-lucide="flower-2"></i></span>
+                    <div>
+                        <small>Aldermoor &amp; Daughters</small>
+                        <span>Care &amp; Records Office — Est. 1921</span>
+                    </div>
+                </div>
+                <div class="today">
+                    <b id="dateline">—</b><br>
+                    Registrar on duty — R. Whitfield<br>
+                    Local time <span id="clock">—</span>
+                </div>
+            </div>
+
+            <h1>Care <em>Registry.</em></h1>
+            <p class="lede">The house daily ledger of persons entrusted to our care — admissions, transfers of custody,
+                and correspondence with the medical examiner’s office.</p>
+
+            <nav class="jump">
+                <a href="#sec-i"><i>I</i>Intake Ledger</a>
+                <a href="#sec-r"><i>II</i>Release Register</a>
+                <a href="#sec-p"><i>III</i>Postmortem Requests</a>
+            </nav>
+
+            <div class="figs">
+                <div class="fig"><b id="s-in">—</b><span>In our care</span></div>
+                <div class="fig"><b id="s-rel">—</b><span>Released to date</span></div>
+                <div class="fig"><b id="s-pm">—</b><span>Examinations open</span></div>
+            </div>
+        </header>
+
+        <!-- ======================= SECTION I — INTAKE ======================= -->
+        <div style="height:44px"></div>
+        <section class="section" id="sec-i">
+            <div class="sec-head">
+                <div class="sec-title">
+                    <span class="numeral">I.</span>
+                    <div>
+                        <h2>Intake Ledger</h2>
+                        <p class="sec-sub" id="cnt-i"></p>
+                    </div>
+                </div>
+                <div class="controls">
+                    <label class="search"><i data-lucide="search"></i><input id="q-i"
+                            placeholder="Search the intake ledger…" autocomplete="off"></label>
+                    <span class="sel"><select id="f-i"></select><i data-lucide="chevron-down"></i></span>
+                    <button class="btn" id="ex-i"><i data-lucide="download"></i>Export</button>
+                    <button class="btn solid" id="admit"><i data-lucide="plus"></i>Admit</button>
+                </div>
+            </div>
+            <div class="tbl-zone" id="tz-i">
+                <table>
+                    <thead id="th-i"></thead>
+                    <tbody id="tb-i"></tbody>
+                </table>
+            </div>
+            <div class="empty-box">
+                <p>No souls found on this page of the ledger.</p><button data-clear="intake">Clear search &amp;
+                    filters</button>
+            </div>
+        </section>
+
+        <div class="divider" aria-hidden="true"><span></span><i></i><span></span></div>
+
+        <!-- ======================= SECTION II — RELEASES ======================= -->
+        <section class="section" id="sec-r">
+            <div class="sec-head">
+                <div class="sec-title">
+                    <span class="numeral">II.</span>
+                    <div>
+                        <h2>Release Register</h2>
+                        <p class="sec-sub" id="cnt-r"></p>
+                    </div>
+                </div>
+                <div class="controls">
+                    <label class="search"><i data-lucide="search"></i><input id="q-r" placeholder="Search releases…"
+                            autocomplete="off"></label>
+                    <span class="sel"><select id="f-r"></select><i data-lucide="chevron-down"></i></span>
+                    <button class="btn" id="ex-r"><i data-lucide="download"></i>Export</button>
+                </div>
+            </div>
+            <div class="tbl-zone" id="tz-r">
+                <table>
+                    <thead id="th-r"></thead>
+                    <tbody id="tb-r"></tbody>
+                </table>
+            </div>
+            <div class="empty-box">
+                <p>The register holds no matching entry.</p><button data-clear="release">Clear search &amp;
+                    filters</button>
+            </div>
+        </section>
+
+        <div class="divider" aria-hidden="true"><span></span><i></i><span></span></div>
+
+        <!-- ======================= SECTION III — POSTMORTEM ======================= -->
+        <section class="section" id="sec-p">
+            <div class="sec-head">
+                <div class="sec-title">
+                    <span class="numeral">III.</span>
+                    <div>
+                        <h2>Postmortem Requests</h2>
+                        <p class="sec-sub" id="cnt-p"></p>
+                    </div>
+                </div>
+                <div class="controls">
+                    <label class="search"><i data-lucide="search"></i><input id="q-p" placeholder="Search requests…"
+                            autocomplete="off"></label>
+                    <span class="sel"><select id="f-p"></select><i data-lucide="chevron-down"></i></span>
+                    <button class="btn" id="ex-p"><i data-lucide="download"></i>Export</button>
+                </div>
+            </div>
+            <div class="tbl-zone" id="tz-p">
+                <table>
+                    <thead id="th-p"></thead>
+                    <tbody id="tb-p"></tbody>
+                </table>
+            </div>
+            <div class="empty-box">
+                <p>No correspondence matches your inquiry.</p><button data-clear="pm">Clear search &amp;
+                    filters</button>
+            </div>
+        </section>
+
+        <footer>
+            <p>© <span id="yr"></span> Aldermoor &amp; Daughters Funeral Home · Records retained per state statute
+                §22-417.<br>
+                Every name on this screen is fictitious; the ledger lives entirely in your browser.</p>
+        </footer>
+    </div>
+
+    <!-- drawer / scrim / modal / toasts -->
+    <div id="scrim"></div>
+    <aside id="drawer" aria-label="Case record">
+        <div class="dr-head" id="drHead"></div>
+        <div class="dr-body" id="drBody"></div>
+        <div class="dr-actions" id="drFoot"></div>
+    </aside>
+
+    <div class="modal" id="admitModal">
+        <form class="modal-card" id="admitForm" novalidate>
+            <h4>Admit a decedent into care</h4>
+            <p class="hint">Entry will be appended to Section I upon signing. A chamber bay is assigned automatically.
+            </p>
+            <div class="fields">
+                <div class="field wide" data-f="name">
+                    <label>Full name of the deceased *</label>
+                    <input name="name" placeholder="e.g. Margaret E. Alleyne">
+                    <span class="msg">A name is required.</span>
+                </div>
+                <div class="field" data-f="age">
+                    <label>Age *</label>
+                    <input name="age" inputmode="numeric" placeholder="00">
+                    <span class="msg">Enter a valid age.</span>
+                </div>
+                <div class="field">
+                    <label>Sex</label>
+                    <select name="sex">
+                        <option>F</option>
+                        <option>M</option>
+                        <option>X</option>
+                        <option>Unknown</option>
+                    </select>
+                </div>
+                <div class="field wide">
+                    <label>Received from</label>
+                    <select name="source">
+                        <option>St. Mary’s Hospital</option>
+                        <option>County General Hospital</option>
+                        <option>Ridgeway Hospice</option>
+                        <option>Meadowbrook Care Center</option>
+                        <option>Private residence</option>
+                        <option>Medical Examiner’s Office</option>
+                    </select>
+                </div>
+                <div class="field wide">
+                    <label>Case notes (optional)</label>
+                    <textarea name="notes"
+                        placeholder="Personal effects inventory, family contact, viewing requests…"></textarea>
+                </div>
+            </div>
+            <div style="display:flex;gap:12px;justify-content:flex-end">
+                <button type="button" class="btn quiet" id="admitCancel">Cancel</button>
+                <button type="submit" class="btn solid"><i data-lucide="check"></i>Record intake</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="toasts" role="status"></div>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script>
+        "use strict";
+
+        /* ————————————————— helpers ————————————————— */
+        const $ = s => document.querySelector(s);
+        const $$ = s => [...document.querySelectorAll(s)];
+        const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+            ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+        const pad = n => String(n).padStart(2, "0");
+        const hrs = h => new Date(Date.now() - h * 3600e3);
+        const ahead = h => new Date(Date.now() + h * 3600e3);
+        const MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const DW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const YEAR = new Date().getFullYear();
+
+        const fmt = d => {                       // "Jun 2 · 09:41"
+            d = new Date(d);
+            return `${MO[d.getMonth()]} ${d.getDate()} · ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        };
+        const fmtFull = d => {                   // "Monday, Jun 2, 2025 · 09:41"
+            d = new Date(d);
+            return `${DW[d.getDay()]}, ${MO[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        };
+
+        /* ————————————————— vocabulary ————————————————— */
+        const STATUS = {
+            incare: { label: "In care", c: "#5C6373" },
+            prep: { label: "Preparation complete", c: "#4C6450" },
+            hold: { label: "Hold — documents", c: "#8A6A2F" },
+            transit: { label: "In transit", c: "#54627A" },
+            completed: { label: "Completed", c: "#48604B" },
+            pending: { label: "Pending review", c: "#8A6A2F" },
+            approved: { label: "Approved · scheduled", c: "#54627A" },
+            issued: { label: "Report issued", c: "#48604B" },
+            declined: { label: "Declined", c: "#7A2F26" },
+        };
+        const pill = k => {
+            const s = STATUS[k];
+            return `<span class="status"><i style="background:${s.c}"></i><span style="color:${s.c}">${s.label}</span></span>`;
+        };
+
+        /* ————————————————— seed data (fictitious) ————————————————— */
+        const STAFF = ["E. Marchetti", "J. Okonkwo", "T. Blackwood", "S. Ferreira"];
+        let REG = 1047, RELN = 141, PMN = 33, PERMIT = 4311;
+        const nextReg = () => `FR-${YEAR}-${++REG}`;
+        const nextRel = () => `REL-${YEAR}-${++RELN}`;
+
+        const DB = {
+            intake: [
+                {
+                    id: nextReg(), name: "Vera Lindqvist", age: 84, sex: "F", source: "Ridgeway Hospice",
+                    received: hrs(6.4), careOf: "S. Ferreira", bay: "Chamber A · Bay 1", status: "prep",
+                    events: [{ t: hrs(6.4), l: "Received into care", d: "Ridgeway Hospice" },
+                    { t: hrs(2.2), l: "Preparation completed", d: "Viewing-ready — chapel east" }]
+                },
+
+                {
+                    id: nextReg(), name: "Harold J. Finch", age: 79, sex: "M", source: "Private residence",
+                    received: hrs(11.2), careOf: "T. Blackwood", bay: "Chamber A · Bay 2", status: "hold",
+                    events: [{ t: hrs(11.2), l: "Received into care", d: "Private residence — Maple District" }],
+                    note: "Burial-transit permit outstanding. Release is disabled until the county clerk files Form BT-4."
+                },
+
+                {
+                    id: nextReg(), name: "Amara N. Sesay", age: 51, sex: "F", source: "County General Hospital",
+                    received: hrs(18.7), careOf: "E. Marchetti", bay: "Chamber B · Bay 4", status: "incare",
+                    events: [{ t: hrs(18.7), l: "Received into care", d: "County General Hospital" }]
+                },
+
+                {
+                    id: nextReg(), name: "Peter Nagy", age: 88, sex: "M", source: "Meadowbrook Care Center",
+                    received: hrs(26.4), careOf: "S. Ferreira", bay: "Chamber A · Bay 3", status: "incare",
+                    events: [{ t: hrs(26.4), l: "Received into care", d: "Meadowbrook Care Center" }]
+                },
+
+                {
+                    id: nextReg(), name: "Dolores A. Ruiz", age: 93, sex: "F", source: "St. Mary’s Hospital",
+                    received: hrs(31.9), careOf: "J. Okonkwo", bay: "Chamber A · Bay 4", status: "prep",
+                    events: [{ t: hrs(31.9), l: "Received into care", d: "St. Mary’s Hospital" },
+                    { t: hrs(15.0), l: "Preparation completed", d: "Viewing-ready — visitation suite" }]
+                },
+
+                {
+                    id: nextReg(), name: "Unidentified adult male", age: null, sex: "M", source: "Medical Examiner’s Office",
+                    received: hrs(38.0), careOf: "E. Marchetti", bay: "Chamber A · Bay 5", status: "hold",
+                    events: [{ t: hrs(38.0), l: "Received into care", d: "Medical Examiner’s Office — ME case M-1187" }],
+                    note: "Medical Examiner hold. Custody may not be transferred until the ME authorises disposition (case M-1187)."
+                },
+
+                {
+                    id: nextReg(), name: "Owen R. Gallagher Jr.", age: 67, sex: "M", source: "Private residence",
+                    received: hrs(39.2), careOf: "E. Marchetti", bay: "Chamber B · Bay 2", status: "incare",
+                    events: [{ t: hrs(39.2), l: "Received into care", d: "Private residence — Fern Hollow" }]
+                },
+
+                {
+                    id: nextReg(), name: "Grace Adeyemi", age: 71, sex: "F", source: "Ridgeway Hospice",
+                    received: hrs(46.5), careOf: "S. Ferreira", bay: "Chamber B · Bay 1", status: "incare",
+                    events: [{ t: hrs(46.5), l: "Received into care", d: "Ridgeway Hospice" }]
+                },
+
+                {
+                    id: nextReg(), name: "Samuel Okafor", age: 59, sex: "M", source: "County General Hospital",
+                    received: hrs(52.1), careOf: "J. Okonkwo", bay: "Chamber B · Bay 3", status: "incare",
+                    events: [{ t: hrs(52.1), l: "Received into care", d: "County General Hospital" }],
+                    note: "See Section III — postmortem request PM‑2025‑036 is open against this case."
+                },
+
+                {
+                    id: nextReg(), name: "Edith Barrow", age: 90, sex: "F", source: "Meadowbrook Care Center",
+                    received: hrs(57.3), careOf: "T. Blackwood", bay: "Chamber B · Bay 5", status: "incare",
+                    events: [{ t: hrs(57.3), l: "Received into care", d: "Meadowbrook Care Center" }]
+                },
+
+                {
+                    id: nextReg(), name: "Janusz Kowal", age: 77, sex: "M", source: "Medical Examiner’s Office",
+                    received: hrs(63.8), careOf: "E. Marchetti", bay: "Chamber A · Bay 5", status: "incare",
+                    events: [{ t: hrs(63.8), l: "Received into care", d: "Medical Examiner’s Office — released to family undertaker" }]
+                },
+            ],
+
+            releases: [
+                {
+                    id: `REL-${YEAR}-142`, name: "Beatrice Holloway", to: "Kessler & Sons Funeral Directors",
+                    auth: "Marie Holloway", rel: "Daughter", method: "Our hearse — staff driver",
+                    out: hrs(2.1), permit: `BT-${YEAR}-4312`, inAt: hrs(49.3), status: "transit",
+                    events: [{ t: hrs(49.3), l: "Admitted under prior entry", d: "Reg. FR-2025-1029" },
+                    { t: hrs(2.1), l: "Released — in transit", d: "To Kessler & Sons, contract transfer" }]
+                },
+
+                {
+                    id: `REL-${YEAR}-141`, name: "Albert Cusack", to: "Family — private cremation",
+                    auth: "Fiona Cusack", rel: "Granddaughter", method: "Contracted transfer service",
+                    out: hrs(19.6), permit: `BT-${YEAR}-4309`, inAt: hrs(97.1), status: "completed",
+                    events: [{ t: hrs(97.1), l: "Admitted under prior entry", d: "Reg. FR-2025-1022" },
+                    { t: hrs(19.6), l: "Released to family", d: "Direct cremation arrangement" }]
+                },
+
+                {
+                    id: `REL-${YEAR}-140`, name: "Douglas Fairweather", to: "Rosehill Crematorium",
+                    auth: "Neil Fairweather", rel: "Son", method: "Our hearse — staff driver",
+                    out: hrs(38.4), permit: `BT-${YEAR}-4305`, inAt: hrs(158.0), status: "completed",
+                    events: [{ t: hrs(158.0), l: "Admitted under prior entry", d: "Reg. FR-2025-1015" },
+                    { t: hrs(38.4), l: "Released", d: "Rosehill Crematorium, service 11:00" }]
+                },
+
+                {
+                    id: `REL-${YEAR}-139`, name: "Yusra Mansour", to: "Family representative — Islamic Society",
+                    auth: "Khalid Mansour", rel: "Son", method: "Family vehicle",
+                    out: hrs(55.0), permit: `BT-${YEAR}-4302`, inAt: hrs(184.5), status: "completed",
+                    events: [{ t: hrs(184.5), l: "Admitted under prior entry", d: "Reg. FR-2025-1011" },
+                    { t: hrs(55.0), l: "Released to family", d: "Expedited per religious observance" }]
+                },
+
+                {
+                    id: `REL-${YEAR}-138`, name: "Francis Delaney", to: "Kessler & Sons Funeral Directors",
+                    auth: "Aoife Delaney", rel: "Daughter", method: "Contracted transfer service",
+                    out: hrs(73.2), permit: `BT-${YEAR}-4298`, inAt: hrs(206.9), status: "completed",
+                    events: [{ t: hrs(206.9), l: "Admitted under prior entry", d: "Reg. FR-2025-1004" },
+                    { t: hrs(73.2), l: "Released", d: "Inter-establishment transfer" }]
+                },
+
+                {
+                    id: `REL-${YEAR}-137`, name: "Constance Wu", to: "Evergreen Memorial Park",
+                    auth: "David Wu", rel: "Spouse", method: "Our hearse — staff driver",
+                    out: hrs(95.7), permit: `BT-${YEAR}-4293`, inAt: hrs(230.2), status: "completed",
+                    events: [{ t: hrs(230.2), l: "Admitted under prior entry", d: "Reg. FR-2025-0997" },
+                    { t: hrs(95.7), l: "Released", d: "Ground burial, plot 44-B" }]
+                },
+
+                {
+                    id: `REL-${YEAR}-136`, name: "Patrick Sweeney", to: "Greenhaven Crematory",
+                    auth: "Maureen Sweeney", rel: "Spouse", method: "Contracted transfer service",
+                    out: hrs(121.5), permit: `BT-${YEAR}-4289`, inAt: hrs(256.8), status: "completed",
+                    events: [{ t: hrs(256.8), l: "Admitted under prior entry", d: "Reg. FR-2025-0990" },
+                    { t: hrs(121.5), l: "Released", d: "Greenhaven Crematory" }]
+                },
+            ],
+
+            pm: [
+                {
+                    id: `PM-${YEAR}-036`, name: "Samuel Okafor",
+                    requester: "Dr. A. Rahal — County Medical Examiner", type: "Full autopsy",
+                    basis: "Unattended death — manner undetermined", req: hrs(1.5),
+                    priority: "urgent", status: "pending",
+                    events: [{ t: hrs(1.5), l: "Request received", d: "Correspondence logged by registrar" }]
+                },
+
+                {
+                    id: `PM-${YEAR}-035`, name: "Unidentified adult male",
+                    requester: "Office of the Medical Examiner", type: "External examination + dental comparison",
+                    basis: "Identification support — ME case M-1187", req: hrs(8.2),
+                    priority: "routine", status: "pending",
+                    events: [{ t: hrs(8.2), l: "Request received", d: "Correspondence logged by registrar" }]
+                },
+
+                {
+                    id: `PM-${YEAR}-034`, name: "Robert Traoré",
+                    requester: "Dr. L. Petrov — Pathology Associates", type: "Limited thoracic",
+                    basis: "Clinical audit — family consent on file", req: hrs(21.3),
+                    priority: "routine", status: "approved", sched: ahead(26),
+                    events: [{ t: hrs(21.3), l: "Request received", d: "Pathology Associates, faxed referral" },
+                    { t: hrs(9.8), l: "Approved — scheduled", d: "Slated for next theatre window" }]
+                },
+
+                {
+                    id: `PM-${YEAR}-033`, name: "Edith Barrow",
+                    requester: "Dr. H. Yoon — St. Anne’s Pathology", type: "Toxicology panel",
+                    basis: "Therapeutic-level review — attending physician request", req: hrs(47.0),
+                    priority: "routine", status: "approved", sched: ahead(3.5),
+                    events: [{ t: hrs(47.0), l: "Request received", d: "St. Anne’s Pathology, written request" },
+                    { t: hrs(30.1), l: "Approved — scheduled", d: "Specimen collection this evening" }]
+                },
+
+                {
+                    id: `PM-${YEAR}-032`, name: "Marguerite Doyle",
+                    requester: "Dr. A. Rahal — County Medical Examiner", type: "Full autopsy",
+                    basis: "Jurisdiction accepted — vehicular, off-roadway", req: hrs(96.0),
+                    priority: "urgent", status: "issued", reportAt: hrs(58.5),
+                    events: [{ t: hrs(96.0), l: "Request received", d: "County ME directive" },
+                    { t: hrs(88.2), l: "Approved — scheduled", d: "ME performed at county facility" },
+                    { t: hrs(58.5), l: "Report issued", d: "Filed to registry, ref MS-88341" }]
+                },
+
+                {
+                    id: `PM-${YEAR}-031`, name: "Terrence Boyd",
+                    requester: "Dr. L. Petrov — Pathology Associates", type: "Neuropathologic examination",
+                    basis: "Research cohort — retrospective enrolment", req: hrs(120.5),
+                    priority: "routine", status: "declined", declineNote: "Outside jurisdiction — referred to the County Medical Examiner for consent and capture.",
+                    events: [{ t: hrs(120.5), l: "Request received", d: "Pathology Associates" },
+                    { t: hrs(114.0), l: "Request declined", d: "Returned to sender with referral" }]
+                },
+            ]
+        };
+
+        /* ————————————————— column definitions ————————————————— */
+        const ageTxt = r => `${r.age ?? "—"} · ${r.sex}`;
+        const COLS = {
+
+            intake: [
+                { key: "id", label: "Reg. №", get: r => r.id, html: r => `<span class="mono-id">${r.id}</span>` },
+                { key: "name", label: "Decedent", get: r => r.name, html: r => `<span class="dname">${esc(r.name)}</span>` },
+                { key: "age", label: "Age · Sex", get: r => r.age ?? 9999, html: ageTxt, cls: "h-md", txt: ageTxt },
+                { key: "source", label: "Received from", get: r => r.source },
+                { key: "received", label: "Received", get: r => r.received, html: r => fmt(r.received) },
+                { key: "careOf", label: "Care of", get: r => r.careOf, cls: "h-lg" },
+                { key: "bay", label: "Location", get: r => r.bay, cls: "h-lg dim" },
+                { key: "status", label: "Status", get: r => STATUS[r.status].label, html: r => pill(r.status) },
+                { key: null, label: "", sortable: false, html: () => `<span class="gocell" style="display:inline-flex"><i data-lucide="arrow-up-right"></i></span>` },
+            ],
+
+            release: [
+                { key: "id", label: "Ref №", get: r => r.id, html: r => `<span class="mono-id">${r.id}</span>` },
+                { key: "name", label: "Decedent", get: r => r.name, html: r => `<span class="dname">${esc(r.name)}</span>` },
+                { key: "to", label: "Released to", get: r => r.to },
+                {
+                    key: "auth", label: "Authorised by", get: r => r.auth,
+                    html: r => `${esc(r.auth)}<span class="sub">${esc(r.rel)}</span>`
+                },
+                { key: "method", label: "Method", get: r => r.method, cls: "h-lg" },
+                { key: "out", label: "Out", get: r => r.out, html: r => fmt(r.out) },
+                { key: "permit", label: "Permit", get: r => r.permit, cls: "h-md dim" },
+                { key: "status", label: "Status", get: r => STATUS[r.status].label, html: r => pill(r.status) },
+                { key: null, label: "", sortable: false, html: () => `<span class="gocell" style="display:inline-flex"><i data-lucide="arrow-up-right"></i></span>` },
+            ],
+
+            pm: [
+                { key: "id", label: "Case №", get: r => r.id, html: r => `<span class="mono-id">${r.id}</span>` },
+                { key: "name", label: "Decedent", get: r => r.name, html: r => `<span class="dname">${esc(r.name)}</span>` },
+                { key: "reqBy", label: "Requested by", get: r => r.requester },
+                { key: "type", label: "Examination", get: r => r.type },
+                { key: "basis", label: "Basis", get: r => r.basis, cls: "h-lg dim" },
+                { key: "req", label: "Requested", get: r => r.req, html: r => fmt(r.req) },
+                {
+                    key: "priority", label: "Priority", get: r => r.priority,
+                    html: r => `<span class="tag" style="color:${r.priority === "urgent" ? "var(--ox)" : "var(--soft)"};border-color:${r.priority === "urgent" ? "var(--ox)" : "var(--edge)"}">${r.priority.toUpperCase()}</span>`
+                },
+                { key: "status", label: "Status", get: r => STATUS[r.status].label, html: r => pill(r.status) },
+                { key: null, label: "", sortable: false, html: () => `<span class="gocell" style="display:inline-flex"><i data-lucide="arrow-up-right"></i></span>` },
+            ],
+        };
+
+        /* ————————————————— engine configuration ————————————————— */
+        const CFG = {
+            intake: {
+                db: "intake", tz: "#tz-i", thead: "#th-i", tbody: "#tb-i", cnt: "#cnt-i",
+                q: "#q-i", f: "#f-i", ex: "#ex-i", type: "intake",
+                cols: COLS.intake, sort: { key: "received", dir: -1 },
+                filters: [["all", "All statuses"], ["incare", "In care"], ["prep", "Preparation"],
+                ["hold", "Held"]],
+                texts: r => [r.id, r.name, r.source, r.careOf, r.bay, r.notes || ""],
+                heading: "Intake Ledger",
+            },
+            release: {
+                db: "releases", tz: "#tz-r", thead: "#th-r", tbody: "#tb-r", cnt: "#cnt-r",
+                q: "#q-r", f: "#f-r", ex: "#ex-r", type: "release",
+                cols: COLS.release, sort: { key: "out", dir: -1 },
+                filters: [["all", "All statuses"], ["completed", "Completed"], ["transit", "In transit"]],
+                texts: r => [r.id, r.name, r.to, r.auth, r.rel, r.permit],
+                heading: "Release Register",
+            },
+            pm: {
+                db: "pm", tz: "#tz-p", thead: "#th-p", tbody: "#tb-p", cnt: "#cnt-p",
+                q: "#q-p", f: "#f-p", ex: "#ex-p", type: "pm",
+                cols: COLS.pm, sort: { key: "req", dir: -1 },
+                filters: [["all", "All statuses"], ["pending", "Pending"], ["approved", "Scheduled"],
+                ["issued", "Issued"], ["declined", "Declined"]],
+                texts: r => [r.id, r.name, r.requester, r.type, r.basis],
+                heading: "Postmortem Requests",
+            },
+        };
+        const state = {}; Object.keys(CFG).forEach(k => state[k] = { query: "", filter: "all", sort: { ...CFG[k].sort } });
+
+        /* ————————————————— table rendering ————————————————— */
+        function buildHead(cfg) {
+            $(cfg.thead).innerHTML = "<tr>" + cfg.cols.map((c, i) =>
+                `<th data-i="${i}" ${c.key ? `class="sortable" title="Sort by ${esc(c.label.toLowerCase())}"` : ""}>${esc(c.label)}</th>`
+            ).join("") + "</tr>";
+            $$(cfg.thead + " th.sortable").forEach(th => {
+                th.addEventListener("click", () => {
+                    const col = cfg.cols[+th.dataset.i];
+                    const s = state[cfg.type].sort;
+                    if (s.key === col.key) s.dir *= -1;
+                    else { s.key = col.key; s.dir = col.get("").getTime !== undefined || col.key === "req" || col.key.includes && col.key.match(/ed$|out$/) ? -1 : 1; }
+                    if (!["received", "out", "req", "reportAt"].includes(col.key)) s.dir = 1; // names/text sort ascending first
+                    if (col.key === "priority") s.dir = -1;                                  // urgent first reads naturally
+                    render(cfg.type);
+                });
+            });
+        }
+
+        function visibleRows(type) {
+            const cfg = CFG[type], st = state[type];
+            let rows = [...DB[cfg.db]];
+            if (st.filter !== "all") rows = rows.filter(r => r.status === st.filter);
+            if (st.query.trim()) {
+                const q = st.query.trim().toLowerCase();
+                rows = rows.filter(r => cfg.texts(r).some(t => String(t).toLowerCase().includes(q)));
+            }
+            const col = cfg.cols.find(c => c.key === st.sort.key) || cfg.cols[0];
+            rows.sort((a, b) => {
+                let va = col.get(a), vb = col.get(b);
+                if (va instanceof Date) { va = va.getTime(); vb = vb.getTime(); }
+                if (typeof va === "string" && typeof vb === "string") return va.localeCompare(vb) * st.sort.dir;
+                return ((va ?? 0) - (vb ?? 0)) * st.sort.dir;
+            });
+            return rows;
+        }
+
+        function render(type) {
+            const cfg = CFG[type], st = state[type];
+            const rows = visibleRows(type);
+            $(cfg.tbody).innerHTML = rows.map(r =>
+                `<tr data-id="${esc(r.id)}">` + cfg.cols.map(c =>
+                    `<td${c.cls ? ` class="${c.cls}"` : ""}>${c.html ? c.html(r) : esc(typeof c.get === "function" ? c.get(r) : "")}</td>`
+                ).join("") + "</tr>"
+            ).join("");
+            $(cfg.tz).classList.toggle("none", rows.length === 0);
+
+            const total = DB[cfg.db].length;
+            $(cfg.cnt).innerHTML = `<b>${total}</b> record${total !== 1 ? "s" : ""}`
+                + (rows.length !== total ? ` · showing ${rows.length}` : "");
+
+            $$(cfg.thead + " th").forEach(th => {
+                const col = cfg.cols[+th.dataset.i];
+                th.removeAttribute("data-dir"); th.removeAttribute("data-active");
+                if (col && col.key === st.sort.key) { th.setAttribute("data-dir", st.sort.dir); th.setAttribute("data-active", ""); }
+            });
+
+            lucide.createIcons();
+            updateTotals();
+        }
+
+        function flashRow(type, id) {
+            requestAnimationFrame(() => {
+                const tr = $(CFG[type].tbody)?.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+                if (tr) { tr.classList.add("flash"); setTimeout(() => tr.classList.remove("flash"), 1900); }
+            });
+        }
+
+        function updateTotals() {
+            $("#s-in").textContent = DB.intake.length;
+            $("#s-rel").textContent = DB.releases.length;
+            $("#s-pm").textContent = DB.pm.filter(r => ["pending", "approved"].includes(r.status)).length;
+        }
+
+        /* ————————————————— toast ————————————————— */
+        function toast(msg) {
+            const t = document.createElement("div");
+            t.className = "toast";
+            t.innerHTML = `<i data-lucide="check"></i><span>${esc(msg)}</span>`;
+            $("#toasts").appendChild(t);
+            lucide.createIcons();
+            requestAnimationFrame(() => t.classList.add("show"));
+            setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 400); }, 3600);
+        }
+
+        /* ————————————————— drawer ————————————————— */
+        let cur = null; // {type,id}
+
+        function findRec(type, id) { return DB[CFG[type].db].find(r => r.id === id); }
+
+        function timeline(evts) {
+            return `<ol class="timeline">` + evts.map(e =>
+                `<li><span class="tdot"></span><div><strong>${esc(e.l)}</strong><span>${esc(e.d || "")} · ${fmt(e.t)}</span></div></li>`
+            ).join("") + "</ol>";
+        }
+        const kvBlock = pairs =>
+            `<dl class="kv">` + pairs.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("") + "</dl>";
+        const noteBox = txt =>
+            `<div class="note"><i data-lucide="alert-triangle"></i><p>${esc(txt)}</p></div>`;
+        const notePlain = txt =>
+            `<div class="note"><i data-lucide="file-text"></i><p>${esc(txt)}</p></div>`;
+
+        function headHTML(rec, type) {
+            const ref = `<span class="sm" style="font-weight:600">${esc(rec.id)}</span>`;
+            const life = type === "pm"
+                ? `${esc(rec.requester)} · requested ${fmtFull(rec.req)}`
+                : type === "intake" ? `${ageTxt(rec)} · admitted ${fmtFull(rec.received)}`
+                    : `${ageTxt.exists ? "" : ""}${esc(rec.rel ? rec.auth + ", " + rec.rel : rec.auth)} · released ${fmtFull(rec.out)}`;
+            return `
+    <div class="dr-top">
+      ${ref}
+      <div style="display:flex;gap:2px">
+        <button class="icobtn" data-copy title="Copy reference"><i data-lucide="copy"></i></button>
+        <button class="icobtn" data-close title="Close (Esc)"><i data-lucide="x"></i></button>
+      </div>
+    </div>
+    <span class="dname">${esc(rec.name)}</span>
+    <span class="dr-life">${life}</span>`;
+        }
+
+        function bodyHTML(rec, type) {
+            if (type === "intake") {
+                let h = `<div style="margin-top:2px">${pill(rec.status)}</div>`;
+                h += kvBlock([
+                    ["Received", fmtFull(rec.received)],
+                    ["Source", esc(rec.source)],
+                    ["In care of", esc(rec.careOf)],
+                    ["Location", esc(rec.bay)],
+                    ...(rec.notes ? [["Case notes", esc(rec.notes)]] : []),
+                ]);
+                if (rec.note) h += noteBox(rec.note);
+                h += `<div class="tblock"><h5>Chain of custody</h5>${timeline(rec.events)}</div>`;
+                return h;
+            }
+            if (type === "release") {
+                return `
+      <div style="margin-top:2px">${pill(rec.status)}</div>` +
+                    kvBlock([
+                        ["Released", fmtFull(rec.out)],
+                        ["To", esc(rec.to)],
+                        ["Signatory", esc(rec.auth) + (rec.rel ? ` · <span class="dim">${esc(relWord(rec.rel))}</span>` : "")],
+                        ["Method", esc(rec.method)],
+                        ["Permit №", `<span class="mono-id">${esc(rec.permit)}</span>`],
+                    ]) +
+                    `<div class="tblock"><h5>Journey of record</h5>${timeline(rec.events)}</div>`;
+            }
+            /* pm */
+            let h = `<div style="margin-top:2px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">${pill(rec.status)}
+    <span class="tag" style="color:${rec.priority === "urgent" ? "var(--ox)" : "var(--soft)"};border-color:${rec.priority === "urgent" ? "var(--ox)" : "var(--edge)"}">${rec.priority.toUpperCase()}</span></div>`;
+            h += kvBlock([
+                ["Requested", fmtFull(rec.req)],
+                ["Exam type", esc(rec.type)],
+                ["Basis", esc(rec.basis)],
+                ...(rec.sched ? [["Scheduled", fmtFull(rec.sched)]] : []),
+                ...(rec.reportAt ? [["Report", `MS-88341 · ${fmtFull(rec.reportAt)}`]] : []),
+            ]);
+            h += `<div class="tblock"><h5>Progression</h5>${timeline(rec.events)}</div>`;
+            return h;
+        }
+        const relWord = r => r.charAt(0).toUpperCase() + r.slice(1);
+
+        /* ———— drawer foot / actions ———— */
+        function footHTML(rec, type) {
+            if (type === "intake") {
+                if (rec.status === "hold")
+                    return `<span class="dim" style="font:italic 13px var(--serif)">Custody transfer unavailable while this case is on hold.</span>`;
+                return `<button class="btn solid" data-act="release"><i data-lucide="arrow-right"></i>Initiate release…</button>
+            <span class="dim sm">Transfers the record to Section II.</span>`;
+            }
+            if (type === "release") {
+                return `<button class="btn" data-act="receipt"><i data-lucide="printer"></i>Download custody receipt</button>`;
+            }
+            /* pm */
+            if (rec.status === "pending")
+                return `<button class="btn solid" data-act="approve"><i data-lucide="check"></i>Approve &amp; schedule</button>
+            <button class="btn danger" data-act="decline"><i data-lucide="x"></i>Decline</button>`;
+            if (rec.status === "approved")
+                return `<button class="btn solid" data-act="issue"><i data-lucide="check"></i>Mark report issued</button>
+            <span class="dim sm"><i data-lucide="clock" style="width:12px;height:12px;vertical-align:-2px"></i> slated for ${fmt(rec.sched)}</span>`;
+            if (rec.status === "issued")
+                return notePlain("Final report is on file with the registry.");
+            if (rec.status === "declined")
+                return noteBox(rec.declineNote);
+            return "";
+        }
+
+        function openDrawer(type, id) {
+            const rec = findRec(type, id); if (!rec) return;
+            cur = { type, id };
+            $("#drHead").innerHTML = headHTML(rec, type);
+            $("#drBody").innerHTML = bodyHTML(rec, type);
+            $("#drFoot").innerHTML = footHTML(rec, type);
+            $("#drawer").classList.add("open");
+            $("#scrim").classList.add("on");
+            document.documentElement.style.overflow = "hidden";
+            lucide.createIcons();
+        }
+
+        function closeDrawer() {
+            $("#drawer").classList.remove("open");
+            if (!$("#admitModal").classList.contains("open")) {
+                $("#scrim").classList.remove("on");
+                document.documentElement.style.overflow = "";
+            }
+            cur = null;
+        }
+
+        function refreshDrawer() {           // re-paint contents keeping the panel open
+            if (!cur) return;
+            const rec = findRec(cur.type, cur.id); if (!rec) { closeDrawer(); return; }
+            $("#drHead").innerHTML = headHTML(rec, cur.type);
+            $("#drBody").innerHTML = bodyHTML(rec, cur.type);
+            $("#drFoot").innerHTML = footHTML(rec, cur.type);
+            lucide.createIcons();
+        }
+
+        /* ———— release inline form ———— */
+        function showReleaseForm(rec) {
+            const permit = `BT-${YEAR}-${++PERMIT}`;
+            $("#drFoot").innerHTML = `
+    <form class="mini-form" data-permit="${permit}">
+      <h4>Transfer of custody</h4>
+      <p class="hint">Signing recorded ${fmt(new Date())}. ${esc(rec.name)} moves to the Release Register upon confirmation.</p>
+      <div class="fields">
+        <div class="field wide" data-f="party">
+          <label>Receiving party / firm *</label>
+          <input name="party" placeholder="e.g. Kessler &amp; Sons Funeral Directors">
+          <span class="msg">The receiving party must be named.</span>
+        </div>
+        <div class="field">
+          <label>Authorising signatory</label>
+          <input name="sig" placeholder="Next of kin on file">
+        </div>
+        <div class="field">
+          <label>Relationship</label>
+          <input name="rel" placeholder="e.g. Daughter">
+        </div>
+        <div class="field wide">
+          <label>Transport method</label>
+          <select name="method">
+            <option>Our hearse — staff driver</option>
+            <option>Contracted transfer service</option>
+            <option>Family vehicle</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Burial-transit permit</label>
+          <input value="${permit}" readonly class="dim">
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:flex-end">
+        <button type="button" class="btn quiet" data-cancel>Cancel</button>
+        <button type="submit" class="btn solid"><i data-lucide="check"></i>Confirm transfer</button>
+      </div>
+    </form>`;
+            lucide.createIcons();
+
+            $("#drFoot form").addEventListener("submit", e => {
+                e.preventDefault();
+                const fd = new FormData(e.target);
+                const party = (fd.get("party") || "").trim();
+                const w = e.target.querySelector('[data-f="party"]');
+                if (!party) { w.classList.add("err"); w.querySelector("input").focus(); return; }
+                w.classList.remove("err");
+
+                DB.intake = DB.intake.filter(r => r.id !== rec.id);
+                const rel = {
+                    id: nextRel(), name: rec.name,
+                    to: party, auth: (fd.get("sig") || "").trim() || "Next of kin on file",
+                    rel: (fd.get("rel") || "").trim(), method: fd.get("method"),
+                    out: new Date(), permit: fd.get("permit"), inAt: rec.received,
+                    status: "completed",
+                    events: [
+                        ...(rec.events || []).filter(ev => ev.l.startsWith("Received") || ev.l.startsWith("Admitted")),
+                        { t: new Date(), l: "Released", d: `To ${party} · ${fd.get("method")}` },
+                    ],
+                };
+                DB.releases.unshift(rel);
+
+                render("intake"); render("release");
+                flashRow("release", rel.id);
+                closeDrawer();
+                toast(`${rec.name} released to ${party} — ${rel.id}`);
+            });
+            $("#drFoot [data-cancel]").addEventListener("click", refreshDrawer);
+        }
+
+        /* ———— custody receipt (.txt) ———— */
+        function downloadReceipt(rec) {
+            const L = [];
+            L.push("ALDERMOOR & DAUGHTERS FUNERAL HOME", "Care & Records Office", "");
+            L.push("CUSTODY RECEIPT", "", "".padEnd(46, "─"));
+            L.push(`Reference     ${rec.id}`);
+            L.push(`Decedent      ${rec.name}`);
+            L.push(`Released      ${fmtFull(rec.out)}`);
+            L.push(`Receiving     ${rec.to}`);
+            L.push(`Signatory     ${rec.auth}${rec.rel ? " (" + rec.rel + ")" : ""}`);
+            L.push(`Method        ${rec.method}`);
+            L.push(`Permit №      ${rec.permit}`);
+            L.push("");
+            L.push("This document certifies lawful transfer of custody of the");
+            L.push("above-named decedent, per state statute §22-417.", "");
+            L.push("──────────────────────────────────────────────", "R. Whitfield, Registrar");
+            const blob = new Blob([L.join("\n")], { type: "text/plain" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `custody-receipt-${rec.id}.txt`;
+            a.click(); URL.revokeObjectURL(a.href);
+        }
+
+        /* ————————————————— CSV export ————-—————————————— */
+        function exportCSV(type) {
+            const cfg = CFG[type];
+            const cols = cfg.cols.filter(c => c.label);
+            const cell = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+            const rows = visibleRows(type);
+            const csv = "\uFEFF" +
+                [cols.map(c => cell(c.label)).join(",")]
+                    .concat(rows.map(r => cols.map(c => {
+                        let v = c.get(r);
+                        return cell(v instanceof Date ? fmtFull(v) : v);
+                    }).join(",")))
+                    .join("\r\n");
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+            a.download = `${cfg.heading.toLowerCase().replace(/\s+/g, "-")}-${YEAR}-${pad(new Date().getMonth() + 1)}${pad(new Date().getDate())}.csv`;
+            a.click(); URL.revokeObjectURL(a.href);
+            toast(`${rows.length} record${rows.length !== 1 ? "s" : ""} exported to CSV`);
+        }
+
+        /* ————————————————— admit modal ————-—————————————— */
+        const modal = $("#admitModal");
+
+        function assignBay() {
+            const used = new Set(DB.intake.map(r => r.bay));
+            for (const c of ["A", "B", "C"]) for (let n = 1; n <= 5; n++) {
+                const b = `Chamber ${c} · Bay ${n}`;
+                if (!used.has(b)) return b;
+            }
+            return "Cooler floor — overflow";
+        }
+
+        $("#admit").addEventListener("click", () => {
+            modal.classList.add("open");
+            $("#scrim").classList.add("on");
+            document.documentElement.style.overflow = "hidden";
+            setTimeout(() => modal.querySelector('[name="name"]').focus(), 120);
+        });
+        function closeModal() {
+            modal.classList.remove("open");
+            if (!$("#drawer").classList.contains("open")) {
+                $("#scrim").classList.remove("on");
+                document.documentElement.style.overflow = "";
+            }
+        }
+        $("#admitCancel").addEventListener("click", closeModal);
+        $("#scrim").addEventListener("click", () => { closeDrawer(); closeModal(); });
+
+        $("#admitForm").addEventListener("submit", e => {
+            e.preventDefault();
+            const form = e.target;
+            const name = form.name.value.trim();
+            const ageRaw = form.age.value.trim();
+            const age = Number(ageRaw);
+            let ok = true;
+            const flag = (sel, bad) => { const f = form.querySelector(sel); f.classList.toggle("err", bad); if (bad) ok = false; };
+            flag('[data-f="name"]', !name);
+            flag('[data-f="age"]', !(ageRaw !== "" && Number.isFinite(age) && age >= 0 && age <= 130));
+            if (!ok) return;
+
+            const staff = STAFF[Math.floor(Math.random() * STAFF.length)];
+            const rec = {
+                id: nextReg(), name, age, sex: form.sex.value,
+                source: form.source.value, received: new Date(),
+                careOf: staff, bay: assignBay(), status: "incare",
+                notes: form.notes.value.trim(),
+                events: [{ t: new Date(), l: "Received into care", d: form.source.value }],
+            };
+            DB.intake.unshift(rec);
+            form.reset();
+            closeModal();
+            render("intake");
+            flashRow("intake", rec.id);
+            toast(`${rec.name} admitted — ${rec.id}, ${rec.bay}`);
+        });
+
+        /* clear inline errors while typing */
+        $$("#admitForm .field input").forEach(inp =>
+            inp.addEventListener("input", () => inp.closest(".field").classList.remove("err")));
+
+        /* ————————————————— wiring ————-—————————————— */
+        Object.entries(CFG).forEach(([type, cfg]) => {
+            buildHead(cfg);
+            $(cfg.f).innerHTML = cfg.filters.map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+            $(cfg.q).addEventListener("input", () => { state[type].query = $(cfg.q).value; render(type); });
+            $(cfg.f).addEventListener("change", () => { state[type].filter = $(cfg.f).value; render(type); });
+            $(cfg.ex).addEventListener("click", () => exportCSV(type));
+            $(cfg.tbody).addEventListener("click", e => {
+                const tr = e.target.closest("tr[data-id]");
+                if (tr) openDrawer(type, tr.dataset.id);
+            });
+        });
+
+        $$(".empty-box [data-clear]").forEach(btn =>
+            btn.addEventListener("click", () => {
+                const t = btn.dataset.clear;
+                state[t].query = ""; state[t].filter = "all";
+                $(CFG[t].q).value = ""; $(CFG[t].f).value = "all";
+                render(t);
+            }));
+
+        /* drawer delegated clicks */
+        $("#drawer").addEventListener("click", e => {
+            const c = e.target.closest("[data-copy]");
+            const cl = e.target.closest("[data-close]");
+            const act = e.target.closest("[data-act]");
+            if (cl) return closeDrawer();
+            if (c && cur) {
+                navigator.clipboard?.writeText(findRec(cur.type, cur.id).id)
+                    .then(() => toast("Reference copied to clipboard"));
+                return;
+            }
+            if (!act || !cur) return;
+            const rec = findRec(cur.type, cur.id);
+            if (act.dataset.act === "release") showReleaseForm(rec);
+
+            if (act.dataset.act === "receipt") downloadReceipt(rec);
+
+            if (act.dataset.act === "approve") {
+                rec.status = "approved";
+                rec.sched = ahead(Math.round((2 + Math.random() * 26) * 2) / 2);
+                rec.events.push({ t: new Date(), l: "Approved — scheduled", d: `Slated for ${fmt(rec.sched)} · ${rec.type}` });
+                render("pm"); refreshDrawer();
+                toast(`Request ${rec.id} approved — examination slated`);
+            }
+            if (act.dataset.act === "decline") {
+                $("#drFoot").innerHTML = `
+      <span style="font:italic 13.5px var(--serif);margin-right:auto">Record request as declined?</span>
+      <button class="btn danger" data-act="decline-yes"><i data-lucide="check"></i>Yes, decline</button>
+      <button class="btn quiet" data-cancel>Cancel</button>`;
+                $("#drFoot [data-cancel]").addEventListener("click", refreshDrawer);
+                $("#drFoot [data-act]").addEventListener("click", () => {
+                    rec.status = "declined";
+                    rec.declineNote = "Declined by registrar on duty — reason recorded in correspondence file.";
+                    rec.events.push({ t: new Date(), l: "Request declined", d: "Returned to requesting physician" });
+                    render("pm"); refreshDrawer();
+                    toast(`Request ${rec.id} declined`);
+                });
+                lucide.createIcons();
+            }
+            if (act.dataset.act === "decline-yes") { /* handled above */ }
+
+            if (act.dataset.act === "issue") {
+                rec.status = "issued"; rec.reportAt = new Date();
+                rec.events.push({ t: rec.reportAt, l: "Report issued", d: "Filed to registry, ref MS-88341" });
+                render("pm"); refreshDrawer();
+                toast(`Report for ${rec.id} marked as issued`);
+            }
+        });
+
+        document.addEventListener("keydown", e => {
+            if (e.key !== "Escape") return;
+            if (modal.classList.contains("open")) closeModal();
+            else if ($("#drawer").classList.contains("open")) closeDrawer();
+        });
+
+        /* ————————————————— clock / date / reveal ————-—————————————— */
+        function tick() {
+            const d = new Date();
+            $("#clock").textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        }
+        $("#dateline").textContent =
+            `${DW[new Date().getDay()]}, ${MO[new Date().getMonth()]} ${new Date().getDate()}, ${YEAR}`;
+        tick(); setInterval(tick, 1000);
+        $("#yr").textContent = YEAR;
+
+        const io = new IntersectionObserver(es =>
+            es.forEach(en => { if (en.isIntersecting) { en.target.classList.add("vis"); io.unobserve(en.target); } }),
+            { threshold: .08 });
+        $$(".section").forEach(s => io.observe(s));
+
+        /* ————————————————— boot ————-—————————————— */
+        ["intake", "release", "pm"].forEach(render);
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

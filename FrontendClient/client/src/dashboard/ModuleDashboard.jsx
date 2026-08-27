@@ -9,13 +9,13 @@ import DayEventsPanel from "./views/DayEventsPanel";
 import DayBreakdownPanel from "./views/DayBreakdownPanel";
 import { extractArray, matchesDay } from "./utils";
 import FilterSidebar from "./views/FilterSidebar";
-import { useNavigate } from "react-router-dom";
 import ChartsPanel from "./views/ChartsPanel";
 import DetailPanel from "./views/DetailPanel";
 import DeceasedSidePanel from "./views/DeceasedSidePanel";
 import MonthView from "./views/MonthView";
 import WeekView from "./views/WeekView";
 import DayView from "./views/DayView";
+import DeceasedQuad from "./views/DeceasedQuad";
 import api from "../api/axios";
 import GlobalLoader from "../components/loader/loader";
 
@@ -219,12 +219,6 @@ export default function ModuleDashboard({ mod }) {
   }, []);
   const storeCtx = { addToast, workers: [] };
 
-  /* ── Router navigation + tenant slug (for Deceased quick actions) ── */
-  const routerNavigate = useNavigate();
-  const tenantSlug = localStorage.getItem("tenantSlug")
-    || window.location.pathname.match(/\/tenant\/([^/]+)/)?.[1]
-    || "";
-
   const loadCalendars = useCallback(async () => {
     if (!showMini && !showHearse && !showFlower) { setCalLoading(false); return; }
     setCalLoading(true);
@@ -236,16 +230,21 @@ export default function ModuleDashboard({ mod }) {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       };
 
-      /* Mini calendar: coffin orders + deceased records */
+      /* Mini calendar data — the DECEASED tab must show ONLY deceased
+         records; coffin orders feed the Coffin tab alone. */
       if (showMini) {
-        /* Coffin orders (paginated) */
+        const isCoffinTab = mod.id === "coffin";
+
+        /* Coffin orders (paginated) — fetched for the coffin tab only */
         let orders = [];
-        for (let p = 1; p <= 8; p++) {
-          const r = await api.get("/coffins/orders", { params: { page: p, limit: 100 } }).catch(() => null);
-          const chunk = extractArray(r);
-          if (!chunk.length) break;
-          orders = orders.concat(chunk);
-          if (chunk.length < 100) break;
+        if (isCoffinTab) {
+          for (let p = 1; p <= 8; p++) {
+            const r = await api.get("/coffins/orders", { params: { page: p, limit: 100 } }).catch(() => null);
+            const chunk = extractArray(r);
+            if (!chunk.length) break;
+            orders = orders.concat(chunk);
+            if (chunk.length < 100) break;
+          }
         }
 
         /* Deceased records (paginated, capped) */
@@ -258,20 +257,22 @@ export default function ModuleDashboard({ mod }) {
           if (chunk.length < 100) break;
         }
 
-        /* Mini-calendar events: coffins = blue, deceased = orange */
+        /* Mini-calendar events: coffins = blue (coffin tab), deceased = orange */
         const events = {};
         const push = (k, ev) => {
           if (!k) return;
           if (!events[k]) events[k] = [];
           if (events[k].length < 6) events[k].push(ev);
         };
-        orders.forEach((o) => {
-          push(keyOf(o?.service_date || o?.order_date || o?.created_at), {
-            n: o?.deceased_name ? `Coffin · ${o.deceased_name}` : `Coffin order · ${o?.client_name || o?.coffin_name || "booking"}`,
-            t: o?.service_time || "Booking",
-            c: "blue",
+        if (isCoffinTab) {
+          orders.forEach((o) => {
+            push(keyOf(o?.service_date || o?.order_date || o?.created_at), {
+              n: o?.deceased_name ? `Coffin · ${o.deceased_name}` : `Coffin order · ${o?.client_name || o?.coffin_name || "booking"}`,
+              t: o?.service_time || "Booking",
+              c: "blue",
+            });
           });
-        });
+        }
         deceased.forEach((r) => {
           push(keyOf(r?.date_key || r?.adm_date || r?.date_admitted || r?.created_at), {
             n: r?.full_name || "Deceased record",
@@ -281,15 +282,17 @@ export default function ModuleDashboard({ mod }) {
         });
         setMiniEvents(events);
         /* Keep the raw rows so the day-breakdown panel can categorise
-           EVERY event (intakes / releases / postmortems / coffins). */
-        setCalSources({ coffins: orders, deceased });
+           EVERY event (intakes / releases / postmortems / coffins).
+           coffins stays EMPTY on the deceased tab so no coffin section
+           or row can ever surface there. */
+        setCalSources({ coffins: isCoffinTab ? orders : [], deceased });
       }
     } catch (e) {
       console.warn("[Dashboard] calendars load failed:", e?.message);
     } finally {
       setCalLoading(false);
     }
-  }, [showMini, showHearse, showFlower]);
+  }, [showMini, showHearse, showFlower, mod.id]);
 
   useEffect(() => { loadCalendars(); }, [loadCalendars]);
 
@@ -489,64 +492,7 @@ export default function ModuleDashboard({ mod }) {
           </div>
         )}
 
-        {/* ── Deceased quick actions (Intake · Release) ─────── */}
-        {!showHearse && !showStore && mod.id === "deceased" && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "12px 18px",
-            background: T.bg,
-            borderBottom: `1px solid ${T.borderSubtle}`,
-            flexShrink: 0, flexWrap: "wrap",
-          }}>
-            <span style={{
-              fontSize: 11, fontWeight: 700, color: T.textSec,
-              textTransform: "uppercase", letterSpacing: "0.05em",
-              marginRight: 4,
-            }}>
-              Deceased
-            </span>
-            <button
-              onClick={() => routerNavigate(`/tenant/${tenantSlug}/deceased/register`)}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "9px 16px",
-                background: "#0F172A",
-                border: "1px solid #0F172A",
-                borderRadius: 10,
-                color: "#FFFFFF",
-                fontSize: 12.5, fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.14s ease",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#1E293B"; e.currentTarget.style.borderColor = "#1E293B"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#0F172A"; e.currentTarget.style.borderColor = "#0F172A"; }}
-              title="Register a new deceased (body intake)"
-            >
-              <span style={{ fontSize: 13, lineHeight: 1 }}>＋</span>
-              Deceased Intake
-            </button>
-            <button
-              onClick={() => routerNavigate(`/tenant/${tenantSlug}/release-form/new`)}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "9px 16px",
-                background: "#FFFFFF",
-                border: "1px solid rgba(15,23,42,0.14)",
-                borderRadius: 10,
-                color: "#0F172A",
-                fontSize: 12.5, fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.14s ease",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(15,23,42,0.32)"; e.currentTarget.style.background = "rgba(15,23,42,0.03)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(15,23,42,0.14)"; e.currentTarget.style.background = "#FFFFFF"; }}
-              title="Release a deceased record"
-            >
-              <span style={{ fontSize: 13, lineHeight: 1 }}>↗</span>
-              Release
-            </button>
-          </div>
-        )}
+        {/* (Deceased quick-action bar removed — was unused space.) */}
 
         {/* ── Main content ──────────────────────────────────── */}
         {showStore ? (
@@ -578,17 +524,43 @@ export default function ModuleDashboard({ mod }) {
                   @media(max-width:900px){.unified-cal{flex-direction:column}.unified-cal .cal-mini-card{max-width:none}}
                 `}</style>
                 <div className="unified-cal">
+                  {showMini && mod.id === "deceased" ? (
+                    <div style={{ width: "100%", minWidth: 0 }}>
+                      {/* Deceased tab: complete 2x2 quad redesign —
+                          Calendar + Intakes on top, Releases + Post-mortem
+                          below. Deceased-only, no coffins. */}
+                      <DeceasedQuad
+                        events={miniEvents}
+                        loading={calLoading}
+                        dateKey={calDay}
+                        deceased={calSources.deceased || []}
+                        onPickDate={setCalDay}
+                        onSelect={(item) => {
+                          const num = String(item?.id || "").replace(/^(in|rel|pm)-/, "");
+                          const rec = (calSources.deceased || []).find(
+                            (r) => String(r?.admission_number) === num
+                          );
+                          if (rec) setSelected(rec);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <>
                   {showMini && (
                     <div className="cal-mini-card" style={{
                       background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14,
                       padding: "14px 14px 18px", display: "flex", flexDirection: "column", alignItems: "center",
                     }}>
                       <div style={{ alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>Coffin Bookings · Deceased</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>
+                          {mod.id === "deceased" ? "Deceased Calendar" : "Coffin Bookings · Deceased"}
+                        </span>
                         <span style={{ display: "flex", gap: 10, fontSize: 10, fontWeight: 600, color: T.textSec }}>
-                          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#3b82f6" }} />Coffins
-                          </span>
+                          {mod.id === "coffin" && (
+                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#3b82f6" }} />Coffins
+                            </span>
+                          )}
                           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
                             <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f59e0b" }} />Deceased
                           </span>
@@ -626,6 +598,8 @@ export default function ModuleDashboard({ mod }) {
                         }}
                       />
                     </div>
+                  )}
+                    </>
                   )}
                   {showHearse && (
                     <div style={{ width: "100%", minWidth: 0 }}>

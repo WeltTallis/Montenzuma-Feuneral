@@ -6,6 +6,8 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import FullCalendar from '@fullcalendar/react';
 import styled from 'styled-components';
+import { getBranches } from '../../utils/globalAuth';
+import { Calendar, CheckCircle, Truck, Clock, Check, BarChart3, MapPin, Home, Car, Phone, Building } from '../../utils/icons/icons';
 
 // ===== SHARED CONSTANTS =====
 export const COLORS = {
@@ -432,9 +434,38 @@ const Shell = styled.div`
     align-items: center !important;
   }
 
-  .fc .fc-timegrid-all-day-event .fc-event-title {
+    .fc .fc-timegrid-all-day-event .fc-event-title {
     font-weight: 700 !important;
     font-size: 12px !important;
+  }
+
+  /* Week/Day view event card overflow fix */
+  .fc .fc-timegrid-event,
+  .fc .fc-timegrid-all-day-event {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .fc .fc-timegrid-event .fc-event-main,
+  .fc .fc-timegrid-all-day-event .fc-event-main {
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .fc .fc-timegrid-event .fc-event-content,
+  .fc .fc-timegrid-all-day-event .fc-event-content {
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .fc .fc-timegrid-event .fc-event-title,
+  .fc .fc-timegrid-all-day-event .fc-event-title {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    min-width: 0 !important;
   }
 
   /* Popover styling */
@@ -622,29 +653,68 @@ const CalendarWrapper = styled.div`
 // ===== STATS BAR =====
 const StatsBar = styled.div`
   display: flex;
-  gap: 12px;
-  padding: 6px 12px;
-  margin-bottom: 8px;
-  background: #FAFAFA;
-  border-radius: 6px;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  background: #FFFFFF;
+  border-radius: 10px;
   flex-wrap: wrap;
-  border: 1px solid #EEEEEE;
+  border: 1px solid #E8ECEF;
   flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 `;
 
-const StatItem = styled.div`
-  display: flex;
+const StatCard = styled.div`
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
+  gap: 7px;
+  padding: 5px 12px 5px 6px;
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: 600;
-  color: ${props => props.color || '#000000'};
+  color: ${props => props.color || '#111827'};
+  background: ${props => (props.tint || props.color || '#F3F4F6')};
+  border: 1px solid ${props => props.border || 'transparent'};
+  white-space: nowrap;
+`;
+
+const StatIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: #FFFFFF;
+  background: ${props => props.color || '#111827'};
+  flex-shrink: 0;
 `;
 
 // ===== MAIN CALENDAR COMPONENT =====
 const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedDate, onDateSelect, onDateClick }) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const calendarRef = useRef(null);
+
+  // Build a branch lookup map from cached branches to resolve branch_id → branch_name
+  const branchLookup = useMemo(() => {
+    try {
+      const branches = getBranches();
+      const map = new Map();
+      branches.forEach((b) => {
+        const id = b.branchId || b.branch_id || b.id;
+        const name = b.branchName || b.branch_name || b.name || '';
+        if (id && name) map.set(String(id), name);
+      });
+      return map;
+    } catch (e) {
+      return new Map();
+    }
+  }, []);
+
+  const resolveBranchName = (branchId) => {
+    if (!branchId) return '';
+    return branchLookup.get(String(branchId)) || '';
+  };
 
   // Convert bookings to FullCalendar events with rich data
   const events = useMemo(() => {
@@ -674,8 +744,16 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           }
         } catch (e) { }
 
+        const hearseName = b.hearse_name || b.hearse_plate || b.plate_number || 'H';
+        const clientName = (b.client_name || b.client || 'client').toString();
+        const datePart = startDate ? String(startDate).split('T')[0]?.replace(/[-]/g, '') : 'nodate';
+        const randPart = Math.random().toString(36).substring(2, 7).toUpperCase();
+        const readableId = `BK-${hearseName}-${clientName}-${datePart}-${randPart}`;
+        const resolvedBranchName = resolveBranchName(b.branch_id) || b.branch_name || b.branch || '';
+
         return {
           id: b.booking_id || b.id || `booking-${Math.random()}`,
+          bookingId: readableId,
           title: b.client_name || b.client || 'Unknown Client',
           start: startDate,
           end: endDate || startDate,
@@ -692,17 +770,18 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             dest: b.destination || b.to_location || '—',
             from: b.from_location || b.origin || '—',
             plate: b.plate_number || b.hearse_plate || b.number_plate || '—',
-            branchName: b.branch_name || b.branch || '',
+            branchName: resolvedBranchName,
             phone: b.client_phone || b.phone || '',
-            clientName: b.client_name || b.client || 'Unknown Client',
+            clientName: clientName,
             startTime,
             endTime,
-            bookingCode: b.booking_code || '',
+            bookingCode: readableId,
+            hearseName,
           }
         };
       })
       .filter(e => e !== null && e.start);
-  }, [bookings]);
+  }, [bookings, branchLookup]);
 
   // Calculate daily stats for the selected date
   const getDailyStats = useCallback(() => {
@@ -761,44 +840,55 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     // Week/Day view - show full card with all details
     return (
       <div style={{
-        padding: isAllDay ? '4px 8px' : '6px 8px',
+        padding: isAllDay ? '3px 6px' : '4px 8px',
         width: '100%',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         overflow: 'hidden',
-        gap: '2px'
+        gap: '1px',
+        boxSizing: 'border-box'
       }}>
         {!isAllDay && props.startTime && (
           <div style={{
-            fontSize: '10px',
+            fontSize: isAllDay ? '9px' : '9px',
             fontWeight: 600,
-            opacity: 0.9,
+            opacity: 0.85,
             display: 'flex',
             alignItems: 'center',
-            gap: '4px'
+            gap: '3px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
           }}>
-            🕐 {props.startTime}{props.endTime ? ` - ${props.endTime}` : ''}
+            <Clock size={9} /> {props.startTime}{props.endTime ? ` - ${props.endTime}` : ''}
           </div>
         )}
         <div style={{
           fontWeight: 700,
-          fontSize: isAllDay ? '13px' : '13px',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
+          fontSize: isAllDay ? '11px' : '11px',
+          lineHeight: 1.2,
           display: 'flex',
           alignItems: 'center',
-          gap: '6px'
+          gap: '4px',
+          minWidth: 0
         }}>
-          {props.clientName}
+          <span style={{
+            display: 'block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxWidth: '55%',
+            flex: 1,
+            minWidth: 0
+          }}>{props.clientName}</span>
           {props.statusLabel && (
             <span style={{
-              fontSize: '8px',
+              fontSize: '7px',
               fontWeight: 600,
-              padding: '1px 8px',
-              borderRadius: '4px',
+              padding: '1px 6px',
+              borderRadius: '3px',
               background: props.statusBg || props.statusColor,
               color: props.statusColor || '#FFFFFF',
               whiteSpace: 'nowrap',
@@ -810,58 +900,84 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         </div>
         {props.dest && props.dest !== '—' && (
           <div style={{
-            fontSize: '10px',
-            opacity: 0.85,
+            fontSize: isAllDay ? '8px' : '8px',
+            opacity: 0.8,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px'
+            gap: '3px'
           }}>
-            📍 {props.dest}
+            <MapPin size={8} /> {props.dest}
+          </div>
+        )}
+        {props.branchName && (
+          <div style={{
+            fontSize: '8px',
+            opacity: 0.75,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '3px'
+          }}>
+            <Building size={8} /> {props.branchName}
+          </div>
+        )}
+        {!isAllDay && props.bookingCode && (
+          <div style={{
+            fontSize: '7px',
+            opacity: 0.6,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            fontFamily: 'monospace'
+          }}>
+            {props.bookingCode}
           </div>
         )}
         {props.from && props.from !== '—' && !isAllDay && (
           <div style={{
-            fontSize: '9px',
-            opacity: 0.7,
+            fontSize: isAllDay ? '7px' : '7px',
+            opacity: 0.65,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px'
+            gap: '3px'
           }}>
-            🏠 {props.from}
+            <Home size={8} /> {props.from}
           </div>
         )}
         {props.plate && props.plate !== '—' && (
           <div style={{
-            fontSize: '9px',
-            opacity: 0.7,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}>
-            🚗 {props.plate}
-          </div>
-        )}
-        {props.phone && props.phone !== '—' && !isAllDay && (
-          <div style={{
-            fontSize: '8px',
+            fontSize: isAllDay ? '7px' : '7px',
             opacity: 0.6,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px'
+            gap: '3px'
           }}>
-            📞 {props.phone}
+            <Car size={8} /> {props.plate}
+          </div>
+        )}
+        {props.phone && props.phone !== '—' && !isAllDay && (
+          <div style={{
+            fontSize: '7px',
+            opacity: 0.55,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '3px'
+          }}>
+            <Phone size={8} /> {props.phone}
           </div>
         )}
       </div>
@@ -932,28 +1048,33 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
       {calendarView === 'timeGridDay' && selectedDate && dailyStats.total > 0 && (
         <StatsBar>
-          <StatItem color="#2563EB">
-            📊 {dailyStats.total} Bookings
-          </StatItem>
+          <StatCard color="#2563EB" tint="#EFF6FF" border="#DBEAFE">
+            <StatIcon color="#2563EB"><BarChart3 size={13} /></StatIcon>
+            {dailyStats.total} Bookings
+          </StatCard>
           {dailyStats.booked > 0 && (
-            <StatItem color="#2563EB">
-              ● {dailyStats.booked} Booked
-            </StatItem>
+            <StatCard color="#2563EB" tint="#EFF6FF" border="#DBEAFE">
+              <StatIcon color="#2563EB"><CheckCircle size={13} /></StatIcon>
+              {dailyStats.booked} Booked
+            </StatCard>
           )}
           {dailyStats.transit > 0 && (
-            <StatItem color="#D32F2F">
-              ● {dailyStats.transit} In Transit
-            </StatItem>
+            <StatCard color="#D32F2F" tint="#FFEBEE" border="#FFCDD2">
+              <StatIcon color="#D32F2F"><Truck size={13} /></StatIcon>
+              {dailyStats.transit} In Transit
+            </StatCard>
           )}
           {dailyStats.pending > 0 && (
-            <StatItem color="#F59E0B">
-              ● {dailyStats.pending} Pending
-            </StatItem>
+            <StatCard color="#B45309" tint="#FFFBEB" border="#FDE68A">
+              <StatIcon color="#F59E0B"><Clock size={13} /></StatIcon>
+              {dailyStats.pending} Pending
+            </StatCard>
           )}
           {dailyStats.completed > 0 && (
-            <StatItem color="#2E7D32">
-              ● {dailyStats.completed} Completed
-            </StatItem>
+            <StatCard color="#2E7D32" tint="#E8F5E9" border="#C8E6C9">
+              <StatIcon color="#2E7D32"><Check size={13} /></StatIcon>
+              {dailyStats.completed} Completed
+            </StatCard>
           )}
         </StatsBar>
       )}

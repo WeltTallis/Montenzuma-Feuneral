@@ -1,6 +1,6 @@
 import express from 'express'
 // @ts-ignore - authMiddleware is JavaScript, not TypeScript
-const { protect, authorizeAny } = require('../../../app-global/middlewares/authMiddleware')
+const { protect, authorizeAny } = require('../../app-global/middlewares/authMiddleware')
 import {
     getOrders,
     getOrder,

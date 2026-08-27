@@ -20,6 +20,26 @@ const WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturda
 const PM_RE = /(postmortem|post-mortem|autopsy)/i;
 const RELEASED_RE = /(released|dispatched|completed|buried)/i;
 
+/* ── Flower-style row tints (mirror FlowerBookingsNew STATUS_CARD_STYLES) ──
+   Released-tier items get the SAME soft-red pink (#FFCCD5) flower COMPLETED
+   orders use, so done/done-out records pop at a glance. */
+const DBP_TINTS = [
+  { re: /(released|dispatched|buried|completed|delivered)/i, bg: "#FFCCD5", border: "#F0CDCB" },
+  { re: /(cancel|reject|denied)/i,                           bg: "#FFE4E6", border: "#FECDD3" },
+  { re: /(admitting|ready|transferred|transit|postponed|requested|postmortem)/i, bg: "#FDF4E3", border: "#F0DDB0" },
+  { re: /(pending|admitted|booked|active|confirmed)/i,       bg: "#EFF1F3", border: "#E3E0D9" },
+];
+const tintOfTag = (tag) =>
+  DBP_TINTS.find((t) => t.re.test(String(tag || ""))) || { bg: "#FFFFFF", border: "#EAE7E2" };
+
+/* Initial for the thumbnail — for prefixed names like "Coffin · MUMo"
+   take the letter AFTER the separator so every coffin card isn't "C". */
+const initialOfName = (n) => {
+  const s = String(n || "");
+  const tail = s.includes("·") ? s.split("·").pop() : s;
+  return (tail.trim().charAt(0) || "?").toUpperCase();
+};
+
 /* Local YYYY-MM-DD key — mirrors dashboardDataApi.toKey (no TZ shift) */
 const keyOf = (v) => {
   if (v == null || v === "") return "";
@@ -156,6 +176,26 @@ export default function DayBreakdownPanel({
   }, [sources, activeKey]);
 
   const total = sections.reduce((s, sec) => s + sec.items.length, 0);
+
+  /* Category descriptor built from only the sections that actually carry
+     items — a tab whose coffins source is empty never advertises
+     "bookings" (and an empty day says so plainly). */
+  const CAT_LABELS = {
+    intakes: "intakes",
+    releases: "releases",
+    postmortems: "postmortem requests",
+    bookings: "coffin bookings",
+  };
+  const presentCats = sections
+    .filter((sec) => sec.items.length)
+    .map((sec) => CAT_LABELS[sec.key] || sec.title.toLowerCase());
+  const catsLabel =
+    presentCats.length === 0
+      ? "no activity"
+      : presentCats.length === 1
+        ? presentCats[0]
+        : `${presentCats.slice(0, -1).join(", ")} & ${presentCats[presentCats.length - 1]}`;
+
   const pd = prettyDate(activeKey);
   const isToday = activeKey === tk;
   return (
@@ -195,7 +235,7 @@ export default function DayBreakdownPanel({
           <div style={{ fontSize: 10.5, color: "#64748B", marginTop: 3 }}>
             {loading
               ? "Loading day activity…"
-              : `${total} event${total !== 1 ? "s" : ""} · intakes, releases, postmortem requests & bookings`}
+              : `${total} event${total !== 1 ? "s" : ""} · ${catsLabel}`}
           </div>
         </div>
         {!loading && !isToday && (
@@ -251,7 +291,7 @@ export default function DayBreakdownPanel({
               No activity on this day
             </span>
             <span style={{ fontSize: 11, color: "#64748B", maxWidth: 280 }}>
-              Pick another day on the calendar — intakes, releases, postmortem requests and coffin bookings will appear here.
+              Pick another day on the calendar — the activity for that day will appear here.
             </span>
           </div>
         ) : (
@@ -283,59 +323,74 @@ export default function DayBreakdownPanel({
                 </div>
                 {/* Rows */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                    {sec.items.map((it) => (
-                    <div
-                      key={it.id}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 10,
-                        padding: "8px 11px", borderRadius: 11,
-                        border: "1px solid rgba(15,23,42,0.05)", background: "#FBFCFE",
-                        transition: "background 0.12s ease",
-                        cursor: onSelect ? "pointer" : "default",
-                      }}
-                      onClick={onSelect ? (e) => { e.stopPropagation(); onSelect(it, sec.key); } : undefined}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "#FBFCFE"; }}
-                    >
-                      <span style={{
-                        width: 4, alignSelf: "stretch", minHeight: 32, borderRadius: 4,
-                        background: sec.color, flexShrink: 0,
-                      }} />
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{
-                          fontSize: 12.5, fontWeight: 700, color: "#0F172A",
-                          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                                    {sec.items.map((it) => {
+                      const rowTint = tintOfTag(it.tag);
+                      return (
+                      <div
+                        key={it.id}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 12,
+                          padding: "10px 12px", borderRadius: 16,
+                          background: rowTint.bg,
+                          border: `1px solid ${rowTint.border}`,
+                          boxShadow: "0 1px 3px rgba(28,26,23,0.04)",
+                          transition: "all .25s ease",
+                          cursor: onSelect ? "pointer" : "default",
+                        }}
+                        onClick={onSelect ? (e) => { e.stopPropagation(); onSelect(it, sec.key); } : undefined}
+                        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 5px 14px rgba(28,26,23,0.10)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(28,26,23,0.04)"; e.currentTarget.style.transform = "translateY(0)"; }}
+                      >
+                        {/* Initials thumb — flower-card media slot */}
+                        <span style={{
+                          width: 38, height: 38, borderRadius: 11, flexShrink: 0,
+                          background: "#1C1A17",
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          fontFamily: "'Playfair Display', serif",
+                          fontSize: 15, fontWeight: 700, color: "#B08D57",
                         }}>
-                          {it.name}
+                          {initialOfName(it.name)}
+                        </span>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{
+                            fontFamily: "'Playfair Display', serif",
+                            fontSize: 13.5, fontWeight: 600, color: "#1C1A17",
+                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                          }}>
+                            {it.name}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2, minWidth: 0 }}>
+                            {it.meta && (
+                              <span style={{
+                                fontSize: 10, fontWeight: 600, color: "#574F47",
+                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                              }}>
+                                {it.meta}
+                              </span>
+                            )}
+                            {it.sub && (
+                              <span style={{
+                                fontSize: 10, color: "#9C9389", whiteSpace: "nowrap",
+                                overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150,
+                              }}>
+                                {it.sub}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-                          {it.meta && (
-                            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "monospace" }}>
-                              {it.meta}
-                            </span>
-                          )}
-                          {it.sub && (
-                            <span style={{
-                              fontSize: 10, color: "#94A3B8", whiteSpace: "nowrap",
-                              overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150,
-                            }}>
-                              {it.sub}
-                            </span>
-                          )}
-                        </div>
+                        <span style={{
+                          flexShrink: 0, fontSize: 9, fontWeight: 800,
+                          letterSpacing: "0.05em", textTransform: "uppercase",
+                          padding: "3px 9px", borderRadius: 999,
+                          color: it.tagColor || sec.color,
+                          background: `${it.tagColor || sec.color}18`,
+                          border: `1px solid ${it.tagColor || sec.color}30`,
+                        }}>
+                          {it.tag}
+                        </span>
                       </div>
-                      <span style={{
-                        flexShrink: 0, fontSize: 9, fontWeight: 800,
-                        letterSpacing: "0.05em", textTransform: "uppercase",
-                        padding: "3px 8px", borderRadius: 999,
-                        color: it.tagColor || sec.color,
-                        background: `${it.tagColor || sec.color}16`,
-                        border: `1px solid ${it.tagColor || sec.color}30`,
-                      }}>
-                        {it.tag}
-                      </span>
-                    </div>
-                  ))}
+                      );
+                    })}
                 </div>
               </div>
             );
