@@ -48,6 +48,10 @@ export default function LoginPage() {
     } else if (!token || token === 'undefined' || token === 'null') {
       localStorage.removeItem('authToken');
       localStorage.removeItem('tenantSlug');
+      // Also clear any stale user object so a previous tenant's identity
+      // can never leak into this session.
+      localStorage.removeItem('user');
+      sessionStorage.removeItem('user');
     }
   }, [navigate]);
 
@@ -84,10 +88,23 @@ export default function LoginPage() {
         });
 
         const userData = response.user || {};
-        const tenantSlug = response.tenant?.tenantSlug || userData.tenantSlug;
+
+        // ALWAYS navigate using the PARENT tenant slug — never the "effective"
+        // scope (response.tenant.tenantSlug is the BRANCH DB NAME for branch
+        // users, which produced /tenant/<branch-db-name>/... URLs and landed
+        // users in the wrong branch/tenant). Branch context continues to be
+        // scoped via branchId/branchSlug/branchDbName + x-branch-* headers.
+        const tenantSlug =
+          userData.parentTenantSlug ||
+          response.tenant?.parentTenantSlug ||
+          response.tenant?.slug ||
+          userData.tenantSlug;
 
         if (tenantSlug) {
           localStorage.setItem('tenantSlug', tenantSlug);
+          if (userData.parentTenantSlug) {
+            localStorage.setItem('parentTenantSlug', userData.parentTenantSlug);
+          }
           setSuccessName(userData.fullName || userData.username || 'User');
           setShowSuccess(true);
 

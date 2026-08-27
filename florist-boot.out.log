@@ -1259,3 +1259,12 @@
 [FLORIST] Request: GET /health
 [FLORIST] Tenant: system_shared, Branch: null
 [FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)
+[FLORIST] Request: GET /health
+[FLORIST] Tenant: system_shared, Branch: null
+[FLORIST] Using system_shared tenant (bypassing validation)

@@ -110,6 +110,14 @@ app.get('/tenant/:tenantSlug/settings', asyncHandler(async (req: Request, res: R
     return res.status(404).json({ success: false, message: 'Tenant not found' });
   }
 
+  // Ensure the tenant DB has a branches table + a default "Main" branch, so
+  // tenants provisioned without one still render (first branch = Main).
+  await TenantModel.ensureMainBranch({
+    db_name: tenant.db_name,
+    tenant_slug: tenant.tenant_slug,
+    tenant_name: tenant.tenant_name,
+  });
+
   const conn = await mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '3306'),
@@ -119,8 +127,15 @@ app.get('/tenant/:tenantSlug/settings', asyncHandler(async (req: Request, res: R
   });
 
   try {
-    const [branches] = await conn.query('SELECT COUNT(*) as count FROM branches WHERE is_active = TRUE');
-    const branchCount = (branches as any[])[0]?.count || 0;
+    // Count branches defensively so a transient/missing table still returns
+    // the org info (never throw and blank the Settings page).
+    let branchCount = 0;
+    try {
+      const [branches] = await conn.query('SELECT COUNT(*) as count FROM branches WHERE is_active = TRUE');
+      branchCount = (branches as any[])[0]?.count || 0;
+    } catch (countErr: any) {
+      console.warn('[settings] branch count failed:', (countErr && countErr.message) || countErr);
+    }
 
     res.json({
       success: true,

@@ -188,28 +188,78 @@ const findTenantByEmail = async (email: string): Promise<Tenant | null> => {
   }
 };
 
-const findTenantByUserEmail = async (email: string): Promise<Tenant | null> => {
+/**
+ * Return EVERY active tenant whose users table contains this email.
+ * Different tenants can register the same email address — resolving only the
+ * FIRST match logged people into the WRONG tenant, so login must verify the
+ * password against all candidates and pick the one that actually matches.
+ */
+const findTenantCandidatesByUserEmail = async (email: string): Promise<Tenant[]> => {
   try {
     const [dbs]: any = await pool.query(
       "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'tenant_tracking'"
     );
-    if (dbs.length === 0) return null;
+    if (dbs.length === 0) return [];
 
     const [tenants]: any = await pool.query(
       "SELECT * FROM tenant_tracking.tenants WHERE status = 'active'"
     );
+    const matches: Tenant[] = [];
     for (const t of tenants) {
       try {
         const [users]: any = await pool.query(
           'SELECT user_id FROM `' + t.db_name + '`.users WHERE email = ? AND is_active = 1 LIMIT 1',
           [email.toLowerCase()]
         );
-        if (users.length > 0) return t;
+        if (users.length > 0) matches.push(t);
       } catch { continue; }
     }
-    return null;
+    return matches;
   } catch (e: any) {
     if (e?.code === 'ER_ACCESS_DENIED_ERROR') throw e;
+    return [];
+  }
+};
+
+/** Tenants that contain a user with this username (non-email identifiers). */
+const findTenantCandidatesByUsername = async (username: string): Promise<Tenant[]> => {
+  try {
+    const [dbs]: any = await pool.query(
+      "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'tenant_tracking'"
+    );
+    if (dbs.length === 0) return [];
+
+    const [tenants]: any = await pool.query(
+      "SELECT * FROM tenant_tracking.tenants WHERE status = 'active'"
+    );
+    const matches: Tenant[] = [];
+    for (const t of tenants) {
+      try {
+        const [users]: any = await pool.query(
+          'SELECT user_id FROM `' + t.db_name + '`.users WHERE username = ? AND is_active = 1 LIMIT 1',
+          [username.toLowerCase()]
+        );
+        if (users.length > 0) matches.push(t);
+      } catch { continue; }
+    }
+    return matches;
+  } catch (e: any) {
+    if (e?.code === 'ER_ACCESS_DENIED_ERROR') throw e;
+    return [];
+  }
+};
+
+const findTenantByUserEmail = async (email: string): Promise<Tenant | null> => {
+  try {
+    // Tenant owner accounts first, then regular users across tenants.
+    const ownerTenant = await findTenantByEmail(email);
+    if (ownerTenant) return ownerTenant;
+
+    const candidates = await findTenantCandidatesByUserEmail(email);
+    return candidates.length > 0 ? candidates[0] : null;
+  } catch (e: any) {
+    if (e?.code === 'ER_ACCESS_DENIED_ERROR') throw e;
+    console.error('Error finding tenant:', e.message);
     return null;
   }
 };
@@ -282,36 +332,62 @@ const validateCsrf = (req: Request): boolean => {
  * POST /auth/login
  */
 export const login = async (req: Request, res: Response): Promise<void> => {
-  const emailInput: string = req.body.email || req.body.identifier;
+  const identifierInput: string = (req.body.email || req.body.identifier || req.body.username || '').trim();
   const { password } = req.body;
 
-  if (!emailInput || !validator.isEmail(emailInput)) {
-    res.status(400).json({ success: false, message: 'Valid email is required' });
+  if (!identifierInput) {
+    res.status(400).json({ success: false, message: 'Email or username is required' });
     return;
   }
   if (!password) {
     res.status(400).json({ success: false, message: 'Password is required' });
     return;
   }
+  // Only enforce email format when the identifier actually looks like an email;
+  // plain usernames are allowed and resolved through findTenantCandidatesByUsername.
+  if (identifierInput.includes('@') && !validator.isEmail(identifierInput)) {
+    res.status(400).json({ success: false, message: 'Valid email is required' });
+    return;
+  }
 
   try {
-    let tenant: Tenant | null = await findTenantByEmail(emailInput);
-    if (!tenant) {
-      tenant = await findTenantByUserEmail(emailInput);
+    // Gather EVERY tenant that contains a matching account, then verify the
+    // password against each candidate. Picking the first tenant that merely
+    // CONTAINS the email previously logged users into the WRONG tenant when
+    // the same email was registered by more than one organization.
+    let candidates: Tenant[] = [];
+    if (identifierInput.includes('@')) {
+      const ownerTenant = await findTenantByEmail(identifierInput);
+      if (ownerTenant) candidates.push(ownerTenant);
+      candidates.push(...(await findTenantCandidatesByUserEmail(identifierInput)));
+    } else {
+      candidates.push(...(await findTenantCandidatesByUsername(identifierInput.toLowerCase())));
     }
-    if (!tenant) {
-      res.status(401).json({ success: false, message: 'Invalid email or password' });
-      return;
+    // De-duplicate by tenant id while preserving order.
+    const seenIds = new Set<string>();
+    candidates = candidates.filter((t) => {
+      const idKey = String(t.tenant_id ?? t.id);
+      if (seenIds.has(idKey)) return false;
+      seenIds.add(idKey);
+      return true;
+    });
+
+    let tenant: Tenant | null = null;
+    let user: User | null = null;
+    for (const candidate of candidates) {
+      try {
+        const found: User | null = await findUserInTenantDB(candidate.db_name, identifierInput);
+        if (!found || Number(found.is_active) === 0) continue;
+        const ok = await bcrypt.compare(password, found.password_hash);
+        if (ok) {
+          tenant = candidate;
+          user = found;
+          break;
+        }
+      } catch { continue; }
     }
 
-    const user: User | null = await findUserInTenantDB(tenant.db_name, emailInput);
-    if (!user) {
-      res.status(401).json({ success: false, message: 'Invalid email or password' });
-      return;
-    }
-
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    if (!isValidPassword) {
+    if (!tenant || !user) {
       res.status(401).json({ success: false, message: 'Invalid email or password' });
       return;
     }
@@ -426,8 +502,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         phone: user.phone || '',
         role: user.role,
         tenantId,
-        tenantSlug: effectiveSlug, // effective scope (branch db for branch users)
+        // Always advertise the PARENT tenant slug here. The effective scope
+        // (branch db) is exposed separately via branchId/branchDbName/branchSlug
+        // so the frontend never builds /tenant/<branch-db-name>/... URLs.
+        tenantSlug: tenant.tenant_slug,
         branchId,
+        branchSlug: branchList.find((b: any) => String(b.branchId) === String(branchId))?.branchSlug || null,
         branchDbName,
         dbName,
         parentTenantSlug: tenant.tenant_slug, // parent tenant slug for branch users
@@ -437,7 +517,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       tenant: {
         tenantId,
         tenantName: tenant.tenant_name,
-        tenantSlug: effectiveSlug,
+        tenantSlug: tenant.tenant_slug,
         slug: tenant.tenant_slug,
         parentTenantSlug: tenant.tenant_slug,
         dbName: tenant.db_name,

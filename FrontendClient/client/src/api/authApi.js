@@ -28,7 +28,11 @@ export const authApi = {
       // Store in BOTH storages for cross-compatibility
       // sessionStorage for tab isolation, localStorage for page refresh persistence
       sessionStorage.setItem('authToken', data.accessToken);
+      localStorage.setItem('authToken', data.accessToken);
       sessionStorage.setItem('user', JSON.stringify(data.user || {}));
+      // Many pages (SettingsPage, DashboardRedirect, ...) read the user from
+      // localStorage — persisting both keeps them in sync after every login.
+      localStorage.setItem('user', JSON.stringify(data.user || {}));
 
       // Store refresh token in BOTH storages for consistency
       if (data.refreshToken) {
@@ -36,8 +40,14 @@ export const authApi = {
         localStorage.setItem('refreshToken', data.refreshToken);
       }
 
-      // Non-sensitive metadata in localStorage
-      if (data.tenant?.tenantSlug) localStorage.setItem('tenantSlug', data.tenant.tenantSlug);
+      // Non-sensitive metadata in localStorage.
+      // The slug used for routing/API headers must ALWAYS be the parent tenant
+      // slug — never a branch db name — otherwise tenants land on the wrong
+      // (or non-existent) subdomain after login.
+      const routeTenantSlug =
+        data.tenant?.parentTenantSlug || data.tenant?.slug || data.tenant?.tenantSlug ||
+        data.user?.parentTenantSlug || data.user?.tenantSlug || '';
+      if (routeTenantSlug) localStorage.setItem('tenantSlug', routeTenantSlug);
       if (data.tenant?.tenantId) localStorage.setItem('tenantId', data.tenant.tenantId.toString());
       if (data.tenant?.dbName || data.user?.dbName) localStorage.setItem('dbName', data.user?.dbName || data.tenant.dbName);
 
@@ -50,7 +60,7 @@ export const authApi = {
       const bid = data.user?.branchId || data.user?.branch_id || data.user?.branch?.branchId;
       if (bid) localStorage.setItem('branchId', String(bid));
       else localStorage.removeItem('branchId');
-      const bslug = data.user?.branchSlug || data.user?.branch?.branchSlug || data.user?.branchDbName || null;
+      const bslug = data.user?.branchSlug || data.user?.branch?.branchSlug || null;
       if (bslug) {
         localStorage.setItem('branchSlug', bslug);
         sessionStorage.setItem('branchSlug', bslug);
@@ -58,7 +68,15 @@ export const authApi = {
         localStorage.removeItem('branchSlug');
         sessionStorage.removeItem('branchSlug');
       }
-      if (data.user?.branchDbName) localStorage.setItem('branchDbName', data.user.branchDbName);
+      // CRITICAL: clear leftover branch context from a PREVIOUS session —
+      // otherwise a user without a branch inherits the old session's branch
+      // headers (x-branch-id/x-branch-db) and lands on the wrong branch.
+      if (data.user?.branchDbName) {
+        localStorage.setItem('branchDbName', data.user.branchDbName);
+      } else {
+        localStorage.removeItem('branchDbName');
+        sessionStorage.removeItem('branchDbName');
+      }
       // Persist the full branch list + parent/child hierarchy for multi-branch switching
       storeBranchContext(data.branches);
 

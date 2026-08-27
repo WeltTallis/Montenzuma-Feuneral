@@ -1,9 +1,24 @@
 ﻿
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ENDPOINTS } from '../../api/endpoints';
 import env from '../../utils/config/env';
 import api from '../../api/axios';
+
+// Read the raw stored user from either storage (state can be stale/null).
+const resolveStoredUser = () => {
+    try {
+        return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}') || {};
+    } catch {
+        return {};
+    }
+};
+
+// Roles allowed to manage users. Normalized lowercase for reliable comparison
+// ('Admin', 'ADMIN', etc.) plus common variants written by different services.
+const USER_ADMIN_ROLES = ['admin', 'manager', 'systemadmin', 'system_administrator', 'tenant_admin'];
+const isUserManager = (user) => USER_ADMIN_ROLES.includes(String(user?.role || '').toLowerCase());
+
 
 
 const THEME = {
@@ -35,17 +50,20 @@ const THEME = {
 
 export default function SettingsPage() {
     const navigate = useNavigate();
+    const { slug: urlSlug } = useParams();
     const [activeTab, setActiveTab] = useState('users');
     const [users, setUsers] = useState([]);
     const [branches, setBranches] = useState([]);
     const [settings, setSettings] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showAddUserModal, setShowAddUserModal] = useState(false);
-    const [currentUser, setCurrentUser] = useState(null);
+    const [currentUser, setCurrentUser] = useState(resolveStoredUser());
+    const [formError, setFormError] = useState('');
     const [error, setError] = useState(null);
 
     const [userForm, setUserForm] = useState({
         email: '',
+        username: '',
         password: '',
         full_name: '',
         phone: '',
@@ -53,11 +71,90 @@ export default function SettingsPage() {
         branch_id: '',
     });
 
+    // The tenant-level data (settings, users, branches) all live in the PARENT
+    // tenant's database. For multi-tenant / multi-branch organizations the
+    // current slug can be a BRANCH slug (e.g. "...-machakos") which is NOT a
+    // real tenant — findBySubdomain() can't resolve it, so /tenant/:slug/branches
+    // 404s. Therefore the PARENT tenant slug ALWAYS takes top priority for
+    // fetching this data; branch scope is applied separately via branchId/branchSlug.
+    const cachedUser = resolveStoredUser();
+    const parentSlug =
+        cachedUser?.parentTenantSlug ||
+        localStorage.getItem('parentTenantSlug') ||
+        '';
+
+    const slugCandidates = (() => {
+        const seen = new Set();
+        const push = (v) => { if (v && !seen.has(v)) { seen.add(v); } };
+        // Parent tenant slug first — authoritative tenant for branches/users/settings.
+        push(parentSlug);
+        // Then the URL slug, which is the canonical /tenant/:slug route. For a
+        // single-tenant (no parent) this IS the tenant slug.
+        push(urlSlug);
+        // Then the current user's own tenant slug / stored tenant slug, restricted
+        // to the logged-in user's tenant so we never render another org's data.
+        push(cachedUser?.tenantSlug);
+        if (!parentSlug) push(localStorage.getItem('tenantSlug'));
+        return [...seen];
+    })();
+    let tenantSlug = slugCandidates[0] || '';
+
+    const loadData = async () => {
+        setLoading(true);
+
+        const fetchAll = async (slug) => {
+            const [settingsRes, usersRes, branchesRes] = await Promise.all([
+                api.get(ENDPOINTS.TENANT.SETTINGS(slug)),
+                api.get(ENDPOINTS.TENANT.USERS(slug)),
+                api.get(ENDPOINTS.TENANT.BRANCHES(slug)),
+            ]);
+            return {
+                settings: settingsRes.data?.data || null,
+                users: usersRes.data?.data || [],
+                branches: branchesRes.data?.data || [],
+            };
+        };
+
+        try {
+            let data = null;
+            let lastErr = null;
+            for (const slug of slugCandidates) {
+                if (!slug) continue;
+                try {
+                    data = await fetchAll(slug);
+                    tenantSlug = slug;
+                    break;
+                } catch (err) {
+                    lastErr = err;
+                    console.warn(`[Settings] tenant lookup failed for "${slug}" (${err?.response?.status || err?.message})`);
+                }
+            }
+            if (!data) throw lastErr || new Error('No tenant slug resolved');
+
+            // The effective tenant slug — always the parent for multi-branch orgs.
+            setSettings(data.settings);
+            setUsers(data.users);
+            setBranches(data.branches);
+            setError(null);
+        } catch (error) {
+            console.error('Failed to load settings:', error);
+            // If the user navigated to a slug that doesn't exist, tell them the
+            // URL is wrong instead of silently showing another tenant's data.
+            let message = error.response?.data?.message || 'Please check the tenant and try again.';
+            if (urlSlug && urlSlug !== parentSlug) {
+                message = `The tenant "${urlSlug}" was not found. Check that the URL uses the parent tenant slug.`;
+            }
+            setError(`Failed to load settings: ${message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         const userData = localStorage.getItem('user');
         if (userData) {
-            const user = JSON.parse(userData);
-            setCurrentUser(user);
+            try { setCurrentUser(JSON.parse(userData)); } catch { /* ignore */ }
+            const user = resolveStoredUser();
 
             // Redirect drivers to driver portal
             if (user.role === 'driver') {
@@ -66,52 +163,55 @@ export default function SettingsPage() {
             }
         }
         loadData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [navigate]);
-
-    const loadData = async () => {
-        try {
-            const tenantSlug = localStorage.getItem('tenantSlug');
-
-            const [settingsRes, usersRes, branchesRes] = await Promise.all([
-                api.get(ENDPOINTS.TENANT.SETTINGS(tenantSlug)),
-                api.get(ENDPOINTS.TENANT.USERS(tenantSlug)),
-                api.get(ENDPOINTS.TENANT.BRANCHES(tenantSlug)),
-            ]);
-
-            setSettings(settingsRes.data.data);
-            setUsers(usersRes.data.data || []);
-            setBranches(branchesRes.data.data || []);
-        } catch (error) {
-            console.error('Failed to load settings:', error);
-            setError('Failed to load settings. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleAddUser = async (e) => {
         e.preventDefault();
-        try {
-            const tenantSlug = localStorage.getItem('tenantSlug');
+        setFormError('');
 
+        // A branch MUST be chosen on multi-branch organizations so every new
+        // user always logs in to the correct branch (never null/main).
+        const activeBranches = branches.filter((b) => b.is_active === undefined || b.is_active === true || b.is_active === 1);
+        if (!userForm.branch_id) {
+            if (activeBranches.length > 1) {
+                setFormError('Please select the branch this user belongs to.');
+                return;
+            }
+            if (activeBranches.length === 1) {
+                setUserForm((prev) => ({ ...prev, branch_id: String(activeBranches[0].branch_id) }));
+            }
+        }
+
+        try {
             const payload = {
                 ...userForm,
-                branch_id: userForm.branch_id || null,
+                // Backend requires a unique username — auto-derive from the
+                // email when the admin leaves it empty.
+                username: (userForm.username || userForm.email || '').trim().toLowerCase(),
+                branch_id: userForm.branch_id || (activeBranches.length === 1 ? String(activeBranches[0].branch_id) : null),
             };
 
             await api.post(ENDPOINTS.TENANT.CREATE_USER(tenantSlug), payload);
             setShowAddUserModal(false);
-            setUserForm({ email: '', password: '', full_name: '', phone: '', role: 'staff', branch_id: '' });
+            setFormError('');
+            setUserForm({ email: '', username: '', password: '', full_name: '', phone: '', role: 'staff', branch_id: '' });
             loadData();
         } catch (error) {
             console.error('Failed to add user:', error);
-            alert(error.response?.data?.message || 'Failed to add user');
+            setFormError(error.response?.data?.message || 'Failed to add user. Please try again.');
         }
     };
 
-    const isMultiTenant = settings?.deploymentType === 'multi';
-    const isAdmin = currentUser?.role === 'admin';
-    const isManager = currentUser?.role === 'manager' || isAdmin;
+    // Multi-branch detection: an org is "multi" if the backend says so OR the
+    // loaded branch list has more than one entry. This keeps the Branch
+    // Management tab + branch picker reliable even if `deploymentType` is
+    // reported differently by the API.
+    const isMultiTenant = settings?.deploymentType === 'multi' || branches.length > 1;
+    // Roles are normalized + read from storage fallback so admins always see
+    // the Users & Roles tab and the "Add User" functionality.
+    const isAdmin = isUserManager(currentUser) || isUserManager(resolveStoredUser());
+    const isManager = isAdmin;
 
     if (loading) {
         return (
@@ -126,6 +226,20 @@ export default function SettingsPage() {
 
     return (
         <div style={{ minHeight: '100vh', background: THEME.colors.bone }}>
+            {error && (
+                <div style={{
+                    background: THEME.colors.redBg || '#fdecea',
+                    color: THEME.colors.red,
+                    borderBottom: '1px solid ' + (THEME.colors.redLine || '#f5c6c2'),
+                    padding: '0.85rem 2rem',
+                    fontSize: '0.85rem',
+                    fontFamily: "'Inter', sans-serif",
+                    maxWidth: '1200px',
+                    margin: '0 auto',
+                }}>
+                    ⚠️ {error}
+                </div>
+            )}
             <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -236,23 +350,6 @@ export default function SettingsPage() {
                             Branches
                         </button>
                     )}
-                    <button
-                        onClick={() => setActiveTab('analytics')}
-                        style={{
-                            padding: '0.75rem 1.25rem',
-                            background: 'none',
-                            border: 'none',
-                            borderBottom: `2px solid ${activeTab === 'analytics' ? THEME.colors.brass : 'transparent'}`,
-                            color: activeTab === 'analytics' ? THEME.colors.ink : THEME.colors.gray,
-                            fontSize: '0.88rem',
-                            fontWeight: 500,
-                            cursor: 'pointer',
-                            fontFamily: "'Inter', sans-serif",
-                            marginBottom: '-1px',
-                        }}
-                    >
-                        Analytics
-                    </button>
                 </div>
 
                 {/* Tab Content */}
@@ -374,48 +471,6 @@ export default function SettingsPage() {
                             </div>
                         </div>
                     )}
-
-                    {activeTab === 'analytics' && (
-                        <div>
-                            <h3 style={{ fontFamily: "'Inter', sans-serif", fontSize: '1.1rem', fontWeight: 600, color: THEME.colors.ink, marginBottom: '1rem' }}>
-                                Analytics Dashboard
-                            </h3>
-                            <div style={{
-                                padding: '3rem',
-                                background: THEME.colors.bone2,
-                                border: `2px dashed ${THEME.colors.line}`,
-                                borderRadius: '8px',
-                                textAlign: 'center',
-                            }}>
-                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
-                                <h4 style={{ fontFamily: "'Inter', sans-serif", fontSize: '1rem', fontWeight: 600, color: THEME.colors.ink, marginBottom: '0.5rem' }}>
-                                    {isMultiTenant ? 'Comprehensive Analytics' : 'Basic Analytics'}
-                                </h4>
-                                <p style={{ fontSize: '0.88rem', color: THEME.colors.gray, maxWidth: '500px', margin: '0 auto', lineHeight: 1.6 }}>
-                                    {isMultiTenant
-                                        ? 'View comprehensive analytics across all branches including deceased registrations, revenue, and operational metrics.'
-                                        : 'View basic analytics for your single location including registrations and key metrics.'}
-                                </p>
-                                <button
-                                    onClick={() => navigate('/analytics')}
-                                    style={{
-                                        marginTop: '1.5rem',
-                                        padding: '0.75rem 1.5rem',
-                                        background: THEME.colors.brass,
-                                        color: THEME.colors.white,
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        fontSize: '0.88rem',
-                                        fontWeight: 500,
-                                        cursor: 'pointer',
-                                        fontFamily: "'Inter', sans-serif",
-                                    }}
-                                >
-                                    View Analytics
-                                </button>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
 
@@ -463,6 +518,19 @@ export default function SettingsPage() {
                         </div>
 
                         <form onSubmit={handleAddUser}>
+                            {formError && (
+                                <div style={{
+                                    padding: '0.75rem',
+                                    background: THEME.colors.redBg,
+                                    color: THEME.colors.red,
+                                    borderRadius: '4px',
+                                    fontSize: '0.82rem',
+                                    marginBottom: '1rem',
+                                }}>
+                                    {formError}
+                                </div>
+                            )}
+
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, color: THEME.colors.ink, marginBottom: '0.4rem' }}>
                                     Full Name <span style={{ color: THEME.colors.red }}>*</span>
@@ -492,6 +560,26 @@ export default function SettingsPage() {
                                     value={userForm.email}
                                     onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
                                     required
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.6rem',
+                                        border: `1px solid ${THEME.colors.line}`,
+                                        borderRadius: '4px',
+                                        fontSize: '0.88rem',
+                                        fontFamily: "'Inter', sans-serif",
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, color: THEME.colors.ink, marginBottom: '0.4rem' }}>
+                                    Username
+                                </label>
+                                <input
+                                    type="text"
+                                    value={userForm.username}
+                                    placeholder="Used to log in (auto-filled from email if left blank)"
+                                    onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
                                     style={{
                                         width: '100%',
                                         padding: '0.6rem',
@@ -568,10 +656,10 @@ export default function SettingsPage() {
                                 </select>
                             </div>
 
-                            {isMultiTenant && (
+                            {isMultiTenant && branches.length > 0 && (
                                 <div style={{ marginBottom: '1rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, color: THEME.colors.ink, marginBottom: '0.4rem' }}>
-                                        Branch
+                                        Branch <span style={{ color: THEME.colors.red }}>*</span>
                                     </label>
                                     <select
                                         value={userForm.branch_id}

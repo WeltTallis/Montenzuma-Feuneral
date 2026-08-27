@@ -1187,6 +1187,74 @@ export class TenantModel {
         }
     }
 
+    /**
+     * Ensure a tenant's DB has a tenant-scoped `branches` table and a default
+     * "Main" (primary) branch. Some tenants are provisioned without the branches
+     * table, which made the settings/users/branches endpoints fail with
+     * "Table '<db>.branches' doesn't exist" and blanked the Settings page.
+     * The first/primary branch is always the tenant's own database (Main).
+     * Non-fatal: never throws so reads still render even if init is impossible.
+     */
+    static async ensureMainBranch(tenant: {
+        db_name: string;
+        tenant_slug: string;
+        tenant_name?: string;
+    }): Promise<void> {
+        let conn = null;
+        try {
+            conn = await getTenantConnection(tenant.db_name);
+            // Tenant-scoped branches table (matches ALL_SERVICE_MIGRATIONS #002).
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS branches (
+                    branch_id VARCHAR(36) PRIMARY KEY,
+                    parent_branch_id VARCHAR(36) NULL,
+                    branch_name VARCHAR(255) NOT NULL,
+                    branch_slug VARCHAR(255) UNIQUE NOT NULL,
+                    branch_code VARCHAR(255),
+                    branch_db_name VARCHAR(255),
+                    branch_location TEXT,
+                    branch_phone VARCHAR(50),
+                    branch_email VARCHAR(255),
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at VARCHAR(255),
+                    updated_at VARCHAR(255),
+                    INDEX idx_branch_slug (branch_slug),
+                    INDEX idx_branch_code (branch_code),
+                    INDEX idx_is_active (is_active),
+                    INDEX idx_parent_branch_id (parent_branch_id),
+                    CONSTRAINT fk_branches_parent FOREIGN KEY (parent_branch_id)
+                        REFERENCES branches (branch_id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            `);
+
+            // Seed the first/primary branch as "Main" → everything operates
+            // from the main branch by default.
+            const [rows]: any = await conn.query(
+                'SELECT COUNT(*) AS c FROM branches WHERE is_active = TRUE'
+            );
+            const count = Number(rows?.[0]?.c || 0);
+            if (count === 0) {
+                const branchId = uuidv4();
+                const branchSlug = `${tenant.tenant_slug}-main`;
+                const now = new Date().toISOString();
+                await conn.query(
+                    `INSERT INTO branches
+                        (branch_id, branch_name, branch_slug, branch_code, branch_db_name, parent_branch_id, is_active, created_at, updated_at)
+                     VALUES (?, 'Main', ?, ?, ?, NULL, TRUE, ?, ?)`,
+                    [branchId, branchSlug, branchSlug, tenant.db_name, now, now]
+                );
+                console.log(`[TenantModel] Seeded default "Main" branch for ${tenant.db_name}`);
+            }
+        } catch (error: any) {
+            // Non-fatal — never block tenant reads on branch init issues.
+            console.warn(`[TenantModel] ensureMainBranch skipped for ${tenant.db_name}:`, (error && error.message) || error);
+        } finally {
+            if (conn) {
+                try { await conn.end(); } catch { /* ignore */ }
+            }
+        }
+    }
+
     static async addBranch(tenantDbName: string, branch: {
         branch_name: string;
         branch_location: string;

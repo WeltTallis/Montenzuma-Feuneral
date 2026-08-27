@@ -12,13 +12,18 @@ export class UserController {
      */
     async registerUser(req: Request, res: Response): Promise<void> {
         try {
-            const { email, password, full_name, username, phone, role, branch_id } = req.body;
+            const { email, password, full_name, phone, role, branch_id } = req.body;
             const user = (req as any).user;
 
-            if (!email || !password || !full_name || !username || !role) {
-                res.status(400).json({ success: false, message: 'Missing required fields: email, password, full_name, username, role' });
+            // `username` is optional â€” auto-derived from the email when the admin
+            // does not supply one (the settings-page "Add User" form doesn't).
+            const username: string = String(req.body.username || email || '').trim().toLowerCase();
+
+            if (!email || !password || !full_name || !role) {
+                res.status(400).json({ success: false, message: 'Missing required fields: email, password, full_name, role' });
                 return;
             }
+
 
             if (password.length < 6) {
                 res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
@@ -181,25 +186,52 @@ export class UserController {
             });
 
             try {
-                const [users] = await conn.query(`
-          SELECT 
-            u.user_id,
-            u.email,
-            u.full_name,
-            u.username,
-            u.phone,
-            u.role,
-            u.branch_id,
-            u.is_active,
-            u.last_login_at,
-            u.created_at,
-            b.branch_name,
-            b.branch_slug
-          FROM users u
-          LEFT JOIN branches b ON u.branch_id = b.branch_id
-          WHERE u.is_active = TRUE
-          ORDER BY u.created_at DESC
-        `);
+                // Ensure the tenant branches table exists so the LEFT JOIN below
+                // (and Add-User branch assignment) always works — tenants without
+                // one get a default "Main" branch seeded automatically.
+                await TenantModel.ensureMainBranch({
+                    db_name: tenant.db_name,
+                    tenant_slug: tenant.tenant_slug,
+                    tenant_name: tenant.tenant_name,
+                });
+
+                // Try the branch-aware query first; if the branches table / join
+                // is still unavailable, fall back to a users-only query so the
+                // user list always loads on the Settings page.
+                let users: any[] = [];
+                try {
+                    const [rows] = await conn.query(`
+              SELECT
+                u.user_id,
+                u.email,
+                u.full_name,
+                u.username,
+                u.phone,
+                u.role,
+                u.branch_id,
+                u.is_active,
+                u.last_login_at,
+                u.created_at,
+                b.branch_name,
+                b.branch_slug
+              FROM users u
+              LEFT JOIN branches b ON u.branch_id = b.branch_id
+              WHERE u.is_active = TRUE
+              ORDER BY u.created_at DESC
+            `);
+                    users = rows as any[];
+                } catch (joinErr: any) {
+                    console.warn('[getUsers] branch join failed, falling back to users-only:', (joinErr && joinErr.message) || joinErr);
+                    const [rows] = await conn.query(`
+              SELECT
+                user_id, email, full_name, username, phone, role, branch_id,
+                is_active, last_login_at, created_at, NULL AS branch_name, NULL AS branch_slug
+              FROM users
+              WHERE is_active = TRUE
+              ORDER BY created_at DESC
+            `);
+                    users = rows as any[];
+                }
 
                 res.json({
                     success: true,
@@ -238,7 +270,22 @@ export class UserController {
                 return;
             }
 
-            const branches = await TenantModel.getBranches(tenant.db_name);
+            // Ensure a branches table + default "Main" branch exist so branch
+            // assignment always has at least the primary branch to pick.
+            await TenantModel.ensureMainBranch({
+                db_name: tenant.db_name,
+                tenant_slug: tenant.tenant_slug,
+                tenant_name: tenant.tenant_name,
+            });
+
+            // Return the branch list, degrading to an empty array instead of
+            // throwing, so the Settings page never blanks on branch errors.
+            let branches: any[] = [];
+            try {
+                branches = await TenantModel.getBranches(tenant.db_name);
+            } catch (branchErr: any) {
+                console.warn('[getBranches] could not load branches, returning []:', (branchErr && branchErr.message) || branchErr);
+            }
 
             res.json({
                 success: true,

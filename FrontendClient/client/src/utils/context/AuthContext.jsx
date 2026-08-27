@@ -97,15 +97,17 @@ export const AuthProvider = ({ children }) => {
             branchDbName: userData.branchDbName,
             username: userData.fullName || userData.username || 'User',
             fullName: userData.fullName || userData.username || 'User',
-            // tenantSlug = the effective scope the user is logged into.
-            // For branch users this MUST be the BRANCH slug (not the parent),
-            // otherwise the user is dropped back into the main branch.
+            // tenantSlug must ALWAYS be the PARENT tenant slug so URLs,
+            // redirects and the x-tenant-slug header resolve the real tenant.
+            // Branch context stays in branchId/branchSlug/branchDbName.
             tenantSlug:
+              userData.parentTenantSlug ||
+              userData.tenant?.slug ||
+              data.tenant?.slug ||
+              data.tenant?.parentTenantSlug ||
               userData.tenantSlug ||
               userData.branchDbName ||
-              userData.dbName ||
-              userData.tenant?.slug ||
-              userData.parentTenantSlug,
+              userData.dbName,
             branchSlug: userData.branchSlug || userData.branchDbName || null,
             parentTenantSlug: userData.parentTenantSlug,
             branchDbName: userData.branchDbName,
@@ -124,11 +126,15 @@ export const AuthProvider = ({ children }) => {
           window.dispatchEvent(new CustomEvent('auth-state-changed'));
         }
 
-        // Store tenant slug from multiple possible sources
+        // Store tenant slug from multiple possible sources.
+        // IMPORTANT: store the PARENT tenant slug here — for branch users
+        // data.tenant.tenantSlug is the branch DB name, which must never be
+        // used for routing or the x-tenant-slug header.
         const tenantSlug =
-          data.tenant?.tenantSlug ||
+          userData?.parentTenantSlug ||
+          data.tenant?.parentTenantSlug ||
           data.tenant?.slug ||
-          userData?.tenantSlug ||
+          data.tenant?.tenantSlug ||
           userData?.tenant?.slug;
         if (tenantSlug) {
           localStorage.setItem('tenantSlug', tenantSlug);
