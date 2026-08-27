@@ -302,3 +302,21 @@ select:focus-visible {
     background: #15171A;
     color: #adbfb7;
 }
+
+
+
+:root {
+    --paper: #F5F1E8;
+    --lift: #FBF8F1;
+    --sunken: #ECE6D8;
+    --ink: #211E18;
+    --soft: #6B655A;
+    --hair: #DCD5C6;
+    --edge: #B9AF9C;
+    --ox: #7A2F26;
+    --c-intake: #54627A;
+    --c-rel: #48604B;
+    --c-pm: #7A2F26;
+    --serif: "Fraunces", Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
