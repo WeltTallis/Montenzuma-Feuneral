@@ -154,11 +154,18 @@ export const getPostmortemRequests = async (req: TenantRequest, res: Response): 
         await ensurePostmortemRequestsTable(dbName);
         const { deceased_id, status } = req.query as any;
 
-        let sql = 'SELECT * FROM postmortem_requests';
+        let sql = `
+            SELECT
+                pr.*,
+                p.status           AS exam_status,
+                p.completed_at     AS exam_completed_at,
+                p.pathologist_name AS exam_pathologist
+            FROM postmortem_requests pr
+            LEFT JOIN postmortem p ON p.deceased_id = pr.deceased_id`;
         const where: string[] = [];
         const params: any[] = [];
-        if (deceased_id) { where.push('deceased_id = ?'); params.push(deceased_id); }
-        if (status) { where.push('status = ?'); params.push(status); }
+        if (deceased_id) { where.push('pr.deceased_id = ?'); params.push(deceased_id); }
+        if (status) { where.push('pr.status = ?'); params.push(status); }
         if (where.length) sql += ' WHERE ' + where.join(' AND ');
         sql += ' ORDER BY id DESC LIMIT 100';
 

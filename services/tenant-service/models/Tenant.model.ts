@@ -334,8 +334,15 @@ async function createCompleteTenantDatabase(
             ('time_format', '24h')
         `, [tenantName, subdomain, country || 'Kenya']);
 
-        // ─── FIRST BRANCH: points to primary DB ────────────────────────
-        const firstBranchSlugFull = dbName;
+        // ─── FIRST BRANCH = MAIN PARENT: always points to the primary DB ──
+        // The first branch is the Main/Parent branch (parent_branch_id = NULL).
+        // Its branch_slug is its OWN COMPLETE SLUG (`<org-slug>-<branch-name>`,
+        // e.g. `monezuma-monalisa-feuneral-home-nairobi`) exactly like every
+        // other branch — never the bare tenant slug — but its DATABASE stays
+        // the primary/parent DB (`dbName`), so default logins always land on
+        // the parent branch. Every additional branch becomes a child with its
+        // own DB.
+        const firstBranchSlugFull = `${dbName}-${generateSlug(firstBranch.branch_name)}`;
         const firstBranchUuid = uuidv4();
         await tenantConn.query(
             `INSERT IGNORE INTO branches (branch_id, branch_name, branch_slug, branch_code, branch_db_name, parent_branch_id, branch_location, branch_phone, branch_email, is_active) 
@@ -466,13 +473,12 @@ export class TenantModel {
         const branchList = (branches && branches.length > 0) ? branches : [
             { branch_name: tenant_name, branch_location: location || 'Main Location', branch_phone: phone || '', branch_email: email }
         ];
-        const firstBranch = branchList[0];
-        const firstBranchSlug = generateSlug(firstBranch.branch_name);
 
-        const dbName = branchList.length > 1
-            ? `${generateSlug(tenant_name)}-${firstBranchSlug}`
-            : generateSlug(tenant_name);
-
+        // The tenant slug / primary DB name is ALWAYS the ORGANIZATION (parent)
+        // slug — never the first branch name. The first branch is the Main/PARENT
+        // branch and operates inside this same database; only additional (child)
+        // branches get their own databases (`<org-slug>-<branch-slug>`).
+        const dbName = generateSlug(tenant_name);
         const subdomain = dbName;
         const password_hash = await bcrypt.hash(password, 10);
         const serverConn = await getServerPool();
@@ -976,12 +982,26 @@ export class TenantModel {
     ): Promise<void> {
         const conn = await getTenantConnection(dbName);
         try {
-            // Get the first branch ID
-            const [branchRows] = await conn.query(
-                'SELECT branch_id FROM branches WHERE is_active = TRUE ORDER BY branch_id ASC LIMIT 1'
-            );
-            const branches = branchRows as any[];
-            const primaryBranchId = branches.length > 0 ? branches[0].branch_id : null;
+            // Always attach the default admin to the MAIN/PARENT branch so default
+            // logins always land on the parent (never a child branch).
+            let primaryBranchId: string | null = null;
+            try {
+                const [parentBranchRows] = await conn.query(
+                    'SELECT branch_id FROM branches WHERE is_active = TRUE AND parent_branch_id IS NULL ORDER BY branch_id ASC LIMIT 1'
+                );
+                const parentBranches = parentBranchRows as any[];
+                if (parentBranches.length > 0) {
+                    primaryBranchId = parentBranches[0].branch_id;
+                }
+            } catch (e) { /* fall through */ }
+
+            if (!primaryBranchId) {
+                const [branchRows] = await conn.query(
+                    'SELECT branch_id FROM branches WHERE is_active = TRUE ORDER BY branch_id ASC LIMIT 1'
+                );
+                const branches = branchRows as any[];
+                primaryBranchId = branches.length > 0 ? branches[0].branch_id : null;
+            }
 
             const adminUsername = full_name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
             const mainUserUuid = uuidv4();
@@ -1245,6 +1265,35 @@ export class TenantModel {
                 );
                 console.log(`[TenantModel] Seeded default "Main" branch for ${tenant.db_name}`);
             }
+
+            // Normalize LEGACY main branches: older tenants were created with the
+            // parent branch's slug equal to the BARE tenant slug (no branch-name
+            // suffix, e.g. `org-home` instead of `org-home-nairobi`). Every branch
+            // must carry its own complete slug — rename it in place (the DATABASE
+            // stays the parent DB) and sync the tracking row. Idempotent + safe.
+            try {
+                const [parentRows]: any = await conn.query(
+                    'SELECT branch_id, branch_name, branch_slug FROM branches WHERE parent_branch_id IS NULL AND is_active = TRUE ORDER BY branch_id ASC LIMIT 1'
+                );
+                const parentBranch = (parentRows as any[])[0];
+                if (parentBranch && parentBranch.branch_slug === tenant.tenant_slug) {
+                    const nameSlug = generateSlug(String(parentBranch.branch_name || ''));
+                    const normalizedSlug = nameSlug ? `${tenant.tenant_slug}-${nameSlug}` : '';
+                    if (normalizedSlug && normalizedSlug !== parentBranch.branch_slug) {
+                        await conn.query('UPDATE branches SET branch_slug = ? WHERE branch_id = ?', [normalizedSlug, parentBranch.branch_id]);
+                        try {
+                            const serverConn = await getServerPool();
+                            await serverConn.query(
+                                'UPDATE tenant_tracking.branches SET branch_slug = ? WHERE tenant_slug = ? AND branch_slug = ?',
+                                [normalizedSlug, tenant.tenant_slug, parentBranch.branch_slug]
+                            );
+                        } catch { /* tracking sync is best-effort */ }
+                        console.log(`[TenantModel] Normalized main branch slug ${parentBranch.branch_slug} -> ${normalizedSlug}`);
+                    }
+                }
+            } catch (normErr: any) {
+                console.warn('[TenantModel] Main-branch slug normalization skipped:', (normErr && normErr.message) || normErr);
+            }
         } catch (error: any) {
             // Non-fatal — never block tenant reads on branch init issues.
             console.warn(`[TenantModel] ensureMainBranch skipped for ${tenant.db_name}:`, (error && error.message) || error);
@@ -1252,6 +1301,61 @@ export class TenantModel {
             if (conn) {
                 try { await conn.end(); } catch { /* ignore */ }
             }
+        }
+    }
+    /**
+     * STARTUP SWEEP — normalize the MAIN (parent) branch slug for EVERY active
+     * tenant. Legacy tenants were created with the parent branch's slug equal
+     * to the bare tenant slug (e.g. `org-home`); every branch must carry its
+     * own complete slug (`org-home-nairobi`). Runs on service boot and is
+     * idempotent — already-correct tenants are left untouched.
+     */
+    static async normalizeAllTenantMainBranches(): Promise<void> {
+        try {
+            const serverConn = await getServerPool();
+            const [tenants]: any = await serverConn.query(
+                "SELECT db_name, tenant_slug, tenant_name FROM tenant_tracking.tenants WHERE status = 'active'"
+            );
+            const list = (tenants as any[]) || [];
+            let fixed = 0;
+            for (const t of list) {
+                if (!t.db_name || !t.tenant_slug) continue;
+                const before = await TenantModel.getMainBranchSlug(t.db_name);
+                await TenantModel.ensureMainBranch({
+                    db_name: t.db_name,
+                    tenant_slug: t.tenant_slug,
+                    tenant_name: t.tenant_name,
+                });
+                const after = await TenantModel.getMainBranchSlug(t.db_name);
+                if (before && after && before !== after) {
+                    fixed++;
+                    console.log(`[TenantModel] Main branch normalized for ${t.tenant_slug}: ${before} -> ${after}`);
+                }
+            }
+            console.log(`[TenantModel] Main-branch slug sweep complete (${list.length} tenants, ${fixed} normalized)`);
+        } catch (err: any) {
+            console.warn('[TenantModel] Main-branch slug sweep failed (non-fatal):', (err && err.message) || err);
+        }
+    }
+
+    /**
+     * Read-only helper: return the current MAIN (parent) branch slug of a
+     * tenant DB, or null when the table/row is unavailable.
+     */
+    static async getMainBranchSlug(dbName: string): Promise<string | null> {
+        try {
+            const conn = await getTenantConnection(dbName);
+            try {
+                const [rows]: any = await conn.query(
+                    'SELECT branch_slug FROM branches WHERE parent_branch_id IS NULL AND is_active = TRUE ORDER BY branch_id ASC LIMIT 1'
+                );
+                const row = (rows as any[])[0];
+                return row ? String(row.branch_slug) : null;
+            } finally {
+                await conn.end();
+            }
+        } catch {
+            return null;
         }
     }
 
@@ -1464,13 +1568,65 @@ export class TenantModel {
     // ─── Tenant Lookup Methods ──────────────────────────────────────────
 
     static async findBySubdomain(slug: string): Promise<Tenant | null> {
+        if (!slug) return null;
         const serverConn = await getServerPool();
         const [tenants] = await serverConn.query<mysql.RowDataPacket[]>(
             'SELECT * FROM tenant_tracking.tenants WHERE tenant_slug = ? AND status = "active"',
             [slug]
         );
         const tenantRow = Array.isArray(tenants) && tenants.length > 0 ? tenants[0] : null;
-        if (!tenantRow) return null;
+        if (tenantRow) return TenantModel.mapTenantRow(tenantRow);
+
+        // Not a bare tenant slug — it may be a COMPLETE BRANCH slug (e.g.
+        // `org-home-nairobi` or `org-home-machakos`). Every branch carries the
+        // full `<org-slug>-<branch-name>` slug, so nav URLs scoped to a branch
+        // must resolve to the PARENT tenant. Progressively strip trailing
+        // `-<segment>`s until the prefix resolves to a tenant, then confirm the
+        // full slug belongs to one of that tenant's branches (multi-word branch
+        // names need more than one strip).
+        let candidate = slug;
+        while (candidate && candidate.includes('-')) {
+            const lastDash = candidate.lastIndexOf('-');
+            candidate = candidate.substring(0, lastDash);
+            if (!candidate) break;
+
+            const [parentRows] = await serverConn.query<mysql.RowDataPacket[]>(
+                'SELECT * FROM tenant_tracking.tenants WHERE tenant_slug = ? AND status = "active"',
+                [candidate]
+            );
+            const parentRow = Array.isArray(parentRows) && parentRows.length > 0 ? parentRows[0] : null;
+            if (!parentRow) continue;
+
+            // Confirm the full slug is one of this tenant's branches — first in
+            // the tenant DB, then in the tracking mirror (best-effort).
+            try {
+                const tenantConn = await getTenantConnection(parentRow.db_name);
+                try {
+                    const [branchRows] = await tenantConn.query<mysql.RowDataPacket[]>(
+                        'SELECT branch_id FROM branches WHERE branch_slug = ? AND is_active = TRUE LIMIT 1',
+                        [slug]
+                    );
+                    if (Array.isArray(branchRows) && branchRows.length > 0) {
+                        return TenantModel.mapTenantRow(parentRow);
+                    }
+                } finally {
+                    await tenantConn.end();
+                }
+            } catch { /* fall through to the tracking mirror */ }
+            try {
+                const [trackRows] = await serverConn.query<mysql.RowDataPacket[]>(
+                    'SELECT branch_id FROM tenant_tracking.branches WHERE branch_slug = ? LIMIT 1',
+                    [slug]
+                );
+                if (Array.isArray(trackRows) && trackRows.length > 0) {
+                    return TenantModel.mapTenantRow(parentRow);
+                }
+            } catch { /* tracking mirror may not exist — keep stripping */ }
+        }
+        return null;
+    }
+
+    private static mapTenantRow(tenantRow: any): Tenant {
         return {
             tenant_id: tenantRow.id,
             tenant_name: tenantRow.tenant_name,

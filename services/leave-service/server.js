@@ -8,6 +8,7 @@ const mysql = require('mysql2/promise');
 const { migrateTenantTables } = require('./migrate-tenant-tables');
 
 // Load environment variables
+
 dotenv.config();
 
 const app = express();
@@ -58,6 +59,40 @@ io.on('connection', (socket) => {
 // ============================================
 // TENANT RESOLUTION MIDDLEWARE
 // ============================================
+
+// Resolves the MAIN/PARENT tenant database for a given slug. Leaves ALWAYS live
+// in the parent tenant's single main database so every leave for an organization
+// appears in ONE place — never split across branch databases.
+async function resolveMainTenantDatabase(tenantSlug, { resolveDatabase, lookupTenantDatabase, getRootPool }) {
+  try {
+    // 1. If the slug IS a tenant slug, return the tenant's main database directly.
+    const mainDb = await lookupTenantDatabase(tenantSlug);
+    if (mainDb) return mainDb;
+
+    // 2. The slug may be a branch slug or a branch database name. Resolve it,
+    //    then map the database back to the owning tenant's MAIN database.
+    const resolved = await resolveDatabase(tenantSlug);
+    if (resolved) {
+      try {
+        const rootPool = await getRootPool(); // already connects to tenant_tracking
+        const [rows] = await rootPool.query(
+          `SELECT t.db_name FROM tenants t
+           JOIN branches b ON b.tenant_id = t.id
+           WHERE b.branch_db_name = ? AND t.status = 'active' LIMIT 1`,
+          [resolved]
+        );
+        if (Array.isArray(rows) && rows.length > 0 && rows[0].db_name) {
+          return rows[0].db_name;
+        }
+      } catch (e) { /* best-effort — fall through to resolved db */ }
+      return resolved;
+    }
+  } catch (err) {
+    console.error('[LEAVE] resolveMainTenantDatabase error:', err && err.message ? err.message : String(err));
+  }
+  return null;
+}
+
 app.use(async (req, res, next) => {
   try {
     const tenantSlug = req.headers['x-tenant-slug'] || req.headers['x-slug'] || 'system_shared';
@@ -77,13 +112,17 @@ app.use(async (req, res, next) => {
     // Resolve tenant database using shared dbConfig
     try {
       const dbConfig = require('../../shared/dbConfig.js');
-      const { resolveDatabase } = dbConfig;
+      const { resolveDatabase, lookupTenantDatabase, getRootPool } = dbConfig;
 
-      let dbName = await resolveDatabase(tenantSlug);
+      // LEAVES ALWAYS LIVE IN THE MAIN/PARENT TENANT DATABASE ONLY — never in a
+      // branch DB. This keeps every leave request for an organization in ONE
+      // place (the parent tenant's main database), regardless of which branch
+      // the requesting user belongs to.
+      let dbName = await resolveMainTenantDatabase(tenantSlug, { resolveDatabase, lookupTenantDatabase, getRootPool });
 
       if (!dbName) {
-        // For multi-branch tenants, the database name is the tenant slug
-        // For single-branch tenants, also use the tenant slug
+        // Fallback: for multi-branch tenants the database name is the tenant
+        // slug; for single-branch tenants it is also the tenant slug.
         dbName = tenantSlug.replace(/-/g, '_');
       }
 
@@ -92,9 +131,9 @@ app.use(async (req, res, next) => {
         tenant_slug: tenantSlug,
         name: tenantSlug
       };
-      console.log(`[LEAVE] Tenant resolved: ${dbName}`);
+      console.log(`[LEAVE] Tenant resolved (MAIN database): ${dbName}`);
 
-      // Auto-migrate: Ensure leave tables exist in this tenant's database
+      // Auto-migrate: Ensure leave tables exist in this tenant's MAIN database
       if (dbName) {
         migrateTenantTables(dbName).catch(err => {
           console.warn(`[LEAVE] Auto-migration warning for ${dbName}:`, err.message);

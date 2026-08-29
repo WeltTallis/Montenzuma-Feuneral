@@ -288,9 +288,9 @@ const findUserInTenantDB = async (dbName: string, email: string): Promise<User |
 const generateTokens = async (
   user: User,
   tenant: Tenant,
-  branchDbName: string | null = null
+  branchDbName: string | null = null,
+  branchSlug: string | null = null
 ): Promise<TokenResult> => {
-  const effectiveSlug = branchDbName || tenant.tenant_slug;
   // New tenant_tracking.tenants uses `id VARCHAR(36)` as the primary key (there is no
   // `tenant_id` column anymore), so resolve whichever identifier exists to keep the
   // JWT stable across legacy and UUID schemas.
@@ -300,10 +300,15 @@ const generateTokens = async (
     email: user.email,
     tenantId,
     tenantName: tenant.tenant_name,
-    tenantSlug: effectiveSlug,
+    // ALWAYS the PARENT tenant slug — never the branch db/slug. The branch
+    // scope travels separately via branchId/branchSlug/branchDbName so every
+    // consumer stays anchored to the parent organization.
+    tenantSlug: tenant.tenant_slug,
     dbName: tenant.db_name,
     role: user.role || 'admin',
     branchDbName,
+    branchSlug: branchSlug || null,
+    parentTenantSlug: tenant.tenant_slug,
     ...(user.branch_id ? { branchId: user.branch_id } : {}),
   } as any;
   const { jwtSecret, refreshSecret } = await getTenantJwtSecret(tenantId);
@@ -400,6 +405,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Branch resolution
     let branchId = user.branch_id || null;
     let branchDbName: string | null = null;
+    let branchSlug: string | null = null;
     let dbName = tenant.db_name;
 
     if (branchId) {
@@ -409,6 +415,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
           [branchId]
         );
         if (branches.length > 0) {
+          branchSlug = branches[0].branch_slug || null;
           branchDbName = branches[0].branch_db_name;
           dbName = branchDbName || tenant.db_name;
         } else {
@@ -428,6 +435,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
               );
               if (parentBranches.length > 0) {
                 parentTenant = t;
+                branchSlug = parentBranches[0].branch_slug || null;
                 branchDbName = parentBranches[0].branch_db_name || parentBranches[0].branch_slug || null;
                 dbName = branchDbName || t.db_name;
                 break;
@@ -455,8 +463,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       }
     } catch { /* non-critical */ }
 
-    const { accessToken, refreshToken } = await generateTokens(user, tenant, branchDbName);
-    const effectiveSlug = branchDbName || tenant.tenant_slug;
+    const { accessToken, refreshToken } = await generateTokens(user, tenant, branchDbName, branchSlug);
+    // Session + JWT always anchor to the PARENT tenant slug; the branch scope
+    // travels separately via branchId/branchSlug/branchDbName.
+    const effectiveSlug = tenant.tenant_slug;
     // Resolve the tenant id across schemas: legacy rows carried `tenant_id`, the
     // current tenant_tracking.tenants primary key is `id` (VARCHAR(36) UUID).
     const tenantId = tenant.tenant_id ?? tenant.id;
@@ -786,17 +796,21 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     }
 
     let branchDbName: string | null = null;
+    let branchSlug: string | null = null;
     if (rows[0].branch_id) {
       try {
         const [branches]: any = await pool.query(
-          `SELECT branch_db_name FROM \`${tenants[0].db_name}\`.branches WHERE branch_id = ? AND is_active = 1`,
+          `SELECT branch_slug, branch_db_name FROM \`${tenants[0].db_name}\`.branches WHERE branch_id = ? AND is_active = 1`,
           [rows[0].branch_id]
         );
-        if (branches.length > 0) branchDbName = branches[0].branch_db_name;
+        if (branches.length > 0) {
+          branchDbName = branches[0].branch_db_name;
+          branchSlug = branches[0].branch_slug || null;
+        }
       } catch { /* non-critical */ }
     }
 
-    const result = await generateTokens(rows[0], tenants[0], branchDbName);
+    const result = await generateTokens(rows[0], tenants[0], branchDbName, branchSlug);
     res.status(200).json({
       success: true,
       message: 'Token refreshed successfully',

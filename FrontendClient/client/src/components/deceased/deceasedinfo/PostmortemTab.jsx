@@ -1,131 +1,103 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useSocket } from '../../../utils/context/socketContext';
 import { getTenantSlug } from '../../../utils/globalAuth';
 import { getTenantHeaders } from '../../../api/endpoints';
 import { showToast } from '../../../utils/toast';
+
 import { useNavigate } from 'react-router-dom';
 import env from '../../../utils/config/env';
+import notify from '../../../utils/notify';
 import styled from 'styled-components';
 import { C, formatDate } from './theme';
 import axios from 'axios';
 
-
+/* -- Minimized styling, matching OverviewTab -- */
 const SectionHead = styled.div`
-  font-size: 12px; 
-  font-weight: 700; 
-  letter-spacing: 0.1em;
-  text-transform: uppercase; 
-  margin-bottom: 16px; 
-  display: flex; 
-  align-items: center; 
-  gap: 8px;
-  
-  width: fit-content;
-  padding-bottom: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 3px;
   border-bottom: 2px solid ${C.black};
   color: ${C.black};
-  
-  span { 
-    opacity: 0.5; 
-    font-size: 10px; 
-  }
-  
+  width: fit-content;
+  span { opacity: 0.45; font-size: 9px; }
   ${p => p.$mt0 && 'margin-top: 0;'}
-
-  ${p => p.$primary && `
-    background: ${C.black};
-    color: white;
-    padding: 8px 16px;
-    border-radius: 2px;
-    border-bottom: none;
-    width: 100%;
-  `}
 `;
 
 const DetailGrid = styled.div`
-  display: grid; 
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-  gap: 1.5rem 2rem; 
-  margin-bottom: 24px; 
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px 24px;
+  margin-bottom: 20px;
 `;
 
 const DetailItem = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
   min-width: 0;
-  
   ${p => p.$full && 'grid-column: 1 / -1;'}
 `;
 
 const DetailLabel = styled.span`
-  font-size: 10px; 
-  font-weight: 700; 
-  letter-spacing: 0.12em;
-  text-transform: uppercase; 
-  color: ${C.gray}; 
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #999;
 `;
 
 const DetailValue = styled.div`
-  font-size: 15px; 
-  font-weight: 600; 
-  color: ${C.black}; 
+  font-size: 14px;
+  font-weight: 600;
+  color: ${C.black};
   word-break: break-word;
-  line-height: 1.4;
-  
-  ${p => p.$body && `font-weight: 400; line-height: 1.6; font-size: 14px; color: ${C.mid};`}
+  line-height: 1.35;
+  ${p => p.$body && 'font-weight: 400; line-height: 1.6; font-size: 13px; color: #555;'}
 `;
 
 const Btn = styled.button`
-  padding: 8px 16px; 
-  border-radius: 4px; 
-  font-weight: 600; 
-  font-size: 13px;
-  cursor: pointer; 
-  border: 1px solid ${C.border || '#e0e0e0'}; 
-  background: white; 
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid ${C.border || '#e0e0e0'};
+  background: white;
   color: ${C.dark || '#1a1a1a'};
-  transition: 0.15s; 
-  display: inline-flex; 
-  align-items: center; 
-  justify-content: center; 
+  transition: 0.15s;
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
   font-family: 'Source Sans 3', sans-serif;
-  
-  &:hover { 
-    background: ${C.bgField || '#f7f7f5'}; 
-    border-color: ${C.gray || '#777777'}; 
+
+  &:hover {
+    background: ${C.bgField || '#f7f7f5'};
+    border-color: ${C.gray || '#777777'};
   }
-  
+
   ${p => p.$primary && `
-    background: ${C.black}; 
-    color: white; 
+    background: ${C.black};
+    color: white;
     border-color: ${C.black};
-    &:hover { 
-      background: #333; 
+    &:hover {
+      background: #333;
       border-color: #333;
     }
   `}
 `;
 
-// --- Postmortem request tracking (before the official examination exists) ---
-const RequestCard = styled.div`
-  border: 1px solid ${C.borderLight || '#e0e0e0'};
-  border-radius: 4px;
-  padding: 16px;
-  margin-bottom: 12px;
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  background: #ffffff;
-`;
-
 const StatusChip = styled.span`
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -135,17 +107,16 @@ const StatusChip = styled.span`
   ${p => p.$status === 'cancelled' && `background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; text-decoration: line-through;`}
 `;
 
-const RequestMeta = styled.div`
+const EmptyNote = styled.p`
   font-size: 12px;
   color: ${C.gray};
-  margin-top: 4px;
-  line-height: 1.6;
+  margin: 0 0 12px;
 `;
 
 const FormRow = styled.div`
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 14px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 `;
 
@@ -154,25 +125,25 @@ const FormGroup = styled.div`
   min-width: 180px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 `;
 
 const FormLabel = styled.label`
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: ${C.gray};
+  color: #999;
 `;
 
 const FormInput = styled.input`
-  height: 40px;
+  height: 34px;
   width: 100%;
   border: 1px solid ${C.border || '#e0e0e0'};
   border-radius: 4px;
-  padding: 0 12px;
+  padding: 0 10px;
   font-family: 'Source Sans 3', sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   color: ${C.dark || '#1a1a1a'};
   background: #ffffff;
   box-sizing: border-box;
@@ -183,47 +154,71 @@ const FormInput = styled.input`
   }
 `;
 
-const EmptyNote = styled.p`
-  font-size: 13px;
-  color: ${C.gray};
-  margin: 0 0 16px;
-`;
-
-const StatsRow = styled.div`
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-`;
-
-const StatBox = styled.div`
-  flex: 1;
-  min-width: 150px;
-  border: 1px solid ${C.borderLight || '#e0e0e0'};
-  border-left: 3px solid ${p => p.$accent || C.black};
+const FormTextarea = styled.textarea`
+  width: 100%;
+  border: 1px solid ${C.border || '#e0e0e0'};
   border-radius: 4px;
-  padding: 12px 16px;
-  background: #fafaf9;
+  padding: 8px 10px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 13px;
+  color: ${C.dark || '#1a1a1a'};
+  background: #ffffff;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 56px;
+  line-height: 1.5;
+
+  &:focus {
+    outline: none;
+    border-color: ${C.black};
+  }
 `;
 
-const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
-  color: ${C.black};
-  line-height: 1.2;
+/* ── Request modal (matches the FinancialsTab modal pattern) ── */
+const ModalOverlay = styled.div`
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+`;
+const ModalCard = styled.div`
+  background: #fff; border-radius: 8px; width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+`;
+const ModalHead = styled.div`
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid ${C.borderLight};
+  font-size: 16px; font-weight: 700; color: ${C.black};
+`;
+const ModalBody = styled.div` padding: 20px; `;
+const ModalFoot = styled.div`
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 16px 20px; border-top: 1px solid ${C.borderLight};
+`;
+const CloseBtn = styled.button`
+  background: none; border: none; font-size: 24px; line-height: 1; cursor: pointer; color: ${C.gray};
+  &:hover { color: ${C.black}; }
+`;
+const ModalContext = styled.div`
+  font-size: 12px; color: ${C.gray}; margin-bottom: 14px;
+  padding-bottom: 10px; border-bottom: 1px dashed ${C.borderLight};
+  b { color: ${C.black}; }
+`;
+const ModalHint = styled.p`
+  font-size: 11px; color: ${C.gray}; margin: 2px 0 0; line-height: 1.5;
 `;
 
-const StatLabel = styled.div`
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: ${C.gray};
-  margin-top: 4px;
-`;
+/* Plain inline stat — no boxes, matching the minimized look */
+const StatLine = ({ label, value, color }) => (
+  <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}>
+    <b style={{ fontSize: 14, color: color || C.black, fontWeight: 700 }}>{value}</b>
+    <span style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#999', fontWeight: 700 }}>{label}</span>
+  </span>
+);
 
-const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onRequestsChanged }) => {
+const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission, requests: requestsProp, onRequestsChanged }) => {
   const navigate = useNavigate();
+  const { socket } = useSocket();
   const pm = postmortem || {};
   const tenantSlug = getTenantSlug();
 
@@ -231,7 +226,7 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
   // supplies the `requests` prop explicitly.
   const [ownRequests, setOwnRequests] = useState([]);
   // Prefer the parent's copy when it has data; otherwise fall back to our own
-  // fetch — the request list can never blank out because of a parent hiccup.
+  // fetch - the request list can never blank out because of a parent hiccup.
   const visibleRequests =
     requestsProp && requestsProp.length > 0 ? requestsProp
       : ownRequests.length > 0 ? ownRequests
@@ -243,7 +238,8 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
   const [requestForm, setRequestForm] = useState({
     reason: '',
     requested_by: '',
-    requesting_authority: ''
+    requesting_authority: '',
+    notes: ''
   });
 
   // Tenant-wide postmortem analytics (requested vs carried out)
@@ -267,7 +263,7 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
     } catch (e) { /* no tracked requests yet */ }
   }, [deceasedId]);
 
-  // Always self-load as well — belt & suspenders alongside the parent's copy.
+  // Always self-load as well - belt & suspenders alongside the parent's copy.
   useEffect(() => { loadRequests(); }, [loadRequests]);
 
   const openRequestForm = () => {
@@ -338,9 +334,46 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
         { headers: getTenantHeaders() }
       );
       if (res.data?.success) {
-        showToast.success('Postmortem request initiated');
+        // Build the notification payload for the global bell
+        const notifData = {
+          id: res.data?.data?.id || `pm-request-${Date.now()}`,
+          title: 'Postmortem Request Initiated',
+          message: `Requested by ${requestForm.requested_by} for ${deceasedName || 'deceased'}`,
+          fullContent: [
+            `Deceased: ${deceasedName || 'Unknown'}`,
+            `Admission No: ${deceasedAdmission || 'N/A'}`,
+            `Requested By: ${requestForm.requested_by}`,
+            requestForm.requesting_authority && `Authority: ${requestForm.requesting_authority}`,
+            `Reason: ${requestForm.reason}`,
+            requestForm.notes && `Notes: ${requestForm.notes}`,
+          ].filter(Boolean).join('\n'),
+          timestamp: new Date().toISOString(),
+          priority: 'high',
+          deceasedName,
+          deceasedId,
+          admissionNo: deceasedAdmission,
+          requestedBy: requestForm.requested_by,
+          reason: requestForm.reason,
+        };
+
+        // Emit to global notifications bell via socket
+        if (socket) {
+          socket.emit('postmortem-request-created', notifData);
+        }
+
+        // Rich toast popup with full details
+        notify.success(
+          'Postmortem Request Initiated',
+          [
+            `Who: ${requestForm.requested_by}`,
+            `Deceased: ${deceasedName || 'Unknown'}`,
+            `Admission: ${deceasedAdmission || 'N/A'}`,
+          ].join(' · '),
+          { dur: 6000 }
+        );
+
         setShowRequestForm(false);
-        setRequestForm({ reason: '', requested_by: '', requesting_authority: '' });
+        setRequestForm({ reason: '', requested_by: '', requesting_authority: '', notes: '' });
         await refreshRequests();
       } else {
         throw new Error(res.data?.message || 'Failed to initiate request');
@@ -396,152 +429,159 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24, gap: 12 }}>
-        {hasData && (
-          <Btn onClick={openForm}>Edit Examination</Btn>
-        )}
-        <Btn $primary onClick={openForm}>
-          {hasData ? '+ New Examination' : '+ Fill Examination Form'}
-        </Btn>
+      {/* 01 — Postmortem Requests */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+        <SectionHead $mt0 style={{ marginBottom: 0 }}><span>01</span> Postmortem Requests</SectionHead>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {hasData && <Btn onClick={openForm}>Edit Examination</Btn>}
+          <Btn onClick={openForm}>{hasData ? '+ New Examination' : '+ Fill Examination Form'}</Btn>
+          <Btn $primary onClick={openRequestForm}>+ Initiate Request</Btn>
+        </div>
       </div>
-
-      {/* --- 00: Pre-examination request tracking --- */}
-      <SectionHead $mt0><span>00</span> Postmortem Requests</SectionHead>
 
       {stats && (
-        <StatsRow>
-          <StatBox $accent="#d97706">
-            <StatValue>{stats.initiated ?? 0}</StatValue>
-            <StatLabel>Requested Now</StatLabel>
-          </StatBox>
-          <StatBox $accent="#2563eb">
-            <StatValue>{stats.sent ?? 0}</StatValue>
-            <StatLabel>Sent · Awaiting Exam</StatLabel>
-          </StatBox>
-          <StatBox $accent="#7c3aed">
-            <StatValue>{stats.official_completed ?? 0}</StatValue>
-            <StatLabel>Completed Exams</StatLabel>
-          </StatBox>
-          <StatBox $accent="#6b7280">
-            <StatValue>{stats.cancelled ?? 0}</StatValue>
-            <StatLabel>Cancelled</StatLabel>
-          </StatBox>
-        </StatsRow>
+        <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', margin: '10px 0 14px' }}>
+          <StatLine label="Requested" value={stats.initiated ?? 0} color="#d97706" />
+          <StatLine label="Sent" value={stats.sent ?? 0} color="#2563eb" />
+          <StatLine label="Completed" value={stats.official_completed ?? 0} color="#7c3aed" />
+          <StatLine label="Cancelled" value={stats.cancelled ?? 0} color="#9ca3af" />
+        </div>
       )}
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <EmptyNote style={{ marginBottom: 0 }}>
-          Track who requested a postmortem before the official examination is carried out.
-        </EmptyNote>
-        {!showRequestForm && (
-          <Btn onClick={openRequestForm}>+ Initiate Request</Btn>
-        )}
-      </div>
 
       {showRequestForm && (
-        <form
-          onSubmit={initiateRequest}
-          style={{ border: `1px solid ${C.borderLight || '#e0e0e0'}`, borderRadius: 4, padding: 16, marginBottom: 20 }}
-        >
-          <FormRow>
-            <FormGroup>
-              <FormLabel>Requested By *</FormLabel>
-              <FormInput
-                value={requestForm.requested_by}
-                onChange={(e) => setRequestForm({ ...requestForm, requested_by: e.target.value })}
-                placeholder="e.g. Jane Wambui (Family)"
-                required
-              />
-            </FormGroup>
-            <FormGroup>
-              <FormLabel>Requesting Authority</FormLabel>
-              <FormInput
-                value={requestForm.requesting_authority}
-                onChange={(e) => setRequestForm({ ...requestForm, requesting_authority: e.target.value })}
-                placeholder="e.g. Kenyatta National Hospital"
-              />
-            </FormGroup>
-          </FormRow>
-          <FormRow>
-            <FormGroup style={{ flex: 2 }}>
-              <FormLabel>Reason *</FormLabel>
-              <FormInput
-                value={requestForm.reason}
-                onChange={(e) => setRequestForm({ ...requestForm, reason: e.target.value })}
-                placeholder="Why is the postmortem being requested?"
-                required
-              />
-            </FormGroup>
-          </FormRow>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-            <Btn type="button" onClick={() => setShowRequestForm(false)}>Cancel</Btn>
-            <Btn $primary type="submit" disabled={submittingRequest}>
-              {submittingRequest ? 'Initiating...' : 'Initiate Request'}
-            </Btn>
-          </div>
-        </form>
+        <ModalOverlay onClick={() => setShowRequestForm(false)}>
+          <ModalCard onClick={(e) => e.stopPropagation()}>
+            <ModalHead>
+              <span>Initiate Postmortem Request</span>
+              <CloseBtn onClick={() => setShowRequestForm(false)}>×</CloseBtn>
+            </ModalHead>
+            <form onSubmit={initiateRequest}>
+              <ModalBody>
+                <ModalContext>
+                  Deceased record: <b>{deceasedName || `#${deceasedId}`}</b>
+                </ModalContext>
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Requested By *</FormLabel>
+                    <FormInput
+                      value={requestForm.requested_by}
+                      onChange={(e) => setRequestForm({ ...requestForm, requested_by: e.target.value })}
+                      placeholder="e.g. Jane Wambui (Family)"
+                      required
+                    />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Requesting Authority</FormLabel>
+                    <FormInput
+                      value={requestForm.requesting_authority}
+                      onChange={(e) => setRequestForm({ ...requestForm, requesting_authority: e.target.value })}
+                      placeholder="e.g. Kenyatta National Hospital"
+                      list="pm-request-authorities"
+                    />
+                    <datalist id="pm-request-authorities">
+                      <option value="Kenya Police" />
+                      <option value="Directorate of Criminal Investigations (DCI)" />
+                      <option value="Court Order" />
+                      <option value="Hospital / Referring Facility" />
+                      <option value="Family Request" />
+                    </datalist>
+                  </FormGroup>
+                </FormRow>
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Reason *</FormLabel>
+                    <FormTextarea
+                      rows={3}
+                      value={requestForm.reason}
+                      onChange={(e) => setRequestForm({ ...requestForm, reason: e.target.value })}
+                      placeholder="Why is the postmortem being requested? (e.g. unclear cause of death, legal requirement, family request)"
+                      required
+                    />
+                  </FormGroup>
+                </FormRow>
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Additional Notes</FormLabel>
+                    <FormTextarea
+                      rows={2}
+                      value={requestForm.notes}
+                      onChange={(e) => setRequestForm({ ...requestForm, notes: e.target.value })}
+                      placeholder="Optional notes — contact details, special instructions, deadlines..."
+                    />
+                  </FormGroup>
+                </FormRow>
+                <ModalHint>
+                  Initiating creates a tracked request (status: initiated), marks the body as
+                  "Postmortem Requested" and notifies the mortuary team. Use "Mark as Sent" once
+                  the request reaches the requesting authority.
+                </ModalHint>
+              </ModalBody>
+              <ModalFoot>
+                <Btn type="button" onClick={() => setShowRequestForm(false)}>Cancel</Btn>
+                <Btn $primary type="submit" disabled={submittingRequest}>
+                  {submittingRequest ? 'Initiating...' : 'Initiate Request'}
+                </Btn>
+              </ModalFoot>
+            </form>
+          </ModalCard>
+        </ModalOverlay>
       )}
 
-      {visibleRequests.length === 0 && !showRequestForm ? (
+      {visibleRequests.length === 0 ? (
         <EmptyNote>No postmortem requests tracked yet.</EmptyNote>
       ) : (
-        visibleRequests.map((r) => (
-          <RequestCard key={r.id}>
-            <div style={{ minWidth: 220, flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <strong style={{ fontSize: 14 }}>{r.request_ref || r.requested_by}</strong>
-                <StatusChip $status={r.status}>{r.status}</StatusChip>
+        <div style={{ marginBottom: 24 }}>
+          {visibleRequests.map((r) => (
+            <div
+              key={r.id}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderBottom: `1px solid ${C.borderLight || '#eeeceb'}`, flexWrap: 'wrap' }}
+            >
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: C.black }}>{r.request_ref || r.requested_by}</span>
+                  <StatusChip $status={r.status}>{r.status}</StatusChip>
+                </div>
+                <div style={{ fontSize: 12, color: C.gray, marginTop: 3, lineHeight: 1.6 }}>
+                  Requested by <b>{r.requested_by || '—'}</b>
+                  {r.requesting_authority ? <> · Authority: {r.requesting_authority}</> : null}
+                  <br />
+                  Reason: {r.reason || '—'} · Initiated {formatDate(r.created_at)}
+                  {r.sent_at ? ` · Sent ${formatDate(r.sent_at)}` : ''}
+                </div>
               </div>
-              <RequestMeta>
-                Requested by <strong>{r.requested_by || '—'}</strong>
-                {r.requesting_authority ? <> · Authority: {r.requesting_authority}</> : null}
-                <br />
-                Reason: {r.reason || '—'}
-                <br />
-                Initiated {formatDate(r.created_at)}
-                {r.sent_at ? ` · Sent ${formatDate(r.sent_at)}` : ''}
-              </RequestMeta>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {r.status === 'initiated' && (
+                  <>
+                    <Btn $primary onClick={() => sendRequest(r.id)} disabled={actingRequestId === r.id}>
+                      {actingRequestId === r.id ? 'Sending...' : 'Mark as Sent'}
+                    </Btn>
+                    <Btn onClick={() => cancelRequest(r.id)} disabled={actingRequestId === r.id}>Cancel</Btn>
+                  </>
+                )}
+                {r.status === 'sent' && (
+                  <span style={{ fontSize: 11, color: C.gray }}>Awaiting examination</span>
+                )}
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {r.status === 'initiated' && (
-                <>
-                  <Btn $primary onClick={() => sendRequest(r.id)} disabled={actingRequestId === r.id}>
-                    {actingRequestId === r.id ? 'Sending...' : 'Mark as Sent'}
-                  </Btn>
-                  <Btn onClick={() => cancelRequest(r.id)} disabled={actingRequestId === r.id}>Cancel</Btn>
-                </>
-              )}
-              {r.status === 'sent' && (
-                <span style={{ fontSize: 12, color: C.gray }}>Sent to authority · awaiting examination</span>
-              )}
-            </div>
-          </RequestCard>
-        ))
+          ))}
+        </div>
       )}
 
-      <SectionHead $primary><span>01</span> Official Determination of Death</SectionHead>
+      {/* 02 — Official Determination of Death */}
+      <SectionHead><span>02</span> Official Determination of Death</SectionHead>
       <DetailGrid>
         <DetailItem $full><DetailLabel>Immediate Cause of Death</DetailLabel><DetailValue>{pm.immediate_cause_of_death || '—'}</DetailValue></DetailItem>
         <DetailItem $full><DetailLabel>Underlying Cause of Death</DetailLabel><DetailValue>{pm.underlying_cause_of_death || '—'}</DetailValue></DetailItem>
-
-        {/* Only show when available, and make full width */}
         {pm.manner_of_death && (
-          <DetailItem $full>
-            <DetailLabel>Manner of Death</DetailLabel>
-            <DetailValue>{pm.manner_of_death}</DetailValue>
-          </DetailItem>
+          <DetailItem><DetailLabel>Manner of Death</DetailLabel><DetailValue>{pm.manner_of_death}</DetailValue></DetailItem>
         )}
-
-        {/* Only show when available, and make full width */}
         {pm.contributing_conditions && (
-          <DetailItem $full>
-            <DetailLabel>Contributing Conditions</DetailLabel>
-            <DetailValue>{pm.contributing_conditions}</DetailValue>
-          </DetailItem>
+          <DetailItem><DetailLabel>Contributing Conditions</DetailLabel><DetailValue>{pm.contributing_conditions}</DetailValue></DetailItem>
         )}
       </DetailGrid>
 
-      <SectionHead><span>02</span> Pathologist Statement</SectionHead>
+      {/* 03 — Pathologist Statement */}
+      <SectionHead><span>03</span> Pathologist Statement</SectionHead>
       <DetailGrid>
         <DetailItem $full>
           <DetailLabel>Examination Summary</DetailLabel>
@@ -549,16 +589,15 @@ const PostmortemTab = ({ postmortem, deceasedId, requests: requestsProp, onReque
         </DetailItem>
       </DetailGrid>
 
-      <SectionHead><span>03</span> Examiner Details</SectionHead>
+      {/* 04 — Examiner Details */}
+      <SectionHead><span>04</span> Examiner Details</SectionHead>
       <DetailGrid>
         <DetailItem><DetailLabel>Examining Pathologist</DetailLabel><DetailValue>{pm.pathologist_name || pm.external_pathologist_name || '—'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Date Completed</DetailLabel><DetailValue>{formatDate(pm.completed_at || pm.updated_at)}</DetailValue></DetailItem>
       </DetailGrid>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24, gap: 12, flexWrap: 'wrap' }}>
-        <Btn onClick={openForm}>Open Examination Form</Btn>
-        <Btn $primary onClick={generatePDF}>Download PDF Report</Btn>
-        <Btn onClick={() => navigate(-1)}>Sign Out</Btn>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+        <Btn onClick={generatePDF}>Download PDF Report</Btn>
       </div>
     </>
   );

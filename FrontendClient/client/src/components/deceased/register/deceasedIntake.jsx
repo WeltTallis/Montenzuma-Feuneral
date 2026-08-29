@@ -10,6 +10,7 @@ import env from '../../../utils/config/env';
 import notify from '../../../utils/notify';
 import bwipjs from '@bwip-js/browser';
 import axios from 'axios';
+import api from '../../../api/axios';
 
 import {
   Check, Loader2, CheckCircle, X, FileText, User, RotateCcw, ShieldCheck,
@@ -837,23 +838,13 @@ const DeceasedRegistrationForm = () => {
     const fetchAdmissionNumber = async () => {
       setLoadingAdmission(true);
       try {
-        const tenantSlug = getTenantSlug();
-        const token = getAuthToken();
-        const response = await axios.post(
-          `${env.FULL_API_URL}${ENDPOINTS.DECEASED.ADMISSION_NUMBER(formData.gender)}`,
-          {
-            headers: {
-              'x-tenant-slug': tenantSlug,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
+        const response = await api.get(
+          `${env.FULL_API_URL}${ENDPOINTS.DECEASED.ADMISSION_NUMBER(formData.gender)}`
         );
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data?.admission_number) {
-            setAdmissionId(result.data.admission_number);
-          }
+        const result = response.data;
+        if (result?.success && result?.data?.admission_number) {
+          setAdmissionId(result.data.admission_number);
         }
       } catch (error) {
         console.error('Failed to fetch admission number:', error);

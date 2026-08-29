@@ -4,10 +4,27 @@ import env from '../config/env';
 
 const SocketContext = createContext(null);
 
+// Safe no-op fallback returned when a component calls useSocket outside the
+// provider (e.g. a stale HMR chunk or a mount-order edge case). Instead of
+// crashing the whole app with "useSocket must be used within a SocketProvider",
+// the component keeps rendering and simply receives no real-time events.
+const SOCKET_FALLBACK = Object.freeze({
+    socket: null,
+    connected: false,
+    reconnecting: false,
+    joinBranch: () => {},
+    joinAdmin: () => {},
+});
+
 export const useSocket = () => {
     const context = useContext(SocketContext);
     if (!context) {
-        throw new Error('useSocket must be used within a SocketProvider');
+        console.warn(
+            '[Socket] useSocket used outside <SocketProvider> — returning a no-op fallback ' +
+            '(real-time events disabled for this component). If this happens on a fresh ' +
+            'page load, restart the dev server to clear stale HMR chunks.'
+        );
+        return SOCKET_FALLBACK;
     }
 
     return context;
@@ -70,16 +87,27 @@ export const SocketProvider = ({ children }) => {
         });
 
         const emitJoinTenant = () => {
-            const currentTenantSlug =
-                localStorage.getItem('tenantSlug') ||
-                localStorage.getItem('tenant_slug') ||
-                'default';
+            // Parse the stored user FIRST — it is the authoritative source for
+            // the branch slug, parent slug, id and role.
             const userStr = localStorage.getItem('user');
             const user = userStr ? JSON.parse(userStr) : {};
             const userId = user?.user_id || user?.userId || user?.id || null;
             const userRole = user?.role || null;
             const parentTenantSlug =
-                user?.parentTenantSlug || localStorage.getItem('parentTenantSlug') || null;
+                user?.parentTenantSlug ||
+                localStorage.getItem('parentTenantSlug') ||
+                localStorage.getItem('tenantSlug') ||
+                localStorage.getItem('tenant_slug') ||
+                null;
+            // Branch users join their OWN branch room (complete branch slug,
+            // e.g. org-home-machakos) so branch-targeted notifications (inter-
+            // branch stock requests, transfers) reach ONLY that branch — plus
+            // the parent room for org-wide notifications.
+            const userBranchSlug =
+                user?.branchSlug ||
+                localStorage.getItem('branchSlug') ||
+                null;
+            const currentTenantSlug = userBranchSlug || parentTenantSlug || 'default';
 
             console.log('[Socket] Connection details:', {
                 socketId: socketInstance.id,

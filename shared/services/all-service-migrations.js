@@ -72,6 +72,14 @@ const TENANT_SERVICE_MIGRATIONS = [
         sql: 'CREATE TABLE IF NOT EXISTS refresh_tokens (id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, token VARCHAR(500) NOT NULL, expires_at VARCHAR(255) NOT NULL, is_active BOOLEAN DEFAULT TRUE, created_at VARCHAR(255), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, INDEX idx_token (token(255)), INDEX idx_user_id (user_id), INDEX idx_expires_at (expires_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
     },
     {
+        name: '003a_add_tenant_id_to_users',
+        sql: 'ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(36) NULL AFTER branch_id',
+    },
+    {
+        name: '003b_add_tenant_id_index_to_users',
+        sql: 'ALTER TABLE users ADD INDEX IF NOT EXISTS idx_tenant_id (tenant_id)',
+    },
+    {
         name: '004_create_mortuary_settings_table',
         sql: 'CREATE TABLE IF NOT EXISTS mortuary_settings (id VARCHAR(36) PRIMARY KEY, setting_key VARCHAR(255) NOT NULL UNIQUE, setting_value TEXT, description TEXT, created_at VARCHAR(255), updated_at VARCHAR(255)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
     },
@@ -225,7 +233,7 @@ const LEAVE_SERVICE_MIGRATIONS = [
     },
     {
         name: '171_create_leave_day_additions_table',
-        sql: 'CREATE TABLE IF NOT EXISTS leave_day_additions (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, tenant_slug VARCHAR(100) NOT NULL, days INT NOT NULL, reason TEXT, added_by INT NOT NULL, created_at DATE DEFAULT (CURRENT_DATE), INDEX idx_addition_user (user_id), INDEX idx_addition_tenant (tenant_slug), INDEX idx_addition_date (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+        sql: 'CREATE TABLE IF NOT EXISTS leave_day_additions (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, tenant_slug VARCHAR(100) NOT NULL, days INT NOT NULL, reason TEXT, added_by INT NOT NULL, created_at DATE DEFAULT NULL, INDEX idx_addition_user (user_id), INDEX idx_addition_tenant (tenant_slug), INDEX idx_addition_date (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
     },
     {
         name: '172_create_holiday_compensations_table',

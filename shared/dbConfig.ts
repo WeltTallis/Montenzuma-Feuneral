@@ -288,9 +288,21 @@ export const resolveDatabase = async (slug: string): Promise<string | null> => {
     if (tenantDbName) {
       try {
         const pool = await getTenantDB(tenantDbName);
+        // Prefer an EXACT full-slug match first (e.g. `org-home-nairobi`) so
+        // similarly named branches (`Nairobi`, `Nairobi West`) can never
+        // cross-resolve, then fall back to the loose name match.
+        const [exactRows] = await pool.query(
+          'SELECT branch_db_name FROM branches WHERE branch_slug = ? AND is_active = TRUE LIMIT 1',
+          [slug]
+        );
+        const exactList = exactRows as any[];
+        if (exactList.length > 0 && exactList[0].branch_db_name) {
+          branchDbCache.set(slug, { dbName: exactList[0].branch_db_name, createdAt: Date.now() });
+          return exactList[0].branch_db_name;
+        }
         const [rows] = await pool.query(
-          `SELECT branch_db_name FROM branches 
-           WHERE (branch_slug LIKE ? OR branch_name LIKE ?) AND is_active = TRUE 
+          `SELECT branch_db_name FROM branches
+           WHERE (branch_slug LIKE ? OR branch_name LIKE ?) AND is_active = TRUE
            LIMIT 1`,
           [`%${branchName}%`, `%${branchName}%`]
         );

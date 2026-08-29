@@ -21,9 +21,13 @@ const SOCKETIO_SERVICE_URL =
  * in the frontend Notification Bell. Matches the pattern used by the hearse,
  * deceased, store and support services.
  */
-async function emitSocketNotification(event: string, data: any, tenantSlug: string) {
+async function emitSocketNotification(event: string, data: any, tenantSlug: string, branchSlugs?: string[]) {
   try {
-    await axios.post(`${SOCKETIO_SERVICE_URL}/emit/${event}`, { tenantSlug, data }, { timeout: 3000 });
+    await axios.post(
+      `${SOCKETIO_SERVICE_URL}/emit/${event}`,
+      { tenantSlug, data, branchSlugs: branchSlugs && branchSlugs.length > 0 ? branchSlugs : undefined },
+      { timeout: 3000 }
+    );
   } catch (error: any) {
     logger.warn({ msg: `Failed to emit socket notification ${event}`, tenantSlug, error: error?.message });
   }
@@ -244,7 +248,9 @@ export const getAllCoffins = async (req: Request, res: Response) => {
       // A branch slug (x-branch-slug) narrows to the current branch whenever a branch
       // id (x-branch-id) is also supplied; without a branch id we fall back to the
       // whole tenant inventory.
+
       const params: any[] = [...tenantParams];
+      
       let branchClause = '';
       if (effectiveBranchId) {
         branchClause = ' AND (c.branch_id = ? OR c.branch_id IS NULL)';
@@ -823,6 +829,72 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 // ─── STOCK REQUESTS ──────────────────────────────────────────────────────
 
 /**
+ * Stock requests are ORG-WIDE records in the central operations DB: every
+ * branch of an organization must see them all so Incoming/Outgoing
+ * classification works. Normalize a BRANCH slug (e.g. org-home-machakos) to
+ * the PARENT org slug (org-home) so writes and reads always share one slug.
+ *
+ * Resolution is authoritative via `tenant_tracking.tenants` (one row per
+ * ORGANIZATION — branch DBs are not registered there): strip trailing dash
+ * segments off the slug until the prefix matches a registered tenant slug.
+ * No branches table is required, so this works even though the operations DB
+ * has no `branches` table. Result is cached per slug for 5 minutes.
+ */
+const ORG_SLUG_CACHE_TTL = 5 * 60 * 1000;
+const orgSlugCache = new Map<string, { slug: string; at: number }>();
+
+const resolveOrgSlug = async (tenantSlug: string): Promise<string> => {
+  const slug = String(tenantSlug || '').trim();
+  if (!slug) return slug;
+
+  const cached = orgSlugCache.get(slug);
+  if (cached && Date.now() - cached.at < ORG_SLUG_CACHE_TTL) {
+    return cached.slug;
+  }
+
+  let resolved = slug;
+
+  // 1) Authoritative: tenant_tracking.tenants holds the org (parent) slugs.
+  //    If the slug itself is registered it IS the org slug; otherwise strip
+  //    trailing segments until a registered org slug is found.
+  try {
+    const exact: any[] = await coffinQuery(
+      'SELECT tenant_slug FROM tenant_tracking.tenants WHERE tenant_slug = ? LIMIT 1',
+      [slug]
+    );
+    if (!exact || exact.length === 0) {
+      const parts = slug.split('-');
+      for (let i = parts.length - 1; i >= 1; i--) {
+        const candidate = parts.slice(0, i).join('-');
+        if (!candidate) continue;
+        const found: any[] = await coffinQuery(
+          'SELECT tenant_slug FROM tenant_tracking.tenants WHERE tenant_slug = ? LIMIT 1',
+          [candidate]
+        );
+        if (found && found.length > 0) {
+          resolved = candidate;
+          break;
+        }
+      }
+    }
+  } catch {
+    // 2) Fallback: a legacy `branches` table inside the operations DB (if a
+    //    deployment created one) maps branch_slug -> tenant_slug directly.
+    try {
+      const rows: any[] = await coffinQuery(
+        'SELECT tenant_slug FROM branches WHERE branch_slug = ? LIMIT 1',
+        [slug]
+      );
+      const ownOrg = String(rows[0]?.tenant_slug || '').trim();
+      if (ownOrg && ownOrg !== slug) resolved = ownOrg;
+    } catch { /* keep the slug as-is */ }
+  }
+
+  orgSlugCache.set(slug, { slug: resolved, at: Date.now() });
+  return resolved;
+};
+
+/**
  * POST /coffins/stock-requests - Request stock from another branch
  */
 export const createStockRequest = async (req: Request, res: Response) => {
@@ -830,6 +902,9 @@ export const createStockRequest = async (req: Request, res: Response) => {
   if (!tenantSlug || tenantSlug === 'system_shared') {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
   }
+  // Org-wide slug: branch users store/read under the PARENT org slug so the
+  // receiving branch sees the same request rows.
+  const orgSlug = await resolveOrgSlug(tenantSlug);
 
   try {
     const { coffin_id, coffin_name, color, size, requested_by, booked_for, requesting_branch, client_name, deceased_name, from_branch_id, to_branch_id, from_branch_name, to_branch_name, quantity, req_type } = (req as any).body;
@@ -850,8 +925,8 @@ export const createStockRequest = async (req: Request, res: Response) => {
     let resolvedSize = (size || '').toString().trim() || null;
     if (coffinIdRaw) {
       const rows: any[] = await coffinQuery(
-        'SELECT type, color, size FROM coffins WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE LIMIT 1',
-        [coffinIdRaw, tenantSlug]
+        'SELECT type, color, size FROM coffins WHERE coffin_id = ? AND (tenant_slug = ? OR tenant_slug LIKE CONCAT(?, \'-%\')) AND is_deleted = FALSE LIMIT 1',
+        [coffinIdRaw, orgSlug, orgSlug]
       );
       if (rows.length > 0) {
         resolvedName = resolvedName || rows[0].type || 'Coffin';
@@ -888,13 +963,17 @@ export const createStockRequest = async (req: Request, res: Response) => {
     let toId = cleanStr(to_branch_id) || null;
     let fromName = cleanStr(from_branch_name);
     let toName = cleanStr(to_branch_name);
+    // Branch SLUGs (complete, e.g. org-home-machakos) — used to target the
+    // socket notification at the correct branch room only.
+    let fromSlug: string | null = null;
+    let toSlug: string | null = null;
 
     if (fromName || toName || fromId || toId) {
       let allBranches: any[] = [];
       try {
         allBranches = await coffinQuery(
           'SELECT * FROM branches WHERE tenant_slug = ?',
-          [tenantSlug]
+          [orgSlug]
         );
       } catch {
         // Schema variants whose branches table lacks tenant_slug —
@@ -915,12 +994,16 @@ export const createStockRequest = async (req: Request, res: Response) => {
         if (m) {
           fromName = canonicalName(m);
           if (!fromId) fromId = String(m.branch_id ?? m.id);
+          if (!fromSlug) fromSlug = String(m.branch_slug ?? m.slug ?? '').trim() || null;
         } else {
           logger.warn({ msg: 'Stock request source branch not matched by exact name — keeping provided name', tenantSlug, providedFromName: fromName });
         }
       } else if (fromId) {
         const m = branchById(allBranches, fromId);
-        if (m) fromName = canonicalName(m);
+        if (m) {
+          fromName = canonicalName(m);
+          if (!fromSlug) fromSlug = String(m.branch_slug ?? m.slug ?? '').trim() || null;
+        }
       }
 
       // DESTINATION branch — same rules
@@ -929,19 +1012,23 @@ export const createStockRequest = async (req: Request, res: Response) => {
         if (m) {
           toName = canonicalName(m);
           if (!toId) toId = String(m.branch_id ?? m.id);
+          if (!toSlug) toSlug = String(m.branch_slug ?? m.slug ?? '').trim() || null;
         } else {
           logger.warn({ msg: 'Stock request destination branch not matched by exact name — keeping provided name', tenantSlug, providedToName: toName });
         }
       } else if (toId) {
         const m = branchById(allBranches, toId);
-        if (m) toName = canonicalName(m);
+        if (m) {
+          toName = canonicalName(m);
+          if (!toSlug) toSlug = String(m.branch_slug ?? m.slug ?? '').trim() || null;
+        }
       }
     }
 
     // The requesting branch IS the receiver of the stock — store its exact name.
     const requestingBranchName = cleanStr(requesting_branch) || toName || null;
 
-    const result = await CoffinModel.requestStock(tenantSlug, {
+    const result = await CoffinModel.requestStock(orgSlug, {
       coffin_id: coffinIdRaw || null,
       coffin_name: resolvedName || 'Coffin',
       color: resolvedColor,
@@ -973,10 +1060,15 @@ export const createStockRequest = async (req: Request, res: Response) => {
       quantity: parseInt(quantity) || 1,
       fromBranch: fromName || null,
       toBranch: toName || null,
+      fromBranchSlug: fromSlug || null,
+      toBranchSlug: toSlug || null,
       status: 'pending',
       priority: 'high',
     };
-    await emitSocketNotification('coffin-stock-request', emitReq, tenantSlug);
+    // Target the notification at the SOURCE branch room — Nairobi (the
+    // fulfiller) is the one who must approve/act on the transfer request.
+    // Falls back to org-wide when the branch slug could not be resolved.
+    await emitSocketNotification('coffin-stock-request', emitReq, orgSlug, fromSlug ? [fromSlug] : undefined);
 
     return res.status(201).json({
       success: true,
@@ -1016,17 +1108,21 @@ export const getAllStockRequests = async (req: Request, res: Response) => {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
   }
 
+  // List under the ORG slug so every branch sees all org requests — the UI
+  // classifies Incoming (my branch fulfills) vs Outgoing (my branch requested).
+  const orgSlug = await resolveOrgSlug(tenantSlug);
+
   try {
     const sql = `
       SELECT request_id, request_id AS id, coffin_id, tenant_id, coffin_name, color, size, requested_by, booked_for,
         requesting_branch, from_branch_id, to_branch_id, from_branch_name, to_branch_name,
         quantity, req_type, image_url, status, created_at, updated_at
       FROM stock_requests
-      WHERE tenant_slug = ?
+      WHERE tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%')
       ORDER BY created_at DESC
     `;
 
-    const requests: any[] = await coffinQuery(sql, [tenantSlug]);
+    const requests: any[] = await coffinQuery(sql, [orgSlug, orgSlug]);
 
     return res.status(200).json({ success: true, data: requests, count: requests.length });
   } catch (error: any) {
@@ -1045,6 +1141,7 @@ export const getStockRequestById = async (req: Request, res: Response) => {
   if (!tenantSlug) {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
   }
+  const orgSlug = await resolveOrgSlug(tenantSlug);
 
   try {
     const sql = `
@@ -1052,10 +1149,10 @@ export const getStockRequestById = async (req: Request, res: Response) => {
         requesting_branch, from_branch_id, to_branch_id, from_branch_name, to_branch_name,
         quantity, req_type, image_url, status, created_at, updated_at
       FROM stock_requests
-      WHERE request_id = ? AND tenant_slug = ?
+      WHERE request_id = ? AND (tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%'))
     `;
 
-    const requests: any[] = await coffinQuery(sql, [id, tenantSlug]);
+    const requests: any[] = await coffinQuery(sql, [id, orgSlug, orgSlug]);
     if (requests.length === 0) {
       return res.status(404).json({ success: false, message: 'Stock request not found' });
     }
@@ -1084,8 +1181,9 @@ export const updateStockRequestStatus = async (req: Request, res: Response) => {
   }
 
   try {
-    const sql = `UPDATE stock_requests SET status = ?, updated_at = NOW() WHERE request_id = ? AND tenant_slug = ?`;
-    await coffinQuery(sql, [status, id, tenantSlug]);
+    const orgSlug = await resolveOrgSlug(tenantSlug);
+    const sql = `UPDATE stock_requests SET status = ?, updated_at = NOW() WHERE request_id = ? AND (tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%'))`;
+    await coffinQuery(sql, [status, id, orgSlug, orgSlug]);
 
     logger.info({ msg: 'Stock request status updated', tenantSlug, requestId: id, status });
 
@@ -1100,8 +1198,13 @@ export const updateStockRequestStatus = async (req: Request, res: Response) => {
  * GET /coffins/health - Health check
  */
 /**
- * POST /coffins/stock-requests/:id/:action - Update stock request status by action name
- * (approve -> approved, reject -> rejected, transferring, delivered, complete -> completed, pending)
+ * POST /coffins/stock-requests/:id/:action - Update stock request status by action name.
+ * 2-STATUS WORKFLOW only: approve -> approved, reject -> rejected,
+ * delivered -> delivered (confirmed by the REQUESTING branch). Legacy
+ * transferring/transit/complete actions are collapsed onto the 2-status model
+ * (transferring/transit -> approved, complete -> delivered). On every status
+ * change the REQUESTING branch (to_branch) is pushed a bell notification via
+ * the socket service.
  */
 export const updateStockRequestAction = async (req: Request, res: Response) => {
   const tenantSlug = (req as any).tenantSlug;
@@ -1111,16 +1214,20 @@ export const updateStockRequestAction = async (req: Request, res: Response) => {
   if (!tenantSlug) {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
   }
+  const orgSlug = await resolveOrgSlug(tenantSlug);
 
   const statusMap: Record<string, string> = {
     approve: 'approved',
     approved: 'approved',
     reject: 'rejected',
     rejected: 'rejected',
-    complete: 'completed',
-    completed: 'completed',
-    transferring: 'transferring',
-    transit: 'transferring',
+    complete: 'delivered',
+    completed: 'delivered',
+    // Legacy 2-step "transferring / transit / In Transit" — collapsed into the
+    // new 2-status flow (approved → delivered). Any leftover rows/actions that
+    // say "transferring" are now treated as APPROVED (already dispatched).
+    transferring: 'approved',
+    transit: 'approved',
     delivered: 'delivered',
     pending: 'pending'
   };
@@ -1135,24 +1242,48 @@ export const updateStockRequestAction = async (req: Request, res: Response) => {
     const reqRows: any[] = await coffinQuery(
       `SELECT request_id, coffin_name, quantity, requested_by, requesting_branch,
               from_branch_id, to_branch_id, from_branch_name, to_branch_name, status
-       FROM stock_requests WHERE request_id = ? AND tenant_slug = ?`,
-      [id, tenantSlug]
+       FROM stock_requests WHERE request_id = ? AND (tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%'))`,
+      [id, orgSlug, orgSlug]
     );
 
-    const sql = `UPDATE stock_requests SET status = ? WHERE request_id = ? AND tenant_slug = ?`;
-    await coffinQuery(sql, [status, id, tenantSlug]);
+    const sql = `UPDATE stock_requests SET status = ? WHERE request_id = ? AND (tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%'))`;
+    await coffinQuery(sql, [status, id, orgSlug, orgSlug]);
 
     logger.info({ msg: 'Stock request action applied', tenantSlug, requestId: id, action, status });
 
     // Notify the requesting/origin branch when the request moves forward.
     const prev = reqRows[0];
     if (reqRows.length > 0 && prev?.status && prev.status !== status) {
+      // Resolve the involved branches' COMPLETE slugs so the notification is
+      // targeted at their rooms (not broadcast org-wide). Status changes
+      // matter to the requesting branch (to_branch) AND the fulfiller
+      // (from_branch, e.g. approve/reject/delivered).
+      let targetSlugs: string[] | undefined = undefined;
+      try {
+        const idList = [prev.from_branch_id, prev.to_branch_id]
+          .filter((v) => v !== null && v !== undefined && String(v).trim() !== '')
+          .map((v) => String(v));
+        if (idList.length > 0) {
+          const placeholders = idList.map(() => '?').join(',');
+          const bRows: any[] = await coffinQuery(
+            `SELECT branch_id, branch_slug FROM branches WHERE branch_id IN (${placeholders})`,
+            idList
+          );
+          const slugFor = (bid: any) => {
+            const m = (bRows || []).find((b) => String(b.branch_id) === String(bid));
+            return m && m.branch_slug ? String(m.branch_slug).trim() : '';
+          };
+          const slugs = Array.from(new Set([slugFor(prev.to_branch_id), slugFor(prev.from_branch_id)].filter(Boolean)));
+          if (slugs.length > 0) targetSlugs = slugs;
+        }
+      } catch (slugErr: any) {
+        logger.warn({ msg: 'Could not resolve branch slugs for stock request notification', error: slugErr?.message });
+      }
+
       const statusTitleMap: Record<string, string> = {
         approved: 'Transfer Approved',
         rejected: 'Transfer Rejected',
-        transferring: 'Transfer In Transit',
         delivered: 'Transfer Delivered',
-        completed: 'Transfer Completed',
         pending: 'Transfer Requested',
       };
       await emitSocketNotification('coffin-stock-request', {
@@ -1167,7 +1298,7 @@ export const updateStockRequestAction = async (req: Request, res: Response) => {
         toBranch: prev.to_branch_name || null,
         status,
         priority: status === 'rejected' ? 'high' : 'medium',
-      }, tenantSlug);
+      }, orgSlug, targetSlugs);
     }
 
     return res.status(200).json({ success: true, message: `Request ${status}`, status });

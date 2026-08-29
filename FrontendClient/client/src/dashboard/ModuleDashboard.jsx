@@ -17,6 +17,7 @@ import WeekView from "./views/WeekView";
 import DayView from "./views/DayView";
 import DeceasedQuad from "./views/DeceasedQuad";
 import api from "../api/axios";
+import { fetchAllBranchDeceased } from "../api/dashboardDataApi";
 import GlobalLoader from "../components/loader/loader";
 
 import {
@@ -146,6 +147,9 @@ const HEARSE_STATUS_COLORS = {
   maintenance: "#8b5cf6",
 };
 
+
+
+
 /* ─── View config ─────────────────────────────────────────────── */
 const VIEWS = [
   { id: "month", label: "Month" },
@@ -203,6 +207,9 @@ export default function ModuleDashboard({ mod }) {
   const [calLoading, setCalLoading] = useState(true);
   /* Raw sources for the day-breakdown panel (uncapped, per-category) */
   const [calSources, setCalSources] = useState({ coffins: [], deceased: [] });
+  /* Branch filter for the command-centre dashboard. "" = all branches;
+     otherwise shows only that branch's activity (still fetches every branch). */
+  const [branchFilter, setBranchFilter] = useState("");
   /* Day picked on the mini calendar — null → panel shows today */
   const [calDay, setCalDay] = useState(null);
 
@@ -247,14 +254,26 @@ export default function ModuleDashboard({ mod }) {
           }
         }
 
-        /* Deceased records (paginated, capped) */
+        /* Deceased records — command-centre style: aggregate EVERY branch
+           by fetching each branch's dataset with its slug as x-tenant-slug.
+           Each record is tagged with branch_name so activity-by-branch is
+           visible on the quad / day-breakdown panels. */
         let deceased = [];
-        for (let p = 1; p <= 10; p++) {
-          const r = await api.get("/deceased/deceased-all", { params: { page: p, limit: 100 } }).catch(() => null);
-          const chunk = extractArray(r);
-          if (!chunk.length) break;
-          deceased = deceased.concat(chunk);
-          if (chunk.length < 100) break;
+        try {
+          deceased = await fetchAllBranchDeceased();
+        } catch (e) {
+          console.warn("[Dashboard] multi-branch deceased load failed:", e?.message);
+        }
+        if (!deceased.length) {
+          /* Fallback to the current branch only if the multi-branch fetch
+             came back empty (e.g. no branch context stored yet). */
+          for (let p = 1; p <= 6; p++) {
+            const r = await api.get("/deceased/deceased-all", { params: { page: p, limit: 100 } }).catch(() => null);
+            const chunk = extractArray(r);
+            if (!chunk.length) break;
+            deceased = deceased.concat(chunk);
+            if (chunk.length < 100) break;
+          }
         }
 
         /* Mini-calendar events: coffins = blue (coffin tab), deceased = orange */
@@ -275,7 +294,7 @@ export default function ModuleDashboard({ mod }) {
         }
         deceased.forEach((r) => {
           push(keyOf(r?.date_key || r?.adm_date || r?.date_admitted || r?.created_at), {
-            n: r?.full_name || "Deceased record",
+            n: [r?.full_name || "Deceased record", r?.branch_name || ""].filter(Boolean).join(" · "),
             t: "Admission",
             c: "orange",
           });
@@ -301,6 +320,24 @@ export default function ModuleDashboard({ mod }) {
   const filtered = useMemo(
     () => bookings.filter((b) => allOn || activeStatuses.includes(b.status)),
     [bookings, activeStatuses, allOn]
+  );
+
+  /* ── Command-centre branch scope ─────────────────────────────
+     Derive the branch list from the loaded deceased records and
+     filter the visible activities by the selected branch — but the
+     underlying multi-branch fetch (fetchAllBranchDeceased) still
+     pulls every branch, so switching branches is instant. */
+  const branchOptions = useMemo(
+    () => [...new Set((calSources.deceased || []).map((r) => r?.branch_name).filter(Boolean))],
+    [calSources.deceased]
+  );
+  const scopedDeceased = useMemo(
+    () => (calSources.deceased || []).filter((r) => !branchFilter || r?.branch_name === branchFilter),
+    [calSources.deceased, branchFilter]
+  );
+  const scopedSources = useMemo(
+    () => ({ coffins: calSources.coffins || [], deceased: scopedDeceased }),
+    [calSources.coffins, scopedDeceased]
   );
 
   /* ── Calendar navigation ────────────────────────────────────── */
@@ -361,7 +398,7 @@ export default function ModuleDashboard({ mod }) {
 
       <main style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
         {/* ── Toolbar ─────────────────────────────────────── */}
-        {!showHearse && !showStore && !showFlower && (
+                        {!showHearse && !showStore && !showFlower && mod.id !== "deceased" && (
           <div style={{
             display: "flex", alignItems: "center", gap: 8,
             padding: "10px 18px",
@@ -523,6 +560,52 @@ export default function ModuleDashboard({ mod }) {
                   .unified-cal .cal-wide-card{flex:1;min-width:0}
                   @media(max-width:900px){.unified-cal{flex-direction:column}.unified-cal .cal-mini-card{max-width:none}}
                 `}</style>
+                {/* ── Command-centre branch selector ─────────────
+                    Choose a branch to focus its activity (or "All branches").
+                    Data is fetched for EVERY branch up front, so switching
+                    here is instant client-side scoping. */}
+                {showMini && branchOptions.length > 1 && (
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    background: T.surface, border: `1px solid ${T.border}`,
+                    borderRadius: 12, padding: "8px 14px", marginBottom: 12,
+                    flexWrap: "wrap",
+                  }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: T.textSec, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      Branch
+                    </span>
+                    <select
+                      value={branchFilter}
+                      onChange={(e) => setBranchFilter(e.target.value)}
+                      style={{
+                        padding: "5px 10px", borderRadius: 8, cursor: "pointer",
+                        fontSize: 12.5, fontWeight: 600, color: T.text,
+                        background: "rgba(15,23,42,0.03)",
+                        border: `1px solid ${T.border}`,
+                        fontFamily: T.font, outline: "none",
+                      }}
+                    >
+                      <option value="">All branches ({scopedDeceased.length})</option>
+                      {branchOptions.map((b) => {
+                        const cnt = (calSources.deceased || []).filter((r) => r?.branch_name === b).length;
+                        return (
+                          <option key={b} value={b}>
+                            {b} ({cnt})
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {branchFilter ? (
+                      <span style={{ fontSize: 11, color: T.textMuted }}>
+                        Showing <b>{branchFilter}</b> — all branches still fetched
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: T.textMuted }}>
+                        Every branch's activity aggregated
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="unified-cal">
                   {showMini && mod.id === "deceased" ? (
                     <div style={{ width: "100%", minWidth: 0 }}>
@@ -533,14 +616,23 @@ export default function ModuleDashboard({ mod }) {
                         events={miniEvents}
                         loading={calLoading}
                         dateKey={calDay}
-                        deceased={calSources.deceased || []}
+                        deceased={scopedDeceased}
                         onPickDate={setCalDay}
                         onSelect={(item) => {
-                          const num = String(item?.id || "").replace(/^(in|rel|pm)-/, "");
-                          const rec = (calSources.deceased || []).find(
-                            (r) => String(r?.admission_number) === num
-                          );
-                          if (rec) setSelected(rec);
+                          const isReq = !!item?.pm_request || String(item?.id || "").startsWith("pm-req-");
+                          const num = String(item?.id || "").replace(/^(in|rel|pm)-/, "").replace(/^req-/, "");
+                          const pool = scopedDeceased;
+                          const rec =
+                            pool.find((r) => String(r?.admission_number) === num) ||
+                            pool.find((r) => String(r?.deceased_id ?? r?.id) === num) ||
+                            (item?.admission_number || item?.deceased_id ? item : null);
+                          if (isReq && !rec) {
+                            // Request with no matching register row — still open,
+                            // showing the request details alone.
+                            setSelected({ ...item, pm_request: item.pm_request || item });
+                            return;
+                          }
+                          if (rec) setSelected(isReq ? { ...rec, pm_request: item.pm_request || item } : rec);
                         }}
                       />
                     </div>
@@ -581,19 +673,23 @@ export default function ModuleDashboard({ mod }) {
                     <div className="cal-wide-card" style={{ alignSelf: "stretch" }}>
                       <DayBreakdownPanel
                         dateKey={calDay}
-                        sources={calSources}
+                        sources={scopedSources}
                         loading={calLoading}
                         onClose={() => setCalDay(null)}
                         onSelect={(item, sectionKey) => {
-                          /* Only deceased records open the side panel */
+                          /* Deceased records + tracked postmortem requests open the side panel */
                           if (sectionKey === "intakes" || sectionKey === "releases" || sectionKey === "postmortems") {
-                            const rec = (calSources.deceased || []).find((r) => {
+                            const rec = scopedDeceased.find((r) => {
                               const num = r?.admission_number;
                               return num && (
                                 item.id === `in-${num}` || item.id === `rel-${num}` || item.id === `pm-${num}`
                               );
                             });
-                            if (rec) { setSelected(rec); }
+                            if (rec) {
+                              setSelected(item.pm_request ? { ...rec, pm_request: item.pm_request } : rec);
+                            } else if (item.pm_request) {
+                              setSelected({ ...item, pm_request: item.pm_request });
+                            }
                           }
                         }}
                       />

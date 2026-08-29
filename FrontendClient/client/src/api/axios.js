@@ -194,7 +194,7 @@ api.interceptors.request.use((config) => {
   const branchId = getBranchId();
 
   if (token) config.headers['Authorization'] = `Bearer ${token}`;
-  if (slug) config.headers['x-tenant-slug'] = slug;
+  if (slug && !config.headers['x-tenant-slug']) config.headers['x-tenant-slug'] = slug;
   if (tenantId) config.headers['x-tenant-id'] = tenantId;
   if (userId) config.headers['x-user-id'] = userId.toString();
   if (branchSlug) config.headers['x-branch-slug'] = branchSlug;

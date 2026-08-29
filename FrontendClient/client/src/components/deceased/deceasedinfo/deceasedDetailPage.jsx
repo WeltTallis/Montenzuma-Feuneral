@@ -1,23 +1,26 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
-import axios from 'axios';
-import env from '../../../utils/config/env';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
+import React, { useState, useEffect, useCallback } from 'react';
+
+import { useParams, useNavigate } from 'react-router-dom';
+
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
 
 // Import your existing sub-components
 import DeceasedProfileHeader from './DeceasedProfileHeader';
+import ChargeSettingsModal from '../ChargeSettingsModal';
 import DeceasedSidebar from './DeceasedSidebar';
-import OverviewTab from './OverviewTab';
-import AdmissionTab from './AdmissionTab';
+import env from '../../../utils/config/env';
 import PostmortemTab from './PostmortemTab';
 import FinancialsTab from './FinancialsTab';
-import ReleaseTab from './ReleaseTab';
 import DocumentsTab from './DocumentsTab';
+import OverviewTab from './OverviewTab';
 import AuditLogTab from './AuditLogTab';
-import ChargeSettingsModal from '../ChargeSettingsModal';
+import ReleaseTab from './ReleaseTab';
+import axios from 'axios';
+
 
 const BASE_URL = `${env.FULL_API_URL}/deceased`;
 
@@ -141,7 +144,6 @@ const ChargeSettingsButton = styled.button`
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
-  { key: 'admission', label: 'Admission' },
   { key: 'postmortem', label: 'Postmortem' },
   { key: 'financials', label: 'Financials' },
   { key: 'release', label: 'Release' },
@@ -344,7 +346,7 @@ const DeceasedDetailPage = () => {
       <GlobalFonts />
       <AppContainer>
         <ToastContainer position="top-right" />
-        
+
         <DeceasedProfileHeader
           deceased={deceased}
           onBack={() => { const slug = getTenantSlug(); navigate(`/tenant/${slug}/all-deceased`); }}
@@ -366,39 +368,27 @@ const DeceasedDetailPage = () => {
               <TabPane $active={activeTab === 'overview'}>
                 <OverviewTab deceased={deceased} nextOfKin={nextOfKin} />
               </TabPane>
-              
-              <TabPane $active={activeTab === 'admission'}>
-                <AdmissionTab deceased={deceased} />
-              </TabPane>
-              
+
               <TabPane $active={activeTab === 'postmortem'}>
-                <PostmortemTab postmortem={postmortem} deceasedId={deceasedId} requests={requests} onRequestsChanged={fetchData} />
+                <PostmortemTab postmortem={postmortem} deceasedId={deceasedId} deceasedName={deceased?.full_name || deceased?.name || ''} deceasedAdmission={deceased?.admission_number || deceased?.admission_no || ''} requests={requests} onRequestsChanged={fetchData} />
               </TabPane>
-              
+
               <TabPane $active={activeTab === 'financials'}>
-                <ChargeSettingsButton onClick={() => setShowChargeModal(true)}>
-                  {/* Clean SVG Icon replacing emoji */}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                  </svg>
-                  Set Charge Rates
-                </ChargeSettingsButton>
                 <FinancialsTab charges={charges} payments={payments} deceasedId={deceasedId} />
               </TabPane>
-              
+
               <TabPane $active={activeTab === 'release'}>
                 <ReleaseTab deceased={deceased} nextOfKin={nextOfKin} deceasedId={deceasedId} />
               </TabPane>
-              
+
               <TabPane $active={activeTab === 'docs'}>
                 <DocumentsTab documents={deceased?.documents} deceasedId={deceasedId} />
               </TabPane>
-              
+
               <TabPane $active={activeTab === 'audit'}>
-                <AuditLogTab 
-                  deceased={deceased} 
-                  postmortem={postmortem} 
+                <AuditLogTab
+                  deceased={deceased}
+                  postmortem={postmortem}
                   charges={charges}
                   payments={payments}
                   releaseData={deceased?.releaseData || null}

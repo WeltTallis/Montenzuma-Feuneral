@@ -5,17 +5,18 @@ import { C } from './theme';
 import RouteOptimizer from '../../hearse/RouteOptimizer';
 
 const BackBtn = styled.button`
-  font-size: 14px; font-weight: 600; color: ${C.gray}; cursor: pointer;
-  background: none; border: none; display: flex; align-items: center; gap: 8px;
-  margin-bottom: 16px; padding: 0; font-family: 'Source Sans 3', sans-serif;
-  &:hover { color: ${C.black}; }
+  font-size: 13px; font-weight: 600; color: #d93025; cursor: pointer;
+  background: none; border: none; display: flex; align-items: center; gap: 6px;
+  margin-bottom: 12px; padding: 0; font-family: 'Source Sans 3', sans-serif;
+  &:hover { color: #b91c1c; }
 `;
 
 const ProfileHeader = styled.div`
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
-  h2 { font-family: 'Merriweather', serif; font-size: 28px; color: ${C.black}; margin: 0 0 4px; }
-  p { color: ${C.gray}; font-size: 14px; margin: 0; }
+  padding-left: 12px;
+  h2 { font-family: 'Merriweather', serif; font-size: 26px; font-weight: 900; color: ${C.black}; margin: 0 0 4px; }
+  p { color: ${C.dark}; font-size: 14px; font-weight: 700; margin: 0; }
 `;
 
 const HeaderActions = styled.div`

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Coffin Service - Central (shared) Coffin Database helper
  * -------------------------------------------------
  * All coffin-domain data (inventory, bookings/orders, stock requests, images,
@@ -69,14 +69,19 @@ async function ensureCoffinDatabase() {
     connectionLimit: 5,
     queueLimit: 0,
   });
+
   try {
+
     await admin.query(
       `CREATE DATABASE IF NOT EXISTS \`${COFFIN_DATABASE}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
     );
+    
     dbEnsured = true;
     logger.info({ msg: 'Coffin central database ensured', database: COFFIN_DATABASE });
   } finally {
+
     await admin.end();
+
   }
 }
 
@@ -154,6 +159,56 @@ async function coffinQuery(sql, params = []) {
  */
 async function runCoffinMigrations() {
   await ensureCoffinDatabase();
+  try {
+    const pool = getCoffinPool();
+    // â”€â”€â”€ One-time data repair: stock_requests stored under a BRANCH slug â”€â”€â”€
+    // Requests created by branch users were saved with the branch slug (e.g.
+    // org-home-machakos) so other branches never saw them. Re-point every
+    // branch-slug row to its PARENT org slug, resolved from the authoritative
+    // `tenant_tracking.tenants` registry (no branches table needed): strip
+    // trailing dash segments until the prefix matches a registered tenant.
+    // Idempotent â€” a no-op once every row uses the org slug.
+    const [slugRows] = await pool.query('SELECT DISTINCT tenant_slug AS slug FROM stock_requests');
+    let repaired = 0;
+    for (const row of (slugRows || [])) {
+      const slug = String(row.slug || '').trim();
+      if (!slug) continue;
+      let orgSlug = slug;
+      try {
+        const [exact] = await pool.query(
+          'SELECT tenant_slug FROM tenant_tracking.tenants WHERE tenant_slug = ? LIMIT 1',
+          [slug]
+        );
+        if (!exact || exact.length === 0) {
+          const parts = slug.split('-');
+          for (let i = parts.length - 1; i >= 1; i--) {
+            const candidate = parts.slice(0, i).join('-');
+            if (!candidate) continue;
+            const [r] = await pool.query(
+              'SELECT tenant_slug FROM tenant_tracking.tenants WHERE tenant_slug = ? LIMIT 1',
+              [candidate]
+            );
+            if (r && r.length > 0) { orgSlug = candidate; break; }
+          }
+        }
+      } catch (e) {
+        // tenant_tracking not reachable â€” leave this slug untouched
+        continue;
+      }
+      if (orgSlug && orgSlug !== slug) {
+        const [res] = await pool.query(
+          'UPDATE stock_requests SET tenant_slug = ? WHERE tenant_slug = ?',
+          [orgSlug, slug]
+        );
+        repaired += (res && res.affectedRows) || 0;
+      }
+    }
+    if (repaired > 0) {
+      logger.info({ msg: 'Normalized stock_requests branch slugs to org slug', rows: repaired });
+    }
+  } catch (e) {
+    logger.warn({ msg: 'stock_requests slug normalization skipped', error: e && e.message });
+  }
   const k = getCoffinKnex();
   await k.migrate.latest();
   logger.info({ msg: 'Coffin central database migrations completed', database: COFFIN_DATABASE });

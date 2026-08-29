@@ -502,6 +502,28 @@ app.post('/tenant/:tenantSlug/users/register', asyncHandler(async (req: Request,
   (req as any).dbName = originalDbName;
 }));
 
+// Assign/reassign a user to a branch (tenantSlug only). Users always carry
+// tenant_id + branch_id so they log in to the correct tenant and branch.
+app.put('/tenant/:tenantSlug/users/:userId/branch', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  (req as any).user = {
+    userId: 1,
+    tenantSlug: tenantSlug
+  };
+
+  const userController = new UserController();
+  const originalDbName = (req as any).dbName;
+  (req as any).dbName = tenant.db_name;
+  await userController.updateUserBranch(req, res);
+  (req as any).dbName = originalDbName;
+}));
+
 // ============================================
 // BRANCH-AWARE ROUTING MIDDLEWARE (USING DB NAME)
 // ============================================
@@ -757,4 +779,11 @@ app.listen(Number(PORT), HOST, () => {
   console.log(`Tenant service running on port ${PORT}`);
   console.log(`Health check: http://${HOST}:${PORT}/health`);
   console.log(`${new Date().toISOString()}`);
+
+  // Startup sweep: make sure EVERY tenant's MAIN (parent) branch carries its
+  // own complete slug (`org-home-nairobi`, never the bare tenant slug) and
+  // that a Main branch exists at all. Idempotent + non-fatal.
+  TenantModel.normalizeAllTenantMainBranches().catch((e) =>
+    console.warn('Main-branch normalization sweep failed:', (e && e.message) || e)
+  );
 });

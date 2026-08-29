@@ -1,0 +1,10 @@
+◇ injected env (0) from dist\services\coffin-service\.env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from dist\.env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (0) from dist\services\coffin-service\.env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+{"level":30,"timestamp":"2026-08-29T14:38:31.348Z","pid":59912,"hostname":"DESKTOP-LQQVFI5","msg":"Starting coffin service..."}
+{"level":30,"timestamp":"2026-08-29T14:38:31.468Z","pid":59912,"hostname":"DESKTOP-LQQVFI5","msg":"Coffin central database ensured","database":"restpoint_operations"}
+{"level":40,"timestamp":"2026-08-29T14:38:31.486Z","pid":59912,"hostname":"DESKTOP-LQQVFI5","msg":"stock_requests slug normalization skipped","error":"Table 'restpoint_operations.branches' doesn't exist"}
+{"level":30,"timestamp":"2026-08-29T14:38:31.736Z","pid":59912,"hostname":"DESKTOP-LQQVFI5","msg":"Coffin central database migrations completed","database":"restpoint_operations"}
+{"level":30,"timestamp":"2026-08-29T14:38:31.799Z","pid":59912,"hostname":"DESKTOP-LQQVFI5","msg":"Coffin Service running","port":5008,"health":"http://localhost:5008/health","endpoints":"http://localhost:5008/","centralDb":"restpoint_operations"}

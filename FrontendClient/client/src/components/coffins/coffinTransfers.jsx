@@ -32,10 +32,15 @@ const getReqStatus = (status) => {
     pending: { label: 'Pending', cls: 'tag-pe' },
     approved: { label: 'Approved', cls: 'tag-ar' },
     rejected: { label: 'Rejected', cls: 'tag-ou' },
-    transferring: { label: 'In Transit', cls: 'tag-tr' },
     delivered: { label: 'Delivered', cls: 'tag-de' },
   };
-  return map[status] || map.pending;
+  // 2-status flow only: Approved → Delivered. Legacy rows stuck in the old
+  // "transferring/In Transit" stage are shown as Approved (already dispatched)
+  // so nothing ever renders "In Transit".
+  const normalized = ['transferring', 'transit', 'in-transit', 'in_transit'].includes(status)
+    ? 'approved'
+    : status;
+  return map[normalized] || map.pending;
 };
 
 // Big pill action button style factory.
@@ -75,25 +80,27 @@ const styles = {
  */
 const actionButtonsVisible = (type, status) =>
   type === 'outgoing'
-    ? status === 'pending' || status === 'approved' || status === 'transferring'
+    ? status === 'pending' || status === 'approved'
     : type === 'incoming'
-      ? status === 'pending' || status === 'approved' || status === 'transferring'
+      ? status === 'pending' || status === 'approved'
       : false;
 
 /**
  * CoffinTransfers — standalone Transfers/Logistics tab for the Coffin dashboard.
  *
- * Direction semantics (fixed):
+ * Direction semantics (REQUEST-centric — fixed):
  *   - from_branch_id = the SOURCE branch that owns/dispatches the coffin
  *   - to_branch_id   = the DESTINATION branch receiving the coffin (the requester)
  *
- * Role rules:
- *   - Incoming rows (to_branch_id == currentBranch): this branch is the RECEIVER /
- *     requester. It can Cancel while pending, and is the ONLY side that can
- *     confirm "Delivered" once the transfer is in transit.
- *   - Outgoing rows (from_branch_id == currentBranch): this branch is the SOURCE /
- *     dispatcher. It can Approve & Dispatch or Reject while pending, Mark In
- *     Transit when approved, but can NEVER mark the transfer delivered.
+ * 2-STATUS WORKFLOW (only Approved + Delivered — no "In Transit"):
+ *   - Incoming rows (from_branch_id == currentBranch): ANOTHER branch requested
+ *     MY stock. This branch is the SOURCE / dispatching branch: it Approves &
+ *     Dispatches or Rejects while pending. After approving it waits for the
+ *     REQUESTING branch to confirm "Delivered" — it can never mark delivered.
+ *   - Outgoing rows (to_branch_id == currentBranch): MY branch SENT the request
+ *     (requester/receiver). It can Cancel while pending, is notified on their
+ *     bell when the source approves, and is the ONLY side that marks
+ *     "Delivered Now" once the source has approved.
  */
 const CoffinTransfers = ({
   stockRequests = [],
@@ -107,10 +114,13 @@ const CoffinTransfers = ({
   const [expandedTransferId, setExpandedTransferId] = useState(null);
   const [transferQuery, setTransferQuery] = useState('');
 
-  // Requests where MY branch receives the goods (deliveries coming to me).
-  const incomingRequests = stockRequests.filter((r) => r.to_branch_id == currentBranch);
-  // Requests where MY branch is the source/sender (fulfilment queue).
-  const outgoingRequests = stockRequests.filter((r) => r.from_branch_id == currentBranch);
+  // REQUEST-centric classification (fixed):
+  // Incoming = requests where MY branch is the SOURCE (from_branch_id ==
+  // currentBranch) — another branch asked for MY stock (my fulfilment queue).
+  const incomingRequests = stockRequests.filter((r) => r.from_branch_id == currentBranch);
+  // Outgoing = requests MY branch SENT (to_branch_id == currentBranch) — I asked
+  // another branch for stock and am waiting on them.
+  const outgoingRequests = stockRequests.filter((r) => r.to_branch_id == currentBranch);
 
   const totalIncoming = incomingRequests.length;
   const totalOutgoing = outgoingRequests.length;
@@ -119,7 +129,8 @@ const CoffinTransfers = ({
     if (!transferQuery) return true;
     const q = transferQuery.toLowerCase();
     const coffin = coffins.find((c) => (c.coffin_id || c.id) == r.coffin_id);
-    const branch = branches.find((b) => b.id == r.from_branch_id);
+    // I am the source — the other party is the requesting branch (to_branch_id).
+    const branch = branches.find((b) => b.id == r.to_branch_id);
     return (
       String(r.id).includes(q) ||
       (coffin?.name || '').toLowerCase().includes(q) ||
@@ -130,7 +141,8 @@ const CoffinTransfers = ({
     if (!transferQuery) return true;
     const q = transferQuery.toLowerCase();
     const coffin = coffins.find((c) => (c.coffin_id || c.id) == r.coffin_id);
-    const branch = branches.find((b) => b.id == r.to_branch_id);
+    // I am the requester — the other party is the source branch (from_branch_id).
+    const branch = branches.find((b) => b.id == r.from_branch_id);
     return (
       String(r.id).includes(q) ||
       (coffin?.name || '').toLowerCase().includes(q) ||
@@ -174,13 +186,7 @@ const CoffinTransfers = ({
         key: 'approved',
         label: 'Approved',
         icon: 'fa-solid fa-check',
-        done: status === 'approved' || status === 'transferring' || status === 'delivered',
-      },
-      {
-        key: 'transferring',
-        label: 'In Transit',
-        icon: 'fa-solid fa-truck',
-        done: status === 'transferring' || status === 'delivered',
+        done: status === 'approved' || status === 'delivered',
       },
       {
         key: 'delivered',
@@ -282,14 +288,18 @@ const CoffinTransfers = ({
 
     const waitingHint =
       type === 'incoming'
-        ? r.status === 'pending'
+        ? // I am the SOURCE / dispatcher (another branch requested my stock).
+          r.status === 'pending'
+          ? `${dest?.name || 'The requesting branch'} is waiting for your approval`
+          : r.status === 'approved'
+            ? `Approved — awaiting ${dest?.name || 'the requesting branch'} to confirm delivery`
+            : null
+        : // I am the REQUESTER (I asked another branch for stock).
+          r.status === 'pending'
           ? `Waiting for ${origin?.name || 'the source branch'} to approve & dispatch`
           : r.status === 'approved'
-            ? `${origin?.name || 'Source branch'} approved — preparing dispatch`
-            : null
-        : r.status === 'transferring'
-          ? `Awaiting delivery confirmation by ${dest?.name || 'the requesting branch'}`
-          : null;
+            ? `${origin?.name || 'Source branch'} approved — confirm delivery when the goods arrive`
+            : null;
 
     return (
       <>
@@ -587,8 +597,9 @@ const CoffinTransfers = ({
                       flexWrap: 'wrap',
                     }}
                   >
-                    {/* OUTGOING = my branch is the SOURCE / dispatcher */}
-                    {type === 'outgoing' && r.status === 'pending' && (
+                    {/* INCOMING = my branch is the SOURCE / dispatcher
+                        (another branch requested my stock). */}
+                    {type === 'incoming' && r.status === 'pending' && (
                       <>
                         <button
                           style={btnStyle(S.dangerLight, S.danger, true)}
@@ -610,18 +621,7 @@ const CoffinTransfers = ({
                         </button>
                       </>
                     )}
-                    {type === 'outgoing' && r.status === 'approved' && (
-                      <button
-                        style={btnStyle(S.infoLight, S.info)}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onStockAction(r.id, 'transferring');
-                        }}
-                      >
-                        <i className="fa-solid fa-truck"></i> Mark In Transit
-                      </button>
-                    )}
-                    {type === 'outgoing' && r.status === 'transferring' && (
+                    {type === 'incoming' && r.status === 'approved' && (
                       <span
                         style={{
                           fontSize: 12,
@@ -637,9 +637,10 @@ const CoffinTransfers = ({
                       </span>
                     )}
 
-                    {/* INCOMING = my branch is the RECEIVER / requester.
-                        Only this side may write "Delivered". */}
-                    {type === 'incoming' && r.status === 'pending' && (
+                    {/* OUTGOING = my branch is the REQUESTER / receiver
+                        (I asked another branch for stock). Only this side may
+                        write "Delivered". */}
+                    {type === 'outgoing' && r.status === 'pending' && (
                       <button
                         style={btnStyle('#fff', S.danger, `1px solid ${S.border}`)}
                         onClick={(e) => {
@@ -650,22 +651,7 @@ const CoffinTransfers = ({
                         <i className="fa-solid fa-times"></i> Cancel Request
                       </button>
                     )}
-                    {type === 'incoming' && r.status === 'approved' && (
-                      <span
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: S.textMuted,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 8,
-                        }}
-                      >
-                        <i className="fa-solid fa-hourglass-half"></i> {origin?.name || 'Source'} is
-                        preparing dispatch
-                      </span>
-                    )}
-                    {type === 'incoming' && r.status === 'transferring' && (
+                    {type === 'outgoing' && r.status === 'approved' && (
                       <button
                         style={btnStyle(S.success, '#fff')}
                         onClick={(e) => {

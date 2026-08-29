@@ -42,7 +42,16 @@ export default function LoginPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
-    const slug = localStorage.getItem('tenantSlug');
+    // Resume with the user's COMPLETE branch slug (`<org-slug>-<branch-name>`,
+    // e.g. `...-nairobi` for Main / `...-machakos` for Machakos) so every
+    // navigation URL carries the exact branch scope. Falls back to the
+    // parent tenant slug for users without a branch.
+    let slug = null;
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      slug = storedUser.branchSlug || null;
+    } catch { /* ignore */ }
+    slug = slug || localStorage.getItem('tenantSlug');
     if (token && token !== 'undefined' && token !== 'null' && slug && slug !== 'default' && slug !== 'dashboard') {
       navigate(`/tenant/${slug}/dashboard`);
     } else if (!token || token === 'undefined' || token === 'null') {
@@ -89,19 +98,24 @@ export default function LoginPage() {
 
         const userData = response.user || {};
 
-        // ALWAYS navigate using the PARENT tenant slug — never the "effective"
-        // scope (response.tenant.tenantSlug is the BRANCH DB NAME for branch
-        // users, which produced /tenant/<branch-db-name>/... URLs and landed
-        // users in the wrong branch/tenant). Branch context continues to be
-        // scoped via branchId/branchSlug/branchDbName + x-branch-* headers.
+        // Navigate with the user's COMPLETE BRANCH SLUG — `<org-slug>-<branch-name>`
+        // (e.g. `monezuma-monalisa-feuneral-home-nairobi` for the Main branch,
+        // `...-machakos` / `...-thika` for children). The backend resolves any
+        // complete branch slug back to the parent tenant, so every page URL
+        // carries the exact branch scope the user belongs to. Users without a
+        // branch (tenant admins) fall back to the parent tenant slug.
         const tenantSlug =
           userData.parentTenantSlug ||
           response.tenant?.parentTenantSlug ||
           response.tenant?.slug ||
           userData.tenantSlug;
+        const navSlug = userData.branchSlug || tenantSlug;
 
         if (tenantSlug) {
           localStorage.setItem('tenantSlug', tenantSlug);
+          if (userData.branchSlug) {
+            localStorage.setItem('branchSlug', userData.branchSlug);
+          }
           if (userData.parentTenantSlug) {
             localStorage.setItem('parentTenantSlug', userData.parentTenantSlug);
           }
@@ -109,7 +123,7 @@ export default function LoginPage() {
           setShowSuccess(true);
 
           setTimeout(() => {
-            navigate(`/tenant/${tenantSlug}/dashboard`, { replace: true });
+            navigate(`/tenant/${navSlug}/dashboard`, { replace: true });
           }, 400);
         } else {
           throw new Error('No tenant information available');

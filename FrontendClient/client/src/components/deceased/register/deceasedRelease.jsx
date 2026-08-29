@@ -1019,6 +1019,7 @@ const DeceasedReleaseForm = () => {
       tel_number: deceased.tell_no || deceased.tel_number || deceased.phone_number || deceased.contact || '',
       date_admitted: deceased.date_admitted || prev.date_admitted,
       date_of_removal: deceased.date_of_removal || prev.date_of_removal,
+      permit_number: deceased.permit_number || deceased.permit_no || '',
     }));
   };
 
@@ -1035,13 +1036,9 @@ const DeceasedReleaseForm = () => {
     setErrors(prev => ({ ...prev, admission_number: '' }));
     setMessage({ type: '', text: '' });
 
-    // Keep the green "Searching..." loader visible inside the input for at least
-    // 900ms so the user always sees the search phase, even on instant responses.
-    const minDelay = new Promise((resolve) => setTimeout(resolve, 900));
-
     try {
       const tenantSlug = getTenantSlug();
-      const request = axios.get(
+      const response = await axios.get(
         `${env.FULL_API_URL}${ENDPOINTS.DECEASED.BY_ADMISSION(encodeURIComponent(admissionNumber))}`,
         {
           headers: {
@@ -1050,7 +1047,6 @@ const DeceasedReleaseForm = () => {
           },
         }
       );
-      const response = await Promise.all([request, minDelay]).then(([res]) => res);
 
       const result = response.data;
       const deceased = result?.data || (result && result.full_name ? result : null);
@@ -1069,8 +1065,6 @@ const DeceasedReleaseForm = () => {
 
       fillDeceasedIntoForm(deceased);
     } catch (error) {
-      // Even on a fast failure, hold the loader up briefly so the state change is visible
-      await minDelay;
       // Fall back to the locally-loaded list before reporting a failure
       const local = deceasedList.find(
         (d) => String(d.admission_number).trim() === admissionNumber

@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS leave_day_additions (
   days INT NOT NULL,
   reason TEXT,
   added_by INT NOT NULL,
-  created_at DATE DEFAULT (CURRENT_DATE),
+  created_at DATE DEFAULT NULL,
   INDEX idx_addition_user (user_id),
   INDEX idx_addition_tenant (tenant_slug),
   INDEX idx_addition_date (created_at)

@@ -232,32 +232,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # Uploads Service - Centralized file storage (signatures, documents, images)
-  uploads-service:
-    build:
-      context: .
-      dockerfile: ./services/uploads-service/Dockerfile
-    container_name: restpoint_uploads_service
-    ports:
-      - '5012:5012'
-    volumes:
-      - shared_uploads:/opt/storage/uploads
-    environment:
-      - PORT=5012
-      - NODE_ENV=production
-      - SERVICE_NAME=uploads-service
-      - SERVICE_VERSION=1.0.0
-      - UPLOADS_BASE_DIR=/opt/storage/uploads
-    networks:
-      - restpoint_network
-    restart: unless-stopped
-    healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5012/health']
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
   # Deceased Service
   deceased-service:
     build:
@@ -282,7 +256,6 @@ services:
       - REDIS_HOST=restpoint_redis
       - REDIS_PORT=6379
       - UPLOADS_BASE_DIR=/app/uploads
-      - UPLOADS_SERVICE_URL=http://uploads-service:5012
     env_file:
       - .env
     networks:
@@ -293,8 +266,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      uploads-service:
-        condition: service_started
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
@@ -633,7 +604,6 @@ services:
       - DB_PORT=3306
       - DB_USER=restpoint_user
       - DB_PASSWORD=${DB_PASSWORD}
-      - UPLOADS_SERVICE_URL=http://uploads-service:5012
       - UPLOADS_BASE_DIR=/app/uploads
     env_file:
       - .env
@@ -643,8 +613,6 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
-      uploads-service:
-        condition: service_started
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s

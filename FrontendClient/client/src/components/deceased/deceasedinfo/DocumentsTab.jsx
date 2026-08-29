@@ -164,8 +164,6 @@ const DocumentsTab = ({ documents, deceasedId }) => {
     <>
       {showRouteOptimizer && <RouteOptimizer onClose={() => setShowRouteOptimizer(false)} />}
       
-      <SectionHead $mt0 $primary><span>01</span> Uploaded Documents</SectionHead>
-      
       <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', flexWrap: 'wrap' }}>
         <input
           ref={fileInputRef}
@@ -175,21 +173,13 @@ const DocumentsTab = ({ documents, deceasedId }) => {
           disabled={isUploading}
           style={{ display: 'none' }}
         />
-        <Btn 
-          $primary 
-          onClick={triggerFileUpload} 
+        <Btn
+          $primary
+          onClick={triggerFileUpload}
           disabled={isUploading}
           style={{ cursor: 'pointer' }}
         >
           {isUploading ? 'Uploading...' : '+ Upload Document'}
-        </Btn>
-        <Btn>Scan Document</Btn>
-        <Btn onClick={() => setShowRouteOptimizer(true)}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-            <circle cx="12" cy="10" r="3"></circle>
-          </svg>
-          Route Calculations
         </Btn>
       </div>
 

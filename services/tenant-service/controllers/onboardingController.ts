@@ -97,9 +97,9 @@ export class OnboardingController {
       // Canonical tenant slug — mirrors registerTenant()'s subdomain/dbName so the
       // logo folder, the /uploads/<slug> URL and the tracking rows all line up
       // with the tenant record stored in tenant_tracking.tenants.tenant_slug.
-      const tenantSlug = normalizedBranches.length > 1
-        ? `${generateSlug(finalTenantName)}-${generateSlug(normalizedBranches[0].branch_name)}`
-        : generateSlug(finalTenantName);
+      // The tenant slug is ALWAYS the ORGANIZATION (parent) slug — the first
+      // branch is the Main/PARENT branch and must never be appended into it.
+      const tenantSlug = generateSlug(finalTenantName);
 
     
       // ─── PROCESS LOGO UPLOAD ─────────────────────────────────────────────

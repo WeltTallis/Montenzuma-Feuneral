@@ -11,8 +11,13 @@ import {
   getBranchId,
   getBranches,
 } from '../../utils/globalAuth';
-import { formatDate, todayKey } from '../../utils/dates/parseDates';
+import HorizontalCalendar from '../views/horizontalCalender';
+import WeeklyView from '../views/weeklyView';
+import DailyView from '../views/dailyView';
+import { formatDate, toDateKey, todayKey } from '../../utils/dates/parseDates';
 import ReservationDashboard from './ReservationDashboard';
+
+import CoffinTransfers from './coffinTransfers';
 
 const API = env.FULL_API_URL;
 
@@ -59,10 +64,13 @@ const getBookingStatus = (status) => {
     cancelled: { label: 'Cancelled', cls: 'tag-ca' },
     approved: { label: 'Approved', cls: 'tag-ar' },
     rejected: { label: 'Rejected', cls: 'tag-ou' },
-    transferring: { label: 'In Transit', cls: 'tag-tr' },
     delivered: { label: 'Delivered', cls: 'tag-de' },
   };
-  return map[status] || map.pending;
+  // 2-status flow: legacy "transferring/In Transit" rows render as Approved.
+  const normalized = ['transferring', 'transit', 'in-transit', 'in_transit'].includes(status)
+    ? 'approved'
+    : status;
+  return map[normalized] || map.pending;
 };
 
 const getReqStatus = (status) => {
@@ -70,10 +78,12 @@ const getReqStatus = (status) => {
     pending: { label: 'Pending', cls: 'tag-pe' },
     approved: { label: 'Approved', cls: 'tag-ar' },
     rejected: { label: 'Rejected', cls: 'tag-ou' },
-    transferring: { label: 'In Transit', cls: 'tag-tr' },
     delivered: { label: 'Delivered', cls: 'tag-de' },
   };
-  return map[status] || map.pending;
+  const normalized = ['transferring', 'transit', 'in-transit', 'in_transit'].includes(status)
+    ? 'approved'
+    : status;
+  return map[normalized] || map.pending;
 };
 
 const getBookingDotColor = (b) => {
@@ -106,10 +116,12 @@ const getStatusColor = (status) => {
     completed: S.success,
     cancelled: S.danger,
     rejected: S.danger,
-    transferring: '#7C3AED',
     delivered: '#0D9488',
   };
-  return map[status] || S.primary;
+  const normalized = ['transferring', 'transit', 'in-transit', 'in_transit'].includes(status)
+    ? 'approved'
+    : status;
+  return map[normalized] || S.primary;
 };
 
 const formatKES = (n) => 'KES ' + parseFloat(n || 0).toLocaleString();
@@ -844,6 +856,7 @@ const Tag = ({ cls, children }) => {
 
 //  Main Component 
 const CoffinDashboard = () => {
+  const [tab, setTab] = useState('inventory');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -1186,14 +1199,13 @@ const CoffinDashboard = () => {
   const handleStockAction = async (id, action) => {
     // ── Role guards ──────────────────────────────────────────────────
     // from_branch_id = source/dispatcher · to_branch_id = requester/receiver.
-    // Only the SOURCE branch may approve / mark in transit.
-    // Only the RECEIVING (requesting) branch may confirm delivery.
-    // Either side may reject/cancel while still pending.
+    // 2-status flow: ONLY the SOURCE branch may approve; ONLY the
+    // REQUESTING (receiving) branch may confirm "Delivered". No "In Transit".
     const req = stockRequests.find((r) => r.id === id || String(r.id) === String(id));
     if (req) {
       const isSource = req.from_branch_id == currentBranch;
       const isReceiver = req.to_branch_id == currentBranch;
-      if ((action === 'approve' || action === 'transferring') && !isSource) {
+      if (action === 'approve' && !isSource) {
         toast.error('Only the source branch can approve and dispatch this transfer');
         return;
       }
@@ -1206,7 +1218,7 @@ const CoffinDashboard = () => {
       const res = await api.post(`/coffins/stock-requests/${id}/${action}`);
       if (res.data?.success) {
         toast.success(
-          action === 'delivered' ? 'Transfer marked as delivered' : `Request ${action}ed successfully`,
+          action === 'delivered' ? 'Transfer received & Delivered' : action === 'approve' ? 'Request Approved & Dispatched' : `Request ${action}ed successfully`,
         );
         setDrawer({ open: false, title: '', content: '' });
         fetchAllData();
@@ -1422,9 +1434,13 @@ const CoffinDashboard = () => {
     if (!r) return;
     const c = coffins.find((x) => (x.coffin_id || x.id) == r.coffin_id);
 
-    const stages = ['pending', 'approved', 'transferring', 'delivered'];
-    const currentStageIdx = stages.indexOf(r.status);
-    const stageLabels = ['Requested', 'Approved', 'In Transit', 'Delivered'];
+    const stages = ['pending', 'approved', 'delivered'];
+    const normReqStatus = ['transferring', 'transit', 'in-transit', 'in_transit'].includes(r.status)
+      ? 'approved'
+      : r.status;
+    const currentStageIdx = stages.indexOf(normReqStatus);
+    const stageLabels = ['Requested', 'Approved', 'Delivered'];
+    const stageWidth = `${(100 / stageLabels.length).toFixed(2)}%`;
 
     let trackerHtml = `<div style="position:relative; margin:24px 0 32px;">
       <div style="position:absolute; top:16px; left:16px; right:16px; height:3px; background:${S.border}; z-index:0; border-radius:2px;"></div>
@@ -1440,7 +1456,7 @@ const CoffinDashboard = () => {
         idx < currentStageIdx ? S.success : idx === currentStageIdx ? S.primary : S.border;
       const dotColor = idx < currentStageIdx || idx === currentStageIdx ? '#fff' : S.textMuted;
       const labelColor = idx <= currentStageIdx ? S.text : S.textMuted;
-      trackerHtml += `<div style="display:flex; flex-direction:column; align-items:center; gap:8px; z-index:1; text-align:center; width:25%;">
+      trackerHtml += `<div style="display:flex; flex-direction:column; align-items:center; gap:8px; z-index:1; text-align:center; width:${stageWidth};">
         <div style="width:32px; height:32px; border-radius:50%; background:${dotBg}; border:3px solid ${dotBorder}; color:${dotColor}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; transition:all 0.3s; ${idx === currentStageIdx ? 'transform:scale(1.1);' : ''}">${icon}</div>
         <div style="font-size:11px; font-weight:600; color:${labelColor}; text-transform:uppercase; letter-spacing:0.05em;">${label}</div>
       </div>`;
@@ -1596,8 +1612,9 @@ const CoffinDashboard = () => {
       ${historyHtml}
       <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-top:24px;">
         ${r.status === 'pending' && r.from_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction('${r.id}','approve')"><i class="fa-solid fa-check"></i> Approve & Dispatch</button>` : ''}
-        ${r.status === 'approved' && r.from_branch_id == currentBranch ? `<button class="drawer-btn btn-w" onclick="window.__handleStockAction('${r.id}','transferring')"><i class="fa-solid fa-truck"></i> Mark In Transit</button>` : ''}
-        ${r.status === 'transferring' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction('${r.id}','delivered')"><i class="fa-solid fa-check-double"></i> Confirm Delivered</button>` : ''}
+        ${r.status === 'pending' && r.from_branch_id == currentBranch ? `<button class="drawer-btn btn-d" onclick="window.__handleStockAction('${r.id}','rejected')"><i class="fa-solid fa-times"></i> Reject</button>` : ''}
+        ${r.status === 'approved' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction('${r.id}','delivered')"><i class="fa-solid fa-check-double"></i> Delivered Now</button>` : ''}
+        ${r.status === 'approved' && r.from_branch_id == currentBranch ? `<div style="font-size:12px; color:#64748b; font-style:italic; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-hourglass-half"></i> Approved — awaiting ${r.to_branch_name || 'the requesting branch'} to confirm delivery</div>` : ''}
         <button class="drawer-btn btn-g" onclick="window.__closeDrawer()">Close</button>
       </div>`;
     openDrawer(`Transfer Request #${r.id}`, content);
@@ -1976,7 +1993,11 @@ const CoffinDashboard = () => {
   }, [bookings, branches, currentBranch, coffins]);
 
   // â”€â”€â”€ Render Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
+  const pendingReqCount = stockRequests.filter(
+    (r) =>
+      r.status === 'pending' &&
+      (r.from_branch_id == currentBranch || r.to_branch_id == currentBranch),
+  ).length;
 
   // â”€â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (loading) {
@@ -2020,13 +2041,281 @@ const CoffinDashboard = () => {
   }
 
   // â”€â”€â”€ Render Inventory Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const renderInventory = () => (
+    <>
+      {/* Modern Stat Cards */}
+      <div style={styles.statsGrid}>
+        <div style={{ ...styles.statCard, background: '#1e3a8a' }}>
+          <div style={styles.statHeader}>
+            <span style={styles.statLabel}>Total Stock</span>
+            <div style={styles.statIcon}>
+              <i className="fa-solid fa-boxes-stacked"></i>
+            </div>
+          </div>
+          <div style={styles.statValue}>{totalStock}</div>
+          <div style={styles.statSubtext}>Units available</div>
+        </div>
 
+        <div style={{ ...styles.statCard, background: '#15803d' }}>
+          <div style={styles.statHeader}>
+            <span style={styles.statLabel}>Available</span>
+            <div style={styles.statIcon}>
+              <i className="fa-solid fa-circle-check"></i>
+            </div>
+          </div>
+          <div style={styles.statValue}>{totalStock - lowStockCount - outOfStockCount}</div>
+          <div style={styles.statSubtext}>Ready to book</div>
+        </div>
 
+        <div style={{ ...styles.statCard, background: '#d97706' }}>
+          <div style={styles.statHeader}>
+            <span style={styles.statLabel}>Low Stock</span>
+            <div style={styles.statIcon}>
+              <i className="fa-solid fa-triangle-exclamation"></i>
+            </div>
+          </div>
+          <div style={styles.statValue}>{lowStockCount}</div>
+          <div style={styles.statSubtext}>Needs restocking</div>
+        </div>
 
+        <div style={{ ...styles.statCard, background: '#b91c1c' }}>
+          <div style={styles.statHeader}>
+            <span style={styles.statLabel}>Out of Stock</span>
+            <div style={styles.statIcon}>
+              <i className="fa-solid fa-times-circle"></i>
+            </div>
+          </div>
+          <div style={styles.statValue}>{outOfStockCount}</div>
+          <div style={styles.statSubtext}>Unavailable items</div>
+        </div>
+      </div>
+
+      {branchCoffins.length === 0 && coffins.length > 0 && (
+        <div
+          style={{
+            background: S.warningLight,
+            border: '1px solid #fcd34d',
+            color: '#92400e',
+            padding: 16,
+            borderRadius: 12,
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <i className="fa-solid fa-info-circle" style={{ fontSize: 20 }}></i>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>
+              No coffins in {branches.find((b) => b.id == currentBranch)?.name || 'this branch'}
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: 13 }}>
+              There are {coffins.length} coffins in other branches. Use "Find in Other Branches" to
+              search and request stock.
+            </p>
+          </div>
+          <button
+            style={{ ...styles.btn, ...styles.btnP, ...styles.btnSm, whiteSpace: 'nowrap' }}
+            onClick={() => openFindStock()}
+          >
+            <i className="fa-solid fa-network-wired"></i> Find Stock
+          </button>
+        </div>
+      )}
+      <div style={styles.tw}>
+        <div style={styles.tt}>
+          <div style={styles.sbox}>
+            <i className="fa-solid fa-magnifying-glass" style={{ color: S.textMuted }}></i>
+            <input
+              style={styles.sboxInput}
+              placeholder="Search name or SKU..."
+              value={invQuery}
+              onChange={(e) => setInvQuery(e.target.value)}
+            />
+          </div>
+          <div style={styles.ff}>
+            {[
+              ['all', 'All'],
+              ['available', 'Available'],
+              ['low', 'Low'],
+              ['out', 'Out'],
+            ].map((f) => (
+              <button
+                key={f[0]}
+                style={{ ...styles.fn, ...(invFilter === f[0] ? styles.fnActive : {}) }}
+                onClick={() => setInvFilter(f[0])}
+              >
+                {f[1]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={styles.tableWrap}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Coffin</th>
+                <th style={styles.th}>ID</th>
+                <th style={styles.th}>Details</th>
+                <th style={styles.th}>Price</th>
+                <th style={styles.th}>Stock</th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.th}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCoffins.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>
+                    <div style={styles.es}>
+                      <i className="fa-solid fa-box-open" style={styles.esIcon}></i>
+                      <p style={styles.esP}>No coffins found locally.</p>
+                      {invQuery && (
+                        <button
+                          style={{ ...styles.btn, ...styles.btnP, marginTop: 16 }}
+                          onClick={() => openFindStock(invQuery)}
+                        >
+                          <i className="fa-solid fa-network-wired"></i> Find "{invQuery}" in other
+                          branches
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredCoffins.map((coffin) => {
+                  const st = getStockStatus(coffin.stock);
+                  const id = coffin.coffin_id || coffin.id;
+                  return (
+                    <tr key={id}>
+                      <td style={styles.td}>
+                        <div style={styles.ci}>
+                          <div style={styles.thumb}>{coffin.name?.charAt(0) || '?'}</div>
+                          <div>
+                            <div style={styles.cname}>{coffin.name}</div>
+                            <div style={styles.sku}>{coffin.sku}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td
+                        style={{
+                          ...styles.td,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: S.textMuted,
+                          fontFamily: 'monospace',
+                        }}
+                      >
+                        {coffin.custom_id || coffin.coffin_id || 'â€”'}
+                      </td>
+                      <td style={styles.td}>
+                        <div
+                          style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12 }}
+                        >
+                          {coffin.size && (
+                            <span style={{ color: S.text, fontWeight: 600 }}>
+                              Size: {coffin.size}
+                            </span>
+                          )}
+                          {coffin.color && (
+                            <span style={{ color: S.text, fontWeight: 600 }}>
+                              Color: {coffin.color}
+                            </span>
+                          )}
+                          {coffin.material && (
+                            <span style={{ color: S.textMuted }}>Material: {coffin.material}</span>
+                          )}
+                          {coffin.category && (
+                            <span style={{ color: S.textMuted }}>Category: {coffin.category}</span>
+                          )}
+                          {!coffin.size &&
+                            !coffin.color &&
+                            !coffin.material &&
+                            !coffin.category && (
+                              <span style={{ color: S.textLight, fontStyle: 'italic' }}>
+                                No additional details
+                              </span>
+                            )}
+                        </div>
+                      </td>
+                      <td style={{ ...styles.td, fontWeight: 600 }}>{formatKES(coffin.price)}</td>
+                      <td
+                        style={{
+                          ...styles.td,
+                          fontWeight: 700,
+                          color:
+                            coffin.stock <= 0
+                              ? S.danger
+                              : coffin.stock <= 2
+                                ? S.warning
+                                : S.success,
+                        }}
+                      >
+                        {coffin.stock}
+                      </td>
+                      <td style={styles.td}>
+                        <Tag cls={st.cls}>{st.label}</Tag>
+                      </td>
+                      <td style={styles.td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {coffin.stock > 0 && (
+                            <button
+                              style={{ ...styles.btn, ...styles.btnS, ...styles.btnSm }}
+                              onClick={() =>
+                                setModal({
+                                  open: true,
+                                  type: 'booking',
+                                  data: { coffin_id: id, service_date: todayKey() },
+                                })
+                              }
+                            >
+                              Book
+                            </button>
+                          )}
+                          {coffin.stock <= 0 && (
+                            <button
+                              style={{ ...styles.btn, ...styles.btnW, ...styles.btnSm }}
+                              onClick={() => openFindStock(coffin.name)}
+                            >
+                              Find Stock
+                            </button>
+                          )}
+                          {coffin.stock > 0 && (
+                            <button
+                              style={{
+                                ...styles.btn,
+                                ...styles.btnW,
+                                ...styles.btnSm,
+                                padding: '6px 10px',
+                              }}
+                              onClick={() => openFindStock(coffin.name)}
+                              title="Search stock in other branches"
+                            >
+                              <i className="fa-solid fa-network-wired" style={{ fontSize: 12 }}></i>
+                            </button>
+                          )}
+                          <button
+                            style={styles.ib}
+                            onClick={() => viewCoffin(id)}
+                            title="View Details"
+                          >
+                            <i className="fa-solid fa-eye"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
 
   // â”€â”€â”€ Render sections via shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Reservations-only page: the Inventory and Transfers tabs were removed —
-  // ReservationDashboard below always renders its own reservations section.
+  // Transfers tab UI extracted into ./coffinTransfers.jsx (rendered inside the ReservationDashboard shell below)
 
   // â”€â”€â”€ Main Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
@@ -2088,20 +2377,18 @@ const CoffinDashboard = () => {
       <ToastContainer position="top-center" autoClose={3000} />
 
 
-      {/* Page shell: ReservationDashboard provides the toolbar and always renders its
-          own reservations view (mini calendar, stats, filters, booking list, analytics). */}
+      {/* Tab content: ReservationDashboard IS the page shell - its hoisted toolbar hosts the top navigation */}
       <div
         style={{
+          height: 'calc(100vh - 200px)',
           minHeight: 560,
           borderRadius: 16,
-          overflow: 'visible',
+          overflow: 'hidden',
           border: `1px solid ${S.border}`,
           boxShadow: S.shadowMd,
           background: '#fff',
         }}
       >
-        {/* Reservations-only: navTabs/headerActions/inventory/transfers children were
-            removed, so the shell skips cb-alt-host and always shows reservations. */}
         <ReservationDashboard
           bookings={branchBookings}
           coffins={coffins}
@@ -2111,6 +2398,18 @@ const CoffinDashboard = () => {
             setModal({ open: true, type: 'booking', data: { service_date: todayKey() } })
           }
           onViewBooking={(id) => viewBooking(id)}
+          navTabs={[
+            { key: 'inventory', icon: 'fa-boxes-stacked', label: 'Inventory' },
+            { key: 'bookings', icon: 'fa-calendar-check', label: 'Reservations' },
+            {
+              key: 'transfers',
+              icon: 'fa-right-left',
+              label: 'Transfers',
+              badge: pendingReqCount,
+            },
+          ]}
+          activeNav={tab}
+          onNavChange={setTab}
           branchSelector={
             branches.length > 1
               ? {
@@ -2123,11 +2422,65 @@ const CoffinDashboard = () => {
                 }
               : null
           }
-        />
+          headerActions={
+            tab === 'inventory' ? (
+              <>
+                <button
+                  style={{ ...styles.btn, ...styles.btnP, whiteSpace: 'nowrap' }}
+                  onClick={() =>
+                    setModal({ open: true, type: 'coffin', data: { stock: 0, price: 0 } })
+                  }
+                >
+                  <i className="fa-solid fa-plus"></i> Add Coffin
+                </button>
+                <button
+                  style={{ ...styles.btn, ...styles.btnW, whiteSpace: 'nowrap' }}
+                  onClick={() => openFindStock()}
+                  title="Search and request stock from other branches"
+                >
+                  <i className="fa-solid fa-network-wired"></i> Find Stock in Other Branches
+                </button>
+              </>
+            ) : tab === 'transfers' ? (
+              <button
+                style={{
+                  padding: '8px 14px',
+                  border: `1px solid ${S.border}`,
+                  borderRadius: 8,
+                  background: '#fff',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: S.text,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  transition: S.transition,
+                  whiteSpace: 'nowrap',
+                }}
+                onClick={fetchAllData}
+              >
+                <i className="fa-solid fa-arrows-rotate" style={{ fontSize: 12 }}></i> Refresh
+              </button>
+            ) : null
+          }
+        >
+          {tab === 'inventory' && renderInventory()}
+          {tab === 'transfers' && (
+            <CoffinTransfers
+              stockRequests={stockRequests}
+              coffins={coffins}
+              branches={branches}
+              currentBranch={currentBranch}
+              onStockAction={handleStockAction}
+              onRefresh={fetchAllData}
+            />
+          )}
+        </ReservationDashboard>
       </div>
 
 
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MODALS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+    
 
       {/* Add Coffin Modal */}
       <div

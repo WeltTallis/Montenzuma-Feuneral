@@ -303,6 +303,11 @@ export default function BookNewHearseModal({
   const hasD = dates.length > 0;
   const hasHearses = hearses.length > 0;
   const showArr = hasHearses && !checking;
+  // When dates are selected, ONLY available hearses render — booked,
+  // maintenance or out-of-service hearses are hidden from the carousel.
+  const visibleHearses = hasD
+    ? (hearses || []).filter(h => { const s = fleet[String(h.id)]; return !s || s.status === 'available'; })
+    : (hearses || []);
 
   const calDays = () => {
     const ts = formatDateStr(new Date()); const f = new Date(pkY, pkM, 1); const so = f.getDay(); const d = [];
@@ -356,11 +361,15 @@ export default function BookNewHearseModal({
                 </SBar>
               )}
 
-              {showArr && (
+              {hasD && !checking && visibleHearses.length === 0 && (
+                <Warn><span>ⓘ</span>All hearses are booked or under maintenance on the selected date(s). Try different dates.</Warn>
+              )}
+
+              {showArr && visibleHearses.length > 0 && (
                 <ScrollWrap>
                   <Arrow type="button" $dir="left" disabled={!sL} onClick={e => { e.preventDefault(); e.stopPropagation(); doScroll('l'); }}><ChevronLeft size={13} /></Arrow>
                   <ScrollTrack ref={scrollRef}>
-                    {(hearses || []).map(h => {
+                    {visibleHearses.map(h => {
                       const sel = String(h.id) === String(form.hearse_id);
                       const st = fleet[String(h.id)];
                       const bk = hasD && st && st.status === 'booked';

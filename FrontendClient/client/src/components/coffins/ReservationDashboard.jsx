@@ -14,6 +14,8 @@ import {
 } from 'recharts';
 import api from '../../api/axios';
 import { getParentTenantSlug, getTenantId } from '../../utils/globalAuth';
+import CoffinInventory from './coffininventory';
+import CoffinTransfers from './coffinTransfers';
 
 var TX   = '#111827';
 var TX2  = '#374151';
@@ -93,9 +95,30 @@ export default function ReservationDashboard(props) {
   var bookings = props.bookings || [], coffins = props.coffins || [];
   var formatPrice = props.formatPrice, onNewReservation = props.onNewReservation;
   var navTabs = props.navTabs, activeNav = props.activeNav, onNavChange = props.onNavChange;
+  var onInventory = props.onInventory, onTransfer = props.onTransfer;
   var branchSelector = props.branchSelector, headerActions = props.headerActions;
   var childrenProp = props.children;
-  var showAltSection = !!(navTabs && navTabs.length > 0 && activeNav && activeNav !== 'bookings');
+  // Self-managed alt views: when the parent doesn't supply navTabs, the
+  // Inventory / Transfer toolbar buttons switch views internally instead of
+  // requiring external wiring.
+  var _av = useState(null), altView = _av[0], setAltView = _av[1];
+  var selfNav = !(navTabs && navTabs.length > 0);
+  var effTabs = selfNav
+    ? [
+        { key: 'bookings',  label: 'Bookings',  icon: 'fa-calendar-check' },
+        { key: 'inventory', label: 'Inventory', icon: 'fa-boxes-stacked' },
+        { key: 'transfers', label: 'Transfers', icon: 'fa-right-left' },
+      ]
+    : navTabs;
+  var effActive = activeNav || (selfNav ? (altView || 'bookings') : null);
+  var showAltSection = !!(effActive && effActive !== 'bookings');
+  // Alt content: parent-supplied children win; otherwise render the built-in
+  // Coffin Inventory / Coffin Transfers modules for the active view.
+  var altContent = childrenProp;
+  if (!altContent && showAltSection) {
+    if (effActive === 'inventory') altContent = <CoffinInventory />;
+    else if (effActive === 'transfers') altContent = <CoffinTransfers />;
+  }
 
   var _v = useState('month'), view = _v[0], setView = _v[1];
   var _s = useState(new Date()), sel = _s[0], setSel = _s[1];
@@ -391,11 +414,11 @@ export default function ReservationDashboard(props) {
             <button className="cb-tb-nb" onClick={function () { navigate(-1); }}>{IC.cl}</button>
             <button className="cb-tb-nb" onClick={function () { navigate(1); }}>{IC.cr}</button>
           </div>
-          {navTabs && navTabs.length > 0 && (
+          {effTabs && effTabs.length > 0 && (
             <div className="cb-nav-pills">
-              {navTabs.map(function (t) {
+              {effTabs.map(function (t) {
                 return (
-                  <button key={t.key} className={'cb-nav-pill' + (activeNav === t.key ? ' on' : '')} onClick={function () { if (onNavChange) onNavChange(t.key); }}>
+                  <button key={t.key} className={'cb-nav-pill' + (effActive === t.key ? ' on' : '')} onClick={function () { if (onNavChange) onNavChange(t.key); else if (selfNav) setAltView(t.key === 'bookings' ? null : t.key); }}>
                     <i className={'fa-solid ' + t.icon} />
                     {t.label}
                     {!!t.badge && t.badge > 0 && <span className="cb-nav-badge">{t.badge}</span>}
@@ -420,13 +443,15 @@ export default function ReservationDashboard(props) {
                 {['day', 'week', 'month'].map(function (v) { return <button key={v} className={'cb-tb-v' + (view === v ? ' on' : '')} onClick={function () { setView(v); setClickedDay(null); }}>{v}</button>; })}
               </div>
               <button className="cb-tb-new" onClick={function () { if (onNewReservation) onNewReservation(); else showToast('New reservation form'); }}>{IC.pl} New Reservation</button>
+              <button className="cb-tb-btn" onClick={function () { if (onInventory) onInventory(); else if (selfNav) setAltView('inventory'); else showToast('Inventory not configured'); }}>{IC.grid} Inventory</button>
+              <button className="cb-tb-btn" onClick={function () { if (onTransfer) onTransfer(); else if (selfNav) setAltView('transfers'); else showToast('Transfer not configured'); }}>{IC.tr} Transfer</button>
             </React.Fragment>
           )}
         </div>
       </div>
 
       {showAltSection ? (
-        <div className="cb-alt-host">{childrenProp}</div>
+        <div className="cb-alt-host">{altContent}</div>
       ) : (
         <div style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%' }}>
           {/* Sidebar */}

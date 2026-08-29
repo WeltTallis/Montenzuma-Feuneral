@@ -60,6 +60,7 @@ export default function SettingsPage() {
     const [currentUser, setCurrentUser] = useState(resolveStoredUser());
     const [formError, setFormError] = useState('');
     const [error, setError] = useState(null);
+    const [assigningBranch, setAssigningBranch] = useState(null);
 
     const [userForm, setUserForm] = useState({
         email: '',
@@ -186,6 +187,13 @@ export default function SettingsPage() {
         try {
             const payload = {
                 ...userForm,
+                // The user is always owned by THIS tenant and assigned to a
+                // branch — tenant_id + branch_id decide where they log in.
+                tenant_id: cachedUser?.tenantId
+                    || cachedUser?.tenant_id
+                    || localStorage.getItem('tenantId')
+                    || sessionStorage.getItem('tenantId')
+                    || null,
                 // Backend requires a unique username — auto-derive from the
                 // email when the admin leaves it empty.
                 username: (userForm.username || userForm.email || '').trim().toLowerCase(),
@@ -200,6 +208,49 @@ export default function SettingsPage() {
         } catch (error) {
             console.error('Failed to add user:', error);
             setFormError(error.response?.data?.message || 'Failed to add user. Please try again.');
+        }
+    };
+
+    // Open the Add-User modal with the branch PRESELECTED to the MAIN/PARENT
+    // branch — the default for new users is always the parent branch. On
+    // multi-branch orgs the admin can then switch to any specific branch.
+    // The MAIN/PARENT branch is the one with no parent (parent_branch_id NULL)
+    // or the is_main flag — it is always the tenant's own (parent) database.
+    const isMainBranch = (b) => b.is_main === 1 || b.is_main === true || b.parent_branch_id === null || b.parent_branch_id === undefined;
+    const openAddUserModal = () => {
+        const activeBranches = branches.filter((b) => b.is_active === undefined || b.is_active === true || b.is_active === 1);
+        const main = activeBranches.find(isMainBranch) || activeBranches[0];
+        setUserForm({
+            email: '',
+            username: '',
+            password: '',
+            full_name: '',
+            phone: '',
+            role: 'staff',
+            branch_id: main ? String(main.branch_id) : '',
+        });
+        setFormError('');
+        setShowAddUserModal(true);
+    };
+
+    // Reassign an existing user to a branch. Users ALWAYS carry tenant_id +
+    // branch_id, so this decides which tenant DB + branch the user logs in to.
+    const handleAssignBranch = async (user, branchId) => {
+        if (!branchId || String(branchId) === String(user.branch_id || '')) return;
+        setAssigningBranch(user.user_id);
+        setError(null);
+        try {
+            await api.put(ENDPOINTS.TENANT.UPDATE_USER_BRANCH(tenantSlug, user.user_id), { branch_id: branchId });
+            setUsers((prev) => prev.map((u) => {
+                if (u.user_id !== user.user_id) return u;
+                const branch = branches.find((b) => String(b.branch_id) === String(branchId));
+                return { ...u, branch_id: branchId, branch_name: branch ? branch.branch_name : u.branch_name };
+            }));
+        } catch (err) {
+            console.error('Failed to assign branch:', err);
+            setError(err.response?.data?.message || 'Failed to assign branch. Please try again.');
+        } finally {
+            setAssigningBranch(null);
         }
     };
 
@@ -259,7 +310,7 @@ export default function SettingsPage() {
                     </div>
                     {isManager && (
                         <button
-                            onClick={() => setShowAddUserModal(true)}
+                            onClick={() => openAddUserModal()}
                             style={{
                                 padding: '0.6rem 1.2rem',
                                 background: THEME.colors.brass,
@@ -377,7 +428,7 @@ export default function SettingsPage() {
                                                 <th style={{ textAlign: 'left', padding: '0.75rem', fontSize: '0.75rem', fontWeight: 600, color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Name</th>
                                                 <th style={{ textAlign: 'left', padding: '0.75rem', fontSize: '0.75rem', fontWeight: 600, color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</th>
                                                 <th style={{ textAlign: 'left', padding: '0.75rem', fontSize: '0.75rem', fontWeight: 600, color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Role</th>
-                                                {isMultiTenant && <th style={{ textAlign: 'left', padding: '0.75rem', fontSize: '0.75rem', fontWeight: 600, color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Branch</th>}
+                                                {branches.length > 0 && <th style={{ textAlign: 'left', padding: '0.75rem', fontSize: '0.75rem', fontWeight: 600, color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Branch</th>}
                                                 <th style={{ textAlign: 'left', padding: '0.75rem', fontSize: '0.75rem', fontWeight: 600, color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
                                             </tr>
                                         </thead>
@@ -399,9 +450,38 @@ export default function SettingsPage() {
                                                             {user.role}
                                                         </span>
                                                     </td>
-                                                    {isMultiTenant && (
-                                                        <td style={{ padding: '0.75rem', fontSize: '0.88rem', color: THEME.colors.gray }}>
-                                                            {user.branch_name || '—'}
+                                                    {branches.length > 0 && (
+                                                        <td style={{ padding: '0.75rem' }}>
+                                                            {isManager ? (
+                                                                <select
+                                                                    value={String(user.branch_id || '')}
+                                                                    disabled={assigningBranch === user.user_id}
+                                                                    onChange={(e) => handleAssignBranch(user, e.target.value)}
+                                                                    style={{
+                                                                        padding: '0.35rem 0.5rem',
+                                                                        border: `1px solid ${THEME.colors.line}`,
+                                                                        borderRadius: '4px',
+                                                                        fontSize: '0.8rem',
+                                                                        fontFamily: "'Inter', sans-serif",
+                                                                        background: THEME.colors.white,
+                                                                        color: THEME.colors.ink,
+                                                                        maxWidth: '190px',
+                                                                        opacity: assigningBranch === user.user_id ? 0.6 : 1,
+                                                                        cursor: assigningBranch === user.user_id ? 'wait' : 'pointer',
+                                                                    }}
+                                                                >
+                                                                    <option value="">{assigningBranch === user.user_id ? 'Saving…' : 'Unassigned'}</option>
+                                                                    {branches.map((branch) => (
+                                                                        <option key={branch.branch_id} value={String(branch.branch_id)}>
+                                                                            {branch.branch_name}{isMainBranch(branch) ? ' (Main)' : ''}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            ) : (
+                                                                <span style={{ fontSize: '0.88rem', color: THEME.colors.gray }}>
+                                                                    {user.branch_name || 'Main'}
+                                                                </span>
+                                                            )}
                                                         </td>
                                                     )}
                                                     <td style={{ padding: '0.75rem' }}>
@@ -656,7 +736,7 @@ export default function SettingsPage() {
                                 </select>
                             </div>
 
-                            {isMultiTenant && branches.length > 0 && (
+                            {branches.length > 0 && (
                                 <div style={{ marginBottom: '1rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, color: THEME.colors.ink, marginBottom: '0.4rem' }}>
                                         Branch <span style={{ color: THEME.colors.red }}>*</span>
@@ -664,6 +744,7 @@ export default function SettingsPage() {
                                     <select
                                         value={userForm.branch_id}
                                         onChange={(e) => setUserForm({ ...userForm, branch_id: e.target.value })}
+                                        required
                                         style={{
                                             width: '100%',
                                             padding: '0.6rem',
@@ -677,10 +758,15 @@ export default function SettingsPage() {
                                         <option value="">Select a branch</option>
                                         {branches.map((branch) => (
                                             <option key={branch.branch_id} value={branch.branch_id}>
-                                                {branch.branch_name}
+                                                {branch.branch_name}{isMainBranch(branch) ? ' (Main)' : ''}
                                             </option>
                                         ))}
                                     </select>
+                                    <p style={{ fontSize: '0.72rem', color: THEME.colors.gray, marginTop: '0.35rem' }}>
+                                        {isMultiTenant
+                                            ? 'The user is assigned to this tenant and will only be able to log in to the selected branch.'
+                                            : 'All users are assigned to the main (parent) branch of this organization.'}
+                                    </p>
                                 </div>
                             )}
 

@@ -4,6 +4,9 @@
 // All fetches are resilient: on failure they resolve to empty shapes.
 // =============================================================
 import api from './axios';
+import {
+  getBranches, getBranchSlug, getParentTenantSlug,
+} from '../utils/globalAuth';
 
 const CACHE_TTL = 60 * 1000;
 const cache = new Map();
@@ -51,6 +54,111 @@ const toKey = (d) => {
 };
 
 const todayKey = () => toKey(new Date());
+
+/** Case-insensitive membership check — true when `val` matches any of `list`. */
+const search = (val, list) => {
+  const s = String(val == null ? '' : val).toLowerCase().trim();
+  return (list || []).some((x) => String(x).toLowerCase().trim() === s);
+};
+
+/** Coerce an API response payload into an array (handles { data, orders, bookings, rows, ... }). */
+const arr = (v) => {
+  if (Array.isArray(v)) return v;
+  if (v && typeof v === 'object') {
+    if (Array.isArray(v.data)) return v.data;
+    if (Array.isArray(v.orders)) return v.orders;
+    if (Array.isArray(v.bookings)) return v.bookings;
+    if (Array.isArray(v.hearses)) return v.hearses;
+    if (Array.isArray(v.items)) return v.items;
+    if (Array.isArray(v.results)) return v.results;
+    if (Array.isArray(v.rows)) return v.rows;
+    if (Array.isArray(v.records)) return v.records;
+    const first = v[Object.keys(v)[0]];
+    if (first && typeof first === 'object') return [first];
+  }
+  return [];
+};
+
+/* ─────────────────────────────────────────────────────────────────
+   MULTI-BRANCH "COMMAND CENTRE" HELPERS
+   Each branch runs its own deceased database (the branch slug IS the
+   DB name). To show every branch's activity on the dashboard we fetch
+   /deceased/deceased-all once PER branch — overriding x-tenant-slug
+   with each branch slug — and tag every record with the branch name.
+   ───────────────────────────────────────────────────────────────── */
+
+const sliceSlug = (v) => {
+  const s = String(v || '').trim();
+  return s && s !== 'undefined' && s !== 'null' ? s : null;
+};
+
+/** Resolve the branch list: blessed localStorage copy first, then the
+    tenant service (`/tenant/:parent/branches`). */
+const resolveBranches = async () => {
+  const fromLocal = getBranches();
+  if (Array.isArray(fromLocal) && fromLocal.length) {
+    return fromLocal.map((b) => ({
+      // Prefer the branch's COMPLETE slug (e.g. `org-home-nairobi`) — every
+      // branch carries one, including the main/parent branch — and let the
+      // backend resolve it to the branch database.
+      slug: sliceSlug(b?.branchSlug || b?.branch_slug || b?.branchDbName || b?.branch_db_name || b?.name),
+      name: (b?.branchName || b?.branch_name || b?.name || '').trim() || 'Branch',
+    }));
+  }
+  try {
+    const parent = getParentTenantSlug();
+    if (!parent) return [];
+    const r = await api.get(`/tenant/${parent}/branches`);
+    return (Array.isArray(r?.data?.data) ? r.data.data : Array.isArray(r?.data) ? r.data : [])
+      .map((b) => ({
+        slug: sliceSlug(b?.branch_slug || b?.branchSlug || b?.branch_db_name || b?.branchDbName || b?.db_name || b?.name),
+        name: (b?.branch_name || b?.branchName || b?.name || '').trim() || 'Branch',
+      }))
+      .filter((b) => b.slug);
+  } catch (e) {
+    console.warn('[CommandCentre] branch resolve failed:', e?.message);
+    return [];
+  }
+};
+
+/**
+ * Fetch deceased records across EVERY branch by calling the list endpoint
+ * with each branch's slug as x-tenant-slug. Every record is tagged with
+ * `branch_name` / `_branchSlug` so the dashboard can show activity by branch.
+ */
+export const fetchAllBranchDeceased = async () => {
+  let branches = await resolveBranches();
+  const currentSlug = sliceSlug(getBranchSlug() || getTenantSlug());
+  if (currentSlug && !branches.some((b) => b.slug === currentSlug)) {
+    branches.push({ slug: currentSlug, name: 'This branch' });
+  }
+  if (!branches.length) branches = [{ slug: currentSlug || 'system_shared', name: 'This branch' }];
+
+  const out = [];
+  await Promise.all(branches.map(async (b) => {
+    try {
+      for (let page = 1; page <= 6; page++) {
+        const r = await api.get('/deceased/deceased-all', {
+          params: { page, limit: 100 },
+          headers: { 'x-tenant-slug': b.slug },
+        }).catch(() => null);
+        const chunk = arr(r?.data?.data || r?.data);
+        if (!chunk.length) break;
+        chunk.forEach((rec) => out.push({
+          ...rec,
+          branch_name: b.name,
+          branch: b.name,
+          _branchSlug: b.slug,
+        }));
+        if (chunk.length < 100) break;
+      }
+    } catch (e) {
+      console.warn(`[CommandCentre] deceased fetch failed for ${b.slug}:`, e?.message);
+    }
+  }));
+
+  return out;
+};
 
 /** booking_dates is stored as a JSON array string e.g. '["2026-08-09"]' */
 const parseBookingDates = (raw) => {

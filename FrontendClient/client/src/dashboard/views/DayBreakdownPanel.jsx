@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
+import { fetchPostmortemsFeed } from "../../api/dashboardFeedApi";
 
 /* ════════════════════════════════════════════════════════════════
    Day Breakdown Panel — rendered beside the Mini Activity Calendar
@@ -29,11 +30,14 @@ const DBP_TINTS = [
   { re: /(admitting|ready|transferred|transit|postponed|requested|postmortem)/i, bg: "#FDF4E3", border: "#F0DDB0" },
   { re: /(pending|admitted|booked|active|confirmed)/i,       bg: "#EFF1F3", border: "#E3E0D9" },
 ];
+
 const tintOfTag = (tag) =>
   DBP_TINTS.find((t) => t.re.test(String(tag || ""))) || { bg: "#FFFFFF", border: "#EAE7E2" };
 
 /* Initial for the thumbnail — for prefixed names like "Coffin · MUMo"
    take the letter AFTER the separator so every coffin card isn't "C". */
+
+   
 const initialOfName = (n) => {
   const s = String(n || "");
   const tail = s.includes("·") ? s.split("·").pop() : s;
@@ -115,6 +119,61 @@ export default function DayBreakdownPanel({
   const tk = todayKey();
   const activeKey = dateKey || tk;
 
+  /* ── Real postmortem REQUESTS — same feed as the profile tab.
+     Legacy derivation only matched embedded `postmortem` fields,
+     which real rows don't carry, so this section stayed empty. */
+  const [pmRequests, setPmRequests] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    fetchPostmortemsFeed()
+      .then((rows) => { if (alive) setPmRequests(Array.isArray(rows) ? rows : []); })
+      .catch(() => { /* optional feed */ });
+    return () => { alive = false; };
+  }, []);
+
+  const dIndex = useMemo(() => {
+    const m = new Map();
+    (Array.isArray(sources?.deceased) ? sources.deceased : []).forEach((r) => {
+      if (r?.deceased_id != null) m.set(String(r.deceased_id), r);
+      if (r?.id != null) m.set(String(r.id), r);
+      if (r?.admission_number) m.set(String(r.admission_number), r);
+    });
+    return m;
+  }, [sources]);
+
+  const pmReqItems = useMemo(() => pmRequests.map((q) => {
+    const rec = dIndex.get(String(q?.deceased_id)) || null;
+    const num = rec?.admission_number || "";
+    const status = String(q?.status || "initiated").toLowerCase();
+    /* exam_status comes from the official postmortem table (joined by the API) —
+       a request whose exam has been completed must show Completed, not Awaiting */
+    const exam = String(q?.exam_status || "").toLowerCase();
+    const completed = exam === "completed";
+    return {
+      id: num ? `pm-${num}` : `pm-req-${q?.id}`,
+      name: rec?.full_name || q?.requested_by || "Unknown",
+      meta: num || q?.request_ref || "",
+      sub: [q?.reason, q?.requesting_authority].filter(Boolean).join(" · ") || `Requested by ${q?.requested_by || "—"}`,
+      tag: status === "cancelled" ? "Cancelled" : completed ? "Completed" : status === "sent" ? "Awaiting Exam" : "Requested",
+      _key: keyOf(q?.created_at || q?.updated_at),
+      /* raw tracker payload — carried to the side panel for full details */
+      pm_request: {
+        id: q?.id,
+        request_ref: q?.request_ref,
+        reason: q?.reason,
+        requesting_authority: q?.requesting_authority,
+        requested_by: q?.requested_by,
+        status: q?.status || "initiated",
+        created_at: q?.created_at,
+        sent_at: q?.sent_at,
+        exam_status: q?.exam_status || null,
+        exam_completed_at: q?.exam_completed_at || null,
+      },
+    };
+  }), [pmRequests, dIndex]);
+
+  const pmReqNums = useMemo(() => new Set(pmReqItems.map((p) => String(p.meta)).filter(Boolean)), [pmReqItems]);
+
   const sections = useMemo(() => {
     const deceased = Array.isArray(sources?.deceased) ? sources.deceased : [];
     const coffins = Array.isArray(sources?.coffins) ? sources.coffins : [];
@@ -141,18 +200,24 @@ export default function DayBreakdownPanel({
         tag: String(r?.status || r?.admission_status || "Released"),
       }));
 
-    /* Postmortem / Body requests */
-    const postmortems = deceased
-      .map((r, i) => ({ r, i, pm: pmMetaOf(r) }))
-      .filter(({ pm }) => pm && pm.key === activeKey)
-      .map(({ r, i, pm }) => ({
-        id: `pm-${r?.admission_number ?? r?.id ?? i}`,
-        name: r?.full_name || "Unknown",
-        meta: r?.admission_number || "",
-        sub: r?.cause_of_death || r?.body_status || "",
-        tag: pm.completed ? "Completed" : "Pending",
-        tagColor: pm.completed ? "#22c55e" : "#f59e0b",
-      }));
+    /* Postmortem / Body requests — real tracked requests first,
+       legacy derived rows only where no request covers them */
+    const postmortems = [
+      ...pmReqItems
+        .filter((p) => p._key === activeKey)
+        .map(({ _key, ...rest }) => rest),
+      ...deceased
+        .map((r, i) => ({ r, i, pm: pmMetaOf(r) }))
+        .filter(({ r, pm }) => pm && pm.key === activeKey && !pmReqNums.has(String(r?.admission_number || "")))
+        .map(({ r, i, pm }) => ({
+          id: `pm-${r?.admission_number ?? r?.id ?? i}`,
+          name: r?.full_name || "Unknown",
+          meta: r?.admission_number || "",
+          sub: r?.cause_of_death || r?.body_status || "",
+          tag: pm.completed ? "Completed" : "Pending",
+          tagColor: pm.completed ? "#22c55e" : "#f59e0b",
+        })),
+    ];
 
     /* Coffin bookings for the day */
     const bookings = coffins
@@ -173,7 +238,7 @@ export default function DayBreakdownPanel({
       { key: "postmortems", title: "Postmortem / Body Requests", color: "#8b5cf6", items: postmortems },
       { key: "bookings", title: "Coffin Bookings", color: "#f59e0b", items: bookings },
     ];
-  }, [sources, activeKey]);
+  }, [sources, activeKey, pmReqItems, pmReqNums]);
 
   const total = sections.reduce((s, sec) => s + sec.items.length, 0);
 

@@ -417,55 +417,6 @@ const Showcase = ({ no, title, desc, reverse, children }) => (
 );
 
 /* ═══════════════════════════════════════
-   QUICK FIND
-   ═══════════════════════════════════════ */
-const QuickFindSection = () => {
-  const [query, setQuery] = useState('');
-  const [focused, setFocused] = useState(false);
-  const items = [
-    { icon: FileText, label: 'Case Management', desc: 'Track cases from first call to final settlement', color: C.verdigris, href: '#features' },
-    { icon: Users, label: 'Family Portal', desc: 'Secure access for families to view arrangements', color: C.brass, href: '#features' },
-    { icon: Truck, label: 'Dispatch & Fleet', desc: 'Smart route optimization and hearse tracking', color: C.accent, href: '#features' },
-    { icon: ShieldCheck, label: 'Funeral Insurance', desc: 'Manage claims, contributions, and payouts', color: C.verdigrisLight, href: '#insurance' },
-    { icon: LifeBuoy, label: 'Real-Time Support', desc: 'Submit issues in-app and get live responses from our team', color: C.brassLight, href: '#features' },
-    { icon: Activity, label: 'Analytics & Reports', desc: 'Real-time insights into your operations', color: C.brassLight, href: '#features' },
-    { icon: Server, label: 'Enterprise Security', desc: 'Bank-grade encryption and access controls', color: C.grayDark, href: '#infra' },
-    { icon: FileText, label: 'Document Automation', desc: 'Auto-generate release forms, receipts, and certificates', color: C.verdigris, href: '#features' },
-  ];
-  const filtered = items.filter(it => it.label.toLowerCase().includes(query.toLowerCase()) || it.desc.toLowerCase().includes(query.toLowerCase()));
-  return (
-    <section className="quickfind-section">
-      <div className="wrap">
-        <Reveal style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <h2 style={{ fontSize: 'clamp(1.6rem, 3.5vw, 2.2rem)', marginBottom: '0.8rem' }}>Looking for something in particular?</h2>
-          <p style={{ color: C.gray, maxWidth: '500px', margin: '0 auto' }}>Quick access to every module in the Rest Point platform.</p>
-        </Reveal>
-        <Reveal delay={100} style={{ maxWidth: '560px', margin: '0 auto 3rem' }}>
-          <div className={`search-bar ${focused ? 'focused' : ''}`}>
-            <Search size={18} color={focused ? C.verdigris : C.gray} />
-            <input type="text" placeholder="Search modules, features..." value={query} onChange={(e) => setQuery(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} className="search-input" />
-            {query && <button onClick={() => setQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.gray, display: 'flex', padding: '4px' }}><X size={16} /></button>}
-          </div>
-        </Reveal>
-        <div className="quickfind-grid">
-          {filtered.map((item, i) => (
-            <RevealDir key={item.label} delay={i * 80} from="up">
-              <a href={item.href} className="quickfind-card" style={{ '--card-color': item.color }}>
-                <div className="quickfind-icon-wrap"><item.icon size={20} color={item.color} /></div>
-                <div><div className="quickfind-label">{item.label}</div><div className="quickfind-desc">{item.desc}</div></div>
-                <ArrowRight size={16} className="quickfind-arrow" />
-              </a>
-            </RevealDir>
-          ))}
-        </div>
-        {filtered.length === 0 && <Reveal style={{ textAlign: 'center', padding: '3rem 0' }}><p style={{ color: C.gray }}>No modules found for "<strong>{query}</strong>"</p></Reveal>}
-      </div>
-    </section>
-  );
-};
-
-
-/* ═══════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════ */
 export default function App() {
@@ -959,7 +910,6 @@ export default function App() {
         </section>
 
         <Marquee items={marqueeItems} />
-        <QuickFindSection />
 
         <ModuleGridSection />
 

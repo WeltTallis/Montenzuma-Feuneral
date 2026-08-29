@@ -90,7 +90,10 @@ export class UserController {
                     return;
                 }
 
-                // Validate branch_id if provided (branch IDs are UUID strings)
+                // Validate branch_id if provided (branch IDs are UUID strings).
+                // If no branch is supplied, ALWAYS assign the MAIN/PARENT branch so
+                // every new user has an explicit, deterministic branch: default users
+                // land on the parent and branch-assigned users land on their branch.
                 let finalBranchId = null;
                 if (branch_id) {
                     const branchIdStr = String(branch_id);
@@ -104,6 +107,18 @@ export class UserController {
                         return;
                     }
                     finalBranchId = branchIdStr;
+                } else {
+                    try {
+                        const [parentBranches] = await conn.query(
+                            'SELECT branch_id FROM branches WHERE is_active = TRUE AND parent_branch_id IS NULL ORDER BY branch_id ASC LIMIT 1'
+                        );
+                        const parentList = parentBranches as any[];
+                        if (parentList.length > 0) {
+                            finalBranchId = parentList[0].branch_id;
+                        }
+                    } catch (err: any) {
+                        console.warn('[registerUser] Could not resolve parent branch:', (err && err.message) || err);
+                    }
                 }
 
                 // Hash password
@@ -113,10 +128,22 @@ export class UserController {
                 const newUserUuid = uuidv4();
 
                 // Create user — attached to the tenant's DB and the selected branch
+                // Ensure users.tenant_id column exists (idempotent — MariaDB/MySQL both
+                // support `ADD COLUMN IF NOT EXISTS`). New user rows always carry the
+                // owning tenant UUID plus the selected branch UUID.
+                try {
+                    await conn.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(36) NULL AFTER branch_id');
+                } catch (e: any) {
+                    console.warn('[registerUser] Could not ensure tenant_id column:', (e && e.message) || e);
+                }
+
+                // Create user — attached to the tenant's DB, the owning tenant_id and
+                // the selected branch. Both are REQUIRED so a user always logs into
+                // the correct tenant + branch (never null/main).
                 const [result] = await conn.query(
-                    `INSERT INTO users (user_id, email, password_hash, full_name, username, phone, role, branch_id, is_verified, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1)`,
-                    [newUserUuid, email, password_hash, full_name, username, phone || null, role, finalBranchId]
+                    `INSERT INTO users (user_id, email, password_hash, full_name, username, phone, role, branch_id, tenant_id, is_verified, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)`,
+                    [newUserUuid, email, password_hash, full_name, username, phone || null, role, finalBranchId, tenant.tenant_id]
                 );
 
                 const userId = newUserUuid;
@@ -164,6 +191,117 @@ export class UserController {
     }
 
     /**
+     * PUT /tenant/users/:userId/branch - Assign/reassign a user to a branch.
+     * Users ALWAYS carry a tenant_id + branch_id so they log in to the correct
+     * tenant and branch. Passing no branch_id assigns the MAIN/PARENT branch.
+     */
+    async updateUserBranch(req: Request, res: Response): Promise<void> {
+        try {
+            const { userId } = req.params;
+            const { branch_id } = req.body || {};
+            const tenantSlug = (req.headers['x-tenant-slug'] as string)
+                || (req.query.slug as string)
+                || (req.params.tenantSlug as string)
+                || ((req as any).user?.tenantSlug);
+            const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+            if (!tenant) {
+                res.status(404).json({ success: false, message: 'Tenant not found' });
+                return;
+            }
+            if (!userId) {
+                res.status(400).json({ success: false, message: 'Missing userId' });
+                return;
+            }
+
+            const conn = await mysql.createConnection({
+                host: process.env.DB_HOST || 'localhost',
+                port: parseInt(process.env.DB_PORT || '3306'),
+                user: process.env.DB_USER || 'root',
+                password: process.env.DB_PASSWORD || '',
+                database: tenant.db_name
+            });
+
+            try {
+                // Ensure the users table has the tenant ownership column
+                // (idempotent — mirrors registerUser).
+                try {
+                    await conn.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(36) NULL AFTER branch_id');
+                } catch (e: any) {
+                    console.warn('[updateUserBranch] Could not ensure tenant_id column:', (e && e.message) || e);
+                }
+
+                // Resolve the target branch: explicit branch_id (validated) or,
+                // when omitted, the tenant's MAIN/PARENT branch.
+                let finalBranchId: string | null = null;
+                if (branch_id) {
+                    const branchIdStr = String(branch_id);
+                    const [branches] = await conn.query(
+                        'SELECT branch_id FROM branches WHERE branch_id = ? AND is_active = TRUE',
+                        [branchIdStr]
+                    );
+                    if ((branches as any[]).length === 0) {
+                        res.status(400).json({ success: false, message: 'Invalid branch_id' });
+                        return;
+                    }
+                    finalBranchId = branchIdStr;
+                } else {
+                    try {
+                        const [parentBranches] = await conn.query(
+                            'SELECT branch_id FROM branches WHERE is_active = TRUE AND parent_branch_id IS NULL ORDER BY branch_id ASC LIMIT 1'
+                        );
+                        const parentList = parentBranches as any[];
+                        if (parentList.length > 0) {
+                            finalBranchId = parentList[0].branch_id;
+                        }
+                    } catch (err: any) {
+                        console.warn('[updateUserBranch] Could not resolve parent branch:', (err && err.message) || err);
+                    }
+                }
+
+                // Assign the branch + backfill the owning tenant_id.
+                const [result]: any = await conn.query(
+                    'UPDATE users SET branch_id = ?, tenant_id = ? WHERE user_id = ?',
+                    [finalBranchId, tenant.tenant_id, userId]
+                );
+                if (!result || result.affectedRows === 0) {
+                    res.status(404).json({ success: false, message: 'User not found' });
+                    return;
+                }
+
+                // Return the refreshed row (with branch name) so the UI updates
+                // without a refetch.
+                const [rows] = await conn.query(
+                    `SELECT u.user_id, u.email, u.full_name, u.username, u.phone, u.role,
+                            u.branch_id, u.tenant_id, u.is_active, b.branch_name, b.branch_slug
+                     FROM users u
+                     LEFT JOIN branches b ON u.branch_id = b.branch_id
+                     WHERE u.user_id = ?`,
+                    [userId]
+                );
+
+                res.json({
+                    success: true,
+                    message: 'User branch updated successfully',
+                    data: (rows as any[])[0] || null
+                });
+            } finally {
+                await conn.end();
+            }
+        } catch (error: any) {
+            logger.error({
+                service: "tenant-service",
+                controller: "UserController",
+                function: "updateUserBranch",
+                message: "Failed to update user branch",
+                error: error.message,
+                stack: error.stack,
+            });
+            res.status(500).json({ success: false, message: 'Failed to update user branch', error: error.message });
+        }
+    }
+
+    /**
      * GET /tenant/users - Get all users in the tenant
      */
     async getUsers(req: Request, res: Response): Promise<void> {
@@ -198,8 +336,10 @@ export class UserController {
                 // Try the branch-aware query first; if the branches table / join
                 // is still unavailable, fall back to a users-only query so the
                 // user list always loads on the Settings page.
+
                 let users: any[] = [];
-                try {
+
+        try {
                     const [rows] = await conn.query(`
               SELECT
                 u.user_id,

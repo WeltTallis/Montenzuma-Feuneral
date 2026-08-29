@@ -19,6 +19,7 @@ import {
 } from '../controllers/autopsyControl';
 
 import { updateDeceasedStatus } from '../controllers/deceasedControl';
+import { getPostmortemRequests, getPostmortemStats } from '../controllers/postmortemRequestControl';
 import { exportExcelWithCharts, checkExportStatus, getExportHistory } from '../controllers/exportExcelController';
 import { resolveDatabase, safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig';
 
@@ -189,6 +190,20 @@ router.get('/deceased-all', getAllDeceased);
 router.get('/deceased/deceased-all', getAllDeceased);  // Support nested path
 router.get('/deceased/all', getAllDeceased);           // Support nested path
 
+// GET - Search deceased (deceasedApi.search uses ?q=). Must be registered BEFORE
+// the catch-all /:id and /deceased/:id routes below so it is not swallowed.
+router.get('/deceased/search', getAllDeceased);        // gateway: /deceased/search
+router.get('/search', getAllDeceased);
+
+// GET - Postmortem request feeds. The gateway forwards the full path INCLUDING the
+// '/deceased' service prefix (e.g. /deceased/postmortem-requests), and deceasedRoutes
+// catch-alls like /deceased/:id would otherwise swallow them. Register here (still
+// behind protect/authorizeAny), before the GET catch-alls.
+router.get('/deceased/postmortem-requests/stats', getPostmortemStats);
+router.get('/deceased/postmortem-requests', getPostmortemRequests);
+router.get('/postmortem-requests/stats', getPostmortemStats);
+router.get('/postmortem-requests', getPostmortemRequests);
+
 // POST - Export Excel (must be BEFORE catch-all /:id route)
 router.post('/export-excel', exportExcelWithCharts);
 router.get('/export-status/:jobId', checkExportStatus);
@@ -207,10 +222,15 @@ router.get('/deceased/admission-number/:admissionNumber', getDeceasedByAdmission
 // PUT - Update
 router.put('/:id', updateDeceased);
 router.put('/update-deceased/:id', updateDeceased);
+// Nested aliases - gateway forwards the full '/deceased' prefixed path verbatim.
+router.put('/deceased/:id', updateDeceased);
+router.put('/deceased/update-deceased/:id', updateDeceased);
 
 // DELETE - Delete
 router.delete('/:id', deleteDeceased);
 router.delete('/delete-deceased/:id', deleteDeceased);
+router.delete('/deceased/:id', deleteDeceased);
+router.delete('/deceased/delete-deceased/:id', deleteDeceased);
 
 // POST - Postmortem/Autopsy routes
 router.post('/postmortem/request', requestPostmortem);

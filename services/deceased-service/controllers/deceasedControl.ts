@@ -39,6 +39,7 @@ export const getAllDeceased = async (
 
         const {
             search = "",
+            q = "",
             page = "1",
             limit = "50"
         } = req.query;
@@ -46,10 +47,15 @@ export const getAllDeceased = async (
         const pageNumber = Math.max(Number(page) || 1, 1);
         const limitNumber = Math.min(Math.max(Number(limit) || 50, 1), 100);
 
+        // deceasedApi.search() sends ?q=, other callers send ?search= — support both.
+        const searchTerm = (typeof search === "string" && search.trim())
+            ? search
+            : (typeof q === "string" ? q : "");
+
         // ============================
         // REDIS CACHE KEY
         // ============================
-        const cacheKey = `deceased:list:${tenantId}:page:${pageNumber}:limit:${limitNumber}:search:${search}`;
+        const cacheKey = `deceased:list:${tenantId}:page:${pageNumber}:limit:${limitNumber}:search:${searchTerm}`;
 
         // Try to get from cache
         const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);
@@ -70,9 +76,9 @@ export const getAllDeceased = async (
         let whereClause = ``;
         const params: any[] = [];
 
-        if (typeof search === "string" && search.trim()) {
+        if (searchTerm) {
             whereClause = `WHERE (full_name LIKE ? OR deceased_id LIKE ?)`;
-            const keyword = `%${search}%`;
+            const keyword = `%${searchTerm}%`;
             params.push(keyword, keyword);
         }
 

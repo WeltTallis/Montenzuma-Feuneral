@@ -81,7 +81,8 @@ router.get('/stock-requests/detail/:id', coffinController.getStockRequestById);
 
 router.patch('/stock-requests/:id/status', coffinController.updateStockRequestStatus);
 
-// Action-based status updates the frontend uses: approve / reject / transferring / delivered
+// Action-based status updates the frontend uses: approve / reject / delivered.
+// 2-status workflow (approved → delivered); legacy "transferring" maps to approved.
 router.post('/stock-requests/:id/:action', coffinController.updateStockRequestAction);
 
 // ============================================================

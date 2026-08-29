@@ -62,15 +62,9 @@ export const ENDPOINTS = {
     USERS: (slug) => `/tenant/${slug}/users`,
     BRANCHES: (slug) => `/tenant/${slug}/branches`,
     CREATE_USER: (slug) => `/tenant/${slug}/users/register`,
+    UPDATE_USER_BRANCH: (slug, userId) => `/tenant/${slug}/users/${userId}/branch`,
     MORTUARY_CHARGES: (slug) => `/tenant/${slug}/mortuary-charges`,
     MORTUARY_CHARGES_PREVIEW: (slug) => `/tenant/${slug}/mortuary-charges/deceased-preview`,
-  },
-  MARKETPLACE: {
-    PRODUCTS: '/marketplace/products',
-    CATEGORIES: '/marketplace/categories',
-    CART: '/marketplace/cart',
-    ORDERS: '/marketplace/orders',
-    UPLOAD: '/marketplace/upload',
   },
   DECEASED: {
     BASE: '/deceased',
@@ -81,6 +75,9 @@ export const ENDPOINTS = {
     COFFIN: '/deceased/coffin',
     LIST: '/deceased/deceased-all',
     DETAIL: (id) => `/deceased/${id}`,
+    UPDATE: (id) => `/deceased/update-deceased/${id}`,
+    DELETE: (id) => `/deceased/delete-deceased/${id}`,
+    SEARCH: '/deceased/search',
     QR: (id) => `/deceased/${id}/qrcode`,
     CHECKOUT: (id) => `/deceased/${id}/checkout`,
     NEXT_OF_KIN: (id) => `/deceased/${id}/next-of-kin`,
@@ -142,23 +139,11 @@ export const ENDPOINTS = {
     COMPREHENSIVE: '/analytics/dashboard/comprehensive',
     COMPARE: '/analytics/dashboard/compare',
   },
-  VISITORS: {
-    BASE: '/visitors',
-    LOG: '/visitors/log',
-  },
-  CALENDAR: {
-    BASE: '/calendar',
-    EVENTS: '/calendar/events',
-  },
   PORTAL: {
     BASE: '/portal',
     MEMORIAL: '/portal/memorial',
     CONDOLENCES: '/portal/condolences',
     LOGIN: '/portal/login',
-  },
-  QRCODE: {
-    BASE: '/qrcode',
-    GENERATE: '/qrcode/generate',
   },
   BODYCHECKOUT: {
     BASE: '/body-release',
@@ -181,11 +166,7 @@ export const ENDPOINTS = {
     BASE: '/extra',
     SERVICES: '/extra/services',
   },
-  CALL: {
-    BASE: '/call',
-    LOGS: '/call/logs',
-    CREATE: '/call/create',
-  },
+
   SOCKETIO: {
     BASE: '/socketio',
     CONNECT: '/socket.io',

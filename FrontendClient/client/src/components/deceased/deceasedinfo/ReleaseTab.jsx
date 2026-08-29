@@ -41,9 +41,20 @@ const SectionHead = styled.div`
 
 const DetailGrid = styled.div`
   display: grid; 
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+  grid-template-columns: ${p => p.$cols ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(200px, 1fr))'}; 
   gap: 1.5rem 2rem; 
   margin-bottom: 24px;
+`;
+
+const TwoColGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 24px;
+`;
+
+const Col = styled.div`
+  min-width: 0;
 `;
 
 const DetailItem = styled.div`
@@ -246,46 +257,27 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
 
   return (
     <>
-      <SectionHead $mt0 $primary><span>01</span> Release Details</SectionHead>
-      <DetailGrid>
-        <DetailItem><DetailLabel>Scheduled Release Date</DetailLabel><DetailValue>{releaseData?.date_of_removal ? formatDate(releaseData.date_of_removal) : 'Not scheduled'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Scheduled Release Time</DetailLabel><DetailValue>{releaseData?.time_of_removal || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Authorized By (NOK)</DetailLabel><DetailValue>{releaseData?.next_kin || nextOfKin?.full_name || nextOfKin?.name || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Relationship to Deceased</DetailLabel><DetailValue>{releaseData?.relationship || nextOfKin?.relationship || '—'}</DetailValue></DetailItem>
-      </DetailGrid>
+      <TwoColGrid>
+        <Col>
+          <SectionHead $mt0 $primary><span>01</span> Release Details</SectionHead>
+          <DetailGrid $cols>
+            <DetailItem><DetailLabel>Scheduled Release Date</DetailLabel><DetailValue>{releaseData?.date_of_removal ? formatDate(releaseData.date_of_removal) : 'Not scheduled'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Scheduled Release Time</DetailLabel><DetailValue>{releaseData?.time_of_removal || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Authorized By (NOK)</DetailLabel><DetailValue>{releaseData?.next_kin || nextOfKin?.full_name || nextOfKin?.name || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Relationship to Deceased</DetailLabel><DetailValue>{releaseData?.relationship || nextOfKin?.relationship || '—'}</DetailValue></DetailItem>
+          </DetailGrid>
+        </Col>
 
-      <SectionHead><span>02</span> Transportation Details</SectionHead>
-      <DetailGrid>
-        <DetailItem><DetailLabel>Permit Number</DetailLabel><DetailValue>{releaseData?.permit_number || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Mode of Transport</DetailLabel><DetailValue>{releaseData?.mode_of_transport || 'Hearse / Van'}</DetailValue></DetailItem>
-        <DetailItem $full><DetailLabel>Transport Carrier / Driver Name</DetailLabel><DetailValue>{releaseData?.transport_carrier || '—'}</DetailValue></DetailItem>
-        <DetailItem $full><DetailLabel>Final Destination</DetailLabel><DetailValue>{releaseData?.final_destination || '—'}</DetailValue></DetailItem>
-      </DetailGrid>
-
-      <SectionHead><span>03</span> Release Checklist</SectionHead>
-      <div style={{ marginBottom: '40px' }}>
-        <ChecklistItem>
-          <div className="icon success">✓</div>
-          <span>All financials cleared (or payment plan agreed)</span>
-        </ChecklistItem>
-        <ChecklistItem>
-          <div className="icon success">✓</div>
-          <span>Burial permit obtained</span>
-        </ChecklistItem>
-        <ChecklistItem>
-          <div className="icon pending">○</div>
-          <span className="muted">Identification by Next of Kin (Pending)</span>
-        </ChecklistItem>
-      </div>
-
-      {/* Sleek, borderless final authorization area */}
-      <div style={{ textAlign: 'center', marginTop: '40px', padding: '24px 0', borderTop: `1px solid ${C.borderLight || '#e0e0e0'}` }}>
-        <h3 style={{ fontFamily: "'Merriweather', serif", marginBottom: '8px', color: C.black, fontSize: '18px' }}>Final Authorization</h3>
-        <p style={{ color: C.gray, marginBottom: '24px', fontSize: '14px' }}>Ensure all checklist items are complete before releasing the body.</p>
-        <Btn $danger style={{ padding: '12px 32px', fontSize: '14px' }} onClick={handleFinalizeRelease}>
-          Finalize & Release Body
-        </Btn>
-      </div>
+        <Col>
+          <SectionHead $mt0><span>02</span> Transportation Details</SectionHead>
+          <DetailGrid $cols>
+            <DetailItem><DetailLabel>Permit Number</DetailLabel><DetailValue>{releaseData?.permit_number || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Mode of Transport</DetailLabel><DetailValue>{releaseData?.mode_of_transport || 'Hearse / Van'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Transport Carrier / Driver Name</DetailLabel><DetailValue>{releaseData?.transport_carrier || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Final Destination</DetailLabel><DetailValue>{releaseData?.final_destination || '—'}</DetailValue></DetailItem>
+          </DetailGrid>
+        </Col>
+      </TwoColGrid>
     </>
   );
 };

@@ -204,11 +204,37 @@ const StatusTag = styled.span`
   color: ${p => p.$success ? C.success : p.$warning ? C.warning : p.$info ? C.info : C.gray};
   border: 1px solid ${p => p.$success ? '#a7f3d0' : p.$warning ? '#fde68a' : p.$info ? '#bfdbfe' : C.borderLight};
 `;
+const ModalOverlay = styled.div`
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+`;
+const ModalCard = styled.div`
+  background: #fff; border-radius: 8px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+`;
+const ModalHead = styled.div`
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid ${C.borderLight};
+  font-size: 16px; font-weight: 700;
+`;
+const ModalBody = styled.div` padding: 20px; `;
+const ModalFoot = styled.div`
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 16px 20px; border-top: 1px solid ${C.borderLight};
+`;
+const CloseBtn = styled.button`
+  background: none; border: none; font-size: 24px; cursor: pointer; color: ${C.gray};
+  &:hover { color: ${C.black}; }
+`;
+
+
 
 const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, deceasedId, onDataChanged }) => {
   const [payments, setPayments] = useState(initialPayments || []);
   const [chargeList, setChargeList] = useState(initialCharges || []);
   const [isRecording, setIsRecording] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [deletingChargeId, setDeletingChargeId] = useState(null);
   const [isAddingCharge, setIsAddingCharge] = useState(false);
   const [chargeForm, setChargeForm] = useState({
@@ -327,6 +353,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
 
       if (response.data?.success) {
         showToast.success('Payment recorded successfully');
+        setShowPaymentModal(false);
         setPaymentForm({
           date: todayKey(),
           currency: paymentForm.currency || 'USD',
@@ -428,211 +455,68 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
 
   return (
     <>
-      {/* Sleek 3-column Financial Summary - grouped per currency (USD-first) */}
-      <SectionHead $mt0><span>01</span> Financial Summary</SectionHead>
-      <SummaryGrid>
-        {summaryRows.length === 0 ? (
-          <DetailItem>
-            <DetailLabel $color={C.gray}>No charges or payments recorded yet</DetailLabel>
-            <DetailValue style={{ fontSize: '1rem' }} $color={C.gray}>—</DetailValue>
-          </DetailItem>
-        ) : (
-          summaryRows.map(row => (
-            <React.Fragment key={row.currency}>
-              <DetailItem>
-                <DetailLabel $color="#1e40af">Total Charges ({row.currency})</DetailLabel>
-                <DetailValue $color="#1e3a8a">{fmtMoney(row.chargesTotal, row.currency)}</DetailValue>
-              </DetailItem>
-              <DetailItem>
-                <DetailLabel $color="#047857">Amount Paid ({row.currency})</DetailLabel>
-                <DetailValue $color="#064e3b">{fmtMoney(row.paidTotal, row.currency)}</DetailValue>
-              </DetailItem>
-              <DetailItem>
-                <DetailLabel $color={row.balance < 0 ? '#047857' : '#b91c1c'}>
-                  {row.balance < 0 ? 'Credit / Overpayment' : 'Balance Due'}
-                </DetailLabel>
-                <DetailValue $color={row.balance < 0 ? '#064e3b' : '#7f1d1d'}>
-                  {fmtMoney(Math.abs(row.balance), row.currency)}
-                </DetailValue>
-              </DetailItem>
-            </React.Fragment>
-          ))
-        )}
-      </SummaryGrid>
+      {showPaymentModal && (
+        <ModalOverlay onClick={() => setShowPaymentModal(false)}>
+          <ModalCard onClick={(e) => e.stopPropagation()}>
+            <ModalHead>
+              <span>Record Payment</span>
+              <CloseBtn onClick={() => setShowPaymentModal(false)}>×</CloseBtn>
+            </ModalHead>
+            <form onSubmit={handleRecordPayment}>
+              <ModalBody>
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Date</FormLabel>
+                    <FormInput type="date" value={paymentForm.date} onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })} required />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Currency</FormLabel>
+                    <FormSelect value={paymentForm.currency} onChange={(e) => setPaymentForm({ ...paymentForm, currency: e.target.value })}>
+                      <option value="USD">USD ($)</option>
+                      <option value="KES">KES</option>
+                    </FormSelect>
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Payment Method</FormLabel>
+                    <FormSelect value={paymentForm.payment_method} onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}>
+                      <option>Cash</option>
+                      <option>M-Pesa</option>
+                      <option>Card</option>
+                      <option>Bank Transfer</option>
+                    </FormSelect>
+                  </FormGroup>
+                </FormRow>
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Reference Number</FormLabel>
+                    <FormInput placeholder="e.g. QXR89YU72" value={paymentForm.reference} onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })} required />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Amount ({paymentForm.currency === 'KES' ? 'KES' : 'USD'})</FormLabel>
+                    <FormInput type="number" placeholder="0.00" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} required />
+                  </FormGroup>
+                  <FormGroup style={{ flex: 2, minWidth: '200px' }}>
+                    <FormLabel>Description / Notes (Optional)</FormLabel>
+                    <FormInput placeholder="e.g. Facility fee, Coffin, Embalming, etc." value={paymentForm.description} onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })} />
+                  </FormGroup>
+                </FormRow>
+              </ModalBody>
+              <ModalFoot>
+                <Btn type="button" onClick={() => setShowPaymentModal(false)}>Cancel</Btn>
+                <Btn $primary type="submit" disabled={isRecording}>{isRecording ? 'Recording...' : 'Save Payment'}</Btn>
+              </ModalFoot>
+            </form>
+          </ModalCard>
+        </ModalOverlay>
+      )}
 
-      {/* Individual charges - bill per deceased */}
-      <SectionHead $mt4><span>02</span> Charges on this Deceased</SectionHead>
-      <form onSubmit={handleAddCharge} style={{ marginBottom: '16px' }}>
-        <FormRow>
-          <FormGroup>
-            <FormLabel>Charge Type</FormLabel>
-            <FormInput
-              placeholder="e.g. Storage Fee, Embalming, Hearse"
-              value={chargeForm.charge_type}
-              onChange={(e) => setChargeForm({ ...chargeForm, charge_type: e.target.value })}
-              required
-            />
-          </FormGroup>
-          <FormGroup>
-            <FormLabel>Currency</FormLabel>
-            <FormSelect
-              value={chargeForm.currency}
-              onChange={(e) => setChargeForm({ ...chargeForm, currency: e.target.value })}
-            >
-              <option value="USD">USD ($)</option>
-              <option value="KES">KES</option>
-            </FormSelect>
-          </FormGroup>
-          <FormGroup>
-            <FormLabel>Amount ({chargeForm.currency === 'KES' ? 'KES' : 'USD'})</FormLabel>
-            <FormInput
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              value={chargeForm.amount}
-              onChange={(e) => setChargeForm({ ...chargeForm, amount: e.target.value })}
-              required
-            />
-          </FormGroup>
-          <FormGroup>
-            <FormLabel>Date</FormLabel>
-            <FormInput
-              type="date"
-              value={chargeForm.service_date}
-              onChange={(e) => setChargeForm({ ...chargeForm, service_date: e.target.value })}
-            />
-          </FormGroup>
-          <FormGroup style={{ flex: 2, minWidth: '200px' }}>
-            <FormLabel>Description (Optional)</FormLabel>
-            <FormInput
-              placeholder="Brief description of the charge"
-              value={chargeForm.description}
-              onChange={(e) => setChargeForm({ ...chargeForm, description: e.target.value })}
-            />
-          </FormGroup>
-        </FormRow>
-        <div style={{ textAlign: 'right', marginBottom: '24px' }}>
-          <Btn $primary type="submit" disabled={isAddingCharge}>
-            {isAddingCharge ? 'Adding...' : '+ Add Charge'}
-          </Btn>
-        </div>
-      </form>
-
-      <DataTable style={{ marginBottom: '40px' }}>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Status</th>
-            <th>Amount</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {chargeList.length === 0 ? (
-            <tr><td colSpan={6} style={{ textAlign: 'center', color: C.gray, padding: '24px 0' }}>No charges billed yet</td></tr>
-          ) : chargeList.map(c => {
-            const cId = c.charge_id ?? c.id;
-            const cur = c.currency || 'USD';
-            return (
-              <tr key={cId}>
-                <td>{formatDate(c.service_date || c.created_at)}</td>
-                <td><strong>{c.charge_type || '—'}</strong></td>
-                <td>{c.description || c.notes || '—'}</td>
-                <td>
-                  <StatusTag $success={c.status === 'paid'}>{c.status || 'pending'}</StatusTag>
-                </td>
-                <td><strong>{fmtMoney(c.amount ?? c.charge_amount, cur)}</strong></td>
-                <td>
-                  <Btn
-                    type="button"
-                    onClick={() => handleDeleteCharge(cId)}
-                    disabled={deletingChargeId === cId}
-                    style={{ padding: '4px 10px', fontSize: '11px' }}
-                  >
-                    {deletingChargeId === cId ? '...' : 'Remove'}
-                  </Btn>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </DataTable>
-
-      {/* Sleek Form without wrapper box */}
-      <SectionHead><span>03</span> Record Payment</SectionHead>
-      <form onSubmit={handleRecordPayment} style={{ marginBottom: '40px' }}>
-        <FormRow>
-          <FormGroup>
-            <FormLabel>Date</FormLabel>
-            <FormInput
-              type="date"
-              value={paymentForm.date}
-              onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
-              required
-            />
-          </FormGroup>
-          <FormGroup>
-            <FormLabel>Currency</FormLabel>
-            <FormSelect
-              value={paymentForm.currency}
-              onChange={(e) => setPaymentForm({ ...paymentForm, currency: e.target.value })}
-            >
-              <option value="USD">USD ($)</option>
-              <option value="KES">KES</option>
-            </FormSelect>
-          </FormGroup>
-          <FormGroup>
-            <FormLabel>Payment Method</FormLabel>
-            <FormSelect
-              value={paymentForm.payment_method}
-              onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
-            >
-              <option>Cash</option>
-              <option>M-Pesa</option>
-              <option>Card</option>
-              <option>Bank Transfer</option>
-            </FormSelect>
-          </FormGroup>
-          <FormGroup>
-            <FormLabel>Reference Number</FormLabel>
-            <FormInput
-              placeholder="e.g. QXR89YU72"
-              value={paymentForm.reference}
-              onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
-              required
-            />
-          </FormGroup>
-          <FormGroup>
-            <FormLabel>Amount ({paymentForm.currency === 'KES' ? 'KES' : 'USD'})</FormLabel>
-            <FormInput
-              type="number"
-              placeholder="0.00"
-              value={paymentForm.amount}
-              onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-              required
-            />
-          </FormGroup>
-          <FormGroup style={{ flex: 2, minWidth: '200px' }}>
-            <FormLabel>Description / Notes (Optional)</FormLabel>
-            <FormInput
-              placeholder="e.g. Facility fee, Coffin, Embalming, etc."
-              value={paymentForm.description}
-              onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
-            />
-          </FormGroup>
-        </FormRow>
-        <div style={{ textAlign: 'right' }}>
-          <Btn $primary type="submit" disabled={isRecording}>
-            {isRecording ? 'Recording...' : '+ Record Payment'}
-          </Btn>
-        </div>
-      </form>
-
-      {/* Sleek Table without wrapper box */}
-      <SectionHead $mt4><span>04</span> Payment History</SectionHead>
+      {/* Payment History with Record button */}
+      <SectionHead $mt4 style={{ justifyContent: 'space-between', width: '100%' }}>
+        <span><span style={{ opacity: 0.5, fontSize: '10px' }}>02</span> Payment History</span>
+        <Btn $primary onClick={() => setShowPaymentModal(true)} style={{ padding: '4px 12px', fontSize: '11px' }}>
+          + Record Payment
+        </Btn>
+      </SectionHead>
       <DataTable>
         <thead>
           <tr>

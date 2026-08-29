@@ -465,31 +465,45 @@ const ModernSidebar = ({
   // DO NOT rely on useParams() - it may not work correctly here
   // ============================================================
   const getTenantSlug = useCallback(() => {
-    // Priority 1: Prop from DashboardLayout (most reliable)
+    // Priority 1: the logged-in user's COMPLETE BRANCH SLUG
+    // (`<org-slug>-<branch-name>` — e.g. `org-home-nairobi` for the Main
+    // branch, `org-home-machakos` / `org-home-thika` for children). EVERY
+    // nav link must carry the complete slug of the user's own branch; the
+    // backend resolves any complete branch slug back to the right database.
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const branchSlug = user?.branchSlug || user?.branch_slug || '';
+      if (branchSlug && branchSlug !== 'undefined' && branchSlug !== 'null') {
+        console.log('[ModernSidebar] Using user complete branch slug:', branchSlug);
+        return branchSlug;
+      }
+    } catch (e) {
+      console.error('[ModernSidebar] Error parsing user:', e);
+    }
+
+    // Priority 2: Prop from DashboardLayout (most reliable for parent org)
     if (propTenantSlug && propTenantSlug !== 'undefined' && propTenantSlug !== 'null') {
       console.log('[ModernSidebar] Using tenant slug from props:', propTenantSlug);
       return propTenantSlug;
     }
     
-    // Priority 2: URL param from useParams()
+    // Priority 3: URL param from useParams()
     if (urlSlug && urlSlug !== 'undefined' && urlSlug !== 'null') {
       console.log('[ModernSidebar] Using tenant slug from URL params:', urlSlug);
       return urlSlug;
     }
     
-    // Priority 3: localStorage
+    // Priority 4: localStorage
     const stored = localStorage.getItem('tenantSlug');
     if (stored && stored !== 'undefined' && stored !== 'null') {
       console.log('[ModernSidebar] Using tenant slug from localStorage:', stored);
       return stored;
     }
     
-    // Priority 4: user object
+    // Priority 5: user object fallbacks (parent tenant slug etc.)
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      // tenantSlug = effective scope (branch for branch users). Prefer it over
-      // parentTenantSlug so branch users don't get bounced back to the main branch.
-      const userSlug = user?.tenantSlug || user?.branchDbName || user?.branchSlug || user?.tenant_slug || user?.parentTenantSlug || '';
+      const userSlug = user?.tenantSlug || user?.tenant_slug || user?.parentTenantSlug || user?.branchDbName || '';
       if (userSlug) {
         console.log('[ModernSidebar] Using tenant slug from user object:', userSlug);
         return userSlug;

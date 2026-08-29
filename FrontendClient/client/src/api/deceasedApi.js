@@ -10,7 +10,7 @@ export const deceasedApi = {
   search: (query) => api.get(ENDPOINTS.DECEASED.SEARCH, { params: { q: query } }).then(r => r.data),
   getQR: (id) => api.get(ENDPOINTS.DECEASED.QR(id)).then(r => r.data),
   checkout: (id, data) => api.post(ENDPOINTS.DECEASED.CHECKOUT(id), data).then(r => r.data),
-  getNextOfKin: (id) => api.get(ENDPOINTS.DECEASED.NEXT_OF_KIN(id)).then(r => r.data),
+  getNextOfKin: (id, cfg) => api.get(ENDPOINTS.DECEASED.NEXT_OF_KIN(id), cfg).then(r => r.data),
   addNextOfKin: (id, data) => api.post(ENDPOINTS.DECEASED.NEXT_OF_KIN(id), data).then(r => r.data),
   getDocuments: (id) => api.get(ENDPOINTS.DECEASED.DOCUMENTS(id)).then(r => r.data),
 };

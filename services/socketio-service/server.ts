@@ -515,12 +515,13 @@ interface EmitBody {
   tenantSlug?: string;
   data?: any;
   target?: string | string[];
+  branchSlugs?: string[];
 }
 
 app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { event } = req.params;
-    const { tenantSlug, data, target } = req.body as EmitBody;
+    const { tenantSlug, data, target, branchSlugs } = req.body as EmitBody;
 
     if (!event || typeof event !== 'string') throw new AppError('Invalid event name', 400);
     if (!tenantSlug) throw new AppError('tenantSlug is required', 400);
@@ -544,6 +545,16 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
       } else {
         throw new AppError('Target must be a string or array of strings', 400);
       }
+    } else if (Array.isArray(branchSlugs) && branchSlugs.length > 0) {
+      // Branch-targeted emission: deliver ONLY to the specified branch rooms
+      // (complete branch slugs, e.g. org-home-machakos). Skips the org-wide
+      // fan-out so other branches NEVER see this notification.
+      const branchRooms = branchSlugs
+        .filter((s: any): s is string => typeof s === 'string' && /^[a-z0-9-]+$/.test(s))
+        .map((s: string) => `tenant_${s}`);
+      if (branchRooms.length === 0) throw new AppError('No valid branch slugs provided', 400);
+      branchRooms.forEach((room) => io.to(room).emit(eventName, payload));
+      console.log(`[SocketIO] Emitted ${eventName} to branch rooms [${branchRooms.join(', ')}]`);
     } else if (tenantSlug === 'system' || tenantSlug === 'all') {
       io.emit(eventName, payload);
       console.log(`📢 Broadcasted ${eventName} to all clients`);
