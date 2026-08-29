@@ -15,7 +15,7 @@ COPY packages/shared-logger/package.json ./packages/shared-logger/
 COPY packages/shared-services/package.json ./packages/shared-services/
 COPY services/leave-service/package.json ./services/leave-service/
 
-RUN npm install --legacy-peer-deps && npm cache clean --force
+RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --legacy-peer-deps && npm cache clean --force
 
 COPY packages/ ./packages/
 COPY shared/ ./shared/

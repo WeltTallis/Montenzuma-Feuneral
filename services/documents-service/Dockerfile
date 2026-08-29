@@ -23,7 +23,7 @@ COPY packages/shared-services/package.json ./packages/shared-services/
 COPY services/documents-service/package.json ./services/documents-service/
 
 # Install ALL dependencies (including dev for building shared packages)
-RUN npm install --omit=optional
+RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=optional
 
 # Copy source code
 COPY services/configurations/ ./configurations/
