@@ -95,8 +95,9 @@ const app = express();
 // ─── Circuit Breaker & Service Health Tracking ─────────────────────
 const serviceHealth = {};
 const HEALTH_CHECK_INTERVAL = 30000; // Check every 30 seconds
-const FAILURE_THRESHOLD = 3; // Mark as down after 3 failures
+const FAILURE_THRESHOLD = 5; // Mark as down after 5 failures (was 3)
 const RECOVERY_TIMEOUT = 60000; // Try recovery after 60 seconds
+const HEALTH_CHECK_TIMEOUT = 5000; // 5 seconds (was 2)
 
 // Initialize health status for all services
 Object.keys(SERVICE_URLS).forEach(serviceName => {
@@ -112,7 +113,7 @@ Object.keys(SERVICE_URLS).forEach(serviceName => {
 async function checkServiceHealth(serviceName, url) {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
 
     // Append /health to the URL
     const healthUrl = url.endsWith('/') ? `${url}health` : `${url}/health`;
@@ -146,7 +147,7 @@ function handleServiceFailure(serviceName) {
 
   if (serviceHealth[serviceName].failures >= FAILURE_THRESHOLD && serviceHealth[serviceName].isHealthy) {
     serviceHealth[serviceName].isHealthy = false;
-    Logger.warn(`[CIRCUIT BREAKER] ${serviceName} marked as DOWN`);
+    Logger.warn(`[CIRCUIT BREAKER] ${serviceName} marked as DOWN (failures: ${serviceHealth[serviceName].failures})`);
   }
 }
 
@@ -690,7 +691,7 @@ app.get('/health', (req, res) => {
     };
   });
 
-  const allHealthy = Object.values(serviceHealth).every(h => h.isHealthy);
+      const allHealthy = Object.values(serviceHealth).every(h => h.isHealthy);
 
   res.json({
     success: true,
@@ -701,6 +702,12 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
     services: serviceStatus,
   });
+});
+
+// HEAD /health — required by Docker HEALTHCHECK and Kubernetes liveness probes
+app.head('/health', (_req, res) => {
+  // Gateway itself is always healthy as long as it's serving requests
+  res.status(200).end();
 });
 
 app.get('/health/:service', async (req, res) => {

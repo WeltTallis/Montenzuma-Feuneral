@@ -206,7 +206,7 @@ export const getRootPool = async (): Promise<mysql.Pool> => {
     // Test connection
     try {
       const conn = await rootPool.getConnection();
-      await conn.ping();
+  
       conn.release();
       LOGGER.info('Root database pool created (tenant_tracking)');
     } catch (err: any) {
@@ -221,11 +221,11 @@ export const getRootPool = async (): Promise<mysql.Pool> => {
 // ─── Tenant Lookup with Circuit Breaker ──────────────────────────────────────
 
 export const lookupTenantDatabase = async (tenantSlug: string): Promise<string | null> => {
-  return rootPoolBreaker.call(
+        return rootPoolBreaker.call(
     async () => {
       const pool = await getRootPool();
       const [rows] = await pool.query(
-        'SELECT db_name FROM tenants WHERE tenant_slug = ? AND status = "active" LIMIT 1',
+        'SELECT db_name FROM tenant_tracking.tenants WHERE tenant_slug = ? AND status = "active" LIMIT 1',
         [tenantSlug]
       );
       const result = rows as any[];
@@ -242,7 +242,7 @@ export const lookupTenantDatabase = async (tenantSlug: string): Promise<string |
 // ─── Unified Slug Resolution ─────────────────────────────────────────
 
 export const resolveDatabase = async (slug: string): Promise<string | null> => {
-  if (!slug || slug === 'system_shared') {
+  if (!slug) {
     LOGGER.warn('Invalid slug provided', { slug });
     return null;
   }
@@ -360,7 +360,7 @@ export const getTenantDB = async (tenantDbName: string): Promise<mysql.Pool> => 
   // Test connection
   try {
     const conn = await pool.getConnection();
-    await conn.ping();
+    
     conn.release();
     LOGGER.info('Connected to tenant database', { dbName: tenantDbName });
   } catch (err: any) {
@@ -421,8 +421,8 @@ export const execute = async (
 
   try {
     const pool = await getTenantDB(dbName);
-    const [result] = await pool.query(sql, params);
-    return result as mysql.ResultSetHeader;
+        const [result] = await pool.query(sql, params);
+    return result as unknown as mysql.ResultSetHeader;
   } catch (error: any) {
     LOGGER.error('Execute error', { dbName, message: error.message, sql: sql.substring(0, 200) });
     throw error;
@@ -457,8 +457,8 @@ export const safeTenantExecute = async (
 ): Promise<mysql.ResultSetHeader> => {
   try {
     const pool = await getTenantDB(dbName);
-    const [result] = await pool.query(sql, params);
-    return result as mysql.ResultSetHeader;
+        const [result] = await pool.query(sql, params);
+    return result as unknown as mysql.ResultSetHeader;
   } catch (error: any) {
     LOGGER.error('safeTenantExecute error', {
       dbName,

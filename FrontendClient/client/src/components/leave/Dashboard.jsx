@@ -1437,7 +1437,921 @@ const LeaveDashboard = () => {
     }
   }), []);
 
-/*@@NEXT@@*/
+  // ─── ACTIONS ───
+  const selectEmployee = (id) => setSelectedId(id);
+  const closePanel = () => setPanel(null);
+
+  const openLeavePanel = (leaveId) => setPanel({ type: 'leave', leaveId });
+  const openDayPanel = (dateStr) => setPanel({ type: 'day', date: String(dateStr).slice(0, 10) });
+
+  const changeMonth = (dir) => {
+    setCalMonth(prev => {
+      let m = prev + dir;
+      let y = calYear;
+      if (m < 0) { m = 11; y -= 1; }
+      else if (m > 11) { m = 0; y += 1; }
+      setCalYear(y);
+      return m;
+    });
+  };
+
+  const approveLeave = async (leaveId) => {
+    try {
+      await api.patch(ENDPOINTS.LEAVE.UPDATE_STATUS(leaveId), {
+        status: 'approved',
+        approved_by: getUserId() || 1
+      });
+      showToast('Leave request approved', 'success');
+      fetchData();
+    } catch (error) {
+      console.error('Error approving leave:', error);
+      showToast('Failed to approve leave', 'error');
+    }
+  };
+
+  const submitRejection = async () => {
+    if (!rejectState.reason.trim()) { showToast('Please provide a rejection reason', 'warning'); return; }
+    try {
+      await api.patch(ENDPOINTS.LEAVE.UPDATE_STATUS(rejectState.leaveId), {
+        status: 'rejected',
+        rejection_reason: rejectState.reason,
+        approved_by: getUserId() || 1
+      });
+      setRejectState({ open: false, leaveId: null, reason: '' });
+      showToast('Leave request rejected', 'warning');
+      fetchData();
+    } catch (error) {
+      console.error('Error rejecting leave:', error);
+      showToast('Failed to reject leave', 'error');
+    }
+  };
+
+  const confirmReturn = (leaveId) => {
+    setReturnsConfirmed(prev => ({ ...prev, [leaveId]: true }));
+    showToast('Return to work recorded', 'success');
+  };
+
+  const openAdjustModal = () => {
+    setAdjustForm({ employeeId: selectedId != null ? String(selectedId) : '', kind: 'add', days: 1, reason: '' });
+    setAdjustOpen(true);
+  };
+
+  const submitAdjustment = async () => {
+    const { employeeId, kind, days, reason } = adjustForm;
+    if (!employeeId) { showToast('Please select an employee', 'error'); return; }
+    const dayCount = parseInt(days, 10);
+    if (!dayCount || dayCount < 1) { showToast('Enter a valid number of days', 'error'); return; }
+    if (!reason.trim()) { showToast('Please provide a reason / note', 'error'); return; }
+    try {
+      if (kind === 'holiday') {
+        await api.post(ENDPOINTS.LEAVE.HOLIDAY_COMPENSATION, {
+          user_id: employeeId,
+          holiday_date: TODAY_STR,
+          holiday_name: reason.trim(),
+          note: reason.trim(),
+          recorded_by: getUserId() || 1
+        });
+        showToast('Holiday compensation recorded (+1 day)', 'success');
+      } else {
+        const prefix = kind === 'carry' ? 'Carry-forward: ' : '';
+        await api.post(ENDPOINTS.LEAVE.ADD_DAYS, {
+          user_id: employeeId,
+          days: dayCount,
+          reason: `${prefix}${reason.trim()}`,
+          added_by: getUserId() || 1
+        });
+        showToast(`Balance updated (+${dayCount} days)`, 'success');
+      }
+      setAdjustOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error applying adjustment:', error);
+      showToast(error?.response?.data?.message || 'Failed to apply adjustment', 'error');
+    }
+  };
+
+  const openEmergencyModal = () => {
+    setEmergencyForm({
+      employeeId: selectedId != null ? String(selectedId) : '',
+      start: TODAY_STR,
+      end: TODAY_STR,
+      reason: '',
+      submitting: false
+    });
+    setEmergencyOpen(true);
+  };
+
+  const submitEmergencyLeave = async () => {
+    const { employeeId, start, end, reason } = emergencyForm;
+    if (!employeeId) { showToast('Please select an employee', 'error'); return; }
+    if (!reason.trim()) { showToast('Please provide a reason for the emergency', 'error'); return; }
+    if (String(end) < String(start)) { showToast('End date must be after start date', 'error'); return; }
+    setEmergencyForm(prev => ({ ...prev, submitting: true }));
+    try {
+      const applyRes = await api.post(ENDPOINTS.LEAVE.APPLY, {
+        user_id: employeeId,
+        leave_type: 'annual',
+        priority: 'emergency',
+        start_date: start,
+        end_date: end,
+        reason: `[EMERGENCY] ${reason.trim()}`,
+        is_half_day: false
+      });
+      const created = applyRes?.data?.data;
+      if (created?.id) {
+        await api.patch(ENDPOINTS.LEAVE.UPDATE_STATUS(created.id), {
+          status: 'approved',
+          approved_by: getUserId() || 1
+        });
+      }
+      setEmergencyOpen(false);
+      showToast('Emergency leave logged (auto-approved, HR validation on return)', 'warning');
+      fetchData();
+    } catch (error) {
+      console.error('Error logging emergency leave:', error);
+      showToast(error?.response?.data?.message || 'Failed to log emergency leave', 'error');
+    } finally {
+      setEmergencyForm(prev => ({ ...prev, submitting: false }));
+    }
+  };
+
+  const submitRegisterEmployee = async () => {
+    const { full_name, email, phone, role } = registerForm;
+    if (!full_name.trim() || !email.trim()) { showToast('Please provide employee name and email', 'error'); return; }
+    setRegisterForm(prev => ({ ...prev, submitting: true }));
+    try {
+      const response = await api.post(ENDPOINTS.LEAVE.ADD_EMPLOYEE, {
+        full_name: full_name.trim(),
+        email: email.trim(),
+        phone: phone.trim() || undefined,
+        role: role || 'staff'
+      });
+      if (response?.data?.status === 'success') {
+        showToast(response.data.message || 'Employee registered successfully', 'success');
+        setRegisterOpen(false);
+        setRegisterForm({ full_name: '', email: '', phone: '', role: 'staff', submitting: false });
+        fetchData();
+      } else {
+        showToast(response?.data?.message || 'Failed to register employee', 'error');
+        setRegisterForm(prev => ({ ...prev, submitting: false }));
+      }
+    } catch (error) {
+      console.error('Error registering employee:', error);
+      showToast(error?.response?.data?.message || 'Failed to register employee', 'error');
+      setRegisterForm(prev => ({ ...prev, submitting: false }));
+    }
+  };
+
+  // ─── CALENDAR CELLS ───
+  const calendarCells = useMemo(() => {
+    const cells = [];
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    for (let i = 0; i < firstDay; i += 1) cells.push(<CalDay key={`e${i}`} className="empty" $empty />);
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const dateStr = `${calYear}-${pad2(calMonth + 1)}-${pad2(day)}`;
+      const holiday = holidayOf(dateStr);
+      let kind = '';
+      let mine = false;
+      (leaves || []).forEach(l => {
+        if (l.user_id !== selectedId) return;
+        if (l.status === 'rejected' || l.status === 'cancelled') return;
+        if (coversDay(l, dateStr)) { mine = true; kind = typeKind(l); }
+      });
+      let others = 0;
+      (leaves || []).forEach(l => {
+        if (l.user_id === selectedId || l.status !== 'approved') return;
+        if (coversDay(l, dateStr)) others += 1;
+      });
+      const clickable = Boolean(holiday || mine || others > 0);
+      cells.push(
+        <CalDay
+          key={dateStr}
+          $today={dateStr === TODAY_STR}
+          $holiday={Boolean(holiday)}
+          $kind={holiday ? '' : kind}
+          $clickable={clickable}
+          onClick={clickable ? () => openDayPanel(dateStr) : undefined}
+        >
+          <span>{day}</span>
+          {holiday && <CalHolidayTag>{holiday.name.split(' ')[0]}</CalHolidayTag>}
+        </CalDay>
+      );
+    }
+    return cells;
+  }, [calYear, calMonth, leaves, selectedId]);
+
+  if (loading) {
+    return (
+      <Root className="ops-leave-root">
+        <GlobalStyle />
+        <LoadingBox>
+          <Spin />
+          <span>Loading leave data...</span>
+        </LoadingBox>
+      </Root>
+    );
+  }
+
+  return (
+    <Root className="ops-leave-root">
+      <GlobalStyle />
+
+      {/* ─── SIDEBAR ─── */}
+      <Sidebar>
+        <SidebarHeader>
+          <Logo>
+            <LogoIcon>N</LogoIcon>
+            NEXUS OS
+          </Logo>
+          <DeptSelect value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
+            <option value="all">All Departments</option>
+            {departmentList.map(d => <option key={d} value={d}>{d}</option>)}
+          </DeptSelect>
+          <SearchBox>
+            <Search size={16} />
+            <input
+              type="text"
+              value={search}
+              placeholder="Search personnel..."
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </SearchBox>
+        </SidebarHeader>
+        <EmployeeList>
+          {filteredEmployees.length === 0 ? (
+            <ListNote>No personnel match this view</ListNote>
+          ) : filteredEmployees.map(emp => {
+            const remaining = round1(emp.currentBalance);
+            return (
+              <EmployeeItem
+                key={emp.user_id}
+                $active={emp.user_id === selectedId}
+                onClick={() => selectEmployee(emp.user_id)}
+              >
+                <Avatar style={{ background: avatarColor(emp.user_id) }}>{getInitials(emp.name)}</Avatar>
+                <EmpInfo>
+                  <EmpName>{emp.name || 'Unknown'}</EmpName>
+                  <EmpRole>{emp.email || '—'}</EmpRole>
+                </EmpInfo>
+                <StatusDot style={{ background: remaining > 0 ? 'var(--nx-success)' : 'var(--nx-danger)' }} />
+              </EmployeeItem>
+            );
+          })}
+        </EmployeeList>
+      </Sidebar>
+
+      {/* ─── MAIN ─── */}
+      <Main>
+        <Header>
+          <div>
+            <H1>{selectedBal ? `${selectedBal.name || 'Employee'} — Leave Profile` : 'Operations Dashboard'}</H1>
+            <Subtitle>
+              {selectedBal
+                ? `${deptOfUser(selectedId)} • ${selectedBal.email || ''}`
+                : 'Monitor capacity and manage personnel leave'}
+            </Subtitle>
+          </div>
+          <HeaderActions>
+            {!connected && (
+              <WarningBox $danger style={{ margin: 0, padding: '0.6rem 0.9rem' }}>
+                <WarningText>Real-time updates disconnected</WarningText>
+              </WarningBox>
+            )}
+            <Btn $variant="secondary" onClick={() => setRegisterOpen(true)}>
+              <UserPlus size={14} />
+              Register Employee
+            </Btn>
+            <Btn $variant="secondary" onClick={openAdjustModal}>
+              <SlidersHorizontal size={14} />
+              Adjust Balances
+            </Btn>
+            <Btn $variant="danger" onClick={openEmergencyModal}>
+              <Zap size={14} />
+              Emergency Leave
+            </Btn>
+          </HeaderActions>
+        </Header>
+
+        {!selectedBal ? (
+          <LoadingBox>
+            <Users size={40} style={{ opacity: 0.3 }} />
+            <span>No personnel found. Register an employee to get started.</span>
+          </LoadingBox>
+        ) : (
+          <>
+            {/* Operational Capacity */}
+            <OpsGrid>
+              {opsCards.map(card => (
+                <OpsCard
+                  key={card.dept}
+                  $status={card.status}
+                  onClick={() => setDeptFilter(departmentList.includes(card.dept) ? card.dept : 'all')}
+                >
+                  <OpsTitle>{card.dept}</OpsTitle>
+                  <OpsStats>
+                    <OpsVal $tone={card.status || 'ok'}>{card.available}</OpsVal>
+                    <OpsTotal>/ {card.total} Available</OpsTotal>
+                  </OpsStats>
+                  <OpsStatus $tone={card.status || 'ok'}>
+                    {card.text}{card.absent > 0 ? ` (${card.absent} on leave)` : ''}
+                  </OpsStatus>
+                </OpsCard>
+              ))}
+            </OpsGrid>
+
+            {/* Employee Leave Stats */}
+            <StatsGrid>
+              <StatCard>
+                <StatHeader>
+                  <StatLabel>Total Allocation</StatLabel>
+                  <StatIcon $bg="var(--nx-primary-light)" $fg="var(--nx-primary)"><Calendar size={16} /></StatIcon>
+                </StatHeader>
+                <StatValue $color="var(--nx-primary)">{selectedStats?.total ?? 0}</StatValue>
+                <StatSub>Days / Year</StatSub>
+                <ProgressBar>
+                  <ProgressFill $on={barsOn} $pct={100} $color="var(--nx-primary)" />
+                </ProgressBar>
+              </StatCard>
+              <StatCard>
+                <StatHeader>
+                  <StatLabel>Used Leave</StatLabel>
+                  <StatIcon $bg="var(--nx-danger-light)" $fg="var(--nx-danger)"><CheckCircle size={16} /></StatIcon>
+                </StatHeader>
+                <StatValue $color="var(--nx-danger)">{selectedStats?.used ?? 0}</StatValue>
+                <StatSub>Days Taken</StatSub>
+                <ProgressBar>
+                  <ProgressFill
+                    $on={barsOn}
+                    $pct={Math.min(((selectedStats?.used || 0) / (selectedStats?.total || 1)) * 100, 100)}
+                    $color="var(--nx-danger)"
+                  />
+                </ProgressBar>
+              </StatCard>
+              <StatCard>
+                <StatHeader>
+                  <StatLabel>Remaining</StatLabel>
+                  <StatIcon $bg="var(--nx-success-light)" $fg="var(--nx-success)"><Wallet size={16} /></StatIcon>
+                </StatHeader>
+                <StatValue $color="var(--nx-success)">{selectedStats?.remaining ?? 0}</StatValue>
+                <StatSub>Days Available</StatSub>
+                <ProgressBar>
+                  <ProgressFill
+                    $on={barsOn}
+                    $pct={Math.min(((selectedStats?.remaining || 0) / (selectedStats?.total || 1)) * 100, 100)}
+                    $color="var(--nx-success)"
+                  />
+                </ProgressBar>
+              </StatCard>
+              <StatCard>
+                <StatHeader>
+                  <StatLabel>Pending Requests</StatLabel>
+                  <StatIcon $bg="var(--nx-warning-light)" $fg="var(--nx-warning)"><Clock size={16} /></StatIcon>
+                </StatHeader>
+                <StatValue $color="var(--nx-warning)">{selectedStats?.pending ?? 0}</StatValue>
+                <StatSub>Awaiting Approval</StatSub>
+                <ProgressBar>
+                  <ProgressFill
+                    $on={barsOn}
+                    $pct={Math.min(((selectedStats?.pending || 0) / (selectedStats?.total || 1)) * 100, 100)}
+                    $color="var(--nx-warning)"
+                  />
+                </ProgressBar>
+              </StatCard>
+            </StatsGrid>
+
+            {/* Requests + Distribution */}
+            <DashGrid>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Leave Requests (Click row for details)</CardTitle>
+                </CardHeader>
+                <TableContainer>
+                  <Table>
+                    <thead>
+                      <tr>
+                        <Th>Employee</Th>
+                        <Th>Type</Th>
+                        <Th>Dates</Th>
+                        <Th>Days</Th>
+                        <Th>Status</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedLeaves.length === 0 ? (
+                        <tr>
+                          <Td colSpan={5} style={{ textAlign: 'center', color: 'var(--nx-text-mute)', cursor: 'default' }}>
+                            No leave requests found
+                          </Td>
+                        </tr>
+                      ) : selectedLeaves.map(leave => (
+                        <Tr key={leave.id} onClick={() => openLeavePanel(leave.id)}>
+                          <Td style={{ fontWeight: 600, color: 'var(--nx-text)' }}>
+                            {leave.name || selectedBal?.name || 'Unknown'}
+                          </Td>
+                          <Td>
+                            <TypePill $kind={typeKind(leave)}>{typeLabel(leave)}</TypePill>
+                          </Td>
+                          <Td style={{ fontSize: '0.8rem' }}>
+                            {fmtDate(leave.start_date)}
+                          </Td>
+                          <Td style={{ fontWeight: 500, color: 'var(--nx-text)' }}>{round1(leave.days)}d</Td>
+                          <Td><StatusPill $status={leave.status}>{leave.status}</StatusPill></Td>
+                        </Tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </TableContainer>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Leave Distribution</CardTitle>
+                </CardHeader>
+                <ChartContainer>
+                  <Doughnut data={chartData} options={chartOptions} />
+                  <ChartCenterText>
+                    <ChartCenterVal>{distribution.totalUsed}</ChartCenterVal>
+                    <ChartCenterLabel>Total Used</ChartCenterLabel>
+                  </ChartCenterText>
+                </ChartContainer>
+                <ChartLegend>
+                  <LegendItem><LegendDot $color="#059669" /> Annual</LegendItem>
+                  <LegendItem><LegendDot $color="#DC2626" /> Sick</LegendItem>
+                  <LegendItem><LegendDot $color="#D97706" /> Other</LegendItem>
+                  <LegendItem><LegendDot $color="#7C3AED" /> Maternity</LegendItem>
+                </ChartLegend>
+              </Card>
+            </DashGrid>
+
+            {/* Operations Calendar */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Operations Calendar (Kenyan Public Holidays Highlighted)</CardTitle>
+                <CalControls>
+                  <CalBtn onClick={() => changeMonth(-1)}><ChevronLeft size={14} /></CalBtn>
+                  <CalMonth>{MONTH_NAMES[calMonth]} {calYear}</CalMonth>
+                  <CalBtn onClick={() => changeMonth(1)}><ChevronRight size={14} /></CalBtn>
+                </CalControls>
+              </CardHeader>
+              <CalGrid>
+                {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(d => (
+                  <CalDayName key={d}>{d}</CalDayName>
+                ))}
+                {calendarCells}
+              </CalGrid>
+            </Card>
+          </>
+        )}
+      </Main>
+
+      {/* ─── SIDE PANEL ─── */}
+      {panel?.type === 'leave' && (() => {
+        const leave = (leaves || []).find(l => l.id === panel.leaveId);
+        if (!leave) return null;
+        const empName = leave.name || balances.find(b => b.user_id === leave.user_id)?.name || 'Employee';
+        const docName = leave.supporting_document ? String(leave.supporting_document).split(/[\\/]/).pop() : '';
+        return (
+          <>
+            <Overlay $open onClick={closePanel} />
+            <SidePanel $open>
+              <PanelHeader>
+                <PanelTitle>
+                  <FileText size={18} style={{ color: 'var(--nx-primary)' }} />
+                  {`${typeLabel(leave)} Leave Details`}
+                </PanelTitle>
+                <PanelClose onClick={closePanel}><X size={16} /></PanelClose>
+              </PanelHeader>
+              <PanelBody>
+                <DetailSection>
+                  <DetailSectionTitle>Request Overview</DetailSectionTitle>
+                  <DetailGrid>
+                    <DetailItem>
+                      <DetailLabel>Status</DetailLabel>
+                      <DetailValue><StatusPill $status={leave.status}>{leave.status}</StatusPill></DetailValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailLabel>Duration</DetailLabel>
+                      <DetailValue>{round1(leave.days)} Days</DetailValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailLabel>Date Applied</DetailLabel>
+                      <DetailValue style={{ fontSize: '0.8rem' }}>{fmtDate(leave.created_at, true)}</DetailValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailLabel>Approver</DetailLabel>
+                      <DetailValue style={{ fontSize: '0.8rem' }}>
+                        {leave.status === 'approved' ? (leave.approved_by ? `Admin (ID ${leave.approved_by})` : 'HR Admin') : 'N/A'}
+                      </DetailValue>
+                    </DetailItem>
+                  </DetailGrid>
+                </DetailSection>
+                <DetailSection>
+                  <DetailSectionTitle>Leave Dates</DetailSectionTitle>
+                  <DetailGrid>
+                    <DetailItem>
+                      <DetailLabel>Start Date</DetailLabel>
+                      <DetailValue style={{ fontSize: '0.8rem' }}>{fmtDate(leave.start_date, true)}</DetailValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailLabel>End Date</DetailLabel>
+                      <DetailValue style={{ fontSize: '0.8rem' }}>{fmtDate(leave.end_date, true)}</DetailValue>
+                    </DetailItem>
+                  </DetailGrid>
+                </DetailSection>
+                <DetailSection>
+                  <DetailSectionTitle>Reason / Notes</DetailSectionTitle>
+                  <ReasonBox>{leave.reason || 'No reason provided.'}</ReasonBox>
+                  {leave.rejection_reason && (
+                    <ReasonBox style={{ borderLeftColor: 'var(--nx-danger)', marginTop: '0.5rem' }}>
+                      <strong>Rejection Reason:</strong> {leave.rejection_reason}
+                    </ReasonBox>
+                  )}
+                </DetailSection>
+                <DetailSection>
+                  <DetailSectionTitle>Supporting Documents</DetailSectionTitle>
+                  {docName ? (
+                    <DocItem
+                      onClick={() => {
+                        const url = String(leave.supporting_document);
+                        if (/^https?:\/\//.test(url)) window.open(url, '_blank', 'noopener');
+                      }}
+                    >
+                      <DocIcon><FileText size={16} /></DocIcon>
+                      <DocInfo>
+                        <DocName>{docName}</DocName>
+                        <DocSize>Supporting Document</DocSize>
+                      </DocInfo>
+                      <Download size={16} style={{ color: 'var(--nx-text-mute)' }} />
+                    </DocItem>
+                  ) : (
+                    <div style={{ color: 'var(--nx-text-mute)', fontSize: '0.85rem', padding: '0.5rem 0' }}>
+                      No documents attached.
+                    </div>
+                  )}
+                </DetailSection>
+              </PanelBody>
+              <PanelFooter>
+                {leave.status === 'pending' ? (
+                  <>
+                    <Btn $variant="danger" onClick={() => setRejectState({ open: true, leaveId: leave.id, reason: '' })}>
+                      Reject Request
+                    </Btn>
+                    <Btn $variant="success" onClick={() => approveLeave(leave.id)}>
+                      Approve Leave
+                    </Btn>
+                  </>
+                ) : leave.status === 'approved' && isPastDay(leave.end_date) && !returnsConfirmed[leave.id] ? (
+                  <>
+                    <Btn $variant="secondary" onClick={closePanel}>Close</Btn>
+                    <Btn $variant="success" onClick={() => confirmReturn(leave.id)}>
+                      Confirm Return to Work
+                    </Btn>
+                  </>
+                ) : (
+                  <Btn $variant="secondary" onClick={closePanel}>Close</Btn>
+                )}
+              </PanelFooter>
+            </SidePanel>
+          </>
+        );
+      })()}
+
+      {panel?.type === 'day' && (() => {
+        const dateStr = panel.date;
+        const holiday = holidayOf(dateStr);
+        const dayLeaves = (leaves || []).filter(l => {
+          if (l.status === 'rejected' || l.status === 'cancelled') return false;
+          return coversDay(l, dateStr);
+        });
+        const deptCounts = {};
+        dayLeaves.forEach(l => {
+          if (l.status !== 'approved') return;
+          const dept = deptOfUser(l.user_id);
+          deptCounts[dept] = (deptCounts[dept] || 0) + 1;
+        });
+        const conflicts = Object.keys(deptCounts).filter(dept => {
+          const totalInDept = balances.filter(b => deriveDepartment(b) === dept).length;
+          return totalInDept > 1 && deptCounts[dept] >= totalInDept / 2;
+        });
+        return (
+          <>
+            <Overlay $open onClick={closePanel} />
+            <SidePanel $open>
+              <PanelHeader>
+                <PanelTitle>
+                  <Calendar size={18} style={{ color: 'var(--nx-primary)' }} />
+                  {`Operations on ${fmtDate(dateStr, true)}`}
+                </PanelTitle>
+                <PanelClose onClick={closePanel}><X size={16} /></PanelClose>
+              </PanelHeader>
+              <PanelBody>
+                {holiday && (
+                  <WarningBox $danger>
+                    <AlertTriangle size={20} />
+                    <WarningText><strong>Public Holiday:</strong> {holiday.name}. Offices are closed.</WarningText>
+                  </WarningBox>
+                )}
+                {conflicts.length > 0 && (
+                  <WarningBox>
+                    <AlertTriangle size={20} />
+                    <WarningText>
+                      <strong>Operational Conflict Warning:</strong> Over 50% of staff in{' '}
+                      <strong>{conflicts.join(', ')}</strong> are on leave this day. Approvals for this
+                      department should be halted.
+                    </WarningText>
+                  </WarningBox>
+                )}
+                {dayLeaves.length === 0 ? (
+                  <EmptyPanel>
+                    <CheckCircle size={40} />
+                    <br />
+                    No leave activities on this day.
+                  </EmptyPanel>
+                ) : (
+                  <>
+                    <DetailSectionTitle>Active Leaves ({dayLeaves.length})</DetailSectionTitle>
+                    <ActivityList>
+                      {dayLeaves.map(item => {
+                        const emp = balances.find(b => b.user_id === item.user_id);
+                        return (
+                          <ActivityCard
+                            key={item.id}
+                            onClick={() => { selectEmployee(item.user_id); openLeavePanel(item.id); }}
+                          >
+                            <ActivityHeader>
+                              <ActivityName>
+                                <Avatar style={{ width: 28, height: 28, fontSize: '0.7rem', background: avatarColor(item.user_id) }}>
+                                  {getInitials(item.name || emp?.name)}
+                                </Avatar>
+                                {item.name || emp?.name || 'Unknown'}
+                              </ActivityName>
+                              <TypePill $kind={typeKind(item)}>{typeLabel(item)}</TypePill>
+                            </ActivityHeader>
+                            <ActivityMeta>
+                              {deptOfUser(item.user_id)} • {item.status} • Ends on {fmtDate(item.end_date)}
+                            </ActivityMeta>
+                          </ActivityCard>
+                        );
+                      })}
+                    </ActivityList>
+                  </>
+                )}
+              </PanelBody>
+              <PanelFooter>
+                <Btn $variant="secondary" onClick={closePanel}>Close</Btn>
+              </PanelFooter>
+            </SidePanel>
+          </>
+        );
+      })()}
+
+      {/* ─── ADJUST BALANCE MODAL ─── */}
+      <Overlay $z={1000} $open={adjustOpen} onClick={() => setAdjustOpen(false)} />
+      <SidePanel $z={1001} $width={450} $open={adjustOpen}>
+        <PanelHeader>
+          <PanelTitle><SlidersHorizontal size={18} /> Adjust Leave Balance</PanelTitle>
+          <PanelClose onClick={() => setAdjustOpen(false)}><X size={16} /></PanelClose>
+        </PanelHeader>
+        <PanelBody>
+          <FormGroup>
+            <FormLabel>Select Employee</FormLabel>
+            <FormSelect
+              value={adjustForm.employeeId}
+              onChange={(e) => setAdjustForm({ ...adjustForm, employeeId: e.target.value })}
+            >
+              <option value="">Select employee...</option>
+              {balances.map(emp => (
+                <option key={emp.user_id} value={emp.user_id}>
+                  {emp.name || 'Unknown'} ({deriveDepartment(emp)}) — Balance: {round1(emp.currentBalance)}d
+                </option>
+              ))}
+            </FormSelect>
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>Adjustment Type</FormLabel>
+            <FormSelect
+              value={adjustForm.kind}
+              onChange={(e) => setAdjustForm({ ...adjustForm, kind: e.target.value })}
+            >
+              <option value="add">Add Manual Days</option>
+              <option value="carry">Carry-Forward from Previous Year</option>
+              <option value="holiday">Holiday Compensation (Worked Public Holiday, +1)</option>
+            </FormSelect>
+          </FormGroup>
+          {adjustForm.kind !== 'holiday' && (
+            <FormGroup>
+              <FormLabel>Number of Days</FormLabel>
+              <FormInput
+                type="number"
+                min="1"
+                value={adjustForm.days}
+                onChange={(e) => setAdjustForm({ ...adjustForm, days: e.target.value })}
+              />
+            </FormGroup>
+          )}
+          <FormGroup>
+            <FormLabel>{adjustForm.kind === 'holiday' ? 'Holiday Name / Note' : 'Reason / Note'}</FormLabel>
+            <FormInput
+              type="text"
+              value={adjustForm.reason}
+              placeholder={adjustForm.kind === 'carry' ? 'e.g. Carried over 5 days from last year' : 'e.g. Approved by HR'}
+              onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })}
+            />
+          </FormGroup>
+        </PanelBody>
+        <PanelFooter>
+          <Btn $variant="secondary" onClick={() => setAdjustOpen(false)}>Cancel</Btn>
+          <Btn $variant="primary" onClick={submitAdjustment}>Apply Adjustment</Btn>
+        </PanelFooter>
+      </SidePanel>
+
+      {/* ─── EMERGENCY LEAVE MODAL ─── */}
+      <Overlay $z={1000} $open={emergencyOpen} onClick={() => setEmergencyOpen(false)} />
+      <SidePanel $z={1001} $width={450} $open={emergencyOpen}>
+        <PanelHeader>
+          <PanelTitle $color="var(--nx-danger)"><Zap size={18} /> Log Emergency Leave</PanelTitle>
+          <PanelClose onClick={() => setEmergencyOpen(false)}><X size={16} /></PanelClose>
+        </PanelHeader>
+        <PanelBody>
+          <WarningBox $danger>
+            <AlertTriangle size={20} />
+            <WarningText>
+              Emergency leaves bypass normal approval workflows but require HR validation upon return.
+            </WarningText>
+          </WarningBox>
+          <FormGroup>
+            <FormLabel>Select Employee</FormLabel>
+            <FormSelect
+              value={emergencyForm.employeeId}
+              onChange={(e) => setEmergencyForm({ ...emergencyForm, employeeId: e.target.value })}
+            >
+              <option value="">Select employee...</option>
+              {balances.map(emp => (
+                <option key={emp.user_id} value={emp.user_id}>{emp.name || 'Unknown'} ({deriveDepartment(emp)})</option>
+              ))}
+            </FormSelect>
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>Start Date</FormLabel>
+            <FormInput
+              type="date"
+              value={emergencyForm.start}
+              onChange={(e) => setEmergencyForm({ ...emergencyForm, start: e.target.value })}
+            />
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>End Date</FormLabel>
+            <FormInput
+              type="date"
+              value={emergencyForm.end}
+              min={emergencyForm.start}
+              onChange={(e) => setEmergencyForm({ ...emergencyForm, end: e.target.value })}
+            />
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>Emergency Reason</FormLabel>
+            <FormInput
+              type="text"
+              value={emergencyForm.reason}
+              placeholder="Brief description of emergency"
+              onChange={(e) => setEmergencyForm({ ...emergencyForm, reason: e.target.value })}
+            />
+          </FormGroup>
+        </PanelBody>
+        <PanelFooter>
+          <Btn $variant="secondary" onClick={() => setEmergencyOpen(false)}>Cancel</Btn>
+          <Btn $variant="danger" onClick={submitEmergencyLeave} disabled={emergencyForm.submitting}>
+            {emergencyForm.submitting ? 'Logging...' : 'Log Emergency'}
+          </Btn>
+        </PanelFooter>
+      </SidePanel>
+
+      {/* ─── REJECTION MODAL ─── */}
+      {rejectState.open && (
+        <Modal onClick={(e) => { if (e.target === e.currentTarget) setRejectState({ open: false, leaveId: null, reason: '' }); }}>
+          <ModalContent>
+            <ModalHeaderRow>
+              <ModalTitle><XCircle size={20} style={{ color: 'var(--nx-danger)' }} /> Reject Leave Request</ModalTitle>
+              <PanelClose onClick={() => setRejectState({ open: false, leaveId: null, reason: '' })}><X size={16} /></PanelClose>
+            </ModalHeaderRow>
+            <p style={{ marginBottom: '1rem', color: 'var(--nx-text-dim)', fontSize: '0.875rem' }}>
+              Please provide a reason for rejecting this leave request:
+            </p>
+            <FormTextarea
+              value={rejectState.reason}
+              placeholder="Enter rejection reason..."
+              autoFocus
+              onChange={(e) => setRejectState({ ...rejectState, reason: e.target.value })}
+            />
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
+              <Btn $variant="secondary" onClick={() => setRejectState({ open: false, leaveId: null, reason: '' })}>Cancel</Btn>
+              <Btn $variant="danger" onClick={submitRejection} disabled={!rejectState.reason.trim()}>Reject Leave</Btn>
+            </div>
+          </ModalContent>
+        </Modal>
+      )}
+
+      {/* ─── REGISTER EMPLOYEE MODAL ─── */}
+      {registerOpen && (
+        <Modal onClick={(e) => { if (e.target === e.currentTarget) setRegisterOpen(false); }}>
+          <ModalContent>
+            <ModalHeaderRow>
+              <ModalTitle><UserPlus size={20} style={{ color: 'var(--nx-primary)' }} /> Register Employee</ModalTitle>
+              <PanelClose onClick={() => setRegisterOpen(false)}><X size={16} /></PanelClose>
+            </ModalHeaderRow>
+            <p style={{ marginBottom: '1.25rem', color: 'var(--nx-text-dim)', fontSize: '0.875rem' }}>
+              Register a new employee to the leaves database. Each employee automatically receives{' '}
+              <strong>{DEFAULT_LEAVE_DAYS} days</strong> of annual leave per year.
+            </p>
+            <FormGroup>
+              <FormLabel>Full Name</FormLabel>
+              <FormInput
+                type="text"
+                value={registerForm.full_name}
+                placeholder="e.g. Jane Wanjiru"
+                onChange={(e) => setRegisterForm({ ...registerForm, full_name: e.target.value })}
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Email</FormLabel>
+              <FormInput
+                type="email"
+                value={registerForm.email}
+                placeholder="e.g. jane@restpoint.co.ke"
+                onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Phone (Optional)</FormLabel>
+              <FormInput
+                type="text"
+                value={registerForm.phone}
+                placeholder="e.g. +254 700 000 000"
+                onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Role</FormLabel>
+              <FormSelect
+                value={registerForm.role}
+                onChange={(e) => setRegisterForm({ ...registerForm, role: e.target.value })}
+              >
+                <option value="staff">Staff</option>
+                <option value="mortician">Mortician</option>
+                <option value="embalmer">Embalmer</option>
+                <option value="hearse_driver">Hearse Driver</option>
+                <option value="receptionist">Receptionist</option>
+                <option value="hr">HR</option>
+                <option value="accounts">Accounts</option>
+                <option value="florist">Florist</option>
+                <option value="technician">Technician</option>
+                <option value="cleaner">Cleaner</option>
+                <option value="security">Security</option>
+                <option value="admin">Admin</option>
+              </FormSelect>
+            </FormGroup>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
+              <Btn $variant="secondary" onClick={() => setRegisterOpen(false)}>Cancel</Btn>
+              <Btn
+                $variant="primary"
+                onClick={submitRegisterEmployee}
+                disabled={registerForm.submitting || !registerForm.full_name.trim() || !registerForm.email.trim()}
+              >
+                <Loader2 size={14} style={{ display: registerForm.submitting ? 'inline-block' : 'none' }} />
+                {registerForm.submitting ? 'Registering...' : 'Register Employee'}
+              </Btn>
+            </div>
+          </ModalContent>
+        </Modal>
+      )}
+
+      {/* ─── TOASTS ─── */}
+      <ToastContainer>
+        {toasts.map(toast => (
+          <Toast key={toast.id} style={{ background: toast.type === 'success' ? 'var(--nx-success)' : toast.type === 'error' ? 'var(--nx-danger)' : 'var(--nx-warning)' }}>
+            {toast.type === 'success' && <CheckCircle size={16} />}
+            {toast.type === 'error' && <XCircle size={16} />}
+            {toast.type === 'warning' && <AlertCircle size={16} />}
+            {toast.message}
+          </Toast>
+        ))}
+      </ToastContainer>
+    </Root>
+  );
+};
+
+export default LeaveDashboard;
+
+
+
+
+
+
+
+
+
+
 
 
 

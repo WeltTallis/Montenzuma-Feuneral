@@ -1338,7 +1338,7 @@ export class TenantModel {
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     tenant_slug VARCHAR(255) NOT NULL UNIQUE,
                     db_name VARCHAR(255) NOT NULL,
-                    organization_name VARCHAR(255) NOT NULL,
+                    tenant_name VARCHAR(255) NOT NULL,
                     email VARCHAR(255),
                     phone VARCHAR(50),
                     address TEXT,
@@ -1376,9 +1376,19 @@ export class TenantModel {
 
             // Insert default system_shared tenant if it doesn't exist
             await conn.query(`
-                INSERT IGNORE INTO tenants (tenant_slug, db_name, organization_name, status)
+                INSERT IGNORE INTO tenants (tenant_slug, db_name, tenant_name, status)
                 VALUES ('system_shared', 'restpoint_main', 'System Shared Database', 'active')
             `);
+
+            // Migrate existing databases: rename organization_name to tenant_name if needed
+            try {
+                await conn.query(`
+                    ALTER TABLE tenants CHANGE COLUMN organization_name tenant_name VARCHAR(255) NOT NULL
+                `);
+                console.log('[TenantModel] Migrated organization_name -> tenant_name');
+            } catch (migrateErr: any) {
+                // Column doesn't exist or already renamed - ignore
+            }
 
             console.log('[TenantModel] tenant_tracking schema ensured (database + tables ready)');
         } catch (err: any) {
