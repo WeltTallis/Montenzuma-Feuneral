@@ -22,8 +22,8 @@ COPY packages/shared-services/package.json ./packages/shared-services/
 # Copy service package.json
 COPY services/bodycheckout-service/package.json ./services/bodycheckout-service/
 
-# Install ALL dependencies (including dev for building shared packages)
-RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=optional
+# Install ALL dependencies including sharp for linux-musl
+RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --include=optional --os=linux --libc=musl --cpu=x64 sharp && npm install --omit=optional
 
 # Copy source code
 COPY services/configurations/ ./configurations/

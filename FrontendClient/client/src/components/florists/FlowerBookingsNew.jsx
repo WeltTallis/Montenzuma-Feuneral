@@ -423,6 +423,7 @@ const FlowerBookingsNew = () => {
         flower_type: items[0].name,
         arrangements: items,
         ribbon_color: newBooking.ribbon && newBooking.ribbon !== 'None' ? newBooking.ribbon : null,
+        size: newBooking.size || null,
         deceased_name: newBooking.deceased_name.trim(),
         booked_by: newBooking.booked_by || getLocalUserName() || 'System',
         branch: resolveBranchName() || undefined,
@@ -1471,7 +1472,7 @@ const FlowerBookingsNew = () => {
               <div style={styles.detailItemIcon}><Package size={22} /></div>
               <div style={styles.detailItemInfo}>
                 <div style={styles.detailLabel}>Flower Size</div>
-                <div style={styles.detailValue}>{asList(product.sizes).join(', ') || sizeNote || '—'}</div>
+                <div style={styles.detailValue}>{b.size || asList(product.sizes).join(', ') || sizeNote || '—'}</div>
               </div>
             </div>
             <div style={styles.detailItem}>

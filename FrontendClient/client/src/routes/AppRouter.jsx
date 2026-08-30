@@ -78,6 +78,7 @@ const StoreDashboard = lazy(() => import('../modules/store'));
 const DeceasedRegistrationForm = lazy(() => import('../components/deceased/register/deceasedIntake'));
 const RegisterCoffin = lazy(() => import('../components/coffins/registerCoffin'));
 const CoffinInventory = lazy(() => import('../components/coffins/coffininventory'));
+const CoffinInventoryDashboard = lazy(() => import('../components/dashboard/CoffinInventoryDashboard'));
 const CoffinDetails = lazy(() => import('../components/coffins/coffinDetails'));
 const CoffinRequests = lazy(() => import('../components/analysis/coffinRequests'));
 const DeceasedList = lazy(() => import('../components/deceased/allDeceased/listDeceased'));
@@ -421,7 +422,11 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
         <Route path="coffins" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><CoffinInventory /></Layout>
         } />
-        
+
+        <Route path="coffins/dashboard" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><CoffinInventoryDashboard /></Layout>
+        } />
+
         <Route path="coffins/register" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><RegisterCoffin /></Layout>
         } />

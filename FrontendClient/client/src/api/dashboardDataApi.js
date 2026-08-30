@@ -928,6 +928,7 @@ export const fetchBranchPerformanceData = async (date) => {
 
 // =============================================================
 // 14. COFFIN INVENTORY  — fetchCoffinInventoryData(date)
+// Returns independent inventory per branch + all reservations
 // =============================================================
 export const fetchCoffinInventoryData = async (date) => {
   const key = toKey(date) || todayKey();
@@ -937,28 +938,98 @@ export const fetchCoffinInventoryData = async (date) => {
       rawCoffinOrders(),
       rawBranches(),
     ]);
-    const orderKeys = orders.filter((o) => toKey(o?.created_at) === key);
-    const list = coffins.slice(0, 6).map((c) => {
+    
+    // Get all orders (not just today) for reservations
+    const allOrders = orders;
+    const todayOrders = orders.filter((o) => toKey(o?.created_at) === key);
+    
+    // Group coffins by branch for independent inventory
+    const branchMap = new Map();
+    
+    // Initialize with all known branches
+    branches.forEach((br) => {
+      const brId = br?.branch_id ?? br?.id;
+      const brName = br?.name || 'Branch';
+      if (!branchMap.has(brId)) {
+        branchMap.set(brId, { id: brId, name: brName, coffins: [] });
+      }
+    });
+    
+    // Add an "Unassigned" group for coffins without a branch
+    branchMap.set('unassigned', { id: 'unassigned', name: 'Unassigned', coffins: [] });
+    
+    // Group coffins by their branch
+    coffins.forEach((c) => {
+      const brId = c?.branch_id ?? c?.branch ?? 'unassigned';
+      const branch = branchMap.get(brId) || branchMap.get('unassigned');
       const stock = Number(c?.quantity) || 0;
-      const booked = orderKeys.filter((o) => String(o?.coffin_name || '').toLowerCase() === String(c?.type || c?.name || '').toLowerCase()).length;
       const price = Number(c?.exact_price) || 0;
-      return {
+      
+      // Count reservations for this coffin type across ALL branches
+      const reserved = allOrders.filter((o) => 
+        String(o?.coffin_name || '').toLowerCase() === String(c?.type || c?.name || '').toLowerCase() &&
+        o?.status !== 'cancelled' && o?.status !== 'declined'
+      ).length;
+      
+      // Count today's reservations
+      const todayReserved = todayOrders.filter((o) => 
+        String(o?.coffin_name || '').toLowerCase() === String(c?.type || c?.name || '').toLowerCase()
+      ).length;
+      
+      branch.coffins.push({
         name: c?.type || c?.name || 'Coffin',
-        branch: branchName(branches, c?.branch_id ?? c?.branch) || 'Nairobi HQ',
         price: price ? `KES ${price.toLocaleString()}` : '—',
         stock,
-        booked,
+        reserved,
+        todayReserved,
         status: stock === 0 ? 'out' : stock <= 3 ? 'critical' : stock <= 8 ? 'low' : 'available',
-      };
+      });
     });
+    
+    // Convert map to array and filter out empty branches
+    const branchesInventory = Array.from(branchMap.values()).filter((b) => b.coffins.length > 0);
+    
+    // Build flat list for backward compatibility
+    const list = [];
+    branchesInventory.forEach((br) => {
+      br.coffins.forEach((c) => {
+        list.push({
+          ...c,
+          branch: br.name,
+          branchId: br.id,
+        });
+      });
+    });
+    
+    // All reservations across all branches
+    const reservations = allOrders
+      .filter((o) => o?.status !== 'cancelled' && o?.status !== 'declined')
+      .slice(0, 20)
+      .map((o) => ({
+        id: o?.order_id || o?.id,
+        coffin: o?.coffin_name || o?.coffin || 'Coffin',
+        branch: branchName(branches, o?.branch_id ?? o?.branch) || 'Nairobi HQ',
+        deceased: o?.deceased_name || o?.deceased || o?.case_name || '—',
+        status: o?.status || 'pending',
+        date: toKey(o?.created_at) || '—',
+        quantity: Number(o?.quantity) || 1,
+      }));
+    
     const totals = {
       stock: list.reduce((s, c) => s + c.stock, 0),
-      booked: list.reduce((s, c) => s + c.booked, 0),
+      reserved: list.reduce((s, c) => s + c.reserved, 0),
+      branches: branchesInventory.length,
     };
-    return { coffins: list, totals };
+    
+    return { 
+      coffins: list, 
+      branches: branchesInventory, 
+      reservations, 
+      totals,
+    };
   } catch (err) {
     console.warn('[CoffinInventory] failed:', err?.message);
-    return { coffins: [], totals: { stock: 0, booked: 0 } };
+    return { coffins: [], branches: [], reservations: [], totals: { stock: 0, reserved: 0, branches: 0 } };
   }
 };
 // =============================================================

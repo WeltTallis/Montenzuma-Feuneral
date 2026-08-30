@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Use npm install instead of ci for more flexibility
-RUN npm install --legacy-peer-deps
+RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --legacy-peer-deps
 
 
 # Stage 2: Builder
@@ -21,7 +21,7 @@ COPY --from=deps /app ./
 COPY . .
 
 # Explicitly install esbuild and all needed deps
-RUN npm install --legacy-peer-deps && \
+RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --legacy-peer-deps && \
   npm install esbuild@0.21.5 --save-dev && \
   npm install vite@5.4.0 --save-dev
 

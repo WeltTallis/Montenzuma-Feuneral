@@ -232,7 +232,8 @@ export const createBooking = async (req: any, res: any) => {
         const tenantSlug = tenantSlugOf(req);
         const {
             arrangement_name, arrangement_id, deceased_name, booked_by,
-            funeral_home, date, time, notes, phone, email, branch: branchFromPayload
+            funeral_home, date, time, notes, phone, email, branch: branchFromPayload,
+            ribbon_color, size
         } = req.body;
 
         // Map frontend fields to backend schema
@@ -257,15 +258,16 @@ export const createBooking = async (req: any, res: any) => {
         const booking_id = generateBookingId();
 
         const result = await safeExecute(
-            `INSERT INTO flower_bookings 
-            (booking_id, tenant_slug, tenant_id, flower_type, flower_description, customer, 
-             customer_phone, customer_email, deceased_name, branch, 
-             arrangement_id, date, time, status, notes, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+            `INSERT INTO flower_bookings
+            (booking_id, tenant_slug, tenant_id, flower_type, flower_description, customer,
+             customer_phone, customer_email, deceased_name, branch,
+             arrangement_id, date, time, status, notes, created_by, ribbon_color, size)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
             [
                 booking_id, tenantSlug, tenantId, flower_type, flower_description, customer,
                 customer_phone || '', customer_email || '', deceased_name || '', branch,
-                arrangement_id || null, date || null, time || null, notes || '', req.tenantSlug || 'system'
+                arrangement_id || null, date || null, time || null, notes || '', req.tenantSlug || 'system',
+                ribbon_color || null, size || null
             ]
         );
 

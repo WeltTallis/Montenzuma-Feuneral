@@ -222,6 +222,39 @@ const BODY_CHECKOUT_SERVICE_MIGRATIONS: Migration[] = [
     name: '071_create_checkout_approvals_table',
     sql: `CREATE TABLE IF NOT EXISTS checkout_approvals (id INT AUTO_INCREMENT PRIMARY KEY, checkout_id INT NOT NULL, approver_id INT NOT NULL, approval_status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending', approval_date VARCHAR(255), comments TEXT, INDEX idx_checkout_id (checkout_id), INDEX idx_approver_id (approver_id), FOREIGN KEY (checkout_id) REFERENCES body_checkout(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
+  {
+    name: '072_create_body_releases_table',
+    sql: `CREATE TABLE IF NOT EXISTS body_releases (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      release_id VARCHAR(50) UNIQUE NOT NULL,
+      tenant_slug VARCHAR(100) NOT NULL,
+      admission_number VARCHAR(100),
+      name_of_deceased VARCHAR(255),
+      next_kin VARCHAR(255) NOT NULL,
+      id_number VARCHAR(100) NOT NULL,
+      tell_number VARCHAR(50) NOT NULL,
+      relationship VARCHAR(100),
+      date_of_removal DATE,
+      time_of_removal VARCHAR(20),
+      permit_number VARCHAR(100),
+      mode_of_transport VARCHAR(100),
+      terms_accepted BOOLEAN DEFAULT FALSE,
+      everything_paid BOOLEAN DEFAULT FALSE,
+      signature TEXT,
+      staff_name VARCHAR(255),
+      staff_signature TEXT,
+      received_by VARCHAR(255),
+      witness_name VARCHAR(255),
+      items_returned TEXT,
+      notes TEXT,
+      created_at VARCHAR(255),
+      updated_at VARCHAR(255),
+      INDEX idx_release_id (release_id),
+      INDEX idx_tenant_slug (tenant_slug),
+      INDEX idx_admission_number (admission_number),
+      INDEX idx_created_at (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  },
 ];
 
 // ─── Coffin Service Migrations ───────────────────────────────────────────────
@@ -307,7 +340,7 @@ const FLORIST_SERVICE_MIGRATIONS: Migration[] = [
   },
   {
     name: '163_add_flower_booking_extras',
-    sql: 'ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 1 AFTER amount, ADD COLUMN IF NOT EXISTS arrangements TEXT AFTER quantity, ADD COLUMN IF NOT EXISTS primary_color VARCHAR(50) DEFAULT NULL AFTER arrangements, ADD COLUMN IF NOT EXISTS accent_color VARCHAR(50) DEFAULT NULL AFTER primary_color, ADD COLUMN IF NOT EXISTS ribbon_color VARCHAR(50) DEFAULT NULL AFTER accent_color',
+    sql: 'ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 1 AFTER amount, ADD COLUMN IF NOT EXISTS arrangements TEXT AFTER quantity, ADD COLUMN IF NOT EXISTS primary_color VARCHAR(50) DEFAULT NULL AFTER arrangements, ADD COLUMN IF NOT EXISTS accent_color VARCHAR(50) DEFAULT NULL AFTER primary_color, ADD COLUMN IF NOT EXISTS ribbon_color VARCHAR(50) DEFAULT NULL AFTER accent_color, ADD COLUMN IF NOT EXISTS size VARCHAR(50) DEFAULT NULL AFTER ribbon_color',
   },
   {
     name: '164_add_price_to_flower_samples',
@@ -363,7 +396,7 @@ export const ALL_TENANT_MIGRATIONS: Migration[] = [
 // tenant shares these tables; isolation is via tenant_slug / tenant_id columns.
 // Each service runs its own knex migrations independently against this DB.
 // NOTE: Leave tables are NOT here — they are per-tenant (see ALL_TENANT_MIGRATIONS).
-export const OPERATIONS_MIGRATIONS: Migration[] = [...EXTRA_SERVICES_MIGRATIONS];
+export const OPERATIONS_MIGRATIONS: Migration[] = [...EXTRA_SERVICES_MIGRATIONS, ...FLORIST_SERVICE_MIGRATIONS];
 
 // Alias for backward compatibility
 export const ALL_SERVICE_MIGRATIONS = ALL_TENANT_MIGRATIONS;
