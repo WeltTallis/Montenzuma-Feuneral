@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8113/api/v1/analytics';
+const API_BASE_URL = import.meta.env.VITE_ANALYTICS_API_URL || 'http://localhost:8113/api/v1/analytics';
 
 const getAuthHeader = () => {
   const token = localStorage.getItem('authToken');

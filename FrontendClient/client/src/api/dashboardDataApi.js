@@ -10,6 +10,9 @@ import {
 
 const CACHE_TTL = 60 * 1000;
 const cache = new Map();
+
+// Currency formatter for finance-strip metric values (KES, whole shillings).
+const money = (n) => `KES ${Number(n || 0).toLocaleString('en-KE', { maximumFractionDigits: 0 })}`;
 const cachedGet = (key, fn) => {
   const now = Date.now();
   const hit = cache.get(key);

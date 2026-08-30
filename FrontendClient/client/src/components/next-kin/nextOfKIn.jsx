@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { Users, Plus, Edit, Trash2, Phone, Mail, MapPin, User, AlertCircle, RefreshCw } from '../../utils/icons/icons';
 import axios from 'axios';
 

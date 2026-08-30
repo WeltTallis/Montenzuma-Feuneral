@@ -4,6 +4,8 @@ import styled from 'styled-components';
 import { X, Download, Trash2, FileText, Image } from '../../utils/icons/icons';
 
 import { toast } from 'react-toastify';
+import api from '../../api/axios';
+import { ENDPOINTS } from '../../api/endpoints';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -156,7 +158,7 @@ const DocumentsModal = ({ isOpen, onClose, deceasedId, deceasedName }) => {
     
     setIsLoading(true);
     try {
-      const response = await apiService.getDocuments(deceasedId);
+      const response = await api.get(`/deceased/${deceasedId}/documents`);
       setDocuments(response.data.data || []);
     } catch (error) {
       toast.error('Failed to fetch documents');
@@ -174,7 +176,7 @@ const DocumentsModal = ({ isOpen, onClose, deceasedId, deceasedName }) => {
 
   const handleDownload = async (documentId, documentName) => {
     try {
-      const response = await apiService.downloadDocument(documentId);
+      const response = await api.get(`${ENDPOINTS.DOCUMENTS.BASE}/${documentId}/download`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -191,7 +193,7 @@ const DocumentsModal = ({ isOpen, onClose, deceasedId, deceasedName }) => {
     if (!window.confirm('Are you sure you want to delete this document?')) return;
 
     try {
-      await apiService.deleteDocument(documentId);
+      await api.delete(`${ENDPOINTS.DOCUMENTS.BASE}/${documentId}`);
       toast.success('Document deleted successfully');
       fetchDocuments(); // Refresh the list
     } catch (error) {

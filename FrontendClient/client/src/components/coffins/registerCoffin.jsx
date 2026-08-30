@@ -876,6 +876,7 @@ const CurrencyDisplay = styled.div`
 
 // --- ENHANCED COMPONENT WITH MULTIPLE IMAGES & CURRENCY SUPPORT ---
 const RegisterCoffin = () => {
+  const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const webcamRef = useRef(null);
 

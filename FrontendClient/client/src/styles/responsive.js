@@ -96,5 +96,5 @@ export { default as RevealComponent } from './Reveal';
 export default {
     fs, sp, grid2, grid3, grid4, gridCols,
     mq, sectionPad, hoverLift, hoverBorder,
-    injectSeo, injectBaseStyles, useReveal
+    injectSeo, injectBaseStyles
 };

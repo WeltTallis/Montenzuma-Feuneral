@@ -5,6 +5,7 @@ import AdvancedPdfViewer from './pdfviewer';
 import api from '../../api/axios';
 import { ENDPOINTS } from '../../api/endpoints';
 import env from '../../utils/config/env';
+import axios from 'axios';
 
 const DeceasedFinancialDetails = ({ 
   financialDetails, 

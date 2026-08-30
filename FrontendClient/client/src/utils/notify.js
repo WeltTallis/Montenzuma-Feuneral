@@ -204,7 +204,7 @@ export function toast({
   type = 'inf',
   title = '',
   msg = '',
-  dur = 4500,
+  dur = 5500,
   acts = null,
   bar = true,
   pause = true,

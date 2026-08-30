@@ -324,3 +324,13 @@ select:focus-visible {
     --mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
+
+
+input,
+textarea,
+[contenteditable="true"] {
+  caret-color: var(--ox);
+}
+
+
+

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Menu, X, ArrowRight, Mail, MessageCircle, Globe, ShieldCheck } from '../../utils/icons/icons';
+import { ChevronDown, Menu, X, ArrowRight, Mail, MessageCircle, Globe, ShieldCheck, Linkedin } from '../../utils/icons/icons';
 import Footer from '../../components/layout/Footer';
 
 const C = {

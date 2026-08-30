@@ -1,0 +1,10 @@
+--- navigating to https://restpoint.co.ke/
+[console.error] Global error caught: ReferenceError: User is not defined
+[pageerror] ReferenceError: User is not defined
+    at <anonymous> (https://restpoint.co.ke/assets/index-Bavg7m3M.js:5227:42)
+[console.error] TypeError: Cannot read properties of undefined (reading 'default')
+[console.error] App Error Boundary caught: TypeError: Cannot read properties of undefined (reading 'default') [object Object]
+--- title: Rest Point | Funeral Home Management Software Kenya | Built by Peter Mumo, Welt Tallis
+--- #root children: 1
+--- #root preview: <div style="min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; font-family: system-ui, -apple-system, sans-serif; background: rgb(248, 249, 250);"><h2 style="color: rgb(220, 53, 69); margin-bottom: 12px;">Something went wrong</h2><p style="color: rgb(108, 117, 125); max-width: 400px; text-align: center;">The application encountere
+--- body text: This website uses cookies Something went wrong The application encountered an error. Please refresh the page or try again later. Refresh Page

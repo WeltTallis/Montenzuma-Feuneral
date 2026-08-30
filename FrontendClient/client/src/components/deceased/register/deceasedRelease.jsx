@@ -235,21 +235,43 @@ const DocTitle = styled.div`
 const BarcodeWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   gap: 0.25rem;
+  
+  @media (max-width: 480px) {
+    align-items: center;
+  }
 `;
 
 const FileIdText = styled.div`
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.7rem;
   color: ${COLORS.gray};
-  text-align: center;
+  text-align: right;
   
   span {
     font-weight: 700;
     color: ${COLORS.ink};
     letter-spacing: 0.05em;
     margin-left: 0.25rem;
+  }
+  
+  @media (max-width: 480px) {
+    text-align: center;
+  }
+`;
+
+const TodayDateText = styled.div`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${COLORS.verdigris};
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  
+  svg {
+    color: ${COLORS.brass};
   }
 `;
 
@@ -328,7 +350,6 @@ const Col = styled.div`
 `;
 
 const Col2 = styled(Col)` flex: 2; @media (max-width: 1024px) { flex: 1 1 100%; } `;
-const Col05 = styled(Col)` flex: 0.5; @media (max-width: 1024px) { flex: 1 1 30%; min-width: 120px; } `;
 
 const Label = styled.label`
   display: block;
@@ -548,7 +569,6 @@ const GridRight = styled.div`
 `;
 
 const GridName = styled.div` min-width: 0; position: relative; z-index: 1; `;
-const GridDate = styled.div` min-width: 0; position: relative; z-index: 1; `;
 
 const StampWrapper = styled.div`
   position: absolute;
@@ -778,39 +798,6 @@ const Barcode = ({ value }) => {
   return <canvas ref={canvasRef} style={{ width: '100%', maxWidth: '250px', height: 'auto' }} />;
 };
 
-const TextArea = styled.textarea`
-  width: 100%;
-  min-height: 5.5rem;
-  border: none;
-  border-bottom: 1px solid #ccc;
-  border-radius: 0;
-  outline: none;
-  box-shadow: none;
-  background: transparent;
-  padding: 0.5rem 0;
-  font-family: 'Saira', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 400;
-  color: ${COLORS.ink};
-  transition: border-color 0.2s ease;
-  box-sizing: border-box;
-  resize: vertical;
-
-  &:focus {
-    border: none;
-    border-bottom: 1px solid ${COLORS.ink};
-    outline: none;
-    box-shadow: none;
-    background: transparent;
-  }
-
-  &:hover {
-    border-bottom: 1px solid ${COLORS.ink};
-  }
-
-  &::placeholder { color: #a8a29e; font-weight: 400; }
-`;
-
 const DeceasedReleaseForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -829,6 +816,8 @@ const DeceasedReleaseForm = () => {
       })();
   };
   const sigPadRef1 = useRef(null);
+  const searchTimer = useRef(null);
+  const lastSearchedRef = useRef('');
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -856,8 +845,6 @@ const DeceasedReleaseForm = () => {
     fallback
   } = branding;
 
-
-
   const getLoggedInUserEmail = () => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -881,7 +868,6 @@ const DeceasedReleaseForm = () => {
     full_name: '',
     gender: '',
     age: '',
-    date_of_birth: '',
     date_of_death: '',
     cause_of_death: '',
     place_of_death: '',
@@ -895,8 +881,6 @@ const DeceasedReleaseForm = () => {
     release_date: new Date().toISOString().split('T')[0],
     release_time: getCurrentTime(),
     released_by: '',
-    release_notes: '',
-    date_of_removal: new Date().toISOString().split('T')[0],
     permit_number: '',
     mode_of_transport: 'hearse',
     terms_accepted: false,
@@ -913,7 +897,6 @@ const DeceasedReleaseForm = () => {
       time_received: getCurrentTime(),
       release_time: getCurrentTime(),
     }));
-
   }, []);
 
   // Fetch deceased list for the admission dropdown (only unreleased records)
@@ -922,7 +905,6 @@ const DeceasedReleaseForm = () => {
       const tenantSlug = getTenantSlug();
       setIsLoadingDeceasedList(true);
       try {
-
         const response = await axios.get(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.LIST}`, {
           headers: {
             'x-tenant-slug': tenantSlug,
@@ -986,29 +968,104 @@ const DeceasedReleaseForm = () => {
     fetchDeceasedData();
   }, [id, location.state]);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  const clearDeceasedInfo = () => {
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      full_name: '',
+      gender: '',
+      age: '',
+      date_of_death: '',
+      cause_of_death: '',
+      place_of_death: '',
+      next_kin: '',
+      contact_person: '',
+      relationship: '',
+      id_number: '',
+      tel_number: '',
+      permit_number: '',
     }));
-    if (name === 'admission_number' && isFound) setIsFound(false);
+  };
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    // Force admission number to always be uppercase
+    let processedValue = value;
+    if (name === 'admission_number') {
+      processedValue = value.toUpperCase();
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : processedValue,
+    }));
+    
+    if (name === 'admission_number') {
+      setIsFound(false);
+      // Clear the old deceased info so wrong data doesn't linger
+      clearDeceasedInfo();
+    }
+    
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
     if (message.text) setMessage({ type: '', text: '' });
   };
 
+  // Debounced search: triggers after user stops typing for 800ms
+  useEffect(() => {
+    const admissionNumber = String(formData.admission_number || '').trim().toUpperCase();
+
+    // Clear existing timer
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+
+    if (!admissionNumber) {
+      setIsSearching(false);
+      setIsFound(false);
+      lastSearchedRef.current = '';
+      setErrors(prev => ({ ...prev, admission_number: '' }));
+      return;
+    }
+
+    // If we already found this exact admission number, don't search again
+    if (isFound && admissionNumber === lastSearchedRef.current) {
+      setIsSearching(false);
+      return;
+    }
+
+    // Start searching indicator
+    setIsSearching(true);
+    setIsFound(false);
+    setErrors(prev => ({ ...prev, admission_number: '' }));
+
+    searchTimer.current = setTimeout(() => {
+      // Double check it hasn't changed in the input
+      if (String(formData.admission_number || '').trim().toUpperCase() === admissionNumber) {
+        lastSearchedRef.current = admissionNumber;
+        handleAdmissionSearch(admissionNumber);
+      }
+    }, 800); // 800ms debounce delay to allow typing without interruption
+
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, [formData.admission_number, isFound]);
+
   const fillDeceasedIntoForm = (deceased) => {
     setErrors(prev => ({ ...prev, admission_number: '', full_name: '', gender: '' }));
     setIsFound(true);
+    setIsSearching(false);
+    
+    const foundAdmissionNumber = String(deceased.admission_number || '').trim().toUpperCase();
+    lastSearchedRef.current = foundAdmissionNumber;
+
     setFormData(prev => ({
       ...prev,
-      admission_number: deceased.admission_number || prev.admission_number,
+      // Keep exactly what the user typed to prevent input hijacking
+      admission_number: prev.admission_number || foundAdmissionNumber,
       full_name: deceased.full_name || deceased.name_of_deceased || '',
       gender: deceased.gender || '',
       age: deceased.age || '',
-      date_of_birth: deceased.date_of_birth || '',
       date_of_death: deceased.date_of_death || '',
       cause_of_death: deceased.cause_of_death || '',
       place_of_death: deceased.place_of_death || deceased.death_location || '',
@@ -1018,16 +1075,20 @@ const DeceasedReleaseForm = () => {
       id_number: deceased.national_id || deceased.id_number || deceased.nationalId || '',
       tel_number: deceased.tell_no || deceased.tel_number || deceased.phone_number || deceased.contact || '',
       date_admitted: deceased.date_admitted || prev.date_admitted,
-      date_of_removal: deceased.date_of_removal || prev.date_of_removal,
       permit_number: deceased.permit_number || deceased.permit_no || '',
     }));
   };
 
-  const handleAdmissionSearch = async () => {
-    const admissionNumber = String(formData.admission_number || '').trim();
+  const handleAdmissionSearch = async (admissionNumberStr) => {
+    const admissionNumber = String(admissionNumberStr || '').trim().toUpperCase();
 
     if (!admissionNumber) {
       setErrors(prev => ({ ...prev, admission_number: 'Enter an admission number to search' }));
+      return;
+    }
+
+    // If we already found it, don't search again
+    if (lastSearchedRef.current === admissionNumber && isFound) {
       return;
     }
 
@@ -1049,30 +1110,16 @@ const DeceasedReleaseForm = () => {
       );
 
       const result = response.data;
-      const deceased = result?.data || (result && result.full_name ? result : null);
+      if (!result.success) throw new Error(result.message || 'Failed to fetch');
+      
+      const deceased = result.data;
 
       if (!deceased) {
-        // Fall back to the locally-loaded list in case the API shape changes
-        const local = deceasedList.find(
-          (d) => String(d.admission_number).trim() === admissionNumber
-        );
-        if (local) {
-          fillDeceasedIntoForm(local);
-          return;
-        }
         throw new Error('not-found');
       }
 
       fillDeceasedIntoForm(deceased);
     } catch (error) {
-      // Fall back to the locally-loaded list before reporting a failure
-      const local = deceasedList.find(
-        (d) => String(d.admission_number).trim() === admissionNumber
-      );
-      if (local) {
-        fillDeceasedIntoForm(local);
-        return;
-      }
       const apiError = error?.response?.data?.message || error?.message || 'Search failed';
       setIsFound(false);
       setErrors(prev => ({
@@ -1081,6 +1128,9 @@ const DeceasedReleaseForm = () => {
           ? `No deceased record found for admission number "${admissionNumber}".`
           : apiError,
       }));
+      
+      // Clear deceased info if not found
+      clearDeceasedInfo();
     } finally {
       setIsSearching(false);
     }
@@ -1107,12 +1157,22 @@ const DeceasedReleaseForm = () => {
       newErrors.signature = 'Signature is required to proceed';
     }
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
-    if (!validateForm()) return;
+    const validationErrors = validateForm();
+    
+    if (Object.keys(validationErrors).length > 0) {
+      const missingFields = Object.values(validationErrors);
+      notify.info('Missing required details', `Please complete the following: ${missingFields.join(', ')}`);
+      setMessage({
+        type: 'error',
+        text: `Please complete all required fields: ${missingFields.join(', ')}`,
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     setMessage({ type: '', text: '' });
@@ -1125,6 +1185,7 @@ const DeceasedReleaseForm = () => {
 
       const payload = {
         ...formData,
+        admission_number: String(formData.admission_number || '').toUpperCase(),
         time_received: freshTime,
         release_time: freshTime,
         age: formData.age ? parseInt(formData.age, 10) : null,
@@ -1166,7 +1227,6 @@ const DeceasedReleaseForm = () => {
         release_time: getCurrentTime(),
         date_admitted: new Date().toISOString().split('T')[0],
         release_date: new Date().toISOString().split('T')[0],
-        date_of_removal: new Date().toISOString().split('T')[0],
       });
       sigPadRef1.current?.clear();
       setErrors({});
@@ -1176,7 +1236,7 @@ const DeceasedReleaseForm = () => {
       }, 3000);
 
     } catch (error) {
-      toast.error(error.message || 'Release failed. Please try again.');
+      notify.error('Release failed', error.message || 'Please check the details and try again.');
       setMessage({
         type: 'error',
         text: error.message || 'Something went wrong. Please try again.',
@@ -1194,13 +1254,13 @@ const DeceasedReleaseForm = () => {
       release_time: getCurrentTime(),
       date_admitted: new Date().toISOString().split('T')[0],
       release_date: new Date().toISOString().split('T')[0],
-      date_of_removal: new Date().toISOString().split('T')[0],
     });
     setErrors({});
     setMessage({ type: '', text: '' });
     setReleaseId('');
     setIsFound(false);
     setIsSearching(false);
+    lastSearchedRef.current = '';
     sigPadRef1.current?.clear();
   };
 
@@ -1227,6 +1287,9 @@ const DeceasedReleaseForm = () => {
       </Container>
     );
   }
+
+  // Formatted simple today's date (e.g., 9/24/2024)
+  const formattedTodayDate = new Date().toLocaleDateString('en-US');
 
   return (
     <Container>
@@ -1270,6 +1333,9 @@ const DeceasedReleaseForm = () => {
             </BrandLeftWrapper>
 
             <BrandRightWrapper>
+              <TodayDateText style={{ marginBottom: '0.5rem' }}>
+                <Calendar size={12} /> {formattedTodayDate}
+              </TodayDateText>
               <DocTitle>Release Record</DocTitle>
               <BarcodeWrapper>
                 <Barcode value={formData.admission_number} />
@@ -1301,15 +1367,19 @@ const DeceasedReleaseForm = () => {
                         name="admission_number"
                         value={formData.admission_number}
                         onChange={handleChange}
-                        onBlur={handleAdmissionSearch}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
-                            handleAdmissionSearch();
+                            if (searchTimer.current) clearTimeout(searchTimer.current);
+                            handleAdmissionSearch(formData.admission_number);
                           }
                         }}
-                        placeholder="Enter admission number to search the database"
+                        placeholder="Start typing to search the database..."
                         autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
+                        style={{ textTransform: 'uppercase' }}
                       />
                       {isSearching ? (
                         <SearchStatus>
@@ -1440,7 +1510,7 @@ const DeceasedReleaseForm = () => {
                 </Row>
 
                 <Row>
-                  <Col05>
+                  <Col>
                     <Label>Age</Label>
                     <InputFieldWrapper>
                       <Input
@@ -1451,22 +1521,6 @@ const DeceasedReleaseForm = () => {
                         placeholder="Years"
                       />
                       {hasValue(formData.age) && (
-                        <TickIconWrapper>
-                          <Check size={16} strokeWidth={2.5} />
-                        </TickIconWrapper>
-                      )}
-                    </InputFieldWrapper>
-                  </Col05>
-                  <Col>
-                    <Label>Date of Birth</Label>
-                    <InputFieldWrapper>
-                      <Input
-                        type="date"
-                        name="date_of_birth"
-                        value={formData.date_of_birth}
-                        onChange={handleChange}
-                      />
-                      {hasValue(formData.date_of_birth) && (
                         <TickIconWrapper>
                           <Check size={16} strokeWidth={2.5} />
                         </TickIconWrapper>
@@ -1633,7 +1687,7 @@ const DeceasedReleaseForm = () => {
                 </Row>
 
                 <Row>
-                  <Col>
+                  <Col2>
                     <Label>Primary Telephone <span style={{ color: COLORS.red }}>*</span></Label>
                     <InputFieldWrapper>
                       <Input
@@ -1650,15 +1704,6 @@ const DeceasedReleaseForm = () => {
                       )}
                     </InputFieldWrapper>
                     {errors.tel_number && <ErrorMessage>{errors.tel_number}</ErrorMessage>}
-                  </Col>
-                  <Col2>
-                    <Label>Release Notes</Label>
-                    <TextArea
-                      name="release_notes"
-                      value={formData.release_notes}
-                      onChange={handleChange}
-                      placeholder="Any additional notes about the release..."
-                    />
                   </Col2>
                 </Row>
               </Section>
@@ -1689,15 +1734,15 @@ const DeceasedReleaseForm = () => {
                     {errors.release_date && <ErrorMessage>{errors.release_date}</ErrorMessage>}
                   </Col>
                   <Col>
-                    <Label>Date of Removal</Label>
+                    <Label>Release Time</Label>
                     <InputFieldWrapper>
-                      <Input
-                        type="date"
-                        name="date_of_removal"
-                        value={formData.date_of_removal}
+                      <InputLg
+                        type="time"
+                        name="release_time"
+                        value={formData.release_time}
                         onChange={handleChange}
                       />
-                      {hasValue(formData.date_of_removal) && (
+                      {hasValue(formData.release_time) && (
                         <TickIconWrapper>
                           <Check size={16} strokeWidth={2.5} />
                         </TickIconWrapper>
@@ -1802,25 +1847,6 @@ const DeceasedReleaseForm = () => {
                         </InputFieldWrapper>
                       </GridName>
 
-                      <GridDate>
-                        <Label>Verified By System User</Label>
-                        <InputFieldWrapper>
-                          <Input
-                            type="text"
-                            name="verified_by"
-                            value={formData.verified_by}
-                            onChange={handleChange}
-                            readOnly
-                            disabled
-                          />
-                          {hasValue(formData.verified_by) && (
-                            <TickIconWrapper>
-                              <Check size={16} strokeWidth={2.5} />
-                            </TickIconWrapper>
-                          )}
-                        </InputFieldWrapper>
-                      </GridDate>
-
                       <StampWrapper>
                         <OfficialStamp
                           tenantName={tenantName}
@@ -1870,9 +1896,9 @@ const DeceasedReleaseForm = () => {
               - Official Release Record —
             </FooterText>
 
-            <BarcodeWrapper>
+            <BarcodeWrapper style={{ alignItems: 'center' }}>
               <Barcode value={formData.admission_number} />
-              <FileIdText>
+              <FileIdText style={{ textAlign: 'center' }}>
                 File ID:
                 <span>
                   {isLoadingDeceasedList ? 'Loading...' : (formData.admission_number || 'Enter admission number')}
@@ -1887,4 +1913,3 @@ const DeceasedReleaseForm = () => {
 };
 
 export default DeceasedReleaseForm;
-

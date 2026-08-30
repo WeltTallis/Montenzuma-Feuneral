@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { Upload, FileText, X, Loader2, FileDigit, Box, FileUp, CheckCircle, Trash2, Eye, Printer, Download, Image, FileSpreadsheet } from '../../utils/icons/icons';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:5000/api/v1/restpoint';
 

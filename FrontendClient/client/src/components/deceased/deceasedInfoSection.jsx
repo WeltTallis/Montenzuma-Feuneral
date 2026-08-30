@@ -9,6 +9,12 @@ import { toDateKey } from '../../utils/dates/parseDates';
 import { ENDPOINTS } from '../../api/endpoints';
 import api from '../../api/axios';
 
+// Icons (previously used without being imported, which threw
+// "ReferenceError: User is not defined" during module evaluation and took
+// down the entire production bundle -> "Cannot read properties of undefined
+// (reading 'default')" from React.lazy).
+import { User, CalendarDays, Edit, X, Save, Info, RefreshCw } from '../../utils/icons/icons';
+
 // Animations
 const fadeIn = keyframes`
   from {

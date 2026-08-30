@@ -5,7 +5,7 @@ const THEME = {
     line: '#e5e5e5',
     gray: '#666666',
     verdigris: '#3D4F47',
-    brass: '#8B7355',
+    brass: '#7A2F26',
     success: '#475A43',
     red: '#dc3545',
   }

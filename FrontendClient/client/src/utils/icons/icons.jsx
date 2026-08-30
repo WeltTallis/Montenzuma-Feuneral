@@ -588,6 +588,10 @@ export const Linkedin = (p) => (
   <Icon {...p}><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" /><rect x="2" y="9" width="4" height="12" /><circle cx="4" cy="4" r="2" /></Icon>
 );
 
+export const Database = (p) => (
+  <Icon {...p}><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></Icon>
+);
+
 export const Twitter = (p) => (
   <Icon {...p}><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" /></Icon>
 );
@@ -699,7 +703,7 @@ export const WifiOff = (p) => (
 
 
 
-export const Mark = ({ size = 28, color = C.verdigris }) => (
+export const Mark = ({ size = 28, color = '#3D4F47' }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
     <circle cx="16" cy="16" r="15" stroke={color} strokeWidth="1.5" />
     <path d="M16 8V24M8 16H24" stroke={color} strokeWidth="1.5" strokeLinecap="round" />

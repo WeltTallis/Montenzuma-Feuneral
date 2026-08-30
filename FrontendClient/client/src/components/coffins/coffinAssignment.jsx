@@ -41,6 +41,10 @@ const Colors = {
     transition: 'all 0.2s ease',
 };
 
+// Some blocks below reference the uppercase alias; keep both names valid so the
+// module never throws "COLORS is not defined" at evaluation time.
+const COLORS = Colors;
+
 // --- Animations ---
 const fadeIn = keyframes`
     from {

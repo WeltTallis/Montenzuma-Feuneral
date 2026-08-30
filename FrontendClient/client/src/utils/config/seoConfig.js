@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 /**
  * REST POINT - SEO Configuration
  * Comprehensive SEO setup for African markets
@@ -8,7 +10,7 @@ export const SEO_CONFIG = {
   site: {
     title: 'REST POINT - Mortuary Management OS for Africa',
     description: 'Complete deceased management system with billing, dispatch, and family portal for Kenya, Uganda, and East Africa',
-    url: process.env.REACT_APP_SITE_URL || 'https://restpoint.co.ke',
+    url: import.meta.env.VITE_SITE_URL || 'https://restpoint.co.ke',
     logo: '/logo.png',
     social: {
       twitter: '@restpointke',
@@ -134,7 +136,7 @@ export const generateMetaTags = (pageData = {}) => {
  * SEO Hook for React components
  */
 export const useSEO = (pageData) => {
-  React.useEffect(() => {
+  useEffect(() => {
     const meta = generateMetaTags(pageData);
 
     // Set title
