@@ -371,37 +371,12 @@ services:
       retries: 3
       start_period: 40s
 
-  notification-service:
-    build:
-      context: .
-      dockerfile: services/notification-service/Dockerfile
-    image: restpoint-notification-service:latest
-    container_name: restpoint_notification_service
-    restart: always
-    ports:
-      - "${NOTIFICATION_SERVICE_EXTERNAL_PORT:-5111}:5000"
-    env_file:
-      - .env.production
-    environment:
-      NODE_ENV: production
-      PORT: 5000
-      SERVICE_NAME: notification-service
-      DB_HOST: restpoint_mariadb
-      DB_PORT: 3306
-      REDIS_HOST: restpoint_redis
-      REDIS_PORT: 6379
-      RABBITMQ_HOST: restpoint_rabbitmq
-      RABBITMQ_PORT: 5672
-    volumes:
-      - notification_service_data:/usr/src/app/data
-    networks:
-      - restpoint_network
-    healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+  # NOTE: No notification-service container. The notification gateway runs as a
+  # host process on port 8111 (see the api-gateway health output:
+  # "notification": { "url": "http://localhost:8111" }). There is no
+  # services/notification-service source folder in this repo, so a build block
+  # here makes every `docker compose up --build` fail with
+  #   resolve: lstat .../services/notification-service: no such file or directory
 
   socketio-service:
     build:
