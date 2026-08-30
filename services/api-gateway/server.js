@@ -85,7 +85,7 @@ const SERVICE_URLS = {
   scanner: process.env.SCANNER_SERVICE_URL || 'http://127.0.0.1:5022',
   hearse: process.env.HEARSE_SERVICE_URL || 'http://127.0.0.1:5023',
   leave: process.env.LEAVE_SERVICE_URL || 'http://127.0.0.1:5017',
-    support: process.env.SUPPORT_SERVICE_URL || 'http://127.0.0.1:8111',
+  support: process.env.SUPPORT_SERVICE_URL || 'http://127.0.0.1:8111',
   florist: process.env.FLORIST_SERVICE_URL || 'http://127.0.0.1:7070',
   store: process.env.STORE_SERVICE_URL || 'http://127.0.0.1:7071',
 };
@@ -166,9 +166,11 @@ const healthCheckInterval = setInterval(performHealthChecks, HEALTH_CHECK_INTERV
 Logger.info('[CIRCUIT BREAKER] Health monitoring started');
 
 // Honor proxy headers when running behind a reverse proxy (load balancer, nginx, CDN)
+// Use 1 (trust first hop) instead of true to satisfy express-rate-limit's
+// security validation (ERR_ERL_PERMISSIVE_TRUST_PROXY).
 if ((process.env.TRUST_PROXY || 'false').toString().toLowerCase() === 'true') {
-  app.set('trust proxy', true);
-  Logger.info('Express trust proxy enabled (TRUST_PROXY=true)');
+  app.set('trust proxy', 1);
+  Logger.info('Express trust proxy enabled (trust first hop)');
 }
 // CORS
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -176,7 +178,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'];
 
 app.use(cors({
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
@@ -187,7 +189,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'QUERY', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-  allowedHeaders: ['Content-Type', 'Authorization',  'x-branch-db'  , 'x-slug', 'x-tenant-slug', 'x-tenant-id', 'x-user-id', 'x-branch-id', 'x-branch-code', 'x-branch-slug', 'x-user-email', 'x-user-name', 'x-branch-slug', 'Origin', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-branch-db', 'x-slug', 'x-tenant-slug', 'x-tenant-id', 'x-user-id', 'x-branch-id', 'x-branch-code', 'x-branch-slug', 'x-user-email', 'x-user-name', 'x-branch-slug', 'Origin', 'X-Requested-With', 'Accept'],
   preflightContinue: false,
   optionsSuccessStatus: 204
 }));
@@ -367,7 +369,7 @@ const SERVICE_ROUTES = {
   // M-Pesa service (port 5006)
   'mpesa': SERVICE_URLS.mpesa,
 
-    // Marketplace service (port 5005)
+  // Marketplace service (port 5005)
   'marketplace': SERVICE_URLS.marketplace,
 
   // Mini Store service (port 7071)

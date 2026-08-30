@@ -199,7 +199,7 @@ const Footer = ({ goTerms }) => {
                     .footer-container {
                         background: #000000;
                         color: ${C.grayLight};
-                        padding: clamp(4rem, 8vw, 6rem) 0 0;
+                        padding: 0;
                         border-top: 1px solid ${C.lineDark};
                         position: relative;
                         overflow: visible;
@@ -317,14 +317,14 @@ const Footer = ({ goTerms }) => {
                         margin-bottom: 4rem;
                     }
                     .footer-col h4 {
-                        font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+                        font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;
                         letter-spacing: 0.14em; text-transform: uppercase;
                         color: ${C.brassLight}; margin-bottom: 1.5rem; font-weight: 600;
                     }
                     .footer-link {
                         display: block; width: 100%; text-align: left;
                         background: none; border: none; cursor: pointer;
-                        font-size: 0.88rem; color: ${C.grayLight}; padding: 0;
+                        font-size: 1rem; color: ${C.grayLight}; padding: 0;
                         margin-bottom: 0.8rem; font-family: 'Inter', sans-serif;
                         transition: all 0.2s ease; transform: translateX(0);
                     }
@@ -343,7 +343,7 @@ const Footer = ({ goTerms }) => {
                     }
                     .footer-dropdown-item {
                         width: 100%; padding: 0.8rem 1.2rem; background: none; border: none;
-                        text-align: left; cursor: pointer; font-size: 0.85rem; color: ${C.grayLight};
+                        text-align: left; cursor: pointer; font-size: 0.95rem; color: ${C.grayLight};
                         border-bottom: 1px solid ${C.lineDark}; transition: all 0.2s;
                         font-family: 'Inter', sans-serif;
                     }
@@ -355,7 +355,7 @@ const Footer = ({ goTerms }) => {
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
-                        font-size: 0.78rem;
+                        font-size: 0.95rem;
                         color: ${C.grayLight};
                         opacity: 0.7;
                         padding: 2rem 0;
@@ -374,7 +374,7 @@ const Footer = ({ goTerms }) => {
                         align-items: center;
                         gap: 0.45rem;
                         font-family: 'JetBrains Mono', monospace;
-                        font-size: 0.68rem;
+                        font-size: 0.8rem;
                         letter-spacing: 0.04em;
                         color: ${C.grayLight};
                         background: rgba(255,255,255,0.04);
