@@ -7,6 +7,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import CoolLoader, { GlobalLoaderStyles } from '../loader/loader';
+import env from '../../utils/config/env';
 // --- Color Palette (Consistent with sleek App.js) ---
 const Colors = {
   primaryDark: '#2C3E50',
@@ -692,7 +693,7 @@ const RegisterVisitor = () => {
   const fetchRecentVisitors = async () => {
     setLoadingVisitors(true);
     try {
-      const response = await fetch('http://localhost:5000/api/v1/restpoint/recent-visitors');
+      const response = await fetch(`${env.API_URL}/recent-visitors`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

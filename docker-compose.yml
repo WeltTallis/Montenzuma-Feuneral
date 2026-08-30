@@ -213,6 +213,8 @@ services:
       - RABBITMQ_HOST=restpoint_rabbitmq
       - RABBITMQ_PORT=5672
       - JWT_SECRET=RestPointJWTSecret2024ChangeMe!SuperSecureInProduction
+      - DB_ADMIN_USER=root
+      - DB_ADMIN_PASSWORD=${MARIADB_ROOT_PASSWORD}
     env_file:
       - .env
     networks:
@@ -242,7 +244,7 @@ services:
       - '5003:5000'
     volumes:
       - deceased_service_data:/usr/src/app/data
-      - shared_uploads:/app/uploads
+      - shared_uploads:/opt/storage/uploads
     environment:
       - PORT=5000
       - NODE_ENV=production
@@ -255,7 +257,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_HOST=restpoint_redis
       - REDIS_PORT=6379
-      - UPLOADS_BASE_DIR=/app/uploads
+      - UPLOADS_BASE_DIR=/opt/storage/uploads
     env_file:
       - .env
     networks:

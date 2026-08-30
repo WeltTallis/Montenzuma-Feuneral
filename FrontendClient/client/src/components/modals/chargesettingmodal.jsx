@@ -5,9 +5,10 @@ import styled from "styled-components";
 import { DollarSign, Save, ArrowLeft, Tag, Clock, Calendar, Zap, Crown, RefreshCw, Percent, TrendingUp, Shield, UserCheck, Badge, FileText, CreditCard, BarChart2 } from '../../utils/icons/icons';
 import { toast } from "react-toastify";
 import { useParams, useNavigate } from "react-router-dom";
+import env from "../../utils/config/env";
 
-// Base API URL
-const BASE_API = "http://localhost:5000/api/v1/restpoint";
+// Base API URL — resolves to https://restpoint.co.ke/api/v1/restpoint in production
+const BASE_API = env.API_URL;
 
 // Configure axios
 axios.defaults.baseURL = BASE_API;

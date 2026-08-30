@@ -20,6 +20,50 @@ const DEFAULT_BRANDING = {
 };
 
 /*
+ * Some internal service origins MUST never be loaded directly by the browser:
+ *  - docker DNS names (api-gateway, tenant-service) don't resolve on clients
+ *  - http:// origins are blocked as mixed-content on HTTPS pages
+ * Any upload/logo URL that starts with one of these is rebased onto the
+ * public gateway origin (https://restpoint.co.ke) so it loads over HTTPS.
+ */
+const INTERNAL_HTTP_ORIGINS = [
+  'http://api-gateway:5000',
+  'http://restpoint_api_gateway:5000',
+  'http://uploads-service:5012',
+  'http://restpoint_uploads_service:5012',
+  'http://tenant-service:5000',
+  'http://restpoint_tenant_service:5000',
+  'http://localhost:5000',
+  'http://localhost:5001',
+  'http://localhost:5002',
+  'http://localhost:5012',
+  'http://127.0.0.1:5000',
+  'http://127.0.0.1:5001',
+  'http://127.0.0.1:5002',
+  'http://127.0.0.1:5012',
+];
+
+export const rebaseUploadUrl = (rawUrl) => {
+  if (!rawUrl || typeof rawUrl !== 'string') return rawUrl;
+  if (!rawUrl.startsWith('http')) return rawUrl;
+
+  const publicOrigin = (env.API_GATEWAY_URL || env.UPLOADS_URL || '').replace(/\/+$/, '');
+  if (!publicOrigin) return rawUrl;
+
+  // Already on the public origin → keep as-is
+  try {
+    const u = new URL(rawUrl);
+    const pub = new URL(publicOrigin);
+    if (u.hostname === pub.hostname) return rawUrl;
+  } catch { /* ignore */ }
+
+  const match = INTERNAL_HTTP_ORIGINS.find((o) => rawUrl.startsWith(o));
+  if (match) return rawUrl.replace(match, publicOrigin);
+
+  return rawUrl;
+};
+
+/*
  * Get tenant branding details from localStorage.
  * These are stored by AuthContext at login time.
  */
@@ -157,6 +201,13 @@ export const resolveTenantBranding = (tenantData) => {
       const cleanPath = rawLogoUrl.startsWith('/') ? rawLogoUrl : `/${rawLogoUrl}`;
       tenantLogoUrl = `${cleanBase}${cleanPath}`;
     }
+  }
+
+  // Rebase internal/docker origins (e.g. http://api-gateway:5000) onto the
+  // public origin so the logo loads over HTTPS instead of failing as mixed
+  // content / unresolvable DNS.
+  if (tenantLogoUrl) {
+    tenantLogoUrl = rebaseUploadUrl(tenantLogoUrl);
   }
 
   // Format phone number (if it's a Kenyan number)

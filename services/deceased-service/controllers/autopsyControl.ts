@@ -431,15 +431,20 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
                 if (signaturePath.startsWith('data:image')) {
                     const base64Data = signaturePath.split(',')[1];
                     signatureBuffer = Buffer.from(base64Data, 'base64');
-                } else if (signaturePath.startsWith('http') || signaturePath.startsWith('/uploads')) {
+                } else if (signaturePath.startsWith('/uploads/')) {
+                    // Read directly from the ONE shared uploads folder
+                    // (/opt/storage/uploads) — there is no separate uploads-service.
+                    const uploadsBase = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+                    const relativePath = signaturePath.replace(/^\/uploads\//, '');
+                    const fsPath = path.join(uploadsBase, relativePath);
+                    if (fs.existsSync(fsPath)) signatureBuffer = fs.readFileSync(fsPath);
+                } else if (signaturePath.startsWith('http')) {
                     const axios = require('axios');
-                    const uploadsServiceUrl = process.env.UPLOADS_SERVICE_URL || 'http://localhost:5012';
-                    const fullUrl = signaturePath.startsWith('http') ? signaturePath : `${uploadsServiceUrl}${signaturePath}`;
-                    const response = await axios.get(fullUrl, { responseType: 'arraybuffer', timeout: 10000 });
+                    const response = await axios.get(signaturePath, { responseType: 'arraybuffer', timeout: 10000 });
                     signatureBuffer = Buffer.from(response.data);
                 } else {
                     const relativePath = signaturePath.replace(/^\/uploads\//, '');
-                    const uploadsBase = process.env.UPLOADS_BASE_DIR || path.resolve(process.cwd(), 'uploads');
+                    const uploadsBase = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
                     const fsPath = path.join(uploadsBase, relativePath);
                     if (fs.existsSync(fsPath)) signatureBuffer = fs.readFileSync(fsPath);
                 }

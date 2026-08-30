@@ -3,8 +3,9 @@ import styled, { keyframes } from 'styled-components';
 import { Upload, FileText, X, Loader2, FileDigit, Box, FileUp, CheckCircle, Trash2, Eye, Printer, Download, Image, FileSpreadsheet } from '../../utils/icons/icons';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import env from '../../utils/config/env';
 
-const API_BASE_URL = 'http://localhost:5000/api/v1/restpoint';
+const API_BASE_URL = env.API_URL; // resolves to https://restpoint.co.ke/api/v1/restpoint in production
 
 // Bootstrap-inspired color scheme
 const COLORS = {

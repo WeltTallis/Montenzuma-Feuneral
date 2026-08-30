@@ -40,6 +40,7 @@ const upload = multer({
 // Signature processing function with high-quality compression
 const processSignature = async (
     file: Express.Multer.File,
+    tenantSlug?: string,
     options?: {
         quality?: number; // 1-100, default 90
         maxWidth?: number;
@@ -118,9 +119,11 @@ const processSignature = async (
         .digest('hex')
         .slice(0, 16);
 
-    // Save directly to global uploads folder
+    // Save directly to global uploads folder (single shared place,
+    // scoped per tenant so every signature lives at
+    // /opt/storage/uploads/<tenant>/signatures/)
     const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
-    const signatureDir = path.join(globalUploadsDir, 'system', 'signatures');
+    const signatureDir = path.join(globalUploadsDir, tenantSlug || 'system', 'signatures');
     
     // Ensure directory exists
     await fs.promises.mkdir(signatureDir, { recursive: true });

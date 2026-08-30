@@ -86,11 +86,16 @@ let serverPool: mysql.Pool | null = null;
 
 async function getServerPool(): Promise<mysql.Pool> {
     if (!serverPool) {
+        // Use admin/root credentials when configured so the service can
+        // AUTO-PROVISION tenant databases (CREATE DATABASE + GRANT ALL).
+        // Falls back to the application user (restpoint_user) otherwise.
+        const user = process.env.DB_ADMIN_USER || process.env.DB_ROOT_USER || process.env.DB_USER || 'restpoint_user';
+        const password = process.env.DB_ADMIN_PASSWORD || process.env.DB_ROOT_PASSWORD || process.env.DB_PASSWORD;
         serverPool = mysql.createPool({
             host: process.env.DB_HOST || '127.0.0.1',
             port: parseInt(process.env.DB_PORT || '3306'),
-            user: process.env.DB_USER || 'restpoint_user',
-            password: process.env.DB_PASSWORD,
+            user,
+            password,
             waitForConnections: true,
             connectionLimit: 10,
             queueLimit: 0,

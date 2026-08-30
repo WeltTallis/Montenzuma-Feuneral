@@ -187,6 +187,15 @@ services:
       REDIS_PORT: 6379
       RABBITMQ_HOST: restpoint_rabbitmq
       RABBITMQ_PORT: 5672
+      # Admin credentials used at runtime to AUTO-PROVISION tenant databases
+      # (CREATE DATABASE + GRANT). Falls back to DB_USER when not set.
+      DB_ADMIN_USER: ${DB_ADMIN_USER:-root}
+      DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD:-${DB_ROOT_PASSWORD}}
+    volumes:
+      - tenant_service_data:/usr/src/app/data
+      # The ONE shared uploads folder served to browsers at /uploads/...
+      # (same volume every service writes signatures/logos/documents to)
+      - shared_uploads:/opt/storage/uploads
     depends_on:
       mariadb:
         condition: service_healthy
@@ -224,6 +233,9 @@ services:
       REDIS_PORT: 6379
     volumes:
       - deceased_service_data:/usr/src/app/data
+      # Write signatures/reports into the SAME shared uploads folder the
+      # tenant-service serves at /uploads/... (single source of truth)
+      - shared_uploads:/opt/storage/uploads
       - ./services/deceased-service/uploads:/usr/src/app/uploads
     networks:
       - restpoint_network
@@ -317,6 +329,8 @@ services:
       REDIS_PORT: 6379
     volumes:
       - documents_service_data:/usr/src/app/data
+      # Documents service serves /uploads AND writes to it — use the shared volume
+      - shared_uploads:/opt/storage/uploads
       - ./services/documents-service/uploads:/usr/src/app/uploads
     networks:
       - restpoint_network
@@ -439,6 +453,8 @@ services:
       REDIS_PORT: 6379
     volumes:
       - bodycheckout_service_data:/usr/src/app/data
+      # Body-release signatures are stored under /opt/storage/uploads/<tenant>/signatures
+      - shared_uploads:/opt/storage/uploads
     networks:
       - restpoint_network
     healthcheck:
@@ -753,6 +769,9 @@ volumes:
   coffin_service_data:
     driver: local
   documents_service_data:
+    driver: local
+  # ONE shared uploads volume — every service writes here at /opt/storage/uploads
+  shared_uploads:
     driver: local
   analytics_service_data:
     driver: local

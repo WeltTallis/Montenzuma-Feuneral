@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { DollarSign, AlertCircle, CheckCircle, Loader2, Calendar, Clock, ClipboardList, Truck, UserCheck, CreditCard, TrendingUp, AlertTriangle, Info, Home, FileText, Users, Plus, Edit, Trash2, X, Save, Tag } from '../../utils/icons/icons';
 import axios from 'axios';
+import env from '../../utils/config/env';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import styled, { keyframes } from 'styled-components';
 import { Container, Row, Col, Card, Badge, Button, Modal, Form } from 'react-bootstrap';
@@ -306,7 +307,7 @@ function MortuaryCharges() {
   });
   const [showCustomInput, setShowCustomInput] = useState(false);
 
-  const API_BASE_URL = 'http://localhost:5000/api/v1/restpoint';
+  const API_BASE_URL = env.API_URL; // resolves to https://restpoint.co.ke/api/v1/restpoint in production
 
   // Common charge types for suggestions
   const commonChargeTypes = [

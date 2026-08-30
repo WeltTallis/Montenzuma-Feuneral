@@ -127,12 +127,12 @@ export class OnboardingController {
           // Clean up the temp file
           try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
           
-                    // Store a COMPLETE URL (the gateway origin), not a relative path, so the
-          // frontend can display the logo directly. /uploads is served (and routed
-          // by the gateway) through the tenant-service static folder.
-          const uploadsBase = process.env.API_GATEWAY_URL || process.env.UPLOADS_SERVICE_URL ||
-            (process.env.NODE_ENV === 'production' ? 'https://restpoint.co.ke' : 'http://localhost:5000');
-                    logoUrl = `${uploadsBase}/uploads/tenants/${tenantSlug}/logos/${logoFilename}`;
+                    // Store a ROOT-RELATIVE path (/uploads/...), NOT an absolute
+          // http://api-gateway URL. Absolute internal URLs are blocked by the
+          // browser as mixed content on HTTPS pages. The frontend resolves the
+          // root-relative path against the current origin (https://restpoint.co.ke),
+          // which nginx routes to the tenant-service /uploads static mount.
+          logoUrl = `/uploads/tenants/${tenantSlug}/logos/${logoFilename}`;
           logger.info({ service: 'tenant-service', function: 'createOrganization', message: 'Logo saved to global uploads folder', logoUrl });
         } catch (logoErr: any) {
           logger.warn({ service: 'tenant-service', function: 'createOrganization', message: 'Logo upload failed', error: logoErr.message });

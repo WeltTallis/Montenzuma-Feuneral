@@ -4,6 +4,7 @@ import { X, Search, Package, Check, Loader2, ChevronLeft, ChevronRight, Image, U
 import { todayKey } from '../../utils/dates/parseDates';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import env from '../../utils/config/env';
 
 // Colors
 const Colors = {
@@ -439,8 +440,9 @@ const NavButton = styled.button`
 const DEFAULT_COFFIN_SVG =
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHg9IjUwIiB5PSIzMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSI5MCIgcng9IjQiIGZpbGw9IiNFMEU3RUIiIHN0cm9rZT0iIzk0QTNCOCIgc3Ryb2tlLXdpZHRoPSIyIi8+CjxwYXRoIGQ9Ik01MCA2MEgxNTBWMTIwSDUwVjYwWiIgZmlsbD0iI0E4QjZDNSIvPgo8cGF0aCBkPSJNNzAgMzBIMTMwTDk1IDkwSDM1TDcwIDMwWiIgZmlsbD0iIzgwOTZBQyIvPgo8cmVjdCB4PSI4NSIgeT0iMTIwIiB3aWR0aD0iMzAiIGhlaWdodD0iMjAiIGZpbGw9IiM4QTlBNzAiLz4KPC9zdmc+Cg==';
 
-const API_URL = 'http://localhost:5000/api/v1/restpoint/coffins';
-const ASSIGN_URL = 'http://localhost:5000/api/v1/restpoint/deceased/coffin';
+const API_BASE = env.API_URL; // resolves to https://restpoint.co.ke/api/v1/restpoint in production
+const API_URL = `${API_BASE}/coffins`;
+const ASSIGN_URL = `${API_BASE}/deceased/coffin`;
 
 const CoffinSelectionModal = ({ onClose, onSelectCoffin, deceasedId, deceasedData }) => {
   const [coffins, setCoffins] = useState([]);

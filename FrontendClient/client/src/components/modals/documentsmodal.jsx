@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { FileText, Download, Eye, Trash2, Upload, Plus, X } from '../../utils/icons/icons';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import env from '../../utils/config/env';
 
 // Styled Components (included directly to fix import error)
 const Colors = {
@@ -261,7 +262,7 @@ const DocumentsModal = ({ isOpen, onClose, documents, deceasedId, onUpdate }) =>
       formData.append('deceasedId', deceasedId);
       formData.append('documentType', 'general');
 
-      const response = await axios.post('http://localhost:5000/api/v1/restpoint/upload-document', formData, {
+      const response = await axios.post(`${env.API_URL}/upload-document`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

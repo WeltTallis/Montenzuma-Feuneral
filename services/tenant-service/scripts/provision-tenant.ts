@@ -10,23 +10,29 @@ async function updateProvisioningStatus(tenantSlug: string, status: string, prog
   try {
     const tenantTrackingDbHost = process.env.TENANT_TRACKING_DB_HOST || process.env.DB_HOST || '127.0.0.1';
     const tenantTrackingDbPort = parseInt(process.env.TENANT_TRACKING_DB_PORT || process.env.DB_PORT || '3306');
-    const tenantTrackingDbUser = process.env.TENANT_TRACKING_DB_USER || process.env.DB_USER;
-    const tenantTrackingDbPassword = process.env.TENANT_TRACKING_DB_PASSWORD || process.env.DB_PASSWORD;
+    // The application user — used for GRANT targets and regular queries.
+    const appDbUser = process.env.TENANT_TRACKING_DB_USER || process.env.DB_USER || 'restpoint_user';
+    const appDbPassword = process.env.TENANT_TRACKING_DB_PASSWORD || process.env.DB_PASSWORD;
+    // Admin/root credentials (when configured) — used for CREATE DATABASE +
+    // GRANT so tenant databases AUTO-PROVISION instead of failing with
+    // "Access denied for user 'restpoint_user'@'%' to database '<tenant>'".
+    const adminUser = process.env.DB_ADMIN_USER || process.env.DB_ROOT_USER || appDbUser;
+    const adminPassword = process.env.DB_ADMIN_PASSWORD || process.env.DB_ROOT_PASSWORD || appDbPassword;
 
-    // Connect using the application user (restpoint_user) — no root credentials in code.
+    // Connect with admin/root credentials for the bootstrap (create/grant) step.
     const bootstrapConn = await mysql.createConnection({
       host: tenantTrackingDbHost,
       port: tenantTrackingDbPort,
-      user: tenantTrackingDbUser,
-      password: tenantTrackingDbPassword,
+      user: adminUser,
+      password: adminPassword,
       multipleStatements: true
     });
 
     try {
       // Best-effort so a fresh deployment still creates the schema.
       await bootstrapConn.query('CREATE DATABASE IF NOT EXISTS tenant_tracking');
-      await bootstrapConn.query(`GRANT ALL PRIVILEGES ON tenant_tracking.* TO '${tenantTrackingDbUser}'@'%'`);
-      await bootstrapConn.query(`GRANT ALL PRIVILEGES ON tenant_tracking.* TO '${tenantTrackingDbUser}'@'localhost'`);
+      await bootstrapConn.query(`GRANT ALL PRIVILEGES ON tenant_tracking.* TO '${appDbUser}'@'%'`);
+      await bootstrapConn.query(`GRANT ALL PRIVILEGES ON tenant_tracking.* TO '${appDbUser}'@'localhost'`);
     } catch (bootstrapErr: any) {
       // Grants may already exist from the DBA setup — skip regardless.
       console.warn('DB bootstrap (create/grant) skipped:', bootstrapErr && bootstrapErr.message ? bootstrapErr.message : String(bootstrapErr));
@@ -37,8 +43,8 @@ async function updateProvisioningStatus(tenantSlug: string, status: string, prog
     const conn = await mysql.createConnection({
       host: tenantTrackingDbHost,
       port: tenantTrackingDbPort,
-      user: tenantTrackingDbUser,
-      password: tenantTrackingDbPassword,
+      user: appDbUser,
+      password: appDbPassword,
       database: 'tenant_tracking'
     });
     try {
