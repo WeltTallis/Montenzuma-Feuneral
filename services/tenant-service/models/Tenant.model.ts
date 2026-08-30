@@ -201,10 +201,10 @@ function emitOnboardingProgress(tenantSlug: string, step: string, progress: numb
             },
             { timeout: 2000 }
         ).catch((err: any) => {
-            console.warn(`⚠️ Socket emit failed (${err.code || err.message || String(err)})`);
+            console.warn(`Socket emit failed (${err.code || err.message || String(err)})`);
         });
     } catch (error) {
-        console.warn(`⚠️ Socket emit exception: ${error && (error as any).message ? (error as any).message : String(error)}`);
+        console.warn(` Socket emit exception: ${error && (error as any).message ? (error as any).message : String(error)}`);
     }
 
     try {
@@ -416,7 +416,7 @@ async function createCompleteTenantDatabase(
 
             if (!branchResult.success) {
                 const errorMsg = `Failed to run migrations for branch database ${branchDbName}: ${branchResult.errors.join(', ')}`;
-                console.error(`❌ ${errorMsg}`);
+           
                 try {
                     await serverConn.query(`DROP DATABASE IF EXISTS \`${branchDbName}\``);
                     console.log(`   🗑️ Rolled back: dropped database ${branchDbName}`);
@@ -425,7 +425,7 @@ async function createCompleteTenantDatabase(
                 }
                 throw new Error(errorMsg);
             }
-            console.log(`✅ Branch migrations completed: ${branchResult.migrationsRun.length} migrations executed for ${branchDbName}`);
+       
 
             const branchUuid = uuidv4();
             await tenantConn.query(
@@ -441,7 +441,7 @@ async function createCompleteTenantDatabase(
                 parent_branch_id: firstBranchId,
             });
 
-            console.log(`✅ Branch "${branch.branch_name}" created (db: ${branchDbName}, slug: ${branchSlug}, parent: ${firstBranchId})`);
+         
         }
 
         await tenantConn.query(`
@@ -449,8 +449,7 @@ async function createCompleteTenantDatabase(
             VALUES (?, ?, 'TENANT_CREATED', ?)
         `, [uuidv4(), uuidv4(), `Tenant ${subdomain} created with ${branchData.length} branch(es)`]);
 
-        console.log(`✅ Tenant setup complete: ${subdomain}`);
-        console.log(`   📁 Primary DB: ${dbName}`);
+ 
         branchData.forEach(b => console.log(`      - ${b.branch_name} (slug: ${b.branch_slug}, db: ${b.branch_db_name})`));
 
         emitOnboardingProgress(subdomain, 'Finalizing', 95, 'Setup complete');
@@ -771,7 +770,31 @@ export class TenantModel {
         await addColumnIfMissing('tenants', 'location', 'TEXT NULL', 'phone');
         await addColumnIfMissing('tenants', 'country', 'VARCHAR(100) NULL', 'location');
         await addColumnIfMissing('tenants', 'logo_url', 'VARCHAR(500) NULL', 'country');
-        await addColumnIfMissing('tenants', 'deployment_type', `ENUM('single','multi') DEFAULT 'single'`, 'subscription_status');
+                await addColumnIfMissing('tenants', 'deployment_type', `ENUM('single','multi') DEFAULT 'single'`, 'subscription_status');
+
+        // Legacy tracking DBs bootstrapped from the old init script
+        // (init-db.sql/create_tenant_tracking.sql) created the tenants table with
+        // `organization_name` instead of `tenant_name`. CREATE TABLE IF NOT EXISTS above
+        // is a no-op on that existing table, so without this rename registerTenant()'s
+        // INSERT into `tenant_name` fails with "Unknown column 'tenant_name' in 'INSERT INTO'".
+        // The startup path (ensureTenantTrackingSchema) already renames it; this duplicates
+        // the rename here so registration self-heals on a legacy DB whose startup step was
+        // skipped or failed. Guarded + idempotent.
+        try {
+            const [tenantCols] = await serverConn.query(
+                `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = 'tenant_tracking' AND TABLE_NAME = 'tenants'`
+            );
+            const cols = ((tenantCols as any[]) || []).map((c: any) => (c ? c.COLUMN_NAME : ''));
+            if (cols.includes('organization_name') && !cols.includes('tenant_name')) {
+                await serverConn.query(
+                    `ALTER TABLE tenant_tracking.tenants CHANGE COLUMN organization_name tenant_name VARCHAR(255) NOT NULL`
+                );
+                console.log('✅ Renamed tenant_tracking.tenants.organization_name -> tenant_name');
+            }
+        } catch (e: any) {
+            console.warn('⚠️ Could not reconcile tenant_tracking.tenants column name:', e.message);
+        }
 
         // The legacy ENUMs don't accept canonical values ('trial', 'deleted') and the
         // servers run with STRICT_TRANS_TABLES, so INSERTs fail with "Data truncated".
@@ -1374,21 +1397,27 @@ export class TenantModel {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             `);
 
-            // Insert default system_shared tenant if it doesn't exist
-            await conn.query(`
-                INSERT IGNORE INTO tenants (tenant_slug, db_name, tenant_name, status)
-                VALUES ('system_shared', 'restpoint_main', 'System Shared Database', 'active')
-            `);
-
-            // Migrate existing databases: rename organization_name to tenant_name if needed
+                        // Migrate existing databases: rename legacy `organization_name` -> `tenant_name`
+            // BEFORE the INSERT below. Some DBs were bootstrapped from the legacy init script
+            // (init-db.sql/create_tenant_tracking.sql) which created the tenants table with an
+            // `organization_name` column instead of `tenant_name`. `CREATE TABLE IF NOT EXISTS`
+            // is a no-op on an already-existing table, so it will NOT add `tenant_name` — the
+            // column rename must happen explicitly here, and it MUST precede the INSERT,
+            // otherwise the INSERT fails with: "Unknown column 'tenant_name' in 'INSERT INTO'".
             try {
                 await conn.query(`
                     ALTER TABLE tenants CHANGE COLUMN organization_name tenant_name VARCHAR(255) NOT NULL
                 `);
                 console.log('[TenantModel] Migrated organization_name -> tenant_name');
             } catch (migrateErr: any) {
-                // Column doesn't exist or already renamed - ignore
+                // Column doesn't exist yet or was already renamed to tenant_name — ignore
             }
+
+            // Insert default system_shared tenant if it doesn't exist
+            await conn.query(`
+                INSERT IGNORE INTO tenants (tenant_slug, db_name, tenant_name, status)
+                VALUES ('system_shared', 'restpoint_main', 'System Shared Database', 'active')
+            `);
 
             console.log('[TenantModel] tenant_tracking schema ensured (database + tables ready)');
         } catch (err: any) {

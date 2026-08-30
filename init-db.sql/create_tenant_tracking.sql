@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS tenants (
     id INT AUTO_INCREMENT PRIMARY KEY,
     tenant_slug VARCHAR(255) NOT NULL UNIQUE,
     db_name VARCHAR(255) NOT NULL,
-    organization_name VARCHAR(255) NOT NULL,
+        tenant_name VARCHAR(255) NOT NULL,
     email VARCHAR(255),
     phone VARCHAR(50),
     address TEXT,
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS branches (
 -- =====================================================
 -- SYSTEM SHARED TENANT - Default tenant for system operations
 -- =====================================================
-INSERT IGNORE INTO tenants (tenant_slug, db_name, organization_name, status)
+INSERT IGNORE INTO tenants (tenant_slug, db_name, tenant_name, status)
 VALUES ('system_shared', 'restpoint_main', 'System Shared Database', 'active');
 
 -- =====================================================

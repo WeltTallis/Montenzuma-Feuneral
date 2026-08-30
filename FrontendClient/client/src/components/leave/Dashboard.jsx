@@ -19,9 +19,7 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  TrendingUp,
   X,
-  PlusCircle,
   UserPlus,
   Search,
   SlidersHorizontal,
@@ -1223,7 +1221,6 @@ const Spin = styled.div`
 const LeaveDashboard = () => {
   const { socket, connected } = useSocket();
 
-  const [stats, setStats] = useState(null);
   const [leaves, setLeaves] = useState([]);
   const [usersOnLeave, setUsersOnLeave] = useState([]);
   const [balances, setBalances] = useState([]);
@@ -1256,13 +1253,11 @@ const LeaveDashboard = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [statsRes, leavesRes, onLeaveRes, balancesRes] = await Promise.all([
-        api.get(ENDPOINTS.LEAVE.STATS).catch(() => ({ data: null })),
+      const [leavesRes, onLeaveRes, balancesRes] = await Promise.all([
         api.get(ENDPOINTS.LEAVE.ALL).catch(() => ({ data: { data: [] } })),
         api.get(ENDPOINTS.LEAVE.USERS_ON_LEAVE).catch(() => ({ data: { data: [] } })),
         api.get(ENDPOINTS.LEAVE.BALANCES).catch(() => ({ data: { data: [] } })),
       ]);
-      setStats(statsRes?.data?.data || statsRes?.data || null);
       const leavesData = leavesRes?.data?.data || leavesRes?.data || [];
       setLeaves(Array.isArray(leavesData) ? leavesData : []);
       const onLeaveData = onLeaveRes?.data?.data || onLeaveRes?.data || [];
@@ -1906,15 +1901,17 @@ const LeaveDashboard = () => {
       </Main>
 
       {/* ─── SIDE PANEL ─── */}
-      {panel?.type === 'leave' && (() => {
-        const leave = (leaves || []).find(l => l.id === panel.leaveId);
-        if (!leave) return null;
-        const empName = leave.name || balances.find(b => b.user_id === leave.user_id)?.name || 'Employee';
-        const docName = leave.supporting_document ? String(leave.supporting_document).split(/[\\/]/).pop() : '';
-        return (
-          <>
-            <Overlay $open onClick={closePanel} />
-            <SidePanel $open>
+      <Overlay $z={998} $open={Boolean(panel)} onClick={closePanel} />
+
+      {/* Leave details */}
+      <SidePanel $open={panel?.type === 'leave'}>
+        {(() => {
+          if (panel?.type !== 'leave') return null;
+          const leave = (leaves || []).find(l => l.id === panel.leaveId);
+          if (!leave) return null;
+          const docName = leave.supporting_document ? String(leave.supporting_document).split(/[\\/]/).pop() : '';
+          return (
+            <>
               <PanelHeader>
                 <PanelTitle>
                   <FileText size={18} style={{ color: 'var(--nx-primary)' }} />
@@ -2012,14 +2009,17 @@ const LeaveDashboard = () => {
                   <Btn $variant="secondary" onClick={closePanel}>Close</Btn>
                 )}
               </PanelFooter>
-            </SidePanel>
-          </>
-        );
-      })()}
+            </>
+          );
+        })()}
+      </SidePanel>
 
-      {panel?.type === 'day' && (() => {
-        const dateStr = panel.date;
-        const holiday = holidayOf(dateStr);
+      {/* Operations day view */}
+      <SidePanel $open={panel?.type === 'day'}>
+        {(() => {
+          if (panel?.type !== 'day') return null;
+          const dateStr = panel.date;
+          const holiday = holidayOf(dateStr);
         const dayLeaves = (leaves || []).filter(l => {
           if (l.status === 'rejected' || l.status === 'cancelled') return false;
           return coversDay(l, dateStr);
@@ -2036,9 +2036,7 @@ const LeaveDashboard = () => {
         });
         return (
           <>
-            <Overlay $open onClick={closePanel} />
-            <SidePanel $open>
-              <PanelHeader>
+            <PanelHeader>
                 <PanelTitle>
                   <Calendar size={18} style={{ color: 'var(--nx-primary)' }} />
                   {`Operations on ${fmtDate(dateStr, true)}`}
