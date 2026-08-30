@@ -480,6 +480,27 @@ const SigGuideText = styled.div`
   user-select: none;
 `;
 
+// Captured-signature preview — rendered once the officer signs so the
+// printed intake record always includes the actual signature image
+// (the live canvas alone is unreliable when printing after a reset).
+const SignedSigPreview = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 12rem;
+  border: 1px dashed ${COLORS.ink}33;
+  border-radius: 6px;
+  background: #fff;
+
+  img.print-signature-img {
+    max-width: 100%;
+    max-height: 10rem;
+    object-fit: contain;
+  }
+`;
+
 const SignOffContainer = styled.div`
   position: relative;
   margin-top: 2.5rem;
@@ -770,6 +791,8 @@ const DeceasedRegistrationForm = () => {
   const [registeredName, setRegisteredName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [admissionId, setAdmissionId] = useState('');
+  const [signedSignature, setSignedSignature] = useState('');
+  const [lastSignedName, setLastSignedName] = useState('');
 
   const branding = useMemo(() => resolveTenantBranding(), []);
 
@@ -863,6 +886,14 @@ const DeceasedRegistrationForm = () => {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
     if (message.text) setMessage({ type: '', text: '' });
+
+    // A NEW intake has started — drop the previous record's signature so it
+    // can never leak onto a different deceased's intake/printout.
+    if (name === 'full_name' && lastSignedName && value !== lastSignedName) {
+      setLastSignedName('');
+      setSignedSignature('');
+      try { sigPadRef1.current?.clear(); } catch { /* ignore */ }
+    }
   };
 
   const isValidPhone = (p) => {
@@ -962,6 +993,9 @@ const DeceasedRegistrationForm = () => {
       }
 
       setRegisteredName(formData.full_name);
+      // Remember the signed name so a NEW intake clears this signature,
+      // but the JUST-REGISTERED record keeps it for on-screen review/print.
+      setLastSignedName(formData.full_name);
       setShowSuccess(true);
 
       notify.success(
@@ -1000,6 +1034,8 @@ const DeceasedRegistrationForm = () => {
     setErrors({});
     setMessage({ type: '', text: '' });
     setAdmissionId('');
+    setSignedSignature('');
+    setLastSignedName('');
     sigPadRef1.current?.clear();
   };
 
@@ -1437,13 +1473,28 @@ const DeceasedRegistrationForm = () => {
                     <GridSig>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Label>Officer Digital Signature <span style={{ color: COLORS.red }}>*</span></Label>
-                        <ClearSigButton type="button" onClick={() => sigPadRef1.current?.clear()}>
-                          Clear Pad
-                        </ClearSigButton>
+                        {signedSignature ? (
+                          <ClearSigButton type="button" onClick={() => { setSignedSignature(''); sigPadRef1.current?.clear(); }}>
+                            Re-sign
+                          </ClearSigButton>
+                        ) : (
+                          <ClearSigButton type="button" onClick={() => sigPadRef1.current?.clear()}>
+                            Clear Pad
+                          </ClearSigButton>
+                        )}
                       </div>
                       <SigCanvasWrap>
-                        <ReusableSignaturePad ref={sigPadRef1} penColor={COLORS.inkBlue} />
-                        <SigGuideText>Sign within boundaries</SigGuideText>
+                        {signedSignature ? (
+                          <SignedSigPreview>
+                            <img src={signedSignature} alt="Officer Digital Signature" className="print-signature-img" />
+                            <SigGuideText>✓ Signature captured for the record</SigGuideText>
+                          </SignedSigPreview>
+                        ) : (
+                          <>
+                            <ReusableSignaturePad ref={sigPadRef1} penColor={COLORS.inkBlue} onChange={(data) => setSignedSignature(data || '')} />
+                            <SigGuideText>Sign within boundaries</SigGuideText>
+                          </>
+                        )}
                       </SigCanvasWrap>
                       {errors.signature && <ErrorMessage>{errors.signature}</ErrorMessage>}
                     </GridSig>

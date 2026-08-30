@@ -17,10 +17,11 @@
 -- Alternatively start the stack with DB_ADMIN_USER / DB_ADMIN_PASSWORD
 -- set (compose wires these automatically) — the tenant-service will then
 -- auto-create databases as admin instead of requiring this manual grant.
+--
+-- NOTE: restpoint_user is already created by the MariaDB container env
+-- (MARIADB_USER / MARIADB_PASSWORD), so no CREATE USER is needed here;
+-- GRANT auto-creates it if missing and NEVER changes its password.
 -- ============================================================
-
--- Create the user if it does not exist yet (idempotent).
-CREATE USER IF NOT EXISTS 'restpoint_user'@'%' IDENTIFIED BY '${DB_PASSWORD}';
 
 -- Global privileges: allows CREATE DATABASE for any new tenant DB and
 -- GRANT access to the application user on those databases.

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { C, formatDate } from './theme';
 import env from '../../../utils/config/env';
+import { rebaseUploadUrl } from '../../../utils/tenantResolver/tenantBranding';
 
 const SectionHead = styled.div`
   font-size: 11px;
@@ -63,7 +64,9 @@ const SignatureDisplay = ({ path }) => {
 
   const buildUrl = (p) => {
     if (!p) return null;
-    if (p.startsWith('data:image') || p.startsWith('http')) return p;
+    if (p.startsWith('data:image')) return p;
+    if (p.startsWith('http')) return rebaseUploadUrl(p);
+    if (p.startsWith('/')) return `${env.UPLOADS_URL}${p}`;
     const clean = p.replace(/^\/+/, '');
     return `${env.UPLOADS_URL}/${clean}`;
   };

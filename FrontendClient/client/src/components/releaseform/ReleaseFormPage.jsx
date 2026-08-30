@@ -1189,9 +1189,16 @@ function ReleaseFormPage() {
                 <Col2>
                   <Label>Signature of Authorizing Party <span style={{ color: COLORS.red }}>*</span></Label>
                   <SigCanvasWrap>
-                    <Suspense fallback={<div style={{ color: COLORS.gray }}>Loading signature pad...</div>}>
-                      <ReusableSignaturePad onChange={setSignature} width={800} height={200} />
-                    </Suspense>
+                    {signature ? (
+                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 120 }}>
+                        <img src={signature} alt="Authorizing Party Signature" style={{ maxWidth: '100%', maxHeight: 150, objectFit: 'contain' }} />
+                        <button type="button" onClick={() => setSignature(null)} style={{ marginTop: 8, padding: '4px 10px', borderRadius: 4, border: '1px solid #e5e7eb', background: '#f9fafb', cursor: 'pointer', color: '#374151', fontSize: '0.75rem' }}>Clear &amp; Re-sign</button>
+                      </div>
+                    ) : (
+                      <Suspense fallback={<div style={{ color: COLORS.gray }}>Loading signature pad...</div>}>
+                        <ReusableSignaturePad onChange={setSignature} width={800} height={200} />
+                      </Suspense>
+                    )}
                   </SigCanvasWrap>
                   {showErrors && !signature && (
                     <div style={{ color: COLORS.red, fontSize: '0.8rem', marginTop: '0.5rem' }}>Signature is required</div>
