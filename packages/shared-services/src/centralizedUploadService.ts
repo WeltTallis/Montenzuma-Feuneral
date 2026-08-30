@@ -10,7 +10,7 @@
  *   const result = await centralizedUploadService.uploadImage(buffer, filename, tenantSlug, 'coffins');
  */
 
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import FormData from 'form-data';
 import fs from 'fs';
 import path from 'path';
@@ -53,7 +53,7 @@ export interface UploadOptions {
  * Centralized Upload Service
  */
 class CentralizedUploadService {
-  private axiosInstance: axios.AxiosInstance;
+  private axiosInstance: AxiosInstance;
 
   constructor() {
     this.axiosInstance = axios.create({

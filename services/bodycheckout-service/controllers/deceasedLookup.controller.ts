@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Logger from '../../../packages/shared-logger/dist/index';
-import { getTenantDBBySlug } from '../../../shared/dbConfig';
+import { getTenantDB, resolveDatabase } from '../../../shared/dbConfig';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -119,13 +119,17 @@ export const getDeceasedByIdController = async (
       return res.status(400).json({ success: false, message: 'Deceased id is required' });
     }
 
-    const db = await getTenantDBBySlug(tenantSlug);
-    if (!db) {
+    // Resolve the tenant database the same way the deceased flow does:
+    // resolveDatabase understands raw db names, main tenant slugs AND branch
+    // slugs (e.g. `org-home-nairobi`), then getTenantDB pools the result.
+    const dbName = await resolveDatabase(tenantSlug);
+    if (!dbName) {
       return res.status(400).json({
         success: false,
         message: 'No database configured for this tenant',
       });
     }
+    const db = await getTenantDB(dbName);
 
     const [rows] = await db.execute(
       `SELECT * FROM deceased
@@ -187,13 +191,17 @@ export const listDeceasedForReleaseController = async (
     }
 
     const { search = '' } = req.query as { search?: string };
-    const db = await getTenantDBBySlug(tenantSlug);
-    if (!db) {
+
+    // Branch-aware tenant resolution (same as the deceased flow) — see
+    // resolveDatabase: raw db name → main tenant slug → branch slug.
+    const dbName = await resolveDatabase(tenantSlug);
+    if (!dbName) {
       return res.status(400).json({
         success: false,
         message: 'No database configured for this tenant',
       });
     }
+    const db = await getTenantDB(dbName);
 
     let sql = `
       SELECT * FROM deceased
@@ -265,13 +273,16 @@ export const getDeceasedByAdmissionController = async (
       return res.status(400).json({ success: false, message: 'Admission number is required' });
     }
 
-    const db = await getTenantDBBySlug(tenantSlug);
-    if (!db) {
+    // Branch-aware tenant resolution (same as the deceased flow) — see
+    // resolveDatabase: raw db name → main tenant slug → branch slug.
+    const dbName = await resolveDatabase(tenantSlug);
+    if (!dbName) {
       return res.status(400).json({
         success: false,
         message: 'No database configured for this tenant',
       });
     }
+    const db = await getTenantDB(dbName);
 
     const deceased = await findDeceasedByAdmissionNumber(db, admissionNumber);
     if (!deceased) {

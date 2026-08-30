@@ -4,16 +4,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Saira:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap');
 
 
 
 
-/* Tailwind CSS — utilities + theme only (NO preflight/reset, so existing app
-   styles are not altered). Used by the standalone dashboard chrome. */
-
-@layer theme, utilities;
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
 
 
 /* ==========================================================
@@ -26,32 +21,20 @@
     box-sizing: border-box;
 }
 
-
-/* ==========================================================
-   HTML
-   ========================================================== */
-
 html {
     width: 100%;
     min-height: 100%;
     margin: 0;
     padding: 0;
 
-    /* Prevent browsers from automatically enlarging text */
+    font-size: 16px;
+
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
 
-    /* Firefox */
     scrollbar-width: none;
-
-    /* Legacy Edge / IE */
     -ms-overflow-style: none;
 }
-
-
-/* ==========================================================
-   BODY
-   ========================================================== */
 
 body {
     width: 100%;
@@ -71,36 +54,22 @@ body {
         Arial,
         sans-serif;
 
-    /* FIXED: Changed from 0.5 to 1.5 for proper text spacing */
+    font-size: 16px;
     line-height: 1.5;
 
     color: #111827;
     background: #ffffff;
 
-    /* Better font rendering */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 
-    /* Prevent horizontal page overflow */
     overflow-x: hidden;
     overflow-y: auto;
 
-    /* Firefox */
     scrollbar-width: none;
-
-    /* Legacy Edge / IE */
     -ms-overflow-style: none;
 }
 
-
-/* ==========================================================
-   Root
-   ========================================================== */
-
-#root {
-    width: 100%;
-    min-height: 100vh;
-}
 
 
 /* ==========================================================
@@ -304,7 +273,6 @@ select:focus-visible {
 }
 
 
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap');
 
 
 
