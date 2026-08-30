@@ -1303,6 +1303,90 @@ export class TenantModel {
             }
         }
     }
+
+    /**
+     * AUTO-CREATE TENANT_TRACKING SCHEMA
+     * Ensures the tenant_tracking database and required tables exist.
+     * Called on service startup before any sweep that depends on this schema.
+     * Idempotent — safe to run on every boot (production, dev, Docker).
+     */
+    static async ensureTenantTrackingSchema(): Promise<void> {
+        const conn = await getServerPool();
+        try {
+            // Create the database if it doesn't exist
+            await conn.query('CREATE DATABASE IF NOT EXISTS tenant_tracking');
+            await conn.query('USE tenant_tracking');
+
+            // Create provisioning_status table
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS provisioning_status (
+                    tenant_slug VARCHAR(255) PRIMARY KEY,
+                    status VARCHAR(50) DEFAULT 'pending',
+                    progress INT DEFAULT 0,
+                    details TEXT,
+                    error_message TEXT,
+                    started_at VARCHAR(255),
+                    updated_at VARCHAR(255),
+                    INDEX idx_status (status),
+                    INDEX idx_started_at (started_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            `);
+
+            // Create tenants table
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS tenants (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    tenant_slug VARCHAR(255) NOT NULL UNIQUE,
+                    db_name VARCHAR(255) NOT NULL,
+                    organization_name VARCHAR(255) NOT NULL,
+                    email VARCHAR(255),
+                    phone VARCHAR(50),
+                    address TEXT,
+                    status ENUM('active', 'inactive', 'suspended') DEFAULT 'active',
+                    subscription_plan ENUM('basic', 'free', 'premium') DEFAULT 'basic',
+                    subscription_status ENUM('active', 'inactive', 'suspended') DEFAULT 'active',
+                    subscription_expires_at VARCHAR(255) NULL,
+                    created_at VARCHAR(255),
+                    updated_at VARCHAR(255),
+                    INDEX idx_tenant_slug (tenant_slug),
+                    INDEX idx_db_name (db_name),
+                    INDEX idx_status (status)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            `);
+
+            // Create branches table
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS branches (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    tenant_slug VARCHAR(255) NOT NULL,
+                    branch_slug VARCHAR(255) NOT NULL,
+                    branch_name VARCHAR(255) NOT NULL,
+                    branch_db_name VARCHAR(255) NOT NULL,
+                    parent_branch_id INT NULL,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at VARCHAR(255),
+                    updated_at VARCHAR(255),
+                    FOREIGN KEY (tenant_slug) REFERENCES tenants(tenant_slug) ON DELETE CASCADE,
+                    UNIQUE KEY unique_branch (tenant_slug, branch_slug),
+                    INDEX idx_tenant_slug (tenant_slug),
+                    INDEX idx_branch_slug (branch_slug),
+                    INDEX idx_parent_branch_id (parent_branch_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            `);
+
+            // Insert default system_shared tenant if it doesn't exist
+            await conn.query(`
+                INSERT IGNORE INTO tenants (tenant_slug, db_name, organization_name, status)
+                VALUES ('system_shared', 'restpoint_main', 'System Shared Database', 'active')
+            `);
+
+            console.log('[TenantModel] tenant_tracking schema ensured (database + tables ready)');
+        } catch (err: any) {
+            console.error('[TenantModel] Failed to ensure tenant_tracking schema:', err.message);
+            throw err;
+        }
+    }
+
     /**
      * STARTUP SWEEP — normalize the MAIN (parent) branch slug for EVERY active
      * tenant. Legacy tenants were created with the parent branch's slug equal

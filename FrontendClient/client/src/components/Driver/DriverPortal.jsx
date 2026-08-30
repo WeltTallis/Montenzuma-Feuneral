@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Car, RefreshCw, CheckCircle, Phone, LogOut, Calendar, Clock, AlertCircle, Truck, Loader2, Zap, Navigation, ArrowRight, Route, Sun, Moon, CloudSun, User, Shield, Timer, CalendarDays } from '../../utils/icons/icons';
+import { Car, RefreshCw, CheckCircle, Phone, LogOut, Calendar, Clock, AlertCircle, Truck, Loader2, Zap, Navigation, ArrowRight, Route, Sun, Moon, CloudSun, User, Shield, Timer, CalendarDays, MapPin } from '../../utils/icons/icons';
 import { useSocket } from '../../utils/context/socketContext';
 import env from '../../utils/config/env';
 
@@ -34,7 +34,7 @@ function getNairobiNow() {
     return new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
 }
 
-/* ─── Relative date helper — the key improvement ─────────────── */
+/* ─── Relative date helper ─────────────── */
 function relativeDate(dateStr) {
     if (!dateStr) return null;
     const target = new Date(dateStr);
@@ -49,25 +49,25 @@ function relativeDate(dateStr) {
     const fullDate = target.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
     if (diffDays === 0) {
-        return { label: 'Today', sub: timeStr, urgency: 'now', full: fullDate, color: '#FF6A28' };
+        return { label: 'Today', sub: timeStr, urgency: 'now', full: fullDate, color: '#F97316' };
     } else if (diffDays === 1) {
-        return { label: 'Tomorrow', sub: timeStr, urgency: 'soon', full: fullDate, color: '#0A84FF' };
+        return { label: 'Tomorrow', sub: timeStr, urgency: 'soon', full: fullDate, color: '#3B82F6' };
     } else if (diffDays === 2) {
-        return { label: 'In 2 days', sub: fullDate + ' · ' + timeStr, urgency: 'upcoming', full: fullDate, color: '#71717A' };
+        return { label: 'In 2 days', sub: fullDate + ' · ' + timeStr, urgency: 'upcoming', full: fullDate, color: '#64748B' };
     } else if (diffDays === 3) {
-        return { label: 'In 3 days', sub: fullDate + ' · ' + timeStr, urgency: 'upcoming', full: fullDate, color: '#71717A' };
+        return { label: 'In 3 days', sub: fullDate + ' · ' + timeStr, urgency: 'upcoming', full: fullDate, color: '#64748B' };
     } else if (diffDays === 4) {
-        return { label: 'In 4 days', sub: fullDate + ' · ' + timeStr, urgency: 'upcoming', full: fullDate, color: '#71717A' };
+        return { label: 'In 4 days', sub: fullDate + ' · ' + timeStr, urgency: 'upcoming', full: fullDate, color: '#64748B' };
     } else if (diffDays > 4 && diffDays <= 7) {
-        return { label: `In ${diffDays} days`, sub: fullDate + ' · ' + timeStr, urgency: 'later', full: fullDate, color: '#A1A1AA' };
+        return { label: `In ${diffDays} days`, sub: fullDate + ' · ' + timeStr, urgency: 'later', full: fullDate, color: '#94A3B8' };
     } else if (diffDays > 7) {
-        return { label: fullDate, sub: timeStr, urgency: 'later', full: fullDate, color: '#A1A1AA' };
+        return { label: fullDate, sub: timeStr, urgency: 'later', full: fullDate, color: '#94A3B8' };
     } else if (diffDays === -1) {
-        return { label: 'Yesterday', sub: timeStr, urgency: 'past', full: fullDate, color: '#A1A1AA' };
+        return { label: 'Yesterday', sub: timeStr, urgency: 'past', full: fullDate, color: '#94A3B8' };
     } else if (diffDays < -1) {
-        return { label: `${Math.abs(diffDays)} days ago`, sub: fullDate, urgency: 'past', full: fullDate, color: '#D4D4D8' };
+        return { label: `${Math.abs(diffDays)} days ago`, sub: fullDate, urgency: 'past', full: fullDate, color: '#CBD5E1' };
     }
-    return { label: fullDate, sub: timeStr, urgency: 'later', full: fullDate, color: '#A1A1AA' };
+    return { label: fullDate, sub: timeStr, urgency: 'later', full: fullDate, color: '#94A3B8' };
 }
 
 /*  Get the best date field from a booking */
@@ -85,8 +85,7 @@ const useGreeting = () => {
     const h = now.getHours();
     let text, icon, sub;
     if (h >= 5 && h < 12) { text = 'Good Morning'; icon = Sun; sub = 'Rise and drive safe today'; }
-    else if (h >= 12 && h < 14) { text = 'Good Afternoon'; icon = Sun; sub = 'Hope the roads are kind'; }
-    else if (h >= 14 && h < 17) { text = 'Good Afternoon'; icon = CloudSun; sub = 'Almost there, stay strong'; }
+    else if (h >= 12 && h < 17) { text = 'Good Afternoon'; icon = CloudSun; sub = 'Hope the roads are kind'; }
     else if (h >= 17 && h < 20) { text = 'Good Evening'; icon = Moon; sub = 'Heading home soon?'; }
     else if (h >= 20 && h < 23) { text = 'Good Evening'; icon = Moon; sub = 'Long day? Rest well'; }
     else { text = 'Working Late'; icon = Moon; sub = 'Take care on the night road'; }
@@ -101,59 +100,62 @@ const useGreeting = () => {
     };
 };
 
-/* PALETTE */
+/* PREMIUM LIGHT PALETTE */
 const T = {
-    bg: '#FFFFFF',
-    card: '#111113',
-    raised: '#1C1C1F',
-    border: '#2C2C30',
-    text: '#FFFFFF',
-    textSec: '#A1A1AA',
-    textDim: '#63636E',
-    accent: '#FF6A28',
-    green: '#30D158',
-    blue: '#0A84FF',
-    amber: '#FFD60A',
-    rose: '#FF453A',
-    violet: '#BF5AF2',
-    surfaceBg: '#F8F8FA',
-    divider: '#EDEDF0',
-    textDark: '#18181B',
-    textMuted: '#71717A',
-    textLight: '#A1A1AA',
+    bg: '#F8F9FB',           // Soft off-white background
+    card: '#FFFFFF',         // Pure white cards
+    raised: '#F1F4F9',       // Subtle raised elements inside cards
+    border: '#E5E7EB',        // Crisp, light borders
+    text: '#0F172A',          // Deep slate for primary text
+    textSec: '#334155',       // Secondary text
+    textDim: '#64748B',       // Tertiary text
+    textMute: '#94A3B8',      // Very faded text
+    accent: '#F97316',        // Premium vibrant orange
+    accentDark: '#EA580C',   // Darker orange for gradients
+    green: '#10B981',         // Emerald
+    blue: '#3B82F6',          // Bright blue
+    amber: '#F59E0B',         // Warm amber
+    rose: '#EF4444',          // Crisp red
+    violet: '#8B5CF6',        // Soft violet
+    shadowSm: '0 1px 2px 0 rgba(15, 23, 42, 0.04)',
+    shadow: '0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -1px rgba(15, 23, 42, 0.03)',
+    shadowMd: '0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04)',
+    shadowLg: '0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 10px 10px -5px rgba(15, 23, 42, 0.04)',
 };
 
 const STATUS = {
-    booked: { label: 'Booked', color: T.amber, dot: T.amber },
-    in_transit: { label: 'In Transit', color: T.blue, dot: T.blue },
-    completed: { label: 'Completed', color: T.green, dot: T.green },
-    cancelled: { label: 'Cancelled', color: T.rose, dot: T.rose },
-    postponed: { label: 'Postponed', color: T.violet, dot: T.violet },
+    booked: { label: 'Booked', color: T.amber, dot: T.amber, bg: '#FFFBEB' },
+    in_transit: { label: 'In Transit', color: T.blue, dot: T.blue, bg: '#EFF6FF' },
+    completed: { label: 'Completed', color: T.green, dot: T.green, bg: '#ECFDF5' },
+    cancelled: { label: 'Cancelled', color: T.rose, dot: T.rose, bg: '#FEF2F2' },
+    postponed: { label: 'Postponed', color: T.violet, dot: T.violet, bg: '#F5F3FF' },
 };
 
 const LEAVE = {
-    approved: { color: T.green, label: 'Approved' },
-    rejected: { color: T.rose, label: 'Rejected' },
-    pending: { color: T.amber, label: 'Pending' },
+    approved: { color: T.green, label: 'Approved', bg: '#ECFDF5' },
+    rejected: { color: T.rose, label: 'Rejected', bg: '#FEF2F2' },
+    pending: { color: T.amber, label: 'Pending', bg: '#FFFBEB' },
 };
 
-/* ─── Animations ──────────────────────────────────────────────── */
+/* ─── Animations & Base CSS ──────────────────────────────────────────────── */
 const css = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
-@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.65)}}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.6)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes toastIn{from{opacity:0;transform:translateY(-10px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
-@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(255,106,40,0)}50%{box-shadow:0 0 0 8px rgba(255,106,40,.1)}}
+@keyframes glow{0%,100%{box-shadow:0 8px 20px -4px rgba(249, 115, 22, 0.35)}50%{box-shadow:0 8px 28px -4px rgba(249, 115, 22, 0.55)}}
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 
 *{-webkit-tap-highlight-color:transparent;box-sizing:border-box;margin:0;padding:0}
-.a-up{animation:up .4s cubic-bezier(.22,1,.36,1) forwards;opacity:0}
+.a-up{animation:up .5s cubic-bezier(.22,1,.36,1) forwards;opacity:0}
 .a-spin{animation:spin .7s linear infinite}
-.a-pulse{animation:pulse 1.4s ease-in-out infinite}
+.a-pulse{animation:pulse 1.5s ease-in-out infinite}
 .a-toast{animation:toastIn .3s ease forwards}
-.a-glow{animation:glow 2s ease-in-out infinite}
+.a-glow{animation:glow 2.5s ease-in-out infinite}
+.a-press{transition: transform 0.15s cubic-bezier(.22,1,.36,1);}
+.a-press:active{transform: scale(0.97)}
 input,select,textarea,button{font-family:inherit}
 ::-webkit-scrollbar{width:0;display:none}
 `;
@@ -163,20 +165,22 @@ const Toast = ({ type, message, onClose }) => {
     if (!message) return null;
     const err = type === 'error';
     const c = err ? T.rose : T.green;
-    const bg = err ? '#3A1515' : '#153A1E';
+    const bg = err ? '#FEF2F2' : '#ECFDF5';
     const Icon = err ? AlertCircle : CheckCircle;
     useEffect(() => { const t = setTimeout(() => onClose?.(), 3200); return () => clearTimeout(t); }, [message, onClose]);
     return (
         <div className="a-toast" style={{
-            position: 'fixed', top: 14, left: 14, right: 14, zIndex: 9999,
-            padding: '13px 16px', borderRadius: 14, background: bg,
-            border: `1px solid ${c}30`, color: c, fontSize: '.84rem', fontWeight: 600,
-            display: 'flex', alignItems: 'center', gap: 9,
-            boxShadow: '0 12px 40px rgba(0,0,0,.35)',
-            fontFamily: "'DM Sans',sans-serif", maxWidth: 400, margin: '0 auto',
+            position: 'fixed', top: 16, left: 16, right: 16, zIndex: 9999,
+            padding: '14px 18px', borderRadius: 14, background: bg,
+            border: `1px solid ${c}30`, color: T.text, fontSize: '.875rem', fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: 10,
+            boxShadow: T.shadowLg,
+            fontFamily: "'Inter',sans-serif", maxWidth: 420, margin: '0 auto',
         }}>
-            <Icon size={17} strokeWidth={2.5} />
-            <span style={{ flex: 1 }}>{message}</span>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: `${c}20`, color: c, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon size={16} strokeWidth={2.5} />
+            </div>
+            <span style={{ flex: 1, color: T.text }}>{message}</span>
         </div>
     );
 };
@@ -186,44 +190,36 @@ const Plate = ({ number, model }) => {
     if (!number) return null;
     const n = number.replace(/\s+/g, '').toUpperCase();
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <div style={{
-                background: '#E8ECF0', border: '1.5px solid #94A3B8',
-                borderRadius: 5, padding: '3px 10px', position: 'relative',
-                boxShadow: '0 1px 3px rgba(0,0,0,.12)',
+                background: '#0F172A', border: '1px solid #334155',
+                borderRadius: 6, padding: '4px 10px', position: 'relative',
+                boxShadow: '0 2px 4px rgba(15, 23, 42, 0.2)',
             }}>
-                {[['t', 'l'], ['t', 'r'], ['b', 'l'], ['b', 'r']].map(([v, h], i) => (
-                    <div key={i} style={{
-                        position: 'absolute',
-                        [v === 't' ? 'top' : 'bottom']: 3, [h === 'l' ? 'left' : 'right']: 4,
-                        width: 3, height: 3, borderRadius: '50%', background: '#94A3B8',
-                    }} />
-                ))}
                 <div style={{
-                    fontFamily: "Arial,sans-serif", fontSize: '.76rem',
-                    fontWeight: 900, color: '#1E293B', letterSpacing: '.1em',
-                    textAlign: 'center', minWidth: 44,
+                    fontFamily: "Inter,sans-serif", fontSize: '.75rem',
+                    fontWeight: 700, color: '#F8FAFC', letterSpacing: '.12em',
+                    textAlign: 'center', minWidth: 48,
                 }}>{n}</div>
             </div>
-            {model && <span style={{ fontSize: '.55rem', color: T.textDim, fontWeight: 600 }}>{model}</span>}
+            {model && <span style={{ fontSize: '.6rem', color: T.textMute, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{model}</span>}
         </div>
     );
 };
 
 /* ─── Status pill ─────────────────────────────────────────────── */
 const Pill = ({ status }) => {
-    const s = STATUS[status] || { label: status || '?', color: T.textDim, dot: T.textDim };
+    const s = STATUS[status] || { label: status || '?', color: T.textMute, bg: '#F1F5F9' };
     return (
         <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '4px 11px', borderRadius: 100,
-            background: `${s.color}18`, border: `1px solid ${s.color}25`,
-            color: s.color, fontSize: '.6rem', fontWeight: 700,
-            letterSpacing: '.05em', textTransform: 'uppercase',
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '5px 12px', borderRadius: 100,
+            background: s.bg, border: `1px solid ${s.color}30`,
+            color: s.color, fontSize: '.65rem', fontWeight: 700,
+            letterSpacing: '.04em', textTransform: 'uppercase',
         }}>
             <span style={{
-                width: 5, height: 5, borderRadius: '50%', background: s.dot,
-                boxShadow: `0 0 6px ${s.dot}50`,
+                width: 6, height: 6, borderRadius: '50%', background: s.color,
                 className: status === 'in_transit' ? 'a-pulse' : undefined,
             }} />
             {s.label}
@@ -234,16 +230,16 @@ const Pill = ({ status }) => {
 /* ─── Stat card ───────────────────────────────────────────────── */
 const Stat = ({ value, label, color, icon: Icon, pulse }) => (
     <div style={{
-        flex: 1, padding: '20px 8px', textAlign: 'center',
-        background: T.card, borderRadius: 18,
+        flex: 1, padding: '18px 10px', textAlign: 'center',
+        background: T.card, borderRadius: 16,
         border: `1px solid ${T.border}`,
-        position: 'relative',
+        boxShadow: T.shadowSm,
     }}>
         <div style={{
-            width: 42, height: 42, borderRadius: 13,
-            background: `${color}14`, border: `1px solid ${color}22`,
+            width: 40, height: 40, borderRadius: 12,
+            background: `${color}10`, border: `1px solid ${color}20`,
             color, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 13px', position: 'relative',
+            margin: '0 auto 12px', position: 'relative',
         }}>
             <Icon size={18} strokeWidth={2} />
             {pulse && (
@@ -255,18 +251,19 @@ const Stat = ({ value, label, color, icon: Icon, pulse }) => (
             )}
         </div>
         <div style={{
-            fontSize: '1.75rem', fontWeight: 900, color: T.text,
+            fontSize: '1.5rem', fontWeight: 800, color: T.text,
             lineHeight: 1, marginBottom: 6,
-            fontVariantNumeric: 'tabular-nums', letterSpacing: '-.04em',
+            fontVariantNumeric: 'tabular-nums', letterSpacing: '-.03em',
+            fontFamily: "'Plus Jakarta Sans',sans-serif"
         }}>{value}</div>
         <div style={{
-            fontSize: '.5rem', color: T.textDim, fontWeight: 700,
-            letterSpacing: '.14em', textTransform: 'uppercase',
+            fontSize: '.6rem', color: T.textDim, fontWeight: 600,
+            letterSpacing: '.12em', textTransform: 'uppercase',
         }}>{label}</div>
     </div>
 );
 
-/* ─── Date badge — the new prominent date display ─────────────── */
+/* ─── Date badge ─────────────── */
 const DateBadge = ({ booking }) => {
     const dateStr = getTripDate(booking);
     const rel = relativeDate(dateStr);
@@ -278,16 +275,16 @@ const DateBadge = ({ booking }) => {
 
     return (
         <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '10px 14px',
-            background: isUrgent ? `${T.accent}12` : isSoon ? `${T.blue}10` : T.raised,
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 14px',
+            background: isUrgent ? `${T.accent}08` : isSoon ? `${T.blue}06` : T.raised,
             borderRadius: 12,
-            border: `1px solid ${isUrgent ? T.accent + '20' : isSoon ? T.blue + '18' : T.border}`,
-            marginBottom: 14,
+            border: `1px solid ${isUrgent ? T.accent + '20' : isSoon ? T.blue + '20' : T.border}`,
+            marginBottom: 16,
         }}>
             <div style={{
-                width: 38, height: 38, borderRadius: 11,
-                background: isUrgent ? `${T.accent}18` : isSoon ? `${T.blue}15` : `${T.textDim}10`,
+                width: 40, height: 40, borderRadius: 12,
+                background: isUrgent ? `${T.accent}15` : isSoon ? `${T.blue}10` : `${T.textMute}10`,
                 border: `1px solid ${isUrgent ? T.accent + '25' : isSoon ? T.blue + '20' : T.border}`,
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center',
@@ -302,8 +299,8 @@ const DateBadge = ({ booking }) => {
                             {new Date(dateStr).toLocaleDateString('en-US', { month: 'short' })}
                         </span>
                         <span style={{
-                            fontSize: '.95rem', fontWeight: 900, color: rel.color,
-                            lineHeight: 1.1,
+                            fontSize: '.95rem', fontWeight: 800, color: rel.color,
+                            lineHeight: 1.1, fontFamily: "'Plus Jakarta Sans',sans-serif"
                         }}>
                             {new Date(dateStr).getDate()}
                         </span>
@@ -312,8 +309,9 @@ const DateBadge = ({ booking }) => {
             </div>
             <div style={{ flex: 1 }}>
                 <div style={{
-                    fontSize: '.82rem', fontWeight: 800, color: rel.color, marginBottom: 2,
+                    fontSize: '.85rem', fontWeight: 700, color: T.text, marginBottom: 2,
                     display: 'flex', alignItems: 'center', gap: 6,
+                    fontFamily: "'Plus Jakarta Sans',sans-serif"
                 }}>
                     {isUrgent && <span className="a-pulse" style={{
                         width: 6, height: 6, borderRadius: '50%', background: T.accent,
@@ -321,35 +319,35 @@ const DateBadge = ({ booking }) => {
                     }} />}
                     {rel.label}
                 </div>
-                <div style={{ fontSize: '.68rem', color: T.textDim, fontWeight: 500 }}>{rel.sub}</div>
+                <div style={{ fontSize: '.7rem', color: T.textDim, fontWeight: 500 }}>{rel.sub}</div>
             </div>
             {isUrgent && (
                 <div style={{
-                    padding: '4px 9px', borderRadius: 7,
-                    background: `${T.accent}20`, border: `1px solid ${T.accent}25`,
-                    color: T.accent, fontSize: '.52rem', fontWeight: 800,
+                    padding: '5px 10px', borderRadius: 8,
+                    background: `${T.accent}15`, border: `1px solid ${T.accent}25`,
+                    color: T.accent, fontSize: '.55rem', fontWeight: 700,
                     letterSpacing: '.06em', textTransform: 'uppercase',
                     display: 'flex', alignItems: 'center', gap: 4,
                 }}>
-                    <Timer size={9} /> Due
+                    <Timer size={10} /> Due
                 </div>
             )}
             {isSoon && (
                 <div style={{
-                    padding: '4px 9px', borderRadius: 7,
-                    background: `${T.blue}15`, border: `1px solid ${T.blue}20`,
-                    color: T.blue, fontSize: '.52rem', fontWeight: 800,
+                    padding: '5px 10px', borderRadius: 8,
+                    background: `${T.blue}10`, border: `1px solid ${T.blue}20`,
+                    color: T.blue, fontSize: '.55rem', fontWeight: 700,
                     letterSpacing: '.06em', textTransform: 'uppercase',
                     display: 'flex', alignItems: 'center', gap: 4,
                 }}>
-                    <CalendarDays size={9} /> Soon
+                    <CalendarDays size={10} /> Soon
                 </div>
             )}
             {isPast && (
                 <div style={{
-                    padding: '4px 9px', borderRadius: 7,
-                    background: `${T.textDim}10`, border: `1px solid ${T.border}`,
-                    color: T.textDim, fontSize: '.52rem', fontWeight: 800,
+                    padding: '5px 10px', borderRadius: 8,
+                    background: `${T.textMute}10`, border: `1px solid ${T.border}`,
+                    color: T.textMute, fontSize: '.55rem', fontWeight: 700,
                     letterSpacing: '.06em', textTransform: 'uppercase',
                 }}>
                     Past
@@ -367,35 +365,35 @@ const TripCard = ({ booking, onStatusChange, i }) => {
 
     return (
         <div className="a-up" style={{
-            background: T.card, borderRadius: 22,
-            marginBottom: 14, overflow: 'hidden',
+            background: T.card, borderRadius: 20,
+            marginBottom: 16, overflow: 'hidden',
             border: `1px solid ${T.border}`,
             animationDelay: `${(i || 0) * .05}s`,
-            boxShadow: '0 2px 16px rgba(0,0,0,.07)',
+            boxShadow: T.shadowMd,
         }}>
-            <div style={{ height: 3, background: `linear-gradient(90deg, ${accent}, ${accent}50)` }} />
-            <div style={{ padding: '18px 18px 20px' }}>
+            <div style={{ height: 4, background: `linear-gradient(90deg, ${accent}, ${accent}50)` }} />
+            <div style={{ padding: '20px 18px' }}>
 
                 {/* header row */}
                 <div style={{
                     display: 'flex', justifyContent: 'space-between',
-                    alignItems: 'center', marginBottom: 4,
+                    alignItems: 'center', marginBottom: 16,
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{
-                            width: 38, height: 38, borderRadius: 11,
-                            background: `${accent}14`, border: `1px solid ${accent}20`,
+                            width: 40, height: 40, borderRadius: 12,
+                            background: `${accent}10`, border: `1px solid ${accent}20`,
                             color: accent,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                            <Truck size={17} strokeWidth={2} />
+                            <Truck size={18} strokeWidth={2} />
                         </div>
                         <div>
                             <div style={{
-                                color: T.text, fontSize: '.84rem', fontWeight: 800,
-                                fontFamily: "'SF Mono','Fira Code',monospace", letterSpacing: '.02em',
+                                color: T.text, fontSize: '.9rem', fontWeight: 800,
+                                fontFamily: "'Plus Jakarta Sans',sans-serif", letterSpacing: '-.01em',
                             }}>{genId(b.booking_id)}</div>
-                            <div style={{ fontSize: '.58rem', color: T.textDim, marginTop: 1, fontWeight: 500 }}>
+                            <div style={{ fontSize: '.65rem', color: T.textMute, marginTop: 2, fontWeight: 500 }}>
                                 Created {fmtDateShort(b.created_at)} at {fmtTime(b.created_at)}
                             </div>
                         </div>
@@ -403,95 +401,96 @@ const TripCard = ({ booking, onStatusChange, i }) => {
                     <Pill status={b.status} />
                 </div>
 
-                {/* ─── DATE BADGE — prominent ─── */}
+                {/* DATE BADGE */}
                 <DateBadge booking={b} />
 
                 {/* client */}
                 <div style={{
-                    marginBottom: 14, padding: '13px 15px',
+                    marginBottom: 16, padding: '14px 16px',
                     background: T.raised, borderRadius: 14,
                     border: `1px solid ${T.border}`,
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
                     <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '.46rem', color: T.textDim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 3 }}>Client</div>
-                        <div style={{ fontWeight: 800, fontSize: '.96rem', color: T.text, marginBottom: 3 }}>
+                        <div style={{ fontSize: '.6rem', color: T.textMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Client</div>
+                        <div style={{ fontWeight: 700, fontSize: '1rem', color: T.text, marginBottom: 4, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                             {b.client_name}
                         </div>
                         {b.client_phone && (
                             <div style={{
-                                fontSize: '.74rem', color: T.textSec,
-                                display: 'flex', alignItems: 'center', gap: 5,
+                                fontSize: '.75rem', color: T.textSec,
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                fontWeight: 500,
                             }}>
-                                <Phone size={11} style={{ opacity: .5 }} /> {b.client_phone}
+                                <Phone size={11} style={{ color: T.textMute }} /> {b.client_phone}
                             </div>
                         )}
                     </div>
                     <div style={{
-                        width: 40, height: 40, borderRadius: '50%',
+                        width: 44, height: 44, borderRadius: '50%',
                         background: `${accent}10`, border: `1px solid ${accent}15`,
                         color: accent,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         flexShrink: 0, marginLeft: 12,
                     }}>
-                        <User size={15} />
+                        <User size={16} />
                     </div>
                 </div>
 
                 {/* route */}
                 <div style={{
-                    marginBottom: 14, padding: '14px',
+                    marginBottom: 16, padding: '16px',
                     background: T.raised, borderRadius: 14,
                     border: `1px solid ${T.border}`,
                 }}>
-                    <div style={{ display: 'flex', gap: 11 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 1 }}>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 2 }}>
                             <div style={{
-                                width: 16, height: 16, borderRadius: '50%',
-                                background: `${T.rose}14`, border: '1.5px solid ' + `${T.rose}28`,
+                                width: 18, height: 18, borderRadius: '50%',
+                                background: `${T.rose}10`, border: '1.5px solid ' + `${T.rose}40`,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                             }}>
-                                <div style={{ width: 5, height: 5, borderRadius: '50%', background: T.rose }} />
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: T.rose }} />
                             </div>
                             <div style={{
-                                width: 1.5, flex: 1, minHeight: 28, margin: '4px 0',
+                                width: 2, flex: 1, minHeight: 32, margin: '4px 0',
                                 background: `repeating-linear-gradient(to bottom,${T.border} 0px,${T.border} 3px,transparent 3px,transparent 7px)`,
                             }} />
                             <div style={{
-                                width: 16, height: 16, borderRadius: '50%',
-                                background: `${T.green}14`, border: '1.5px solid ' + `${T.green}28`,
+                                width: 18, height: 18, borderRadius: '50%',
+                                background: `${T.green}10`, border: '1.5px solid ' + `${T.green}40`,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                             }}>
-                                <div style={{ width: 5, height: 5, borderRadius: '50%', background: T.green }} />
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: T.green }} />
                             </div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 12 }}>
                             <div>
-                                <div style={{ fontSize: '.46rem', color: T.textDim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 2 }}>Pickup</div>
-                                <div style={{ fontSize: '.8rem', color: T.text, fontWeight: 600, lineHeight: 1.3 }}>{b.from_location || b.destination || 'N/A'}</div>
+                                <div style={{ fontSize: '.6rem', color: T.textMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 3 }}>Pickup</div>
+                                <div style={{ fontSize: '.85rem', color: T.text, fontWeight: 600, lineHeight: 1.3 }}>{b.from_location || b.destination || 'N/A'}</div>
                             </div>
                             <div>
-                                <div style={{ fontSize: '.46rem', color: T.textDim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 2 }}>Destination</div>
-                                <div style={{ fontSize: '.8rem', color: T.text, fontWeight: 600, lineHeight: 1.3 }}>{b.destination || 'N/A'}</div>
+                                <div style={{ fontSize: '.6rem', color: T.textMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 3 }}>Destination</div>
+                                <div style={{ fontSize: '.85rem', color: T.text, fontWeight: 600, lineHeight: 1.3 }}>{b.destination || 'N/A'}</div>
                             </div>
                         </div>
                     </div>
 
-                    <div style={{ height: 1, background: T.border, margin: '13px 0' }} />
+                    <div style={{ height: 1, background: T.border, margin: '14px 0' }} />
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div style={{
-                                width: 32, height: 32, borderRadius: 9,
-                                background: `${accent}10`, border: `1px solid ${accent}14`,
+                                width: 36, height: 36, borderRadius: 10,
+                                background: `${accent}10`, border: `1px solid ${accent}15`,
                                 color: accent,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}>
-                                <Car size={14} />
+                                <Car size={15} />
                             </div>
                             <div>
-                                <div style={{ fontSize: '.44rem', color: T.textDim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em' }}>Vehicle</div>
-                                <div style={{ fontSize: '.76rem', color: T.text, fontWeight: 700, marginTop: 1 }}>{b.vehicle_name || b.model || 'Assigned'}</div>
+                                <div style={{ fontSize: '.55rem', color: T.textMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em' }}>Vehicle</div>
+                                <div style={{ fontSize: '.8rem', color: T.text, fontWeight: 700, marginTop: 2, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{b.vehicle_name || b.model || 'Assigned'}</div>
                             </div>
                         </div>
                         <Plate number={b.plate_number || b.number_plate} model={b.model} />
@@ -500,30 +499,31 @@ const TripCard = ({ booking, onStatusChange, i }) => {
 
                 {/* action buttons */}
                 {b.status === 'booked' && (
-                    <button onClick={() => onStatusChange(b.booking_id, 'in_transit')} className="a-glow" style={{
-                        width: '100%', padding: '15px', border: 'none', borderRadius: 14,
+                    <button onClick={() => onStatusChange(b.booking_id, 'in_transit')} className="a-glow a-press" style={{
+                        width: '100%', padding: '16px', border: 'none', borderRadius: 14,
                         cursor: 'pointer',
-                        background: `linear-gradient(135deg, ${T.accent}, #E05520)`,
-                        color: '#FFFFFF', fontWeight: 800, fontSize: '.88rem',
+                        background: `linear-gradient(135deg, ${T.accent}, ${T.accentDark})`,
+                        color: '#FFFFFF', fontWeight: 700, fontSize: '.9rem',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        boxShadow: `0 6px 24px -4px ${T.accent}40`,
-                        transition: 'all .15s', fontFamily: "'DM Sans',sans-serif",
+                        transition: 'all .2s', fontFamily: "'Plus Jakarta Sans',sans-serif",
+                        letterSpacing: '-.01em'
                     }}>
-                        <Zap size={17} strokeWidth={2.5} /> Accept Trip
-                        <ArrowRight size={14} style={{ opacity: .5 }} />
+                        <Zap size={18} strokeWidth={2.5} /> Accept Trip
+                        <ArrowRight size={15} style={{ opacity: .8 }} />
                     </button>
                 )}
                 {b.status === 'in_transit' && (
-                    <button onClick={() => onStatusChange(b.booking_id, 'completed')} style={{
-                        width: '100%', padding: '15px', border: 'none', borderRadius: 14,
+                    <button onClick={() => onStatusChange(b.booking_id, 'completed')} className="a-press" style={{
+                        width: '100%', padding: '16px', border: 'none', borderRadius: 14,
                         cursor: 'pointer',
-                        background: `linear-gradient(135deg, ${T.green}, #22A844)`,
-                        color: '#FFFFFF', fontWeight: 800, fontSize: '.88rem',
+                        background: `linear-gradient(135deg, ${T.green}, #059669)`,
+                        color: '#FFFFFF', fontWeight: 700, fontSize: '.9rem',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        boxShadow: `0 6px 24px -4px ${T.green}35`,
-                        transition: 'all .15s', fontFamily: "'DM Sans',sans-serif",
+                        boxShadow: '0 8px 20px -4px rgba(16, 185, 129, 0.4)',
+                        transition: 'all .2s', fontFamily: "'Plus Jakarta Sans',sans-serif",
+                        letterSpacing: '-.01em'
                     }}>
-                        <CheckCircle size={17} strokeWidth={2.5} /> Complete Trip
+                        <CheckCircle size={18} strokeWidth={2.5} /> Complete Trip
                     </button>
                 )}
             </div>
@@ -538,7 +538,6 @@ const LeaveCard = ({ leave }) => {
 
     const startDate = leave.start_date ? new Date(leave.start_date) : null;
     const endDate = leave.end_date ? new Date(leave.end_date) : null;
-    const now = getNairobiNow();
     const relStart = relativeDate(leave.start_date);
 
     const daysCount = startDate && endDate
@@ -547,49 +546,50 @@ const LeaveCard = ({ leave }) => {
 
     return (
         <div style={{
-            background: T.card, borderRadius: 18, padding: '16px 18px',
-            marginBottom: 10, display: 'flex', justifyContent: 'space-between',
+            background: T.card, borderRadius: 16, padding: '16px 18px',
+            marginBottom: 12, display: 'flex', justifyContent: 'space-between',
             alignItems: 'center', border: `1px solid ${T.border}`,
-            boxShadow: '0 1px 8px rgba(0,0,0,.05)',
+            boxShadow: T.shadowSm,
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{
-                    width: 42, height: 42, borderRadius: 12,
-                    background: `${c.color}12`, border: `1px solid ${c.color}20`,
+                    width: 44, height: 44, borderRadius: 12,
+                    background: c.bg, border: `1px solid ${c.color}30`,
                     color: c.color,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                    <Calendar size={17} />
+                    <Calendar size={18} />
                 </div>
                 <div>
-                    <div style={{ fontWeight: 700, fontSize: '.86rem', color: T.text, marginBottom: 3 }}>
+                    <div style={{ fontWeight: 700, fontSize: '.9rem', color: T.text, marginBottom: 4, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                         {leave.leave_type || 'Leave'}
                     </div>
-                    <div style={{ fontSize: '.66rem', color: T.textDim, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Clock size={10} />
+                    <div style={{ fontSize: '.7rem', color: T.textDim, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                        <Clock size={11} style={{ color: T.textMute }} />
                         {startDate ? startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
                         {' — '}
                         {endDate ? endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                         {daysCount && daysCount > 0 && (
                             <span style={{
-                                padding: '1px 6px', borderRadius: 5,
-                                background: `${c.color}12`, color: c.color,
-                                fontSize: '.56rem', fontWeight: 700,
+                                padding: '2px 7px', borderRadius: 6,
+                                background: c.bg, color: c.color,
+                                fontSize: '.6rem', fontWeight: 700,
+                                marginLeft: 4
                             }}>{daysCount}d</span>
                         )}
                     </div>
                     {relStart && (
-                        <div style={{ fontSize: '.6rem', color: relStart.color, fontWeight: 600, marginTop: 2 }}>
+                        <div style={{ fontSize: '.65rem', color: relStart.color, fontWeight: 600, marginTop: 3 }}>
                             {relStart.label}
                         </div>
                     )}
                 </div>
             </div>
             <span style={{
-                padding: '4px 12px', borderRadius: 100,
-                background: `${c.color}12`, border: `1px solid ${c.color}22`,
-                color: c.color, fontSize: '.56rem', fontWeight: 700,
-                letterSpacing: '.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                padding: '5px 12px', borderRadius: 100,
+                background: c.bg, border: `1px solid ${c.color}30`,
+                color: c.color, fontSize: '.6rem', fontWeight: 700,
+                letterSpacing: '.04em', textTransform: 'uppercase', whiteSpace: 'nowrap',
             }}>{c.label}</span>
         </div>
     );
@@ -599,29 +599,29 @@ const LeaveCard = ({ leave }) => {
 const Empty = ({ icon: Icon, title, sub }) => (
     <div style={{
         textAlign: 'center', padding: '64px 28px',
-        background: T.card, borderRadius: 22,
+        background: T.card, borderRadius: 20,
         border: `1px dashed ${T.border}`,
     }}>
         <div style={{
-            width: 56, height: 56, borderRadius: '50%',
+            width: 60, height: 60, borderRadius: '50%',
             background: T.raised, border: `1px solid ${T.border}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 18px', color: T.textDim,
-        }}><Icon size={24} /></div>
-        <div style={{ fontSize: '1rem', fontWeight: 800, color: T.textSec, marginBottom: 6 }}>{title}</div>
-        <div style={{ fontSize: '.78rem', color: T.textDim, lineHeight: 1.6, maxWidth: 260, margin: '0 auto' }}>{sub}</div>
+            margin: '0 auto 18px', color: T.textMute,
+        }}><Icon size={26} /></div>
+        <div style={{ fontSize: '1.05rem', fontWeight: 700, color: T.text, marginBottom: 6, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{title}</div>
+        <div style={{ fontSize: '.8rem', color: T.textDim, lineHeight: 1.6, maxWidth: 280, margin: '0 auto' }}>{sub}</div>
     </div>
 );
 
 const Loading = ({ text }) => (
     <div style={{ textAlign: 'center', padding: '80px 20px' }}>
         <div style={{
-            width: 44, height: 44, margin: '0 auto 16px',
+            width: 48, height: 48, margin: '0 auto 16px',
             borderRadius: 14, background: T.card, border: `1px solid ${T.border}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,.05)',
-        }}><Loader2 size={20} className="a-spin" style={{ color: T.accent }} /></div>
-        <div style={{ fontSize: '.82rem', fontWeight: 600, color: T.textMuted, fontFamily: "'DM Sans',sans-serif" }}>{text}</div>
+            boxShadow: T.shadow,
+        }}><Loader2 size={22} className="a-spin" style={{ color: T.accent }} /></div>
+        <div style={{ fontSize: '.85rem', fontWeight: 600, color: T.textDim, fontFamily: "'Inter',sans-serif" }}>{text}</div>
     </div>
 );
 
@@ -676,13 +676,11 @@ const DriverPortal = () => {
         loadB(); loadL();
     }, [slug, loadB, loadL]);
 
-    // Real-time socket updates for bookings — live UI updates
+    // Real-time socket updates for bookings
     useEffect(() => {
         if (!socket || !connected) return;
 
         const handleNewBooking = (data) => {
-            console.log('🔔 New booking received:', data);
-            // Add the new booking to state instantly if it has booking data
             if (data.booking) {
                 setBookings(prev => [data.booking, ...prev]);
             } else {
@@ -692,8 +690,6 @@ const DriverPortal = () => {
         };
 
         const handleStatusUpdate = (data) => {
-            console.log('🔔 Booking status updated:', data);
-            // Update the booking in state instantly without reload
             if (data.booking_id && data.status) {
                 setBookings(prev => prev.map(b =>
                     b.booking_id === data.booking_id
@@ -707,24 +703,17 @@ const DriverPortal = () => {
         };
 
         const handleBookingPostponed = (data) => {
-            console.log('🔔 Booking postponed:', data);
             loadB(true);
-        };
-
-        const handleHearseRegistered = (data) => {
-            console.log('🔔 New hearse registered:', data);
         };
 
         socket.on('new_booking', handleNewBooking);
         socket.on('booking_status_updated', handleStatusUpdate);
         socket.on('booking_postponed', handleBookingPostponed);
-        socket.on('hearse_registered', handleHearseRegistered);
 
         return () => {
             socket.off('new_booking', handleNewBooking);
             socket.off('booking_status_updated', handleStatusUpdate);
             socket.off('booking_postponed', handleBookingPostponed);
-            socket.off('hearse_registered', handleHearseRegistered);
         };
     }, [loadB, socket, connected]);
 
@@ -755,8 +744,8 @@ const DriverPortal = () => {
         <div style={{
             minHeight: '100vh', minHeight: '100dvh',
             background: T.bg,
-            fontFamily: "'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-            color: T.textDark, WebkitFontSmoothing: 'antialiased',
+            fontFamily: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+            color: T.text, WebkitFontSmoothing: 'antialiased',
         }}>
             <style>{css}</style>
             <Toast type="error" message={error} onClose={() => setError('')} />
@@ -765,45 +754,45 @@ const DriverPortal = () => {
             {/* ─── HEADER ─── */}
             <header style={{
                 position: 'sticky', top: 0, zIndex: 50,
-                background: 'rgba(255,255,255,.88)',
+                background: 'rgba(248, 249, 251, 0.8)',
                 backdropFilter: 'blur(20px) saturate(180%)',
                 WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                borderBottom: '1px solid ' + T.divider,
+                borderBottom: `1px solid ${T.border}`,
             }}>
                 <div style={{
-                    maxWidth: 520, margin: '0 auto', padding: '12px 18px',
+                    maxWidth: 520, margin: '0 auto', padding: '14px 18px',
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{
-                            width: 38, height: 38, borderRadius: 11,
-                            background: T.card,
+                            width: 40, height: 40, borderRadius: 12,
+                            background: `linear-gradient(135deg, ${T.accent}, ${T.accentDark})`,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 2px 10px rgba(0,0,0,.1)',
+                            boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)',
                         }}>
-                            <Car size={16} color={T.accent} strokeWidth={2.5} />
+                            <Car size={18} color="#FFFFFF" strokeWidth={2.5} />
                         </div>
                         <div>
-                            <div style={{ fontSize: '.9rem', fontWeight: 900, color: T.textDark, letterSpacing: '-.01em' }}>RestPoint</div>
-                            <div style={{ fontSize: '.46rem', color: T.textLight, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' }}>Driver Portal</div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: T.text, letterSpacing: '-.02em', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>RestPoint</div>
+                            <div style={{ fontSize: '.65rem', color: T.textMute, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' }}>Driver Portal</div>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <button onClick={() => loadB(true)} disabled={refreshing} style={{
-                            width: 38, height: 38, borderRadius: 11,
-                            background: T.surfaceBg, border: '1px solid ' + T.divider,
-                            color: T.textMuted, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer',
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <button onClick={() => loadB(true)} disabled={refreshing} className="a-press" style={{
+                            width: 40, height: 40, borderRadius: 12,
+                            background: T.card, border: `1px solid ${T.border}`,
+                            color: T.textDim, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', boxShadow: T.shadowSm
                         }}>
-                            <RefreshCw size={14} className={refreshing ? 'a-spin' : ''} />
+                            <RefreshCw size={16} className={refreshing ? 'a-spin' : ''} />
                         </button>
-                        <button onClick={logout} style={{
-                            padding: '8px 14px', borderRadius: 11,
-                            background: T.surfaceBg, border: '1px solid rgba(255,69,58,.12)',
-                            color: T.rose, fontSize: '.68rem', fontWeight: 700,
-                            display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
+                        <button onClick={logout} className="a-press" style={{
+                            padding: '0 16px', height: 40, borderRadius: 12,
+                            background: '#FEF2F2', border: '1px solid rgba(239, 68, 68, 0.2)',
+                            color: T.rose, fontSize: '.75rem', fontWeight: 700,
+                            display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
                         }}>
-                            <LogOut size={12} /><span>Exit</span>
+                            <LogOut size={14} /><span>Exit</span>
                         </button>
                     </div>
                 </div>
@@ -812,21 +801,22 @@ const DriverPortal = () => {
             <main style={{ maxWidth: 520, margin: '0 auto', padding: '24px 18px 120px' }}>
 
                 {/* ─── GREETING SECTION ─── */}
-                <div className="a-up" style={{ marginBottom: 26 }}>
-                    {/* date pill + time pill */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 16 }}>
+                <div className="a-up" style={{ marginBottom: 28 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                         <div style={{
-                            padding: '5px 11px', borderRadius: 9,
-                            background: T.surfaceBg, border: '1px solid ' + T.divider,
-                            color: T.accent, fontSize: '.66rem', fontWeight: 700,
-                            display: 'flex', alignItems: 'center', gap: 5,
+                            padding: '6px 12px', borderRadius: 10,
+                            background: T.card, border: `1px solid ${T.border}`,
+                            color: T.accent, fontSize: '.7rem', fontWeight: 700,
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            boxShadow: T.shadowSm
                         }}>
                             <GI size={12} />{g.text}
                         </div>
                         <div style={{
-                            padding: '5px 10px', borderRadius: 9,
-                            background: T.surfaceBg, border: '1px solid ' + T.divider,
-                            color: T.textMuted, fontSize: '.66rem', fontWeight: 650,
+                            padding: '6px 12px', borderRadius: 10,
+                            background: T.card, border: `1px solid ${T.border}`,
+                            color: T.textDim, fontSize: '.7rem', fontWeight: 600,
+                            boxShadow: T.shadowSm
                         }}>
                             {g.timeStr}
                         </div>
@@ -835,40 +825,40 @@ const DriverPortal = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <h1 style={{
-                                margin: 0, fontSize: '1.9rem', fontWeight: 900,
-                                lineHeight: 1.1, letterSpacing: '-.04em', color: T.textDark, marginBottom: 6,
+                                margin: 0, fontSize: '2rem', fontWeight: 800,
+                                lineHeight: 1.1, letterSpacing: '-.03em', color: T.text, marginBottom: 8,
+                                fontFamily: "'Plus Jakarta Sans',sans-serif"
                             }}>{first}</h1>
-                            <div style={{ fontSize: '.78rem', color: T.textMuted, fontWeight: 500, marginBottom: 2 }}>
+                            <div style={{ fontSize: '.8rem', color: T.textDim, fontWeight: 500, marginBottom: 4 }}>
                                 {g.dateStr}
                             </div>
-                            <div style={{ fontSize: '.72rem', color: T.textLight, fontWeight: 500, fontStyle: 'italic', opacity: .9 }}>
+                            <div style={{ fontSize: '.75rem', color: T.textMute, fontWeight: 500, fontStyle: 'italic' }}>
                                 {g.sub}
                             </div>
                         </div>
 
-                        {/* avatar with today's date */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 14 }}>
                             <div style={{
-                                width: 56, height: 56, borderRadius: 18,
-                                background: `linear-gradient(145deg, ${T.accent}, #E05520)`,
+                                width: 60, height: 60, borderRadius: 20,
+                                background: `linear-gradient(145deg, ${T.accent}, ${T.accentDark})`,
                                 display: 'flex', flexDirection: 'column',
                                 alignItems: 'center', justifyContent: 'center',
-                                color: '#FFFFFF', boxShadow: `0 6px 22px ${T.accent}28`,
+                                color: '#FFFFFF', boxShadow: '0 8px 24px rgba(249, 115, 22, 0.3)',
                                 position: 'relative',
                             }}>
-                                <span style={{ fontSize: '.42rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', opacity: .85, lineHeight: 1 }}>
+                                <span style={{ fontSize: '.45rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', opacity: .9, lineHeight: 1 }}>
                                     {g.monthShort}
                                 </span>
-                                <span style={{ fontSize: '1.3rem', fontWeight: 900, lineHeight: 1.1, marginTop: -1 }}>
+                                <span style={{ fontSize: '1.4rem', fontWeight: 800, lineHeight: 1.1, marginTop: 0 }}>
                                     {g.dayNum}
                                 </span>
                                 <div style={{
-                                    position: 'absolute', bottom: -2, right: -2,
-                                    width: 15, height: 15, borderRadius: '50%',
-                                    background: T.green, border: '2.5px solid ' + T.bg,
+                                    position: 'absolute', bottom: -3, right: -3,
+                                    width: 18, height: 18, borderRadius: '50%',
+                                    background: T.green, border: `3px solid ${T.bg}`,
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 }}>
-                                    <span style={{ fontSize: '.5rem', fontWeight: 900, color: '#FFF', lineHeight: 1 }}>
+                                    <span style={{ fontSize: '.5rem', fontWeight: 800, color: '#FFF', lineHeight: 1 }}>
                                         {g.weekdayShort.charAt(0)}
                                     </span>
                                 </div>
@@ -876,30 +866,29 @@ const DriverPortal = () => {
                         </div>
                     </div>
 
-                    {/* active trips banner */}
                     {active.length > 0 && (
                         <div style={{
-                            marginTop: 18, padding: '12px 15px',
+                            marginTop: 20, padding: '14px 16px',
                             background: T.card, border: `1px solid ${T.border}`,
-                            borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
-                            boxShadow: '0 2px 10px rgba(0,0,0,.06)',
+                            borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12,
+                            boxShadow: T.shadow,
                         }}>
                             <span className="a-pulse" style={{
-                                width: 8, height: 8, borderRadius: '50%',
+                                width: 10, height: 10, borderRadius: '50%',
                                 background: T.amber, flexShrink: 0,
                                 boxShadow: `0 0 10px ${T.amber}50`,
                             }} />
-                            <span style={{ fontSize: '.78rem', color: T.amber, fontWeight: 700 }}>
+                            <span style={{ fontSize: '.8rem', color: T.text, fontWeight: 600 }}>
                                 <strong>{active.length}</strong> trip{active.length !== 1 ? 's' : ''} waiting for you
                             </span>
-                            <ArrowRight size={14} style={{ color: T.textDim, marginLeft: 'auto' }} />
+                            <ArrowRight size={14} style={{ color: T.textMute, marginLeft: 'auto' }} />
                         </div>
                     )}
                 </div>
 
                 {/* ─── STATS ─── */}
                 <div className="a-up" style={{
-                    display: 'flex', gap: 10, marginBottom: 26, animationDelay: '.06s',
+                    display: 'flex', gap: 12, marginBottom: 28, animationDelay: '.06s',
                 }}>
                     <Stat value={active.length} label="Active" color={T.accent} icon={Zap} pulse={active.length > 0} />
                     <Stat value={transit} label="En Route" color={T.blue} icon={Navigation} />
@@ -908,9 +897,10 @@ const DriverPortal = () => {
 
                 {/* ─── TABS ─── */}
                 <div className="a-up" style={{
-                    display: 'flex', gap: 4, marginBottom: 18,
-                    padding: 4, background: T.surfaceBg, borderRadius: 14,
-                    border: '1px solid ' + T.divider,
+                    display: 'flex', gap: 4, marginBottom: 20,
+                    padding: 4, background: T.card, borderRadius: 14,
+                    border: `1px solid ${T.border}`,
+                    boxShadow: T.shadowSm,
                     animationDelay: '.09s',
                 }}>
                     {[
@@ -920,23 +910,22 @@ const DriverPortal = () => {
                         const on = tab === t.k;
                         const Icon = t.icon;
                         return (
-                            <button key={t.k} onClick={() => setTab(t.k)} style={{
-                                flex: 1, padding: '11px 6px', borderRadius: 11,
-                                background: on ? T.card : 'transparent',
+                            <button key={t.k} onClick={() => setTab(t.k)} className="a-press" style={{
+                                flex: 1, padding: '12px 8px', borderRadius: 11,
+                                background: on ? T.raised : 'transparent',
                                 border: '1px solid transparent',
-                                color: on ? T.text : T.textLight,
-                                fontWeight: 700, fontSize: '.76rem', cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                                transition: 'all .2s', fontFamily: "'DM Sans',sans-serif",
-                                boxShadow: on ? '0 2px 10px rgba(0,0,0,.1)' : 'none',
+                                color: on ? T.text : T.textMute,
+                                fontWeight: 700, fontSize: '.8rem', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                transition: 'all .2s', fontFamily: "'Plus Jakarta Sans',sans-serif",
                             }}>
-                                <Icon size={13} style={{ color: on ? t.c : undefined }} />
+                                <Icon size={14} style={{ color: on ? t.c : undefined }} />
                                 {t.l}
                                 {t.n > 0 && (
                                     <span style={{
-                                        fontSize: '.54rem', fontWeight: 800, padding: '1px 6px',
-                                        borderRadius: 6, background: on ? `${t.c}20` : 'rgba(0,0,0,.04)',
-                                        color: on ? t.c : T.textLight,
+                                        fontSize: '.6rem', fontWeight: 800, padding: '2px 7px',
+                                        borderRadius: 6, background: on ? `${t.c}20` : `${T.textMute}15`,
+                                        color: on ? t.c : T.textMute,
                                     }}>{t.n}</span>
                                 )}
                             </button>
@@ -964,15 +953,15 @@ const DriverPortal = () => {
                 {/* ─── FOOTER ─── */}
                 <div style={{
                     textAlign: 'center', padding: '40px 0 0',
-                    borderTop: '1px solid ' + T.divider, marginTop: 36,
+                    borderTop: `1px solid ${T.border}`, marginTop: 40,
                 }}>
                     <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 5,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 6,
                     }}>
-                        <Shield size={10} style={{ color: T.textLight }} />
-                        <span style={{ fontSize: '.58rem', color: T.textLight, fontWeight: 600 }}>Secure · Encrypted</span>
+                        <Shield size={11} style={{ color: T.textMute }} />
+                        <span style={{ fontSize: '.65rem', color: T.textMute, fontWeight: 600 }}>Secure · Encrypted</span>
                     </div>
-                    <div style={{ fontSize: '.46rem', color: '#D4D4D8', fontWeight: 500 }}>
+                    <div style={{ fontSize: '.6rem', color: T.textMute, fontWeight: 500 }}>
                         RestPoint v2.0 · {slug} · Nairobi
                     </div>
                 </div>

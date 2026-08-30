@@ -1,9 +1,0 @@
-browser up: HeadlessChrome/151.0.7922.71
---- navigating to http://localhost:4599/
-[console.error] WebSocket connection to 'wss://restpoint.co.ke/socket.io/?EIO=4&transport=websocket' failed: Error during WebSocket handshake: Unexpected response code: 502
-[console.error] [Socket] Connection error: websocket error
---- title: Rest Point | Kenya's #1 Funeral Home Management System & Welfare Management Platform
---- #root children: 3
---- body: This website uses cookies Rest Point Features Modules About Policies Terms of Service Privacy Policy Security Policy Data Migration Policy SLA Policy Release Notes Account Deletion Log in Request access FUNERAL HOME OS & WELFARE PLATFORM A record worthy of the families you serve. Rest Point is the
---- SW: registered-or-none
---- done

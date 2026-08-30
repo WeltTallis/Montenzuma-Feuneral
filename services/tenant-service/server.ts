@@ -780,10 +780,18 @@ app.listen(Number(PORT), HOST, () => {
   console.log(`Health check: http://${HOST}:${PORT}/health`);
   console.log(`${new Date().toISOString()}`);
 
-  // Startup sweep: make sure EVERY tenant's MAIN (parent) branch carries its
-  // own complete slug (`org-home-nairobi`, never the bare tenant slug) and
-  // that a Main branch exists at all. Idempotent + non-fatal.
-  TenantModel.normalizeAllTenantMainBranches().catch((e) =>
-    console.warn('Main-branch normalization sweep failed:', (e && e.message) || e)
-  );
+  // AUTO-CREATE: Ensure tenant_tracking database and tables exist
+  // This must run BEFORE the sweep that queries tenant_tracking.tenants
+  TenantModel.ensureTenantTrackingSchema()
+    .then(() => {
+      // Startup sweep: make sure EVERY tenant's MAIN (parent) branch carries its
+      // own complete slug (`org-home-nairobi`, never the bare tenant slug) and
+      // that a Main branch exists at all. Idempotent + non-fatal.
+      TenantModel.normalizeAllTenantMainBranches().catch((e) =>
+        console.warn('Main-branch normalization sweep failed:', (e && e.message) || e)
+      );
+    })
+    .catch((e) => {
+      console.warn('Schema auto-creation failed, sweep skipped:', (e && e.message) || e);
+    });
 });
