@@ -21,7 +21,7 @@ services:
     ports:
       - "${MARIADB_EXTERNAL_PORT:-3306}:3306"
     volumes:
-         - mariadb_data:/var/lib/mysql
+      - mariadb_data:/var/lib/mysql
       # Monitoring: custom MariaDB config (slow query log + performance_schema)
       - ./docker/mariadb/custom-mysqld.cnf:/etc/mysql/conf.d/custom-mysqld.cnf:ro
       # Monitoring: creates the dedicated `exporter` user for mysqld_exporter
@@ -282,7 +282,7 @@ services:
       SERVICE_NAME: coffin-service
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
-            - OPERATIONS_DATABASE: restpoint_operations
+      OPERATIONS_DATABASE: restpoint_operations
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
     volumes:
@@ -666,6 +666,7 @@ services:
       retries: 3
       start_period: 40s
 
+
   # =============================================================================
   # LEAVE SERVICE
   # =============================================================================
@@ -708,7 +709,7 @@ services:
     container_name: restpoint_frontend
     restart: always
     ports:
-      - "${FRONTEND_EXTERNAL_PORT:-8082}:80"
+      - "${FRONTEND_EXTERNAL_PORT:-8080}:80"
     depends_on:
       api-gateway:
         condition: service_healthy
@@ -721,18 +722,15 @@ services:
       retries: 3
       start_period: 30s
 
-# =============================================================================
 # NETWORK DEFINITION - ONLY ONE NETWORK
-# =============================================================================
+
 networks:
   restpoint_network:
     driver: bridge
     name: restpoint_network
     attachable: true
 
-# =============================================================================
 # VOLUMES
-# =============================================================================
 volumes:
   mariadb_data:
     driver: local

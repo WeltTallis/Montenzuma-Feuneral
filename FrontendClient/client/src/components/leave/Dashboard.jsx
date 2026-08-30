@@ -2099,10 +2099,10 @@ const LeaveDashboard = () => {
               <PanelFooter>
                 <Btn $variant="secondary" onClick={closePanel}>Close</Btn>
               </PanelFooter>
-            </SidePanel>
-          </>
-        );
-      })()}
+            </>
+          );
+        })()}
+      </SidePanel>
 
       {/* ─── ADJUST BALANCE MODAL ─── */}
       <Overlay $z={1000} $open={adjustOpen} onClick={() => setAdjustOpen(false)} />

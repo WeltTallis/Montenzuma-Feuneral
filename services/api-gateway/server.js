@@ -182,7 +182,8 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) return callback(null, true);
     // In development, allow all origins
     if (process.env.NODE_ENV !== 'production') return callback(null, true);
-    callback(new Error('Not allowed by CORS'));
+    // In production, reject but don't throw (avoids 500 error)
+    callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'QUERY', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
@@ -642,8 +643,65 @@ app.use('/api/v1/restpoint', checkServiceAvailability, (req, res, next) => {
 });
 
 // =============================================================================
-// HEALTH & DEBUG
+// HEALTH & DEBUG (must be before 404 handler)
 // =============================================================================
+
+app.get('/health', (req, res) => {
+  const serviceStatus = {};
+  Object.keys(SERVICE_URLS).forEach(serviceName => {
+    const health = serviceHealth[serviceName];
+    serviceStatus[serviceName] = {
+      url: SERVICE_URLS[serviceName],
+      healthy: health.isHealthy,
+      failures: health.failures,
+      lastCheck: health.lastCheck ? new Date(health.lastCheck).toISOString() : null,
+      lastFailure: health.lastFailure ? new Date(health.lastFailure).toISOString() : null,
+    };
+  });
+
+  const allHealthy = Object.values(serviceHealth).every(h => h.isHealthy);
+
+  res.json({
+    success: true,
+    status: allHealthy ? 'ok' : 'degraded',
+    service: APP_NAME,
+    version: APP_VERSION,
+    port: PORT,
+    uptime: process.uptime(),
+    services: serviceStatus,
+  });
+});
+
+// HEAD /health — required by Docker HEALTHCHECK and Kubernetes liveness probes
+app.head('/health', (_req, res) => {
+  res.status(200).end();
+});
+
+app.get('/health/:service', async (req, res) => {
+  const serviceName = req.params.service;
+  const url = SERVICE_URLS[serviceName];
+
+  if (!url) {
+    return res.status(404).json({
+      success: false,
+      message: `Unknown service: ${serviceName}`,
+    });
+  }
+
+  const baseUrl = url.split('/')[0] + '//' + url.split('/')[2];
+  await checkServiceHealth(serviceName, baseUrl);
+
+  const health = serviceHealth[serviceName];
+  res.json({
+    success: true,
+    service: serviceName,
+    url: url,
+    healthy: health.isHealthy,
+    failures: health.failures,
+    lastCheck: health.lastCheck ? new Date(health.lastCheck).toISOString() : null,
+    lastFailure: health.lastFailure ? new Date(health.lastFailure).toISOString() : null,
+  });
+});
 
 // 404 HANDLER
 
@@ -673,67 +731,6 @@ app.use((err, req, res, next) => {
     action: 'Please contact the System Administrator.',
     error: isProd ? undefined : err.message,
     timestamp: new Date().toISOString()
-  });
-});
-
-// HEALTH CHECK ENDPOINTS
-
-app.get('/health', (req, res) => {
-  const serviceStatus = {};
-  Object.keys(SERVICE_URLS).forEach(serviceName => {
-    const health = serviceHealth[serviceName];
-    serviceStatus[serviceName] = {
-      url: SERVICE_URLS[serviceName],
-      healthy: health.isHealthy,
-      failures: health.failures,
-      lastCheck: health.lastCheck ? new Date(health.lastCheck).toISOString() : null,
-      lastFailure: health.lastFailure ? new Date(health.lastFailure).toISOString() : null,
-    };
-  });
-
-      const allHealthy = Object.values(serviceHealth).every(h => h.isHealthy);
-
-  res.json({
-    success: true,
-    status: allHealthy ? 'ok' : 'degraded',
-    service: APP_NAME,
-    version: APP_VERSION,
-    port: PORT,
-    uptime: process.uptime(),
-    services: serviceStatus,
-  });
-});
-
-// HEAD /health — required by Docker HEALTHCHECK and Kubernetes liveness probes
-app.head('/health', (_req, res) => {
-  // Gateway itself is always healthy as long as it's serving requests
-  res.status(200).end();
-});
-
-app.get('/health/:service', async (req, res) => {
-  const serviceName = req.params.service;
-  const url = SERVICE_URLS[serviceName];
-
-  if (!url) {
-    return res.status(404).json({
-      success: false,
-      message: `Unknown service: ${serviceName}`,
-    });
-  }
-
-  // Trigger immediate health check
-  const baseUrl = url.split('/')[0] + '//' + url.split('/')[2];
-  await checkServiceHealth(serviceName, baseUrl);
-
-  const health = serviceHealth[serviceName];
-  res.json({
-    success: true,
-    service: serviceName,
-    url: url,
-    healthy: health.isHealthy,
-    failures: health.failures,
-    lastCheck: health.lastCheck ? new Date(health.lastCheck).toISOString() : null,
-    lastFailure: health.lastFailure ? new Date(health.lastFailure).toISOString() : null,
   });
 });
 
