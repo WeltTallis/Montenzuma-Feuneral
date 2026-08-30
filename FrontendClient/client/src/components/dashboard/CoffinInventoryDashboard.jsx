@@ -197,6 +197,3 @@ function ReservationsTable({ bookings, branches }) {
     </div>
   );
 }
-
-  );
-}
