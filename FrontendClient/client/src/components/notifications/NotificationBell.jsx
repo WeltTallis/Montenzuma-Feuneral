@@ -157,9 +157,9 @@ const NotificationBell = () => {
     try {
       if (!isMuted && audioRef.current) {
         audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(() => {});
+        audioRef.current.play().catch(() => { });
       }
-    } catch {}
+    } catch { }
   }, [isMuted]);
 
   const toggleMute = useCallback(() => {
@@ -214,7 +214,7 @@ const NotificationBell = () => {
     try {
       const headers = getTenantHeaders();
       await api.put(`${ENDPOINTS.NOTIFICATION.BASE}/notifications/${id}/read`, {}, { headers });
-    } catch {}
+    } catch { }
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
   }, []);
@@ -223,8 +223,8 @@ const NotificationBell = () => {
     try {
       const headers = getTenantHeaders();
       await api.put(`${ENDPOINTS.NOTIFICATION.BASE}/notifications/mark-all-read`, {}, { headers });
-    } catch {}
-        setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
+    } catch { }
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
     setUnreadCount(0);
   }, []);
 
@@ -232,7 +232,7 @@ const NotificationBell = () => {
     try {
       const headers = getTenantHeaders();
       await api.delete(`${ENDPOINTS.NOTIFICATION.BASE}/notifications/${id}`, { headers });
-    } catch {}
+    } catch { }
     setNotifications(prev => prev.filter(n => n.id !== id));
     setUnreadCount(prev => Math.max(0, prev - 1));
   }, []);
@@ -275,7 +275,7 @@ const NotificationBell = () => {
       return prev + newUnread;
     });
 
-        if (batch.some(n => !n.is_read)) playNotificationSound();
+    if (batch.some(n => !n.is_read)) playNotificationSound();
   }, [playNotificationSound]);
 
   // ─── Real-time Socket Listener ───
@@ -300,7 +300,7 @@ const NotificationBell = () => {
 
       // Hearse booking created
       if (eventName === 'notification:hearse-booking-created') {
-                const bookingDetails = data.booking || data;
+        const bookingDetails = data.booking || data;
         const detailsHtml = `
           <strong style="color: #fbbf24;">Booking Code:</strong> <span style="color: #fff;">${bookingDetails.booking_code || data.bookingId || 'N/A'}</span><br/>
           <strong style="color: #fbbf24;">Client:</strong> <span style="color: #10b981;">${bookingDetails.client_name || data.clientName || 'Unknown'}</span><br/>
@@ -318,7 +318,7 @@ const NotificationBell = () => {
           priority: data.priority || 'high',
           data,
         };
-                pendingNotificationsRef.current.push(formatted);
+        pendingNotificationsRef.current.push(formatted);
       }
 
       // Hearse booking updated
@@ -394,8 +394,8 @@ const NotificationBell = () => {
           priority: data.priority || 'medium', data,
         };
         pendingNotificationsRef.current.push(formatted);
-      
-            }
+
+      }
 
       // Hearse booking reminder
       else if (eventName === 'hearse-booking-reminder') {
@@ -710,4 +710,3 @@ const NotificationBell = () => {
 
 export default NotificationBell;
 
-    
