@@ -1,12 +1,9 @@
 browser up: HeadlessChrome/151.0.7922.71
---- navigating to https://restpoint.co.ke/
-[console.error] Global error caught: ReferenceError: User is not defined
-[pageerror] ReferenceError: User is not defined
-    at <anonymous> (https://restpoint.co.ke/assets/index-Bavg7m3M.js:5227:42)
-[console.error] TypeError: Cannot read properties of undefined (reading 'default')
-[console.error] App Error Boundary caught: TypeError: Cannot read properties of undefined (reading 'default') [object Object]
---- title: Rest Point | Funeral Home Management Software Kenya | Built by Peter Mumo, Welt Tallis
---- #root children: 1
---- body: This website uses cookies Something went wrong The application encountered an error. Please refresh the page or try again later. Refresh Page
---- SW: controlled
+--- navigating to http://localhost:4599/
+[console.error] WebSocket connection to 'wss://restpoint.co.ke/socket.io/?EIO=4&transport=websocket' failed: Error during WebSocket handshake: Unexpected response code: 502
+[console.error] [Socket] Connection error: websocket error
+--- title: Rest Point | Kenya's #1 Funeral Home Management System & Welfare Management Platform
+--- #root children: 3
+--- body: This website uses cookies Rest Point Features Modules About Policies Terms of Service Privacy Policy Security Policy Data Migration Policy SLA Policy Release Notes Account Deletion Log in Request access FUNERAL HOME OS & WELFARE PLATFORM A record worthy of the families you serve. Rest Point is the
+--- SW: registered-or-none
 --- done

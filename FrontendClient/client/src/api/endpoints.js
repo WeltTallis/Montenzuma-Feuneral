@@ -151,6 +151,10 @@ export const ENDPOINTS = {
     GET_RELEASE: (id) => `/body-release/checkout/${id}`,
     LIST: '/body-release/checkout',
     BY_ADMISSION: (admissionNumber) => `/body-release/by-admission/${admissionNumber}`,
+    // Deceased lookup for release auto-fill — served by the body-checkout service
+    DECEASED_LIST: '/body-release/deceased',
+    DECEASED_DETAIL: (id) => `/body-release/deceased/${id}`,
+    DECEASED_BY_ADMISSION: (admissionNumber) => `/body-release/deceased/by-admission/${admissionNumber}`,
   },
   // Convenience alias — ReleaseFormPage calls ENDPOINTS.RELEASE_FORMS()
   RELEASE_FORMS: () => '/body-release/checkout',

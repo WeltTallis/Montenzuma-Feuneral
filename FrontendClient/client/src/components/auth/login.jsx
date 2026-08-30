@@ -47,13 +47,16 @@ export default function LoginPage() {
     // navigation URL carries the exact branch scope. Falls back to the
     // parent tenant slug for users without a branch.
     let slug = null;
+    let storedUser = {};
     try {
-      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      storedUser = JSON.parse(localStorage.getItem('user') || '{}');
       slug = storedUser.branchSlug || null;
     } catch { /* ignore */ }
     slug = slug || localStorage.getItem('tenantSlug');
     if (token && token !== 'undefined' && token !== 'null' && slug && slug !== 'default' && slug !== 'dashboard') {
-      navigate(`/tenant/${slug}/dashboard`);
+      // Drivers ONLY ever land on the driver portal dashboard.
+      const dest = storedUser.role === 'driver' ? 'driver-portal' : 'dashboard';
+      navigate(`/tenant/${slug}/${dest}`);
     } else if (!token || token === 'undefined' || token === 'null') {
       localStorage.removeItem('authToken');
       localStorage.removeItem('tenantSlug');
@@ -123,7 +126,10 @@ export default function LoginPage() {
           setShowSuccess(true);
 
           setTimeout(() => {
-            navigate(`/tenant/${navSlug}/dashboard`, { replace: true });
+            // Drivers ONLY ever land on the driver portal dashboard — never the
+            // general admin dashboard. All other roles go to the tenant dashboard.
+            const dest = userData.role === 'driver' ? 'driver-portal' : 'dashboard';
+            navigate(`/tenant/${navSlug}/${dest}`, { replace: true });
           }, 400);
         } else {
           throw new Error('No tenant information available');

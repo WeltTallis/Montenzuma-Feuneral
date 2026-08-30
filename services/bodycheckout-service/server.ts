@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import Logger from '../../packages/shared-logger/dist/index';
 import bodyReleaseRoutes from './routes/bodyRelease.routes';
+import { runBodyCheckoutMigrations } from './utilities/migrate';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8115', 10);
@@ -54,9 +55,27 @@ app.use((err: any, req: any, res: any, next: any) => {
     });
 });
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-    Logger.info(`Bodycheckout service running on port ${PORT}`);
-});
+let server: ReturnType<typeof app.listen> | undefined;
+
+// Bootstrap: ensure body-checkout migrations have run on every active tenant
+// database before accepting traffic (matches how coffin/florist/hearse work).
+async function bootstrap(): Promise<void> {
+    try {
+        await runBodyCheckoutMigrations();
+    } catch (error: any) {
+        Logger.error({
+            message: 'Body checkout migration bootstrap failed',
+            error: error.message,
+            stack: error.stack
+        });
+    }
+
+    server = app.listen(PORT, '0.0.0.0', () => {
+        Logger.info(`Bodycheckout service running on port ${PORT}`);
+    });
+}
+
+bootstrap();
 
 
 
@@ -68,7 +87,7 @@ process.on('uncaughtException', (error) => {
     });
 
     // Stop accepting new requests
-    server.close(() => {
+    server?.close(() => {
         process.exit(1);
     });
 
@@ -83,7 +102,7 @@ process.on('unhandledRejection', (reason: any) => {
         stack: reason?.stack
     });
 
-    server.close(() => {
+    server?.close(() => {
         process.exit(1);
     });
 

@@ -905,7 +905,7 @@ const DeceasedReleaseForm = () => {
       const tenantSlug = getTenantSlug();
       setIsLoadingDeceasedList(true);
       try {
-        const response = await axios.get(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.LIST}`, {
+        const response = await axios.get(`${env.FULL_API_URL}${ENDPOINTS.BODYCHECKOUT.DECEASED_LIST}`, {
           headers: {
             'x-tenant-slug': tenantSlug,
             'Authorization': `Bearer ${getAuthToken()}`,
@@ -942,7 +942,7 @@ const DeceasedReleaseForm = () => {
       setIsLoadingDeceased(true);
       try {
         const tenantSlug = getTenantSlug();
-        const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.DETAIL(deceasedId)}`, {
+        const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.BODYCHECKOUT.DECEASED_DETAIL(deceasedId)}`, {
           headers: {
             'x-tenant-slug': tenantSlug,
             'Authorization': `Bearer ${getAuthToken()}`,
@@ -1100,7 +1100,7 @@ const DeceasedReleaseForm = () => {
     try {
       const tenantSlug = getTenantSlug();
       const response = await axios.get(
-        `${env.FULL_API_URL}${ENDPOINTS.DECEASED.BY_ADMISSION(encodeURIComponent(admissionNumber))}`,
+        `${env.FULL_API_URL}${ENDPOINTS.BODYCHECKOUT.DECEASED_BY_ADMISSION(encodeURIComponent(admissionNumber))}`,
         {
           headers: {
             'x-tenant-slug': tenantSlug,

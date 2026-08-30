@@ -225,7 +225,11 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
 // ============================================
 export const getDeceasedByAdmissionNumber = async (req: Request, res: Response): Promise<Response> => {
     // Decode the URL parameter to handle slashes and special characters safely
-    const admissionNumber = decodeURIComponent(req.params.admissionNumber || '');
+    // (normalize first: Express 5 may type route params as string | string[])
+    const rawAdmission = req.params.admissionNumber;
+    const admissionNumber = decodeURIComponent(
+        Array.isArray(rawAdmission) ? String(rawAdmission[0] ?? '') : String(rawAdmission ?? '')
+    );
 
     if (!admissionNumber) {
         return res.status(400).json({

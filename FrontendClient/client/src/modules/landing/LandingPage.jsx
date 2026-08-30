@@ -807,8 +807,13 @@ export default function App() {
         @keyframes truckMove{from{left:30%}to{left:60%}}
 
         /* ── Responsive ── */
+        /* Mobile text scale: rem-derived sizes were tuned for desktop screens, so a
+           phone shows them far too small. Raising the root font-size on small
+           screens scales ALL rem text (including inline fontSize) up to readable,
+           thumb-friendly sizes while the one-column layout below keeps things tidy. */
         @media(max-width:800px){.nav-links{display:none}.nav-cta{display:none}.mobile-nav{display:flex;gap:0.5rem;align-items:center}}
         @media(max-width:768px){
+          html{font-size:17px}
           .hero-grid{grid-template-columns:1fr;gap:2.5rem}
           .showcase-mobile{grid-template-columns:1fr!important;gap:2rem!important;margin-bottom:4rem!important}
           .showcase-mobile .showcase-text{order:2!important}
@@ -830,8 +835,15 @@ export default function App() {
           .insurance-section{background-attachment:scroll}
         }
         @media(max-width:480px){
+          html{font-size:17.5px}
           .hero{padding-top:100px}
-          .btn{padding:0.8rem 1.2rem!important;font-size:0.8rem!important}
+          .wrap{padding:0 1rem}
+          .btn{padding:0.8rem 1.2rem!important;font-size:0.82rem!important}
+          .nav-link{font-size:0.9rem}
+          .hero-desc{font-size:1.15rem;line-height:1.7}
+          .mono-label{font-size:0.72rem}
+          .module-title{font-size:1.1rem}
+          .module-excerpt{font-size:0.9rem}
         }
       `}</style>
 

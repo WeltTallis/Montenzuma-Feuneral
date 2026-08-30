@@ -157,9 +157,11 @@ export default function SettingsPage() {
             try { setCurrentUser(JSON.parse(userData)); } catch { /* ignore */ }
             const user = resolveStoredUser();
 
-            // Redirect drivers to driver portal
+            // Redirect drivers to driver portal (tenant-scoped route).
+            // The driver-portal page only exists under /tenant/:slug/driver-portal.
             if (user.role === 'driver') {
-                navigate('/driver-portal');
+                const navSlug = user.branchSlug || user.parentTenantSlug || user.tenantSlug || tenantSlug || urlSlug;
+                navigate(`/tenant/${navSlug}/driver-portal`);
                 return;
             }
         }

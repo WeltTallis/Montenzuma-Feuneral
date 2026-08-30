@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { useParams } from 'react';
+import { useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import { Copy, Check, ShieldCheck } from 'lucide-react';
 

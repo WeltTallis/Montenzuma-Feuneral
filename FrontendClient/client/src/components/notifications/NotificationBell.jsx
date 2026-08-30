@@ -101,6 +101,81 @@ const formatTimeFull = (timestamp) => {
   return date.toLocaleDateString();
 };
 
+// ─── Booking detail helpers ───
+const getBookingField = (b, ...keys) => {
+  if (!b || typeof b !== 'object') return null;
+  for (const k of keys) {
+    const v = b[k];
+    if (v !== undefined && v !== null && String(v).trim() !== '' && v !== 'N/A') return v;
+  }
+  return null;
+};
+
+// booking_dates arrives as a JSON array string, e.g. ["2026-08-31"]
+const formatBookingDates = (raw) => {
+  if (!raw) return null;
+  let dates = raw;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) dates = parsed;
+    } catch { /* plain string date */ }
+  }
+  const fmt = (d) => {
+    const dt = new Date(d);
+    return isNaN(dt.getTime())
+      ? String(d)
+      : dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  };
+  return Array.isArray(dates) ? dates.map(fmt).join(', ') : fmt(dates);
+};
+
+// "John Doe, Jane Roe +2 more" for the collapsed message line
+const buildClientSummary = (bookings) => {
+  if (!Array.isArray(bookings) || bookings.length === 0) return null;
+  const names = bookings
+    .map(b => getBookingField(b, 'clientName', 'client_name'))
+    .filter(Boolean);
+  if (names.length === 0) return null;
+  const shown = names.slice(0, 3).join(', ');
+  return names.length > 3 ? `${shown} +${names.length - 3} more` : shown;
+};
+
+// Rich per-booking rows: client, code, destination, hearse, dates, branch
+const BookingDetailsList = ({ bookings }) => {
+  if (!Array.isArray(bookings) || bookings.length === 0) return null;
+  return (
+    <div className="nb-booking-details">
+      {bookings.map((b, i) => {
+        if (!b || typeof b !== 'object') return null;
+        const client = getBookingField(b, 'clientName', 'client_name') || 'Unknown client';
+        const code = getBookingField(b, 'bookingCode', 'booking_code');
+        const destination = getBookingField(b, 'destination', 'to_location');
+        const hearse = getBookingField(b, 'hearseName', 'hearse_name');
+        const plate = getBookingField(b, 'plateNumber', 'plate_number');
+        const phone = getBookingField(b, 'clientPhone', 'client_phone', 'phone');
+        const when = formatBookingDates(getBookingField(b, 'bookingDates', 'booking_dates'));
+        const branch = getBookingField(b, 'branchCode', 'branch_code');
+        return (
+          <div className="nb-booking-row" key={code || `booking-${i}`}>
+            <div className="nb-booking-main">
+              <span className="nb-booking-client">{client}</span>
+              {code && <span className="nb-booking-code">{code}</span>}
+            </div>
+            <div className="nb-booking-meta">
+              {destination && <span><span className="nb-booking-label">To:</span> {destination}</span>}
+              {hearse && <span><span className="nb-booking-label">Hearse:</span> {hearse}{plate ? ` (${plate})` : ''}</span>}
+              {when && <span><span className="nb-booking-label">When:</span> {when}</span>}
+              {phone && <span><span className="nb-booking-label">Tel:</span> {phone}</span>}
+              {branch && <span><span className="nb-booking-label">Branch:</span> {branch}</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 // ─── Memoized Notification Item ───
 const NotificationItem = memo(({ notif, onMarkRead, onDelete }) => {
   const meta = useMemo(() => getPriorityMeta(notif.type, notif.priority), [notif.type, notif.priority]);
@@ -114,6 +189,20 @@ const NotificationItem = memo(({ notif, onMarkRead, onDelete }) => {
     onDelete(notif.id);
   }, [notif.id, onDelete]);
 
+  // Rich details: structured booking rows first, then HTML content, then plain text
+  const renderDetails = () => {
+    const bookings = notif.bookings || notif.data?.bookings;
+    if (Array.isArray(bookings) && bookings.length > 0) {
+      return <BookingDetailsList bookings={bookings} />;
+    }
+    if (!notif.fullContent) return null;
+    if (typeof notif.fullContent === 'string' && /<\/?[a-z][\s\S]*>/i.test(notif.fullContent)) {
+      // HTML built by our own handlers (label/value markup)
+      return <div className="nb-item-full" dangerouslySetInnerHTML={{ __html: notif.fullContent }} />;
+    }
+    return <div className="nb-item-full">{notif.fullContent}</div>;
+  };
+
   return (
     <div className={`nb-item ${!notif.is_read ? 'nb-unread' : ''}`} onClick={handleClick}>
       <div className={`nb-item-icon ${meta.cls}`}>{meta.icon}</div>
@@ -125,7 +214,7 @@ const NotificationItem = memo(({ notif, onMarkRead, onDelete }) => {
           <span className="nb-dot" />
           <span>{notif.type || 'Notification'}</span>
         </div>
-        {notif.fullContent && (<div className="nb-item-full">{notif.fullContent}</div>)}
+        {renderDetails()}
       </div>
       <div className="nb-item-right"><span className="nb-item-time">{formatTime(notif.created_at)}</span></div>
       <div className="nb-actions">
@@ -136,6 +225,8 @@ const NotificationItem = memo(({ notif, onMarkRead, onDelete }) => {
     </div>
   );
 });
+
+
 NotificationItem.displayName = 'NotificationItem';
 
 // ─── Main Component ───
@@ -399,10 +490,12 @@ const NotificationBell = () => {
 
       // Hearse booking reminder
       else if (eventName === 'hearse-booking-reminder') {
+        const clientSummary = buildClientSummary(data.bookings);
         formatted = {
           id: data.id || `reminder-${Date.now()}`,
           type: 'reminder', title: data.title || 'Upcoming Hearse Bookings',
-          message: data.message || 'You have upcoming hearse bookings',
+          message: data.message || (clientSummary ? `Upcoming bookings: ${clientSummary}` : 'You have upcoming hearse bookings'),
+          bookings: Array.isArray(data.bookings) ? data.bookings : undefined,
           fullContent: data.fullContent || 'No details available',
           is_read: 0, created_at: new Date().toISOString(),
           priority: data.priority || 'high', data,
@@ -412,11 +505,15 @@ const NotificationBell = () => {
 
 
       else if (eventName === 'notification:upcoming_bookings_24h') {
+        const clientSummary = buildClientSummary(data.bookings);
         formatted = {
           id: data.id || `upcoming-${Date.now()}`,
           type: 'reminder', title: data.title || 'Upcoming Bookings Tomorrow',
-          message: data.message || 'You have upcoming bookings',
-          fullContent: data.fullContent || `You have ${data.bookings?.length || 0} booking(s) scheduled for tomorrow`,
+          message: data.message || (clientSummary ? `Tomorrow: ${clientSummary}` : 'You have upcoming bookings'),
+          bookings: Array.isArray(data.bookings) ? data.bookings : undefined,
+          fullContent: data.fullContent || (clientSummary
+            ? `Tomorrow's schedule: ${clientSummary}`
+            : `You have ${data.bookings?.length || 0} booking(s) scheduled for tomorrow`),
           is_read: 0, created_at: data.timestamp || new Date().toISOString(),
           priority: data.priority || 'high', data,
         };
@@ -424,22 +521,30 @@ const NotificationBell = () => {
       }
 
       else if (eventName === 'notification:urgent_bookings_2h') {
+        const clientSummary = buildClientSummary(data.bookings);
         formatted = {
           id: data.id || `urgent-${Date.now()}`,
           type: 'urgent_reminder', title: data.title || 'Urgent: Bookings in 2h',
-          message: data.message || 'Bookings starting soon!',
-          fullContent: data.fullContent || `${data.bookings?.length || 0} booking(s) starting soon!`,
+          message: data.message || (clientSummary ? `Starting soon: ${clientSummary}` : 'Bookings starting soon!'),
+          bookings: Array.isArray(data.bookings) ? data.bookings : undefined,
+          fullContent: data.fullContent || (clientSummary
+            ? `Starting soon: ${clientSummary}`
+            : `${data.bookings?.length || 0} booking(s) starting soon!`),
           is_read: 0, created_at: data.timestamp || new Date().toISOString(), priority: 'critical', data,
         };
         pendingNotificationsRef.current.push(formatted);
       }
 
       else if (eventName === 'notification:weekly_bookings_summary') {
+        const clientSummary = buildClientSummary(data.bookings);
         formatted = {
           id: data.id || `weekly-${Date.now()}`,
           type: 'weekly_summary', title: data.title || 'Weekly Bookings Summary',
-          message: data.message || 'Weekly bookings summary',
-          fullContent: data.fullContent || `You have ${data.totalBookings || 0} booking(s) scheduled for the next 7 days`,
+          message: data.message || (clientSummary ? `Next 7 days: ${clientSummary}` : 'Weekly bookings summary'),
+          bookings: Array.isArray(data.bookings) ? data.bookings : undefined,
+          fullContent: data.fullContent || (clientSummary
+            ? `Next 7 days: ${clientSummary}`
+            : `You have ${data.totalBookings || 0} booking(s) scheduled for the next 7 days`),
           is_read: 0, created_at: data.timestamp || new Date().toISOString(),
           priority: data.priority || 'medium', data,
         };
@@ -709,4 +814,3 @@ const NotificationBell = () => {
 };
 
 export default NotificationBell;
-

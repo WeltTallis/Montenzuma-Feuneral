@@ -368,7 +368,7 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
     <>
       {showNotificationBell && <NotificationBell />}
       <Routes>
-        <Route path="/" element={<Navigate to="all-deceased" replace />} />
+        <Route path="/" element={<TenantRootRedirect slug={slug} />} />
 
         {/* Dashboard - Standalone full-screen (no global sidebar); nav via top header drawer */}
         <Route path="dashboard" element={
@@ -595,12 +595,24 @@ const SystemAdminRoute = () => {
 };
 
 // Gate on the tenant dashboard route: system admins are bounced to the
-// System Admin console immediately after login instead of the tenant dashboard.
+// System Admin console immediately after login instead of the tenant dashboard,
+// and drivers are always sent to the driver portal (their dashboard).
 const DashboardRoleGate = ({ tenantSlug, tenantData }) => {
   if (isAdminUser()) {
     return <Navigate to="/system-admin" replace />;
   }
+  if (getStoredUserRole() === 'driver') {
+    return <Navigate to={`/tenant/${tenantSlug}/driver-portal`} replace />;
+  }
   return <DashboardPage tenantSlug={tenantSlug} tenantData={tenantData} />;
+};
+
+// Tenant root redirect: keep drivers inside the driver portal only.
+const TenantRootRedirect = ({ slug }) => {
+  if (getStoredUserRole() === 'driver') {
+    return <Navigate to={`/tenant/${slug}/driver-portal`} replace />;
+  }
+  return <Navigate to="all-deceased" replace />;
 };
 
 const LegacyDeceasedRedirect = () => {

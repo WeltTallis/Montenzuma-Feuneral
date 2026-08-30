@@ -24,9 +24,49 @@ interface BookingReminder {
 export class NotificationCronService {
     private io: any;
     private isRunning: boolean = false;
+    // Remembers the last emitted reminder per event+tenant so recurring cron
+    // runs do not spam the same "Upcoming Bookings Tomorrow" every 30 seconds
+    private emittedSignatures: Map<string, string> = new Map();
 
     constructor(io: any) {
         this.io = io;
+    }
+
+    /**
+     * Emits only when the booking set (or target day) changes for this
+     * event + tenant. Prevents duplicate notifications from cron re-runs.
+     */
+    private shouldEmit(eventName: string, tenantSlug: string, signature: string): boolean {
+        const key = `${eventName}:${tenantSlug}`;
+        if (this.emittedSignatures.get(key) === signature) {
+            return false;
+        }
+        if (this.emittedSignatures.size > 200) {
+            this.emittedSignatures.clear();
+        }
+        this.emittedSignatures.set(key, signature);
+        return true;
+    }
+
+    /**
+     * Stable signature for a booking set: day context + sorted booking codes
+     */
+    private bookingSignature(tenantBookings: any[], ...context: string[]): string {
+        const codes = tenantBookings
+            .map(b => String(b.booking_code ?? b.booking_id ?? ''))
+            .sort()
+            .join(',');
+        return [...context, codes].join('|');
+    }
+
+    /**
+     * Human readable client summary, e.g. "John Doe, Jane Roe +2 more"
+     */
+    private describeBookings(tenantBookings: any[]): string {
+        const names = tenantBookings.map(b => b.client_name).filter(Boolean);
+        if (names.length === 0) return '';
+        const shown = names.slice(0, 3).join(', ');
+        return names.length > 3 ? `${shown} +${names.length - 3} more` : shown;
     }
 
     /**
@@ -97,10 +137,20 @@ export class NotificationCronService {
                 // Group bookings by tenant so notifications go to the correct tenant room
                 const tenantGroups = this.groupBookingsByTenant(bookings);
                 for (const [tenantSlug, tenantBookings] of tenantGroups) {
+                    // Skip if this exact reminder (same day + same bookings) was already emitted
+                    if (!this.shouldEmit('upcoming_bookings_24h', tenantSlug, this.bookingSignature(tenantBookings, tomorrowStr))) {
+                        continue;
+                    }
+
+                    const clientSummary = this.describeBookings(tenantBookings);
+                    const message = clientSummary
+                        ? `You have ${tenantBookings.length} booking(s) tomorrow (${tomorrowStr}): ${clientSummary}`
+                        : `You have ${tenantBookings.length} booking(s) scheduled for tomorrow`;
+
                     this.emitNotification('upcoming_bookings_24h', {
                         type: 'reminder',
                         title: 'Upcoming Bookings Tomorrow',
-                        message: `You have ${tenantBookings.length} booking(s) scheduled for tomorrow`,
+                        message,
                         bookings: tenantBookings.map(b => ({
                             bookingCode: b.booking_code,
                             clientName: b.client_name,
@@ -146,10 +196,20 @@ export class NotificationCronService {
                 // Group bookings by tenant so notifications go to the correct tenant room
                 const tenantGroups = this.groupBookingsByTenant(bookings);
                 for (const [tenantSlug, tenantBookings] of tenantGroups) {
+                    // Skip if this exact urgent reminder was already emitted
+                    if (!this.shouldEmit('urgent_bookings_2h', tenantSlug, this.bookingSignature(tenantBookings, now.split('T')[0]))) {
+                        continue;
+                    }
+
+                    const clientSummary = this.describeBookings(tenantBookings);
+                    const message = clientSummary
+                        ? `${tenantBookings.length} booking(s) starting soon: ${clientSummary}`
+                        : `${tenantBookings.length} booking(s) starting soon!`;
+
                     this.emitNotification('urgent_bookings_2h', {
                         type: 'urgent_reminder',
                         title: '⚠️ Urgent: Bookings in Next 2 Hours',
-                        message: `${tenantBookings.length} booking(s) starting soon!`,
+                        message,
                         bookings: tenantBookings.map(b => ({
                             bookingCode: b.booking_code,
                             clientName: b.client_name,
@@ -216,11 +276,32 @@ export class NotificationCronService {
                         }))
                     }));
 
+                    // Skip if this exact weekly summary was already emitted
+                    if (!this.shouldEmit('weekly_bookings_summary', tenantSlug, this.bookingSignature(tenantBookings, now.split('T')[0]))) {
+                        continue;
+                    }
+
+                    const clientSummary = this.describeBookings(tenantBookings);
+                    const message = clientSummary
+                        ? `You have ${tenantBookings.length} booking(s) in the next 7 days: ${clientSummary}`
+                        : `You have ${tenantBookings.length} booking(s) scheduled for the next 7 days`;
+
                     this.emitNotification('weekly_bookings_summary', {
                         type: 'weekly_summary',
                         title: '📋 Weekly Bookings Summary',
-                        message: `You have ${tenantBookings.length} booking(s) scheduled for the next 7 days`,
+                        message,
                         totalBookings: tenantBookings.length,
+                        bookings: tenantBookings.map((b: any) => ({
+                            bookingCode: b.booking_code,
+                            clientName: b.client_name,
+                            clientPhone: b.client_phone,
+                            destination: b.destination,
+                            bookingDates: b.booking_dates,
+                            hearseName: b.hearse_name || 'N/A',
+                            plateNumber: b.plate_number || 'N/A',
+                            branchId: b.branch_id,
+                            branchCode: b.branch_code
+                        })),
                         branchBreakdown,
                         timestamp: getKenyaTimeISO()
                     }, tenantSlug);
