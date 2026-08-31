@@ -3,7 +3,6 @@ import { protect, authorizeAny } from '../../../services/app-global/middlewares/
 import {
     getAllDeceased,
     getDeceasedById,
-    getDeceasedByAdmissionNumber,
     updateDeceased,
     deleteDeceased,
 } from '../controllers/deceasedControl';
@@ -215,9 +214,6 @@ router.get('/deceased/:id', getDeceasedById);     // /deceased/deceased/:id
 router.get('/:id', getDeceasedById);              // /deceased/:id (fallback)
 router.get('/id/:id', getDeceasedById);           // /deceased/id/:id
 
-// GET - By admission number
-router.get('/admission-number/:admissionNumber', getDeceasedByAdmissionNumber);
-router.get('/deceased/admission-number/:admissionNumber', getDeceasedByAdmissionNumber);
 
 // PUT - Update
 router.put('/:id', updateDeceased);

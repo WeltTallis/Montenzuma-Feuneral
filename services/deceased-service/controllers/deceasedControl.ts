@@ -1,26 +1,25 @@
+import { getKenyaTimeISO, getKenyaDate } from '../../../packages/shared-utils/dist/timestamps';
+import redisService from '../../../packages/shared-services/dist/redisService';
+import { safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig';
+import Logger from '../../../packages/shared-logger/src/index';
+import generateUniqueDeceasedId from '../utils/deceasedId';
 import { Request, Response } from 'express';
 import { DateTime } from 'luxon';
 import * as crypto from 'crypto';
-import { safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig';
-import Logger from '../../../packages/shared-logger/src/index';
-import { getKenyaTimeISO, getKenyaDate } from '../../../packages/shared-utils/dist/timestamps';
-import generateUniqueDeceasedId from '../utils/deceasedId';
-import redisService from '../../../packages/shared-services/dist/redisService';
 
 const SERVICE_NAME = 'deceased-service';
 
-// ============================================
 // TYPES
-// ============================================
+
 interface TenantRequest extends Request {
     tenantSlug?: string;
     dbName?: string | null;
     user?: { email?: string; id?: number };
 }
 
-// ============================================
+
 // GET ALL DECEASED
-// ============================================
+
 export const getAllDeceased = async (
     req: Request,
     res: Response
@@ -52,9 +51,8 @@ export const getAllDeceased = async (
             ? search
             : (typeof q === "string" ? q : "");
 
-        // ============================
         // REDIS CACHE KEY
-        // ============================
+   
         const cacheKey = `deceased:list:${tenantId}:page:${pageNumber}:limit:${limitNumber}:search:${searchTerm}`;
 
         // Try to get from cache
@@ -68,10 +66,7 @@ export const getAllDeceased = async (
                 ...cached
             });
         }
-
-        // ============================
         // DATABASE QUERY
-        // ============================
         const offset = (pageNumber - 1) * limitNumber;
         let whereClause = ``;
         const params: any[] = [];
@@ -108,9 +103,8 @@ export const getAllDeceased = async (
             }
         };
 
-        // ============================
         // SAVE TO REDIS
-        // ============================
+     
         await redisService.serviceSet(
             'deceased-service',
             tenantSlug,
@@ -134,9 +128,9 @@ export const getAllDeceased = async (
     }
 };
 
-// ============================================
+
 // GET DECEASED BY ID
-// ============================================
+
 export const getDeceasedById = async (req: Request, res: Response): Promise<Response> => {
     const rawId = req.params.id;
     const id = (() => {
@@ -212,91 +206,6 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
 
     } catch (error: any) {
         Logger.error('getDeceasedById error: ' + (error as Error).message);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal Server Error',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-};
-
-// ============================================
-// GET DECEASED BY ADMISSION NUMBER
-// ============================================
-export const getDeceasedByAdmissionNumber = async (req: Request, res: Response): Promise<Response> => {
-    // Decode the URL parameter to handle slashes and special characters safely
-    // (normalize first: Express 5 may type route params as string | string[])
-    const rawAdmission = req.params.admissionNumber;
-    const admissionNumber = decodeURIComponent(
-        Array.isArray(rawAdmission) ? String(rawAdmission[0] ?? '') : String(rawAdmission ?? '')
-    );
-
-    if (!admissionNumber) {
-        return res.status(400).json({
-            success: false,
-            message: 'Admission number is required'
-        });
-    }
-
-    try {
-        const dbName = (req as any).tenant?.db_name;
-        const tenantSlug = (req as any).tenantSlug || "unknown";
-
-        if (!dbName) {
-            return res.status(400).json({
-                success: false,
-                message: 'No database configured. Please provide x-tenant-slug header.'
-            });
-        }
-
-        // Try cache first
-        const cacheKey = `deceased:admission:${admissionNumber}`;
-        const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);
-
-        if (cached) {
-            Logger.info({ message: `Deceased with admission number ${admissionNumber} served from Redis` });
-            return res.status(200).json({
-                success: true,
-                source: "cache",
-                data: cached
-            });
-        }
-
-        // Removed `AND tenant_slug = ?` because safeTenantQuery already isolates the tenant DB
-        const query = `
-            SELECT *
-            FROM deceased
-            WHERE admission_number = ?
-            LIMIT 1
-        `;
-
-        const records = await safeTenantQuery(dbName, query, [admissionNumber]);
-        const deceased = records && records.length > 0 ? records[0] : null;
-
-        if (!deceased) {
-            return res.status(404).json({
-                success: false,
-                message: 'Deceased record not found with this admission number'
-            });
-        }
-
-        // Cache the result
-        await redisService.serviceSet(
-            'deceased-service',
-            tenantSlug,
-            cacheKey,
-            deceased,
-            600 // 10 minutes TTL
-        );
-
-        return res.status(200).json({
-            success: true,
-            message: 'Deceased record fetched successfully',
-            data: deceased
-        });
-
-    } catch (error: any) {
-        Logger.error('getDeceasedByAdmissionNumber error: ' + (error as Error).message);
         return res.status(500).json({
             success: false,
             message: 'Internal Server Error',
@@ -585,7 +494,6 @@ export const updateDeceasedStatus = async (req: Request, res: Response): Promise
 export default {
     getAllDeceased,
     getDeceasedById,
-    getDeceasedByAdmissionNumber, // <-- ADDED HERE
     updateDeceased,
     deleteDeceased,
     updateDeceasedStatus

@@ -1,10 +1,13 @@
+const   Logger   =  require('../../packages/shared-logger/src/index');
+const { createProxyMiddleware } = require('http-proxy-middleware');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 const dotenv = require('dotenv');
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const rateLimit = require('express-rate-limit');
 const path = require('path');
+const   hpp   =   require('hpp')
+
 
 // Load .env from the api-gateway directory specifically
 const dotenvPath = path.join(__dirname, '.env');
@@ -46,12 +49,6 @@ try {
 const APP_NAME = 'restpoint-gateway';
 const APP_VERSION = '2.0.0';
 
-const Logger = {
-  info: (m, d) => { console.log(`[INFO] ${m}`, d || ''); },
-  error: (m, d) => { console.error(`[ERROR] ${m}`, d || ''); },
-  warn: (m, d) => { console.warn(`[WARN] ${m}`, d || ''); },
-  debug: (m, d) => { console.debug(`[DEBUG] ${m}`, d || ''); },
-};
 
 const PORT = Number(process.env.PORT) || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -195,6 +192,16 @@ app.use(cors({
 }));
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+
+
+// 1c. HPP - prevent HTTP parameter pollution
+app.use(hpp({
+  whitelist: ['page', 'limit', 'status', 'search'], 
+}));
+// 1d. Body parsing with limits
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(cookieParser(process.env.JWT_SECRET));
 
 // Rate limiting - Increased to 1 million requests per window for load testing
 const apiLimiter = rateLimit({
@@ -444,120 +451,7 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
   }
 }
 
-// ─── Direct Redis Notification Endpoints ───────────────────────────
-// These endpoints query Redis directly, bypassing the socketio-service entirely.
-// Notifications are stored in Redis with keys like: notifications:${tenantSlug}:socketio:${id}
 
-// GET /api/v1/restpoint/notification/notifications - Fetch all notifications for tenant from Redis
-app.get(['/api/v1/restpoint/notification/notifications', '/api/v1/restpoint/notifications'], async (req, res) => {
-  try {
-    const tenantSlug = req.headers['x-tenant-slug'] || req.query.tenantSlug || 'unknown';
-
-    if (!redisConnected || !redisClient) {
-      // Redis not connected - return empty notifications
-      return res.status(200).json({ notifications: [], total: 0, source: 'redis-unavailable' });
-    }
-
-    const pattern = `notifications:${tenantSlug}:*`;
-    const keys = [];
-    let cursor = 0;
-
-    // Use SCAN to find all notification keys for this tenant
-    do {
-      const reply = await redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
-      cursor = reply.cursor;
-      keys.push(...reply.keys);
-    } while (cursor !== 0);
-
-    const notifications = [];
-    for (const key of keys) {
-      try {
-        const value = await redisClient.get(key);
-        if (value) {
-          notifications.push(JSON.parse(value));
-        }
-      } catch (e) {
-        // Skip invalid JSON
-      }
-    }
-
-    // Sort by timestamp (newest first)
-    notifications.sort((a, b) => {
-      const aTime = new Date(a.createdAt || a.timestamp || 0).getTime();
-      const bTime = new Date(b.createdAt || b.timestamp || 0).getTime();
-      return bTime - aTime;
-    });
-
-    return res.status(200).json({ notifications, total: notifications.length, source: 'redis-direct' });
-  } catch (error) {
-    console.error('[NOTIFICATION] Error fetching from Redis:', error.message);
-    return res.status(200).json({ notifications: [], total: 0, source: 'redis-error', error: error.message });
-  }
-});
-
-// PUT /api/v1/restpoint/notification/notifications/:id/read - Mark notification as read (delete from Redis)
-app.put(['/api/v1/restpoint/notification/notifications/:id/read', '/api/v1/restpoint/notifications/:id/read'], async (req, res) => {
-  try {
-    const tenantSlug = req.headers['x-tenant-slug'] || req.query.tenantSlug || 'unknown';
-    const { id } = req.params;
-
-    if (redisConnected && redisClient) {
-      const key = `notifications:${tenantSlug}:socketio:${id}`;
-      await redisClient.del(key);
-      console.log(`[NOTIFICATION] Deleted ${id} from Redis (read by user)`);
-    }
-
-    return res.status(200).json({ success: true, message: 'Notification marked as read and deleted' });
-  } catch (error) {
-    return res.status(200).json({ success: true, message: 'Notification marked as read' });
-  }
-});
-
-// PUT /api/v1/restpoint/notification/notifications/mark-all-read - Mark all notifications as read
-app.put(['/api/v1/restpoint/notification/notifications/mark-all-read', '/api/v1/restpoint/notifications/mark-all-read'], async (req, res) => {
-  try {
-    const tenantSlug = req.headers['x-tenant-slug'] || req.query.tenantSlug || 'unknown';
-
-    if (redisConnected && redisClient) {
-      const pattern = `notifications:${tenantSlug}:*`;
-      const keys = [];
-      let cursor = 0;
-
-      do {
-        const reply = await redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
-        cursor = reply.cursor;
-        keys.push(...reply.keys);
-      } while (cursor !== 0);
-
-      if (keys.length > 0) {
-        await redisClient.del(keys);
-        console.log(`[NOTIFICATION] Deleted ${keys.length} notifications for tenant ${tenantSlug}`);
-      }
-    }
-
-    return res.status(200).json({ success: true, message: 'All notifications marked as read and deleted' });
-  } catch (error) {
-    return res.status(200).json({ success: true, message: 'All notifications marked as read' });
-  }
-});
-
-// DELETE /api/v1/restpoint/notification/notifications/:id - Delete notification from Redis
-app.delete(['/api/v1/restpoint/notification/notifications/:id', '/api/v1/restpoint/notifications/:id'], async (req, res) => {
-  try {
-    const tenantSlug = req.headers['x-tenant-slug'] || req.query.tenantSlug || 'unknown';
-    const { id } = req.params;
-
-    if (redisConnected && redisClient) {
-      const key = `notifications:${tenantSlug}:socketio:${id}`;
-      await redisClient.del(key);
-      console.log(`[NOTIFICATION] Deleted ${id} from Redis`);
-    }
-
-    return res.status(200).json({ success: true, message: 'Notification deleted' });
-  } catch (error) {
-    return res.status(200).json({ success: true, message: 'Notification deleted' });
-  }
-});
 
 // Dynamic routing middleware mounted at /api/v1/restpoint
 // Express strips /api/v1/restpoint 
@@ -764,5 +658,30 @@ const server = app.listen(PORT, HOST, async () => {
   await performHealthChecks();
   Logger.info(' Health checks complete');
 });
+
+const   gracefulShutdown  =  (signal)  =>{
+  server.close(()=>{
+    process.exit(1)
+  })
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+process.on('unhandledRejection', (reason) => {
+  Logger.error({
+    message:   "Unhandled Rejection  in  api gateway",
+    error:   reason
+  })
+});
+
+
+process.on('uncaughtException', (err) => {
+  Logger.error({
+    message:   "unhandles  Exception in  api gateway",
+    error:      err
+  })
+});
+
 
 module.exports = app;
