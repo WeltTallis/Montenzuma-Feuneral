@@ -91,12 +91,12 @@ export const createRateLimiter = ({
       sendCommand: async (...args: string[]): Promise<any> => {
         return await (redis.call as any)(...args);
       },
-      prefix: 'rl:', // Rate limiting prefix for Redis keys
+      prefix: 'rl:',
     }),
     windowMs,
     max,
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    standardHeaders: true,
+    legacyHeaders: false,
     skipFailedRequests,
     skipSuccessfulRequests,
     message: message || {
@@ -149,9 +149,9 @@ export const getEndpointBasedKey = (req: Request): string => {
   return `${req.method}:${endpoint}:${req.ip}`;
 };
 
-// ============================================
+
 // PREDEFINED RATE LIMITERS
-// ============================================
+
 
 /**
  * Global API rate limiter
@@ -186,6 +186,7 @@ export const strictLimiter = createRateLimiter({
  * Limits authenticated users to 60 requests per minute
  * Falls back to IP-based limiting for unauthenticated users
  */
+
 export const userLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
   max: 60, // 60 requests per minute
@@ -199,7 +200,7 @@ export const userLimiter = createRateLimiter({
 /**
  * Authentication limiter (login, register, forgot password)
  * Stricter limits for auth endpoints - 10 attempts per 15 minutes
- */
+*/
 export const authLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // Only 10 auth attempts
@@ -291,9 +292,8 @@ export const exportLimiter = createRateLimiter({
   },
 });
 
-// ============================================
+
 // JWT VERIFICATION FUNCTION
-// ============================================
 
 /**
  * Verify JWT access token
@@ -326,9 +326,9 @@ export const extractUserFromRequest = (req: Request): IUserPayload | null => {
   return verifyAccessToken(token);
 };
 
-// ============================================
+
 // COMPOSITE RATE LIMITERS
-// ============================================
+
 
 /**
  * Apply multiple rate limiters in sequence

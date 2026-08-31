@@ -1,13 +1,13 @@
-import bcrypt from 'bcryptjs';
-import mysql from 'mysql2/promise';
-import slugify from 'slugify';
-import { v4 as uuidv4 } from 'uuid';
 import { getMainTenantMigrations, getBranchMigrations, getSingleTenantMigrations, getAllTenantMigrations } from '../../../shared/services/all-service-migrations';
 import { MigrationService } from '../../../shared/services/migration-service';
+import mysql from 'mysql2/promise';
+import { v4 as uuidv4 } from 'uuid';
 import * as dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
+import slugify from 'slugify';
+import * as path from 'path';
 import axios from 'axios';
 import * as fs from 'fs';
-import * as path from 'path';
 
 dotenv.config();
 
@@ -216,12 +216,14 @@ function emitOnboardingProgress(tenantSlug: string, step: string, progress: numb
         (async () => {
             try {
                 const pool = await getServerPool();
+                const failed = /fail/i.test(step);
+                const status = failed ? 'failed' : (progress >= 100 ? 'completed' : 'running');
                 await pool.query(
                     `INSERT INTO tenant_tracking.provisioning_status (tenant_slug, status, progress, details) 
                      VALUES (?, ?, ?, ?) 
                      ON DUPLICATE KEY UPDATE 
                      status = VALUES(status), progress = VALUES(progress), details = VALUES(details), updated_at = CURRENT_TIMESTAMP`,
-                    [tenantSlug, progress >= 100 ? 'completed' : 'running', progress, details || null]
+                    [tenantSlug, status, progress, details || null]
                 );
             } catch (err: any) {
                 console.warn('⚠️ Could not persist provisioning status:', err && err.message ? err.message : String(err));
@@ -238,7 +240,7 @@ const UPLOAD_SUBDIRS = [
 ];
 
 async function createTenantUploadDirectories(tenantSlug: string): Promise<void> {
-        const baseDir = path.join(getUploadsBaseDir(), 'tenants', tenantSlug);
+    const baseDir = path.join(getUploadsBaseDir(), 'tenants', tenantSlug);
     fs.mkdirSync(baseDir, { recursive: true });
     console.log(`📂 Created base upload directory: ${baseDir}`);
 
@@ -255,12 +257,54 @@ async function createTenantUploadDirectories(tenantSlug: string): Promise<void> 
         }
     }
 
-    console.log(`✅ All upload directories created for tenant: ${tenantSlug}`);
+
 }
 
-// ============================================
+
 // CREATE TENANT DATABASE
-// ============================================
+
+
+/**
+ * Idempotent tracking-row insert into tenant_tracking.branches.
+ *
+ * IMPORTANT: these rows are now written IMMEDIATELY after each branch database is
+ * created (not at the end of provisioning). If any later step throws, registerTenant()
+ * can discover EVERY database this attempt created and drop them all — otherwise a
+ * mid-flight failure leaves orphaned branch databases plus an empty tracking registry,
+ * which in turn makes login fail with "Invalid email or password" (the auth service
+ * resolves tenants ONLY through tenant_tracking.tenants/users/branches).
+ */
+async function insertTrackingBranch(
+    serverConn: mysql.Pool,
+    tenantId: string,
+    tenantSlug: string,
+    tenantDbName: string,
+    branch: { branch_name: string; branch_slug: string; branch_db_name: string; parent_branch_id: string | null }
+): Promise<void> {
+    await serverConn.query(`
+        INSERT IGNORE INTO tenant_tracking.branches 
+        (id, tenant_id, tenant_slug, branch_slug, branch_code, branch_name, branch_db_name, parent_branch_id, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+    `, [
+        uuidv4(),
+        tenantId,
+        tenantSlug,
+        branch.branch_slug,
+        generateBranchCode(tenantDbName, branch.branch_name),
+        branch.branch_name,
+        branch.branch_db_name,
+        branch.parent_branch_id
+    ]);
+}
+
+/**
+ * Compile a LIKE pattern that matches `prefix` + anything WITHOUT treating the
+ * characters inside `prefix` as SQL wildcards (db names may legitimately contain
+ * underscores, which are LIKE wildcards).
+ */
+function escapeLike(raw: string): string {
+    return raw.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
 
 async function createCompleteTenantDatabase(
     tenantName: string,
@@ -273,7 +317,10 @@ async function createCompleteTenantDatabase(
     location: string | null,
     branches: Array<{ branch_name: string; branch_location: string; branch_phone: string; branch_email: string }> | undefined,
     deploymentType: 'single' | 'multi',
-    tenantId: string
+    tenantId: string,
+    // Every database this attempt creates is recorded here so a later failure can
+    // drop ALL of them (parent + branches) instead of leaving orphans behind.
+    createdDbs?: Set<string>
 ): Promise<{ dbName: string; branches: Array<{ branch_name: string; branch_slug: string; branch_db_name: string; parent_branch_id: string | null }> }> {
     const serverConn = await getServerPool();
     const migrationService = new MigrationService();
@@ -296,20 +343,20 @@ async function createCompleteTenantDatabase(
     const firstBranch = branchList[0];
     const branchData: Array<{ branch_name: string; branch_slug: string; branch_db_name: string; parent_branch_id: string | null }> = [];
 
-    console.log(`📦 Creating primary database: ${dbName}`);
+
     await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    if (createdDbs) createdDbs.add(dbName);
     await serverConn.query(`GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${dbUser}'@'%'`);
     emitOnboardingProgress(subdomain, 'Database created', 10, `Primary database ${dbName} created`);
 
     const primaryMigrations = getMainTenantMigrations();
-    console.log(`📋 Running main DB migrations for: ${dbName} (${primaryMigrations.length} migrations)`);
+
 
     const migrationResult = await migrationService.runTenantMigrations(dbName, primaryMigrations, dbConfig);
     if (!migrationResult.success) {
-        console.error(`❌ Migration errors for ${dbName}:`, migrationResult.errors);
+
         throw new Error(`Failed to create tenant database: ${migrationResult.errors.join(', ')}`);
     }
-    console.log(`✅ Primary database ready: ${migrationResult.migrationsRun.length} migrations executed`);
 
     emitOnboardingProgress(subdomain, 'Setting up', 70, 'Creating branches and admin user');
 
@@ -395,6 +442,17 @@ async function createCompleteTenantDatabase(
             console.log(`✅ Primary branch "${firstBranch.branch_name}" → DB: ${dbName} (slug: ${uniqueSlug})`);
         }
 
+        // Record the MAIN/parent branch in the tracking registry right away so a
+        // later failure can clean up every database this attempt created.
+        const mainTracking = branchData[0];
+        if (mainTracking) {
+            try {
+                await insertTrackingBranch(serverConn, tenantId, subdomain, dbName, mainTracking);
+            } catch (trackErr: any) {
+                console.warn(`⚠️ Could not track main branch in tenant_tracking:`, trackErr && trackErr.message ? trackErr.message : String(trackErr));
+            }
+        }
+
         // ─── ADDITIONAL BRANCHES: create separate DBs ─────────────────
         for (let i = 1; i < branchList.length; i++) {
             const branch = branchList[i];
@@ -412,6 +470,7 @@ async function createCompleteTenantDatabase(
             }
 
             await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`${branchDbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+            if (createdDbs) createdDbs.add(branchDbName);
             await serverConn.query(`GRANT ALL PRIVILEGES ON \`${branchDbName}\`.* TO '${dbUser}'@'%'`);
 
             const branchMigrations = getBranchMigrations();
@@ -421,7 +480,7 @@ async function createCompleteTenantDatabase(
 
             if (!branchResult.success) {
                 const errorMsg = `Failed to run migrations for branch database ${branchDbName}: ${branchResult.errors.join(', ')}`;
-           
+
                 try {
                     await serverConn.query(`DROP DATABASE IF EXISTS \`${branchDbName}\``);
                     console.log(`   🗑️ Rolled back: dropped database ${branchDbName}`);
@@ -430,7 +489,7 @@ async function createCompleteTenantDatabase(
                 }
                 throw new Error(errorMsg);
             }
-       
+
 
             const branchUuid = uuidv4();
             await tenantConn.query(
@@ -446,15 +505,28 @@ async function createCompleteTenantDatabase(
                 parent_branch_id: firstBranchId,
             });
 
-         
+            // Track this branch immediately (INSERT IGNORE, idempotent) so a
+            // failure later on still lets registerTenant() find and drop this DB.
+            try {
+                await insertTrackingBranch(serverConn, tenantId, subdomain, dbName, branchData[branchData.length - 1]);
+            } catch (trackErr: any) {
+                console.warn(`⚠️ Could not track branch "${branch.branch_name}" in tenant_tracking:`, trackErr && trackErr.message ? trackErr.message : String(trackErr));
+            }
         }
 
-        await tenantConn.query(`
-            INSERT INTO activity_logs (log_id, user_id, action, details)
-            VALUES (?, ?, 'TENANT_CREATED', ?)
-        `, [uuidv4(), uuidv4(), `Tenant ${subdomain} created with ${branchData.length} branch(es)`]);
+        // Cosmetic activity log — never allowed to abort provisioning (a schema
+        // mismatch here used to throw AFTER every branch DB was created, leaving
+        // orphaned databases and a broken tenant_tracking registry).
+        try {
+            await tenantConn.query(`
+                INSERT INTO activity_logs (log_id, user_id, action, details)
+                VALUES (?, ?, 'TENANT_CREATED', ?)
+            `, [uuidv4(), uuidv4(), `Tenant ${subdomain} created with ${branchData.length} branch(es)`]);
+        } catch (logErr: any) {
+            console.warn(`⚠️ TENANT_CREATED activity log skipped (non-fatal):`, logErr && logErr.message ? logErr.message : String(logErr));
+        }
 
- 
+
         branchData.forEach(b => console.log(`      - ${b.branch_name} (slug: ${b.branch_slug}, db: ${b.branch_db_name})`));
 
         emitOnboardingProgress(subdomain, 'Finalizing', 95, 'Setup complete');
@@ -479,9 +551,6 @@ export class TenantModel {
         ];
 
         // The tenant slug / primary DB name is ALWAYS the ORGANIZATION (parent)
-        // slug — never the first branch name. The first branch is the Main/PARENT
-        // branch and operates inside this same database; only additional (child)
-        // branches get their own databases (`<org-slug>-<branch-slug>`).
         const dbName = generateSlug(tenant_name);
         const subdomain = dbName;
         const password_hash = await bcrypt.hash(password, 10);
@@ -489,11 +558,9 @@ export class TenantModel {
 
         // Start transaction
         await serverConn.query('START TRANSACTION');
-
-        // Declared at function scope so the catch block can clean up after failures
-        // (DDL implicit commits may have persisted the tenant row / databases).
         let tenantUuid = '';
         let tenantInserted = false;
+        const createdDbs = new Set<string>();
 
         try {
             // 1. Create tracking database
@@ -504,10 +571,7 @@ export class TenantModel {
             await this.ensureTrackingSchema(serverConn);
 
             // 3. Check if tenant already exists. A previous (failed) attempt may have left a
-            // partial tenant row + databases behind because DDL statements run implicit
-            // COMMITs, so a plain ROLLBACK cannot undo them. If the last attempt failed,
-            // clean those leftovers and re-provision from scratch; truly-registered
-            // (completed) tenants are rejected.
+
             const [existing] = await serverConn.query(
                 'SELECT id, db_name FROM tenant_tracking.tenants WHERE tenant_slug = ?',
                 [subdomain]
@@ -537,6 +601,21 @@ export class TenantModel {
                     const toDrop = new Set<string>();
                     for (const nm of [staleTenant.db_name].concat((bRows as any[] || []).map(r => r.branch_db_name))) {
                         if (nm) toDrop.add(String(nm));
+                    }
+                    // Also pick up untracked orphaned branch DBs from earlier failures.
+                    if (staleTenant.db_name) {
+                        try {
+                            const [orphanDbs]: any = await serverConn.query(
+                                `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ? OR SCHEMA_NAME LIKE ? ESCAPE '\\\\'`,
+                                [staleTenant.db_name, `${escapeLike(String(staleTenant.db_name))}-%`]
+                            );
+                            for (const r of (orphanDbs as any[]) || []) {
+                                const nm = String(r.SCHEMA_NAME || '').trim();
+                                if (nm) toDrop.add(nm);
+                            }
+                        } catch (odErr: any) {
+                            console.warn('⚠️ Could not enumerate orphaned branch DBs during re-provision:', odErr && odErr.message ? odErr.message : String(odErr));
+                        }
                     }
                     for (const nm of toDrop) {
                         try {
@@ -572,27 +651,39 @@ export class TenantModel {
             console.log(`✅ Tenant record inserted with ID: ${tenantUuid}`);
 
             // 5. Create tenant database and branches
+
             const { branches: branchData } = await createCompleteTenantDatabase(
                 tenant_name, dbName, email, password_hash, full_name,
                 phone || null, country || null, location || null, branches,
-                finalDeploymentType, tenantUuid
+                finalDeploymentType, tenantUuid, createdDbs
             );
 
-            // 6. Create branch tracking records
+            // 6. Create branch tracking records (idempotent reconcile — per-branch
+            // rows are already written inside createCompleteTenantDatabase).
             await this.createBranchTrackingRecords(serverConn, tenantUuid, subdomain, dbName, branchData);
 
             // 7. Create admin user in tenant_tracking
             const trackingUserId = uuidv4();
             await this.createTrackingUser(serverConn, trackingUserId, email, password_hash, full_name, phone, tenantUuid);
 
-            // 8. Create admin user in tenant database
+            // 8. Create admin user in tenant database (essential for login — still fatal)
             await this.createTenantAdminUser(dbName, email, password_hash, full_name, phone);
 
-            // 9. Create upload directories
-            await createTenantUploadDirectories(subdomain);
+            // 9. Create upload directories (non-fatal: a missing mount must NOT roll
+            // back a fully provisioned tenant)
+            try {
+                await createTenantUploadDirectories(subdomain);
+            } catch (dirErr: any) {
+                console.warn('⚠️ Upload directory creation failed (non-fatal):', dirErr && dirErr.message ? dirErr.message : String(dirErr));
+            }
 
-            // 10. Auto-connect all branches
-                        await this.autoConnectBranches(dbName, subdomain, tenantUuid);
+            // 10. Auto-connect all branches (non-fatal: connectivity is best-effort
+            // and can be repaired later via POST /branches/auto-connect)
+            try {
+                await this.autoConnectBranches(dbName, subdomain, tenantUuid);
+            } catch (connErr: any) {
+                console.warn('⚠️ Branch auto-connect failed (non-fatal):', connErr && connErr.message ? connErr.message : String(connErr));
+            }
 
             // 11. COMMIT transaction
             await serverConn.query('COMMIT');
@@ -627,15 +718,39 @@ export class TenantModel {
             // (set only after THIS call's INSERT committed) + tenantUuid (fresh id).
             if (tenantInserted && tenantUuid) {
                 try {
-                    const [trackedBranches] = await serverConn.query(
-                        `SELECT branch_db_name FROM tenant_tracking.branches WHERE tenant_id = ? AND branch_db_name IS NOT NULL`,
-                        [tenantUuid]
-                    );
+                    // Assemble the FULL set of databases this attempt may own:
+                    // 1) every database explicitly recorded while it was created,
+                    // 2) any tracked rows still present (older / partial attempts),
+                    // 3) any remaining database whose name starts with `<dbName>-`
+                    //    (branches created before tracking rows were written).
                     const dbNames = new Set<string>();
                     if (dbName) dbNames.add(dbName);
-                    for (const row of (trackedBranches as any[]) || []) {
-                        const name = String(row.branch_db_name || '').trim();
-                        if (name) dbNames.add(name);
+                    for (const n of createdDbs) {
+                        if (n) dbNames.add(String(n).trim());
+                    }
+                    try {
+                        const [trackedBranches] = await serverConn.query(
+                            `SELECT branch_db_name FROM tenant_tracking.branches WHERE tenant_id = ? AND branch_db_name IS NOT NULL`,
+                            [tenantUuid]
+                        );
+                        for (const row of (trackedBranches as any[]) || []) {
+                            const name = String(row.branch_db_name || '').trim();
+                            if (name) dbNames.add(name);
+                        }
+                    } catch (tbErr: any) { /* best-effort */ }
+                    if (dbName) {
+                        try {
+                            const [orphanDbs]: any = await serverConn.query(
+                                `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ? OR SCHEMA_NAME LIKE ? ESCAPE '\\\\'`,
+                                [dbName, `${escapeLike(dbName)}-%`]
+                            );
+                            for (const r of (orphanDbs as any[]) || []) {
+                                const name = String(r.SCHEMA_NAME || '').trim();
+                                if (name) dbNames.add(name);
+                            }
+                        } catch (odErr: any) {
+                            console.warn('⚠️ Could not enumerate orphaned branch DBs:', odErr && odErr.message ? odErr.message : String(odErr));
+                        }
                     }
                     for (const name of dbNames) {
                         try {
@@ -646,6 +761,8 @@ export class TenantModel {
                         }
                     }
                     await serverConn.query('DELETE FROM tenant_tracking.branches WHERE tenant_id = ?', [tenantUuid]);
+                    await serverConn.query('DELETE FROM tenant_tracking.users WHERE tenant_id = ?', [tenantUuid]);
+                    await serverConn.query('DELETE FROM tenant_tracking.branch_connections WHERE tenant_id = ?', [tenantUuid]);
                     await serverConn.query('DELETE FROM tenant_tracking.tenants WHERE id = ?', [tenantUuid]);
                     console.log('🧹 Cleaned partial tenant artifacts for failed provisioning');
                 } catch (cleanupErr: any) {
@@ -653,7 +770,13 @@ export class TenantModel {
                 }
             }
 
-            console.error('❌ Tenant registration failed:', error.message);
+            // Persist the failure so the UI / provisioning queue always has a reason.
+            try {
+                await emitOnboardingProgress(subdomain, 'Failed', 0, error && error.message ? error.message : String(error));
+            } catch (emitErr: any) { /* best-effort */ }
+
+            console.error(`❌ Tenant registration failed (tenant_slug=${subdomain}):`, error && error.message ? error.message : String(error));
+            if (error && error.stack) console.error(error.stack);
             throw error;
         }
     }
@@ -775,7 +898,7 @@ export class TenantModel {
         await addColumnIfMissing('tenants', 'location', 'TEXT NULL', 'phone');
         await addColumnIfMissing('tenants', 'country', 'VARCHAR(100) NULL', 'location');
         await addColumnIfMissing('tenants', 'logo_url', 'VARCHAR(500) NULL', 'country');
-                await addColumnIfMissing('tenants', 'deployment_type', `ENUM('single','multi') DEFAULT 'single'`, 'subscription_status');
+        await addColumnIfMissing('tenants', 'deployment_type', `ENUM('single','multi') DEFAULT 'single'`, 'subscription_status');
 
         // Legacy tracking DBs bootstrapped from the old init script
         // (init-db.sql/create_tenant_tracking.sql) created the tenants table with
@@ -962,22 +1085,14 @@ export class TenantModel {
         tenantDbName: string,
         branchData: Array<{ branch_name: string; branch_slug: string; branch_db_name: string; parent_branch_id: string | null }>
     ): Promise<void> {
+        // Idempotent reconcile — rows are normally already written per-branch inside
+        // createCompleteTenantDatabase(); INSERT IGNORE keeps this safe as a retry path.
         for (const branch of branchData) {
-            const branchUuid = uuidv4();
-            await serverConn.query(`
-                INSERT INTO tenant_tracking.branches 
-                (id, tenant_id, tenant_slug, branch_slug, branch_code, branch_name, branch_db_name, parent_branch_id, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-            `, [
-                branchUuid,
-                tenantId,
-                tenantSlug,
-                branch.branch_slug,
-                generateBranchCode(tenantDbName, branch.branch_name),
-                branch.branch_name,
-                branch.branch_db_name,
-                branch.parent_branch_id
-            ]);
+            try {
+                await insertTrackingBranch(serverConn, tenantId, tenantSlug, tenantDbName, branch);
+            } catch (err: any) {
+                console.warn(`⚠️ Could not (re)track branch "${branch.branch_name}" in tenant_tracking:`, err && err.message ? err.message : String(err));
+            }
         }
 
         console.log(`✅ ${branchData.length} branch tracking records created`);
@@ -1074,7 +1189,7 @@ export class TenantModel {
         }
     }
 
-        static async autoConnectBranches(tenantDbName: string, tenantSlug: string, tenantId?: string): Promise<void> {
+    static async autoConnectBranches(tenantDbName: string, tenantSlug: string, tenantId?: string): Promise<void> {
         await this.ensureBranchConnectionsTable(tenantDbName);
 
         const conn = await getTenantConnection(tenantDbName);
@@ -1150,7 +1265,7 @@ export class TenantModel {
                 }
             }
 
-                        // Mirror branch connections into the central tenant_tracking database so the
+            // Mirror branch connections into the central tenant_tracking database so the
             // branch_connections table is populated there too — the admin dashboard and
             // branch-connection lookups read from tenant_tracking, not the per-tenant DB.
             if (tenantId) {
@@ -1165,7 +1280,7 @@ export class TenantModel {
         }
     }
 
-        private static async insertTrackingConnection(
+    private static async insertTrackingConnection(
         tConn: mysql.Pool,
         tenantId: string,
         tenantSlug: string,
@@ -1402,7 +1517,7 @@ export class TenantModel {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             `);
 
-                        // Migrate existing databases: rename legacy `organization_name` -> `tenant_name`
+            // Migrate existing databases: rename legacy `organization_name` -> `tenant_name`
             // BEFORE the INSERT below. Some DBs were bootstrapped from the legacy init script
             // (init-db.sql/create_tenant_tracking.sql) which created the tenants table with an
             // `organization_name` column instead of `tenant_name`. `CREATE TABLE IF NOT EXISTS`

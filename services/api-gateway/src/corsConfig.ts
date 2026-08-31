@@ -13,8 +13,8 @@ const defaultOrigins: string[] = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:8080',
-  'https://siasahub.co.ke',
-  'https://www.siasahub.co.ke',
+  'www.restpoint.co.ke',
+  'https://restpoint.co.ke',
   ...getEnvironmentOrigins(),
 ];
 
@@ -22,13 +22,11 @@ const defaultOrigins: string[] = [
 if (process.env.NODE_ENV === 'production') {
   // Add production-specific origins
   defaultOrigins.push(
-    'https://api.siasahub.co.ke',
-    'https://admin.siasahub.co.ke'
+    'https://restpoint.co.ke'
   );
 }
 
 // Development-specific origins
 if (process.env.NODE_ENV === 'development') {
-  // Allow any localhost port for development convenience
-  console.log('⚠️  Development mode: Allowing all localhost origins');
+
 }
