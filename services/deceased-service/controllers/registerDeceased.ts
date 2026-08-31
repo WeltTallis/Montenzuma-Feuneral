@@ -181,6 +181,7 @@ export const registerNewDeceased = async (
         phone_number,
         alternative_phone,
         received_from,
+        contact_person,
         receiving_officer,
                 date_admitted,
         time_received,
@@ -203,7 +204,7 @@ export const registerNewDeceased = async (
         relationship,
         permit_number
     )
-    VALUES (?, ?, ?, ?,  ?,  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?,  ?,  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
         await safeTenantExecute(
@@ -220,6 +221,7 @@ export const registerNewDeceased = async (
                 data.tell_no || null,
                 data.alternative_phone || null,
                 data.received_from || null,
+                data.contact_person || null,
                 data.receiving_officer || null,
                 now, // date_admitted
                 data.time_received || null,
