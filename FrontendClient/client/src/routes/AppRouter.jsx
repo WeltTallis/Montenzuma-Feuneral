@@ -1,42 +1,44 @@
-import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { Routes, Route, useParams, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 
-import { tenantApi } from '../api/tenant.api';
+
+const  NotificationBell = lazy(()=> import('../components/notifications/NotificationBell'))
+const  FooterComponent   =  lazy(()=>import('../components/layout/globalFooter'))
 import { useTenantStore } from '../modules/seo/useTenantStore';
-import { useAuth } from '../utils/context/AuthContext';
 import ModernSidebar from '../components/layout/ModernSidebar';
-import NotificationBell from '../components/notifications/NotificationBell';
-import FooterComponent from '../components/layout/globalFooter';
+import { useAuth } from '../utils/context/AuthContext';
 import Loader from '../components/loader/loader';
+import { tenantApi } from '../api/tenant.api';
 
-const LandingPage = lazy(() => import('../modules/landing/LandingPage'));
-const ChurchFuneralWelfare = lazy(() => import('../modules/landing/ChurchFuneralWelfare'));
-const SACCOFuneralInsurance = lazy(() => import('../modules/landing/SACCOFuneralInsurance'));
+const UpcomingIntegrations = lazy(() => import('../modules/integrations/UpcomingIntegrations'));
 const ChamaWelfareManagement = lazy(() => import('../modules/landing/ChamaWelfareManagement'));
+const SACCOFuneralInsurance = lazy(() => import('../modules/landing/SACCOFuneralInsurance'));
+const ChurchFuneralWelfare = lazy(() => import('../modules/landing/ChurchFuneralWelfare'));
 const FuneralHomeSoftware = lazy(() => import('../modules/landing/FuneralHomeSoftware'));
 const OnboardingFlow = lazy(() => import('../modules/onboarding/OnboardingFlow'));
 const InsurancePage = lazy(() => import('../modules/insurance/insurance'));
 const MemorialPage = lazy(() => import('../modules/memorial/MemorialPage'));
-const UpcomingIntegrations = lazy(() => import('../modules/integrations/UpcomingIntegrations'));
+const LandingPage = lazy(() => import('../modules/landing/LandingPage'));
 
 // SEO Pages - Topic Cluster
-const MortuaryManagementSoftware = lazy(() => import('../modules/seo/MortuaryManagementSoftware'));
 const FuneralHomeManagementSoftware = lazy(() => import('../modules/seo/FuneralHomeManagementSoftware'));
+const MortuaryManagementSoftware = lazy(() => import('../modules/seo/MortuaryManagementSoftware'));
 const HospitalMortuarySoftware = lazy(() => import('../modules/seo/HospitalMortuarySoftware'));
 const HearseManagementSoftware = lazy(() => import('../modules/seo/HearseManagementSoftware'));
 const MortuaryBillingSoftware = lazy(() => import('../modules/seo/MortuaryBillingSoftware'));
 const PricingPage = lazy(() => import('../modules/seo/PricingPage'));
 
 // Blog and Resource Pages
-const FuneralWelfareGuide = lazy(() => import('../modules/blog/FuneralWelfareGuide'));
 const BereavementManagementGuide = lazy(() => import('../modules/blog/BereavementManagementGuide'));
 const MemberContributionsGuide = lazy(() => import('../modules/blog/MemberContributionsGuide'));
+const FuneralWelfareGuide = lazy(() => import('../modules/blog/FuneralWelfareGuide'));
 
 // Comparison Pages
-const RestPointVsExcel = lazy(() => import('../modules/compare/RestPointVsExcel'));
-const ManualVsDigital = lazy(() => import('../modules/compare/ManualVsDigital'));
 const BestChurchSoftwareKenya = lazy(() => import('../modules/compare/BestChurchSoftwareKenya'));
 const BestSACCOWelfareSoftware = lazy(() => import('../modules/compare/BestSACCOWelfareSoftware'));
+const RestPointVsExcel = lazy(() => import('../modules/compare/RestPointVsExcel'));
+const ManualVsDigital = lazy(() => import('../modules/compare/ManualVsDigital'));
+
 
 // Tools and Resources
 const NairobiFuneralWelfare = lazy(() => import('../modules/locations/NairobiFuneralWelfare'));
@@ -175,11 +177,11 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
     return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
   });
   const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
-  
+
   // Determine deployment type: single tenant vs multi-branch
   const deploymentType = tenantData?.deploymentType || localStorage.getItem('deploymentType') || 'multi';
   const isSingleTenant = deploymentType === 'single';
-  
+
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
@@ -188,9 +190,9 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
     localStorage.removeItem('tenantSlug');
     navigate('/login');
   };
-  
+
   const handleSidebarToggle = (isOpen) => setSidebarOpen(isOpen);
-  
+
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
@@ -199,26 +201,26 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
         setSidebarOpen(false);
       }
     };
-    
+
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
+
   const marginLeft = isSingleTenant ? '0' : (isMobile ? '0' : (sidebarOpen ? '200px' : '60px'));
   const contentPadding = isMobile ? '0.5rem' : (isSingleTenant ? '0.5rem 0.75rem' : (sidebarOpen ? '0.75rem 1rem 0.75rem 0.25rem' : '0.75rem'));
   const footerMarginLeft = isSingleTenant ? '0' : (isMobile ? '0' : (sidebarOpen ? '200px' : '60px'));
-  
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F7F9FB', flexDirection: 'column' }}>
       <div style={{ display: 'flex', flex: 1, position: 'relative' }}>
-        <ModernSidebar 
-          tenantData={tenantData} 
+        <ModernSidebar
+          tenantData={tenantData}
           deploymentType={deploymentType}
           tenantSlug={slug}
-          userData={{ name: user?.full_name || user?.name, role: user?.role || 'Administrator' }} 
-          onLogout={handleLogout} 
-          onToggle={handleSidebarToggle} 
+          userData={{ name: user?.full_name || user?.name, role: user?.role || 'Administrator' }}
+          onLogout={handleLogout}
+          onToggle={handleSidebarToggle}
         />
         <main style={{ flex: 1, marginLeft, padding: contentPadding, background: '#F7F9FB', transition: 'margin-left 0.3s ease, padding 0.3s ease' }}>
           <Suspense fallback={<RouteLoadingFallback />}>{children}</Suspense>
@@ -390,19 +392,19 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
         <Route path="all-deceased" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedList /></Layout>
         } />
-        
+
         <Route path="deceased" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedList /></Layout>
         } />
-        
+
         <Route path="deceased/register" element={
           <DeceasedRegistrationForm />
         } />
-        
+
         <Route path="deceased/:id" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedDetails /></Layout>
         } />
-        
+
         <Route path="deceased-details/:id" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedDetails /></Layout>
         } />
@@ -427,8 +429,8 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
         <Route path="coffins/register" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><RegisterCoffin /></Layout>
         } />
-        
-                 <Route path="coffins/:coffinId/details" element={
+
+        <Route path="coffins/:coffinId/details" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><CoffinDetails /></Layout>
         } />
 
@@ -454,7 +456,7 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
         <Route path="chemicals" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><ChemicalInventoryAnalytics /></Layout>
         } />
-        
+
         <Route path="chemicals/analytics" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><ChemicalInventoryAnalytics /></Layout>
         } />
@@ -496,11 +498,11 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
         <Route path="flowers" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><FlowerBookings /></Layout>
         } />
-        
+
         <Route path="flowers/new" element={
           <FlowerBookingForm />
         } />
-        
+
         <Route path="flowers/order/:id" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><FlowerOrderDetail /></Layout>
         } />
@@ -542,11 +544,11 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
         <Route path="leaves" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><LeaveDashboard /></Layout>
         } />
-        
+
         <Route path="leaves/apply" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><ApplyLeave /></Layout>
         } />
-        
+
         <Route path="leaves/my-leaves" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><MyLeaves /></Layout>
         } />
@@ -743,10 +745,10 @@ const AppRouter = () => (
       // Location Routes
       <Route path="/locations/nairobi" element={<NairobiFuneralWelfare />} />
       <Route path="/locations/:city" element={<LocationPage />} />
-      
+
       <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
       <Route path="/dashboard/*" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
-      
+
       {/* Public Postmortem Routes */}
       <Route path="/tenant/:slug/postmortem-qr" element={<PostmortemQRPage />} />
       <Route path="/tenant/:slug/postmortem-verify" element={<PostmortemVerifyPage />} />
@@ -754,11 +756,11 @@ const AppRouter = () => (
       <Route path="/tenant/:slug/release-form/:id" element={<ReleaseFormPage />} />
       <Route path="/postmortem/verify" element={<PostmortemVerifyPage />} />
       <Route path="/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
-      
+
       {/* Main Tenant Route - All authenticated routes */}
       <Route path="/tenant/:slug/*" element={<ProtectedRoute><TenantResolver /></ProtectedRoute>} />
-      
-            {/* Mini Store - standalone mini POS / stock module */}
+
+      {/* Mini Store - standalone mini POS / stock module */}
       <Route path="/store" element={<StoreDashboard />} />
       <Route path="/mini-store" element={<StoreDashboard />} />
 

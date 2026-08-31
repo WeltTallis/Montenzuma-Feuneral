@@ -1,2 +1,421 @@
 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
 imbitheesther-art
+
+
+
+
+
+INFO] → HEAD /health
+root@vmi3542692:/opt/restpoint# docker logs --tail=200 restpoint_deceased_service
+- Ensure your package manager supports multi-platform installation:
+    See https://sharp.pixelplumbing.com/install#cross-platform
+- Add platform-specific dependencies:
+    npm install --os=linux --libc=musl --cpu=x64 sharp
+- Consult the installation documentation:
+    See https://sharp.pixelplumbing.com/install
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/sharp.cjs:171:9)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-OY9cqBEN.cjs:9:3619)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/constructor.cjs:10:1)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+
+Node.js v24.20.0
+/usr/src/app/node_modules/sharp/dist/sharp.cjs:171
+  throw new Error(help.join("\n"));
+        ^
+
+Error: Could not load the "sharp" module using the linuxmusl-x64 runtime
+Possible solutions:
+- Ensure optional dependencies can be installed:
+    npm install --include=optional sharp
+- Ensure your package manager supports multi-platform installation:
+    See https://sharp.pixelplumbing.com/install#cross-platform
+- Add platform-specific dependencies:
+    npm install --os=linux --libc=musl --cpu=x64 sharp
+- Consult the installation documentation:
+    See https://sharp.pixelplumbing.com/install
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/sharp.cjs:171:9)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-OY9cqBEN.cjs:9:3619)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/constructor.cjs:10:1)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+
+Node.js v24.20.0
+/usr/src/app/node_modules/sharp/dist/sharp.cjs:171
+  throw new Error(help.join("\n"));
+        ^
+
+Error: Could not load the "sharp" module using the linuxmusl-x64 runtime
+Possible solutions:
+- Ensure optional dependencies can be installed:
+    npm install --include=optional sharp
+- Ensure your package manager supports multi-platform installation:
+    See https://sharp.pixelplumbing.com/install#cross-platform
+- Add platform-specific dependencies:
+    npm install --os=linux --libc=musl --cpu=x64 sharp
+- Consult the installation documentation:
+    See https://sharp.pixelplumbing.com/install
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/sharp.cjs:171:9)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-OY9cqBEN.cjs:9:3619)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/constructor.cjs:10:1)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+
+Node.js v24.20.0
+/usr/src/app/node_modules/sharp/dist/sharp.cjs:171
+  throw new Error(help.join("\n"));
+        ^
+
+Error: Could not load the "sharp" module using the linuxmusl-x64 runtime
+Possible solutions:
+- Ensure optional dependencies can be installed:
+    npm install --include=optional sharp
+- Ensure your package manager supports multi-platform installation:
+    See https://sharp.pixelplumbing.com/install#cross-platform
+- Add platform-specific dependencies:
+    npm install --os=linux --libc=musl --cpu=x64 sharp
+- Consult the installation documentation:
+    See https://sharp.pixelplumbing.com/install
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/sharp.cjs:171:9)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-OY9cqBEN.cjs:9:3619)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/constructor.cjs:10:1)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+
+Node.js v24.20.0
+/usr/src/app/node_modules/sharp/dist/sharp.cjs:171
+  throw new Error(help.join("\n"));
+        ^
+
+Error: Could not load the "sharp" module using the linuxmusl-x64 runtime
+Possible solutions:
+- Ensure optional dependencies can be installed:
+    npm install --include=optional sharp
+- Ensure your package manager supports multi-platform installation:
+    See https://sharp.pixelplumbing.com/install#cross-platform
+- Add platform-specific dependencies:
+    npm install --os=linux --libc=musl --cpu=x64 sharp
+- Consult the installation documentation:
+    See https://sharp.pixelplumbing.com/install
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/sharp.cjs:171:9)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-OY9cqBEN.cjs:9:3619)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/constructor.cjs:10:1)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+
+Node.js v24.20.0
+/usr/src/app/node_modules/sharp/dist/sharp.cjs:171
+  throw new Error(help.join("\n"));
+        ^
+
+Error: Could not load the "sharp" module using the linuxmusl-x64 runtime
+Possible solutions:
+- Ensure optional dependencies can be installed:
+    npm install --include=optional sharp
+- Ensure your package manager supports multi-platform installation:
+    See https://sharp.pixelplumbing.com/install#cross-platform
+- Add platform-specific dependencies:
+    npm install --os=linux --libc=musl --cpu=x64 sharp
+- Consult the installation documentation:
+    See https://sharp.pixelplumbing.com/install
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/sharp.cjs:171:9)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-OY9cqBEN.cjs:9:3619)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/constructor.cjs:10:1)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+
+Node.js v24.20.0
+/usr/src/app/node_modules/sharp/dist/sharp.cjs:171
+  throw new Error(help.join("\n"));
+        ^
+
+Error: Could not load the "sharp" module using the linuxmusl-x64 runtime
+Possible solutions:
+- Ensure optional dependencies can be installed:
+    npm install --include=optional sharp
+- Ensure your package manager supports multi-platform installation:
+    See https://sharp.pixelplumbing.com/install#cross-platform
+- Add platform-specific dependencies:
+    npm install --os=linux --libc=musl --cpu=x64 sharp
+- Consult the installation documentation:
+    See https://sharp.pixelplumbing.com/install
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/sharp.cjs:171:9)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-OY9cqBEN.cjs:9:3619)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/constructor.cjs:10:1)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+
+Node.js v24.20.0
+/usr/src/app/node_modules/sharp/dist/sharp.cjs:171
+  throw new Error(help.join("\n"));
+        ^
+
+Error: Could not load the "sharp" module using the linuxmusl-x64 runtime
+Possible solutions:
+- Ensure optional dependencies can be installed:
+    npm install --include=optional sharp
+- Ensure your package manager supports multi-platform installation:
+    See https://sharp.pixelplumbing.com/install#cross-platform
+- Add platform-specific dependencies:
+    npm install --os=linux --libc=musl --cpu=x64 sharp
+- Consult the installation documentation:
+    See https://sharp.pixelplumbing.com/install
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/sharp.cjs:171:9)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-OY9cqBEN.cjs:9:3619)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at Object.<anonymous> (/usr/src/app/node_modules/sharp/dist/constructor.cjs:10:1)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+
+Node.js v24.20.0
+root@vmi3542692:/opt/restpoint# docker logs --tail=200 restpoint_socketio_service;
+Socket.IO Server running on port 5000
+Redis: Fallback mode
+Origins: https://restpoint.co.ke   ,  http://localhost:5173, http://localhost:3000, http://localhost:5174
+Security: Helmet + CORS + Rate Limiting enabled
+Environment: production
+Health: http://localhost:5000/health
+Redis Pub Client connected
+Redis Sub Client connected
+Socket.IO Redis Adapter connected successfully
+root@vmi3542692:/opt/restpoint# docker logs --tail=200 restpoint_leave_service;
+node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/usr/src/app/services/leave-service/server.ts' imported from /usr/src/app/
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at resolveBaseSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:10932)
+    at resolveDirectorySync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:12238)
+    at resolveTsPathsSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:13445)
+    at resolve (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:15991) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///usr/src/app/services/leave-service/server.ts'
+}
+
+Node.js v24.20.0
+node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/usr/src/app/services/leave-service/server.ts' imported from /usr/src/app/
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at resolveBaseSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:10932)
+    at resolveDirectorySync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:12238)
+    at resolveTsPathsSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:13445)
+    at resolve (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:15991) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///usr/src/app/services/leave-service/server.ts'
+}
+
+Node.js v24.20.0
+node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/usr/src/app/services/leave-service/server.ts' imported from /usr/src/app/
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at resolveBaseSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:10932)
+    at resolveDirectorySync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:12238)
+    at resolveTsPathsSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:13445)
+    at resolve (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:15991) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///usr/src/app/services/leave-service/server.ts'
+}
+
+Node.js v24.20.0
+node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/usr/src/app/services/leave-service/server.ts' imported from /usr/src/app/
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at resolveBaseSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:10932)
+    at resolveDirectorySync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:12238)
+    at resolveTsPathsSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:13445)
+    at resolve (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:15991) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///usr/src/app/services/leave-service/server.ts'
+}
+
+Node.js v24.20.0
+node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/usr/src/app/services/leave-service/server.ts' imported from /usr/src/app/
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at resolveBaseSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:10932)
+    at resolveDirectorySync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:12238)
+    at resolveTsPathsSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:13445)
+    at resolve (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:15991) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///usr/src/app/services/leave-service/server.ts'
+}
+
+Node.js v24.20.0
+node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/usr/src/app/services/leave-service/server.ts' imported from /usr/src/app/
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at resolveBaseSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:10932)
+    at resolveDirectorySync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:12238)
+    at resolveTsPathsSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:13445)
+    at resolve (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:15991) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///usr/src/app/services/leave-service/server.ts'
+}
+
+Node.js v24.20.0
+node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/usr/src/app/services/leave-service/server.ts' imported from /usr/src/app/
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at resolveBaseSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:10932)
+    at resolveDirectorySync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:12238)
+    at resolveTsPathsSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:13445)
+    at resolve (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:15991) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///usr/src/app/services/leave-service/server.ts'
+}
+
+Node.js v24.20.0
+node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/usr/src/app/services/leave-service/server.ts' imported from /usr/src/app/
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at resolveBaseSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:10932)
+    at resolveDirectorySync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:12238)
+    at resolveTsPathsSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:13445)
+    at resolve (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:15991) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///usr/src/app/services/leave-service/server.ts'
+}
+
+Node.js v24.20.0
+node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/usr/src/app/services/leave-service/server.ts' imported from /usr/src/app/
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at resolveBaseSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:10932)
+    at resolveDirectorySync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:12238)
+    at resolveTsPathsSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:13445)
+    at resolve (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:15991) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///usr/src/app/services/leave-service/server.ts'
+}
+
+Node.js v24.20.0
+node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/usr/src/app/services/leave-service/server.ts' imported from /usr/src/app/
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at resolveBaseSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:10932)
+    at resolveDirectorySync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:12238)
+    at resolveTsPathsSync (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:13445)
+    at resolve (file:///home/nodejs/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-SoqaU4rg.mjs:2:15991) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///usr/src/app/services/leave-service/server.ts'
+}
+
+Node.js v24.20.0
+root@vmi3542692:/opt/restpoint#

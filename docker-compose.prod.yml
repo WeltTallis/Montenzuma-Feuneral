@@ -1,6 +1,4 @@
 # PRODUCTION Docker Compose - Single Network Configuration
-# All services on restpoint_network (NO mortuary-network, NO restpoint_net)
-# All container names use service names without _1 suffix
 # All internal services run on port 5000
 # All services have health checks and proper dependencies
 
@@ -22,13 +20,10 @@ services:
       - "${MARIADB_EXTERNAL_PORT:-3306}:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
-      # Monitoring: custom MariaDB config (slow query log + performance_schema)
       - ./docker/mariadb/custom-mysqld.cnf:/etc/mysql/conf.d/custom-mysqld.cnf:ro
-      # Monitoring: creates the dedicated `exporter` user for mysqld_exporter
-      # (automated only on first init / empty data volume)
+
       - ./docker/mariadb/exporter-user.sql:/docker-entrypoint-initdb.d/01-exporter-user.sql:ro
-      # Monitoring: init SQL to create the exporter user (run manually on an
-      # existing/initialised database - see docker/mariadb/exporter-user.sql)
+
     networks:
       - restpoint_network
     healthcheck:
@@ -75,9 +70,8 @@ services:
       timeout: 10s
       retries: 5
 
-  # =============================================================================
   # API GATEWAY
-  # =============================================================================
+
 
   api-gateway:
     build:
@@ -125,9 +119,7 @@ services:
       retries: 3
       start_period: 40s
 
-  # =============================================================================
   # APPLICATION SERVICES
-  # =============================================================================
 
   auth-service:
     build:
@@ -301,6 +293,10 @@ services:
       REDIS_PORT: 6379
     volumes:
       - coffin_service_data:/usr/src/app/data
+      # Coffin-service imports @montezuma/shared-services, whose barrel
+      # immediately inits FileStorageService → mkdir /opt/storage/uploads.
+      # Without this mount the non-root container crashes with EACCES.
+      - shared_uploads:/opt/storage/uploads
     networks:
       - restpoint_network
     healthcheck:
@@ -658,7 +654,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
 
   # =============================================================================
   # LEAVE SERVICE
