@@ -838,12 +838,12 @@ export default function App() {
           html{font-size:17.5px}
           .hero{padding-top:100px}
           .wrap{padding:0 1rem}
-          .btn{padding:0.8rem 1.2rem!important;font-size:0.82rem!important}
-          .nav-link{font-size:0.9rem}
-          .hero-desc{font-size:1.15rem;line-height:1.7}
-          .mono-label{font-size:0.72rem}
-          .module-title{font-size:1.1rem}
-          .module-excerpt{font-size:0.9rem}
+          .btn{padding:0.85rem 1.3rem!important;font-size:0.92rem!important}
+          .nav-link{font-size:1rem}
+          .hero-desc{font-size:1.25rem;line-height:1.7}
+          .mono-label{font-size:0.8rem}
+          .module-title{font-size:1.25rem}
+          .module-excerpt{font-size:1rem}
         }
       `}</style>
 

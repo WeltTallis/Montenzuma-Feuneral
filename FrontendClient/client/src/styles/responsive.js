@@ -68,8 +68,9 @@ export const injectBaseStyles = () => {
     if (document.getElementById(id)) return;
     const s = document.createElement('style');
     s.id = id;
+    // NOTE: no @import here — fonts come from index.html <link> tags.
+    // (A runtime-injected @import re-downloaded Inter on every page load.)
     s.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; line-height: 1.6; }

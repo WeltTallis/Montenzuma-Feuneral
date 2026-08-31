@@ -1024,6 +1024,63 @@ export class TenantModel {
             console.warn('⚠️ Could not normalize legacy tenant_tracking.branches:', e.message);
         }
 
+        // Legacy tracking DBs may hold a `users` table whose `user_id` (and/or
+        // `tenant_id`) is a numeric INT column — e.g. bootstrapped by older builds —
+        // while createTrackingUser() inserts UUID strings. CREATE TABLE IF NOT EXISTS
+        // is a no-op on that table, so under STRICT_TRANS_TABLES provisioning dies at
+        // step 7 with "Data truncated for column 'user_id' at row 1" and the whole
+        // tenant is rolled back (database dropped). Convert the columns to VARCHAR(36)
+        // the same way the branches table is reconciled above — guarded + idempotent.
+        try {
+            const usersColType = async (columnName: string): Promise<string> => {
+                const [rows] = await serverConn.query(
+                    `SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = 'tenant_tracking' AND TABLE_NAME = 'users' AND COLUMN_NAME = ?`,
+                    [columnName]
+                );
+                return String(((rows as any[]) || [])[0]?.COLUMN_TYPE || '');
+            };
+            const userIdType = await usersColType('user_id');
+            const tenantIdType = await usersColType('tenant_id');
+            // Empty type = table/column doesn't exist yet → createTrackingTable()
+            // below will create it with the canonical VARCHAR(36) schema.
+            const needsUserIdFix = userIdType !== '' && userIdType !== 'varchar(36)';
+            const needsTenantIdFix = tenantIdType !== '' && !tenantIdType.startsWith('varchar');
+            if (needsUserIdFix || needsTenantIdFix) {
+                // Drop FKs touching this table first — MODIFYing a column type that
+                // participates in a foreign key fails on legacy definitions.
+                const [userFks] = await serverConn.query(
+                    `SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+                     WHERE TABLE_SCHEMA = 'tenant_tracking' AND TABLE_NAME = 'users'
+                       AND REFERENCED_TABLE_NAME IS NOT NULL`
+                );
+                for (const fk of ((userFks as any[]) || [])) {
+                    try {
+                        await serverConn.query(`ALTER TABLE tenant_tracking.users DROP FOREIGN KEY \`${fk.CONSTRAINT_NAME}\``);
+                    } catch (fkErr: any) {
+                        console.warn('⚠️ Could not drop legacy users FK:', fk.CONSTRAINT_NAME, fkErr.message);
+                    }
+                }
+                const modifications: string[] = [];
+                if (needsUserIdFix) modifications.push('MODIFY COLUMN user_id VARCHAR(36) NOT NULL');
+                if (needsTenantIdFix) modifications.push('MODIFY COLUMN tenant_id VARCHAR(36) NULL');
+                await serverConn.query(`ALTER TABLE tenant_tracking.users ${modifications.join(', ')}`);
+                console.log(`✅ Converted tenant_tracking.users ${needsUserIdFix ? 'user_id ' : ''}${needsTenantIdFix ? 'tenant_id' : ''}to VARCHAR(36)`);
+                try {
+                    // Re-add ONLY the FK on tenant_id (canonical fresh-table shape).
+                    await serverConn.query(
+                        `ALTER TABLE tenant_tracking.users
+                         ADD CONSTRAINT fk_tracking_users_tenant FOREIGN KEY (tenant_id)
+                             REFERENCES tenant_tracking.tenants(id) ON DELETE CASCADE`
+                    );
+                } catch (fkErr: any) {
+                    console.warn('⚠️ Could not re-add users tracking FK (non-fatal):', fkErr.message);
+                }
+            }
+        } catch (e: any) {
+            console.warn('⚠️ Could not normalize legacy tenant_tracking.users:', e.message);
+        }
+
         // Create users tracking table
         await createTrackingTable('users', `
                 user_id VARCHAR(36) PRIMARY KEY,

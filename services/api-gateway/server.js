@@ -1,4 +1,20 @@
-const   Logger   =  require('../../packages/shared-logger/src/index');
+// @montezuma/shared-logger is a TypeScript package compiled with a `default`
+// export (plus a named `logger` export). When loaded through plain CommonJS
+// `require()` it resolves to the module namespace object `{ __esModule:true,
+// logger, default }`, so call `.default` (or `.logger`) when `require()` did not
+// hand back the pino instance directly. Fall back to console so the gateway can
+// always boot even if the logger transport fails to initialize.
+const loggerModule = require('../../packages/shared-logger/src/index');
+const Logger =
+  (loggerModule && typeof loggerModule.info === 'function') ? loggerModule
+    : (loggerModule && loggerModule.default && typeof loggerModule.default.info === 'function') ? loggerModule.default
+      : (loggerModule && loggerModule.logger && typeof loggerModule.logger.info === 'function') ? loggerModule.logger
+        : {
+          debug: (...args) => console.log('[DEBUG]', ...args),
+          info: (...args) => console.log('[INFO]', ...args),
+          warn: (...args) => console.warn('[WARN]', ...args),
+          error: (...args) => console.error('[ERROR]', ...args),
+        };
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
@@ -6,7 +22,8 @@ const dotenv = require('dotenv');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const   hpp   =   require('hpp')
+const cookieParser = require('cookie-parser');
+const hpp = require('hpp')
 
 
 // Load .env from the api-gateway directory specifically
@@ -15,13 +32,20 @@ console.log('Loading .env from:', dotenvPath);
 dotenv.config({ path: dotenvPath, override: false });
 
 // ─── Redis Client for Direct Notification Access ────────────────────
+// Uses ioredis (declared dependency of this service and the repo-wide Redis
+// client per SERVICE_TOPOLOGY.md). lazyConnect keeps the explicit .connect()
+// call below meaningful; retryStrategy gives up after ~10s so a missing
+// Redis degrades gracefully instead of spamming reconnect errors forever.
 let redisClient = null;
 let redisConnected = false;
 
 try {
-  const { createClient } = require('redis');
+  const Redis = require('ioredis');
   const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-  redisClient = createClient({ url: redisUrl });
+  redisClient = new Redis(redisUrl, {
+    lazyConnect: true,
+    retryStrategy: (times) => (times > 20 ? null : Math.min(times * 500, 2000)),
+  });
 
   redisClient.on('connect', () => {
     redisConnected = true;
@@ -43,7 +67,7 @@ try {
     console.warn(`[REDIS] Failed to connect: ${err.message}`);
   });
 } catch (err) {
-  console.warn('[REDIS] redis package not available, notifications will return empty');
+  console.warn('[REDIS] ioredis not available, notifications will return empty');
 }
 
 const APP_NAME = 'restpoint-gateway';
@@ -196,7 +220,7 @@ app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false 
 
 // 1c. HPP - prevent HTTP parameter pollution
 app.use(hpp({
-  whitelist: ['page', 'limit', 'status', 'search'], 
+  whitelist: ['page', 'limit', 'status', 'search'],
 }));
 // 1d. Body parsing with limits
 app.use(express.json({ limit: '1mb' }));
@@ -219,7 +243,29 @@ app.use((req, res, next) => {
 });
 
 // Middleware to check service health before proxying
-function checkServiceAvailability(req, res, next) {
+// On-demand recovery probe: when the circuit breaker is open, give the service a
+// quick live check before rejecting the request. The periodic monitor runs every
+// HEALTH_CHECK_INTERVAL (30s) and each failed probe refreshes lastFailure, which
+// keeps real requests inside the RECOVERY_TIMEOUT window — so without this probe
+// a service that just recovered would still be rejected for up to 30s (or forever
+// if its /health behaves differently from real traffic).
+const PROBE_TIMEOUT = 2000;       // 2s on-demand probe
+const PROBE_MIN_GAP = 10000;      // probe at most once per 10s per service
+
+async function probeServiceHealth(url) {
+  try {
+    const probeUrl = url.endsWith('/') ? `${url}health` : `${url}/health`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PROBE_TIMEOUT);
+    const response = await fetch(probeUrl, { method: 'GET', signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function checkServiceAvailability(req, res, next) {
   const urlWithoutQuery = req.url.split('?')[0];
   const pathParts = urlWithoutQuery.split('/').filter(Boolean);
   const firstSegment = pathParts[0];
@@ -253,6 +299,24 @@ function checkServiceAvailability(req, res, next) {
           source: 'gateway-fallback',
           message: 'Notification service is currently unavailable'
         });
+      }
+
+      // Live probe before rejecting: the breaker may be stale (service just
+      // recovered and the next 30s periodic check hasn't run yet). If the
+      // service answers, reset the breaker and let the request through.
+      // Gated by PROBE_MIN_GAP so a request burst triggers at most one probe.
+      const serviceUrl = SERVICE_URLS[serviceName];
+      if (serviceUrl && timeSinceFailure >= PROBE_MIN_GAP) {
+        const alive = await probeServiceHealth(serviceUrl);
+        if (alive) {
+          Logger.info(`[CIRCUIT BREAKER] ${serviceName} recovered via on-demand probe`);
+          health.isHealthy = true;
+          health.failures = 0;
+          return next();
+        }
+        // Probe failed — refresh lastFailure (NOT the failure count) so
+        // concurrent requests fast-fail instead of each paying the probe.
+        health.lastFailure = Date.now();
       }
 
       return res.status(503).json({
@@ -659,8 +723,8 @@ const server = app.listen(PORT, HOST, async () => {
   Logger.info(' Health checks complete');
 });
 
-const   gracefulShutdown  =  (signal)  =>{
-  server.close(()=>{
+const gracefulShutdown = (signal) => {
+  server.close(() => {
     process.exit(1)
   })
 }
@@ -670,16 +734,16 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 process.on('unhandledRejection', (reason) => {
   Logger.error({
-    message:   "Unhandled Rejection  in  api gateway",
-    error:   reason
+    message: "Unhandled Rejection  in  api gateway",
+    error: reason
   })
 });
 
 
 process.on('uncaughtException', (err) => {
   Logger.error({
-    message:   "unhandles  Exception in  api gateway",
-    error:      err
+    message: "unhandles  Exception in  api gateway",
+    error: err
   })
 });
 

@@ -191,6 +191,8 @@ services:
       # (CREATE DATABASE + GRANT). Falls back to DB_USER when not set.
       DB_ADMIN_USER: ${DB_ADMIN_USER:-root}
       DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD:-${DB_ROOT_PASSWORD}}
+      # Onboarding progress events are POSTed to this URL by Tenant.model.ts
+      SOCKET_SERVICE_URL: http://restpoint_socketio_service:5000
     volumes:
       - tenant_service_data:/usr/src/app/data
       # The ONE shared uploads folder served to browsers at /uploads/...

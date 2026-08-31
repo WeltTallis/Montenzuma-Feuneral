@@ -215,6 +215,7 @@ services:
       - JWT_SECRET=RestPointJWTSecret2024ChangeMe!SuperSecureInProduction
       - DB_ADMIN_USER=root
       - DB_ADMIN_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      - SOCKET_SERVICE_URL=http://restpoint_socketio_service:5000
     env_file:
       - .env
     networks:

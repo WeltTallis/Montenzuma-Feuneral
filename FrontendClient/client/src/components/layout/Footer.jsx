@@ -199,7 +199,11 @@ const Footer = ({ goTerms }) => {
                     .footer-container {
                         background: #000000;
                         color: ${C.grayLight};
-                        padding: 0;
+                        /* Breathing room above the footer content — without it the
+                           first row sits flush against the top border ("raised" look). */
+                        padding: clamp(3.5rem, 7vw, 5.5rem) 0 0;
+                        width: 100%;
+                        margin: 0;
                         border-top: 1px solid ${C.lineDark};
                         position: relative;
                         overflow: visible;

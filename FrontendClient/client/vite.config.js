@@ -39,6 +39,15 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          // CRITICAL: only group THIRD-PARTY code from node_modules. Returning
+          // a chunk name for APP source merged every lazy() route page into the
+          // entry bundle (~3.6 MB) and made the production app load slowly.
+          // App code must return undefined so Vite's default code-splitting
+          // emits one chunk per lazy route.
+          if (!id.includes('node_modules')) {
+            return undefined;
+          }
+
           if (id.includes('/react/') ||
             id.includes('/react-dom/') ||
             id.includes('/react-router-dom/')) {

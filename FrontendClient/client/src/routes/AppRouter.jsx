@@ -40,7 +40,6 @@ const BestSACCOWelfareSoftware = lazy(() => import('../modules/compare/BestSACCO
 
 // Tools and Resources
 const NairobiFuneralWelfare = lazy(() => import('../modules/locations/NairobiFuneralWelfare'));
-
 const CalculatorsPage = lazy(() => import('../modules/resources/CalculatorsPage'));
 const TemplatesPage = lazy(() => import('../modules/resources/TemplatesPage'));
 const GlossaryPage = lazy(() => import('../modules/resources/GlossaryPage'));
@@ -101,9 +100,7 @@ const BodyIntakePreview = lazy(() => import('../components/deceased/register/dec
 const FlowerBookingsPreview = lazy(() => import('../components/florists/FlowerBookingsNew'));
 const ReleaseFormPreview = lazy(() => import('../components/releaseform/ReleaseFormPage'));
 const ReceptionPortalPreview = lazy(() => import('../components/reception/ReceptionPortal'));
-
 const PublicMemorialPage = lazy(() => import('../components/memorial/PublicMemorialPage'));
-
 
 
 const ChemicalManagementDashboard = lazy(() => import('../components/chemicals/chemicals'));
@@ -223,7 +220,7 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
           onLogout={handleLogout} 
           onToggle={handleSidebarToggle} 
         />
-        <main style={{ flex: 1, marginLeft, padding: contentPadding, background: '#F7F9FB', transition: 'margin-left 0.3s ease, padding 0.3s ease', minHeight: '100dvh' }}>
+        <main style={{ flex: 1, marginLeft, padding: contentPadding, background: '#F7F9FB', transition: 'margin-left 0.3s ease, padding 0.3s ease' }}>
           <Suspense fallback={<RouteLoadingFallback />}>{children}</Suspense>
         </main>
       </div>
