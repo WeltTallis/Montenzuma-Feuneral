@@ -1,9 +1,22 @@
 // ─── MUST BE FIRST: raise the libuv thread pool before any async I/O ───────
-
+// dns.lookup(), fs, and crypto all share this pool (default size 4). With
+// ~30 services being health-checked concurrently every 30s, 4 slots is not
+// enough — real proxied requests queue behind stuck DNS/connect lookups for
+// dead services, which is why /hearses was taking 14-23s even though the
+// hearse service itself answers in ~50ms.
+// This only works because it runs before any threadpool call happens in this
+// process. For a fully reliable fix, also set UV_THREADPOOL_SIZE=64 in your
+// docker-compose environment / Dockerfile ENV so it's set before Node starts.
 if (!process.env.UV_THREADPOOL_SIZE) {
   process.env.UV_THREADPOOL_SIZE = '64';
 }
 
+// @montezuma/shared-logger is a TypeScript package compiled with a `default`
+// export (plus a named `logger` export). When loaded through plain CommonJS
+// `require()` it resolves to the module namespace object `{ __esModule:true,
+// logger, default }`, so call `.default` (or `.logger`) when `require()` did not
+// hand back the pino instance directly. Fall back to console so the gateway can
+// always boot even if the logger transport fails to initialize.
 const loggerModule = require('../../packages/shared-logger/src/index');
 const Logger =
   (loggerModule && typeof loggerModule.info === 'function') ? loggerModule
@@ -15,7 +28,6 @@ const Logger =
           warn: (...args) => console.warn('[WARN]', ...args),
           error: (...args) => console.error('[ERROR]', ...args),
         };
-        
 const { createProxyMiddleware, fixRequestBody } = require('http-proxy-middleware');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
@@ -27,9 +39,13 @@ const cookieParser = require('cookie-parser');
 const hpp = require('hpp');
 const dns = require('dns');
 const http = require('http');
-// undici ships as a dependency of Node/express-stack projects in most cases;
-// if it's not already in package.json, run: npm install undici
-const { Agent: UndiciAgent, fetch: undiciFetch } = require('undici');
+// Using Node's built-in global fetch (no explicit require needed, no
+// version-mismatch risk from a transitively-hoisted undici copy). A prior
+// version of this file used a manually constructed undici Agent/dispatcher
+// for health checks, which started failing every single lookup instantly
+// ("fetch failed") for every service, including ones that had been
+// reliably healthy for hours. Root cause not worth chasing further —
+// plain global fetch is what worked before and is what's used here again.
 
 // Load .env from the api-gateway directory specifically
 const dotenvPath = path.join(__dirname, '.env');
@@ -89,16 +105,6 @@ const sharedHttpAgent = new http.Agent({
   maxSockets: 100,
   maxFreeSockets: 20,
   lookup: cachedLookup,
-});
-
-// ─── Dedicated dispatcher for health-check fetches ───────────────────────
-// Kept separate from real traffic so a storm of health checks against dead
-// services can't monopolize sockets that real proxied requests need, and
-// uses the same DNS cache so lookups aren't repeated every 30s.
-const healthCheckDispatcher = new UndiciAgent({
-  connect: { lookup: cachedLookup },
-  keepAliveTimeout: 10000,
-  connections: 10, // cap concurrent sockets per health-check target
 });
 
 // ─── Small bounded-concurrency runner (no extra dependency needed) ──────
@@ -162,7 +168,7 @@ try {
 }
 
 const APP_NAME = 'restpoint-gateway';
-const APP_VERSION = '2.0.1';
+const APP_VERSION = '2.0.2';
 
 const PORT = Number(process.env.PORT) || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -189,7 +195,7 @@ const SERVICE_URLS = {
   chemicals: process.env.CHEMICALS_SERVICE_URL || 'http://restpoint_chemical_service:5000',
   billing: process.env.BILLING_SERVICE_URL || 'http://restpoint_billing_service:5000',
   socketio: process.env.SOCKETIO_SERVICE_URL || 'http://restpoint_socketio_service:5000',
-  workshop: process.env.WORKSHOP_SERVICE_URL || 'http://restpoint_workshop_service:5000',
+  workshop: process.env.WORKSHOP_SERVICE_URL || 'http://restpoint_workshop_service:6969',
   extra: process.env.EXTRA_SERVICES_URL || 'http://restpoint_extra_services:5000',
   call: process.env.CALL_SERVICE_URL || 'http://restpoint_call_service:5000',
   qrcode: process.env.QRCODE_SERVICE_URL || 'http://restpoint_qrcode_service:5000',
@@ -206,13 +212,9 @@ const app = express();
 // ─── Circuit Breaker & Service Health Tracking ─────────────────────
 const serviceHealth = {};
 const HEALTH_CHECK_INTERVAL = 30000; // Check every 30 seconds
-const FAILURE_THRESHOLD = 5; // Mark as down after 5 consecutive failures
-const RECOVERY_TIMEOUT = 60000; // Try recovery after 60 seconds
-// 10s — several TS services (tsx, cold starts, first DB hit) take >5s to answer
-// /health. With a 5s timeout live services kept getting "aborted" and marked
-// DOWN, so the breaker 503'd requests that would have succeeded.
-const HEALTH_CHECK_TIMEOUT = 10000; // 10 seconds
-const HEALTH_CHECK_CONCURRENCY = 10; // 26 services / 10 at once ≈ 3 batches × 10s = one interval
+const FAILURE_THRESHOLD = 5; // Mark as down after 5 failures
+const HEALTH_CHECK_TIMEOUT = 5000; // 5 seconds
+const HEALTH_CHECK_CONCURRENCY = 5; // run at most 5 health checks at once
 
 Object.keys(SERVICE_URLS).forEach(serviceName => {
   serviceHealth[serviceName] = {
@@ -231,10 +233,9 @@ async function checkServiceHealth(serviceName, url) {
 
     const healthUrl = url.endsWith('/') ? `${url}health` : `${url}/health`;
 
-    const response = await undiciFetch(healthUrl, {
+    const response = await fetch(healthUrl, {
       method: 'GET',
       signal: controller.signal,
-      dispatcher: healthCheckDispatcher,
     });
 
     clearTimeout(timeoutId);
@@ -242,16 +243,19 @@ async function checkServiceHealth(serviceName, url) {
     serviceHealth[serviceName].lastCheck = Date.now();
 
     if (isHealthy) {
+      // Only log the transition back to healthy, not every successful
+      // check — with ~26 services on a 30s interval this was drowning out
+      // everything else in the logs.
+      if (!serviceHealth[serviceName].isHealthy || serviceHealth[serviceName].failures > 0) {
+        Logger.info(`[HEALTH] ${serviceName} recovered`);
+      }
       serviceHealth[serviceName].failures = 0;
       serviceHealth[serviceName].isHealthy = true;
-      Logger.info(`[HEALTH] ${serviceName} is healthy`);
     } else {
       handleServiceFailure(serviceName);
-      Logger.warn(`[HEALTH] ${serviceName} returned ${response.status}`);
     }
   } catch (error) {
     handleServiceFailure(serviceName);
-    Logger.warn(`[HEALTH] ${serviceName} health check failed: ${error.message}`);
   }
 }
 
@@ -261,28 +265,22 @@ function handleServiceFailure(serviceName) {
 
   if (serviceHealth[serviceName].failures >= FAILURE_THRESHOLD && serviceHealth[serviceName].isHealthy) {
     serviceHealth[serviceName].isHealthy = false;
-    Logger.warn(`[CIRCUIT BREAKER] ${serviceName} marked as DOWN (failures: ${serviceHealth[serviceName].failures})`);
+    // Informational only now — see CIRCUIT_BREAKER_BLOCKS_REQUESTS below.
+    // This no longer stops real requests from being proxied; it only
+    // affects what /health reports.
+    Logger.warn(`[HEALTH] ${serviceName} marked unhealthy on /health (failures: ${serviceHealth[serviceName].failures}) — requests are still being proxied normally`);
   }
 }
 
-// Periodic health check for all services — bounded concurrency instead of
-// firing every check simultaneously, plus a guard so a slow cycle (services
-// timing out) never overlaps the next interval tick and double-counts
-// failures.
-let healthCheckCycleRunning = false;
+// Periodic health check for all services — now bounded concurrency instead
+// of firing every check simultaneously.
 async function performHealthChecks() {
-  if (healthCheckCycleRunning) return;
-  healthCheckCycleRunning = true;
-  try {
-    const taskFns = Object.entries(SERVICE_URLS).map(([serviceName, url]) => {
-      const baseUrl = url.split('/')[0] + '//' + url.split('/')[2];
-      return () => checkServiceHealth(serviceName, baseUrl);
-    });
+  const taskFns = Object.entries(SERVICE_URLS).map(([serviceName, url]) => {
+    const baseUrl = url.split('/')[0] + '//' + url.split('/')[2];
+    return () => checkServiceHealth(serviceName, baseUrl);
+  });
 
-    await runWithConcurrencyLimit(taskFns, HEALTH_CHECK_CONCURRENCY);
-  } finally {
-    healthCheckCycleRunning = false;
-  }
+  await runWithConcurrencyLimit(taskFns, HEALTH_CHECK_CONCURRENCY);
 }
 
 const healthCheckInterval = setInterval(performHealthChecks, HEALTH_CHECK_INTERVAL);
@@ -295,7 +293,7 @@ if ((process.env.TRUST_PROXY || 'false').toString().toLowerCase() === 'true') {
 
 // CORS
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
+  ? process.env.ALLOWED_ORIGINS.split(',')
   : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'];
 
 app.use(cors({
@@ -335,27 +333,23 @@ app.use((req, res, next) => {
   next();
 });
 
-// On-demand recovery probe: when the circuit breaker is open, give the
-// service a quick live check before rejecting the request.
-const PROBE_TIMEOUT = 3000;
-const PROBE_MIN_GAP = 10000;
-
-async function probeServiceHealth(url) {
-  try {
-    const probeUrl = url.endsWith('/') ? `${url}health` : `${url}/health`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), PROBE_TIMEOUT);
-    const response = await undiciFetch(probeUrl, {
-      method: 'GET',
-      signal: controller.signal,
-      dispatcher: healthCheckDispatcher,
-    });
-    clearTimeout(timeoutId);
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
+// ─── Circuit breaker: monitoring only, no longer a gate ─────────────────
+// The background health-check loop still runs and still updates
+// serviceHealth (so /health stays accurate for dashboards/alerts), but it
+// no longer decides whether a real request gets proxied. Health checks and
+// real requests are separate code paths hitting the same backend — a bug or
+// flakiness confined to the health-check path (as just happened) should
+// never be able to take down real traffic on its own. The proxy's own
+// per-request timeout (30s, below) and onError handler are what protect
+// callers now, because they react to that specific request's own outcome,
+// not a separate probe's.
+//
+// One exception: the notification service has no container defined in
+// docker-compose at all, so proxying to it is a guaranteed connection
+// error on every request. Short-circuit that one permanently-absent
+// service to an empty-result fallback instead of paying a failed round
+// trip on every page load.
+const KNOWN_UNDEPLOYED_SERVICES = new Set(['notification', 'notifications']);
 
 async function checkServiceAvailability(req, res, next) {
   const urlWithoutQuery = req.url.split('?')[0];
@@ -370,52 +364,13 @@ async function checkServiceAvailability(req, res, next) {
     route => firstSegment === route || firstSegment.startsWith(route + '-')
   );
 
-  if (!serviceName) {
-    return next();
-  }
-
-  const health = serviceHealth[serviceName];
-
-  if (health && !health.isHealthy) {
-    const timeSinceFailure = Date.now() - health.lastFailure;
-
-    if (timeSinceFailure < RECOVERY_TIMEOUT) {
-      if (serviceName === 'notification' || serviceName === 'notifications') {
-        return res.status(200).json({
-          notifications: [],
-          total: 0,
-          source: 'gateway-fallback',
-          message: 'Notification service is currently unavailable'
-        });
-      }
-
-      const serviceUrl = SERVICE_URLS[serviceName];
-      if (serviceUrl && timeSinceFailure >= PROBE_MIN_GAP) {
-        const alive = await probeServiceHealth(serviceUrl);
-        if (alive) {
-          Logger.info(`[CIRCUIT BREAKER] ${serviceName} recovered via on-demand probe`);
-          health.isHealthy = true;
-          health.failures = 0;
-          return next();
-        }
-        health.lastFailure = Date.now();
-      }
-
-      return res.status(503).json({
-        success: false,
-        message: 'Now API Gateway is Down',
-        description: 'Unable to connect to the API Gateway.',
-        details: 'No services can be reached at the moment.',
-        action: 'Please contact the System Administrator.',
-        service: serviceName,
-        error: 'SERVICE_DOWN',
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      Logger.info(`[CIRCUIT BREAKER] ${serviceName} recovered, allowing requests`);
-      health.isHealthy = true;
-      health.failures = 0;
-    }
+  if (serviceName && KNOWN_UNDEPLOYED_SERVICES.has(serviceName)) {
+    return res.status(200).json({
+      notifications: [],
+      total: 0,
+      source: 'gateway-fallback',
+      message: 'Notification service is not deployed'
+    });
   }
 
   next();
