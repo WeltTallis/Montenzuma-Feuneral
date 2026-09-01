@@ -20,6 +20,27 @@ const {
 const { protect, authorizeAny } = require('../../services/app-global/middlewares/authMiddleware');
 const router = express.Router();
 
+// Multer for supporting-document uploads. Files land in uploads/leave-documents,
+// which matches the /uploads static mount in server.js and the
+// /uploads/leave-documents/<file> path written by uploadDocument.
+const multer = require('multer');
+const path = require('path');
+const documentStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    const dir = path.join(__dirname, 'uploads', 'leave-documents');
+    require('fs').mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (_req, file, cb) => {
+    const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, `${Date.now()}-${safe}`);
+  },
+});
+const documentUpload = multer({
+  storage: documentStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
+
 // ============================================
 // LEAVE REQUESTS
 // ============================================
@@ -43,7 +64,7 @@ router.patch('/:id/status', updateLeaveStatus);
 router.patch('/:id/cancel', cancelLeave);
 
 // Upload supporting document
-router.post('/:id/upload-document', uploadDocument);
+router.post('/:id/upload-document', documentUpload.single('document'), uploadDocument);
 
 // ============================================
 // LEAVE DAY MANAGEMENT (Admin)

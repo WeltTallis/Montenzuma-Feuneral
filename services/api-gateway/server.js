@@ -340,7 +340,7 @@ app.use((req, res, next) => {
 // real requests are separate code paths hitting the same backend — a bug or
 // flakiness confined to the health-check path (as just happened) should
 // never be able to take down real traffic on its own. The proxy's own
-// per-request timeout (30s, below) and onError handler are what protect
+// per-request timeout (30s, below) and error handler are what protect
 // callers now, because they react to that specific request's own outcome,
 // not a separate probe's.
 //
@@ -436,6 +436,15 @@ const SERVICE_ROUTES = {
 // Create proxy instances for each unique target URL (cached), now sharing
 // the keep-alive agent + DNS cache instead of opening a fresh connection
 // (and DNS lookup) per request.
+//
+// NOTE: http-proxy-middleware v2+ moved the request/response/error hooks
+// from top-level `onProxyReq` / `onProxyRes` / `onError` options into a
+// nested `on: { proxyReq, proxyRes, error }` object. Passing the old
+// top-level keys on v2+ is *silently ignored* — no warning, no crash — which
+// means fixRequestBody() never runs (POST bodies get dropped) and the
+// library falls back to its own generic error handler, which is exactly
+// what produced the bare "Error occurred while trying to proxy: <host>"
+// 500 response instead of the JSON 503 below. Using `on: {}` fixes both.
 const proxyCache = {};
 for (const targetUrl of Object.values(SERVICE_ROUTES)) {
   if (!proxyCache[targetUrl]) {
@@ -446,62 +455,65 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
       agent: sharedHttpAgent,
       proxyTimeout: 30000,
       timeout: 30000,
-      onProxyReq: (proxyReq, req, res) => {
-        if (req.headers.authorization) proxyReq.setHeader('Authorization', req.headers.authorization);
-        if (req.headers['x-tenant-slug']) proxyReq.setHeader('x-tenant-slug', req.headers['x-tenant-slug']);
-        if (req.headers['x-tenant-id']) proxyReq.setHeader('x-tenant-id', req.headers['x-tenant-id']);
-        if (req.headers['x-user-id']) proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
-        if (req.headers['x-branch-slug']) proxyReq.setHeader('x-branch-slug', req.headers['x-branch-slug']);
-        if (req.headers['x-branch-id']) proxyReq.setHeader('x-branch-id', req.headers['x-branch-id']);
-        // Re-stream the already-consumed body safely. The previous manual
-        // JSON.stringify + proxyReq.write() here is a known-fragile pattern
-        // with http-proxy-middleware: it can throw "write after end" or
-        // leave the proxied socket in a bad state for certain payloads,
-        // which surfaces to the client as a 502 from the front-end reverse
-        // proxy (the gateway process resets the connection mid-request).
-        // fixRequestBody is the library's own helper for this exact problem.
-        try {
-          fixRequestBody(proxyReq, req);
-        } catch (bodyErr) {
-          Logger.error(`[PROXY] Failed to re-stream body for ${req.method} ${req.originalUrl}: ${bodyErr.message}`);
-        }
-      },
-      onProxyRes: (proxyRes, req, res) => {
-        Logger.debug(`[PROXY] ${req.method} ${req.originalUrl} → ${proxyRes.statusCode}`);
-        const origin = req.headers.origin;
-        if (origin && allowedOrigins.includes(origin)) {
-          proxyRes.headers['Access-Control-Allow-Origin'] = origin;
-          proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
-          if (proxyRes.headers['Access-Control-Allow-Origin'] === '*') {
+      on: {
+        proxyReq: (proxyReq, req, res) => {
+          if (req.headers.authorization) proxyReq.setHeader('Authorization', req.headers.authorization);
+          if (req.headers['x-tenant-slug']) proxyReq.setHeader('x-tenant-slug', req.headers['x-tenant-slug']);
+          if (req.headers['x-tenant-id']) proxyReq.setHeader('x-tenant-id', req.headers['x-tenant-id']);
+          if (req.headers['x-user-id']) proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
+          if (req.headers['x-branch-slug']) proxyReq.setHeader('x-branch-slug', req.headers['x-branch-slug']);
+          if (req.headers['x-branch-id']) proxyReq.setHeader('x-branch-id', req.headers['x-branch-id']);
+          // Re-stream the already-consumed body safely. A manual
+          // JSON.stringify + proxyReq.write() here is a known-fragile
+          // pattern with http-proxy-middleware: it can throw "write after
+          // end" or leave the proxied socket in a bad state for certain
+          // payloads, which surfaces to the client as a 502/500 (the
+          // gateway process resets the connection mid-request).
+          // fixRequestBody is the library's own helper for this exact
+          // problem.
+          try {
+            fixRequestBody(proxyReq, req);
+          } catch (bodyErr) {
+            Logger.error(`[PROXY] Failed to re-stream body for ${req.method} ${req.originalUrl}: ${bodyErr.message}`);
+          }
+        },
+        proxyRes: (proxyRes, req, res) => {
+          Logger.debug(`[PROXY] ${req.method} ${req.originalUrl} → ${proxyRes.statusCode}`);
+          const origin = req.headers.origin;
+          if (origin && allowedOrigins.includes(origin)) {
             proxyRes.headers['Access-Control-Allow-Origin'] = origin;
+            proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+            if (proxyRes.headers['Access-Control-Allow-Origin'] === '*') {
+              proxyRes.headers['Access-Control-Allow-Origin'] = origin;
+            }
           }
-        }
-      },
-      onError: (err, req, res) => {
-        Logger.error(`[PROXY ERROR] ${req.method} ${req.originalUrl}: ${err.message}`);
-        if (!res.headersSent) {
-          const firstSegment = (req.originalUrl || req.url || '').split('/').filter(Boolean)[2] || 'unknown';
-          const friendlyName = firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1);
+        },
+        error: (err, req, res) => {
+          Logger.error(`[PROXY ERROR] ${req.method} ${req.originalUrl}: ${err.message}`);
+          if (!res.headersSent) {
+            const firstSegment = (req.originalUrl || req.url || '').split('/').filter(Boolean)[2] || 'unknown';
+            const friendlyName = firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1);
 
-          const serviceName = Object.keys(SERVICE_ROUTES).find(
-            route => firstSegment === route || firstSegment.startsWith(route + '-')
-          );
-          if (serviceName) {
-            handleServiceFailure(serviceName);
+            const serviceName = Object.keys(SERVICE_ROUTES).find(
+              route => firstSegment === route || firstSegment.startsWith(route + '-')
+            );
+            if (serviceName) {
+              handleServiceFailure(serviceName);
+            }
+
+            res.status(503).json({
+              success: false,
+              message: 'Now API Gateway is Down',
+              description: 'Unable to connect to the API Gateway.',
+              details: 'No services can be reached at the moment.',
+              action: 'Please contact the System Administrator.',
+              service: firstSegment,
+              serviceName: friendlyName,
+              error: err.code,
+              target: targetUrl,
+              timestamp: new Date().toISOString()
+            });
           }
-
-          res.status(503).json({
-            success: false,
-            message: 'Now API Gateway is Down',
-            description: 'Unable to connect to the API Gateway.',
-            details: 'No services can be reached at the moment.',
-            action: 'Please contact the System Administrator.',
-            service: firstSegment,
-            serviceName: friendlyName,
-            error: err.code,
-            target: targetUrl,
-            timestamp: new Date().toISOString()
-          });
         }
       }
     });
