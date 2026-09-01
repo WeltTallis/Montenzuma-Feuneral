@@ -26,10 +26,37 @@ const fmtDateShort = (d) =>
 
 const genId = (id) => `BK-${String(id).padStart(4, '0')}`;
 
+// Resolve the TENANT-level id (never branch-scoped) — hearses & hearse
+// bookings live in ONE shared operations DB and must be scoped by tenant id
+// so all branches of a multi-branch tenant share one fleet & one booking list.
+const resolveTenantId = () => {
+    const direct = localStorage.getItem('tenantId');
+    if (direct && direct !== 'undefined' && direct !== 'null') return direct;
+    try {
+        const u = JSON.parse(localStorage.getItem('user') || '{}');
+        const fromUser = u.tenantId || u.tenant_id || u.tenant?.id || u.tenant?.tenantId;
+        if (fromUser) return String(fromUser);
+    } catch { /* ignore */ }
+    // Last resort: read the tenant id straight from the auth token payload.
+    try {
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+        const part = token.split('.')[1];
+        if (part) {
+            const payload = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
+            if (payload?.tenantId) return String(payload.tenantId);
+        }
+    } catch { /* ignore */ }
+    return null;
+};
+
 const getAuthHeaders = () => {
     const slug = getTenantSlug();
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     const headers = { 'x-tenant-slug': slug };
+    // ALWAYS send the tenant id — this is what scopes bookings to this tenant
+    // across every branch in the shared operations database.
+    const tenantId = resolveTenantId();
+    if (tenantId) headers['x-tenant-id'] = tenantId;
     if (token) headers['Authorization'] = `Bearer ${token}`;
     return headers;
 };
@@ -48,7 +75,9 @@ function relativeDate(dateStr) {
     const diffMs = tStart - nStart;
     const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
-    const timeStr = target.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const timeStr = (/\d+:\d{2}/.test(String(dateStr)) || String(dateStr).includes('T'))
+        ? target.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+        : '';
     const fullDate = target.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
     if (diffDays === 0) return { label: 'Today', sub: timeStr, urgency: 'now', full: fullDate, color: '#10B981' };
@@ -61,8 +90,74 @@ function relativeDate(dateStr) {
     return { label: fullDate, sub: timeStr, urgency: 'later', full: fullDate, color: '#64748B' };
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// Nairobi date key for a Date object → 'YYYY-MM-DD'
+const todayKey = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+// Extract every scheduled day (YYYY-MM-DD) for a booking. booking_dates is a
+// JSON array of day strings — normalize every legacy shape we may encounter.
+function bookingDateKeys(b) {
+    if (!b) return [];
+    const raw = b.booking_dates || b.dates || b.booking_date || b.event_date || b.scheduled_date || b.pickup_date || b.date;
+    if (Array.isArray(raw)) {
+        return raw
+            .map(x => (x && typeof x === 'object') ? (x.date || x.start_date || x.booking_date) : x)
+            .filter(Boolean)
+            .map(x => String(x).slice(0, 10));
+    }
+    if (typeof raw === 'string' && raw.trim()) {
+        const t = raw.trim();
+        if (t.startsWith('[')) {
+            try {
+                return JSON.parse(t)
+                    .map(x => (x && typeof x === 'object') ? (x.date || x.start_date || x.booking_date) : x)
+                    .filter(Boolean)
+                    .map(x => String(x).slice(0, 10));
+            } catch { return [t.slice(0, 10)]; }
+        }
+        return [t.slice(0, 10)];
+    }
+    return [];
+}
+
+// Classify a booking for the driver trip feed:
+//   'upcoming' → any scheduled day is inside the next-24h window (today/tomorrow)
+//   'overdue'  → every scheduled day has passed but the trip is still open
+//   null       → not relevant (too far out, or done / cancelled / postponed)
+function tripKind(b, now) {
+    const st = String(b.status || '').toLowerCase();
+    if (['completed', 'cancelled', 'postponed'].includes(st)) return null;
+
+    const keys = bookingDateKeys(b);
+    if (!keys.length) return null;
+
+    const today = todayKey(now);
+    const [y, m, d] = today.split('-').map(Number);
+    const tomorrow = todayKey(new Date(y, m - 1, d + 1));
+
+    let upcoming = false;
+    let allPast = true;
+    for (const k of keys) {
+        if (k === today || k === tomorrow) upcoming = true;
+        if (k >= today) allPast = false;
+    }
+    if (upcoming) return 'upcoming';
+    return allPast ? 'overdue' : null;
+}
+
+// Sort handle: earliest scheduled day of the booking as a time ms.
+function tripTimeMs(b) {
+    const keys = bookingDateKeys(b).sort();
+    return keys.length ? new Date(`${keys[0]}T00:00:00`).getTime() : Infinity;
+}
+
+// Primary trip date — always the real scheduled day when available.
 function getTripDate(b) {
-    return b.scheduled_date || b.pickup_date || b.booking_date || b.date || b.created_at || null;
+    const keys = bookingDateKeys(b);
+    if (keys.length) return keys[0];
+    return b.created_at || null;
 }
 
 const useGreeting = () => {
@@ -77,7 +172,7 @@ const useGreeting = () => {
     if (h >= 5 && h < 12) { text = 'Good Morning'; icon = Sun; sub = 'Ready for a safe drive today'; }
     else if (h >= 12 && h < 17) { text = 'Good Afternoon'; icon = CloudSun; sub = 'Keep the momentum going'; }
     else if (h >= 17 && h < 20) { text = 'Good Evening'; icon = Moon; sub = 'Wrapping up the day'; }
-    else if (h >= 20 && h < 23) { text = 'Good Evening'; icon = Moon; sub: 'Safe travels home'; }
+    else if (h >= 20 && h < 23) { text = 'Good Evening'; icon = Moon; sub = 'Safe travels home'; }
     else { text = 'Working Late'; icon = Moon; sub = 'Take care on the road'; }
 
     return {
@@ -310,7 +405,7 @@ const DateBadge = ({ booking }) => {
     );
 };
 
-const TripCard = ({ booking, onStatusChange, i }) => {
+const TripCard = ({ booking, onStatusChange, i, overdue }) => {
     const b = booking;
     const sc = STATUS[b.status] || {};
     const accent = sc.color || T.primary;
@@ -339,7 +434,14 @@ const TripCard = ({ booking, onStatusChange, i }) => {
                             </div>
                         </div>
                     </div>
-                    <Pill status={b.status} />
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                        <Pill status={b.status} />
+                        {overdue && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 8, background: `${T.danger}12`, border: `1px solid ${T.danger}35`, color: T.danger, fontSize: '.55rem', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                                <AlertCircle size={10} strokeWidth={2.5} /> Overdue
+                            </span>
+                        )}
+                    </div>
                 </div>
 
                 <DateBadge booking={b} />
@@ -566,6 +668,12 @@ const DriverPortal = () => {
         };
     }, [loadB, socket, connected]);
 
+    // Keep the 24h trip feed fresh automatically.
+    useEffect(() => {
+        const t = setInterval(() => loadB(true), 5 * 60 * 1000);
+        return () => clearInterval(t);
+    }, [loadB]);
+
     const changeStatus = async (id, s) => {
         try {
             const h = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
@@ -583,9 +691,19 @@ const DriverPortal = () => {
         sessionStorage.clear(); navigate('/login');
     };
 
-    const active = bookings.filter(b => !['completed', 'cancelled', 'postponed'].includes(b.status));
+    // Only trips that matter to the driver RIGHT NOW:
+    //   • scheduled inside the next-24h window, or
+    //   • past bookings whose status is still open (not completed).
+    const nowN = getNairobiNow();
+    const rated = bookings
+        .map(b => ({ b, kind: tripKind(b, nowN) }))
+        .filter(x => x.kind)
+        .sort((a, z) => (a.kind === z.kind ? tripTimeMs(a.b) - tripTimeMs(z.b) : a.kind === 'upcoming' ? -1 : 1));
+    const active = rated.map(x => x.b);
+    const upcomingCount = rated.filter(x => x.kind === 'upcoming').length;
+    const overdueCount = rated.filter(x => x.kind === 'overdue').length;
+    const overdueIds = new Set(rated.filter(x => x.kind === 'overdue').map(x => x.b.booking_id));
     const transit = bookings.filter(b => b.status === 'in_transit').length;
-    const done = bookings.filter(b => b.status === 'completed').length;
     const first = user?.name ? user.name.split(' ')[0] : 'Driver';
 
     return (
@@ -658,9 +776,12 @@ const DriverPortal = () => {
 
                     {active.length > 0 && (
                         <div style={{ marginTop: 20, padding: '14px 16px', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: T.warning, flexShrink: 0, boxShadow: `0 0 10px ${T.warning}` }} />
+                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: upcomingCount > 0 ? T.warning : T.danger, flexShrink: 0, boxShadow: `0 0 10px ${upcomingCount > 0 ? T.warning : T.danger}` }} />
                             <span style={{ fontSize: '.8rem', color: T.text, fontWeight: 500 }}>
-                                <strong>{active.length}</strong> trip{active.length !== 1 ? 's' : ''} waiting for you
+                                <strong>{upcomingCount}</strong> trip{upcomingCount !== 1 ? 's' : ''} in the next 24h
+                                {overdueCount > 0 && (
+                                    <span style={{ color: T.textDim }}> · <strong style={{ color: T.danger }}>{overdueCount}</strong> past open</span>
+                                )}
                             </span>
                             <ArrowRight size={14} style={{ color: T.textMute, marginLeft: 'auto' }} />
                         </div>
@@ -669,9 +790,9 @@ const DriverPortal = () => {
 
                 {/* ─── STATS ─── */}
                 <div className="anim-up" style={{ display: 'flex', gap: 12, marginBottom: 28, animationDelay: '.06s' }}>
-                    <StatCard value={active.length} label="Active" color={T.warning} icon={Zap} pulse={active.length > 0} />
+                    <StatCard value={upcomingCount} label="Next 24h" color={T.warning} icon={Zap} pulse={upcomingCount > 0} />
                     <StatCard value={transit} label="En Route" color={T.info} icon={Navigation} />
-                    <StatCard value={done} label="Done" color={T.success} icon={CheckCircle} />
+                    <StatCard value={overdueCount} label="Overdue Open" color={T.danger} icon={AlertCircle} pulse={overdueCount > 0} />
                 </div>
 
                 {/* ─── TABS ─── */}
@@ -702,8 +823,8 @@ const DriverPortal = () => {
                 <div className="anim-up" style={{ animationDelay: '.12s' }}>
                     {tab === 'bookings' ? (
                         loadingB ? <Loading text="Loading trips..." /> :
-                        active.length === 0 ? <Empty icon={Car} title="All Clear" sub="No active trips right now. You'll be notified when a new one is assigned." /> :
-                        active.map((b, i) => <TripCard key={b.booking_id} booking={b} onStatusChange={changeStatus} i={i} />)
+                        active.length === 0 ? <Empty icon={Car} title="All Clear" sub="No trips in the next 24 hours and no open past trips right now. You'll be notified when a new one is assigned." /> :
+                        active.map((b, i) => <TripCard key={b.booking_id} booking={b} onStatusChange={changeStatus} i={i} overdue={overdueIds.has(b.booking_id)} />)
                     ) : (
                         loadingL ? <Loading text="Loading leaves..." /> :
                         leaves.length === 0 ? <Empty icon={Calendar} title="No Leaves" sub="No leave requests submitted yet." /> :

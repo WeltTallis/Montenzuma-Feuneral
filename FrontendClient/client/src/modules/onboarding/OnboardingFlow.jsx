@@ -1,26 +1,29 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Menu, X, ArrowRight, Eye, EyeOff, Upload, Plus, Trash2, Check, AlertCircle } from '../../utils/icons/icons';
+import { ArrowRight, Eye, EyeOff, Upload, Plus, Trash2, Check, AlertCircle, Phone } from '../../utils/icons/icons';
 import api from '../../api/axios';
 import { io } from 'socket.io-client';
 import Footer from '../../components/layout/Footer';
 import env from '../../utils/config/env';
 
 const C = {
-  ink: '#15171A',
+  ink: '#08090A',
+  inkSoft: '#111315',
+  inkBorder: 'rgba(255,255,255,0.08)',
   bone: '#FAF8F4',
   bone2: '#F3EFE6',
+  line: '#E5E7EB',
+  lineDark: '#D1D5DB',
+  text: '#111827',
+  textDim: '#6B7280',
+  textMute: '#9CA3AF',
   brass: '#8B7355',
   brassLight: '#A98F6E',
   verdigris: '#3D4F47',
   verdigrisDark: '#2E3F37',
   verdigrisLight: '#4D6359',
-  verdigrisTint: '#EBEFEF',
-  line: '#E3DDD0',
-  lineDark: 'rgba(250,248,244,0.14)',
+  verdigrisGlow: 'rgba(61, 79, 71, 0.15)',
   gray: '#6B6862',
-  grayLight: 'rgba(250,248,244,0.62)',
-  accent: '#C77B5E',
   red: '#9B4A3F',
   redBg: '#F7ECE9',
   success: '#475A43',
@@ -28,12 +31,14 @@ const C = {
 };
 
 const STEPS = [
-  { key: 'org', label: 'Organization', description: 'Basic details' },
+  { key: 'org', label: 'Org Details', description: 'Basic information' },
   { key: 'security', label: 'Security', description: 'Create password' },
-  { key: 'review', label: 'Review', description: 'Verify info' },
+  { key: 'review', label: 'Review', description: 'Verify & confirm' },
 ];
 
 const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const validatePhone = (phone) => /^(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3,4}[-.\s]?\d{4}$/.test(phone.replace(/\s/g, ''));
+
 const validatePassword = (password) => {
   const errors = [];
   if (password.length < 8) errors.push('8+ characters');
@@ -63,97 +68,7 @@ const getPasswordStrengthText = (strength) => {
   return texts[strength] || 'Strong';
 };
 
-const Mark = ({ size = 28, color = C.verdigris }) => (
-  <svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
-    <circle cx="16" cy="16" r="15" stroke={color} strokeWidth="1.5" />
-    <path d="M16 8V24M8 16H24" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-    <circle cx="16" cy="16" r="3.5" fill={color} />
-  </svg>
-);
-
-const useOutsideClick = (ref, callback) => {
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) callback();
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [ref, callback]);
-};
-
-const PolicyDropdown = ({ navigate, goTerms }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useOutsideClick(ref, () => setOpen(false));
-
-  const policies = [
-    { label: 'Terms of Service', onClick: goTerms },
-    { label: 'Privacy Policy', onClick: () => navigate('/privacy') },
-    { label: 'Security Policy', onClick: () => navigate('/security') },
-    { label: 'Data Migration Policy', onClick: () => navigate('/data-migration') },
-    { label: 'SLA Policy', onClick: () => navigate('/sla') },
-    { label: 'Release Notes', onClick: () => navigate('/releases') },
-    { label: 'Account Deletion', onClick: () => navigate('/account-deletion') },
-  ];
-
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button onClick={() => setOpen(!open)} className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-        Policies<ChevronDown size={14} style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }} />
-      </button>
-      {open && (
-        <div className="dropdown-menu">
-          {policies.map((p, i) => (
-            <button key={i} onClick={() => { p.onClick(); setOpen(false); }} className="dropdown-item">
-              {p.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useOutsideClick(ref, () => setOpen(false));
-
-  const policies = [
-    { label: 'Terms of Service', onClick: goTerms },
-    { label: 'Privacy Policy', onClick: () => navigate('/privacy') },
-    { label: 'Data Migration Policy', onClick: () => navigate('/data-migration') },
-    { label: 'SLA Policy', onClick: () => navigate('/sla') },
-    { label: 'Release Notes', onClick: () => navigate('/releases') },
-    { label: 'Account Deletion', onClick: () => navigate('/account-deletion') },
-  ];
-
-  return (
-    <div ref={ref} style={{ position: 'relative' }} className="mobile-nav">
-      <button onClick={() => setOpen(!open)} className="nav-link" style={{ display: 'flex', alignItems: 'center', padding: '0.5rem' }}>
-        {open ? <X size={22} /> : <Menu size={22} />}
-      </button>
-      {open && (
-        <div className="mobile-menu-container">
-          <button onClick={() => { navigate('/'); setOpen(false); }} className="mobile-link">Home</button>
-          <button onClick={() => { navigate('/about-welt-tallis'); setOpen(false); }} className="mobile-link">About</button>
-          <div className="mobile-policies-header">
-            <div className="mono-label" style={{ color: C.brass, padding: '0.6rem 1.2rem' }}>Policies</div>
-            {policies.map((p, i) => (
-              <button key={i} onClick={() => { p.onClick(); setOpen(false); }} className="mobile-link" style={{ paddingLeft: '2rem', fontSize: '0.82rem' }}>{p.label}</button>
-            ))}
-          </div>
-          <button onClick={() => { goLogin(); setOpen(false); }} className="mobile-link">Log in</button>
-          <button onClick={() => { goStart(); setOpen(false); }} className="mobile-link" style={{ color: C.verdigris, fontWeight: 600 }}>Request access</button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const Spinner = () => (
-  <span className="spinner" />
-);
+const Spinner = () => <span className="spinner" />;
 
 const AlertMessage = ({ type, text }) => {
   if (!text) return null;
@@ -176,7 +91,7 @@ const PasswordInput = ({ label, value, onChange, showPassword, onToggle, hasErro
   return (
     <div className="form-group">
       <label className="form-label">{label} <span style={{ color: C.red }}>*</span></label>
-      <div className="input-wrapper" style={{ border: `1px solid ${hasError ? C.red : isFocused ? C.brass : C.line}`, boxShadow: isFocused ? `0 0 0 3px rgba(139,115,85,0.12)` : 'none' }}>
+      <div className="input-wrapper" style={{ border: `1px solid ${hasError ? C.red : isFocused ? C.verdigris : C.lineDark}`, boxShadow: isFocused ? `0 0 0 4px ${C.verdigrisGlow}` : 'none' }}>
         <input
           type={showPassword ? 'text' : 'password'}
           value={value}
@@ -197,29 +112,23 @@ const PasswordInput = ({ label, value, onChange, showPassword, onToggle, hasErro
   );
 };
 
-const StepIndicator = ({ currentStep, onStepClick }) => {
-  const progressPercentage = (currentStep / (STEPS.length - 1)) * 100;
-
+const StepIndicator = ({ currentStep }) => {
   return (
-    <div className="step-indicator">
-      <div className="step-line-bg" />
-      <div className="step-line-fg" style={{ width: `${progressPercentage}%` }} />
-
-      <div className="step-circles">
+    <div className="progress-header">
+      <div className="progress-steps">
         {STEPS.map((step, index) => {
           const isCompleted = index < currentStep;
           const isCurrent = index === currentStep;
-
           return (
-            <div key={step.key} className="step-item" onClick={() => isCompleted && onStepClick(index)} style={{ cursor: isCompleted ? 'pointer' : 'default' }}>
-              <div className={`step-circle ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}>
-                {isCompleted ? <Check size={14} /> : index + 1}
+            <React.Fragment key={step.key}>
+              <div className="step-node">
+                <div className={`step-circle ${isCompleted ? 'completed' : ''} ${isCurrent ? 'active' : ''}`}>
+                  {isCompleted ? <Check size={14} /> : index + 1}
+                </div>
+                <span className={`step-text ${isCurrent ? 'active' : ''}`}>{step.label}</span>
               </div>
-              <div className="step-text">
-                <div className="step-label">{step.label}</div>
-                <div className="step-desc">{step.description}</div>
-              </div>
-            </div>
+              {index < STEPS.length - 1 && <div className={`step-line ${index < currentStep ? 'active' : ''}`}></div>}
+            </React.Fragment>
           );
         })}
       </div>
@@ -231,21 +140,23 @@ const FileUpload = ({ label, preview, onUpload, error }) => {
   const handleClick = () => document.getElementById('file-upload').click();
 
   return (
-    <div className="form-group">
+    <div className="form-group full">
       <label className="form-label">{label} <span style={{ color: C.red }}>*</span></label>
-      <div onClick={handleClick} className="file-upload-circle" style={{ border: `2px dashed ${error ? C.red : preview ? C.brass : C.line}` }}>
-        {preview ? (
-          <img src={preview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <div className="file-upload-placeholder">
-            <Upload size={24} color={C.gray} />
-            <span>Click</span>
-          </div>
-        )}
+      <div onClick={handleClick} className="upload-area" style={{ border: `1.5px dashed ${error ? C.red : preview ? C.verdigris : C.lineDark}` }}>
+        <div className="upload-preview">
+          {preview ? (
+            <img src={preview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
+          ) : (
+            <Upload size={20} color={C.textMute} />
+          )}
+        </div>
+        <div className="upload-text">
+          <span className="upload-title">{preview ? 'Logo uploaded. Click to replace.' : 'Click to upload or drag and drop'}</span>
+          <span className="upload-sub">SVG, PNG, JPG (max 10MB)</span>
+        </div>
       </div>
       <input id="file-upload" type="file" accept="image/jpeg,image/png,image/jpg,image/svg+xml" onChange={onUpload} style={{ display: 'none' }} />
       {error && <span className="form-error">{error}</span>}
-      <span className="file-upload-hint">PNG, JPG or SVG (max 10MB)</span>
     </div>
   );
 };
@@ -264,7 +175,6 @@ export default function OnboardingFlow() {
   const [logoFile, setLogoFile] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showVerifyPassword, setShowVerifyPassword] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [apiError, setApiError] = useState('');
@@ -275,6 +185,7 @@ export default function OnboardingFlow() {
   const [formData, setFormData] = useState({
     organizationName: '',
     email: '',
+    phoneNumber: '', // Added Phone Number
     location: '',
     password: '',
     verifyPassword: '',
@@ -285,14 +196,8 @@ export default function OnboardingFlow() {
   const [branches, setBranches] = useState([{ name: '', location: '' }]);
   const [errors, setErrors] = useState({});
 
-  const goLogin = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/login'); };
-  const goStart = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/register'); };
-  const goTerms = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/terms'); };
-
-  useEffect(() => {
-    const timer = setTimeout(() => setLoaded(true), 60);
-    return () => clearTimeout(timer);
-  }, []);
+  const goLogin = () => navigate('/login');
+  const goTerms = () => navigate('/terms');
 
   useEffect(() => {
     if (!env.SOCKET_URL) return;
@@ -348,6 +253,10 @@ export default function OnboardingFlow() {
     if (!formData.organizationName.trim()) newErrors.organizationName = 'Organization name required';
     if (!formData.email.trim()) newErrors.email = 'Email required';
     else if (!validateEmail(formData.email)) newErrors.email = 'Valid email required';
+    
+    if (!formData.phoneNumber.trim()) newErrors.phoneNumber = 'Phone number required';
+    else if (!validatePhone(formData.phoneNumber)) newErrors.phoneNumber = 'Valid phone number required (e.g., +254712345678)';
+
     if (!formData.location.trim()) newErrors.location = 'Location required';
 
     if (formData.deploymentType === 'multi') {
@@ -413,6 +322,7 @@ export default function OnboardingFlow() {
       const submitData = new FormData();
       submitData.append('organizationName', formData.organizationName);
       submitData.append('email', formData.email);
+      submitData.append('phoneNumber', formData.phoneNumber); // Added to payload
       submitData.append('location', formData.location);
       submitData.append('password', formData.password);
       submitData.append('deploymentType', formData.deploymentType);
@@ -442,6 +352,7 @@ export default function OnboardingFlow() {
         const onboardingData = {
           organizationName: formData.organizationName,
           email: formData.email,
+          phoneNumber: formData.phoneNumber,
           location: formData.location,
           logo: logoPreview,
           organizationId: response.data.organizationId,
@@ -482,520 +393,479 @@ export default function OnboardingFlow() {
   const passwordStrength = getPasswordStrength(formData.password);
 
   return (
-    <div className="page-container">
+    <div className="split-layout">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&display=swap');
         *{margin:0;padding:0;box-sizing:border-box}
         html{scroll-behavior:smooth}
-        body{font-family:'Inter',sans-serif;color:${C.gray};background:${C.bone};-webkit-font-smoothing:antialiased}
-        h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-0.01em;color:${C.ink}}
-        p{line-height:1.75;font-size:1rem;color:${C.gray}}
+        body{font-family:'Inter',sans-serif;color:${C.text};background:${C.bone};-webkit-font-smoothing:antialiased}
+        h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:400;letter-spacing:-0.01em;color:${C.ink}}
+        p{line-height:1.7;color:${C.textDim}}
         
-        .mono-label{font-family:'JetBrains Mono',monospace;font-size:0.75rem;letter-spacing:0.14em;text-transform:uppercase;color:${C.brass};font-weight:500;display:inline-flex;align-items:center;gap:0.5rem}
+        .split-layout { display: flex; min-height: 100vh; }
         
-        .btn{display:inline-flex;align-items:center;gap:0.5rem;padding:1rem 1.9rem;font-size:0.9rem;font-weight:500;font-family:'Inter',sans-serif;border:1px solid transparent;border-radius:8px;cursor:pointer;transition:all 0.3s ease;white-space:nowrap;letter-spacing:0.01em}
-        .btn-brass{background:${C.brass};color:${C.bone};border:none}
-        .btn-brass:hover{background:${C.brassLight};transform:translateY(-2px);box-shadow:0 10px 20px rgba(139,115,85,0.25)}
-        .btn-ghost{background:transparent;color:${C.bone};border:1px solid rgba(250,248,244,0.3)}
-        .btn-ghost:hover{background:rgba(250,248,244,0.1);border-color:${C.bone}}
-        
-        .wrap{max-width:1180px;margin:0 auto;padding:0 clamp(1.25rem,5vw,2.5rem)}
-        
-        nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(250,248,244,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid ${C.line};padding:1.2rem 0}
-        .nav-wrap{display:flex;justify-content:space-between;align-items:center}
-        .logo{display:flex;align-items:center;gap:0.7rem;font-family:'Fraunces',serif;font-size:1.3rem;font-weight:500;color:${C.ink};cursor:pointer}
-        .nav-links{display:flex;gap:2.5rem;align-items:center}
-        .nav-link{font-size:0.85rem;color:${C.gray};text-decoration:none;cursor:pointer;transition:color 0.2s;background:transparent;border:none;font-family:'Inter',sans-serif;padding:0.5rem 0}
-        .nav-link:hover{color:${C.verdigris}}
-        .nav-cta{display:flex;gap:0.75rem;align-items:center}
-        .mobile-nav{display:none}
-        
-        .dropdown-menu{position:absolute;top:100%;left:0;background:${C.bone};border:1px solid ${C.line};border-radius:8px;min-width:260px;margin-top:0.75rem;z-index:1000;box-shadow:0 20px 40px rgba(21,23,26,0.08);overflow:hidden}
-        .dropdown-item{width:100%;padding:0.9rem 1.2rem;background:none;border:none;text-align:left;cursor:pointer;font-size:0.85rem;color:${C.gray};border-bottom:1px solid ${C.line};transition:all 0.2s;font-family:'Inter',sans-serif}
-        .dropdown-item:last-child{border-bottom:none}
-        .dropdown-item:hover{background:${C.bone2};color:${C.ink}}
-        
-        .mobile-menu-container{position:absolute;top:100%;right:0;background:${C.bone};border:1px solid ${C.line};border-radius:8px;min-width:280px;margin-top:0.75rem;z-index:1000;box-shadow:0 20px 40px rgba(21,23,26,0.08);overflow:hidden}
-        .mobile-link{display:block;width:100%;padding:0.9rem 1.2rem;background:none;border:none;text-align:left;cursor:pointer;font-size:0.88rem;color:${C.gray};text-decoration:none;border-bottom:1px solid ${C.line};font-family:'Inter',sans-serif;transition:background 0.2s}
-        .mobile-link:hover{background:${C.bone2}}
-        .mobile-policies-header{padding:0.5rem 0;border-bottom:1px solid ${C.line};background:${C.bone2}}
+        /* ─── LEFT PANEL (Brand / Visual) ─── */
+        .brand-panel {
+          flex: 1;
+          background: ${C.ink};
+          color: ${C.bone};
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 3rem;
+          overflow: hidden;
+          border-right: 1px solid ${C.inkBorder};
+        }
 
-        /* Main Layout */
-        .main-content { padding-top: 100px; padding-bottom: 4rem; flex: 1; display: flex; justify-content: center; }
-        .form-card { background: ${C.bone}; border: 1px solid ${C.line}; padding: clamp(1.5rem, 4vw, 2.5rem); box-shadow: 0 20px 40px -15px rgba(21,23,26,0.1); border-radius: 16px; width: 100%; max-width: 640px; }
-        
-        /* Step Indicator */
-        .step-indicator { position: relative; padding: 2rem 0 2.5rem; margin-bottom: 1.5rem; }
-        .step-line-bg { position: absolute; top: 20px; left: 20px; right: 20px; height: 2px; background: ${C.line}; z-index: 0; }
-        .step-line-fg { position: absolute; top: 20px; left: 20px; height: 2px; background: ${C.brass}; width: 0%; z-index: 1; transition: width 0.4s ease; }
-        .step-circles { display: flex; justify-content: space-between; position: relative; z-index: 2; }
-        .step-item { display: flex; flex-direction: column; align-items: center; width: 33.33%; }
-        .step-circle { width: 40px; height: 40px; border-radius: 50%; background: ${C.bone}; border: 2px solid ${C.line}; display: flex; align-items: center; justify-content: center; color: ${C.gray}; font-size: 0.8rem; font-weight: 600; transition: all 0.3s ease; }
-        .step-circle.completed { background: ${C.brass}; border-color: ${C.brass}; color: ${C.bone}; }
-        .step-circle.current { border-color: ${C.brass}; color: ${C.brass}; box-shadow: 0 0 0 4px rgba(139,115,85,0.1); }
-        .step-text { text-align: center; margin-top: 0.5rem; }
-        .step-label { font-size: 0.8rem; font-weight: 600; color: ${C.ink}; }
-        .step-desc { font-size: 0.7rem; color: ${C.gray}; }
-        
-        /* Form Elements */
-        .form-group { margin-bottom: 1.5rem; }
-        .form-label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.gray}; margin-bottom: 0.5rem; }
-        .input-wrapper { position: relative; border: 1px solid ${C.line}; border-radius: 8px; background: ${C.bone}; transition: all 0.2s; }
-        .form-input { width: 100%; padding: 0.8rem 1rem; background: transparent; border: none; border-radius: 8px; font-size: 0.9rem; color: ${C.ink}; font-family: 'Inter', sans-serif; outline: none; }
-        .form-input::placeholder { color: ${C.gray}; }
-        .input-icon-btn { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: ${C.gray}; padding: 0.5rem; display: flex; align-items: center; justify-content: center; transition: color 0.2s; }
+        .brand-panel::before {
+          content: '';
+          position: absolute;
+          top: -10%; left: 20%;
+          width: 60%; height: 50%;
+          background: radial-gradient(circle, rgba(61, 79, 71, 0.35) 0%, transparent 70%);
+          filter: blur(60px); z-index: 0;
+          animation: pulse 8s infinite alternate;
+        }
+
+        .brand-panel::after {
+          content: '';
+          position: absolute;
+          bottom: -10%; right: -10%;
+          width: 50%; height: 50%;
+          background: radial-gradient(circle, rgba(139, 115, 85, 0.25) 0%, transparent 70%);
+          filter: blur(60px); z-index: 0;
+        }
+
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 0.8; }
+          100% { transform: scale(1.2); opacity: 1; }
+        }
+
+        .brand-header, .brand-footer, .brand-content { position: relative; z-index: 1; }
+
+        .brand-logo {
+          display: flex; align-items: center; gap: 0.75rem;
+          font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 500; color: ${C.bone};
+        }
+
+        .brand-content { max-width: 420px; margin-top: 2rem; }
+        .brand-content h1 { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1.5rem; color: ${C.bone}; }
+        .brand-content h1 em { font-style: italic; color: ${C.brassLight}; }
+        .brand-content p { color: rgba(250, 248, 244, 0.6); line-height: 1.7; font-size: 0.95rem; }
+
+        .feature-list { margin-top: 2.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+        .feature-item {
+          display: flex; align-items: center; gap: 1rem;
+          padding: 1rem; background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px;
+          backdrop-filter: blur(10px); transition: all 0.3s ease;
+        }
+        .feature-item:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.1); }
+        .feature-icon {
+          width: 36px; height: 36px; border-radius: 8px;
+          background: rgba(61, 79, 71, 0.2); display: flex; align-items: center; justify-content: center;
+          color: ${C.verdigrisLight}; flex-shrink: 0;
+        }
+        .feature-text { display: flex; flex-direction: column; }
+        .feature-title { font-size: 0.85rem; font-weight: 600; color: ${C.bone}; }
+        .feature-sub { font-size: 0.75rem; color: rgba(250, 248, 244, 0.4); font-family: 'JetBrains Mono', monospace; }
+
+        .brand-footer { font-size: 0.75rem; color: rgba(250, 248, 244, 0.3); font-family: 'JetBrains Mono', monospace; }
+
+        /* ─── RIGHT PANEL (Form) ─── */
+        .form-panel {
+          flex: 1.2;
+          background: ${C.bone};
+          display: flex;
+          flex-direction: column;
+          overflow-y: auto;
+          position: relative;
+        }
+
+        .form-nav {
+          padding: 1.5rem 3rem;
+          display: flex; justify-content: flex-end;
+          border-bottom: 1px solid ${C.line};
+        }
+        .nav-link {
+          color: ${C.textDim}; font-size: 0.85rem; text-decoration: none; font-weight: 500; transition: color 0.2s;
+          background: transparent; border: none; cursor: pointer; font-family: 'Inter', sans-serif;
+        }
+        .nav-link:hover { color: ${C.ink}; }
+
+        .form-container {
+          flex: 1; display: flex; align-items: center; justify-content: center;
+          padding: 2rem 3rem 4rem;
+        }
+        .form-content { width: 100%; max-width: 580px; }
+
+        .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; }
+        .progress-steps { display: flex; align-items: center; gap: 0.75rem; }
+        .step-node { display: flex; align-items: center; gap: 0.5rem; }
+        .step-circle {
+          width: 28px; height: 28px; border-radius: 50%;
+          background: ${C.bone2}; border: 1.5px solid ${C.lineDark};
+          display: flex; align-items: center; justify-content: center;
+          font-size: 0.75rem; font-weight: 700; color: ${C.textMute};
+          transition: all 0.3s ease;
+        }
+        .step-circle.active {
+          background: ${C.ink}; border-color: ${C.ink}; color: ${C.bone};
+          box-shadow: 0 0 0 4px rgba(8, 9, 10, 0.05);
+        }
+        .step-circle.completed { background: ${C.verdigris}; border-color: ${C.verdigris}; color: ${C.bone}; }
+        .step-line { width: 30px; height: 1.5px; background: ${C.lineDark}; }
+        .step-line.active { background: ${C.verdigris}; }
+        .step-text {
+          font-size: 0.75rem; font-weight: 600; color: ${C.textMute};
+          font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .step-text.active { color: ${C.ink}; }
+
+        .form-header { margin-bottom: 2.5rem; }
+        .form-header .appreciation {
+          font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; text-transform: uppercase;
+          letter-spacing: 0.1em; color: ${C.brass}; margin-bottom: 0.75rem; font-weight: 500;
+        }
+        .form-header h2 {
+          font-size: 2.25rem; line-height: 1.2; margin-bottom: 0.5rem; font-weight: 400; color: ${C.ink};
+        }
+        .form-header h2 em { font-style: italic; color: ${C.brass}; }
+        .form-header p { color: ${C.textDim}; font-size: 0.95rem; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full { grid-column: span 2; }
+
+        .form-label {
+          font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; text-transform: uppercase;
+          letter-spacing: 0.1em; color: ${C.textMute}; margin-bottom: 0.5rem; font-weight: 500;
+        }
+
+        .input-wrapper {
+          position: relative; background: ${C.bone}; border: 1px solid ${C.lineDark};
+          border-radius: 10px; transition: all 0.2s; display: flex; align-items: center;
+        }
+        .input-wrapper:hover { border-color: ${C.textMute}; }
+        .input-wrapper:focus-within {
+          border-color: ${C.verdigris}; box-shadow: 0 0 0 4px ${C.verdigrisGlow}; background: #fff;
+        }
+        .form-input {
+          width: 100%; padding: 0.85rem 1rem; background: transparent; border: none; border-radius: 10px;
+          font-size: 0.95rem; color: ${C.text}; font-family: 'Inter', sans-serif; outline: none;
+        }
+        .form-input::placeholder { color: ${C.textMute}; }
+        .input-icon-btn { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: ${C.textMute}; padding: 0.5rem; display: flex; align-items: center; justify-content: center; transition: color 0.2s; }
         .input-icon-btn:hover { color: ${C.ink}; }
+        .input-icon-left { position: absolute; left: 1rem; color: ${C.textMute}; pointer-events: none; }
+        .input-wrapper.has-icon .form-input { padding-left: 2.5rem; }
+
         .form-error { display: block; color: ${C.red}; font-size: 0.75rem; margin-top: 0.3rem; }
-        
         .alert-message { display: flex; align-items: center; gap: 0.5rem; padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid; font-size: 0.85rem; font-weight: 500; margin-bottom: 1.5rem; }
-        
-        /* File Upload */
-        .file-upload-circle { width: 80px; height: 80px; margin: 0 auto; border-radius: 50%; background: ${C.bone2}; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; transition: all 0.25s; }
-        .file-upload-placeholder { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
-        .file-upload-hint { display: block; text-align: center; font-size: 0.7rem; color: ${C.gray}; margin-top: 0.5rem; }
-        
-        /* Radio Cards */
-        .radio-card { flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 1rem; background: ${C.bone}; border: 2px solid ${C.line}; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-        .radio-card.active { border-color: ${C.brass}; }
-        
-        /* Branch Card */
-        .branch-card { padding: 1rem; background: ${C.bone}; border-radius: 8px; border: 1px solid ${C.line}; margin-bottom: 1rem; }
-        
-        .review-item { display: flex; justify-content: space-between; padding: 0.8rem 1rem; border-bottom: 1px solid ${C.line}; font-size: 0.85rem; }
+
+        .upload-area {
+          border: 1.5px dashed ${C.lineDark}; border-radius: 12px; padding: 1.5rem;
+          display: flex; align-items: center; gap: 1rem; cursor: pointer; transition: all 0.2s; background: ${C.bone2};
+        }
+        .upload-area:hover { border-color: ${C.verdigris}; background: rgba(61, 79, 71, 0.03); }
+        .upload-preview {
+          width: 48px; height: 48px; border-radius: 8px; background: ${C.bone}; border: 1px solid ${C.lineDark};
+          display: flex; align-items: center; justify-content: center; color: ${C.textMute}; overflow: hidden; flex-shrink: 0;
+        }
+        .upload-text { display: flex; flex-direction: column; }
+        .upload-title { font-size: 0.9rem; font-weight: 600; color: ${C.ink}; }
+        .upload-sub { font-size: 0.75rem; color: ${C.textMute}; }
+
+        .segmented-control {
+          display: flex; background: ${C.bone2}; border: 1px solid ${C.lineDark};
+          border-radius: 10px; padding: 4px; gap: 4px; cursor: pointer;
+        }
+        .segment {
+          flex: 1; padding: 0.65rem 1rem; text-align: center; border-radius: 7px;
+          font-size: 0.85rem; font-weight: 600; color: ${C.textMute}; transition: all 0.2s;
+        }
+        .segment.active { background: ${C.ink}; color: ${C.bone}; box-shadow: 0 2px 8px rgba(8, 9, 10, 0.15); }
+
+        .branch-list { display: flex; flex-direction: column; gap: 1rem; }
+        .branch-card {
+          border: 1px solid ${C.line}; border-radius: 12px; padding: 1.25rem;
+          background: #fff; transition: all 0.2s;
+        }
+        .branch-card:hover { border-color: ${C.lineDark}; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .branch-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .branch-title { font-weight: 600; font-size: 0.9rem; color: ${C.ink}; display: flex; align-items: center; gap: 0.5rem; }
+        .branch-badge {
+          background: ${C.verdigrisGlow}; color: ${C.verdigris}; font-size: 0.65rem;
+          padding: 0.15rem 0.5rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
+        }
+        .btn-icon {
+          background: transparent; border: none; color: ${C.textMute}; cursor: pointer;
+          display: flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; transition: color 0.2s;
+        }
+        .btn-icon:hover { color: ${C.red}; }
+
+        .btn-add-branch {
+          width: 100%; padding: 1rem; background: transparent; border: 1.5px dashed ${C.lineDark};
+          border-radius: 10px; color: ${C.textDim}; font-size: 0.85rem; font-weight: 600;
+          cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+          transition: all 0.2s; margin-top: 1rem;
+        }
+        .btn-add-branch:hover { border-color: ${C.verdigris}; color: ${C.verdigris}; background: rgba(61, 79, 71, 0.02); }
+
+        .form-actions {
+          display: flex; justify-content: space-between; align-items: center;
+          margin-top: 3rem; padding-top: 2rem; border-top: 1px solid ${C.line};
+        }
+        .btn-back {
+          background: transparent; border: none; color: ${C.textDim}; font-size: 0.9rem; font-weight: 500;
+          cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: color 0.2s;
+        }
+        .btn-back:hover { color: ${C.ink}; }
+        .btn-primary {
+          background: ${C.ink}; color: ${C.bone}; border: none; padding: 0.9rem 2rem; border-radius: 10px;
+          font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;
+          transition: all 0.2s; box-shadow: 0 4px 12px rgba(8, 9, 10, 0.15);
+        }
+        .btn-primary:hover { background: #000; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(8, 9, 10, 0.2); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .review-item {
+          display: flex; justify-content: space-between; padding: 0.8rem 1rem;
+          border-bottom: 1px solid ${C.line}; font-size: 0.85rem;
+        }
         .review-item:last-child { border-bottom: none; }
-        .review-label { color: ${C.gray}; }
+        .review-label { color: ${C.textDim}; }
         .review-value { color: ${C.ink}; font-weight: 500; }
-        
+
         .spinner { width: 14px; height: 14px; border: 2px solid rgba(250,248,244,0.35); border-top-color: ${C.bone}; border-radius: 50%; animation: spin 0.65s linear infinite; display: inline-block; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-in { animation: fadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
-        
-        @media(max-width:800px){.nav-links{display:none}.nav-cta{display:none}.mobile-nav{display:flex;gap:0.5rem;align-items:center}}
-        @media(max-width:600px){
-          * { 
-            max-width: 100vw !important;
-            box-sizing: border-box !important;
-          }
-          
-          html, body {
-            overflow-x: hidden !important;
-            width: 100vw !important;
-            min-width: unset !important;
-          }
-          
-          .page-container {
-            overflow-x: hidden !important;
-            width: 100% !important;
-            min-width: 0 !important;
-          }
-          
-          .main-content { 
-            padding-top: 65px !important; 
-            padding-bottom: 1.5rem !important; 
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-            width: 100% !important;
-            min-width: 0 !important;
-          }
-          
-          .wrap {
-            width: 100% !important;
-            min-width: 0 !important;
-            padding: 0 0.5rem !important;
-            max-width: 100% !important;
-          }
-          
-          .form-card { 
-            padding: 0.85rem !important; 
-            margin: 0 !important;
-            border-radius: 10px !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            min-width: 0 !important;
-          }
-          
-          .step-indicator { 
-            padding: 0.75rem 0 1.25rem !important; 
-            margin-bottom: 0.75rem !important;
-          }
-          
-          .step-circle { 
-            width: 26px !important; 
-            height: 26px !important; 
-            font-size: 0.6rem !important;
-            flex-shrink: 0;
-          }
-          
-          .step-line-bg { 
-            left: 13px !important; 
-            right: 13px !important; 
-            top: 13px !important; 
-          }
-          
-          .step-line-fg { 
-            left: 13px !important; 
-            top: 13px !important; 
-          }
-          
-          .step-text { 
-            display: none !important; 
-          }
-          
-          .step-circles {
-            display: flex !important;
-            justify-content: space-between !important;
-            padding: 0 0.25rem !important;
-          }
-          
-          h1 { 
-            font-size: 1.15rem !important; 
-            line-height: 1.25 !important;
-            margin-bottom: 0.4rem !important;
-            word-wrap: break-word !important;
-          }
-          
-          p {
-            font-size: 0.8rem !important;
-            line-height: 1.5 !important;
-            word-wrap: break-word !important;
-          }
-          
-          .form-group { 
-            margin-bottom: 0.85rem !important;
-            width: 100% !important;
-            min-width: 0 !important;
-          }
-          
-          .form-label { 
-            font-size: 0.6rem !important;
-            margin-bottom: 0.35rem !important;
-            word-wrap: break-word !important;
-          }
-          
-          .form-input { 
-            padding: 0.65rem 0.7rem !important;
-            font-size: 0.8rem !important;
-            width: 100% !important;
-            min-width: 0 !important;
-          }
-          
-          .input-wrapper {
-            border-radius: 6px !important;
-            width: 100% !important;
-            min-width: 0 !important;
-          }
-          
-          .file-upload-circle { 
-            width: 45px !important; 
-            height: 45px !important; 
-          }
-          
-          .file-upload-placeholder {
-            transform: scale(0.85);
-          }
-          
-          .file-upload-placeholder span {
-            font-size: 0.6rem !important;
-          }
-          
-          .branch-card { 
-            padding: 0.5rem !important; 
-            margin-bottom: 0.6rem !important;
-            width: 100% !important;
-            min-width: 0 !important;
-          }
-          
-          .review-item { 
-            padding: 0.5rem 0.6rem !important; 
-            font-size: 0.7rem !important; 
-            flex-direction: column !important;
-            gap: 0.2rem !important;
-            width: 100% !important;
-          }
-          
-          .btn {
-            padding: 0.7rem 1rem !important;
-            font-size: 0.75rem !important;
-            max-width: 100% !important;
-          }
-          
-          .radio-card {
-            padding: 0.65rem !important;
-            flex-direction: column !important;
-            align-items: flex-start !important;
-          }
-          
-          .radio-card div:nth-child(2) div:first-child {
-            font-size: 0.75rem !important;
-          }
-          
-          .radio-card div:nth-child(2) div:last-child {
-            font-size: 0.65rem !important;
-          }
-          
-          .alert-message {
-            font-size: 0.7rem !important;
-            padding: 0.5rem 0.7rem !important;
-            word-wrap: break-word !important;
-          }
-          
-          .form-footer {
-            margin-top: 1.25rem !important;
-            padding-top: 0.85rem !important;
-            flex-direction: column-reverse !important;
-            gap: 0.75rem !important;
-          }
-          
-          .form-footer button {
-            width: 100% !important;
-            justify-content: center !important;
-          }
-          
-          .mono-label {
-            font-size: 0.6rem !important;
-          }
-          
-          nav {
-            padding: 0.7rem 0 !important;
-          }
-          
-          .logo {
-            font-size: 1rem !important;
-            gap: 0.4rem !important;
-          }
-          
-          .logo svg {
-            width: 18px !important;
-            height: 18px !important;
-          }
-          
-          .nav-wrap {
-            padding: 0 0.5rem !important;
-          }
-          
-          .mobile-menu-container {
-            min-width: 250px !important;
-            right: -0.5rem !important;
-            max-width: 90vw !important;
-          }
-          
-          .dropdown-menu {
-            min-width: 220px !important;
-            max-width: 90vw !important;
-          }
-          
-          .radio-cards-container {
-            flex-direction: column !important;
-            gap: 0.5rem !important;
-          }
-          
-          .radio-cards-container > label {
-            width: 100% !important;
-          }
-          
-          .file-upload-hint {
-            font-size: 0.6rem !important;
-          }
-          
-          .review-label,
-          .review-value {
-            word-wrap: break-word !important;
-            overflow-wrap: break-word !important;
-          }
-          
-          .input-icon-btn {
-            padding: 0.4rem !important;
-          }
+
+        .progress-bar-container {
+          margin-bottom: 1.5rem; padding: 1rem; background: ${C.bone2}; border-radius: 8px; border: 1px solid ${C.line};
         }
-        
-        @media(max-width:380px){
-          .form-card {
-            padding: 0.75rem !important;
-          }
-          
-          h1 {
-            font-size: 1.05rem !important;
-          }
-          
-          .btn {
-            padding: 0.6rem 0.85rem !important;
-            font-size: 0.7rem !important;
-          }
-          
-          .step-circle {
-            width: 22px !important;
-            height: 22px !important;
-            font-size: 0.55rem !important;
-          }
-          
-          .step-line-bg,
-          .step-line-fg {
-            left: 11px !important;
-            right: 11px !important;
-            top: 11px !important;
-          }
-          
-          .form-input {
-            padding: 0.6rem 0.65rem !important;
-            font-size: 0.75rem !important;
-          }
-          
-          .form-label {
-            font-size: 0.55rem !important;
-          }
+        .progress-bar-track { width: 100%; height: 6px; background: ${C.line}; border-radius: 3px; overflow: hidden; margin-top: 0.5rem; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, ${C.brass}, ${C.verdigris}); border-radius: 3px; transition: width 0.4s ease; }
+
+        @media(max-width: 900px){
+          .split-layout { flex-direction: column; }
+          .brand-panel { display: none; }
+          .form-nav, .form-container { padding-left: 1.5rem; padding-right: 1.5rem; }
+          .form-grid { grid-template-columns: 1fr; }
+          .form-group.full { grid-column: span 1; }
+          .form-actions { flex-direction: column-reverse; gap: 1rem; }
+          .btn-back, .btn-primary { width: 100%; justify-content: center; }
         }
       `}</style>
 
-      {/* Navbar */}
-      <nav>
-        <div className="wrap nav-wrap">
-          <div className="logo" onClick={() => navigate('/')}>
-            <Mark size={24} color={C.ink} />
+      {/* Left Brand Panel */}
+      <aside className="brand-panel">
+        <div className="brand-header">
+          <div className="brand-logo">
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="15" stroke="#FAF8F4" stroke-width="1.5" />
+              <path d="M16 8V24M8 16H24" stroke="#FAF8F4" stroke-width="1.5" stroke-linecap="round" />
+              <circle cx="16" cy="16" r="3.5" fill="#8B7355" />
+            </svg>
             Rest Point
           </div>
-          <div className="nav-links">
-            <button onClick={() => navigate('/')} className="nav-link">Home</button>
-            <PolicyDropdown navigate={navigate} goTerms={goTerms} />
-          </div>
-          <div className="nav-cta">
-            <button onClick={goLogin} className="nav-link" style={{ paddingRight: '0.5rem' }}>Log in</button>
-          </div>
-          <MobileMenu navigate={navigate} goTerms={goTerms} goLogin={goLogin} goStart={goStart} />
         </div>
-      </nav>
 
-      {/* Main Container */}
-      <main className="main-content">
-        <div className="wrap" style={{ display: 'flex', justifyContent: 'center' }}>
-          <div className="form-card">
-            <div style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.6s ease' }}>
-              <StepIndicator currentStep={currentStep} onStepClick={(index) => setCurrentStep(index)} />
+        <div className="brand-content">
+          <h1>Configure your <em>enterprise</em> workspace.</h1>
+          <p>Rest Point provides a unified operating system for funeral homes. Set up your organization to begin managing cases, smart dispatch, and family portals with engineering precision.</p>
+          
+          <div className="feature-list">
+            <div className="feature-item">
+              <div className="feature-icon">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              </div>
+              <div className="feature-text">
+                <span className="feature-title">Bank-Grade Security</span>
+                <span className="feature-sub">AES-256 / SOC2 Compliant</span>
+              </div>
             </div>
+            <div className="feature-item">
+              <div className="feature-icon">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+              </div>
+              <div className="feature-text">
+                <span className="feature-title">Real-Time Sync</span>
+                <span className="feature-sub">12ms Global Latency</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="brand-footer">
+          Rest Point OS &copy; 2024
+        </div>
+      </aside>
+
+      {/* Right Form Panel */}
+      <main className="form-panel">
+        <nav className="form-nav">
+          <button onClick={goLogin} className="nav-link">Already have an account? Log in</button>
+        </nav>
+
+        <div className="form-container">
+          <div className="form-content">
+            
+            <StepIndicator currentStep={currentStep} />
 
             {/* Progress Bar */}
             {isSubmitting && progress.percent > 0 && (
-              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: C.bone2, borderRadius: '8px', border: `1px solid ${C.line}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <div className="progress-bar-container">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: 600, color: C.ink }}>{progress.step}</span>
-                  <span className="mono-label" style={{ color: C.brass }}>{progress.percent}%</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: C.brass }}>{progress.percent}%</span>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: C.line, borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${progress.percent}%`, height: '100%', background: `linear-gradient(90deg, ${C.brass}, ${C.verdigris})`, borderRadius: '3px', transition: 'width 0.4s ease' }} />
+                <div className="progress-bar-track">
+                  <div className="progress-bar-fill" style={{ width: `${progress.percent}%` }} />
                 </div>
-                {progress.details && <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: C.gray, fontStyle: 'italic' }}>{progress.details}</div>}
+                {progress.details && <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: C.textDim, fontStyle: 'italic' }}>{progress.details}</div>}
               </div>
             )}
 
-            <div style={{ marginBottom: '2rem' }}>
-              <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>
-                {currentStep === 0 && <>Tell us about your <span style={{ color: C.brass, fontStyle: 'italic' }}>organization</span></>}
-                {currentStep === 1 && <>Secure your <span style={{ color: C.brass, fontStyle: 'italic' }}>account</span></>}
-                {currentStep === 2 && <>Review and <span style={{ color: C.brass, fontStyle: 'italic' }}>confirm</span></>}
-              </h1>
-              <p style={{ fontSize: '0.9rem' }}>
-                {currentStep === 0 && "Basic details so families and your team know who they're working with."}
-                {currentStep === 1 && 'A password only your team will use to sign in to Rest Point.'}
-                {currentStep === 2 && 'Check everything looks right, then create your account.'}
-              </p>
+            {/* Form Header */}
+            <div className="form-header">
+              {currentStep === 0 && (
+                <>
+                  <div className="appreciation">Thank you for choosing Rest Point.</div>
+                  <h2>Let's get <em>started</em>.</h2>
+                  <p>Tell us about your organization so families and your team know who they're working with.</p>
+                </>
+              )}
+              {currentStep === 1 && (
+                <>
+                  <h2>Secure your <em>account</em></h2>
+                  <p>Create a strong password that only your team will use to sign in to Rest Point.</p>
+                </>
+              )}
+              {currentStep === 2 && (
+                <>
+                  <h2>Review and <em>confirm</em></h2>
+                  <p>Check everything looks right, then create your account.</p>
+                </>
+              )}
             </div>
 
+            {/* Form Body */}
             <form onSubmit={handleSubmit}>
               <AlertMessage type="success" text={apiSuccess} />
               <AlertMessage type="error" text={apiError} />
 
               {/* Step 0 Content */}
               {currentStep === 0 && (
-                <div className="fade-in">
-                  <FileUpload label="Organization logo" preview={logoPreview} onUpload={handleLogoUpload} error={errors.logo} />
+                <>
+                  <FileUpload label="Organization Logo" preview={logoPreview} onUpload={handleLogoUpload} error={errors.logo} />
 
-                  <div className="form-group">
-                    <label className="form-label">Organization name <span style={{ color: C.red }}>*</span></label>
-                    <div className="input-wrapper" style={{ border: `1px solid ${errors.organizationName ? C.red : C.line}` }}>
-                      <input type="text" name="organizationName" value={formData.organizationName} onChange={handleChange} placeholder="e.g., Nairobi Funeral Home" className="form-input" disabled={isSubmitting} />
-                    </div>
-                    {errors.organizationName && <span className="form-error">{errors.organizationName}</span>}
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Email <span style={{ color: C.red }}>*</span></label>
-                    <div className="input-wrapper" style={{ border: `1px solid ${errors.email ? C.red : C.line}` }}>
-                      <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="info@funeralhome.co.ke" className="form-input" disabled={isSubmitting} />
-                    </div>
-                    {errors.email && <span className="form-error">{errors.email}</span>}
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Location <span style={{ color: C.red }}>*</span></label>
-                    <div className="input-wrapper" style={{ border: `1px solid ${errors.location ? C.red : C.line}` }}>
-                      <input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="e.g., Nairobi, Kenya" className="form-input" disabled={isSubmitting} />
-                    </div>
-                    {errors.location && <span className="form-error">{errors.location}</span>}
-                  </div>
-
-                  <div className="form-group" style={{ padding: '1rem', background: C.bone2, borderRadius: '8px', border: `1px solid ${C.line}` }}>
-                    <label className="form-label" style={{ marginBottom: '0.5rem' }}>Deployment Type <span style={{ color: C.red }}>*</span></label>
-                    <div className="radio-cards-container" style={{ display: 'flex', gap: '0.75rem' }}>
-                      <label className={`radio-card ${formData.deploymentType === 'single' ? 'active' : ''}`}>
-                        <input type="radio" name="deploymentType" value="single" checked={formData.deploymentType === 'single'} onChange={handleChange} style={{ accentColor: C.brass }} />
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: '0.85rem', color: C.ink }}>Single Tenant</div>
-                          <div style={{ fontSize: '0.7rem', color: C.gray, marginTop: '0.15rem' }}>One location</div>
-                        </div>
-                      </label>
-                      <label className={`radio-card ${formData.deploymentType === 'multi' ? 'active' : ''}`}>
-                        <input type="radio" name="deploymentType" value="multi" checked={formData.deploymentType === 'multi'} onChange={handleChange} style={{ accentColor: C.brass }} />
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: '0.85rem', color: C.ink }}>Multi Tenant</div>
-                          <div style={{ fontSize: '0.7rem', color: C.gray, marginTop: '0.15rem' }}>Multiple branches</div>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  {formData.deploymentType === 'multi' ? (
-                    <div className="form-group" style={{ padding: '1rem', background: C.bone2, borderRadius: '8px', border: `1px solid ${C.line}` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <label className="form-label" style={{ margin: 0 }}>Branches <span style={{ color: C.red }}>*</span></label>
-                        <button type="button" onClick={() => setBranches([...branches, { name: '', location: '' }])} className="btn-brass" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '4px', color: C.bone, background: C.brass, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <Plus size={14} /> Add Branch
-                        </button>
+                  <div className="form-grid">
+                    {/* Organization Name */}
+                    <div className="form-group full">
+                      <label className="form-label">Organization Name <span style={{ color: C.red }}>*</span></label>
+                      <div className="input-wrapper" style={{ border: `1px solid ${errors.organizationName ? C.red : C.lineDark}` }}>
+                        <input type="text" name="organizationName" value={formData.organizationName} onChange={handleChange} placeholder="e.g., Nairobi Funeral Home" className="form-input" disabled={isSubmitting} />
                       </div>
-                      {errors.branches && <span className="form-error">{errors.branches}</span>}
-                      {branches.map((branch, index) => (
-                        <div key={index} className="branch-card">
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                            <span style={{ fontWeight: 600, fontSize: '0.8rem', color: C.ink }}>Branch {index + 1}</span>
-                            {branches.length > 1 && (
-                              <button type="button" onClick={() => setBranches(branches.filter((_, i) => i !== index))} style={{ background: 'none', border: 'none', color: C.red, cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                                <Trash2 size={12} /> Remove
-                              </button>
-                            )}
-                          </div>
-                          <div className="input-wrapper" style={{ marginBottom: '0.5rem' }}>
-                            <input type="text" placeholder="Branch name" value={branch.name} onChange={(e) => { const newBranches = [...branches]; newBranches[index].name = e.target.value; setBranches(newBranches); }} className="form-input" />
-                          </div>
-                          <div className="input-wrapper">
-                            <input type="text" placeholder="Branch location" value={branch.location} onChange={(e) => { const newBranches = [...branches]; newBranches[index].location = e.target.value; setBranches(newBranches); }} className="form-input" />
-                          </div>
-                        </div>
-                      ))}
+                      {errors.organizationName && <span className="form-error">{errors.organizationName}</span>}
                     </div>
-                  ) : (
+
+                    {/* Email */}
                     <div className="form-group">
-                      <label className="form-label">Branch Name <span style={{ color: C.red }}>*</span></label>
-                      <div className="input-wrapper" style={{ border: `1px solid ${errors.branchName ? C.red : C.line}` }}>
-                        <input type="text" name="branchName" value={formData.branchName} onChange={handleChange} placeholder="e.g., Main Branch" className="form-input" disabled={isSubmitting} />
+                      <label className="form-label">Contact Email <span style={{ color: C.red }}>*</span></label>
+                      <div className="input-wrapper" style={{ border: `1px solid ${errors.email ? C.red : C.lineDark}` }}>
+                        <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="info@funeralhome.co.ke" className="form-input" disabled={isSubmitting} />
                       </div>
-                      {errors.branchName && <span className="form-error">{errors.branchName}</span>}
+                      {errors.email && <span className="form-error">{errors.email}</span>}
                     </div>
-                  )}
-                </div>
+
+                    {/* Phone Number (NEW) */}
+                    <div className="form-group">
+                      <label className="form-label">Phone Number <span style={{ color: C.red }}>*</span></label>
+                      <div className="input-wrapper has-icon" style={{ border: `1px solid ${errors.phoneNumber ? C.red : C.lineDark}` }}>
+                        <span className="input-icon-left"><Phone size={16} /></span>
+                        <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} placeholder="+254 712 345 678" className="form-input" disabled={isSubmitting} />
+                      </div>
+                      {errors.phoneNumber && <span className="form-error">{errors.phoneNumber}</span>}
+                    </div>
+
+                    {/* Location */}
+                    <div className="form-group full">
+                      <label className="form-label">Primary Location <span style={{ color: C.red }}>*</span></label>
+                      <div className="input-wrapper" style={{ border: `1px solid ${errors.location ? C.red : C.lineDark}` }}>
+                        <input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="e.g., Nairobi, Kenya" className="form-input" disabled={isSubmitting} />
+                      </div>
+                      {errors.location && <span className="form-error">{errors.location}</span>}
+                    </div>
+
+                    {/* Deployment Type */}
+                    <div className="form-group full" style={{ marginBottom: '1.5rem' }}>
+                      <label className="form-label">Deployment Type <span style={{ color: C.red }}>*</span></label>
+                      <div className="segmented-control" onClick={(e) => {
+                        const val = e.target.classList.contains('segment') ? (e.target.textContent.includes('Single') ? 'single' : 'multi') : formData.deploymentType;
+                        setFormData(prev => ({ ...prev, deploymentType: val }));
+                      }}>
+                        <div className={`segment ${formData.deploymentType === 'single' ? 'active' : ''}`} style={formData.deploymentType === 'single' ? { background: C.ink, color: C.bone } : {}}>Single Tenant</div>
+                        <div className={`segment ${formData.deploymentType === 'multi' ? 'active' : ''}`} style={formData.deploymentType === 'multi' ? { background: C.ink, color: C.bone } : {}}>Multi Tenant</div>
+                      </div>
+                    </div>
+
+                    {/* Branches Section */}
+                    <div className="form-group full">
+                      <label className="form-label" style={{ marginBottom: '1rem' }}>Branch Configuration</label>
+                      
+                      <div className="branch-list">
+                        {formData.deploymentType === 'multi' ? (
+                          branches.map((branch, index) => (
+                            <div key={index} className="branch-card">
+                              <div className="branch-header">
+                                <span className="branch-title">
+                                  Branch {String(index + 1).padStart(2, '0')}
+                                  {index === 0 && <span className="branch-badge">Primary</span>}
+                                </span>
+                                {branches.length > 1 && (
+                                  <button type="button" className="btn-icon" onClick={() => setBranches(branches.filter((_, i) => i !== index))}>
+                                    <Trash2 size={14} /> Remove
+                                  </button>
+                                )}
+                              </div>
+                              <div className="form-grid" style={{ margin: 0, gap: '1rem' }}>
+                                <div className="input-wrapper">
+                                  <input type="text" placeholder="Branch Name" value={branch.name} onChange={(e) => { const n = [...branches]; n[index].name = e.target.value; setBranches(n); }} className="form-input" />
+                                </div>
+                                <div className="input-wrapper">
+                                  <input type="text" placeholder="Branch Location" value={branch.location} onChange={(e) => { const n = [...branches]; n[index].location = e.target.value; setBranches(n); }} className="form-input" />
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="branch-card">
+                            <div className="branch-header">
+                              <span className="branch-title">Main Branch <span className="branch-badge">Primary</span></span>
+                            </div>
+                            <div className="input-wrapper" style={{ border: `1px solid ${errors.branchName ? C.red : C.lineDark}` }}>
+                              <input type="text" name="branchName" value={formData.branchName} onChange={handleChange} placeholder="e.g., Headquarters" className="form-input" disabled={isSubmitting} />
+                            </div>
+                            {errors.branchName && <span className="form-error">{errors.branchName}</span>}
+                          </div>
+                        )}
+                      </div>
+
+                      {formData.deploymentType === 'multi' && (
+                        <button type="button" className="btn-add-branch" onClick={() => setBranches([...branches, { name: '', location: '' }])}>
+                          <Plus size={16} /> Add Another Branch
+                        </button>
+                      )}
+                      {errors.branches && <span className="form-error" style={{ marginTop: '0.5rem' }}>{errors.branches}</span>}
+                    </div>
+                  </div>
+                </>
               )}
 
               {/* Step 1 Content */}
               {currentStep === 1 && (
-                <div className="fade-in">
+                <>
                   <PasswordInput label="Password" value={formData.password} onChange={(e) => handleChange({ target: { name: 'password', value: e.target.value } })} showPassword={showPassword} onToggle={() => setShowPassword(!showPassword)} hasError={!!errors.password} errorMessage={errors.password} disabled={isSubmitting} placeholder="Create a strong password" />
 
                   {formData.password && (
@@ -1012,51 +882,55 @@ export default function OnboardingFlow() {
                   )}
 
                   <PasswordInput label="Verify Password" value={formData.verifyPassword} onChange={(e) => handleChange({ target: { name: 'verifyPassword', value: e.target.value } })} showPassword={showVerifyPassword} onToggle={() => setShowVerifyPassword(!showVerifyPassword)} hasError={!!errors.verifyPassword} errorMessage={errors.verifyPassword} disabled={isSubmitting} placeholder="Confirm your password" />
-                </div>
+                </>
               )}
 
               {/* Step 2 Content */}
               {currentStep === 2 && (
-                <div className="fade-in">
-                  <div style={{ border: `1px solid ${C.line}`, borderRadius: '8px', overflow: 'hidden', marginBottom: '1.5rem' }}>
+                <>
+                  <div style={{ border: `1px solid ${C.line}`, borderRadius: '12px', overflow: 'hidden', marginBottom: '1.5rem', background: '#fff' }}>
                     <ReviewItem label="Organization" value={formData.organizationName} />
                     <ReviewItem label="Email Contact" value={formData.email} />
+                    <ReviewItem label="Phone Number" value={formData.phoneNumber} />
                     <ReviewItem label="Location" value={formData.location} />
                     <ReviewItem label="Primary Branch" value={formData.deploymentType === 'multi' ? (branches[0]?.name || '—') : formData.branchName} />
                   </div>
 
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-                    <input type="checkbox" id="terms" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} style={{ marginTop: '0.25rem', accentColor: C.brass }} />
-                    <label htmlFor="terms" style={{ fontSize: '0.85rem', color: C.gray, lineHeight: 1.5 }}>
-                      I agree to the <span style={{ color: C.brass, cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate('/terms')}>Terms of Service</span> and <span style={{ color: C.brass, cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate('/privacy')}>Privacy Policy</span>.
+                    <input type="checkbox" id="terms" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} style={{ marginTop: '0.25rem', accentColor: C.ink }} />
+                    <label htmlFor="terms" style={{ fontSize: '0.85rem', color: C.textDim, lineHeight: 1.5 }}>
+                      I agree to the <span style={{ color: C.brass, cursor: 'pointer', textDecoration: 'underline' }} onClick={goTerms}>Terms of Service</span> and <span style={{ color: C.brass, cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate('/privacy')}>Privacy Policy</span>.
                     </label>
                   </div>
                   {errors.terms && <span className="form-error" style={{ marginBottom: '1rem' }}>{errors.terms}</span>}
-                </div>
+                </>
               )}
 
-              {/* Footer Buttons */}
-              <div className="form-footer" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem', paddingTop: '1.5rem', borderTop: `1px solid ${C.line}` }}>
+              {/* Footer Actions */}
+              <div className="form-actions">
                 {currentStep > 0 ? (
-                  <button type="button" onClick={goBack} disabled={isSubmitting} style={{ background: 'transparent', color: C.gray, border: 'none', padding: '0.6rem 1.2rem', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer' }}>
+                  <button type="button" className="btn-back" onClick={goBack} disabled={isSubmitting}>
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                     Back
                   </button>
                 ) : <div />}
 
-                <button type="submit" disabled={isSubmitting} className="btn btn-brass" style={{ padding: '0.7rem 1.5rem', fontSize: '0.85rem' }}>
+                <button type="submit" className="btn-primary" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <Spinner />
                       <span>Setting up... {progress.percent}%</span>
                     </>
-                  ) : currentStep === 2 ? 'Complete Setup' : 'Continue'}
+                  ) : currentStep === 2 ? 'Complete Setup' : 'Continue Setup'}
+                  {!isSubmitting && (
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                  )}
                 </button>
               </div>
             </form>
           </div>
         </div>
       </main>
-      <Footer goTerms={goTerms} />
     </div>
   );
 }

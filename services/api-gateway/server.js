@@ -39,6 +39,7 @@ const cookieParser = require('cookie-parser');
 const hpp = require('hpp');
 const dns = require('dns');
 const http = require('http');
+const fs = require('fs');
 // Using Node's built-in global fetch (no explicit require needed, no
 // version-mismatch risk from a transitively-hoisted undici copy). A prior
 // version of this file used a manually constructed undici Agent/dispatcher
@@ -51,6 +52,77 @@ const http = require('http');
 const dotenvPath = path.join(__dirname, '.env');
 console.log('Loading .env from:', dotenvPath);
 dotenv.config({ path: dotenvPath, override: false });
+
+// ─── Runtime environment guard for service URLs ──────────────────────────
+// The .env bundled into the Docker image carries LOCAL (host) service URLs
+// (http://127.0.0.1:<host-port>). Inside a container, 127.0.0.1 is THIS
+// gateway process, so those URLs yield ECONNREFUSED for every service —
+// exactly the "Now API Gateway is Down" production failure. Detect container
+// mode and rewrite any loopback service URL to the canonical Docker DNS
+// name. Explicit environment variables (docker-compose `environment:`,
+// `docker run -e`, CI secrets) always take precedence over the bundled .env
+// (dotenv is loaded with override:false above) — this guard only repairs
+// loopback values that arrived from the bundled .env file. On the host
+// (nodemon / local dev) nothing is rewritten.
+const isRunningInContainer =
+  process.env.RUNNING_IN_DOCKER === 'true' ||
+  (function () {
+    try { return fs.existsSync('/.dockerenv'); } catch { return false; }
+  })();
+
+// Canonical Docker-network URLs (container_name + in-container listen port).
+// Used (a) as fallback when no env var is set and (b) as rewrite targets for
+// loopback URLs found while running inside a container. NOTE: workshop uses
+// 6969 because docker-compose.prod.yml sets PORT=6969 for that container and
+// points the gateway at :6969 (dev compose maps 6969:5000 with PORT=5000 —
+// if you deploy with the dev file, override WORKSHOP_SERVICE_URL there).
+const DOCKER_SERVICE_DEFAULTS = {
+  auth: 'http://restpoint_auth_service:5000',
+  tenant: 'http://restpoint_tenant_service:5000',
+  deceased: 'http://restpoint_deceased_service:5000',
+  coffin: 'http://restpoint_coffin_service:5000',
+  marketplace: 'http://restpoint_marketplace_service:5000',
+  mpesa: 'http://restpoint_mpesa_service:5000',
+  portal: 'http://restpoint_portal_service:5000',
+  invoices: 'http://restpoint_invoice_service:5000',
+  notification: 'http://restpoint_notification_service:5000',
+  documents: 'http://restpoint_documents_service:5000',
+  analytics: 'http://restpoint_analytics_service:5000',
+  bodycheckout: 'http://restpoint_bodycheckout_service:5000',
+  edocuments: 'http://restpoint_edocuments_service:5000',
+  calendar: 'http://restpoint_calender_service:5000', // (sic) container name
+  chemicals: 'http://restpoint_chemical_service:5000',
+  billing: 'http://restpoint_billing_service:5000',
+  socketio: 'http://restpoint_socketio_service:5000',
+  workshop: 'http://restpoint_workshop_service:6969',
+  extra: 'http://restpoint_extra_services:5000',
+  call: 'http://restpoint_call_service:5000',
+  qrcode: 'http://restpoint_qrcode_service:5000',
+  scanner: 'http://restpoint_scanner_service:2024',
+  hearse: 'http://restpoint_hearse_service:5000',
+  leave: 'http://restpoint_leave_service:5000',
+  support: 'http://restpoint_support_service:5000',
+  florist: 'http://restpoint_florist_service:5000',
+  store: 'http://restpoint_store_service:5000',
+};
+
+const LOOPBACK_URL_RE = /^https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?(?:\/|$)/i;
+
+function resolveServiceUrl(envKey, serviceKey) {
+  const configured = process.env[envKey];
+  let url = configured || DOCKER_SERVICE_DEFAULTS[serviceKey];
+
+  if (isRunningInContainer && LOOPBACK_URL_RE.test(url)) {
+    url = DOCKER_SERVICE_DEFAULTS[serviceKey];
+    console.log(`[RUNTIME] Container mode: ${envKey} loopback URL rewritten to ${url}`);
+  } else if (!isRunningInContainer && /^https?:\/\/restpoint_/i.test(url)) {
+    // Host process pointed at a Docker-network hostname: it cannot resolve
+    // outside the Docker network (ENOTFOUND) — the exact misconfiguration
+    // that marked every healthy service DOWN.
+    console.warn(`[RUNTIME WARNING] ${envKey}=${url} is a Docker-network hostname but the gateway is NOT running in a container. It will fail with ENOTFOUND. For local mode set it to http://127.0.0.1:<host-port> in services/api-gateway/.env.`);
+  }
+  return url;
+}
 
 // ─── DNS Lookup Cache ────────────────────────────────────────────────────
 // Docker service names resolve to a stable container IP for the life of the
@@ -174,37 +246,39 @@ const PORT = Number(process.env.PORT) || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
 const isProd = (process.env.NODE_ENV || 'development') === 'production';
 
-// SERVICE URLS — Docker DNS container names + internal listen ports.
-// 127.0.0.1 inside a container resolves to the gateway itself, not the
-// target service, so it must NOT be used as a fallback in production.
+// SERVICE URLS — resolved through resolveServiceUrl() so that:
+//  - explicit env vars (compose `environment:`, `docker run -e`, shell) win;
+//  - inside a container, any residual loopback URL from the bundled .env is
+//    rewritten to the canonical Docker DNS name;
+//  - on the host, Docker-only hostnames are warned about (they ENOTFOUND).
 const SERVICE_URLS = {
-  auth: process.env.AUTH_SERVICE_URL || 'http://restpoint_auth_service:5000',
-  tenant: process.env.TENANT_SERVICE_URL || 'http://restpoint_tenant_service:5000',
-  deceased: process.env.DECEASED_SERVICE_URL || 'http://restpoint_deceased_service:5000',
-  coffin: process.env.COFFIN_SERVICE_URL || 'http://restpoint_coffin_service:5000',
-  marketplace: process.env.MARKETPLACE_SERVICE_URL || 'http://restpoint_marketplace_service:5000',
-  mpesa: process.env.MPESA_SERVICE_URL || 'http://restpoint_mpesa_service:5000',
-  portal: process.env.PORTAL_SERVICE_URL || 'http://restpoint_portal_service:5000',
-  invoices: process.env.INVOICES_SERVICE_URL || 'http://restpoint_invoice_service:5000',
-  notification: process.env.NOTIFICATION_SERVICE_URL || 'http://restpoint_notification_service:5000',
-  documents: process.env.DOCUMENTS_SERVICE_URL || 'http://restpoint_documents_service:5000',
-  analytics: process.env.ANALYTICS_SERVICE_URL || 'http://restpoint_analytics_service:5000',
-  bodycheckout: process.env.BODYCHECKOUT_SERVICE_URL || 'http://restpoint_bodycheckout_service:5000',
-  edocuments: process.env.EDOCUMENTS_SERVICE_URL || 'http://restpoint_edocuments_service:5000',
-  calendar: process.env.CALENDAR_SERVICE_URL || 'http://restpoint_calender_service:5000',
-  chemicals: process.env.CHEMICALS_SERVICE_URL || 'http://restpoint_chemical_service:5000',
-  billing: process.env.BILLING_SERVICE_URL || 'http://restpoint_billing_service:5000',
-  socketio: process.env.SOCKETIO_SERVICE_URL || 'http://restpoint_socketio_service:5000',
-  workshop: process.env.WORKSHOP_SERVICE_URL || 'http://restpoint_workshop_service:6969',
-  extra: process.env.EXTRA_SERVICES_URL || 'http://restpoint_extra_services:5000',
-  call: process.env.CALL_SERVICE_URL || 'http://restpoint_call_service:5000',
-  qrcode: process.env.QRCODE_SERVICE_URL || 'http://restpoint_qrcode_service:5000',
-  scanner: process.env.SCANNER_SERVICE_URL || 'http://restpoint_scanner_service:2024',
-  hearse: process.env.HEARSE_SERVICE_URL || 'http://restpoint_hearse_service:5000',
-  leave: process.env.LEAVE_SERVICE_URL || 'http://restpoint_leave_service:5000',
-  support: process.env.SUPPORT_SERVICE_URL || 'http://restpoint_support_service:5000',
-  florist: process.env.FLORIST_SERVICE_URL || 'http://restpoint_florist_service:5000',
-  store: process.env.STORE_SERVICE_URL || 'http://restpoint_store_service:5000',
+  auth: resolveServiceUrl('AUTH_SERVICE_URL', 'auth'),
+  tenant: resolveServiceUrl('TENANT_SERVICE_URL', 'tenant'),
+  deceased: resolveServiceUrl('DECEASED_SERVICE_URL', 'deceased'),
+  coffin: resolveServiceUrl('COFFIN_SERVICE_URL', 'coffin'),
+  marketplace: resolveServiceUrl('MARKETPLACE_SERVICE_URL', 'marketplace'),
+  mpesa: resolveServiceUrl('MPESA_SERVICE_URL', 'mpesa'),
+  portal: resolveServiceUrl('PORTAL_SERVICE_URL', 'portal'),
+  invoices: resolveServiceUrl('INVOICES_SERVICE_URL', 'invoices'),
+  notification: resolveServiceUrl('NOTIFICATION_SERVICE_URL', 'notification'),
+  documents: resolveServiceUrl('DOCUMENTS_SERVICE_URL', 'documents'),
+  analytics: resolveServiceUrl('ANALYTICS_SERVICE_URL', 'analytics'),
+  bodycheckout: resolveServiceUrl('BODYCHECKOUT_SERVICE_URL', 'bodycheckout'),
+  edocuments: resolveServiceUrl('EDOCUMENTS_SERVICE_URL', 'edocuments'),
+  calendar: resolveServiceUrl('CALENDAR_SERVICE_URL', 'calendar'),
+  chemicals: resolveServiceUrl('CHEMICALS_SERVICE_URL', 'chemicals'),
+  billing: resolveServiceUrl('BILLING_SERVICE_URL', 'billing'),
+  socketio: resolveServiceUrl('SOCKETIO_SERVICE_URL', 'socketio'),
+  workshop: resolveServiceUrl('WORKSHOP_SERVICE_URL', 'workshop'),
+  extra: resolveServiceUrl('EXTRA_SERVICES_URL', 'extra'),
+  call: resolveServiceUrl('CALL_SERVICE_URL', 'call'),
+  qrcode: resolveServiceUrl('QRCODE_SERVICE_URL', 'qrcode'),
+  scanner: resolveServiceUrl('SCANNER_SERVICE_URL', 'scanner'),
+  hearse: resolveServiceUrl('HEARSE_SERVICE_URL', 'hearse'),
+  leave: resolveServiceUrl('LEAVE_SERVICE_URL', 'leave'),
+  support: resolveServiceUrl('SUPPORT_SERVICE_URL', 'support'),
+  florist: resolveServiceUrl('FLORIST_SERVICE_URL', 'florist'),
+  store: resolveServiceUrl('STORE_SERVICE_URL', 'store'),
 };
 
 const app = express();

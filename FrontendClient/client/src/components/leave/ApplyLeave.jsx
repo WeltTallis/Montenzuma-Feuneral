@@ -43,18 +43,30 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const toStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const TODAY_STR = toStr(new Date());
 
-function formatDate(dateStr) {
-    if (!dateStr) return 'â€”';
+// Parse a 'YYYY-MM-DD' (or full ISO) string as a LOCAL calendar date so the
+// shown day never shifts when the browser timezone is west of UTC - selecting
+// the 1st must never render as the 31st of the previous month.
+function parseLocal(dateStr) {
+    if (!dateStr) return null;
+    const m = String(dateStr).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
     const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return String(dateStr);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const d = parseLocal(dateStr);
+    if (!d) return String(dateStr);
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function countBusinessDays(start, end) {
     if (!start || !end) return 0;
     let count = 0;
-    const d = new Date(`${start}T00:00:00`);
-    const endD = new Date(`${end}T00:00:00`);
+    const d = parseLocal(start);
+    const endD = parseLocal(end);
+    if (!d || !endD) return 0;
     while (d <= endD) {
         const dow = d.getDay();
         if (dow !== 0 && dow !== 6) count += 1;
@@ -207,26 +219,59 @@ const CalCell = styled.div`
   border: 1px solid transparent;
   cursor: pointer;
   user-select: none;
-  transition: background 0.12s, border-color 0.12s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
 
   ${(p) => p.$muted && `color: ${COLORS.textSecondary}; background: ${COLORS.bg};`}
-  ${(p) => p.$weekend && !p.$muted && `background: ${COLORS.bg};`}
-  ${(p) => p.$inRange && `background: rgba(10, 36, 99, 0.08); border-color: ${COLORS.primary};`}
-  ${(p) => p.$isToday && !p.$inRange && `border-color: ${COLORS.info};`}
-  &:hover { border-color: ${COLORS.primary}; }
+  ${(p) => p.$weekend && !p.$muted && !p.$anchor && `background: ${COLORS.bg};`}
+  ${(p) => p.$isToday && !p.$inRange && !p.$anchor && `border-color: ${COLORS.info};`}
+
+  /* Days in the middle of a selection — clearly visible, not a faint wash */
+  ${(p) => p.$inRange && !p.$anchor && `
+    background: rgba(10, 36, 99, 0.18);
+    border-color: ${COLORS.primary};
+    box-shadow: inset 0 0 0 1px rgba(10, 36, 99, 0.10);
+  `}
+
+  /* Start / end anchors — solid fill so they are unmistakable */
+  ${(p) => p.$anchor && `
+    background: ${COLORS.primary};
+    border-color: ${COLORS.primary};
+    color: ${COLORS.white};
+    z-index: 1;
+    box-shadow: 0 2px 10px rgba(10, 36, 99, 0.35);
+  `}
+
+  &:hover { border-color: ${COLORS.primary}; z-index: 2; }
 `;
 
 const CalDayNum = styled.span`
   font-size: 0.75rem;
-  font-weight: ${(p) => (p.$isToday ? 700 : 500)};
-  color: ${(p) => (p.$isToday ? COLORS.primary : COLORS.text)};
+  font-weight: ${(p) => (p.$isToday || p.$onAnchor ? 700 : 500)};
+  color: ${(p) => (p.$onAnchor ? '#FFFFFF' : p.$isToday ? COLORS.primary : COLORS.text)};
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: ${(p) => (p.$isToday ? 'rgba(59, 130, 246, 0.15)' : 'transparent')};
+  background: ${(p) => (p.$isToday && !p.$onAnchor ? 'rgba(59, 130, 246, 0.15)' : 'transparent')};
+`;
+
+const CalAnchor = styled.span`
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.28);
+  padding: 2px 4px;
+  border-radius: 4px;
 `;
 
 const CalDots = styled.div`
@@ -573,13 +618,14 @@ const LoadingRow = styled.div`
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 `;
 
-// ─── CALENDAR (click & drag range select, shows my own leaves) ───────────────
+// ===== CALENDAR: click a start day then an end day, or drag across days =====
 
 function LeaveCalendar({ myLeaves, rangeStart, rangeEnd, onRangeChange }) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
-  const dragAnchor = useRef(null);
+  const dragAnchor = useRef(null);      // day the pointer went down on (drag)
+  const lastDownDay = useRef(null);     // tells a simple click apart from a drag
   const [dragEnd, setDragEnd] = useState(null);
 
   const firstDay = new Date(year, month, 1).getDay();
@@ -592,13 +638,10 @@ function LeaveCalendar({ myLeaves, rangeStart, rangeEnd, onRangeChange }) {
 
   const effectiveEnd = dragEnd || rangeEnd;
   const inRange = (ds) => {
-    const a = rangeStart && effectiveEnd
-      ? (rangeStart < effectiveEnd ? rangeStart : effectiveEnd)
-      : null;
-    const b = rangeStart && effectiveEnd
-      ? (rangeStart < effectiveEnd ? effectiveEnd : rangeStart)
-      : null;
-    return a && b && ds >= a && ds <= b;
+    if (!rangeStart || !effectiveEnd) return false;
+    const a = rangeStart < effectiveEnd ? rangeStart : effectiveEnd;
+    const b = rangeStart < effectiveEnd ? effectiveEnd : rangeStart;
+    return ds >= a && ds <= b;
   };
 
   const leavesForDay = (ds) => (myLeaves || []).filter((l) => {
@@ -609,9 +652,15 @@ function LeaveCalendar({ myLeaves, rangeStart, rangeEnd, onRangeChange }) {
 
   const handleDown = (d) => {
     const ds = dayStr(d);
+    lastDownDay.current = ds;
     dragAnchor.current = ds;
     setDragEnd(ds);
-    onRangeChange(ds, ds);
+
+    // If no single-day anchor is active, start (or restart) the selection at
+    // the pressed day. If one IS active, keep it so the next click can
+    // complete the range (click start -> click end).
+    const singleAnchor = rangeStart && rangeEnd && rangeStart === rangeEnd;
+    if (!singleAnchor) onRangeChange(ds, ds);
   };
 
   const handleEnter = (d) => {
@@ -623,7 +672,33 @@ function LeaveCalendar({ myLeaves, rangeStart, rangeEnd, onRangeChange }) {
     onRangeChange(a, b);
   };
 
-  const handleUp = () => { dragAnchor.current = null; setDragEnd(null); };
+  const handleUp = (d) => {
+    const ds = d ? dayStr(d) : null;
+
+    // Genuine click = pressed & released on the same day without dragging.
+    if (ds && lastDownDay.current === ds) {
+      const singleAnchor = rangeStart && rangeEnd && rangeStart === rangeEnd;
+      if (singleAnchor && ds !== rangeStart) {
+        // Second click: complete the range from the anchored start day.
+        const a = rangeStart < ds ? rangeStart : ds;
+        const b = rangeStart < ds ? ds : rangeStart;
+        onRangeChange(a, b);
+      } else {
+        // First click (or re-anchor): mark the clicked day as the anchor.
+        onRangeChange(ds, ds);
+      }
+    }
+
+    dragAnchor.current = null;
+    lastDownDay.current = null;
+    setDragEnd(null);
+  };
+
+  const cancelDrag = () => {
+    dragAnchor.current = null;
+    lastDownDay.current = null;
+    setDragEnd(null);
+  };
 
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); } else setMonth((m) => m - 1);
@@ -634,7 +709,7 @@ function LeaveCalendar({ myLeaves, rangeStart, rangeEnd, onRangeChange }) {
   const goToday = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); };
 
   return (
-    <div onMouseUp={handleUp} onMouseLeave={handleUp}>
+    <div onMouseLeave={cancelDrag}>
       <CalNav>
         <CalNavBtn onClick={prevMonth} type="button" aria-label="Previous month"><ChevronLeft size={16} /></CalNavBtn>
         <CalMonthLabel>{MONTH_NAMES[month]} {year}</CalMonthLabel>
@@ -654,30 +729,43 @@ function LeaveCalendar({ myLeaves, rangeStart, rangeEnd, onRangeChange }) {
           const isToday = ds === TODAY_STR;
           const dayLeaves = leavesForDay(ds);
           const uniqueStatuses = [...new Set(dayLeaves.map((l) => l.status))];
+          const isStart = rangeStart === ds;
+          const isEnd = rangeEnd === ds;
+          const isAnchor = isStart || isEnd;
           return (
             <CalCell
               key={ds}
               $weekend={isWeekend}
               $isToday={isToday}
               $inRange={inRange(ds)}
+              $anchor={isAnchor}
+              $isStart={isStart}
+              $isEnd={isEnd}
               onMouseDown={() => handleDown(d)}
               onMouseEnter={() => handleEnter(d)}
+              onMouseUp={() => handleUp(d)}
+              onTouchStart={(e) => { e.preventDefault(); handleDown(d); }}
+              onTouchEnd={() => handleUp(d)}
               title={dayLeaves.map((l) => `${l.leave_type} (${l.status})`).join(', ')}
             >
-              <CalDayNum $isToday={isToday}>{d}</CalDayNum>
-              {dayLeaves.length > 0 && (
-                <CalDots>
-                  {uniqueStatuses.slice(0, 4).map((s) => (
-                    <CalDot key={s} $color={(statusColors[s] || statusColors.pending).fg} />
-                  ))}
-                </CalDots>
+              <CalDayNum $isToday={isToday} $onAnchor={isAnchor}>{d}</CalDayNum>
+              {isAnchor ? (
+                <CalAnchor>{isStart && isEnd ? 'Selected' : isStart ? 'Start' : 'End'}</CalAnchor>
+              ) : (
+                dayLeaves.length > 0 && (
+                  <CalDots>
+                    {uniqueStatuses.slice(0, 4).map((s) => (
+                      <CalDot key={s} $color={(statusColors[s] || statusColors.pending).fg} />
+                    ))}
+                  </CalDots>
+                )
               )}
             </CalCell>
           );
         })}
       </CalGrid>
 
-      <CalHint>Click and drag to select your leave dates</CalHint>
+      <CalHint>Click your start date, then your end date - or press &amp; drag across the days.</CalHint>
     </div>
   );
 }
@@ -837,4 +925,223 @@ const ApplyLeave = () => {
         );
     }
 
-    // __NEXT7__
+    // ── Render ──
+    return (
+        <Container>
+            <Header>
+                <HeaderContent>
+                    <Title>Apply for Leave</Title>
+                    <Subtitle>Hi {userName} — select your dates on the calendar, fill in the details and submit.</Subtitle>
+                </HeaderContent>
+                <CardTitleAction onClick={() => navigate(-1)}>
+                    <ChevronLeft size={14} /> Back
+                </CardTitleAction>
+            </Header>
+
+            {banner && (
+                <Banner className={banner.type}>
+                    {banner.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                    {banner.msg}
+                </Banner>
+            )}
+
+            <Layout>
+                {/* ── Left column: calendar + form ── */}
+                <div>
+                    <Card>
+                        <CardTitle><Calendar size={16} /> 1. Select your dates</CardTitle>
+                        <LeaveCalendar
+                            myLeaves={myLeaves}
+                            rangeStart={range.start}
+                            rangeEnd={range.end}
+                            onRangeChange={handleRangeChange}
+                        />
+                    </Card>
+
+                    <Card>
+                        <CardTitle><FileText size={16} /> 2. Leave details</CardTitle>
+                        <FormGrid>
+                            <FormGroup className="full">
+                                <Label>Leave type <Required>*</Required></Label>
+                                <TypeChips>
+                                    {LEAVE_TYPES.map((t) => (
+                                        <TypeChip
+                                            key={t.value}
+                                            type="button"
+                                            $active={form.type === t.value}
+                                            onClick={() => setForm({ ...form, type: t.value })}
+                                        >
+                                            {t.label}
+                                        </TypeChip>
+                                    ))}
+                                </TypeChips>
+                            </FormGroup>
+
+                            <FormGroup>
+                                <Label htmlFor="priority">Priority</Label>
+                                <Select
+                                    id="priority"
+                                    value={form.priority}
+                                    onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                                >
+                                    {PRIORITIES.map((p) => (
+                                        <option key={p.value} value={p.value}>{p.label}</option>
+                                    ))}
+                                </Select>
+                            </FormGroup>
+
+                            <FormGroup>
+                                <Label>Selected range</Label>
+                                {range.start && range.end ? (
+                                    <DateRangeBox>
+                                        <DateText>{formatDate(range.start)} &rarr; {formatDate(range.end)}</DateText>
+                                        <DaysBadge>
+                                            {days} day{days === 1 ? '' : 's'}{form.halfDay ? ' (half)' : ''}
+                                        </DaysBadge>
+                                        <CardTitleAction type="button" onClick={clearRange}>Clear</CardTitleAction>
+                                    </DateRangeBox>
+                                ) : (
+                                    <Empty>No dates selected yet — drag on the calendar above.</Empty>
+                                )}
+                            </FormGroup>
+
+                            <FormGroup className="full">
+                                <HalfDayRow>
+                                    <input
+                                        id="halfDay"
+                                        type="checkbox"
+                                        checked={form.halfDay}
+                                        onChange={(e) => setForm({ ...form, halfDay: e.target.checked })}
+                                    />
+                                    <label htmlFor="halfDay">Half day (counts as 0.5 days)</label>
+                                </HalfDayRow>
+                            </FormGroup>
+
+                            <FormGroup className="full">
+                                <Label htmlFor="reason">Reason <Required>*</Required></Label>
+                                <TextArea
+                                    id="reason"
+                                    value={form.reason}
+                                    onChange={(e) => setForm({ ...form, reason: e.target.value })}
+                                    placeholder="Please provide a reason for your leave request..."
+                                />
+                            </FormGroup>
+
+                            <FormGroup className="full">
+                                <Label>Supporting document (optional)</Label>
+                                <input
+                                    id="leave-file-input"
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    style={{ display: 'none' }}
+                                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                                />
+                                <DropZone
+                                    $drag={drag}
+                                    onClick={() => document.getElementById('leave-file-input')?.click()}
+                                    onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+                                    onDragLeave={() => setDrag(false)}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        setDrag(false);
+                                        const f = e.dataTransfer?.files?.[0];
+                                        if (f) setFile(f);
+                                    }}
+                                >
+                                    {file ? (
+                                        <FileChip>
+                                            <FileText size={16} />
+                                            {file.name}
+                                            <button
+                                                type="button"
+                                                aria-label="Remove file"
+                                                onClick={(e) => { e.stopPropagation(); setFile(null); }}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </FileChip>
+                                    ) : (
+                                        <>
+                                            <Upload size={22} />
+                                            <p>Drag &amp; drop a file here, or <span className="browse">browse</span></p>
+                                            <p className="hint">PDF, JPG or PNG — one supporting document</p>
+                                        </>
+                                    )}
+                                </DropZone>
+                            </FormGroup>
+                        </FormGrid>
+
+                        <Actions>
+                            <Btn className="secondary" type="button" onClick={() => navigate(-1)}>
+                                Cancel
+                            </Btn>
+                            <Btn className="primary" type="button" disabled={!canSubmit} onClick={handleSubmit}>
+                                {submitting ? <Loader2 size={16} /> : <CheckCircle size={16} />}
+                                {submitting ? 'Submitting...' : 'Submit request'}
+                            </Btn>
+                        </Actions>
+                    </Card>
+                </div>
+
+                {/* ── Right column: balance + my requests ── */}
+                <div>
+                    <Card>
+                        <CardTitle>Leave balance</CardTitle>
+                        {loading ? (
+                            <LoadingRow><Loader2 size={14} /> Loading your balance...</LoadingRow>
+                        ) : (
+                            <>
+                                <BalanceBig>
+                                    <div className="num">{available ?? '—'}</div>
+                                    <div className="lbl">days available</div>
+                                </BalanceBig>
+                                <Bar>
+                                    <div className="used" style={{ width: `${usedPct}%` }} />
+                                    <div className="pending" style={{ width: `${pendingPct}%` }} />
+                                </Bar>
+                                <Breakdown>
+                                    <div className="row"><span className="k">Entitlement</span><span className="v">{initial}</span></div>
+                                    <div className="row"><span className="k">Taken</span><span className="v">{used}</span></div>
+                                    <div className="row"><span className="k">Pending</span><span className="v warning">{pending}</span></div>
+                                    <div className="row"><span className="k">Available</span><span className="v primary">{available ?? '—'}</span></div>
+                                </Breakdown>
+                            </>
+                        )}
+                    </Card>
+
+                    <Card>
+                        <CardTitle>
+                            My requests
+                            {pendingRequests.length > 0 && <DaysBadge>{pendingRequests.length} pending</DaysBadge>}
+                        </CardTitle>
+                        {loading ? (
+                            <LoadingRow><Loader2 size={14} /> Loading your requests...</LoadingRow>
+                        ) : recentRequests.length === 0 ? (
+                            <Empty>No leave requests yet — apply for your first one here.</Empty>
+                        ) : (
+                            recentRequests.map((l) => (
+                                <ReqItem key={l.id || `${l.start_date}-${l.end_date}`}>
+                                    <ReqTop>
+                                        <ReqType>{String(l.leave_type || 'leave').replace('_', ' ')}</ReqType>
+                                        <StatusBadge $status={l.status}>{l.status}</StatusBadge>
+                                    </ReqTop>
+                                    <ReqMeta>
+                                        {formatDate(l.start_date)} &rarr; {formatDate(l.end_date)}
+                                        {' '}&middot;{' '}
+                                        {l.days ?? countBusinessDays(l.start_date, l.end_date)} day(s)
+                                    </ReqMeta>
+                                    {l.reason && <ReqReason>{l.reason}</ReqReason>}
+                                    {l.status === 'pending' && (
+                                        <CancelBtn onClick={() => handleCancel(l.id)}>Cancel request</CancelBtn>
+                                    )}
+                                </ReqItem>
+                            ))
+                        )}
+                    </Card>
+                </div>
+            </Layout>
+        </Container>
+    );
+};
+
+export default ApplyLeave;

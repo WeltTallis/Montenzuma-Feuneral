@@ -656,13 +656,25 @@ const HearseBookings = () => {
 
   const handleDateFilter = useCallback((f) => { setDateFilter(f); setCurrentPage(1); }, []);
 
-  const loadData = useCallback(async () => {
+    const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [bks, brs, hrs] = await Promise.all([api.getBookings(), api.getBranches(), api.getAllHearses()]);
       setBookings(bks); setBranches(brs); setAllHearses(hrs);
     } catch (e) { notify.error('Failed to load data'); }
     setLoading(false);
+  }, []);
+
+  // Refresh data IN PLACE — same fetch as loadData() but WITHOUT the
+  // full-page loading spinner. This is used after a create/update so the
+  // page only refreshes its data (the hearse fleet / bookings list) instead
+  // of swapping the entire view for a full-screen spinner, which currently
+  // feels like the whole page reloading.
+  const refreshData = useCallback(async () => {
+    try {
+      const [bks, brs, hrs] = await Promise.all([api.getBookings(), api.getBranches(), api.getAllHearses()]);
+      setBookings(bks); setBranches(brs); setAllHearses(hrs);
+    } catch (e) { notify.error('Failed to refresh data'); }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -806,7 +818,11 @@ const HearseBookings = () => {
       notify.success('Hearse registered successfully!');
       setRegisterHearseOpen(false);
       setHearseForm({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_code: '' });
-      await loadData();
+      // Refresh only the data in place — do NOT call loadData() here because
+      // that toggles a full-screen spinner (setLoading(true)) which makes the
+      // whole page swap to a spinner, i.e. a "whole page refresh". Using
+      // refreshData() keeps the current view mounted and just updates the list.
+      await refreshData();
     } catch (err) { notify.error('Failed: ' + err.message); }
     setRegisterLoading(false);
   };

@@ -1018,10 +1018,10 @@ export default function App() {
         <section className="about-section">
           <div className="wrap about-grid">
             <Reveal>
-              <div className="label" style={{ marginBottom: '1rem' }}>Our Mission</div>
-              <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', marginBottom: '1.5rem' }}>Rest Point was created to bring peace to families during their darkest moments.</h2>
-              <p style={{ color: C.gray, marginBottom: '1.5rem', lineHeight: 1.8 }}>We recognized a gap in how funeral homes and welfare groups manage operations. The paperwork, the miscommunication, the delayed claims—it all adds unnecessary stress to grieving families.</p>
-              <p style={{ color: C.gray, marginBottom: '2rem', lineHeight: 1.8 }}>Our platform streamlines the entire process so you can focus on what truly matters: providing compassionate care and supporting families with dignity and respect.</p>
+                            <div className="label" style={{ marginBottom: '1rem' }}>Our Mission</div>
+              <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', marginBottom: '1.5rem', color: C.ink }}>To make it easier to care for people when it matters most.</h2>
+              <p style={{ color: C.gray, marginBottom: '2rem', lineHeight: 1.8 }}>We give funeral homes and funeral insurers the technology to simplify operations, protect every detail, and deliver a better experience for the families they serve.</p>
+              <p style={{ color: C.gray, marginBottom: '2rem', lineHeight: 1.8, fontFamily: "'Fraunces', serif", fontSize: '1.2rem', fontWeight: 600 }}>Less complexity. More care.</p>
               <button className="btn btn-line" onClick={goAbout}>Learn more about us</button>
             </Reveal>
             <Reveal delay={100} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>

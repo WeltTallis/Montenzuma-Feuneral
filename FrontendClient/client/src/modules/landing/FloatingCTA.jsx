@@ -35,15 +35,15 @@ const FloatingCTA = () => {
         }
         
         /* --- FLOATING WIDGET STYLES --- */
-        .floating-container {
+                .floating-container {
           position: fixed;
           bottom: 30px;
-          left: 30px; /* Pinned to bottom-left */
+          right: 30px; /* Pinned to bottom-right */
           z-index: 9999;
           font-family: 'Segoe UI', sans-serif;
           display: flex;
           flex-direction: column;
-          align-items: flex-start; /* Align to left */
+                    align-items: flex-end; /* Align to right */
           gap: 15px;
           transition: opacity 0.3s ease, transform 0.3s ease;
         }

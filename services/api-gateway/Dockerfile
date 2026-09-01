@@ -49,6 +49,12 @@ USER nodejs
 EXPOSE 5000
 ENV NODE_ENV=production
 ENV PORT=5000
+# Marks this process as inside a container. server.js's runtime guard uses
+# this (in addition to the /.dockerenv probe) to rewrite any residual
+# loopback service URLs from the bundled .env to the canonical Docker DNS
+# names — explicit compose `environment:` / `docker run -e` values always
+# win regardless (dotenv loads with override:false).
+ENV RUNNING_IN_DOCKER=true
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \

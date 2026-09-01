@@ -11,7 +11,7 @@ const { safeTenantQuery, safeTenantExecute } = require('../../shared/dbConfig');
 const LEAVE_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS leave_requests (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
+  user_id VARCHAR(36) NOT NULL,
   tenant_slug VARCHAR(100) NOT NULL,
   leave_type VARCHAR(50) NOT NULL,
   priority ENUM('low', 'medium', 'high', 'emergency') DEFAULT 'medium',
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   is_half_day BOOLEAN DEFAULT FALSE,
   status VARCHAR(50) DEFAULT 'pending',
   rejection_reason TEXT,
-  approved_by INT NULL,
+  approved_by VARCHAR(36) NULL,
   approved_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -35,11 +35,11 @@ CREATE TABLE IF NOT EXISTS leave_requests (
 
 CREATE TABLE IF NOT EXISTS leave_day_additions (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
+  user_id VARCHAR(36) NOT NULL,
   tenant_slug VARCHAR(100) NOT NULL,
   days INT NOT NULL,
   reason TEXT,
-  added_by INT NOT NULL,
+  added_by VARCHAR(36) NOT NULL,
   created_at DATE DEFAULT NULL,
   INDEX idx_addition_user (user_id),
   INDEX idx_addition_tenant (tenant_slug),
@@ -48,12 +48,12 @@ CREATE TABLE IF NOT EXISTS leave_day_additions (
 
 CREATE TABLE IF NOT EXISTS holiday_compensations (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
+  user_id VARCHAR(36) NOT NULL,
   tenant_slug VARCHAR(100) NOT NULL,
   holiday_date DATE NOT NULL,
   holiday_name VARCHAR(255) NOT NULL,
   note TEXT,
-  recorded_by INT NOT NULL,
+  recorded_by VARCHAR(36) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_holiday_user (user_id),
   INDEX idx_holiday_tenant (tenant_slug),
@@ -94,6 +94,29 @@ async function migrateTenantTables(dbName) {
                 console.log(`[LEAVE] Added tenant_slug to ${table}`);
             } catch (err) {
                 console.log(`[LEAVE] ${table} tenant_slug column check: ${err.message}`);
+            }
+        }
+
+                // Migrate existing leave tables from INT user_id to VARCHAR(36) to match
+        // the users table (users.user_id is VARCHAR(36) UUID, NOT auto-increment INT).
+        // CREATE TABLE IF NOT EXISTS above will create fresh tables with the correct
+        // VARCHAR(36) type, but pre-existing tables created with the old INT schema
+        // need their columns widened via MODIFY COLUMN. This is idempotent: if the
+        // column is already VARCHAR(36) the statement is a no-op.
+        const alterColumnSql = [
+            'ALTER TABLE leave_requests MODIFY COLUMN user_id VARCHAR(36) NOT NULL',
+            'ALTER TABLE leave_requests MODIFY COLUMN approved_by VARCHAR(36) NULL',
+            'ALTER TABLE leave_day_additions MODIFY COLUMN user_id VARCHAR(36) NOT NULL',
+            'ALTER TABLE leave_day_additions MODIFY COLUMN added_by VARCHAR(36) NOT NULL',
+            'ALTER TABLE holiday_compensations MODIFY COLUMN user_id VARCHAR(36) NOT NULL',
+            'ALTER TABLE holiday_compensations MODIFY COLUMN recorded_by VARCHAR(36) NOT NULL'
+        ];
+        for (const sql of alterColumnSql) {
+            try {
+                await safeTenantQuery(dbName, sql);
+                console.log(`[LEAVE] ${sql}`);
+            } catch (err) {
+                console.log(`[LEAVE] Column type check: ${err.message}`);
             }
         }
 

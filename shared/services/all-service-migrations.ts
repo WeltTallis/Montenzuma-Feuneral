@@ -310,16 +310,16 @@ const CHEMICALS_SERVICE_MIGRATIONS: Migration[] = [];
 
 const LEAVE_SERVICE_MIGRATIONS: Migration[] = [
   {
-    name: '170_create_leave_requests_table',
-    sql: `CREATE TABLE IF NOT EXISTS leave_requests (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, tenant_slug VARCHAR(100) NOT NULL, leave_type VARCHAR(50) NOT NULL, priority ENUM('low', 'medium', 'high', 'emergency') DEFAULT 'medium', start_date DATE NOT NULL, end_date DATE NOT NULL, days DECIMAL(5,2) NOT NULL, reason TEXT, supporting_document VARCHAR(500), is_half_day BOOLEAN DEFAULT FALSE, status VARCHAR(50) DEFAULT 'pending', rejection_reason TEXT, approved_by INT NULL, approved_at VARCHAR(255) NULL, created_at VARCHAR(255), updated_at VARCHAR(255), INDEX idx_leave_user (user_id), INDEX idx_leave_tenant (tenant_slug), INDEX idx_leave_status (status), INDEX idx_leave_dates (start_date, end_date)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+            name: '170_create_leave_requests_table',
+    sql: `CREATE TABLE IF NOT EXISTS leave_requests (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, leave_type VARCHAR(50) NOT NULL, priority ENUM('low', 'medium', 'high', 'emergency') DEFAULT 'medium', start_date DATE NOT NULL, end_date DATE NOT NULL, days DECIMAL(5,2) NOT NULL, reason TEXT, supporting_document VARCHAR(500), is_half_day BOOLEAN DEFAULT FALSE, status VARCHAR(50) DEFAULT 'pending', rejection_reason TEXT, approved_by VARCHAR(36) NULL, approved_at VARCHAR(255) NULL, created_at VARCHAR(255), updated_at VARCHAR(255), INDEX idx_leave_user (user_id), INDEX idx_leave_tenant (tenant_slug), INDEX idx_leave_status (status), INDEX idx_leave_dates (start_date, end_date)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
   {
-    name: '171_create_leave_day_additions_table',
-    sql: 'CREATE TABLE IF NOT EXISTS leave_day_additions (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, tenant_slug VARCHAR(100) NOT NULL, days INT NOT NULL, reason TEXT, added_by INT NOT NULL, created_at DATE DEFAULT NULL, INDEX idx_addition_user (user_id), INDEX idx_addition_tenant (tenant_slug), INDEX idx_addition_date (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+            name: '171_create_leave_day_additions_table',
+    sql: 'CREATE TABLE IF NOT EXISTS leave_day_additions (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, days INT NOT NULL, reason TEXT, added_by VARCHAR(36) NOT NULL, created_at DATE DEFAULT NULL, INDEX idx_addition_user (user_id), INDEX idx_addition_tenant (tenant_slug), INDEX idx_addition_date (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
   },
   {
-    name: '172_create_holiday_compensations_table',
-    sql: 'CREATE TABLE IF NOT EXISTS holiday_compensations (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, tenant_slug VARCHAR(100) NOT NULL, holiday_date DATE NOT NULL, holiday_name VARCHAR(255) NOT NULL, note TEXT, recorded_by INT NOT NULL, created_at VARCHAR(255), INDEX idx_holiday_user (user_id), INDEX idx_holiday_tenant (tenant_slug), INDEX idx_holiday_date (holiday_date), UNIQUE KEY unique_user_holiday (user_id, holiday_date)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+            name: '172_create_holiday_compensations_table',
+    sql: 'CREATE TABLE IF NOT EXISTS holiday_compensations (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, holiday_date DATE NOT NULL, holiday_name VARCHAR(255) NOT NULL, note TEXT, recorded_by VARCHAR(36) NOT NULL, created_at VARCHAR(255), INDEX idx_holiday_user (user_id), INDEX idx_holiday_tenant (tenant_slug), INDEX idx_holiday_date (holiday_date), UNIQUE KEY unique_user_holiday (user_id, holiday_date)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
   },
   {
     name: '173_add_annual_leave_balance_to_users',
