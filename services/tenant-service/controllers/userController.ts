@@ -1,4 +1,4 @@
-import * as mysql from 'mysql2/promise';
+﻿import * as mysql from 'mysql2/promise';
 import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { TenantModel } from '../models/Tenant.model';
@@ -15,7 +15,7 @@ export class UserController {
             const { email, password, full_name, phone, role, branch_id } = req.body;
             const user = (req as any).user;
 
-            // `username` is optional â€” auto-derived from the email when the admin
+            // `username` is optional — auto-derived from the email when the admin
             // does not supply one (the settings-page "Add User" form doesn't).
             const username: string = String(req.body.username || email || '').trim().toLowerCase();
 

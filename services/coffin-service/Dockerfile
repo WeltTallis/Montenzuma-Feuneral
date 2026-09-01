@@ -44,7 +44,7 @@ RUN cd packages/shared-utils && npm run build
 # Install tsx for running TypeScript directly
 RUN npm install -g tsx
 
-RUN mkdir -p /usr/src/app/data && chown -R nodejs:nodejs /usr/src/app
+RUN mkdir -p /usr/src/app/data /opt/storage/uploads && chown -R nodejs:nodejs /usr/src/app /opt/storage/uploads
 
 USER nodejs
 

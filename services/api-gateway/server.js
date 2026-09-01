@@ -1,22 +1,9 @@
 // ─── MUST BE FIRST: raise the libuv thread pool before any async I/O ───────
-// dns.lookup(), fs, and crypto all share this pool (default size 4). With
-// ~30 services being health-checked concurrently every 30s, 4 slots is not
-// enough — real proxied requests queue behind stuck DNS/connect lookups for
-// dead services, which is why /hearses was taking 14-23s even though the
-// hearse service itself answers in ~50ms.
-// This only works because it runs before any threadpool call happens in this
-// process. For a fully reliable fix, also set UV_THREADPOOL_SIZE=64 in your
-// docker-compose environment / Dockerfile ENV so it's set before Node starts.
+
 if (!process.env.UV_THREADPOOL_SIZE) {
   process.env.UV_THREADPOOL_SIZE = '64';
 }
 
-// @montezuma/shared-logger is a TypeScript package compiled with a `default`
-// export (plus a named `logger` export). When loaded through plain CommonJS
-// `require()` it resolves to the module namespace object `{ __esModule:true,
-// logger, default }`, so call `.default` (or `.logger`) when `require()` did not
-// hand back the pino instance directly. Fall back to console so the gateway can
-// always boot even if the logger transport fails to initialize.
 const loggerModule = require('../../packages/shared-logger/src/index');
 const Logger =
   (loggerModule && typeof loggerModule.info === 'function') ? loggerModule
@@ -28,6 +15,7 @@ const Logger =
           warn: (...args) => console.warn('[WARN]', ...args),
           error: (...args) => console.error('[ERROR]', ...args),
         };
+        
 const { createProxyMiddleware, fixRequestBody } = require('http-proxy-middleware');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
@@ -295,7 +283,7 @@ if ((process.env.TRUST_PROXY || 'false').toString().toLowerCase() === 'true') {
 
 // CORS
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
+  ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
   : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'];
 
 app.use(cors({

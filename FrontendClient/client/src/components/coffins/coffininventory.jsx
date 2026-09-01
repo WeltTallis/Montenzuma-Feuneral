@@ -1739,7 +1739,7 @@ const CoffinDashboard = () => {
     const coffinsToSearch = window.__interBranchCoffins || [];
 
     const results = coffinsToSearch.filter((c) => {
-      // "Find in Other Branches" must not surface the CURRENT branch's own stock â€”
+      // "Find in Other Branches" must not surface the CURRENT branch's own stock —
       // that stock is already shown in the Inventory tab / Reservation dropdown.
       if (c.branch_id && c.branch_id == currentBranch) return false;
       if (branchFilter && String(c.branch_id || '') != String(branchFilter)) return false;
@@ -1865,7 +1865,7 @@ const CoffinDashboard = () => {
             <div>
               <h4 style="font-size:16px; font-weight:700; color:${S.primaryDark}; margin:0 0 4px;">${c.name}</h4>
               <p style="font-size:13px; color:${S.primaryDark}; margin:0; opacity:0.8;">
-                From <strong>${branches.find((b) => b.id == c.branch_id)?.name || c.branch_name || 'other branch'}</strong> â€¢ ${formatKES(c.price)}
+                From <strong>${branches.find((b) => b.id == c.branch_id)?.name || c.branch_name || 'other branch'}</strong> • ${formatKES(c.price)}
               </p>
             </div>
           </div>
@@ -2206,7 +2206,7 @@ const CoffinDashboard = () => {
                           fontFamily: 'monospace',
                         }}
                       >
-                        {coffin.custom_id || coffin.coffin_id || 'â€”'}
+                        {coffin.custom_id || coffin.coffin_id || '—'}
                       </td>
                       <td style={styles.td}>
                         <div
@@ -2733,7 +2733,7 @@ const CoffinDashboard = () => {
                     return branchCoffinsList.length > 0 ? (
                       branchCoffinsList.map((c) => (
                         <option key={c.coffin_id || c.id} value={c.coffin_id || c.id}>
-                          {c.name} â€” {formatKES(c.price)} ({c.stock} left)
+                          {c.name} — {formatKES(c.price)} ({c.stock} left)
                         </option>
                       ))
                     ) : (

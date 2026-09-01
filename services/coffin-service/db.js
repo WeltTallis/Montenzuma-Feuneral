@@ -167,7 +167,7 @@ async function runCoffinMigrations() {
     // branch-slug row to its PARENT org slug, resolved from the authoritative
     // `tenant_tracking.tenants` registry (no branches table needed): strip
     // trailing dash segments until the prefix matches a registered tenant.
-    // Idempotent â€” a no-op once every row uses the org slug.
+    // Idempotent — a no-op once every row uses the org slug.
     const [slugRows] = await pool.query('SELECT DISTINCT tenant_slug AS slug FROM stock_requests');
     let repaired = 0;
     for (const row of (slugRows || [])) {
@@ -192,7 +192,7 @@ async function runCoffinMigrations() {
           }
         }
       } catch (e) {
-        // tenant_tracking not reachable â€” leave this slug untouched
+        // tenant_tracking not reachable — leave this slug untouched
         continue;
       }
       if (orgSlug && orgSlug !== slug) {

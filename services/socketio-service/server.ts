@@ -1,20 +1,18 @@
 import express, { Request, Response, NextFunction } from 'express';
-import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
-import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
+import Logger from '../../packages/shared-logger/dist/index';
+import { Server as SocketIOServer } from 'socket.io';
+import rateLimit from 'express-rate-limit';
+import { createClient } from 'redis';
+import { error } from 'console';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import cors from 'cors';
-import rateLimit from 'express-rate-limit';
-import Logger from '../../packages/shared-logger/dist/index';
-import { error } from 'console';
+import http from 'http';
 
 dotenv.config();
 
-// ============================================
 // ERROR HANDLING UTILITIES
-// ============================================
 
 class AppError extends Error {
   public statusCode: number;
@@ -66,7 +64,10 @@ app.use(helmet({
 }));
 
 const ALLOWED_ORIGINS: string[] = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
+  ? process.env.ALLOWED_ORIGINS
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
   : [
     'http://localhost:3000',
     'http://localhost:3001',

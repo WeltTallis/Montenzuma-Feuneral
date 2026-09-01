@@ -196,7 +196,7 @@ services:
       - tenant_service_data:/usr/src/app/data
       # The ONE shared uploads folder served to browsers at /uploads/...
       # (same volume every service writes signatures/logos/documents to)
-      - shared_uploads:/opt/storage/uploads
+      - ${UPLOADS_BASE_DIR:-/opt/storage/uploads}:/opt/storage/uploads
     depends_on:
       mariadb:
         condition: service_healthy
@@ -236,7 +236,7 @@ services:
       - deceased_service_data:/usr/src/app/data
       # Write signatures/reports into the SAME shared uploads folder the
       # tenant-service serves at /uploads/... (single source of truth)
-      - shared_uploads:/opt/storage/uploads
+      - ${UPLOADS_BASE_DIR:-/opt/storage/uploads}:/opt/storage/uploads
       - ./services/deceased-service/uploads:/usr/src/app/uploads
     networks:
       - restpoint_network
@@ -303,7 +303,7 @@ services:
       # Coffin-service imports @montezuma/shared-services, whose barrel
       # immediately inits FileStorageService → mkdir /opt/storage/uploads.
       # Without this mount the non-root container crashes with EACCES.
-      - shared_uploads:/opt/storage/uploads
+      - ${UPLOADS_BASE_DIR:-/opt/storage/uploads}:/opt/storage/uploads
     networks:
       - restpoint_network
     healthcheck:
@@ -335,7 +335,7 @@ services:
     volumes:
       - documents_service_data:/usr/src/app/data
       # Documents service serves /uploads AND writes to it — use the shared volume
-      - shared_uploads:/opt/storage/uploads
+      - ${UPLOADS_BASE_DIR:-/opt/storage/uploads}:/opt/storage/uploads
       - ./services/documents-service/uploads:/usr/src/app/uploads
     networks:
       - restpoint_network
@@ -434,7 +434,7 @@ services:
     volumes:
       - bodycheckout_service_data:/usr/src/app/data
       # Body-release signatures are stored under /opt/storage/uploads/<tenant>/signatures
-      - shared_uploads:/opt/storage/uploads
+      - ${UPLOADS_BASE_DIR:-/opt/storage/uploads}:/opt/storage/uploads
     networks:
       - restpoint_network
     healthcheck:
@@ -491,7 +491,7 @@ services:
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
-      SOCKETIO_SERVICE_URL: http://socketio-service:5013
+      SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
     volumes:
       - support_service_data:/usr/src/app/data
     networks:

@@ -1,7 +1,5 @@
 services:
-  # ============================================================================
   # INFRASTRUCTURE SERVICES
-  # ============================================================================
 
   # MariaDB Database
   mariadb:
@@ -68,10 +66,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-
-  # ============================================================================
   # CORE SERVICES
-  # ============================================================================
 
   # API Gateway
   api-gateway:
@@ -118,7 +113,6 @@ services:
       - BILLING_SERVICE_URL=http://restpoint_billing_service:5000
       - SOCKETIO_SERVICE_URL=http://restpoint_socketio_service:5000
       - EXTRA_SERVICES_URL=http://restpoint_extra_services:5000
-      - CALL_SERVICE_URL=http://restpoint_call_service:5000
       - QRCODE_SERVICE_URL=http://restpoint_qrcode_service:5000
       - WORKSHOP_SERVICE_URL=http://restpoint_workshop_service:5000
       - HEARSE_SERVICE_URL=http://restpoint_hearse_service:5000
@@ -338,7 +332,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_HOST=restpoint_redis
       - REDIS_PORT=6379
-      - SOCKETIO_SERVICE_URL=http://socketio-service:5018
+      - SOCKETIO_SERVICE_URL=http://restpoint_socketio_service:5000
     env_file:
       - .env
     networks:
@@ -538,7 +532,7 @@ services:
       - DB_PORT=3306
       - DB_USER=restpoint_user
       - DB_PASSWORD=${DB_PASSWORD}
-            - OPERATIONS_DATABASE=restpoint_operations
+        - OPERATIONS_DATABASE=restpoint_operations
     env_file:
       - .env
     networks:
