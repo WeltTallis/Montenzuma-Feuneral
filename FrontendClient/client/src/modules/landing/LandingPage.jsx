@@ -3,17 +3,17 @@ import { useNavigate } from 'react-router-dom';
 
 import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, Search, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy } from '../../utils/icons/icons';
 
-import Footer from '../../components/layout/Footer';
-import LandingPageSEO from '../seo/LandingPageSEO';
-import ModuleGridSection from './imageCard';
 import NewsroomSection from '../newsroom/NewsroomSection';
-
+import LandingPageSEO from '../seo/LandingPageSEO';
+import Footer from '../../components/layout/Footer';
+import ModuleGridSection from './imageCard';
+import FloatingCTA from './FloatingCTA';
 import C from '../../utils/colors/index'
 
 
-/* ═══════════════════════════════════════
+/* 
    HOOKS
-   ═══════════════════════════════════════ */
+ */
 function useReveal() {
   const ref = useRef(null);
   const [shown, setShown] = useState(false);
@@ -432,20 +432,6 @@ export default function App() {
   useEffect(() => { const t = setTimeout(() => setLoaded(true), 60); return () => clearTimeout(t); }, []);
   useEffect(() => { const onScroll = () => setScrolled(window.scrollY > 50); window.addEventListener('scroll', onScroll, { passive: true }); return () => window.removeEventListener('scroll', onScroll); }, []);
 
-  // Floating call-to-action: hide while scrolling, reappear ~400ms after the
-  // user stops (no scroll events for that long).
-  const [widgetVisible, setWidgetVisible] = useState(true);
-  useEffect(() => {
-    let timer = null;
-    const onScroll = () => {
-      setWidgetVisible(false);
-      clearTimeout(timer);
-      timer = setTimeout(() => setWidgetVisible(true), 400);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => { clearTimeout(timer); window.removeEventListener('scroll', onScroll); };
-  }, []);
-
   const landingModules = [
     {
       dark: true,
@@ -809,44 +795,6 @@ export default function App() {
         @keyframes module-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.7)}}
         @keyframes subtle-pulse{0%,100%{box-shadow:0 0 0 0 rgba(61,79,71,0.4)}70%{box-shadow:0 0 0 6px rgba(61,79,71,0)}}
 
-                /* ── CTA ── */
-        .floating-container{
-          position:fixed;bottom:30px;left:30px;z-index:9999;
-          display:flex;flex-direction:column;align-items:flex-start;gap:15px;
-          opacity:0;transform:translateY(30px);transition:opacity 0.4s ease,transform 0.4s ease;
-        }
-        .floating-container.visible{opacity:1;transform:translateY(0)}
-        .floating-block{position:relative;display:flex;align-items:center;gap:0.75rem}
-        .floating-btn{
-          width:50px;height:50px;border-radius:50%;
-          display:flex;justify-content:center;align-items:center;
-          box-shadow:0 4px 10px rgba(0,0,0,0.3);cursor:pointer;
-          position:relative;transition:transform 0.3s ease;text-decoration:none;
-        }
-        .floating-btn::before{
-          content:"";position:absolute;inset:0;border-radius:50%;z-index:-1;
-          animation:pulse 2s infinite;
-        }
-        .whatsapp-btn{background-color:#25D366}
-        .whatsapp-btn::before{background-color:#25D366}
-        .whatsapp-btn:hover{background-color:#1ebe57}
-        .call-btn{background-color:#007bff}
-        .call-btn::before{background-color:#007bff}
-        .call-btn:hover{background-color:#0056b3}
-        .tooltip-text{
-          position:absolute;left:65px;top:50%;transform:translateY(-50%);
-          background:${C.ink};color:${C.bone};padding:6px 12px;border-radius:6px;
-          font-size:14px;font-weight:600;white-space:nowrap;
-          opacity:0;visibility:hidden;transition:opacity 0.3s ease,pointer-events:none 0.3s;
-        }
-        .tooltip-text::after{
-          content:"";position:absolute;left:-6px;top:50%;transform:translateY(-50%);
-          border-width:6px 8px 6px 0;border-style:solid;border-color:transparent ${C.ink} transparent transparent;
-        }
-        .call-btn:hover .tooltip-text{opacity:1;visibility:visible;pointer-events:auto}
-        @keyframes pulse{0%{transform:scale(1);opacity:0.7}70%{transform:scale(1.5);opacity:0}100%{transform:scale(1.5);opacity:0}}
-
-        /* ── Newsroom moved to modules/newsroom ── */
 
         /* ── Keyframes ── */
         @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-25%)}}
@@ -1121,24 +1069,7 @@ export default function App() {
         <Footer />
 
         {/* ── Floating Call-to-Action (bottom-left) ── */}
-        {/* Hides while scrolling, reappears 400ms after the user stops scrolling */}
-        <div className={`floating-container ${widgetVisible ? 'visible' : ''}`}>
-          <div className="floating-block">
-            <span className="tooltip-text">Call: 0740045355</span>
-            <a href="tel:0740045355" className="floating-btn call-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="24" height="24">
-                <path fill="#ffffff" d="M164.9 24.6c-7.7-18.6-28-28.5-47.4-23.2l-88 24C12.1 30.2 0 46 0 64C0 311.4 200.6 512 448 512c18 0 33.8-12.1 38.6-29.5l24-88c5.3-19.4-4.6-39.7-23.2-47.4l-96-40c-16.3-6.8-35.2-2.1-46.3 11.6L304.7 368C234.3 334.7 177.3 277.7 144 207.3L193.3 167c13.7-11.2 18.4-30 11.6-46.3l-40-96z"/>
-              </svg>
-            </a>
-          </div>
-          <div className="floating-block">
-            <a href="https://wa.me/254740045355?text=Hello%2C%20I%20have%20a%20question" target="_blank" rel="noopener noreferrer" className="floating-btn whatsapp-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="28" height="28">
-                <path fill="#ffffff" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-119.3 0-216 96.7-216 216 0 38.1 9.9 75.3 28.9 108.7L32 480l118.9-31.2c32.4 17.7 68.8 27 106.1 27h.1c119.3 0 216-96.7 216-216 0-59.3-25.2-115.1-67.2-157.1zM223.9 438.6c-31.7 0-62.9-8.5-90.1-24.6l-6.5-3.9-68.1 17.9 18.2-66.5-4.2-6.8c-17.5-27.9-26.7-60.2-26.7-93.6 0-97.8 79.6-177.4 177.4-177.4 47.4 0 91.9 18.5 125.4 52 33.5 33.6 52 78.1 52 125.5 0 97.8-79.6 177.4-177.4 177.4z"/>
-              </svg>
-            </a>
-          </div>
-        </div>
+        <FloatingCTA />
       </main>
     </>
   );
