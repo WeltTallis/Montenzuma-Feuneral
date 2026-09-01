@@ -13,3 +13,8 @@ yarn.lock
 .yarnrc.yml
 .yarnrc.yaml
 .pnp.*
+
+# Security: never commit credential/key files
+**/key.txt
+**/*.key
+**/*.pem
