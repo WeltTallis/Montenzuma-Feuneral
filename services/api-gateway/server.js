@@ -28,7 +28,7 @@ const Logger =
           warn: (...args) => console.warn('[WARN]', ...args),
           error: (...args) => console.error('[ERROR]', ...args),
         };
-const { createProxyMiddleware } = require('http-proxy-middleware');
+const { createProxyMiddleware, fixRequestBody } = require('http-proxy-middleware');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
@@ -498,10 +498,17 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
         if (req.headers['x-user-id']) proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
         if (req.headers['x-branch-slug']) proxyReq.setHeader('x-branch-slug', req.headers['x-branch-slug']);
         if (req.headers['x-branch-id']) proxyReq.setHeader('x-branch-id', req.headers['x-branch-id']);
-        if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
-          const bodyStr = JSON.stringify(req.body);
-          proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyStr));
-          proxyReq.write(bodyStr);
+        // Re-stream the already-consumed body safely. The previous manual
+        // JSON.stringify + proxyReq.write() here is a known-fragile pattern
+        // with http-proxy-middleware: it can throw "write after end" or
+        // leave the proxied socket in a bad state for certain payloads,
+        // which surfaces to the client as a 502 from the front-end reverse
+        // proxy (the gateway process resets the connection mid-request).
+        // fixRequestBody is the library's own helper for this exact problem.
+        try {
+          fixRequestBody(proxyReq, req);
+        } catch (bodyErr) {
+          Logger.error(`[PROXY] Failed to re-stream body for ${req.method} ${req.originalUrl}: ${bodyErr.message}`);
         }
       },
       onProxyRes: (proxyRes, req, res) => {
