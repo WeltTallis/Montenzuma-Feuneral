@@ -19,6 +19,7 @@ RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && np
 
 COPY packages/ ./packages/
 COPY shared/ ./shared/
+COPY services/app-global/ ./services/app-global/
 
 COPY services/leave-service/ ./services/leave-service/
 

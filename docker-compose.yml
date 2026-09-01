@@ -532,7 +532,7 @@ services:
       - DB_PORT=3306
       - DB_USER=restpoint_user
       - DB_PASSWORD=${DB_PASSWORD}
-        - OPERATIONS_DATABASE=restpoint_operations
+      - OPERATIONS_DATABASE=restpoint_operations
     env_file:
       - .env
     networks:

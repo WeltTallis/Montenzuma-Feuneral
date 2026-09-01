@@ -189,7 +189,7 @@ const SERVICE_URLS = {
   chemicals: process.env.CHEMICALS_SERVICE_URL || 'http://restpoint_chemical_service:5000',
   billing: process.env.BILLING_SERVICE_URL || 'http://restpoint_billing_service:5000',
   socketio: process.env.SOCKETIO_SERVICE_URL || 'http://restpoint_socketio_service:5000',
-  workshop: process.env.WORKSHOP_SERVICE_URL || 'http://restpoint_workshop_service:6969',
+  workshop: process.env.WORKSHOP_SERVICE_URL || 'http://restpoint_workshop_service:5000',
   extra: process.env.EXTRA_SERVICES_URL || 'http://restpoint_extra_services:5000',
   call: process.env.CALL_SERVICE_URL || 'http://restpoint_call_service:5000',
   qrcode: process.env.QRCODE_SERVICE_URL || 'http://restpoint_qrcode_service:5000',
@@ -206,10 +206,13 @@ const app = express();
 // ─── Circuit Breaker & Service Health Tracking ─────────────────────
 const serviceHealth = {};
 const HEALTH_CHECK_INTERVAL = 30000; // Check every 30 seconds
-const FAILURE_THRESHOLD = 5; // Mark as down after 5 failures
+const FAILURE_THRESHOLD = 5; // Mark as down after 5 consecutive failures
 const RECOVERY_TIMEOUT = 60000; // Try recovery after 60 seconds
-const HEALTH_CHECK_TIMEOUT = 5000; // 5 seconds
-const HEALTH_CHECK_CONCURRENCY = 5; // run at most 5 health checks at once
+// 10s — several TS services (tsx, cold starts, first DB hit) take >5s to answer
+// /health. With a 5s timeout live services kept getting "aborted" and marked
+// DOWN, so the breaker 503'd requests that would have succeeded.
+const HEALTH_CHECK_TIMEOUT = 10000; // 10 seconds
+const HEALTH_CHECK_CONCURRENCY = 10; // 26 services / 10 at once ≈ 3 batches × 10s = one interval
 
 Object.keys(SERVICE_URLS).forEach(serviceName => {
   serviceHealth[serviceName] = {
@@ -262,15 +265,24 @@ function handleServiceFailure(serviceName) {
   }
 }
 
-// Periodic health check for all services — now bounded concurrency instead
-// of firing every check simultaneously.
+// Periodic health check for all services — bounded concurrency instead of
+// firing every check simultaneously, plus a guard so a slow cycle (services
+// timing out) never overlaps the next interval tick and double-counts
+// failures.
+let healthCheckCycleRunning = false;
 async function performHealthChecks() {
-  const taskFns = Object.entries(SERVICE_URLS).map(([serviceName, url]) => {
-    const baseUrl = url.split('/')[0] + '//' + url.split('/')[2];
-    return () => checkServiceHealth(serviceName, baseUrl);
-  });
+  if (healthCheckCycleRunning) return;
+  healthCheckCycleRunning = true;
+  try {
+    const taskFns = Object.entries(SERVICE_URLS).map(([serviceName, url]) => {
+      const baseUrl = url.split('/')[0] + '//' + url.split('/')[2];
+      return () => checkServiceHealth(serviceName, baseUrl);
+    });
 
-  await runWithConcurrencyLimit(taskFns, HEALTH_CHECK_CONCURRENCY);
+    await runWithConcurrencyLimit(taskFns, HEALTH_CHECK_CONCURRENCY);
+  } finally {
+    healthCheckCycleRunning = false;
+  }
 }
 
 const healthCheckInterval = setInterval(performHealthChecks, HEALTH_CHECK_INTERVAL);
@@ -325,7 +337,7 @@ app.use((req, res, next) => {
 
 // On-demand recovery probe: when the circuit breaker is open, give the
 // service a quick live check before rejecting the request.
-const PROBE_TIMEOUT = 2000;
+const PROBE_TIMEOUT = 3000;
 const PROBE_MIN_GAP = 10000;
 
 async function probeServiceHealth(url) {

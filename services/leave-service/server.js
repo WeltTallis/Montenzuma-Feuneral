@@ -168,6 +168,15 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'leave-service', timestamp: new Date().toISOString() });
 });
 
+// Compatibility health endpoint (some probes and the Docker healthcheck hit /health)
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'leave-service', timestamp: new Date().toISOString() });
+});
+
+app.head('/health', (_req, res) => {
+  res.status(200).end();
+});
+
 // ============================================
 // AUTO-MIGRATION: Ensure leave tables exist
 // ============================================

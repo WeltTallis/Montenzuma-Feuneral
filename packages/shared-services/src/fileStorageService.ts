@@ -1,9 +1,9 @@
 /**
  * Global File Storage Service
- * 
+ *
  * Centralized service for managing all file uploads across the application.
  * Provides a unified folder structure for each tenant:
- * 
+ *
  * uploads/
  *   {tenantSlug}/
  *     deceased/
@@ -133,11 +133,21 @@ class FileStorageService {
 
   /**
    * Initialize the base uploads directory
+   * Wrapped in try/catch so that a missing or unwritable uploads
+   * directory degrades gracefully (uploads to that path simply fail
+   * later) instead of crashing the entire service on startup.
    */
   private initializeBaseDirectory(): void {
-    if (!fs.existsSync(UPLOADS_BASE_DIR)) {
-      fs.mkdirSync(UPLOADS_BASE_DIR, { recursive: true });
-      console.log(`[FileStorage] Created base uploads directory: ${UPLOADS_BASE_DIR}`);
+    try {
+      if (!fs.existsSync(UPLOADS_BASE_DIR)) {
+        fs.mkdirSync(UPLOADS_BASE_DIR, { recursive: true });
+        console.log(`[FileStorage] Created base uploads directory: ${UPLOADS_BASE_DIR}`);
+      }
+    } catch (err: any) {
+      console.warn(
+        `[FileStorage] WARNING: Could not create base uploads directory ${UPLOADS_BASE_DIR}: ${err.message}. ` +
+        `Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).`
+      );
     }
   }
 
