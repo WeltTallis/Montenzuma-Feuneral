@@ -1,4 +1,4 @@
-# Production Dockerfile for Invoice Service
+# Production Dockerfile for Leave Service
 FROM node:24-alpine
 
 RUN apk add --no-cache dumb-init
@@ -34,5 +34,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["npx", "tsx", "services/leave-service/server.ts"]
+# server.ts does not exist — this is a plain-JS service (package.json main: server.js).
+# Running `npx tsx server.ts` caused ERR_MODULE_NOT_FOUND on every start.
+CMD ["node", "services/leave-service/server.js"]
 

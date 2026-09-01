@@ -103,6 +103,13 @@ services:
       HEARSE_SERVICE_URL: http://restpoint_hearse_service:5000
       SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
       EXTRA_SERVICES_URL: http://restpoint_extra_services:5000
+      # Previously missing — without these the gateway fell back to 127.0.0.1:PORT
+      # inside its own container (the gateway itself), marking running services as DOWN.
+      WORKSHOP_SERVICE_URL: http://restpoint_workshop_service:6969
+      SCANNER_SERVICE_URL: http://restpoint_scanner_service:2024
+      SUPPORT_SERVICE_URL: http://restpoint_support_service:5000
+      LEAVE_SERVICE_URL: http://restpoint_leave_service:5000
+      REDIS_URL: redis://restpoint_redis:6379
     depends_on:
       mariadb:
         condition: service_healthy
@@ -294,7 +301,7 @@ services:
     volumes:
       - coffin_service_data:/usr/src/app/data
       # Coffin-service imports @montezuma/shared-services, whose barrel
-      # immediately inits FileStorageService → mkdir /opt/storage/uploads.
+                  # immediately inits FileStorageService → mkdir /opt/storage/uploads.
       # Without this mount the non-root container crashes with EACCES.
       - shared_uploads:/opt/storage/uploads
     networks:
