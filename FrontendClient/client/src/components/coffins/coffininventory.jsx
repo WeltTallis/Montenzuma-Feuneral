@@ -15,6 +15,7 @@ import HorizontalCalendar from '../views/horizontalCalender';
 import WeeklyView from '../views/weeklyView';
 import DailyView from '../views/dailyView';
 import { formatDate, toDateKey, todayKey } from '../../utils/dates/parseDates';
+import { useSocket } from '../../utils/context/socketContext';
 import ReservationDashboard from './ReservationDashboard';
 
 import CoffinTransfers from './coffinTransfers';
@@ -856,6 +857,7 @@ const Tag = ({ cls, children }) => {
 
 //  Main Component 
 const CoffinDashboard = () => {
+  const { socket } = useSocket();
   const [tab, setTab] = useState('inventory');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -1032,6 +1034,51 @@ const CoffinDashboard = () => {
       setLoading(false);
     }
   }, []);
+
+  // Re-fetch the live transfer/stock-request data when a real-time socket event
+  // arrives (a station CREATED a transfer, or another station APPROVED /
+  // REJECTED / DELIVERED one). This keeps every branch's Incoming/Outgoing
+  // list up to date WITHOUT the full-page spinner that fetchAllData triggers.
+  const refreshLiveTransfers = useCallback(async () => {
+    try {
+      const [stockRes, coffinRes, bookingRes] = await Promise.all([
+        api.get('/coffins/stock-requests'),
+        api.get('/coffins/all-branches', {
+          params: { parent_slug: getParentTenantSlug(), tenant_id: getTenantId() || undefined },
+        }),
+        api.get('/coffins/orders'),
+      ]);
+      if (stockRes.data?.success && Array.isArray(stockRes.data?.data)) {
+        setStockRequests(stockRes.data.data);
+      }
+      if (coffinRes.data?.success && Array.isArray(coffinRes.data?.data)) {
+        setCoffins(coffinRes.data.data);
+      }
+      if (bookingRes.data?.success && Array.isArray(bookingRes.data?.data)) {
+        setBookings(bookingRes.data.data);
+      }
+    } catch (e) {
+      console.error('[COFFIN UI] Error refreshing live transfer data:', e);
+    }
+  }, []);
+
+  // Subscribe to coffin transfer/stock-request events. The coffin-service emits
+  // these as `notification:coffin-stock-request` via the socketio-service; we
+  // also listen for the un-prefixed name for robustness.
+  useEffect(() => {
+    if (!socket) return;
+    const handleTransfer = () => refreshLiveTransfers();
+    socket.on('notification:coffin-stock-request', handleTransfer);
+    socket.on('coffin-stock-request', handleTransfer);
+    socket.on('notification:coffin-booking-created', handleTransfer);
+    socket.on('coffin-booking-created', handleTransfer);
+    return () => {
+      socket.off('notification:coffin-stock-request', handleTransfer);
+      socket.off('coffin-stock-request', handleTransfer);
+      socket.off('notification:coffin-booking-created', handleTransfer);
+      socket.off('coffin-booking-created', handleTransfer);
+    };
+  }, [socket, refreshLiveTransfers]);
 
   useEffect(() => {
     fetchAllData();

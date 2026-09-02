@@ -42,9 +42,9 @@ const getSocketUrl = () => {
         return env.SOCKET_URL;
     }
 
-    // Production: use the same host as the application
+    // Production: use the dedicated WebSocket subdomain
     if (import.meta.env.PROD) {
-        const url = 'https://restpoint.co.ke';
+        const url = 'wss://ws.restpoint.co.ke';
         console.log('[Socket] Production URL:', url);
         return url;
     }

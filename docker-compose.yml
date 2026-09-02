@@ -119,6 +119,11 @@ services:
       - SCANNER_SERVICE_URL=http://restpoint_scanner_service:2024
       - SUPPORT_SERVICE_URL=http://restpoint_support_service:5000
       - LEAVE_SERVICE_URL=http://restpoint_leave_service:5000
+      # Florist runs as a HOST process on port 7070 (no florist container) —
+      # the gateway reaches it via host.docker.internal (see extra_hosts below).
+      - FLORIST_SERVICE_URL=http://host.docker.internal:7070
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     env_file:
       - .env
     networks:
@@ -826,14 +831,16 @@ services:
       dockerfile: Dockerfile
     container_name: restpoint_frontend
     ports:
-      - '8080:80'
+      - '8080:8080'
+    volumes:
+      - frontend_dist:/usr/share/frontend-dist
     depends_on:
       - api-gateway
     networks:
       - restpoint_network
     restart: unless-stopped
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/']
+      test: ['CMD', 'test', '-f', '/usr/share/frontend-dist/index.html']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -875,6 +882,8 @@ volumes:
   workshop_service_data:
     driver: local
   hearse_service_data:
+    driver: local
+  frontend_dist:
     driver: local
   loki_data:
     driver: local

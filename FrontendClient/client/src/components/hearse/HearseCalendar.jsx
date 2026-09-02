@@ -8,8 +8,14 @@ import FullCalendar from '@fullcalendar/react';
 import styled from 'styled-components';
 import { getBranches } from '../../utils/globalAuth';
 import { Calendar, CheckCircle, Truck, Clock, Check, BarChart3, MapPin, Home, Car, Phone, Building } from '../../utils/icons/icons';
+import { STATUS_CONFIG } from './statusColors';
 
 // ===== SHARED CONSTANTS =====
+// STATUS_CONFIG below is imported from ./statusColors — the exact status →
+// colour map used by the Day Timeline, so the monthly/weekly/day calendar
+// views render every status with the same colour.
+export { STATUS_CONFIG };
+
 export const COLORS = {
   textSecondary: '#6b7280',
   successLight: '#d1fae5',
@@ -45,15 +51,6 @@ export const COLORS = {
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const WEEKDAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-export const STATUS_CONFIG = {
-  pending: { label: 'Pending', color: '#F59E0B', bg: '#FFFBEB', textColor: '#92400E' },
-  booked: { label: 'Booked', color: '#2563EB', bg: '#EFF6FF', textColor: '#1E40AF' },
-  in_transit: { label: 'In Transit', color: '#D32F2F', bg: '#FFEBEE', textColor: '#B71C1C' },
-  completed: { label: 'Completed', color: '#2E7D32', bg: '#E8F5E9', textColor: '#1B5E20' },
-  cancelled: { label: 'Cancelled', color: '#ef4444', bg: '#fee2e2', textColor: '#991B1B' },
-  confirmed: { label: 'Confirmed', color: '#2563EB', bg: '#EFF6FF', textColor: '#1E40AF' },
-};
 
 export const START_HOUR = 6;
 export const END_HOUR = 22;
@@ -245,7 +242,7 @@ const Shell = styled.div`
   .fc .fc-daygrid-more-link {
     font-size: 10px !important;
     font-weight: 600 !important;
-    color: #2563EB !important;
+    color: #6b7280 !important;
     cursor: pointer !important;
     padding: 1px 4px !important;
     border-radius: 4px !important;
@@ -253,7 +250,7 @@ const Shell = styled.div`
   }
 
   .fc .fc-daygrid-more-link:hover {
-    background: #EFF6FF !important;
+    background: #F3F4F6 !important;
   }
 
   /* ===== WEEK & DAY VIEW - FULL CARDS LIKE BEFORE ===== */
@@ -999,9 +996,10 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       });
     });
 
-    // Highlight booked dates with a red background
+    // Highlight booked dates with a subtle neutral tint (matches the
+    // day-timeline status colours instead of a loud red wash)
     if (dayEvents.length > 0) {
-      info.el.style.setProperty('background-color', 'rgba(239, 68, 68, 0.12)', 'important');
+      info.el.style.setProperty('background-color', 'rgba(17, 24, 39, 0.05)', 'important');
       info.el.style.setProperty('border-radius', '6px', 'important');
     }
 
@@ -1048,31 +1046,31 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
       {calendarView === 'timeGridDay' && selectedDate && dailyStats.total > 0 && (
         <StatsBar>
-          <StatCard color="#2563EB" tint="#EFF6FF" border="#DBEAFE">
-            <StatIcon color="#2563EB"><BarChart3 size={13} /></StatIcon>
+          <StatCard color="#00296B" tint="#EFF6FF" border="#DBEAFE">
+            <StatIcon color="#00296B"><BarChart3 size={13} /></StatIcon>
             {dailyStats.total} Bookings
           </StatCard>
           {dailyStats.booked > 0 && (
-            <StatCard color="#2563EB" tint="#EFF6FF" border="#DBEAFE">
-              <StatIcon color="#2563EB"><CheckCircle size={13} /></StatIcon>
+            <StatCard color="#00296B" tint="#EFF6FF" border="#DBEAFE">
+              <StatIcon color="#00296B"><CheckCircle size={13} /></StatIcon>
               {dailyStats.booked} Booked
             </StatCard>
           )}
           {dailyStats.transit > 0 && (
-            <StatCard color="#D32F2F" tint="#FFEBEE" border="#FFCDD2">
-              <StatIcon color="#D32F2F"><Truck size={13} /></StatIcon>
+            <StatCard color="#E36414" tint="#FFEDD5" border="#FBD6B4">
+              <StatIcon color="#E36414"><Truck size={13} /></StatIcon>
               {dailyStats.transit} In Transit
             </StatCard>
           )}
           {dailyStats.pending > 0 && (
-            <StatCard color="#B45309" tint="#FFFBEB" border="#FDE68A">
-              <StatIcon color="#F59E0B"><Clock size={13} /></StatIcon>
+            <StatCard color="#d97706" tint="#FFFBEB" border="#FDE68A">
+              <StatIcon color="#d97706"><Clock size={13} /></StatIcon>
               {dailyStats.pending} Pending
             </StatCard>
           )}
           {dailyStats.completed > 0 && (
-            <StatCard color="#2E7D32" tint="#E8F5E9" border="#C8E6C9">
-              <StatIcon color="#2E7D32"><Check size={13} /></StatIcon>
+            <StatCard color="#5F0F40" tint="#FCE7F3" border="#E9B8D1">
+              <StatIcon color="#5F0F40"><Check size={13} /></StatIcon>
               {dailyStats.completed} Completed
             </StatCard>
           )}

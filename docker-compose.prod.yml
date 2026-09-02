@@ -109,7 +109,14 @@ services:
       SCANNER_SERVICE_URL: http://restpoint_scanner_service:2024
       SUPPORT_SERVICE_URL: http://restpoint_support_service:5000
       LEAVE_SERVICE_URL: http://restpoint_leave_service:5000
+      # Florist runs as a HOST process on port 7070 (no florist container) —
+      # the gateway reaches it via host.docker.internal (see extra_hosts below).
+      FLORIST_SERVICE_URL: http://host.docker.internal:7070
       REDIS_URL: redis://restpoint_redis:6379
+    extra_hosts:
+      # Lets the gateway container reach HOST-run services (florist on 7070)
+      # via the host.docker.internal hostname.
+      - "host.docker.internal:host-gateway"
     depends_on:
       mariadb:
         condition: service_healthy
@@ -703,15 +710,15 @@ services:
     image: restpoint-frontend:latest
     container_name: restpoint_frontend
     restart: always
-    ports:
-      - "${FRONTEND_EXTERNAL_PORT:-8080}:80"
+    volumes:
+      - frontend_dist:/usr/share/frontend-dist
     depends_on:
       api-gateway:
         condition: service_healthy
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/" ]
+      test: [ "CMD", "test", "-f", "/usr/share/frontend-dist/index.html" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -773,4 +780,6 @@ volumes:
   workshop_service_data:
     driver: local
   leave_service_data:
+    driver: local
+  frontend_dist:
     driver: local

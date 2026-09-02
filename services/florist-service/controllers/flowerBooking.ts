@@ -276,6 +276,30 @@ export const createBooking = async (req: any, res: any) => {
             tenantId ? [booking_id, tenantId] : [booking_id, tenantSlug || 'system_shared']
         );
 
+        // Emit real-time notification for new booking
+        try {
+            const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+            await axios.post(`${socketioServiceUrl}/emit/flower-booking-created`, {
+                tenantSlug: tenantSlug || 'system',
+                data: {
+                    id: `flower-booking-created-${booking_id}-${Date.now()}`,
+                    bookingId: booking_id,
+                    customer: customer,
+                    flowerType: flower_type,
+                    deceasedName: deceased_name || '',
+                    status: 'pending',
+                    title: 'New Flower Booking',
+                    message: `New flower booking ${booking_id} created for ${customer}`,
+                    type: 'new_booking',
+                    priority: 'medium',
+                    fullContent: `Booking ID: ${booking_id}\nCustomer: ${customer}\nFlower Type: ${flower_type}\nDeceased: ${deceased_name || 'N/A'}\nStatus: pending`,
+                }
+            }, { timeout: 5000 });
+            console.log(`[FLORIST] Emitted flower-booking-created for ${booking_id}`);
+        } catch (emitError: any) {
+            console.warn('[FLORIST] Failed to emit flower-booking-created notification:', emitError.message);
+        }
+
         res.status(201).json({ success: true, data: newBooking[0], message: 'Booking created successfully' });
     } catch (error: any) {
         console.error('[FLORIST] Error creating booking:', error.message);
@@ -336,6 +360,28 @@ export const updateBooking = async (req: any, res: any) => {
             `SELECT * FROM flower_bookings WHERE id = ? AND ${tenantScope.clause} LIMIT 1`,
             [existing[0].id, ...tenantScope.params]
         );
+
+        // Emit real-time notification for booking update
+        try {
+            const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+            await axios.post(`${socketioServiceUrl}/emit/flower-booking-updated`, {
+                tenantSlug: req.tenantSlug || 'system',
+                data: {
+                    id: `flower-booking-updated-${id}-${Date.now()}`,
+                    bookingId: updated[0]?.booking_id || id,
+                    customer: updated[0]?.customer || '',
+                    status: updated[0]?.status || '',
+                    title: 'Booking Updated',
+                    message: `Flower booking ${updated[0]?.booking_id || id} has been updated`,
+                    type: 'booking_update',
+                    priority: 'medium',
+                    fullContent: `Booking ID: ${updated[0]?.booking_id || id}\nCustomer: ${updated[0]?.customer || ''}\nStatus: ${updated[0]?.status || ''}`,
+                }
+            }, { timeout: 5000 });
+            console.log(`[FLORIST] Emitted flower-booking-updated for ${id}`);
+        } catch (emitError: any) {
+            console.warn('[FLORIST] Failed to emit flower-booking-updated notification:', emitError.message);
+        }
 
         res.json({ success: true, data: updated[0], message: 'Booking updated successfully' });
     } catch (error: any) {

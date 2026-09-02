@@ -59,10 +59,8 @@ const Container = styled.div`
   color: ${COLORS.ink};
   font-size: 15px;
   line-height: 1.5;
-  padding: 2rem 1rem;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  padding: 0; /* No padding on the container at all */
+  display: block;
 
   .Toastify__toast-container { width: 380px !important; max-width: 90vw !important; padding: 0 !important; }
   .Toastify__toast { border-radius: 8px !important; font-family: 'Saira', sans-serif !important; font-size: 0.85rem !important; padding: 10px 14px !important; min-height: 44px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; margin-bottom: 0.5rem !important; }
@@ -74,11 +72,19 @@ const FormSheet = styled.div`
   max-width: 1000px;
   margin: 0 auto;
   background: ${COLORS.white};
-  border-radius: 8px;
   box-shadow: 0 10px 30px rgba(3, 7, 30, 0.06);
-  border: 1px solid ${COLORS.line};
-  overflow: hidden;
   position: relative;
+  overflow: hidden;
+  border-radius: 0; /* Flush edges on mobile/tablet */
+  border: none;
+
+  /* Only show the nice PDF border and centering on large desktop screens */
+  @media (min-width: 1025px) {
+    border-radius: 6px;
+    border: 1px solid ${COLORS.line};
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
 `;
 
 const Watermark = styled.div`

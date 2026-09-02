@@ -102,12 +102,20 @@ const DOCKER_SERVICE_DEFAULTS = {
   hearse: 'http://restpoint_hearse_service:5000',
   leave: 'http://restpoint_leave_service:5000',
   support: 'http://restpoint_support_service:5000',
-  florist: 'http://restpoint_florist_service:5000',
+  // Florist service is NOT a container in this repo (there is no
+  // services/florist-service/Dockerfile). It runs as a HOST process bound to
+  // port 7070 (FLORIST_PORT=7070 in services/florist-service/.env) and
+  // prometheus scrapes it at host.docker.internal:7070. The gateway container
+  // must therefore reach it via host.docker.internal (requires the
+  // `extra_hosts: ["host.docker.internal:host-gateway"]` entry on the gateway
+  // in docker-compose.yml / docker-compose.prod.yml). When the gateway runs
+  // on the host, DOCKER_HOSTNAME_RE below rewrites this to 127.0.0.1:7070.
+  florist: 'http://host.docker.internal:7070',
   store: 'http://restpoint_store_service:5000',
 };
 
 const LOOPBACK_URL_RE = /^https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?(?:\/|$)/i;
-const DOCKER_HOSTNAME_RE = /^https?:\/\/restpoint_/i;
+const DOCKER_HOSTNAME_RE = /^https?:\/\/(?:restpoint_|host\.docker\.internal)/i;
 
 // Host-mode equivalents of DOCKER_SERVICE_DEFAULTS: 127.0.0.1 + the host port
 // each service is published on by docker-compose.yml / docker-compose.prod.yml
@@ -504,6 +512,20 @@ const SERVICE_ROUTES = {
   'store': SERVICE_URLS.store,
 };
 
+// Fallback URLs for services that may not be reachable via primary URL.
+// Used when the primary target fails to connect (e.g., host.docker.internal
+// not resolving on Linux production). The gateway retries the request
+// against the fallback URL before returning an error to the client.
+const SERVICE_FALLBACK_URLS = {
+  // Fallback URL when the primary target fails to connect. The primary florist
+  // URL is http://host.docker.internal:7070 (set in DOCKER_SERVICE_DEFAULTS).
+  // On some Linux hosts, host.docker.internal may not resolve, so we fall back
+  // to the Docker bridge gateway IP (172.17.0.1) which routes to the host.
+  // Override with FALLBACK_FLORIST_SERVICE_URL if the host is reachable at a
+  // different address (e.g., a LAN IP on production).
+  florist: process.env.FALLBACK_FLORIST_SERVICE_URL || 'http://172.17.0.1:7070',
+};
+
 // Create proxy instances for each unique target URL (cached), now sharing
 // the keep-alive agent + DNS cache instead of opening a fresh connection
 // (and DNS lookup) per request.
@@ -560,6 +582,67 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
           }
         },
         error: (err, req, res) => {
+          // Determine the service key from the target URL for fallback lookup
+          const serviceEntry = Object.entries(SERVICE_URLS).find(([key, val]) => val === targetUrl);
+          const serviceKey = serviceEntry ? serviceEntry[0] : null;
+          const fallbackUrl = serviceKey ? SERVICE_FALLBACK_URLS[serviceKey] : null;
+
+          // If the primary target failed and a fallback URL exists (and is different),
+          // retry the request against the fallback URL before giving up.
+          if (fallbackUrl && fallbackUrl !== targetUrl && !res.headersSent && !res.writableEnded) {
+            Logger.warn(`[PROXY FALLBACK] Primary ${targetUrl} failed (${err.code || err.message}) for ${req.method} ${req.originalUrl} — retrying via ${fallbackUrl}`);
+
+            // Get or create a proxy instance for the fallback target
+            if (!proxyCache[fallbackUrl]) {
+              proxyCache[fallbackUrl] = createProxyMiddleware({
+                target: fallbackUrl,
+                changeOrigin: true,
+                secure: false,
+                agent: sharedHttpAgent,
+                proxyTimeout: 30000,
+                timeout: 30000,
+                on: {
+                  proxyReq: (proxyReq, req, res) => {
+                    if (req.headers.authorization) proxyReq.setHeader('Authorization', req.headers.authorization);
+                    if (req.headers['x-tenant-slug']) proxyReq.setHeader('x-tenant-slug', req.headers['x-tenant-slug']);
+                    if (req.headers['x-tenant-id']) proxyReq.setHeader('x-tenant-id', req.headers['x-tenant-id']);
+                    if (req.headers['x-user-id']) proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
+                    if (req.headers['x-branch-slug']) proxyReq.setHeader('x-branch-slug', req.headers['x-branch-slug']);
+                    if (req.headers['x-branch-id']) proxyReq.setHeader('x-branch-id', req.headers['x-branch-id']);
+                    try { fixRequestBody(proxyReq, req); } catch (e) { /* ignore */ }
+                  },
+                  error: (fallbackErr, req, res) => {
+                    Logger.error(`[PROXY FALLBACK ERROR] Fallback ${fallbackUrl} also failed for ${req.method} ${req.originalUrl}: ${fallbackErr.message}`);
+                    if (!res.headersSent) {
+                      const firstSegment = (req.originalUrl || req.url || '').split('/').filter(Boolean)[2] || 'unknown';
+                      res.status(503).json({
+                        success: false,
+                        message: 'Now API Gateway is Down',
+                        description: 'Unable to connect to the API Gateway.',
+                        details: 'No services can be reached at the moment.',
+                        action: 'Please contact the System Administrator.',
+                        service: firstSegment,
+                        error: fallbackErr.code || fallbackErr.message,
+                        target: fallbackUrl,
+                        timestamp: new Date().toISOString()
+                      });
+                    }
+                  }
+                }
+              });
+            }
+
+            const fallbackProxy = proxyCache[fallbackUrl];
+            if (fallbackProxy) {
+              fallbackProxy(req, res, (retryErr) => {
+                if (retryErr && !res.headersSent) {
+                  Logger.error(`[PROXY FALLBACK ERROR] Retry callback error: ${retryErr.message}`);
+                }
+              });
+              return;
+            }
+          }
+
           Logger.error(`[PROXY ERROR] ${req.method} ${req.originalUrl}: ${err.message}`);
           if (!res.headersSent) {
             const firstSegment = (req.originalUrl || req.url || '').split('/').filter(Boolean)[2] || 'unknown';

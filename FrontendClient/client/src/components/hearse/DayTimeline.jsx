@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { STATUS_COLOR } from './statusColors';
 
 /* =========================================================
  * DayTimeline — standalone day timeline for Hearse bookings.
@@ -19,20 +20,8 @@ const CARD_W = 240, CARD_H = 98, GAP = 9;
 
 const h2x = (h) => PAD + (h - SH) * PPH;
 
-/* Colour map (status → card colour) */
-const STATUS_COLOR = {
-  pending: '#d97706',
-  booked: '#00296B',
-  confirmed: '#00296B',
-  scheduled: '#E36414',
-  in_transit: '#E36414',
-  in_progress: '#0c0b0f',
-  postponed: '#d97706',
-  completed: '#5F0F40',
-  delivered: '#132A13',
-  cancelled: '#DD2D4A',
-  maintenance: '#03071E',
-};
+/* Colour map (status → card colour) is shared with HearseCalendar so the
+   monthly / weekly / day views use the exact same status colours. */
 
 /* Format a Date/ISO string to "9:00 AM" style */
 const fmtTime = (raw) => {
@@ -318,7 +307,16 @@ const DayTimeline = ({ date, bookings = [], onClose, onItemClick }) => {
                     key={b.booking_id || b.id || `${x}-${y}`}
                     className="rtl-tl-card"
                     style={{ left: x, top: y, background: statusC, opacity: 0.95 }}
-                    onClick={() => setSelected(b)}
+                    onClick={() => {
+                      // Clicking a card opens the main booking modal directly —
+                      // no intermediate side detail panel ("Open Full Booking →").
+                      if (onItemClick) {
+                        onItemClick(b);
+                        setSelected(null);
+                      } else {
+                        setSelected(b);
+                      }
+                    }}
                   >
                     <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.55, color: '#fff', marginBottom: 1 }}>
                       ⏰ {startLabel}

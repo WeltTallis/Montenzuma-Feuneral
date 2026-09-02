@@ -22,13 +22,17 @@ const API_BASE_URL = import.meta.env.PROD
 const RESULTS_PER_PAGE = 10;
 
 const STATUS_CONFIG = {
-  pending: { label: 'Pending', progress: 10, color: '#f59e0b', bg: '#fef3c7', dotColor: '#f59e0b' },
-  booked: { label: 'Booked', progress: 25, color: '#3b82f6', bg: '#dbeafe', dotColor: '#3b82f6' },
-  in_transit: { label: 'In Transit', progress: 60, color: '#ec4899', bg: '#fce7f3', dotColor: '#ec4899' },
-  completed: { label: 'Completed', progress: 100, color: '#10b981', bg: '#d1fae5', dotColor: '#10b981' },
-  cancelled: { label: 'Cancelled', progress: 0, color: '#ef4444', bg: '#fee2e2', dotColor: '#ef4444' },
-  postponed: { label: 'Postponed', progress: 15, color: '#f59e0b', bg: '#fef3c7', dotColor: '#f59e0b' },
-  maintenance: { label: 'Maintenance', progress: 0, color: '#8b5cf6', bg: '#f3e8ff', dotColor: '#8b5cf6' },
+  pending: { label: 'Pending', progress: 10, color: '#d97706', bg: '#FFFBEB', dotColor: '#d97706' },
+  booked: { label: 'Booked', progress: 25, color: '#00296B', bg: '#EFF6FF', dotColor: '#00296B' },
+  confirmed: { label: 'Confirmed', progress: 25, color: '#00296B', bg: '#EFF6FF', dotColor: '#00296B' },
+  scheduled: { label: 'Scheduled', progress: 25, color: '#E36414', bg: '#FFEDD5', dotColor: '#E36414' },
+  in_transit: { label: 'In Transit', progress: 60, color: '#E36414', bg: '#FFEDD5', dotColor: '#E36414' },
+  in_progress: { label: 'In Progress', progress: 60, color: '#0c0b0f', bg: '#F3F4F6', dotColor: '#0c0b0f' },
+  postponed: { label: 'Postponed', progress: 15, color: '#d97706', bg: '#FFFBEB', dotColor: '#d97706' },
+  completed: { label: 'Completed', progress: 100, color: '#5F0F40', bg: '#FCE7F3', dotColor: '#5F0F40' },
+  delivered: { label: 'Delivered', progress: 100, color: '#132A13', bg: '#E8F5E9', dotColor: '#132A13' },
+  cancelled: { label: 'Cancelled', progress: 0, color: '#DD2D4A', bg: '#FEE2E2', dotColor: '#DD2D4A' },
+  maintenance: { label: 'Maintenance', progress: 0, color: '#03071E', bg: '#E0E7FF', dotColor: '#03071E' },
 };
 
 const STATUS_LIST = Object.keys(STATUS_CONFIG);
