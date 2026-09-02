@@ -58,10 +58,8 @@ const Container = styled.div`
   color: ${COLORS.ink};
   font-size: 15px;
   line-height: 1.5;
-  padding: 2rem 1rem;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  padding: 0; /* No padding on the container at all */
+  display: block;
 `;
 
 const FormSheet = styled.div`
@@ -69,11 +67,19 @@ const FormSheet = styled.div`
   max-width: 1000px;
   margin: 0 auto;
   background: ${COLORS.white};
-  border-radius: 8px;
   box-shadow: 0 10px 30px rgba(3, 7, 30, 0.06);
-  border: 1px solid ${COLORS.line};
-  overflow: hidden;
   position: relative;
+  overflow: hidden;
+  border-radius: 0; /* Flush edges on mobile/tablet */
+  border: none;
+
+  /* Only show the nice PDF border and centering on large desktop screens */
+  @media (min-width: 1025px) {
+    border-radius: 6px;
+    border: 1px solid ${COLORS.line};
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
 `;
 
 const Watermark = styled.div`
@@ -97,10 +103,10 @@ const ContentWrapper = styled.div`
   z-index: 1;
 `;
 
-/* ─── Header: Sleek Letterhead ── */
+/* ─── Header: Compact PDF-Style Intake Header ── */
 const LetterheadContainer = styled.div`
   width: 100%;
-  background: transparent;
+  background: ${COLORS.white};
   position: relative;
   border-bottom: 1px solid ${COLORS.line};
 `;
@@ -114,22 +120,27 @@ const CornerBase = styled.div`
   z-index: 3;
   opacity: 0.5;
   pointer-events: none;
+
+  /* Hide corner accents on mobile to keep it clean */
+  @media (max-width: 1024px) {
+    display: none;
+  }
 `;
-const CornerTL = styled(CornerBase)` top: 10px; left: 10px; border-width: 1px 0 0 1px; `;
-const CornerTR = styled(CornerBase)` top: 10px; right: 10px; border-width: 1px 1px 0 0; `;
-const CornerBL = styled(CornerBase)` bottom: 10px; left: 10px; border-width: 0 0 1px 1px; `;
-const CornerBR = styled(CornerBase)` bottom: 10px; right: 10px; border-width: 0 1px 1px 0; `;
+const CornerTL = styled(CornerBase)` top: 6px; left: 6px; border-width: 1px 0 0 1px; `;
+const CornerTR = styled(CornerBase)` top: 6px; right: 6px; border-width: 1px 1px 0 0; `;
+const CornerBL = styled(CornerBase)` bottom: 6px; left: 6px; border-width: 0 0 1px 1px; `;
+const CornerBR = styled(CornerBase)` bottom: 6px; right: 6px; border-width: 0 1px 1px 0; `;
 
 const Letterhead = styled.header`
-  padding: 2rem 3rem;
+  padding: 2.5rem 3rem;
   position: relative;
   z-index: 1;
-  background: transparent;
+  background: ${COLORS.white};
 
   @media (max-width: 1024px) {
     padding: 2rem 2.5rem;
   }
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     padding: 1.5rem;
   }
 `;
@@ -143,7 +154,7 @@ const RowTop = styled.div`
   border-bottom: 1px solid ${COLORS.line};
   gap: 1.5rem;
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     flex-direction: column;
     align-items: flex-start;
     gap: 1.5rem;
@@ -157,8 +168,8 @@ const BrandLeft = styled.div`
 `;
 
 const LogoBox = styled.div`
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -166,7 +177,7 @@ const LogoBox = styled.div`
   color: ${COLORS.bone};
   font-family: 'Fraunces', serif;
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   border-radius: 4px;
   flex-shrink: 0;
   overflow: hidden;
@@ -184,16 +195,20 @@ const BrandText = styled.div`
 
 const BrandName = styled.h1`
   font-family: 'Fraunces', serif;
-  font-size: 1.2rem; /* Reduced font size */
+  font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.2;
   color: ${COLORS.ink};
   margin: 0;
+
+  @media (max-width: 1024px) {
+    font-size: 1.3rem;
+  }
 `;
 
 const BrandSubtitle = styled.div`
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: ${COLORS.brass};
@@ -203,21 +218,25 @@ const BrandSubtitle = styled.div`
 const BrandRightTop = styled.div`
   text-align: right;
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     text-align: left;
   }
 `;
 
 const DocTitle = styled.div`
   font-family: 'Fraunces', serif;
-  font-size: 1.1rem; /* Reduced font size */
+  font-size: 1.4rem;
   font-weight: 600;
   color: ${COLORS.ink};
+
+  @media (max-width: 1024px) {
+    font-size: 1.2rem;
+  }
 `;
 
 const DocConfidential = styled.div`
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.55rem;
+  font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -229,21 +248,22 @@ const DocConfidential = styled.div`
   border-radius: 2px;
 `;
 
-/* ─── Row 2: 3 Distinct Columns ── */
+/* ─── Row 2: Metadata Grid (Desktop) ── */
 const RowBottom = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding-top: 1.5rem;
-  gap: 2rem;
+  gap: 1.5rem; /* Tighter gap */
 
   @media (max-width: 1024px) {
     flex-wrap: wrap;
     gap: 1.5rem;
+    padding-top: 1.5rem;
   }
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     flex-direction: column;
-    gap: 2rem;
+    gap: 1.5rem;
   }
 `;
 
@@ -253,25 +273,24 @@ const ColSection = styled.div`
   justify-content: center;
   gap: 0.5rem;
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     width: 100%;
-    align-items: flex-start;
-    text-align: left;
     border: none !important;
     padding: 0;
+    flex-direction: column;
+    align-items: flex-start;
   }
 `;
 
-/* Column 1: Contact Info (Wider) */
+/* Column 1: Contact Info */
 const ColContact = styled(ColSection)`
-  flex: 3;
+  flex: 2;
   min-width: 200px;
   align-items: flex-start;
   text-align: left;
 
   @media (max-width: 1024px) {
     flex: 1 1 100%;
-    min-width: 100%;
     padding-bottom: 1.5rem;
     border-bottom: 1px solid ${COLORS.line};
     flex-direction: row;
@@ -281,7 +300,7 @@ const ColContact = styled(ColSection)`
 `;
 
 const ContactItem = styled.div`
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: ${COLORS.gray};
   display: flex;
   align-items: center;
@@ -297,12 +316,12 @@ const ContactItem = styled.div`
   }
 `;
 
-/* Column 2: Timestamps (Smaller) */
+/* Column 2: Timestamps */
 const ColMeta = styled(ColSection)`
-  flex: 1.5;
+  flex: 1;
   min-width: 120px;
-  align-items: flex-start;
-  text-align: left;
+  align-items: flex-start; 
+  text-align: left;        
   border-left: 1px solid ${COLORS.line};
   border-right: 1px solid ${COLORS.line};
   padding: 0 1.5rem;
@@ -315,7 +334,7 @@ const ColMeta = styled(ColSection)`
     flex-direction: row;
     gap: 2rem;
   }
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     flex: 1 1 100%;
     border: none;
     padding: 0;
@@ -341,15 +360,14 @@ const MetaLabel = styled.span`
 
 const MetaValue = styled.span`
   font-family: 'Saira', sans-serif;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: ${COLORS.ink};
 `;
 
-/* Column 3: Barcode (Compact) */
+/* Column 3: Barcode (Locked Width to prevent stretching/dead space) */
 const ColBarcode = styled(ColSection)`
-  flex: 1.5;
-  min-width: 140px;
+  flex: 0 0 140px; /* Prevents growing and shrinking */
   align-items: flex-end;
   text-align: right;
 
@@ -357,7 +375,7 @@ const ColBarcode = styled(ColSection)`
     flex: 1 1 40%;
     align-items: flex-end;
   }
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     flex: 1 1 100%;
     align-items: flex-start;
   }
@@ -370,35 +388,34 @@ const BarcodeSection = styled.div`
   gap: 0.2rem;
   line-height: 1;
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     align-items: flex-start;
   }
 `;
 
 const AdmissionNumber = styled.div`
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: ${COLORS.inkBlue};
   letter-spacing: 0.05em;
   margin-bottom: 0.1rem;
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     text-align: left;
   }
 `;
 
 const DeceasedName = styled.div`
   font-family: 'Fraunces', serif;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: ${COLORS.ink};
   text-align: right;
   line-height: 1.2;
-  max-width: 140px;
   margin-top: 0.1rem;
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     text-align: left;
   }
 `;
@@ -430,8 +447,8 @@ const FormBody = styled.div`
   @media (max-width: 1024px) {
     padding: 2.5rem;
   }
-  @media (max-width: 768px) {
-    padding: 2rem 1.5rem;
+  @media (max-width: 600px) {
+    padding: 1.5rem;
   }
 `;
 
@@ -482,7 +499,7 @@ const Row = styled.div`
   @media (max-width: 1024px) {
     flex-wrap: wrap;
   }
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     flex-direction: column;
     gap: 1.25rem;
   }
@@ -496,7 +513,7 @@ const Col = styled.div`
     flex: 1 1 45%;
     min-width: 200px;
   }
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     flex: 1 1 100%;
   }
 `;
@@ -641,7 +658,7 @@ const SigCanvasWrap = styled.div`
   @media (max-width: 1024px) {
     height: 14rem; 
   }
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     height: 18rem; 
   }
 `;
@@ -658,7 +675,6 @@ const SigGuideText = styled.div`
   user-select: none;
 `;
 
-// Captured-signature preview
 const SignedSigPreview = styled.div`
   display: flex;
   flex-direction: column;
@@ -742,7 +758,7 @@ const ActionsContainer = styled.div`
   border-top: 1px solid ${COLORS.line};
   flex-wrap: wrap;
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     flex-direction: column-reverse;
     gap: 0.75rem;
   }
@@ -779,7 +795,7 @@ const PrimaryButton = styled.button`
     transform: none;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     width: 100%;
   }
 `;
@@ -819,7 +835,7 @@ const GoldButton = styled.button`
     box-shadow: none;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     width: 100%;
   }
 `;
@@ -859,7 +875,7 @@ const BlackButton = styled.button`
     box-shadow: none;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     width: 100%;
   }
 `;
@@ -892,9 +908,9 @@ const FooterPanel = styled.div`
   gap: 2rem;
   flex-wrap: wrap;
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     flex-direction: column;
-    padding: 2rem 1.5rem;
+    padding: 1.5rem;
     text-align: center;
   }
 `;
@@ -908,7 +924,7 @@ const FooterText = styled.div`
   text-align: left;
   line-height: 1.6;
   
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     text-align: center;
   }
 `;
@@ -964,7 +980,7 @@ const Barcode = ({ value }) => {
     }
   }, [value]);
 
-  return <canvas ref={canvasRef} style={{ width: '120px', height: '30px', display: 'block' }} />;
+  return <canvas ref={canvasRef} style={{ width: '120px', height: '35px', display: 'block' }} />;
 };
 
 const DeceasedRegistrationForm = () => {
@@ -1289,9 +1305,9 @@ const DeceasedRegistrationForm = () => {
                 </BrandRightTop>
               </RowTop>
 
-              {/* ROW 2: 3 Distinct Columns */}
+              {/* ROW 2: Metadata Grid */}
               <RowBottom>
-                {/* Col 1: Contact Info (Wider) */}
+                {/* Col 1: Contact Info */}
                 <ColContact>
                   <ContactItem>
                     <PinIcon />
@@ -1307,7 +1323,7 @@ const DeceasedRegistrationForm = () => {
                   </ContactItem>
                 </ColContact>
 
-                {/* Col 2: Timestamps & Reference (Smaller) */}
+                {/* Col 2: Timestamps & Reference */}
                 <ColMeta>
                   <MetaItem>
                     <MetaLabel>Date Admitted</MetaLabel>
