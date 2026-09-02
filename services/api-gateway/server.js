@@ -107,6 +107,36 @@ const DOCKER_SERVICE_DEFAULTS = {
 };
 
 const LOOPBACK_URL_RE = /^https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?(?:\/|$)/i;
+const DOCKER_HOSTNAME_RE = /^https?:\/\/restpoint_/i;
+
+// Host-mode equivalents of DOCKER_SERVICE_DEFAULTS: 127.0.0.1 + the host port
+// each service is published on by docker-compose.yml / docker-compose.prod.yml
+// (same values the local-development .env uses). Used ONLY when the gateway is
+// NOT in a container and someone handed it Docker-network hostnames
+// (restpoint_*), which cannot resolve outside the Docker network — the mirror
+// image of the loopback-in-container failure above. Services without a known
+// host port (not published for host use) keep their URL and just warn.
+const HOST_SERVICE_DEFAULTS = {
+  auth: 'http://127.0.0.1:5001',
+  tenant: 'http://127.0.0.1:5002',
+  deceased: 'http://127.0.0.1:5003',
+  invoices: 'http://127.0.0.1:5005',
+  coffin: 'http://127.0.0.1:5006',
+  documents: 'http://127.0.0.1:5011',
+  analytics: 'http://127.0.0.1:5009',
+  socketio: 'http://127.0.0.1:5018',
+  bodycheckout: 'http://127.0.0.1:5015',
+  chemicals: 'http://127.0.0.1:5105',
+  billing: 'http://127.0.0.1:5020',
+  workshop: 'http://127.0.0.1:6969',
+  extra: 'http://127.0.0.1:5016',
+  scanner: 'http://127.0.0.1:2024',
+  hearse: 'http://127.0.0.1:5023',
+  leave: 'http://127.0.0.1:5017',
+  support: 'http://127.0.0.1:8111',
+  florist: 'http://127.0.0.1:7070',
+  store: 'http://127.0.0.1:7071',
+};
 
 function resolveServiceUrl(envKey, serviceKey) {
   const configured = process.env[envKey];
@@ -115,11 +145,19 @@ function resolveServiceUrl(envKey, serviceKey) {
   if (isRunningInContainer && LOOPBACK_URL_RE.test(url)) {
     url = DOCKER_SERVICE_DEFAULTS[serviceKey];
     console.log(`[RUNTIME] Container mode: ${envKey} loopback URL rewritten to ${url}`);
-  } else if (!isRunningInContainer && /^https?:\/\/restpoint_/i.test(url)) {
+  } else if (!isRunningInContainer && DOCKER_HOSTNAME_RE.test(url)) {
     // Host process pointed at a Docker-network hostname: it cannot resolve
     // outside the Docker network (ENOTFOUND) — the exact misconfiguration
-    // that marked every healthy service DOWN.
-    console.warn(`[RUNTIME WARNING] ${envKey}=${url} is a Docker-network hostname but the gateway is NOT running in a container. It will fail with ENOTFOUND. For local mode set it to http://127.0.0.1:<host-port> in services/api-gateway/.env.`);
+    // that marked every healthy service DOWN. Rewrite to the host-published
+    // port where one is known (explicit env vars still win — this only
+    // repairs values that arrived from a bundled/prod .env or shell export).
+    const hostUrl = HOST_SERVICE_DEFAULTS[serviceKey];
+    if (hostUrl) {
+      console.warn(`[RUNTIME] Host mode: ${envKey}=${url} is a Docker-network hostname (unresolvable outside Docker). Rewritten to ${hostUrl}.`);
+      url = hostUrl;
+    } else {
+      console.warn(`[RUNTIME WARNING] ${envKey}=${url} is a Docker-network hostname but the gateway is NOT running in a container and no host port is known for "${serviceKey}". Requests to it will fail with ENOTFOUND until ${envKey} is set to a reachable URL.`);
+    }
   }
   return url;
 }
@@ -179,27 +217,9 @@ const sharedHttpAgent = new http.Agent({
   lookup: cachedLookup,
 });
 
-// ─── Small bounded-concurrency runner (no extra dependency needed) ──────
-// Replaces "fire all 30 health checks at once" with "run at most N at a
-// time" so a burst of dead-service lookups can't queue up and delay real
-// request DNS/connect work that shares the same thread pool.
-async function runWithConcurrencyLimit(taskFns, limit) {
-  const results = new Array(taskFns.length);
-  let cursor = 0;
-  async function worker() {
-    while (cursor < taskFns.length) {
-      const idx = cursor++;
-      try {
-        results[idx] = { status: 'fulfilled', value: await taskFns[idx]() };
-      } catch (reason) {
-        results[idx] = { status: 'rejected', reason };
-      }
-    }
-  }
-  const workers = Array.from({ length: Math.min(limit, taskFns.length) }, worker);
-  await Promise.all(workers);
-  return results;
-}
+// ─── Small bounded-concurrency runner: REMOVED with the health-check loop ─
+// (was only used to pace the periodic backend probes that no longer exist;
+// proxied traffic uses the shared keep-alive agent's own socket limits).
 
 // ─── Redis Client for Direct Notification Access ────────────────────
 // Uses ioredis (declared dependency of this service and the repo-wide Redis
@@ -283,82 +303,22 @@ const SERVICE_URLS = {
 
 const app = express();
 
-// ─── Circuit Breaker & Service Health Tracking ─────────────────────
-const serviceHealth = {};
-const HEALTH_CHECK_INTERVAL = 30000; // Check every 30 seconds
-const FAILURE_THRESHOLD = 5; // Mark as down after 5 failures
-const HEALTH_CHECK_TIMEOUT = 5000; // 5 seconds
-const HEALTH_CHECK_CONCURRENCY = 5; // run at most 5 health checks at once
-
-Object.keys(SERVICE_URLS).forEach(serviceName => {
-  serviceHealth[serviceName] = {
-    isHealthy: true,
-    failures: 0,
-    lastFailure: null,
-    lastCheck: null,
-  };
-});
-
-// Health check function for a single service
-async function checkServiceHealth(serviceName, url) {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
-
-    const healthUrl = url.endsWith('/') ? `${url}health` : `${url}/health`;
-
-    const response = await fetch(healthUrl, {
-      method: 'GET',
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-    const isHealthy = response.ok;
-    serviceHealth[serviceName].lastCheck = Date.now();
-
-    if (isHealthy) {
-      // Only log the transition back to healthy, not every successful
-      // check — with ~26 services on a 30s interval this was drowning out
-      // everything else in the logs.
-      if (!serviceHealth[serviceName].isHealthy || serviceHealth[serviceName].failures > 0) {
-        Logger.info(`[HEALTH] ${serviceName} recovered`);
-      }
-      serviceHealth[serviceName].failures = 0;
-      serviceHealth[serviceName].isHealthy = true;
-    } else {
-      handleServiceFailure(serviceName);
-    }
-  } catch (error) {
-    handleServiceFailure(serviceName);
-  }
-}
-
-function handleServiceFailure(serviceName) {
-  serviceHealth[serviceName].failures++;
-  serviceHealth[serviceName].lastFailure = Date.now();
-
-  if (serviceHealth[serviceName].failures >= FAILURE_THRESHOLD && serviceHealth[serviceName].isHealthy) {
-    serviceHealth[serviceName].isHealthy = false;
-    // Informational only now — see CIRCUIT_BREAKER_BLOCKS_REQUESTS below.
-    // This no longer stops real requests from being proxied; it only
-    // affects what /health reports.
-    Logger.warn(`[HEALTH] ${serviceName} marked unhealthy on /health (failures: ${serviceHealth[serviceName].failures}) — requests are still being proxied normally`);
-  }
-}
-
-// Periodic health check for all services — now bounded concurrency instead
-// of firing every check simultaneously.
-async function performHealthChecks() {
-  const taskFns = Object.entries(SERVICE_URLS).map(([serviceName, url]) => {
-    const baseUrl = url.split('/')[0] + '//' + url.split('/')[2];
-    return () => checkServiceHealth(serviceName, baseUrl);
-  });
-
-  await runWithConcurrencyLimit(taskFns, HEALTH_CHECK_CONCURRENCY);
-}
-
-const healthCheckInterval = setInterval(performHealthChecks, HEALTH_CHECK_INTERVAL);
-Logger.info('[CIRCUIT BREAKER] Health monitoring started');
+// ─── Service health monitoring: REMOVED ─────────────────────────────
+// The gateway no longer probes backend /health endpoints at all — the
+// background 30s loop, the startup sweep, and the per-service DOWN/UP
+// bookkeeping are gone. Why:
+//   1. In production the probe results were wrong more often than right.
+//      One wrong service URL (loopback inside a container, or Docker DNS
+//      hostname on the host) made /health report EVERY service DOWN even
+//      though real traffic flowed — exactly the "all services down" outage.
+//   2. Nothing ever consumed the results as a gate: the proxy below never
+//      blocked on them, and no dashboard reads the per-service map.
+// What protects callers now is the proxy's own per-request timeout (30s)
+// and its error handler, which react to the actual request's outcome.
+// GET /health still returns 200 (Docker/compose HEALTHCHECK, nginx,
+// blackbox-exporter and `make health` depend on that) and lists the
+// RESOLVED routing table — no health claims — so a misconfigured service
+// URL remains visible for debugging.
 
 if ((process.env.TRUST_PROXY || 'false').toString().toLowerCase() === 'true') {
   app.set('trust proxy', 1);
@@ -407,16 +367,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// ─── Circuit breaker: monitoring only, no longer a gate ─────────────────
-// The background health-check loop still runs and still updates
-// serviceHealth (so /health stays accurate for dashboards/alerts), but it
-// no longer decides whether a real request gets proxied. Health checks and
-// real requests are separate code paths hitting the same backend — a bug or
-// flakiness confined to the health-check path (as just happened) should
-// never be able to take down real traffic on its own. The proxy's own
-// per-request timeout (30s, below) and error handler are what protect
-// callers now, because they react to that specific request's own outcome,
-// not a separate probe's.
+// ─── Service health gating: REMOVED ─────────────────────────────────────
+// There is no background health-check loop anymore (see the block near the
+// top of this file) and no per-request availability gate either. The
+// proxy's own per-request timeout (30s, below) and its error handler are
+// what protect callers, because they react to that specific request's own
+// outcome.
 //
 // One exception: the notification service has no container defined in
 // docker-compose at all, so proxying to it is a guaranteed connection
@@ -568,13 +524,6 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
             const firstSegment = (req.originalUrl || req.url || '').split('/').filter(Boolean)[2] || 'unknown';
             const friendlyName = firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1);
 
-            const serviceName = Object.keys(SERVICE_ROUTES).find(
-              route => firstSegment === route || firstSegment.startsWith(route + '-')
-            );
-            if (serviceName) {
-              handleServiceFailure(serviceName);
-            }
-
             res.status(503).json({
               success: false,
               message: 'Now API Gateway is Down',
@@ -665,59 +614,33 @@ app.use('/api/v1/restpoint', checkServiceAvailability, (req, res, next) => {
 // =============================================================================
 
 app.get('/health', (req, res) => {
-  const serviceStatus = {};
+  // Static self-report. The gateway does NOT probe backend services anymore
+  // (health monitoring removed — see the block near the top of this file),
+  // so there are no per-service health claims here. The routing table below
+  // shows the RESOLVED target URL for every service, which is how you debug
+  // "wrong URL" misconfigurations (loopback-in-container, Docker-hostname-on-
+  // host) that used to fake an "all services down" outage. Always 200: the
+  // Docker HEALTHCHECK, nginx, blackbox-exporter and `make health` only need
+  // to know THIS process is alive and serving.
+  const routingTable = {};
   Object.keys(SERVICE_URLS).forEach(serviceName => {
-    const health = serviceHealth[serviceName];
-    serviceStatus[serviceName] = {
-      url: SERVICE_URLS[serviceName],
-      healthy: health.isHealthy,
-      failures: health.failures,
-      lastCheck: health.lastCheck ? new Date(health.lastCheck).toISOString() : null,
-      lastFailure: health.lastFailure ? new Date(health.lastFailure).toISOString() : null,
-    };
+    routingTable[serviceName] = { url: SERVICE_URLS[serviceName] };
   });
 
-  const allHealthy = Object.values(serviceHealth).every(h => h.isHealthy);
-
-  res.json({
+  res.status(200).json({
     success: true,
-    status: allHealthy ? 'ok' : 'degraded',
+    status: 'ok',
     service: APP_NAME,
     version: APP_VERSION,
     port: PORT,
     uptime: process.uptime(),
-    services: serviceStatus,
+    monitoring: 'disabled',
+    services: routingTable,
   });
 });
 
 app.head('/health', (_req, res) => {
   res.status(200).end();
-});
-
-app.get('/health/:service', async (req, res) => {
-  const serviceName = req.params.service;
-  const url = SERVICE_URLS[serviceName];
-
-  if (!url) {
-    return res.status(404).json({
-      success: false,
-      message: `Unknown service: ${serviceName}`,
-    });
-  }
-
-  const baseUrl = url.split('/')[0] + '//' + url.split('/')[2];
-  await checkServiceHealth(serviceName, baseUrl);
-
-  const health = serviceHealth[serviceName];
-  res.json({
-    success: true,
-    service: serviceName,
-    url: url,
-    healthy: health.isHealthy,
-    failures: health.failures,
-    lastCheck: health.lastCheck ? new Date(health.lastCheck).toISOString() : null,
-    lastFailure: health.lastFailure ? new Date(health.lastFailure).toISOString() : null,
-  });
 });
 
 // Debug endpoint: inspect the DNS cache directly to confirm lookups are
@@ -759,23 +682,25 @@ app.use((err, req, res, next) => {
 });
 
 // START SERVER
-const server = app.listen(PORT, HOST, async () => {
+const server = app.listen(PORT, HOST, () => {
   Logger.info(`  ${APP_NAME} v${APP_VERSION}`);
   Logger.info(`  Running on http://${HOST}:${PORT}`);
   Logger.info(`  UV_THREADPOOL_SIZE=${process.env.UV_THREADPOOL_SIZE}`);
+  Logger.info(`  Service health monitoring: disabled (proxy reacts to real requests)`);
   Logger.info(' Available Endpoints:');
   Logger.info(`   GET  http://localhost:${PORT}/health`);
-  Logger.info(`   GET  http://localhost:${PORT}/health/:service`);
   Logger.info(`   GET  http://localhost:${PORT}/debug/dns-cache`);
 
-  Logger.info(' Performing initial health checks...');
-  await performHealthChecks();
-  Logger.info(' Health checks complete');
+  // Startup routing table — makes a misconfigured service URL visible
+  // immediately in `docker logs` instead of hiding inside probe failures.
+  Logger.info(' Resolved service routing table:');
+  for (const [name, url] of Object.entries(SERVICE_URLS)) {
+    Logger.info(`   ${name} → ${url}`);
+  }
 });
 
 const gracefulShutdown = (signal) => {
   Logger.info(`Shutting down (${signal})...`);
-  clearInterval(healthCheckInterval);
   server.close(() => process.exit(0));
 };
 
