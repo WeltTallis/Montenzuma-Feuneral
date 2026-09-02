@@ -6,6 +6,7 @@ import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 import { ToastContainer, toast } from 'react-toastify';
 import styled, { keyframes } from 'styled-components';
 import { ENDPOINTS } from '../../../api/endpoints';
+
 import OfficialStamp from '../../stamp/stamp';
 import env from '../../../utils/config/env';
 import bwipjs from '@bwip-js/browser';
@@ -58,7 +59,10 @@ const Container = styled.div`
   color: ${COLORS.ink};
   font-size: 15px;
   line-height: 1.5;
-  padding: 0;
+  padding: 2rem 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 
   .Toastify__toast-container { width: 380px !important; max-width: 90vw !important; padding: 0 !important; }
   .Toastify__toast { border-radius: 8px !important; font-family: 'Saira', sans-serif !important; font-size: 0.85rem !important; padding: 10px 14px !important; min-height: 44px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; margin-bottom: 0.5rem !important; }
@@ -67,12 +71,12 @@ const Container = styled.div`
 
 const FormSheet = styled.div`
   width: 100%;
-  max-width: 100%;
+  max-width: 1000px;
   margin: 0 auto;
   background: ${COLORS.white};
-  border-radius: 0;
-  box-shadow: none;
-  border: none;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(3, 7, 30, 0.06);
+  border: 1px solid ${COLORS.line};
   overflow: hidden;
   position: relative;
 `;
@@ -98,28 +102,14 @@ const ContentWrapper = styled.div`
   z-index: 1;
 `;
 
-/* ─── Header: Three-Column Sleek Letterhead ── */
-const HeaderBand = styled.div`
-  background: ${COLORS.bone2};
-  padding: 2rem;
-
-  @media (max-width: 768px) {
-    padding: 1rem;
-  }
-`;
-
+/* ─── Header: Sleek Letterhead ── */
 const LetterheadContainer = styled.div`
   width: 100%;
-  max-width: 1000px;
-  margin: 0 auto;
-  background: ${COLORS.white};
-  box-shadow: 0 10px 30px rgba(3, 7, 30, 0.06);
+  background: transparent;
   position: relative;
-  border-radius: 6px;
-  border: 1px solid ${COLORS.line};
+  border-bottom: 1px solid ${COLORS.line};
 `;
 
-/* Subtle Corner Accents */
 const CornerBase = styled.div`
   position: absolute;
   width: 14px;
@@ -128,17 +118,25 @@ const CornerBase = styled.div`
   border-style: solid;
   z-index: 3;
   opacity: 0.5;
+  pointer-events: none;
 `;
-const CornerTL = styled(CornerBase)` top: 6px; left: 6px; border-width: 1px 0 0 1px; `;
-const CornerTR = styled(CornerBase)` top: 6px; right: 6px; border-width: 1px 1px 0 0; `;
-const CornerBL = styled(CornerBase)` bottom: 6px; left: 6px; border-width: 0 0 1px 1px; `;
-const CornerBR = styled(CornerBase)` bottom: 6px; right: 6px; border-width: 0 1px 1px 0; `;
+const CornerTL = styled(CornerBase)` top: 10px; left: 10px; border-width: 1px 0 0 1px; `;
+const CornerTR = styled(CornerBase)` top: 10px; right: 10px; border-width: 1px 1px 0 0; `;
+const CornerBL = styled(CornerBase)` bottom: 10px; left: 10px; border-width: 0 0 1px 1px; `;
+const CornerBR = styled(CornerBase)` bottom: 10px; right: 10px; border-width: 0 1px 1px 0; `;
 
 const Letterhead = styled.header`
-  padding: 2.5rem 3rem;
+  padding: 2rem 3rem;
   position: relative;
   z-index: 1;
-  background: ${COLORS.white};
+  background: transparent;
+
+  @media (max-width: 1024px) {
+    padding: 2rem 2.5rem;
+  }
+  @media (max-width: 768px) {
+    padding: 1.5rem;
+  }
 `;
 
 /* ─── Row 1: Brand & Doc Title ── */
@@ -148,6 +146,7 @@ const RowTop = styled.div`
   align-items: center;
   padding-bottom: 1.5rem;
   border-bottom: 1px solid ${COLORS.line};
+  gap: 1.5rem;
 
   @media (max-width: 768px) {
     flex-direction: column;
@@ -163,8 +162,8 @@ const BrandLeft = styled.div`
 `;
 
 const LogoBox = styled.div`
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -172,7 +171,7 @@ const LogoBox = styled.div`
   color: ${COLORS.bone};
   font-family: 'Fraunces', serif;
   font-weight: 700;
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   border-radius: 4px;
   flex-shrink: 0;
   overflow: hidden;
@@ -190,7 +189,7 @@ const BrandText = styled.div`
 
 const BrandName = styled.h1`
   font-family: 'Fraunces', serif;
-  font-size: 1.5rem;
+  font-size: 1.2rem; /* Reduced font size */
   font-weight: 700;
   line-height: 1.2;
   color: ${COLORS.ink};
@@ -199,7 +198,7 @@ const BrandName = styled.h1`
 
 const BrandSubtitle = styled.div`
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: ${COLORS.brass};
@@ -216,14 +215,14 @@ const BrandRightTop = styled.div`
 
 const DocTitle = styled.div`
   font-family: 'Fraunces', serif;
-  font-size: 1.4rem;
+  font-size: 1.1rem; /* Reduced font size */
   font-weight: 600;
   color: ${COLORS.ink};
 `;
 
 const DocConfidential = styled.div`
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -243,6 +242,10 @@ const RowBottom = styled.div`
   padding-top: 1.5rem;
   gap: 2rem;
 
+  @media (max-width: 1024px) {
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 2rem;
@@ -267,13 +270,23 @@ const ColSection = styled.div`
 /* Column 1: Contact Info (Wider) */
 const ColContact = styled(ColSection)`
   flex: 3;
-  min-width: 250px;
+  min-width: 200px;
   align-items: flex-start;
   text-align: left;
+
+  @media (max-width: 1024px) {
+    flex: 1 1 100%;
+    min-width: 100%;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid ${COLORS.line};
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem 2rem;
+  }
 `;
 
 const ContactItem = styled.div`
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: ${COLORS.gray};
   display: flex;
   align-items: center;
@@ -292,12 +305,28 @@ const ContactItem = styled.div`
 /* Column 2: Timestamps (Smaller) */
 const ColMeta = styled(ColSection)`
   flex: 1.5;
-  min-width: 130px;
+  min-width: 120px;
   align-items: flex-start;
   text-align: left;
   border-left: 1px solid ${COLORS.line};
   border-right: 1px solid ${COLORS.line};
   padding: 0 1.5rem;
+
+  @media (max-width: 1024px) {
+    flex: 1 1 55%;
+    border-left: none;
+    border-right: 1px solid ${COLORS.line};
+    padding: 0 1.5rem 0 0;
+    flex-direction: row;
+    gap: 2rem;
+  }
+  @media (max-width: 768px) {
+    flex: 1 1 100%;
+    border: none;
+    padding: 0;
+    flex-direction: column;
+    gap: 1rem;
+  }
 `;
 
 const MetaItem = styled.div`
@@ -317,7 +346,7 @@ const MetaLabel = styled.span`
 
 const MetaValue = styled.span`
   font-family: 'Saira', sans-serif;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: ${COLORS.ink};
 `;
@@ -329,7 +358,12 @@ const ColBarcode = styled(ColSection)`
   align-items: flex-end;
   text-align: right;
 
+  @media (max-width: 1024px) {
+    flex: 1 1 40%;
+    align-items: flex-end;
+  }
   @media (max-width: 768px) {
+    flex: 1 1 100%;
     align-items: flex-start;
   }
 `;
@@ -348,7 +382,7 @@ const BarcodeSection = styled.div`
 
 const AdmissionNumber = styled.div`
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: ${COLORS.inkBlue};
   letter-spacing: 0.05em;
@@ -361,7 +395,7 @@ const AdmissionNumber = styled.div`
 
 const DeceasedName = styled.div`
   font-family: 'Fraunces', serif;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: ${COLORS.ink};
   text-align: right;
@@ -374,38 +408,12 @@ const DeceasedName = styled.div`
   }
 `;
 
-const BarcodeWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
-  
-  @media (max-width: 480px) {
-    align-items: center;
-  }
-`;
-
-const FileIdText = styled.div`
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem;
-  color: ${COLORS.gray};
-  text-align: right;
-  
-  span {
-    font-weight: 700;
-    color: ${COLORS.ink};
-    letter-spacing: 0.05em;
-    margin-left: 0.25rem;
-  }
-  
-  @media (max-width: 480px) {
-    text-align: center;
-  }
-`;
-
 const FormBody = styled.div`
-  padding: 3rem 4rem;
+  padding: 3rem 3rem;
 
+  @media (max-width: 1024px) {
+    padding: 2.5rem;
+  }
   @media (max-width: 768px) {
     padding: 2rem 1.5rem;
   }
@@ -584,7 +592,6 @@ const TickIconWrapper = styled.div`
   pointer-events: none;
 `;
 
-// Green spinning loader rendered INSIDE the admission number input while searching
 const SpinIcon = styled.span`
   display: inline-flex;
   align-items: center;
@@ -867,40 +874,67 @@ const ClearSigButton = styled.button`
   }
 `;
 
-// ─── Official Footer & Barcode Panel ───────────────────────────────
 const FooterPanel = styled.div`
-background: ${COLORS.white};
-padding: 1rem 2rem; 
-display: flex;
-justify-content: space-between;
-align-items: center;
-gap: 2rem;
-flex-wrap: wrap;
+  background: transparent;
+  padding: 2rem 3rem;
+  border-top: 1px solid ${COLORS.line};
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
 
- @media (max-width: 768px) {
- flex-direction: column;
- padding: 2rem 1.5rem;
- text-align: center;
- }
+  @media (max-width: 768px) {
+    flex-direction: column;
+    padding: 2rem 1.5rem;
+    text-align: center;
+  }
 `;
 
 const FooterText = styled.div`
-font-size: 0.65rem;
-letter-spacing: 0.1em;
-text-transform: uppercase;
-color: ${COLORS.gray};
-font-family: 'JetBrains Mono', monospace;
-text-align: left;
-line-height: 1.6;
- 
-@media (max-width: 768px) {
-text-align: center;
-
-}
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: ${COLORS.gray};
+  font-family: 'JetBrains Mono', monospace;
+  text-align: left;
+  line-height: 1.6;
+  
+  @media (max-width: 768px) {
+    text-align: center;
+  }
 `;
 
-// Contact glyphs for the letterhead's first column (lucide-style
-// pin / phone / mail at 12px — mirrors the reference header markup)
+const BarcodeWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  
+  @media (max-width: 480px) {
+    align-items: center;
+  }
+`;
+
+const FileIdText = styled.div`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: ${COLORS.gray};
+  text-align: right;
+  
+  span {
+    font-weight: 700;
+    color: ${COLORS.ink};
+    letter-spacing: 0.05em;
+    margin-left: 0.25rem;
+  }
+  
+  @media (max-width: 480px) {
+    text-align: center;
+  }
+`;
+
+// Contact glyphs
 const PinIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
@@ -921,7 +955,6 @@ const MailIcon = () => (
   </svg>
 );
 
-// "May 20, 2024" style date used in the header's meta column
 const formatHeaderDate = (value) => {
   if (!value) return '—';
   const raw = String(value);
@@ -930,8 +963,6 @@ const formatHeaderDate = (value) => {
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 };
 
-// Compact header barcode — CODE128, bold 2px modules, ~30px tall,
-// no human-readable text and zero margin (mirrors the reference header)
 const Barcode = ({ value }) => {
   const canvasRef = useRef(null);
 
@@ -954,7 +985,6 @@ const Barcode = ({ value }) => {
     }
   }, [value]);
 
-  // Force exact dimensions on the canvas to prevent layout blowout
   return <canvas ref={canvasRef} style={{ width: '120px', height: '30px', display: 'block' }} />;
 };
 
@@ -975,6 +1005,7 @@ const DeceasedReleaseForm = () => {
         }
       })();
   };
+  
   const sigPadRef1 = useRef(null);
   const searchTimer = useRef(null);
   const lastSearchedRef = useRef('');
@@ -1059,7 +1090,6 @@ const DeceasedReleaseForm = () => {
     }));
   }, []);
 
-  // Fetch deceased list for the admission dropdown (only unreleased records)
   useEffect(() => {
     const fetchDeceasedList = async () => {
       const tenantSlug = getTenantSlug();
@@ -1089,7 +1119,6 @@ const DeceasedReleaseForm = () => {
     fetchDeceasedList();
   }, []);
 
-  // Pre-fill form when arriving with a deceased ID
   useEffect(() => {
     const fetchDeceasedData = async () => {
       const deceasedId =
@@ -1149,7 +1178,6 @@ const DeceasedReleaseForm = () => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    // Force admission number to always be uppercase
     let processedValue = value;
     if (name === 'admission_number') {
       processedValue = value.toUpperCase();
@@ -1162,7 +1190,6 @@ const DeceasedReleaseForm = () => {
     
     if (name === 'admission_number') {
       setIsFound(false);
-      // Clear the old deceased info so wrong data doesn't linger
       clearDeceasedInfo();
     }
     
@@ -1172,11 +1199,9 @@ const DeceasedReleaseForm = () => {
     if (message.text) setMessage({ type: '', text: '' });
   };
 
-  // Debounced search: triggers after user stops typing for 800ms
   useEffect(() => {
     const admissionNumber = String(formData.admission_number || '').trim().toUpperCase();
 
-    // Clear existing timer
     if (searchTimer.current) clearTimeout(searchTimer.current);
 
     if (!admissionNumber) {
@@ -1187,24 +1212,21 @@ const DeceasedReleaseForm = () => {
       return;
     }
 
-    // If we already found this exact admission number, don't search again
     if (isFound && admissionNumber === lastSearchedRef.current) {
       setIsSearching(false);
       return;
     }
 
-    // Start searching indicator
     setIsSearching(true);
     setIsFound(false);
     setErrors(prev => ({ ...prev, admission_number: '' }));
 
     searchTimer.current = setTimeout(() => {
-      // Double check it hasn't changed in the input
       if (String(formData.admission_number || '').trim().toUpperCase() === admissionNumber) {
         lastSearchedRef.current = admissionNumber;
         handleAdmissionSearch(admissionNumber);
       }
-    }, 800); // 800ms debounce delay to allow typing without interruption
+    }, 800);
 
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -1221,7 +1243,6 @@ const DeceasedReleaseForm = () => {
 
     setFormData(prev => ({
       ...prev,
-      // Keep exactly what the user typed to prevent input hijacking
       admission_number: prev.admission_number || foundAdmissionNumber,
       full_name: deceased.full_name || deceased.name_of_deceased || '',
       gender: deceased.gender || '',
@@ -1247,7 +1268,6 @@ const DeceasedReleaseForm = () => {
       return;
     }
 
-    // If we already found it, don't search again
     if (lastSearchedRef.current === admissionNumber && isFound) {
       return;
     }
@@ -1289,7 +1309,6 @@ const DeceasedReleaseForm = () => {
           : apiError,
       }));
       
-      // Clear deceased info if not found
       clearDeceasedInfo();
     } finally {
       setIsSearching(false);
@@ -1468,88 +1487,86 @@ const DeceasedReleaseForm = () => {
         <Watermark>OFFICIAL RECORD</Watermark>
 
         <ContentWrapper>
-          <HeaderBand>
-            <LetterheadContainer>
-              <CornerTL />
-              <CornerTR />
-              <CornerBL />
-              <CornerBR />
-              <Letterhead>
-                {/* ROW 1: Brand & Document Title */}
-                <RowTop>
-                  <BrandLeft>
-                    <LogoBox>
-                      {tenantLogoUrl ? (
-                        <img
-                          src={tenantLogoUrl}
-                          alt={tenantName}
-                          onError={(e) => { e.target.style.display = 'none'; }}
-                        />
-                      ) : (
-                        (tenantName || 'M').charAt(0).toUpperCase()
-                      )}
-                    </LogoBox>
-                    <BrandText>
-                      <BrandName>{tenantName}</BrandName>
-                      <BrandSubtitle>
-                        {[displayBranch, displayLocation].filter(Boolean).join(' · ') || 'Department of Forensic Records'}
-                      </BrandSubtitle>
-                    </BrandText>
-                  </BrandLeft>
-                  <BrandRightTop>
-                    <DocTitle>Deceased Release Record</DocTitle>
-                    <DocConfidential>Confidential · Medical Record</DocConfidential>
-                  </BrandRightTop>
-                </RowTop>
+          <LetterheadContainer>
+            <CornerTL />
+            <CornerTR />
+            <CornerBL />
+            <CornerBR />
+            <Letterhead>
+              {/* ROW 1: Brand & Document Title */}
+              <RowTop>
+                <BrandLeft>
+                  <LogoBox>
+                    {tenantLogoUrl ? (
+                      <img
+                        src={tenantLogoUrl}
+                        alt={tenantName}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    ) : (
+                      (tenantName || 'M').charAt(0).toUpperCase()
+                    )}
+                  </LogoBox>
+                  <BrandText>
+                    <BrandName>{tenantName}</BrandName>
+                    <BrandSubtitle>
+                      {[displayBranch, displayLocation].filter(Boolean).join(' · ') || 'Department of Forensic Records'}
+                    </BrandSubtitle>
+                  </BrandText>
+                </BrandLeft>
+                <BrandRightTop>
+                  <DocTitle>Deceased Release Record</DocTitle>
+                  <DocConfidential>Confidential · Medical Record</DocConfidential>
+                </BrandRightTop>
+              </RowTop>
 
-                {/* ROW 2: 3 Distinct Columns */}
-                <RowBottom>
-                  {/* Col 1: Contact Info (Wider) */}
-                  <ColContact>
-                    <ContactItem>
-                      <PinIcon />
-                      {displayAddress || fallback.address || fallback.location}
-                    </ContactItem>
-                    <ContactItem>
-                      <PhoneIcon />
-                      {displayPhone || fallback.phone}
-                    </ContactItem>
-                    <ContactItem>
-                      <MailIcon />
-                      {displayEmail || fallback.email}
-                    </ContactItem>
-                  </ColContact>
+              {/* ROW 2: 3 Distinct Columns */}
+              <RowBottom>
+                {/* Col 1: Contact Info (Wider) */}
+                <ColContact>
+                  <ContactItem>
+                    <PinIcon />
+                    {displayAddress || fallback.address || fallback.location}
+                  </ContactItem>
+                  <ContactItem>
+                    <PhoneIcon />
+                    {displayPhone || fallback.phone}
+                  </ContactItem>
+                  <ContactItem>
+                    <MailIcon />
+                    {displayEmail || fallback.email}
+                  </ContactItem>
+                </ColContact>
 
-                  {/* Col 2: Timestamps & Reference (Smaller) */}
-                  <ColMeta>
-                    <MetaItem>
-                      <MetaLabel>Date Admitted</MetaLabel>
-                      <MetaValue>{formatHeaderDate(formData.date_admitted)}</MetaValue>
-                    </MetaItem>
-                    <MetaItem>
-                      <MetaLabel>Time Recorded</MetaLabel>
-                      <MetaValue>{formData.release_time || '—'}</MetaValue>
-                    </MetaItem>
-                    <MetaItem>
-                      <MetaLabel>Reference No.</MetaLabel>
-                      <MetaValue>{formData.admission_number || '—'}</MetaValue>
-                    </MetaItem>
-                  </ColMeta>
+                {/* Col 2: Timestamps & Reference (Smaller) */}
+                <ColMeta>
+                  <MetaItem>
+                    <MetaLabel>Date Admitted</MetaLabel>
+                    <MetaValue>{formatHeaderDate(formData.date_admitted)}</MetaValue>
+                  </MetaItem>
+                  <MetaItem>
+                    <MetaLabel>Time Recorded</MetaLabel>
+                    <MetaValue>{formData.release_time || '—'}</MetaValue>
+                  </MetaItem>
+                  <MetaItem>
+                    <MetaLabel>Reference No.</MetaLabel>
+                    <MetaValue>{formData.admission_number || '—'}</MetaValue>
+                  </MetaItem>
+                </ColMeta>
 
-                  {/* Col 3: Barcode, Admission No (Blue) & Deceased Name */}
-                  <ColBarcode>
-                    <BarcodeSection>
-                      <AdmissionNumber>
-                        {formData.admission_number || 'AWAITING-ID'}
-                      </AdmissionNumber>
-                      <Barcode value={formData.admission_number} />
-                      <DeceasedName>{formData.full_name || '—'}</DeceasedName>
-                    </BarcodeSection>
-                  </ColBarcode>
-                </RowBottom>
-              </Letterhead>
-            </LetterheadContainer>
-          </HeaderBand>
+                {/* Col 3: Barcode, Admission No (Blue) & Deceased Name */}
+                <ColBarcode>
+                  <BarcodeSection>
+                    <AdmissionNumber>
+                      {formData.admission_number || 'AWAITING-ID'}
+                    </AdmissionNumber>
+                    <Barcode value={formData.admission_number} />
+                    <DeceasedName>{formData.full_name || '—'}</DeceasedName>
+                  </BarcodeSection>
+                </ColBarcode>
+              </RowBottom>
+            </Letterhead>
+          </LetterheadContainer>
 
           <FormBody>
             <form onSubmit={handleSubmit} noValidate>
