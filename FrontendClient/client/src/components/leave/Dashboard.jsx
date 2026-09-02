@@ -9,7 +9,7 @@ import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip } from 'chart.js';
 import { useSocket } from '../../utils/context/socketContext';
 import { api, ENDPOINTS } from '../../api';
-import { getUserId } from '../../utils/globalAuth';
+import { getUserId, getTenantSlug, getParentTenantSlug } from '../../utils/globalAuth';
 import {
   Calendar,
   Clock,
@@ -1253,10 +1253,16 @@ const LeaveDashboard = () => {
 
   const fetchData = useCallback(async () => {
     try {
+      // Leaves always live in the PARENT tenant's main database (the apply flow
+      // stores rows with the parent slug). HR may be viewing from a branch
+      // context, so pin every dashboard read to the parent slug — otherwise the
+      // requests employees submit are invisible here even though they exist.
+      const parentSlug = getParentTenantSlug() || getTenantSlug() || 'system_shared';
+      const tenantHeaders = { headers: { 'x-tenant-slug': parentSlug } };
       const [leavesRes, onLeaveRes, balancesRes] = await Promise.all([
-        api.get(ENDPOINTS.LEAVE.ALL).catch(() => ({ data: { data: [] } })),
-        api.get(ENDPOINTS.LEAVE.USERS_ON_LEAVE).catch(() => ({ data: { data: [] } })),
-        api.get(ENDPOINTS.LEAVE.BALANCES).catch(() => ({ data: { data: [] } })),
+        api.get(ENDPOINTS.LEAVE.ALL, tenantHeaders).catch(() => ({ data: { data: [] } })),
+        api.get(ENDPOINTS.LEAVE.USERS_ON_LEAVE, tenantHeaders).catch(() => ({ data: { data: [] } })),
+        api.get(ENDPOINTS.LEAVE.BALANCES, tenantHeaders).catch(() => ({ data: { data: [] } })),
       ]);
       const leavesData = leavesRes?.data?.data || leavesRes?.data || [];
       setLeaves(Array.isArray(leavesData) ? leavesData : []);

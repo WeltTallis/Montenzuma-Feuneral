@@ -524,6 +524,7 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
             const firstSegment = (req.originalUrl || req.url || '').split('/').filter(Boolean)[2] || 'unknown';
             const friendlyName = firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1);
 
+            // FIX: Use targetUrl from the closure - this is now properly captured
             res.status(503).json({
               success: false,
               message: 'Now API Gateway is Down',
@@ -532,7 +533,7 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
               action: 'Please contact the System Administrator.',
               service: firstSegment,
               serviceName: friendlyName,
-              error: err.code,
+              error: err.code || err.message,
               target: targetUrl,
               timestamp: new Date().toISOString()
             });
@@ -596,7 +597,8 @@ app.use('/api/v1/restpoint', checkServiceAvailability, (req, res, next) => {
             details: 'No services can be reached at the moment.',
             action: 'Please contact the System Administrator.',
             service: firstSegment,
-            error: err.code,
+            error: err.code || err.message,
+            target: targetUrl,
             timestamp: new Date().toISOString()
           });
         }

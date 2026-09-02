@@ -63,29 +63,42 @@ io.on('connection', (socket) => {
 // Resolves the MAIN/PARENT tenant database for a given slug. Leaves ALWAYS live
 // in the parent tenant's single main database so every leave for an organization
 // appears in ONE place — never split across branch databases.
+//
+// Returns { dbName, tenantSlug } — the parent's MAIN database AND the parent's
+// canonical tenant slug. Callers MUST store AND filter rows by the returned
+// slug: a branch user's raw slug ("acme-west") must never be used as a
+// tenant_slug filter, or leaves saved under the parent slug ("acme") will be
+// invisible to that user's own lists and to the HR dashboard.
 async function resolveMainTenantDatabase(tenantSlug, { resolveDatabase, lookupTenantDatabase, getRootPool }) {
   try {
     // 1. If the slug IS a tenant slug, return the tenant's main database directly.
     const mainDb = await lookupTenantDatabase(tenantSlug);
-    if (mainDb) return mainDb;
+    if (mainDb) return { dbName: mainDb, tenantSlug };
 
     // 2. The slug may be a branch slug or a branch database name. Resolve it,
     //    then map the database back to the owning tenant's MAIN database.
     const resolved = await resolveDatabase(tenantSlug);
     if (resolved) {
-      try {
-        const rootPool = await getRootPool(); // already connects to tenant_tracking
-        const [rows] = await rootPool.query(
-          `SELECT t.db_name FROM tenants t
-           JOIN branches b ON b.tenant_id = t.id
-           WHERE b.branch_db_name = ? AND t.status = 'active' LIMIT 1`,
-          [resolved]
-        );
-        if (Array.isArray(rows) && rows.length > 0 && rows[0].db_name) {
-          return rows[0].db_name;
-        }
-      } catch (e) { /* best-effort — fall through to resolved db */ }
-      return resolved;
+      // Match the branch by its database name OR its slug, and tolerate both
+      // tenants-table primary key shapes seen across installs (id / tenant_id).
+      const lookupQueries = [
+        [`SELECT t.db_name, t.tenant_slug FROM tenants t
+            JOIN branches b ON b.tenant_id = t.id
+            WHERE (b.branch_db_name = ? OR b.branch_slug = ?) AND t.status = 'active' LIMIT 1`, [resolved, tenantSlug]],
+        [`SELECT t.db_name, t.tenant_slug FROM tenants t
+            JOIN branches b ON b.tenant_id = t.tenant_id
+            WHERE (b.branch_db_name = ? OR b.branch_slug = ?) AND t.status = 'active' LIMIT 1`, [resolved, tenantSlug]],
+      ];
+      for (const [sql, params] of lookupQueries) {
+        try {
+          const rootPool = await getRootPool(); // already connects to tenant_tracking
+          const [rows] = await rootPool.query(sql, params);
+          if (Array.isArray(rows) && rows.length > 0 && rows[0].db_name) {
+            return { dbName: rows[0].db_name, tenantSlug: rows[0].tenant_slug || tenantSlug };
+          }
+        } catch (e) { /* try the next shape */ }
+      }
+      return { dbName: resolved, tenantSlug };
     }
   } catch (err) {
     console.error('[LEAVE] resolveMainTenantDatabase error:', err && err.message ? err.message : String(err));
@@ -118,20 +131,40 @@ app.use(async (req, res, next) => {
       // branch DB. This keeps every leave request for an organization in ONE
       // place (the parent tenant's main database), regardless of which branch
       // the requesting user belongs to.
-      let dbName = await resolveMainTenantDatabase(tenantSlug, { resolveDatabase, lookupTenantDatabase, getRootPool });
+      const resolvedMain = await resolveMainTenantDatabase(tenantSlug, { resolveDatabase, lookupTenantDatabase, getRootPool });
 
+      let dbName;
+      let parentSlug;
+      if (resolvedMain && resolvedMain.dbName) {
+        dbName = resolvedMain.dbName;
+        parentSlug = resolvedMain.tenantSlug || tenantSlug;
+      }
       if (!dbName) {
         // Fallback: for multi-branch tenants the database name is the tenant
         // slug; for single-branch tenants it is also the tenant slug.
         dbName = tenantSlug.replace(/-/g, '_');
+        parentSlug = tenantSlug;
       }
+
+      // ── NORMALIZE the tenant context to the PARENT slug ──
+      // A branch user arrives with x-tenant-slug = "acme-west". Apply writes
+      // rows with the PARENT slug ("acme"), so every read below must filter by
+      // the parent slug too — otherwise the user's own requests (and the HR
+      // dashboard view) come back EMPTY even though the rows exist.
+      // getTenantSlug(req) in leaveController reads req.tenantSlug FIRST, so
+      // overwriting it here fixes apply, my-leaves, all-leaves, stats,
+      // balances and on-leave in one place.
+      const requestedSlug = tenantSlug;
+      req.tenantSlug = parentSlug;
 
       req.tenant = {
         db_name: dbName,
-        tenant_slug: tenantSlug,
-        name: tenantSlug
+        tenant_slug: parentSlug,
+        requested_slug: requestedSlug,
+        name: parentSlug
       };
-      console.log(`[LEAVE] Tenant resolved (MAIN database): ${dbName}`);
+      console.log(`[LEAVE] Tenant resolved (MAIN database): ${dbName}` +
+        (requestedSlug !== parentSlug ? ` (slug: ${requestedSlug} → parent: ${parentSlug})` : ` (slug: ${parentSlug})`));
 
       // Auto-migrate: Ensure leave tables exist in this tenant's MAIN database
       if (dbName) {

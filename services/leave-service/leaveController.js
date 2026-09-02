@@ -322,6 +322,18 @@ const getMyLeaves = async (req, res) => {
     const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
     const userId = req.headers['x-user-id'] || req.params.user_id || req.query.user_id;
 
+    if (!userId) {
+        // Never run "WHERE lr.user_id = NULL" — that silently matches nothing
+        // and looks exactly like "my applied leave disappeared". Say so instead.
+        console.warn(`[LEAVE] getMyLeaves: no user id on request (x-user-id header / params / query all missing). tenant=${tenantSlug}. The frontend must send x-user-id (axios interceptor) or ?user_id=.`);
+        return res.status(200).json({
+            status: 'success',
+            count: 0,
+            data: [],
+            warning: 'No user id on request — cannot look up leave requests'
+        });
+    }
+
     try {
         let query = `SELECT lr.*, u.full_name AS name, u.email 
        FROM leave_requests lr 

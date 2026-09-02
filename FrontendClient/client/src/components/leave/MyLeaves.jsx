@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { api, ENDPOINTS } from '../../api';
+import { getUserId, getTenantSlug, getParentTenantSlug } from '../../utils/globalAuth';
 
 const COLORS = {
   primary: '#0A2463',
@@ -313,13 +314,26 @@ const MyLeaves = () => {
   const fetchMyLeaves = async () => {
     try {
       setLoading(true);
-      const userId = JSON.parse(localStorage.getItem('user') || '{}').id ||
-        JSON.parse(localStorage.getItem('user') || '{}').userId || 1;
+      // Identity: use the SAME source the axios interceptor uses (localStorage
+      // 'userId', set at login from user.userId || user.user_id || user.id).
+      // The previous inline version read only user.id/userId and fell back to
+      // 1 — with a login response shaped { user_id } it queried user 1's rows
+      // and the freshly applied leave never appeared here.
+      const userId = getUserId();
 
       // Get tenant slug from localStorage
       const tenantSlug = localStorage.getItem('tenantSlug') || 'system_shared';
 
-      const response = await api.get(ENDPOINTS.LEAVE.MY_LEAVES, { params: { user_id: userId } });
+      // Leaves always live in the PARENT tenant's main database — send the
+      // parent slug explicitly (exactly like ApplyLeave does) so the service
+      // reads from the same tenant_slug the apply flow wrote, even when this
+      // user is in a branch context.
+      const parentSlug = getParentTenantSlug() || getTenantSlug() || tenantSlug || 'system_shared';
+
+      const response = await api.get(ENDPOINTS.LEAVE.MY_LEAVES, {
+        params: { user_id: userId },
+        headers: { 'x-tenant-slug': parentSlug },
+      });
 
       const leavesData = Array.isArray(response?.data?.data) ? response.data.data : [];
       setLeaves(leavesData);
