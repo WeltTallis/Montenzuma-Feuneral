@@ -19,28 +19,19 @@ import {
 
 // ─── Color Palette ──
 const COLORS = {
-  ink: '#03071E',
+  ink: '#1A1A1A',
   bone: '#FAF8F4',
-  bone2: '#F3EFE6',
-  brass: '#8B7355',
+  bone2: #FFFFFF, // Set to white for natural feel
+  brass: '#9B845F',
   brassLight: '#A98F6E',
   verdigris: '#3D4F47',
   verdigrisDark: '#2E3F37',
-  verdigrisLight: '#4D6359',
-  verdigrisTint: '#EBEFEF',
-  line: '#E3DDD0',
-  lineDark: 'rgba(250,248,244,0.14)',
+  line: '#E2DDD3',
   gray: '#6B6862',
-  grayLight: 'rgba(250,248,244,0.62)',
+  muted: '#999999',
   red: '#9B4A3F',
-  redBg: '#F7ECE9',
-  redLine: '#E8D2CC',
-  success: '#475A43',
-  successBg: '#EEF3EC',
   white: '#FFFFFF',
   inkBlue: '#0f33e7',
-  stampBlue: '#0f33e7',
-  stampRed: '#dc2626',
   gold: '#C9A227',
   goldDark: '#A8851C',
   tickBlue: '#2564eb1b',
@@ -51,35 +42,37 @@ const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
 
+const slideText = keyframes`
+  0%, 20%   { transform: translateY(0); }
+  25%, 45%  { transform: translateY(-32px); }
+  50%, 70%  { transform: translateY(-64px); }
+  75%, 95%  { transform: translateY(-96px); }
+  100%      { transform: translateY(0); }
+`;
+
 const Container = styled.div`
   min-height: 100vh;
-  background: ${COLORS.bone2};
+  background: ${COLORS.white};
   font-family: 'Saira', sans-serif;
   color: ${COLORS.ink};
   font-size: 15px;
   line-height: 1.5;
-  padding: 0; /* No padding on the container at all */
-  display: block;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 `;
 
 const FormSheet = styled.div`
   width: 100%;
-  max-width: 1000px;
+  max-width: 900px;
   margin: 0 auto;
   background: ${COLORS.white};
-  box-shadow: 0 10px 30px rgba(3, 7, 30, 0.06);
-  position: relative;
-  overflow: hidden;
-  border-radius: 0; /* Flush edges on mobile/tablet */
+  border-radius: 0;
+  box-shadow: none;
   border: none;
-
-  /* Only show the nice PDF border and centering on large desktop screens */
-  @media (min-width: 1025px) {
-    border-radius: 6px;
-    border: 1px solid ${COLORS.line};
-    margin-top: 2rem;
-    margin-bottom: 2rem;
-  }
+  overflow: hidden;
+  position: relative;
 `;
 
 const Watermark = styled.div`
@@ -89,7 +82,7 @@ const Watermark = styled.div`
   transform: translate(-50%, -50%) rotate(-35deg);
   font-size: 8rem;
   font-weight: 800;
-  color: rgba(21, 23, 26, 0.025);
+  color: rgba(21, 23, 26, 0.015);
   font-family: 'Fraunces', serif;
   white-space: nowrap;
   pointer-events: none;
@@ -103,346 +96,187 @@ const ContentWrapper = styled.div`
   z-index: 1;
 `;
 
-/* ─── Header: Compact PDF-Style Intake Header ── */
-const LetterheadContainer = styled.div`
-  width: 100%;
-  background: ${COLORS.white};
-  position: relative;
-  border-bottom: 1px solid ${COLORS.line};
-`;
-
-const CornerBase = styled.div`
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-color: ${COLORS.brass};
-  border-style: solid;
-  z-index: 3;
-  opacity: 0.5;
-  pointer-events: none;
-
-  /* Hide corner accents on mobile to keep it clean */
-  @media (max-width: 1024px) {
-    display: none;
-  }
-`;
-const CornerTL = styled(CornerBase)` top: 6px; left: 6px; border-width: 1px 0 0 1px; `;
-const CornerTR = styled(CornerBase)` top: 6px; right: 6px; border-width: 1px 1px 0 0; `;
-const CornerBL = styled(CornerBase)` bottom: 6px; left: 6px; border-width: 0 0 1px 1px; `;
-const CornerBR = styled(CornerBase)` bottom: 6px; right: 6px; border-width: 0 1px 1px 0; `;
-
-const Letterhead = styled.header`
+/* ─── Natural Borderless Header ── */
+const HeaderWrapper = styled.header`
   padding: 2.5rem 3rem;
   position: relative;
   z-index: 1;
-  background: ${COLORS.white};
+  background: transparent;
 
-  @media (max-width: 1024px) {
-    padding: 2rem 2.5rem;
-  }
-  @media (max-width: 600px) {
-    padding: 1.5rem;
+  @media (max-width: 768px) {
+    padding: 2rem 1.5rem;
   }
 `;
 
-/* ─── Row 1: Brand & Doc Title ── */
-const RowTop = styled.div`
+const HeaderMain = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid ${COLORS.line};
-  gap: 1.5rem;
+  gap: 3rem;
 
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     flex-direction: column;
     align-items: flex-start;
-    gap: 1.5rem;
+    gap: 2.5rem;
   }
 `;
 
-const BrandLeft = styled.div`
+const ColLeft = styled.div`
   display: flex;
-  align-items: center;
-  gap: 1rem;
-`;
-
-const LogoBox = styled.div`
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: ${COLORS.ink};
-  color: ${COLORS.bone};
-  font-family: 'Fraunces', serif;
-  font-weight: 700;
-  font-size: 1.4rem;
-  border-radius: 4px;
-  flex-shrink: 0;
-  overflow: hidden;
-
-  & > img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-`;
-
-const BrandText = styled.div`
+  flex-direction: column;
+  gap: 2rem;
+  flex: 1.2;
   min-width: 0;
 `;
 
-const BrandName = styled.h1`
-  font-family: 'Fraunces', serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.2;
-  color: ${COLORS.ink};
-  margin: 0;
-
-  @media (max-width: 1024px) {
-    font-size: 1.3rem;
-  }
+const GreetingBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 `;
 
-const BrandSubtitle = styled.div`
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+const GreetingWelcome = styled.span`
+  font-family: 'Saira', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: ${COLORS.muted};
+`;
+
+const TextSlider = styled.div`
+  height: 32px;
+  overflow: hidden;
+  position: relative;
+`;
+
+const TextTrack = styled.div`
+  animation: ${slideText} 16s infinite cubic-bezier(0.65, 0.05, 0.36, 1);
+`;
+
+const Phrase = styled.div`
+  height: 32px;
+  display: flex;
+  align-items: center;
+  font-family: 'Fraunces', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: ${COLORS.ink};
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+`;
+
+const GreetingTime = styled.span`
+  font-family: 'Saira', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
   color: ${COLORS.brass};
   margin-top: 0.2rem;
 `;
 
-const BrandRightTop = styled.div`
-  text-align: right;
-
-  @media (max-width: 600px) {
-    text-align: left;
-  }
-`;
-
-const DocTitle = styled.div`
-  font-family: 'Fraunces', serif;
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: ${COLORS.ink};
-
-  @media (max-width: 1024px) {
-    font-size: 1.2rem;
-  }
-`;
-
-const DocConfidential = styled.div`
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: ${COLORS.inkBlue};
-  margin-top: 0.3rem;
-  display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border: 1px solid ${COLORS.inkBlue};
-  border-radius: 2px;
-`;
-
-/* ─── Row 2: Metadata Grid (Desktop) ── */
-const RowBottom = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 1.5rem;
-  gap: 1.5rem; /* Tighter gap */
-
-  @media (max-width: 1024px) {
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    padding-top: 1.5rem;
-  }
-  @media (max-width: 600px) {
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-`;
-
-const ColSection = styled.div`
+const FacilityInfo = styled.div`
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: 0.5rem;
-
-  @media (max-width: 600px) {
-    width: 100%;
-    border: none !important;
-    padding: 0;
-    flex-direction: column;
-    align-items: flex-start;
-  }
 `;
 
-/* Column 1: Contact Info */
-const ColContact = styled(ColSection)`
-  flex: 2;
-  min-width: 200px;
-  align-items: flex-start;
-  text-align: left;
-
-  @media (max-width: 1024px) {
-    flex: 1 1 100%;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid ${COLORS.line};
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 0.5rem 2rem;
-  }
-`;
-
-const ContactItem = styled.div`
-  font-size: 0.8rem;
-  color: ${COLORS.gray};
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 500;
-
-  svg {
-    width: 12px;
-    height: 12px;
-    color: ${COLORS.verdigris};
-    opacity: 0.7;
-    flex-shrink: 0;
-  }
-`;
-
-/* Column 2: Timestamps */
-const ColMeta = styled(ColSection)`
-  flex: 1;
-  min-width: 120px;
-  align-items: flex-start; 
-  text-align: left;        
-  border-left: 1px solid ${COLORS.line};
-  border-right: 1px solid ${COLORS.line};
-  padding: 0 1.5rem;
-
-  @media (max-width: 1024px) {
-    flex: 1 1 55%;
-    border-left: none;
-    border-right: 1px solid ${COLORS.line};
-    padding: 0 1.5rem 0 0;
-    flex-direction: row;
-    gap: 2rem;
-  }
-  @media (max-width: 600px) {
-    flex: 1 1 100%;
-    border: none;
-    padding: 0;
-    flex-direction: column;
-    gap: 1rem;
-  }
-`;
-
-const MetaItem = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-`;
-
-const MetaLabel = styled.span`
+const SectionLabel = styled.span`
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.55rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: ${COLORS.brass};
+  margin-bottom: 0.25rem;
+  display: block;
 `;
 
-const MetaValue = styled.span`
-  font-family: 'Saira', sans-serif;
+const ContactItem = styled.div`
   font-size: 0.85rem;
-  font-weight: 600;
-  color: ${COLORS.ink};
-`;
+  color: ${COLORS.gray};
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 500;
 
-/* Column 3: Barcode (Locked Width to prevent stretching/dead space) */
-const ColBarcode = styled(ColSection)`
-  flex: 0 0 140px; /* Prevents growing and shrinking */
-  align-items: flex-end;
-  text-align: right;
-
-  @media (max-width: 1024px) {
-    flex: 1 1 40%;
-    align-items: flex-end;
-  }
-  @media (max-width: 600px) {
-    flex: 1 1 100%;
-    align-items: flex-start;
+  svg {
+    width: 15px;
+    height: 15px;
+    color: ${COLORS.brass};
+    flex-shrink: 0;
+    stroke-width: 1.5;
   }
 `;
 
-const BarcodeSection = styled.div`
+const ColRight = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.2rem;
-  line-height: 1;
+  justify-content: center;
+  text-align: right;
+  gap: 2rem;
+  flex: 1;
 
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
+    align-items: flex-start;
+    text-align: left;
+    width: 100%;
+  }
+`;
+
+const DateDisplay = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+`;
+
+const DateLabel = styled.span`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: ${COLORS.muted};
+`;
+
+const DateValue = styled.span`
+  font-family: 'Saira', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${COLORS.ink};
+  letter-spacing: 0.02em;
+`;
+
+const VerificationBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+
+  @media (max-width: 768px) {
     align-items: flex-start;
   }
 `;
 
 const AdmissionNumber = styled.div`
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: ${COLORS.inkBlue};
-  letter-spacing: 0.05em;
-  margin-bottom: 0.1rem;
-
-  @media (max-width: 600px) {
-    text-align: left;
-  }
+  letter-spacing: 0.02em;
 `;
 
 const DeceasedName = styled.div`
   font-family: 'Fraunces', serif;
-  font-size: 0.85rem;
+  font-size: 1rem;
   font-weight: 600;
   color: ${COLORS.ink};
-  text-align: right;
   line-height: 1.2;
-  margin-top: 0.1rem;
-
-  @media (max-width: 600px) {
-    text-align: left;
-  }
-`;
-
-const BarcodeWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-`;
-
-const FileIdText = styled.div`
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem;
-  color: ${COLORS.gray};
-  text-align: center;
-  
-  span {
-    font-weight: 700;
-    color: ${COLORS.ink};
-    letter-spacing: 0.05em;
-    margin-left: 0.25rem;
-  }
+  max-width: 200px;
+  margin-top: 0.2rem;
 `;
 
 const FormBody = styled.div`
-  padding: 3rem 3rem;
+  padding: 3rem 3rem 1.5rem 3rem;
 
   @media (max-width: 1024px) {
     padding: 2.5rem;
@@ -499,7 +333,7 @@ const Row = styled.div`
   @media (max-width: 1024px) {
     flex-wrap: wrap;
   }
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     flex-direction: column;
     gap: 1.25rem;
   }
@@ -513,7 +347,7 @@ const Col = styled.div`
     flex: 1 1 45%;
     min-width: 200px;
   }
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     flex: 1 1 100%;
   }
 `;
@@ -658,7 +492,7 @@ const SigCanvasWrap = styled.div`
   @media (max-width: 1024px) {
     height: 14rem; 
   }
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     height: 18rem; 
   }
 `;
@@ -901,7 +735,7 @@ const ClearSigButton = styled.button`
 const FooterPanel = styled.div`
   background: transparent;
   padding: 2rem 3rem;
-  border-top: 1px solid ${COLORS.line};
+  border-top: none;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -958,6 +792,7 @@ const formatHeaderDate = (value) => {
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 };
 
+// Barcode component strictly configured for absolute visibility
 const Barcode = ({ value }) => {
   const canvasRef = useRef(null);
 
@@ -980,7 +815,7 @@ const Barcode = ({ value }) => {
     }
   }, [value]);
 
-  return <canvas ref={canvasRef} style={{ width: '120px', height: '35px', display: 'block' }} />;
+  return <canvas ref={canvasRef} style={{ display: 'block', width: 'auto', height: '40px' }} />;
 };
 
 const DeceasedRegistrationForm = () => {
@@ -1040,6 +875,14 @@ const DeceasedRegistrationForm = () => {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
+  };
+
+  // Get dynamic greeting based on current hour
+  const getGreetingTime = () => {
+    const hours = new Date().getHours();
+    if (hours < 12) return 'Good morning';
+    if (hours < 18) return 'Good afternoon';
+    return 'Good evening';
   };
 
   const initialFormData = {
@@ -1272,86 +1115,60 @@ const DeceasedRegistrationForm = () => {
         <Watermark>OFFICIAL RECORD</Watermark>
 
         <ContentWrapper>
-          <LetterheadContainer>
-            <CornerTL />
-            <CornerTR />
-            <CornerBL />
-            <CornerBR />
-            <Letterhead>
-              {/* ROW 1: Brand & Document Title */}
-              <RowTop>
-                <BrandLeft>
-                  <LogoBox>
-                    {tenantLogoUrl ? (
-                      <img
-                        src={tenantLogoUrl}
-                        alt={tenantName}
-                        onError={(e) => { e.target.style.display = 'none'; }}
-                      />
-                    ) : (
-                      (tenantName || 'M').charAt(0).toUpperCase()
-                    )}
-                  </LogoBox>
-                  <BrandText>
-                    <BrandName>{tenantName}</BrandName>
-                    <BrandSubtitle>
-                      {[displayBranch, displayLocation].filter(Boolean).join(' · ') || 'Department of Forensic Records'}
-                    </BrandSubtitle>
-                  </BrandText>
-                </BrandLeft>
-                <BrandRightTop>
-                  <DocTitle>Deceased Intake Record</DocTitle>
-                  <DocConfidential>Confidential · Medical Record</DocConfidential>
-                </BrandRightTop>
-              </RowTop>
-
-              {/* ROW 2: Metadata Grid */}
-              <RowBottom>
-                {/* Col 1: Contact Info */}
-                <ColContact>
+          {/* ──── NATURAL BORDERLESS HEADER ──── */}
+          <HeaderWrapper>
+            <HeaderMain>
+              
+              {/* Left Column: Greeting & Info */}
+              <ColLeft>
+                <GreetingBlock>
+                  <GreetingWelcome>Welcome to</GreetingWelcome>
+                  <TextSlider>
+                    <TextTrack>
+                      <Phrase>{tenantName || 'Lee Funeral Home'}</Phrase>
+                      <Phrase>Sorry for your loss</Phrase>
+                      <Phrase>With deepest sympathy</Phrase>
+                      <Phrase>May they rest in peace</Phrase>
+                    </TextTrack>
+                  </TextSlider>
+                  <GreetingTime>{getGreetingTime()}</GreetingTime>
+                </GreetingBlock>
+                
+                <FacilityInfo>
+                  <SectionLabel>Facility Information</SectionLabel>
                   <ContactItem>
                     <PinIcon />
                     {displayAddress || fallback.address || fallback.location}
                   </ContactItem>
                   <ContactItem>
-                    <PhoneIcon />
-                    {displayPhone || fallback.phone}
-                  </ContactItem>
-                  <ContactItem>
                     <MailIcon />
                     {displayEmail || fallback.email}
                   </ContactItem>
-                </ColContact>
+                  <ContactItem>
+                    <PhoneIcon />
+                    {displayPhone || fallback.phone}
+                  </ContactItem>
+                </FacilityInfo>
+              </ColLeft>
 
-                {/* Col 2: Timestamps & Reference */}
-                <ColMeta>
-                  <MetaItem>
-                    <MetaLabel>Date Admitted</MetaLabel>
-                    <MetaValue>{formatHeaderDate(formData.date_admitted)}</MetaValue>
-                  </MetaItem>
-                  <MetaItem>
-                    <MetaLabel>Time Recorded</MetaLabel>
-                    <MetaValue>{formData.time_received || '—'}</MetaValue>
-                  </MetaItem>
-                  <MetaItem>
-                    <MetaLabel>Reference No.</MetaLabel>
-                    <MetaValue>{formData.permit_number || admissionId || '—'}</MetaValue>
-                  </MetaItem>
-                </ColMeta>
+              {/* Right Column: Date & Verification */}
+              <ColRight>
+                <DateDisplay>
+                  <DateLabel>Record Date</DateLabel>
+                  <DateValue>{formatHeaderDate(formData.date_admitted)}</DateValue>
+                </DateDisplay>
 
-                {/* Col 3: Barcode, Admission No (Blue) & Deceased Name */}
-                <ColBarcode>
-                  <BarcodeSection>
-                    <AdmissionNumber>
-                      {loadingAdmission ? 'Generating...' : (admissionId || 'AWAITING-ID')}
-                    </AdmissionNumber>
-                    <Barcode value={admissionId} />
-                    <DeceasedName>{formData.full_name || '—'}</DeceasedName>
-                  </BarcodeSection>
-                </ColBarcode>
-              </RowBottom>
-            </Letterhead>
-          </LetterheadContainer>
+                <VerificationBlock>
+                  <AdmissionNumber>
+                    {loadingAdmission ? 'Generating...' : (admissionId || 'AWAITING-ID')}
+                  </AdmissionNumber>
+                  <Barcode value={admissionId} />
+                  <DeceasedName>{formData.full_name || '—'}</DeceasedName>
+                </VerificationBlock>
+              </ColRight>
+
+            </HeaderMain>
+          </HeaderWrapper>
 
           <FormBody>
             <form onSubmit={handleSubmit} noValidate>
@@ -1839,16 +1656,6 @@ const DeceasedRegistrationForm = () => {
               {tenantName} Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}<br />
               - Official Intake Record —
             </FooterText>
-
-            <BarcodeWrapper>
-              <Barcode value={admissionId} />
-              <FileIdText>
-                File ID:
-                <span>
-                  {loadingAdmission ? 'Generating...' : (admissionId || 'Select gender ')}
-                </span>
-              </FileIdText>
-            </BarcodeWrapper>
           </FooterPanel>
         </ContentWrapper>
       </FormSheet>
