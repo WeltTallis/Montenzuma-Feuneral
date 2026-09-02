@@ -42,6 +42,24 @@ const emitUpdate = (tenantSlug, event, data) => {
 };
 
 // ============================================
+// HELPER: Generate human-friendly leave reference code (LRQ-JOHN-7K4M2)
+// Format: LRQ-<FIRSTNAME>-<5 unambiguous chars> (no 0/O/1/I/L for readability)
+// ============================================
+const REF_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+const generateLeaveRef = (fullName) => {
+    const namePart = String(fullName || '')
+        .toUpperCase()
+        .replace(/[^A-Z]/g, '')
+        .slice(0, 8) || 'EMP';
+    const bytes = require('crypto').randomBytes(5);
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+        code += REF_ALPHABET[bytes[i] % REF_ALPHABET.length];
+    }
+    return `LRQ-${namePart}-${code}`;
+};
+
+// ============================================
 // HELPER: Calculate leave balance
 // ============================================
 const calculateLeaveBalance = async (dbName, userId, tenantSlug) => {

@@ -771,6 +771,21 @@ export default function App() {
         .showcase-mobile{display:grid;grid-template-columns:1.1fr 1fr;gap:4rem;align-items:center;margin-bottom:6rem}
         .about-section{background:${C.bone};padding:clamp(3rem,6vw,4rem) 0;border-top:1px solid ${C.line}}
         .about-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
+        /* ── Lock-in CTA ── */
+        .lockin-section{position:relative;padding:clamp(5rem,10vw,7rem) 0;overflow:hidden;border-top:1px solid ${C.line}}
+        .lockin-bg{position:absolute;inset:0;background-image:url('/lockin.webp');background-size:cover;background-position:center;background-attachment:fixed}
+        .lockin-section::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(12,12,12,0.78) 0%,rgba(21,23,26,0.86) 100%)}
+        .lockin-content{position:relative;z-index:1;max-width:720px}
+        .lockin-title{font-size:clamp(2rem,5vw,2.8rem);font-weight:700;color:${C.bone};margin-bottom:1.25rem;line-height:1.2}
+        .lockin-desc{font-size:1.05rem;color:rgba(250,248,244,0.82);line-height:1.8;margin-bottom:1.25rem}
+        .lockin-sub{font-size:1.08rem;font-family:'Fraunces',serif;font-weight:500;color:${C.brassLight};line-height:1.7;margin-bottom:2.5rem}
+        .lockin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem;margin-top:2.5rem;text-align:left}
+        .lockin-card{background:rgba(250,248,244,0.05);border:1px solid rgba(250,248,244,0.08);border-radius:12px;padding:1.5rem;transition:all 0.4s cubic-bezier(0.16,1,0.3,1)}
+        .lockin-card:hover{border-color:rgba(139,115,85,0.35);background:rgba(250,248,244,0.08);transform:translateY(-4px)}
+        .lockin-card-icon{width:44px;height:44px;border-radius:10px;background:${C.verdigrisTint};display:flex;align-items:center;justify-content:center;margin-bottom:1rem}
+        .lockin-card h3{font-size:1.05rem;font-weight:600;color:${C.bone};margin-bottom:0.5rem}
+        .lockin-card p{font-size:0.85rem;color:rgba(250,248,244,0.68);line-height:1.6}
+        @media(max-width:768px){.lockin-section{padding:clamp(4rem,10vw,5rem) 0}.lockin-bg{background-attachment:scroll}}
         .modules-section{padding:clamp(4rem,8vw,6rem) 0;background:${C.bone};border-top:1px solid ${C.line}}
         .modules-header{text-align:center;margin-bottom:3rem;padding:0 1rem}
         .modules-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;max-width:900px;margin:0 auto;align-items:stretch}
@@ -1065,6 +1080,56 @@ export default function App() {
 
         {/* ── Newsroom ── */}
         <NewsroomSection />
+
+        {/* ── Start using Rest Point ── */}
+        <section className="lockin-section">
+          <div className="lockin-bg" style={{ backgroundImage: "url('/lockin.webp')" }} />
+          <div className="wrap lockin-content">
+            <Reveal>
+              <h2 className="lockin-title">Start using Rest Point.</h2>
+              <p className="lockin-sub">Grief is heavy enough. Running the operations behind it shouldn't be.</p>
+              <p className="lockin-desc">
+                Imagine the modern flow of your home: A family walks in, and instead of drowning in carbon-copy paper,
+                they sign admission forms directly on an iPad. At the front desk, they browse real, high-resolution images
+                of floral arrangements on a tablet, select the perfect tribute, and book it instantly—no physical
+                catalogs or messy ledgers required. Down the hall, body releases are processed seamlessly on the same screen.
+              </p>
+              <p className="lockin-desc">
+                You step in to provide families with dignity and a seamless send-off. Rest Point steps in to power how
+                you do it.
+              </p>
+              <p className="lockin-desc">
+                This is high-end technology engineered specifically for the death care industry. We give you the
+                infrastructure to digitize operations, eliminate the paperwork bottleneck, and deliver a flawless,
+                premium experience from the front door to the final farewell.
+              </p>
+              <p className="lockin-sub">Upgrade your workflow. Centralize your data. Secure your operations today.</p>
+              <div className="lockin-grid">
+                <div className="lockin-card">
+                  <div className="lockin-card-icon"><Layers size={22} color="#4D9B7F" /></div>
+                  <h3>One Platform.</h3>
+                  <p>Case management, smart dispatch, family portals, and front-desk tablet booking—unified in one secure command center.</p>
+                </div>
+                <div className="lockin-card">
+                  <div className="lockin-card-icon"><ShieldCheck size={22} color="#4D9B7F" /></div>
+                  <h3>Protected Details.</h3>
+                  <p>Every record, document, and digital signature. Paperless, accurate, encrypted, and fully auditable.</p>
+                </div>
+                <div className="lockin-card">
+                  <div className="lockin-card-icon"><Zap size={22} color="#4D9B7F" /></div>
+                  <h3>Move Faster.</h3>
+                  <p>From intake to release, eliminate the manual admin and give your team their time back to focus on what actually matters: care.</p>
+                </div>
+              </div>
+              <button className="btn btn-brass" onClick={goStart} style={{ marginTop: '2.5rem', padding: '0.9rem 2rem', fontSize: '0.9rem', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+                Request Access to Rest Point <ArrowRight size={16} />
+              </button>
+              <p style={{ fontSize: '0.9rem', color: 'rgba(250,248,244,0.5)', marginTop: '1.5rem' }}>
+                Join the homes upgrading the future of death care.
+              </p>
+            </Reveal>
+          </div>
+        </section>
 
         <Footer />
 

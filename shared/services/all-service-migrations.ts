@@ -310,24 +310,44 @@ const CHEMICALS_SERVICE_MIGRATIONS: Migration[] = [];
 
 const LEAVE_SERVICE_MIGRATIONS: Migration[] = [
   {
-            name: '170_create_leave_requests_table',
-    sql: `CREATE TABLE IF NOT EXISTS leave_requests (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, leave_type VARCHAR(50) NOT NULL, priority ENUM('low', 'medium', 'high', 'emergency') DEFAULT 'medium', start_date DATE NOT NULL, end_date DATE NOT NULL, days DECIMAL(5,2) NOT NULL, reason TEXT, supporting_document VARCHAR(500), is_half_day BOOLEAN DEFAULT FALSE, status VARCHAR(50) DEFAULT 'pending', rejection_reason TEXT, approved_by VARCHAR(36) NULL, approved_at VARCHAR(255) NULL, created_at VARCHAR(255), updated_at VARCHAR(255), INDEX idx_leave_user (user_id), INDEX idx_leave_tenant (tenant_slug), INDEX idx_leave_status (status), INDEX idx_leave_dates (start_date, end_date)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    name: '170_create_leave_requests_table',
+    sql: `CREATE TABLE IF NOT EXISTS leave_requests (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, leave_type VARCHAR(50) NOT NULL, priority ENUM('low', 'medium', 'high', 'emergency') DEFAULT 'medium', start_date DATE NOT NULL, end_date DATE NOT NULL, days DECIMAL(5,2) NOT NULL, reason TEXT, supporting_document VARCHAR(500), is_half_day BOOLEAN DEFAULT FALSE, status VARCHAR(50) DEFAULT 'pending', rejection_reason TEXT, reference_code VARCHAR(40) NULL, approved_by VARCHAR(36) NULL, approved_at VARCHAR(255) NULL, created_at VARCHAR(255), updated_at VARCHAR(255), INDEX idx_leave_user (user_id), INDEX idx_leave_tenant (tenant_slug), INDEX idx_leave_status (status), INDEX idx_leave_dates (start_date, end_date), INDEX idx_leave_ref (reference_code)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
   {
-            name: '171_create_leave_day_additions_table',
+    name: '171_create_leave_day_additions_table',
     sql: 'CREATE TABLE IF NOT EXISTS leave_day_additions (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, days INT NOT NULL, reason TEXT, added_by VARCHAR(36) NOT NULL, created_at DATE DEFAULT NULL, INDEX idx_addition_user (user_id), INDEX idx_addition_tenant (tenant_slug), INDEX idx_addition_date (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
   },
   {
-            name: '172_create_holiday_compensations_table',
+    name: '172_create_holiday_compensations_table',
     sql: 'CREATE TABLE IF NOT EXISTS holiday_compensations (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, holiday_date DATE NOT NULL, holiday_name VARCHAR(255) NOT NULL, note TEXT, recorded_by VARCHAR(36) NOT NULL, created_at VARCHAR(255), INDEX idx_holiday_user (user_id), INDEX idx_holiday_tenant (tenant_slug), INDEX idx_holiday_date (holiday_date), UNIQUE KEY unique_user_holiday (user_id, holiday_date)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
   },
   {
     name: '173_add_annual_leave_balance_to_users',
     sql: 'ALTER TABLE users ADD COLUMN IF NOT EXISTS annual_leave_balance DECIMAL(5,2) DEFAULT 26.00',
   },
-  {
+      {
     name: '174_update_default_leave_balance',
     sql: 'UPDATE users SET annual_leave_balance = 26.00 WHERE annual_leave_balance IS NULL OR annual_leave_balance = 0',
+  },
+  {
+    name: '175_alter_leave_requests_user_id_to_uuid',
+    sql: "ALTER TABLE leave_requests MODIFY COLUMN user_id VARCHAR(36) NOT NULL",
+  },
+  {
+    name: '176_alter_leave_requests_approved_by_to_uuid',
+    sql: "ALTER TABLE leave_requests MODIFY COLUMN approved_by VARCHAR(36) NULL",
+  },
+  {
+    name: '177_alter_leave_additions_holiday_user_id_to_uuid',
+        sql: "ALTER TABLE leave_day_additions MODIFY COLUMN user_id VARCHAR(36) NOT NULL, MODIFY COLUMN added_by VARCHAR(36) NOT NULL",
+  },
+  {
+    name: '178_alter_holiday_compensations_user_id_recorded_by_to_uuid',
+    sql: "ALTER TABLE holiday_compensations MODIFY COLUMN user_id VARCHAR(36) NOT NULL, MODIFY COLUMN recorded_by VARCHAR(36) NOT NULL",
+  },
+  {
+    name: '179_add_leave_reference_code',
+    sql: "ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS reference_code VARCHAR(40) NULL, ADD INDEX IF NOT EXISTS idx_leave_ref (reference_code)",
   },
 ];
 

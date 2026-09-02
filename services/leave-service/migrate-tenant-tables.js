@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   supporting_document VARCHAR(500),
   is_half_day BOOLEAN DEFAULT FALSE,
   status VARCHAR(50) DEFAULT 'pending',
+  reference_code VARCHAR(40) NULL,
   rejection_reason TEXT,
   approved_by VARCHAR(36) NULL,
   approved_at DATETIME NULL,
@@ -118,6 +119,19 @@ async function migrateTenantTables(dbName) {
             } catch (err) {
                 console.log(`[LEAVE] Column type check: ${err.message}`);
             }
+        }
+
+        // Human-friendly reference code (LRQ-NAME-XXXXX) for tracking requests
+        try {
+            await safeTenantQuery(dbName,
+                "ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS reference_code VARCHAR(40) NULL"
+            );
+            await safeTenantQuery(dbName,
+                "ALTER TABLE leave_requests ADD INDEX IF NOT EXISTS idx_leave_reference (reference_code)"
+            );
+            console.log('[LEAVE] Ensured reference_code column on leave_requests');
+        } catch (err) {
+            console.log(`[LEAVE] reference_code column check: ${err.message}`);
         }
 
         // Add required columns to users table
