@@ -94,56 +94,85 @@ const ContentWrapper = styled.div`
   z-index: 1;
 `;
 
-const Letterhead = styled.div`
+/* ─── Header: Three-Column Sleek Letterhead ── */
+const HeaderBand = styled.div`
+  background: ${COLORS.bone2};
+  padding: 2rem;
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+`;
+
+const LetterheadContainer = styled.div`
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  background: ${COLORS.white};
+  box-shadow: 0 10px 30px rgba(3, 7, 30, 0.06);
+  position: relative;
+  border-radius: 6px;
+  border: 1px solid ${COLORS.line};
+`;
+
+/* Subtle Corner Accents */
+const CornerBase = styled.div`
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: ${COLORS.brass};
+  border-style: solid;
+  z-index: 3;
+  opacity: 0.5;
+`;
+const CornerTL = styled(CornerBase)` top: 6px; left: 6px; border-width: 1px 0 0 1px; `;
+const CornerTR = styled(CornerBase)` top: 6px; right: 6px; border-width: 1px 1px 0 0; `;
+const CornerBL = styled(CornerBase)` bottom: 6px; left: 6px; border-width: 0 0 1px 1px; `;
+const CornerBR = styled(CornerBase)` bottom: 6px; right: 6px; border-width: 0 1px 1px 0; `;
+
+const Letterhead = styled.header`
+  padding: 2.5rem 3rem;
+  position: relative;
+  z-index: 1;
+  background: ${COLORS.white};
+`;
+
+/* ─── Row 1: Brand & Doc Title ── */
+const RowTop = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 2rem;
-  padding: 1.5rem 3rem;
+  padding-bottom: 1.5rem;
   border-bottom: 1px solid ${COLORS.line};
-  background: ${COLORS.white};
-  position: relative;
-  overflow: hidden;
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, ${COLORS.verdigris} 0%, ${COLORS.brass} 50%, ${COLORS.verdigris} 100%);
-  }
-
-  @media (max-width: 480px) {
+  @media (max-width: 768px) {
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    gap: 1rem;
-    padding: 1.5rem 1rem;
+    align-items: flex-start;
+    gap: 1.5rem;
   }
 `;
 
-const BrandLeftWrapper = styled.div`
+const BrandLeft = styled.div`
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5rem;
-  
-  @media (max-width: 480px) {
-    align-items: center;
-  }
+  align-items: center;
+  gap: 1rem;
 `;
 
 const LogoBox = styled.div`
-  width: 70px;
-  height: 70px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: ${COLORS.ink};
+  color: ${COLORS.bone};
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 1.4rem;
+  border-radius: 4px;
   flex-shrink: 0;
-  
+  overflow: hidden;
+
   & > img {
     width: 100%;
     height: 100%;
@@ -151,80 +180,193 @@ const LogoBox = styled.div`
   }
 `;
 
-const BrandDetails = styled.div`
+const BrandText = styled.div`
   min-width: 0;
-
-  @media (max-width: 480px) {
-    text-align: center;
-  }
 `;
 
 const BrandName = styled.h1`
   font-family: 'Fraunces', serif;
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  margin: 0;
+  line-height: 1.2;
   color: ${COLORS.ink};
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-
-  @media (max-width: 480px) {
-    font-size: 1.5rem;
-  }
+  margin: 0;
 `;
 
-const BrandMeta = styled.div`
-  font-size: 0.8rem;
-  color: ${COLORS.gray};
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
+const BrandSubtitle = styled.div`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: ${COLORS.brass};
   margin-top: 0.2rem;
-  font-weight: 500;
-  
-  svg { 
-    opacity: 0.8;
-    flex-shrink: 0;
-    color: ${COLORS.brass};
-  }
-
-  @media (max-width: 480px) {
-    justify-content: center;
-  }
 `;
 
-const BrandRightWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.5rem;
-  
-  @media (max-width: 480px) {
-    align-items: center;
+const BrandRightTop = styled.div`
+  text-align: right;
+
+  @media (max-width: 768px) {
+    text-align: left;
   }
 `;
 
 const DocTitle = styled.div`
+  font-family: 'Fraunces', serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: ${COLORS.ink};
+`;
+
+const DocConfidential = styled.div`
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
+  font-size: 0.6rem;
   font-weight: 700;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: ${COLORS.verdigris};
+  color: ${COLORS.inkBlue};
+  margin-top: 0.3rem;
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid ${COLORS.inkBlue};
+  border-radius: 2px;
+`;
+
+/* ─── Row 2: 3 Distinct Columns ── */
+const RowBottom = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1.5rem;
+  gap: 2rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 2rem;
+  }
+`;
+
+const ColSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    align-items: flex-start;
+    text-align: left;
+    border: none !important;
+    padding: 0;
+  }
+`;
+
+/* Column 1: Contact Info (Wider) */
+const ColContact = styled(ColSection)`
+  flex: 3;
+  min-width: 250px;
+  align-items: flex-start;
+  text-align: left;
+`;
+
+const ContactItem = styled.div`
+  font-size: 0.8rem;
+  color: ${COLORS.gray};
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  font-weight: 500;
 
-  &::before {
-    content: '';
-    width: 8px;
-    height: 4px;
-    background: ${COLORS.brass};
-    display: inline-block;
+  svg {
+    width: 12px;
+    height: 12px;
+    color: ${COLORS.verdigris};
+    opacity: 0.7;
+    flex-shrink: 0;
   }
+`;
 
-  @media (max-width: 480px) {
-    &::before { display: none; }
+/* Column 2: Timestamps (Smaller) */
+const ColMeta = styled(ColSection)`
+  flex: 1.5;
+  min-width: 130px;
+  align-items: flex-start;
+  text-align: left;
+  border-left: 1px solid ${COLORS.line};
+  border-right: 1px solid ${COLORS.line};
+  padding: 0 1.5rem;
+`;
+
+const MetaItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+`;
+
+const MetaLabel = styled.span`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: ${COLORS.brass};
+`;
+
+const MetaValue = styled.span`
+  font-family: 'Saira', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: ${COLORS.ink};
+`;
+
+/* Column 3: Barcode (Compact) */
+const ColBarcode = styled(ColSection)`
+  flex: 1.5;
+  min-width: 140px;
+  align-items: flex-end;
+  text-align: right;
+
+  @media (max-width: 768px) {
+    align-items: flex-start;
+  }
+`;
+
+const BarcodeSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  line-height: 1;
+
+  @media (max-width: 768px) {
+    align-items: flex-start;
+  }
+`;
+
+const AdmissionNumber = styled.div`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: ${COLORS.inkBlue};
+  letter-spacing: 0.05em;
+  margin-bottom: 0.1rem;
+
+  @media (max-width: 768px) {
+    text-align: left;
+  }
+`;
+
+const DeceasedName = styled.div`
+  font-family: 'Fraunces', serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: ${COLORS.ink};
+  text-align: right;
+  line-height: 1.2;
+  max-width: 140px;
+  margin-top: 0.1rem;
+
+  @media (max-width: 768px) {
+    text-align: left;
   }
 `;
 
@@ -738,6 +880,39 @@ text-align: center;
 }
 `;
 
+// Contact glyphs for the letterhead's first column (lucide-style
+// pin / phone / mail at 12px — mirrors the reference header markup)
+const PinIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+);
+
+const PhoneIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+  </svg>
+);
+
+const MailIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+    <polyline points="22,6 12,13 2,6" />
+  </svg>
+);
+
+// "May 20, 2024" style date used in the header's meta column
+const formatHeaderDate = (value) => {
+  if (!value) return '—';
+  const raw = String(value);
+  const date = new Date(raw.length <= 10 ? `${raw}T00:00:00` : raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+// Compact header barcode — CODE128, bold 2px modules, ~30px tall,
+// no human-readable text and zero margin (mirrors the reference header)
 const Barcode = ({ value }) => {
   const canvasRef = useRef(null);
 
@@ -748,13 +923,11 @@ const Barcode = ({ value }) => {
         bwipjs.toCanvas(canvasRef.current, {
           bcid: 'code128',
           text: text,
-          scale: 4,
-          height: 10,
-          includetext: true,
-          textxalign: 'center',
-          textsize: 13,
-          paddingwidth: 10,
-          paddingheight: 5,
+          scale: 2,
+          height: 8,
+          includetext: false,
+          paddingwidth: 0,
+          paddingheight: 0,
         });
       } catch (e) {
         console.error("Barcode generation error:", e);
@@ -762,7 +935,8 @@ const Barcode = ({ value }) => {
     }
   }, [value]);
 
-  return <canvas ref={canvasRef} style={{ width: '100%', maxWidth: '250px', height: 'auto' }} />;
+  // Force exact dimensions on the canvas to prevent layout blowout
+  return <canvas ref={canvasRef} style={{ width: '120px', height: '30px', display: 'block' }} />;
 };
 
 const DeceasedRegistrationForm = () => {
@@ -1059,40 +1233,88 @@ const DeceasedRegistrationForm = () => {
         <Watermark>OFFICIAL RECORD</Watermark>
 
         <ContentWrapper>
-          <Letterhead>
-            <BrandLeftWrapper>
-              <LogoBox>
-                {tenantLogoUrl && (
-                  <img
-                    src={tenantLogoUrl}
-                    alt={tenantName}
-                    onError={(e) => { e.target.style.display = 'none'; }}
-                  />
-                )}
-              </LogoBox>
-              <BrandDetails>
-                <BrandName>{tenantName}</BrandName>
-                {displayLocation && (
-                  <BrandMeta><MapPin size={12} /> {displayBranch ? `${displayBranch} · ` : ''}{displayLocation}{tenantCountry ? `, ${tenantCountry}` : ''}</BrandMeta>
-                )}
-                <BrandMeta><Phone size={12} /> {displayPhone || fallback.phone}{displayEmail ? ` · ${displayEmail}` : fallback.email ? ` · ${fallback.email}` : ''}</BrandMeta>
-                <BrandMeta><MapPin size={12} /> {displayAddress || fallback.address || fallback.location}</BrandMeta>
-              </BrandDetails>
-            </BrandLeftWrapper>
+          <HeaderBand>
+            <LetterheadContainer>
+              <CornerTL />
+              <CornerTR />
+              <CornerBL />
+              <CornerBR />
+              <Letterhead>
+                {/* ROW 1: Brand & Document Title */}
+                <RowTop>
+                  <BrandLeft>
+                    <LogoBox>
+                      {tenantLogoUrl ? (
+                        <img
+                          src={tenantLogoUrl}
+                          alt={tenantName}
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      ) : (
+                        (tenantName || 'M').charAt(0).toUpperCase()
+                      )}
+                    </LogoBox>
+                    <BrandText>
+                      <BrandName>{tenantName}</BrandName>
+                      <BrandSubtitle>
+                        {[displayBranch, displayLocation].filter(Boolean).join(' · ') || 'Department of Forensic Records'}
+                      </BrandSubtitle>
+                    </BrandText>
+                  </BrandLeft>
+                  <BrandRightTop>
+                    <DocTitle>Deceased Intake Record</DocTitle>
+                    <DocConfidential>Confidential · Medical Record</DocConfidential>
+                  </BrandRightTop>
+                </RowTop>
 
-            <BrandRightWrapper>
-              <DocTitle>Intake Record</DocTitle>
-              <BarcodeWrapper>
-                <Barcode value={admissionId} />
-                <FileIdText>
-                  File ID:
-                  <span>
-                    {loadingAdmission ? 'Generating...' : (admissionId || 'Select gender ')}
-                  </span>
-                </FileIdText>
-              </BarcodeWrapper>
-            </BrandRightWrapper>
-          </Letterhead>
+                {/* ROW 2: 3 Distinct Columns */}
+                <RowBottom>
+                  {/* Col 1: Contact Info (Wider) */}
+                  <ColContact>
+                    <ContactItem>
+                      <PinIcon />
+                      {displayAddress || fallback.address || fallback.location}
+                    </ContactItem>
+                    <ContactItem>
+                      <PhoneIcon />
+                      {displayPhone || fallback.phone}
+                    </ContactItem>
+                    <ContactItem>
+                      <MailIcon />
+                      {displayEmail || fallback.email}
+                    </ContactItem>
+                  </ColContact>
+
+                  {/* Col 2: Timestamps & Reference (Smaller) */}
+                  <ColMeta>
+                    <MetaItem>
+                      <MetaLabel>Date Admitted</MetaLabel>
+                      <MetaValue>{formatHeaderDate(formData.date_admitted)}</MetaValue>
+                    </MetaItem>
+                    <MetaItem>
+                      <MetaLabel>Time Recorded</MetaLabel>
+                      <MetaValue>{formData.time_received || '—'}</MetaValue>
+                    </MetaItem>
+                    <MetaItem>
+                      <MetaLabel>Reference No.</MetaLabel>
+                      <MetaValue>{formData.permit_number || admissionId || '—'}</MetaValue>
+                    </MetaItem>
+                  </ColMeta>
+
+                  {/* Col 3: Barcode, Admission No (Blue) & Deceased Name */}
+                  <ColBarcode>
+                    <BarcodeSection>
+                      <AdmissionNumber>
+                        {loadingAdmission ? 'Generating...' : (admissionId || 'AWAITING-ID')}
+                      </AdmissionNumber>
+                      <Barcode value={admissionId} />
+                      <DeceasedName>{formData.full_name || '—'}</DeceasedName>
+                    </BarcodeSection>
+                  </ColBarcode>
+                </RowBottom>
+              </Letterhead>
+            </LetterheadContainer>
+          </HeaderBand>
 
           <FormBody>
             <form onSubmit={handleSubmit} noValidate>
