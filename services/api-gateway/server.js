@@ -169,39 +169,80 @@ function resolveServiceUrl(envKey, serviceKey) {
 // libuv thread pool. This cache removes the vast majority of those calls and
 // de-dupes concurrent lookups for the same hostname so a burst of health
 // checks doesn't fire 20 identical DNS queries at once.
+//
+// ROOT-CAUSE NOTE — the "Invalid IP address: undefined" production outage:
+// Node ≥ 20 runs net.connect() in autoSelectFamily ("Happy Eyeballs") mode,
+// and that path calls custom lookup functions with options.all === true,
+// expecting the callback to receive an ARRAY of { address, family } results.
+// The previous implementation ignored the options argument and always
+// answered with a single (address, family) pair, so every NEW socket to a
+// backend died with ERR_INVALID_IP_ADDRESS("undefined") — all proxied
+// traffic returned 503 while local routes (e.g. /health) kept working.
+// This version honors the caller's options, returns the exact shape Node
+// asked for, and validates every result before caching/forwarding it.
 const DNS_CACHE_TTL_MS = 60000;
-const dnsCache = new Map(); // hostname -> { address, family, expires }
-const dnsInFlight = new Map(); // hostname -> Promise
+const dnsCache = new Map(); // "<host>|<family>|all|one" -> { expires, address?, family?, results? }
+const dnsInFlight = new Map(); // same key -> Promise
 
 function cachedLookup(hostname, options, callback) {
   if (typeof options === 'function') {
     callback = options;
     options = {};
   }
-  const cached = dnsCache.get(hostname);
+  const wantsAll = !!(options && options.all);
+  const family = (options && options.family) || 0;
+  const cacheKey = `${hostname}|${family}|${wantsAll ? 'all' : 'one'}`;
+
+  const cached = dnsCache.get(cacheKey);
   if (cached && cached.expires > Date.now()) {
+    if (wantsAll) return callback(null, cached.results);
     return callback(null, cached.address, cached.family);
   }
 
-  if (dnsInFlight.has(hostname)) {
-    dnsInFlight.get(hostname).then(
-      (result) => callback(null, result.address, result.family),
+  if (dnsInFlight.has(cacheKey)) {
+    dnsInFlight.get(cacheKey).then(
+      (result) => {
+        if (wantsAll) return callback(null, result.results);
+        callback(null, result.address, result.family);
+      },
       (err) => callback(err)
     );
     return;
   }
 
   const lookupPromise = new Promise((resolve, reject) => {
-    dns.lookup(hostname, {}, (err, address, family) => {
-      dnsInFlight.delete(hostname);
+    dns.lookup(hostname, { ...options }, (err, address, resolvedFamily) => {
+      dnsInFlight.delete(cacheKey);
       if (err) return reject(err);
-      dnsCache.set(hostname, { address, family, expires: Date.now() + DNS_CACHE_TTL_MS });
-      resolve({ address, family });
+
+      if (wantsAll) {
+        // options.all === true → dns.lookup hands back an array of results
+        // (the second callback argument), which is what autoSelectFamily
+        // net.connect() requires. Never cache/forward an empty answer.
+        const results = Array.isArray(address) ? address : [];
+        if (results.length === 0) {
+          return reject(new Error(`DNS lookup for ${hostname} returned no addresses`));
+        }
+        dnsCache.set(cacheKey, { results, expires: Date.now() + DNS_CACHE_TTL_MS });
+        return resolve({ results });
+      }
+
+      // Single-result form: net.js converts a missing address or a family
+      // outside 4/6 into ERR_INVALID_IP_ADDRESS, so reject instead of
+      // caching or forwarding anything malformed.
+      if (!address || (resolvedFamily !== 4 && resolvedFamily !== 6)) {
+        return reject(new Error(`DNS lookup for ${hostname} returned an invalid address/family`));
+      }
+      dnsCache.set(cacheKey, { address, family: resolvedFamily, expires: Date.now() + DNS_CACHE_TTL_MS });
+      resolve({ address, family: resolvedFamily });
     });
   });
-  dnsInFlight.set(hostname, lookupPromise);
+  dnsInFlight.set(cacheKey, lookupPromise);
   lookupPromise.then(
-    (result) => callback(null, result.address, result.family),
+    (result) => {
+      if (wantsAll) return callback(null, result.results);
+      callback(null, result.address, result.family);
+    },
     (err) => callback(err)
   );
 }
