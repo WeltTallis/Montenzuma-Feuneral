@@ -27,7 +27,7 @@ COPY services/hearse-service/package.json ./services/hearse-service/
 COPY shared/ ./shared/
 
 # Install ALL dependencies (respecting package-lock.json)
-RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=optional
+RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --no-audit --no-fund --omit=optional
 
 # Copy remaining source code
 COPY services/configurations/ ./configurations/

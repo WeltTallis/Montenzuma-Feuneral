@@ -6,6 +6,18 @@
 export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
 
+# ============================================================
+# OOM-SAFE BUILD PARALLELISM
+# ============================================================
+# `docker compose up`/`build` builds every image in parallel and each image
+# runs its own heavy monorepo `npm install`. On a low-RAM VPS the combined
+# memory spike gets processes SIGKILLed by the OOM killer (exit code 137).
+# COMPOSE_PARALLEL_LIMIT caps concurrent compose operations. 1 = serial
+# (safe default). Override on bigger machines:  make up PARALLEL=4
+# ============================================================
+PARALLEL ?= 1
+export COMPOSE_PARALLEL_LIMIT := $(PARALLEL)
+
 .PHONY: help build build-fast build-no-cache build-no-cache-fast build-service build-service-fast build-all build-all-fast up up-force down restart logs logs-service clean health test dev prod stop ps shell exec deploy-prod deploy-staging backup restore rebuild-fast clear-cache build-optimized usage-tips
 
 # Colors for output
@@ -82,7 +94,7 @@ build:
 # FAST build with BuildKit (parallel, cached)
 build-fast:
 	@echo "$(BLUE)Building all images with BuildKit (parallel, cached layers)...$(NC)"
-	@DOCKER_BUILDKIT=1 $(COMPOSE) build --parallel
+	@DOCKER_BUILDKIT=1 $(COMPOSE) build
 	@echo "$(GREEN)✓ Fast build complete$(NC)"
 
 # Standard no-cache build (sequential)
@@ -94,7 +106,7 @@ build-no-cache:
 # FAST no-cache build with BuildKit (parallel)
 build-no-cache-fast:
 	@echo "$(BLUE)Rebuilding all images from scratch with BuildKit (parallel)...$(NC)"
-	@DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache --parallel
+	@DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache
 	@echo "$(GREEN)✓ Fast build complete$(NC)"
 
 # Build all services
@@ -106,7 +118,7 @@ build-all:
 # Build all services FAST (parallel)
 build-all-fast:
 	@echo "$(BLUE)Building ALL services in parallel with BuildKit...$(NC)"
-	@DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache --parallel
+	@DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache
 	@echo "$(GREEN)✓ All services built$(NC)"
 
 # Build specific service (standard)
@@ -133,8 +145,7 @@ build-service-fast:
 build-optimized:
 	@echo "$(BLUE)Building with cache optimizations...$(NC)"
 	@DOCKER_BUILDKIT=1 $(COMPOSE) build \
-		--build-arg BUILDKIT_INLINE_CACHE=1 \
-		--parallel
+		--build-arg BUILDKIT_INLINE_CACHE=1
 	@echo "$(GREEN)✓ Optimized build complete$(NC)"
 
 # Clear Docker build cache
@@ -155,8 +166,10 @@ rebuild-fast: clear-cache build-no-cache-fast up
 up: validate
 	@echo "$(BLUE)Stopping old containers and starting fresh...$(NC)"
 	@$(COMPOSE) down --remove-orphans 2>/dev/null || true
+	@echo "$(BLUE)Building images (max parallel=$(PARALLEL))...$(NC)"
+	@$(COMPOSE) build
 	@echo "$(BLUE)Starting all services...$(NC)"
-	@$(COMPOSE) up -d --remove-orphans
+	@$(COMPOSE) up -d --no-build --remove-orphans
 	@echo "$(GREEN)✓ Services started$(NC)"
 	@echo "Waiting for services to be healthy..."
 	@sleep 30
@@ -165,7 +178,8 @@ up: validate
 up-force:
 	@echo "$(BLUE)Force recreating all containers...$(NC)"
 	@$(COMPOSE) down --remove-orphans 2>/dev/null || true
-	@$(COMPOSE) up -d --remove-orphans --force-recreate
+	@$(COMPOSE) build
+	@$(COMPOSE) up -d --no-build --remove-orphans --force-recreate
 	@echo "$(GREEN)✓ Services recreated$(NC)"
 	@sleep 30
 	@make health
@@ -179,7 +193,7 @@ restart:
 	@echo "$(BLUE)Restarting all services...$(NC)"
 	@$(COMPOSE) down --remove-orphans
 	@echo "$(BLUE)Starting fresh...$(NC)"
-	@$(COMPOSE) up -d --remove-orphans
+	@$(COMPOSE) up -d --no-build --remove-orphans
 	@echo "$(GREEN)✓ Services restarted$(NC)"
 
 stop:
@@ -323,7 +337,7 @@ deploy-prod: validate
 	@echo "$(YELLOW)Configuring production environment...$(NC)"
 	@cp .env.production .env
 	@echo "$(BLUE)Building production images...$(NC)"
-	@$(COMPOSE_PROD) build --no-cache --parallel
+	@$(COMPOSE_PROD) build --no-cache
 	@echo "$(GREEN)✓ Production build complete$(NC)"
 	@echo "$(BLUE)Starting production services...$(NC)"
 	@$(COMPOSE_PROD) up -d
@@ -476,14 +490,14 @@ reset: clean dev
 
 start-all:
 	@echo "$(BLUE)Starting all services including missing ones...$(NC)"
-	@$(COMPOSE) up -d --remove-orphans
+	@$(COMPOSE) up -d --no-build --remove-orphans
 	@echo "$(GREEN)✓ All services started$(NC)"
 	@sleep 10
 	@make ps
 
 start-essential:
 	@echo "$(BLUE)Starting essential services (gateway, tenant, auth, database)...$(NC)"
-	@$(COMPOSE) up -d mariadb redis rabbitmq tenant-service api-gateway auth-service
+	@$(COMPOSE) up -d --no-build mariadb redis rabbitmq tenant-service api-gateway auth-service
 	@echo "$(GREEN)✓ Essential services started$(NC)"
 	@sleep 10
 	@make ps
@@ -494,7 +508,7 @@ fix-tenant:
 	@echo "$(BLUE)Removing and rebuilding tenant service...$(NC)"
 	@docker rm -f restpoint_tenant_service 2>/dev/null || true
 	@$(COMPOSE) build --no-cache tenant-service
-	@$(COMPOSE) up -d tenant-service
+	@$(COMPOSE) up -d --no-build tenant-service
 	@echo "$(GREEN)✓ Tenant service rebuilt and started$(NC)"
 	@docker logs restpoint_tenant_service --tail=20
 
@@ -504,15 +518,15 @@ fix-gateway:
 	@echo "$(BLUE)Removing and rebuilding gateway...$(NC)"
 	@docker rm -f restpoint_api_gateway 2>/dev/null || true
 	@$(COMPOSE) build --no-cache api-gateway
-	@$(COMPOSE) up -d api-gateway
+	@$(COMPOSE) up -d --no-build api-gateway
 	@echo "$(GREEN)✓ Gateway rebuilt and started$(NC)"
 	@docker logs restpoint_api_gateway --tail=20
 
 fix-all:
 	@echo "$(BLUE)Fixing all services...$(NC)"
 	@$(COMPOSE) down --remove-orphans
-	@$(COMPOSE) build --no-cache --parallel
-	@$(COMPOSE) up -d --remove-orphans
+	@$(COMPOSE) build --no-cache
+	@$(COMPOSE) up -d --no-build --remove-orphans
 	@echo "$(GREEN)✓ All services rebuilt and started$(NC)"
 	@sleep 30
 	@make ps

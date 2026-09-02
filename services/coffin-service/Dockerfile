@@ -26,7 +26,7 @@ COPY services/coffin-service/package.json ./services/coffin-service/
 # Do NOT use `--omit=optional`: it prunes sharp's platform binaries
 # (@img/sharp-linuxmusl-x64 / @img/sharp-libvips-linuxmusl-x64) on Alpine,
 # causing "Could not load the sharp module using the linuxmusl-x64 runtime".
-RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --include=optional
+RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --no-audit --no-fund --include=optional
 
 # Copy source code
 COPY services/configurations/ ./configurations/

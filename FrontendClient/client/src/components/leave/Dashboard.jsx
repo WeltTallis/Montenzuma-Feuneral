@@ -1,40 +1,45 @@
-// ═══════════════════════════════════════════════════════════════════════════
+// 
 // NEXUS OS — Operations & Leave Management (Dashboard)
-// Premium light console: personnel sidebar, department capacity, leave
-// requests, distribution chart and Kenyan-holiday operations calendar.
-// ═══════════════════════════════════════════════════════════════════════════
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import styled, { keyframes, createGlobalStyle } from 'styled-components';
+// Modern light console: stat cards, calendar, team view,
+// leave requests, and Kenyan-holiday operations calendar.
+// Retains Nexus OS color palette with refined modern aesthetic.
+// Tailwind CSS implementation.
+// 
+import React, { useState, useEffect, useMemo, useCallback, createContext, useContext } from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip } from 'chart.js';
 import { useSocket } from '../../utils/context/socketContext';
 import { api, ENDPOINTS } from '../../api';
 import { getUserId, getTenantSlug, getParentTenantSlug } from '../../utils/globalAuth';
-import {
-  Calendar,
-  Clock,
-  Users,
-  FileText,
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  X,
-  UserPlus,
-  Search,
-  SlidersHorizontal,
-  Zap,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Wallet,
-  Loader2
-} from '../../utils/icons/icons';
 
 ChartJS.register(ArcElement, Tooltip);
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// DESIGN TOKENS — Nexus OS palette (unchanged colors, modern application)
+// These map to Tailwind color classes used throughout the dashboard.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const LEAVE_TYPE_COLORS = {
+  Annual:    { bg: 'bg-indigo-50',  text: 'text-indigo-700',  dot: 'bg-indigo-500',  chart: '#4338CA' },
+  Sick:      { bg: 'bg-rose-50',    text: 'text-rose-700',    dot: 'bg-rose-500',    chart: '#DC2626' },
+  Emergency: { bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-500',   chart: '#D97706' },
+  Maternity: { bg: 'bg-violet-50',  text: 'text-violet-700',  dot: 'bg-violet-500',  chart: '#7C3AED' },
+  Casual:    { bg: 'bg-teal-50',    text: 'text-teal-700',    dot: 'bg-teal-500',    chart: '#059669' },
+  Study:     { bg: 'bg-cyan-50',    text: 'text-cyan-700',    dot: 'bg-cyan-500',    chart: '#0891B2' },
+  Compassionate: { bg: 'bg-pink-50', text: 'text-pink-700',  dot: 'bg-pink-500',    chart: '#DB2777' },
+  Unpaid:    { bg: 'bg-slate-100',  text: 'text-slate-600',  dot: 'bg-slate-400',  chart: '#9CA3AF' },
+};
+
+const STATUS_STYLES = {
+  pending:    { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200' },
+  approved:   { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  rejected:   { bg: 'bg-rose-50',   text: 'text-rose-700',   border: 'border-rose-200' },
+  cancelled:  { bg: 'bg-slate-100', text: 'text-slate-500',  border: 'border-slate-200' },
+};
+
 const DEFAULT_LEAVE_DAYS = 26;
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const AVATAR_COLORS = ['#4338CA', '#059669', '#D97706', '#DC2626', '#7C3AED', '#0891B2', '#DB2777'];
 const CRITICAL_DEPARTMENTS = ['Mortuary', 'Hearse/Transport', 'Body Preparation', 'Funeral Services'];
 const DEPARTMENT_ORDER = [

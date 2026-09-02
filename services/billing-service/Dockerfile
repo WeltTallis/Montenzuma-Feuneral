@@ -15,7 +15,7 @@ COPY packages/shared-logger/package.json ./packages/shared-logger/
 COPY packages/shared-services/package.json ./packages/shared-services/
 COPY services/billing-service/package.json ./services/billing-service/
 
-RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=optional
+RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --no-audit --no-fund --omit=optional
 
 COPY services/configurations/ ./configurations/
 COPY packages/ ./packages/
