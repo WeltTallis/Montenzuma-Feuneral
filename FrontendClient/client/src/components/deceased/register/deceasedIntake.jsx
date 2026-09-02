@@ -21,7 +21,7 @@ import {
 const COLORS = {
   ink: '#1A1A1A',
   bone: '#FAF8F4',
-  bone2: #FFFFFF, // Set to white for natural feel
+  bone2: '#FFFFFF', // Fixed syntax error: added quotes
   brass: '#9B845F',
   brassLight: '#A98F6E',
   verdigris: '#3D4F47',
@@ -507,24 +507,6 @@ const SigGuideText = styled.div`
   opacity: 0.3;
   pointer-events: none;
   user-select: none;
-`;
-
-const SignedSigPreview = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 12rem;
-  border: 1px dashed ${COLORS.ink}33;
-  border-radius: 6px;
-  background: #fff;
-
-  img.print-signature-img {
-    max-width: 100%;
-    max-height: 10rem;
-    object-fit: contain;
-  }
 `;
 
 const SignOffContainer = styled.div`
@@ -1549,28 +1531,18 @@ const DeceasedRegistrationForm = () => {
                     <GridSig>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Label>Officer Digital Signature <span style={{ color: COLORS.red }}>*</span></Label>
-                        {signedSignature ? (
-                          <ClearSigButton type="button" onClick={() => { setSignedSignature(''); sigPadRef1.current?.clear(); }}>
-                            Re-sign
-                          </ClearSigButton>
-                        ) : (
-                          <ClearSigButton type="button" onClick={() => sigPadRef1.current?.clear()}>
-                            Clear Pad
-                          </ClearSigButton>
-                        )}
+                        <ClearSigButton type="button" onClick={() => sigPadRef1.current?.clear()}>
+                          Clear Pad
+                        </ClearSigButton>
                       </div>
+                      {/* The Signature Pad now ALWAYS renders and stays open */}
                       <SigCanvasWrap>
-                        {signedSignature ? (
-                          <SignedSigPreview>
-                            <img src={signedSignature} alt="Officer Digital Signature" className="print-signature-img" />
-                            <SigGuideText>✓ Signature captured for the record</SigGuideText>
-                          </SignedSigPreview>
-                        ) : (
-                          <>
-                            <ReusableSignaturePad ref={sigPadRef1} penColor={COLORS.inkBlue} onChange={(data) => setSignedSignature(data || '')} />
-                            <SigGuideText>Sign within boundaries</SigGuideText>
-                          </>
-                        )}
+                        <ReusableSignaturePad 
+                          ref={sigPadRef1} 
+                          penColor={COLORS.inkBlue} 
+                          onChange={(data) => setSignedSignature(data || '')} 
+                        />
+                        <SigGuideText>Sign within boundaries</SigGuideText>
                       </SigCanvasWrap>
                       {errors.signature && <ErrorMessage>{errors.signature}</ErrorMessage>}
                     </GridSig>
