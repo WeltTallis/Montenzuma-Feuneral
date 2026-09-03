@@ -242,7 +242,7 @@ const MockDispatch = () => {
       <div className="map-visual"><div className="map-pin"><MapPin size={16} color={C.bone} /></div><div className="map-line" /><div className="map-pin" style={{ background: C.accent }}><MapPin size={16} color={C.bone} /></div><div className="map-truck"><Truck size={20} color={C.brass} /></div></div>
       <div className="slider-group"><div className="slider-row"><span>Distance (km)</span><span className="slider-value">{distance}</span></div><input type="range" min="2" max="120" value={distance} onChange={(e) => setDistance(+e.target.value)} className="custom-range" /></div>
       <div className="slider-group"><div className="slider-row"><span>Fuel rate (KES/L)</span><span className="slider-value">{rate}</span></div><input type="range" min="150" max="250" value={rate} onChange={(e) => setRate(+e.target.value)} className="custom-range" /></div>
-      <div className="dispatch-footer"><span>Auto-billed Trip Cost</span><span className="cost-value">KES {Math.round(distance * 0.12 * rate).toLocaleString()}</span></div>
+      <div className="dispatch-footer"><span>Auto billed Trip Cost</span><span className="cost-value">KES {Math.round(distance * 0.12 * rate).toLocaleString()}</span></div>
     </div>
   );
 };
@@ -371,7 +371,7 @@ const MockSupport = () => (
       <div className="avatar" style={{ background: C.verdigris, width: 30, height: 30, fontSize: '0.62rem', flexShrink: 0 }}>RP</div>
       <div style={{ background: C.verdigrisTint || 'rgba(61,79,71,0.08)', border: `1px solid ${C.line}`, borderRadius: '10px 10px 2px 10px', padding: '0.75rem 1rem', flex: 1 }}>
         <div style={{ fontSize: '0.68rem', fontFamily: "'JetBrains Mono', monospace", color: C.verdigris, marginBottom: '0.3rem', fontWeight: 600 }}>RESTPOINT SUPPORT · 10:35 AM</div>
-        <div style={{ fontSize: '0.84rem', color: C.ink, lineHeight: 1.6 }}>Thanks Sarah — our team is on it. A fix is being deployed now; we'll update you here the moment it's live.</div>
+        <div style={{ fontSize: '0.84rem', color: C.ink, lineHeight: 1.6 }}>Thanks mumo  our team is on it. A fix is being deployed now; we'll update you here the moment it's live.</div>
       </div>
     </div>
 
@@ -513,7 +513,7 @@ export default function App() {
   ];
 
   const infraFeatures = [
-    { icon: ShieldCheck, title: 'Bank-grade Security', desc: 'Role-based access, audit logs, and end-to-end encryption ensure data remains protected and compliant.' },
+    { icon: ShieldCheck, title: 'Bank grade Security', desc: 'Role-based access, audit logs, and end to end encryption ensure data remains protected and compliant.' },
     { icon: Server, title: 'Reliable Infrastructure', desc: '99.9% uptime guarantee with automated daily backups. Your data is always available when you need it.' },
     { icon: Zap, title: 'Seamless Integrations', desc: 'Connect with local payment gateways, accounting software, and communication tools effortlessly.' },
   ];
@@ -964,7 +964,7 @@ export default function App() {
                   Families go through immense pain when they lose a loved one, only to be burdened with huge hospital bills and funeral expenses. We break down these barriers by bringing comprehensive funeral insurance solutions directly to your organization.
                 </p>
                 <p style={{ color: 'rgba(255,255,255,0.78)', lineHeight: 1.9, marginBottom: '2.5rem', fontSize: '1.05rem', maxWidth: '640px' }}>
-                  Rest Point now includes funeral insurance management and welfare scheme administration tools — claims, contributions, member tracking, and automated payouts all in one place.
+                  Rest Point now includes funeral insurance management and welfare scheme administration tools  claims, contributions, member tracking, and automated payouts all in one place.
                 </p>
                 <button className="btn btn-brass" onClick={() => navigate('/insurance')} style={{ padding: '1rem 2.4rem' }}>
                   View More <ArrowRight size={16} />

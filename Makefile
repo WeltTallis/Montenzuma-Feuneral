@@ -33,8 +33,7 @@ BUILD_SERVICES := api-gateway auth-service tenant-service deceased-service billi
 # balloon the box. Applied in the Dockerfiles as NODE_OPTIONS=...
 export NODE_OPTIONS := --max-old-space-size=2048
 
-
-.PHONY: help build build-fast build-no-cache build-no-cache-fast build-service build-service-fast build-all build-all-fast up up-force down restart logs logs-service clean health test dev prod stop ps shell exec deploy-prod deploy-staging backup restore rebuild-fast clear-cache build-optimized usage-tips
+.PHONY: help build build-fast build-no-cache build-no-cache-fast build-service build-service-fast build-all build-all-fast up up-force down restart logs logs-service clean health test dev prod stop ps shell exec deploy-prod deploy-staging backup restore rebuild-fast clear-cache build-optimized build-frontend fix-frontend start usage-tips
 
 # Colors for output
 BLUE := \033[0;34m
@@ -61,6 +60,8 @@ help:
 	@echo "  make build-no-cache-fast  - Rebuild all images from scratch (serial, BuildKit)"
 	@echo "  make build-service SVC=X  - Build specific service (no cache)"
 	@echo "  make build-service-fast SVC=X - Build specific service with BuildKit"
+	@echo "  make build-frontend       - Rebuild & redeploy ONLY the UI (fast)"
+	@echo "  make fix-frontend         - Rebuild ONLY the UI from scratch (no cache)"
 	@echo "  make build-all            - Build all services with no cache"
 	@echo "  make build-all-fast       - Build all services with no cache (serial)"
 	@echo "  make clear-cache          - Clear Docker build cache"
@@ -210,6 +211,13 @@ restart:
 	@echo "$(BLUE)Starting fresh...$(NC)"
 	@$(COMPOSE) up -d --no-build --remove-orphans
 	@echo "$(GREEN)✓ Services restarted$(NC)"
+
+# Start services WITHOUT building anything (images must already exist).
+# Use this when you just want everything running — no builds, no rebuilds.
+start:
+	@echo "$(BLUE)Starting all services (no build)...$(NC)"
+	@$(COMPOSE) up -d --no-build --remove-orphans
+	@echo "$(GREEN)✓ Services started$(NC)"
 
 stop:
 	@echo "$(BLUE)Stopping services (keeping containers)...$(NC)"
@@ -536,6 +544,27 @@ fix-gateway:
 	@$(COMPOSE) up -d --no-build api-gateway
 	@echo "$(GREEN)✓ Gateway rebuilt and started$(NC)"
 	@docker logs restpoint_api_gateway --tail=20
+
+# ----------------------------------------------------------------------------
+# FRONTEND-ONLY TARGETS
+# Rebuild and redeploy ONLY the UI container. `up -d --no-deps frontend`
+# guarantees the api-gateway (or any other service) is never recreated.
+# ----------------------------------------------------------------------------
+build-frontend:
+	@echo "$(BLUE)Building ONLY the frontend image (cached layers)...$(NC)"
+	@$(COMPOSE) build frontend
+	@$(COMPOSE) up -d --no-deps frontend
+	@echo "$(GREEN)✓ Frontend rebuilt and restarted$(NC)"
+	@sleep 5
+	@docker logs restpoint_frontend --tail=20
+
+fix-frontend:
+	@echo "$(BLUE)Rebuilding ONLY the frontend from scratch (no cache)...$(NC)"
+	@$(COMPOSE) build --no-cache frontend
+	@$(COMPOSE) up -d --no-deps frontend
+	@echo "$(GREEN)✓ Frontend rebuilt from scratch and restarted$(NC)"
+	@sleep 5
+	@docker logs restpoint_frontend --tail=20
 
 fix-all:
 	@echo "$(BLUE)Fixing all services...$(NC)"

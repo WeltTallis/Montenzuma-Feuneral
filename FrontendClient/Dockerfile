@@ -19,16 +19,20 @@ WORKDIR /app
 # Copy package manifests first to leverage Docker layer caching
 COPY client/package*.json ./
 
-# Install ALL dependencies (devDependencies included; Vite/esbuild need them).
+# Install ALL dependencies (devDependencies included; Vite needs them).
 # A bounded V8 heap keeps the npm install from OOM-killing low-RAM build boxes.
 ENV NODE_OPTIONS=--max-old-space-size=2048
 
+# esbuild must be installed explicitly (vite@8 declares it as an *optional*
+# peer dependency that npm does not auto-install) and PINNED to a version
+# inside vite@8's peer range (^0.27.0 || ^0.28.0). The previous unpinned
+# "npm install esbuild" could drift to a version outside that range.
 RUN npm config set fetch-timeout 1200000 \
  && npm config set fetch-retries 5 \
  && npm config set fetch-retry-mintimeout 120000 \
  && npm config set fetch-retry-maxtimeout 600000 \
  && npm install --legacy-peer-deps \
- && npm install esbuild --legacy-peer-deps
+ && npm install --no-save esbuild@0.28.2 --legacy-peer-deps
 
 # Copy the source code and build the SPA into /app/dist
 COPY client/ ./
