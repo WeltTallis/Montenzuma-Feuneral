@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useRef, Children } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, Search, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy } from '../../utils/icons/icons';
+import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, Search, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy, Flower2 } from '../../utils/icons/icons';
 
 import NewsroomSection from '../newsroom/NewsroomSection';
 import LandingPageSEO from '../seo/LandingPageSEO';
@@ -405,6 +405,43 @@ const MockSupport = () => (
   </div>
 );
 
+/* ── Floral tablet mock: the curated selection a family browses at the front desk ── */
+const MockFloral = () => (
+  <div className="mock-inner">
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+      <div>
+        <div className="mono-label" style={{ color: C.verdigris }}>FLORAL SELECTION</div>
+        <div style={{ fontSize: '1.15rem', fontFamily: "'Fraunces', serif", color: C.ink, marginTop: '0.3rem' }}>Choose a tribute</div>
+      </div>
+      <span className="status-badge verified"><Check size={11} style={{ marginRight: 4, verticalAlign: '-1px' }} />Curated</span>
+    </div>
+
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1.1rem' }}>
+      {[
+        { n: 'White Lily Cross', p: 'KES 8,500', tint: 'rgba(77,155,127,0.12)' },
+        { n: 'Rose & Carnation Wreath', p: 'KES 12,000', tint: 'rgba(139,115,85,0.14)' },
+        { n: 'Gladioli Sheaf', p: 'KES 6,200', tint: 'rgba(61,79,71,0.10)' },
+        { n: 'Sunflower Tribute', p: 'KES 7,400', tint: 'rgba(199,123,94,0.14)' },
+      ].map((f, i) => (
+        <div key={i} style={{ border: `1px solid ${C.line}`, borderRadius: '10px', padding: '0.9rem', background: C.bone2 }}>
+          <div style={{ width: 38, height: 38, borderRadius: '50%', background: f.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.5rem' }}>
+            <Flower2 size={18} color={C.verdigris} />
+          </div>
+          <div style={{ fontSize: '0.82rem', color: C.ink, fontWeight: 600, lineHeight: 1.35 }}>{f.n}</div>
+          <div style={{ fontSize: '0.72rem', fontFamily: "'JetBrains Mono', monospace", color: C.gray, marginTop: '0.3rem' }}>{f.p}</div>
+        </div>
+      ))}
+    </div>
+
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `1px solid ${C.line}`, paddingTop: '0.9rem' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.72rem', fontFamily: "'JetBrains Mono', monospace", color: C.gray }}>
+        <Search size={12} /> No catalogs. No searching.
+      </span>
+      <button className="pay-btn">Book on tablet</button>
+    </div>
+  </div>
+);
+
 const Showcase = ({ no, title, desc, reverse, children }) => (
   <Reveal className="showcase-mobile" style={{ display: 'grid', gridTemplateColumns: reverse ? '1fr 1.1fr' : '1.1fr 1fr', gap: '4rem', alignItems: 'center', marginBottom: '6rem' }}>
     <div className="showcase-text" style={{ order: reverse ? 2 : 1 }}>
@@ -447,7 +484,7 @@ export default function App() {
       category: 'SELF SERVICE',
       accent: C.verdigris,
       title: 'Floral Booking',
-      excerpt: 'Clients walk in, select their floral arrangements at the front desk, and the booking appears right on your computer. Give your florist access to view every order.',
+      excerpt: 'The right flowers, right in front of them. Families browse a curated selection on a tablet at the front desk and choose with confidence — the booking lands instantly on your computer and in your florist\'s view. Less searching. Less thinking. A better experience.',
       status: 'RECEPTIONIST PORTAL',
     },
     {
@@ -966,6 +1003,17 @@ export default function App() {
             <Showcase no="06" title="Real-Time Customer Support" desc="Clients can submit issues directly through the platform, while support agents receive, respond to, and resolve requests in real time. The system provides status tracking, communication history, and centralized issue management — so no question ever goes unanswered." reverse={true}>
               <AppWindow title="restpoint.app/support"><MockSupport /></AppWindow>
             </Showcase>
+            <Showcase no="07" title="The Right Flowers. Right in Front of Them." reverse={false} desc={
+              <>
+                Families shouldn't have to search the internet for hours trying to figure out what flowers are right for the moment.
+                <br /><br />
+                Give them a tablet. Show them a curated selection. Let them choose with confidence.
+                <br /><br />
+                <strong style={{ color: C.ink }}>Less searching. Less thinking. A better experience.</strong>
+              </>
+            }>
+              <AppWindow title="restpoint.app/floral"><MockFloral /></AppWindow>
+            </Showcase>
           </div>
         </section>
 
@@ -1037,6 +1085,7 @@ export default function App() {
               <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', marginBottom: '1.5rem', color: C.ink }}>To make it easier to care for people when it matters most.</h2>
               <p style={{ color: C.gray, marginBottom: '2rem', lineHeight: 1.8 }}>We give funeral homes and funeral insurers the technology to simplify operations, protect every detail, and deliver a better experience for the families they serve.</p>
               <p style={{ color: C.gray, marginBottom: '2rem', lineHeight: 1.8, fontFamily: "'Fraunces', serif", fontSize: '1.2rem', fontWeight: 600 }}>Less complexity. More care.</p>
+              <p style={{ color: C.verdigris, marginBottom: '2rem', lineHeight: 1.8, fontFamily: "'Fraunces', serif", fontSize: '1.2rem', fontWeight: 600 }}>Give families a digital experience they'll remember.</p>
               <button className="btn btn-line" onClick={goAbout}>Learn more about us</button>
             </Reveal>
             <Reveal delay={100} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>

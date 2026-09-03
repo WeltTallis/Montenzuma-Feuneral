@@ -179,7 +179,7 @@ export default function ReservationDashboard(props) {
       var date = parseServiceDate(b.service_date); var cn = String(b.coffin_name || '').toLowerCase(); var c = null; var cA = liveCoffins || [];
       for (var i = 0; i < cA.length; i++) { if (String(cA[i].coffin_id || cA[i].id) == b.coffin_id) { c = cA[i]; break; } }
       if (!c && cn) { for (var j = 0; j < cA.length; j++) { if (cA[j].name && String(cA[j].name).toLowerCase() === cn) { c = cA[j]; break; } } }
-      return { id: b.id, clientName: b.client_name || '\u2014', deceasedName: b.deceased_name || '', phone: b.client_phone || b.phone || '', coffinType: (c && c.name) || b.coffin_name || '\u2014', date: date || new Date(), time: b.service_time || extractTime(b.service_date), status: mapStatus(b.status), price: Number(b.coffin_price || b.price || (c ? c.exact_price || c.price : 0) || 0), paid: !!b.paid, notes: b.notes || '' };
+      return { id: b.id, clientName: b.client_name || '\u2014', deceasedName: b.deceased_name || '', phone: b.client_phone || b.phone || '', coffinType: (c && c.name) || b.coffin_name || '\u2014', date: date || new Date(), time: b.service_time || extractTime(b.service_date), status: mapStatus(b.status), price: Number(b.coffin_price || b.price || (c ? c.exact_price || c.price : 0) || 0), paid: !!b.paid, notes: b.notes || '', pendingTransfer: !!b.pending_transfer, transferStatus: b.transfer_status || '', sourceRequestId: b.source_request_id || '' };
     }).sort(function (a, b) { return a.date.getTime() - b.date.getTime(); });
   }, [liveBookings, liveCoffins]);
 
@@ -650,7 +650,13 @@ export default function ReservationDashboard(props) {
             </div>
             <div className="cb-pb">
               <div className="cb-pb-client">{panelBk.clientName}</div>
-              <div className="cb-pb-code">{IC.dl} Booking #{panelBk.id}</div>
+              <div className="cb-pb-code">{IC.dl} Booking #{panelBk.id}
+                {panelBk.pendingTransfer && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 10, padding: '2px 9px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px', verticalAlign: 'middle' }}>
+                    {panelBk.transferStatus === 'approved' ? 'Transfer Approved \u2014 In Transit' : 'Transfer Awaiting Approval'}
+                  </span>
+                )}
+              </div>
               <div className="cb-pb-sec">
                 <div className="cb-pb-sec-t">Details</div>
                 <div className="cb-pb-grid">
@@ -666,7 +672,7 @@ export default function ReservationDashboard(props) {
             </div>
             <div className="cb-pf">
               {!panelBk.paid ? (
-                <button className="cb-pbtn primary" onClick={markAsPaid} disabled={markingPaid} style={{ opacity: markingPaid ? 0.5 : 1 }}>{markingPaid ? 'Processing...' : IC.ck} Mark as Paid</button>
+                <button className="cb-pbtn primary" onClick={markAsPaid} disabled={markingPaid || panelBk.pendingTransfer} title={panelBk.pendingTransfer ? 'Complete the transfer delivery first' : undefined} style={{ opacity: markingPaid || panelBk.pendingTransfer ? 0.5 : 1 }}>{markingPaid ? 'Processing...' : IC.ck} Mark as Paid</button>
               ) : (
                 <button className="cb-pbtn paid" disabled>{IC.ck} Payment Received</button>
               )}

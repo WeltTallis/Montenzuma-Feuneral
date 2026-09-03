@@ -21,6 +21,7 @@ const SOCKETIO_SERVICE_URL =
  * in the frontend Notification Bell. Matches the pattern used by the hearse,
  * deceased, store and support services.
  */
+
 async function emitSocketNotification(event: string, data: any, tenantSlug: string, branchSlugs?: string[]) {
   try {
     await axios.post(
@@ -250,7 +251,7 @@ export const getAllCoffins = async (req: Request, res: Response) => {
       // whole tenant inventory.
 
       const params: any[] = [...tenantParams];
-      
+
       let branchClause = '';
       if (effectiveBranchId) {
         branchClause = ' AND (c.branch_id = ? OR c.branch_id IS NULL)';
@@ -676,7 +677,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
   }
 
-                      const headerOf = (name: string): string | null => {
+  const headerOf = (name: string): string | null => {
     const v = (req.headers as any)[name];
     return Array.isArray(v) ? String(v[0]) : v ? String(v) : null;
   };
@@ -715,6 +716,82 @@ export const getAllOrders = async (req: Request, res: Response) => {
     `;
 
     const orders: any[] = await coffinQuery(sql, params);
+
+    // ── Inter-branch transfer requests → pending reservations ──────────────
+    // When THIS branch requests a coffin from another branch (req_type =
+    // 'client'), the request must show up in Reservations immediately — not
+    // only after delivery. Synthesize pending reservation rows from the
+    // branch's OUTGOING stock requests that are still pending/approved. Once
+    // the transfer is delivered, the real coffin_bookings row (created by
+    // createTransferOrder on the delivered action) replaces the synthesized
+    // one: delivered/rejected requests drop out of this query, so a transfer
+    // can never appear twice.
+    try {
+      const orgSlugForTransfers = await resolveOrgSlug(tenantSlug);
+      const transferParams: any[] = [orgSlugForTransfers, orgSlugForTransfers];
+      let transferBranchClause = '';
+      if (branchId) {
+        transferBranchClause = ' AND sr.to_branch_id = ?';
+        transferParams.push(String(branchId));
+      }
+      const transferRows: any[] = await coffinQuery(
+        `SELECT sr.request_id, sr.coffin_id, sr.coffin_name, sr.color, sr.size, sr.quantity,
+                sr.client_name, sr.client_phone, sr.deceased_name,
+                DATE_FORMAT(COALESCE(sr.service_date, DATE(sr.created_at)), '%Y-%m-%d') AS service_date,
+                sr.notes, sr.from_branch_name, sr.status, sr.created_at
+         FROM stock_requests sr
+         WHERE (sr.tenant_slug = ? OR sr.tenant_slug LIKE CONCAT(?, '-%'))
+           AND sr.req_type = 'client'
+           AND sr.status IN ('pending', 'approved')${transferBranchClause}
+         ORDER BY sr.created_at DESC`,
+        transferParams
+      );
+
+      // Dedupe against real bookings that already exist for the same transfer
+      // (e.g. the inter-branch reservation flow creates BOTH a booking and a
+      // stock request): same coffin + client + service date = same order.
+      const existingKeys = new Set(
+        orders.map((o) =>
+          `${String(o.coffin_id ?? '')}|${String(o.client_name ?? o.booked_by ?? '').toLowerCase().trim()}|${String(o.service_date ?? '')}`,
+        ),
+      );
+
+      for (const t of transferRows) {
+        const key = `${String(t.coffin_id ?? '')}|${String(t.client_name ?? '').toLowerCase().trim()}|${String(t.service_date ?? '')}`;
+        if (existingKeys.has(key)) continue;
+        existingKeys.add(key);
+        const transferNote =
+          t.status === 'approved'
+            ? `Approved — coffin in transit from ${t.from_branch_name || 'another branch'}`
+            : `Awaiting approval from ${t.from_branch_name || 'another branch'}`;
+        orders.push({
+          order_id: `XFER-${t.request_id}`,
+          id: `XFER-${t.request_id}`,
+          coffin_id: t.coffin_id,
+          coffin_name: t.coffin_name,
+          color: t.color,
+          size: t.size,
+          quantity: t.quantity,
+          booked_by: t.client_name,
+          booked_for: t.deceased_name,
+          client_name: t.client_name,
+          deceased_name: t.deceased_name,
+          client_phone: t.client_phone,
+          branch_id: branchId,
+          status: 'pending',
+          paid: 0,
+          pending_transfer: true,
+          transfer_status: t.status,
+          source_request_id: t.request_id,
+          service_date: t.service_date,
+          service_time: null,
+          notes: t.notes ? `${transferNote} — ${t.notes}` : transferNote,
+          created_at: t.created_at,
+        });
+      }
+    } catch (transferErr: any) {
+      logger.warn({ msg: 'Could not synthesize pending transfer reservations', tenantSlug, error: transferErr?.message });
+    }
 
     return res.status(200).json({ success: true, data: orders, count: orders.length });
   } catch (error: any) {
@@ -907,7 +984,7 @@ export const createStockRequest = async (req: Request, res: Response) => {
   const orgSlug = await resolveOrgSlug(tenantSlug);
 
   try {
-    const { coffin_id, coffin_name, color, size, requested_by, booked_for, requesting_branch, client_name, deceased_name, from_branch_id, to_branch_id, from_branch_name, to_branch_name, quantity, req_type } = (req as any).body;
+    const { coffin_id, coffin_name, color, size, requested_by, booked_for, requesting_branch, client_name, client_phone, deceased_name, service_date, notes, from_branch_id, to_branch_id, from_branch_name, to_branch_name, quantity, req_type } = (req as any).body;
 
     const coffinIdRaw = (coffin_id || '').toString().trim();
     const coffinNameRaw = (coffin_name || '').toString().trim();
@@ -1041,6 +1118,14 @@ export const createStockRequest = async (req: Request, res: Response) => {
       from_branch_name: fromName || null,
       to_branch_name: toName || null,
       quantity,
+      client_name: (client_name || '').toString().trim() || null,
+      client_phone: (client_phone || '').toString().trim() || null,
+      deceased_name: (deceased_name || '').toString().trim() || null,
+      // Expected (service) date — normalised to YYYY-MM-DD so the DATE column
+      // always accepts it. Previously these fields were dropped here and never
+      // reached the model, so the expected date was never stored in the DB.
+      service_date: (service_date || '').toString().trim() || null,
+      notes: (notes || '').toString().trim() || null,
       req_type: (req_type || '').toString().trim() || null,
       tenant_id: (req as any).tenantId || (req as any).body?.tenant_id || null,
       image_url: imageUrl
@@ -1087,6 +1172,11 @@ export const createStockRequest = async (req: Request, res: Response) => {
         from_branch_name: result.from_branch_name,
         to_branch_name: result.to_branch_name,
         quantity: result.quantity,
+        client_name: result.client_name,
+        client_phone: result.client_phone,
+        deceased_name: result.deceased_name,
+        service_date: result.service_date,
+        notes: result.notes,
         image: imageUrl,
         status: 'pending'
       }
@@ -1116,7 +1206,9 @@ export const getAllStockRequests = async (req: Request, res: Response) => {
     const sql = `
       SELECT request_id, request_id AS id, coffin_id, tenant_id, coffin_name, color, size, requested_by, booked_for,
         requesting_branch, from_branch_id, to_branch_id, from_branch_name, to_branch_name,
-        quantity, req_type, image_url, status, created_at, updated_at
+        quantity, req_type, image_url, status, created_at, updated_at,
+        client_name, client_phone, deceased_name, notes,
+        DATE_FORMAT(COALESCE(service_date, DATE(created_at)), '%Y-%m-%d') AS service_date
       FROM stock_requests
       WHERE tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%')
       ORDER BY created_at DESC
@@ -1147,7 +1239,9 @@ export const getStockRequestById = async (req: Request, res: Response) => {
     const sql = `
       SELECT request_id, request_id AS id, coffin_id, tenant_id, coffin_name, color, size, requested_by, booked_for,
         requesting_branch, from_branch_id, to_branch_id, from_branch_name, to_branch_name,
-        quantity, req_type, image_url, status, created_at, updated_at
+        quantity, req_type, image_url, status, created_at, updated_at,
+        client_name, client_phone, deceased_name, notes,
+        DATE_FORMAT(COALESCE(service_date, DATE(created_at)), '%Y-%m-%d') AS service_date
       FROM stock_requests
       WHERE request_id = ? AND (tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%'))
     `;

@@ -2910,13 +2910,32 @@ const CoffinDashboard = () => {
                     }
                   >
                     <option value="">Select coffin</option>
-                    {coffins
-                      .filter((c) => c.stock > 0)
-                      .map((c) => (
-                        <option key={c.coffin_id || c.id} value={c.coffin_id || c.id}>
-                          {c.name}
+                    {(() => {
+                      // Only offer coffins stocked at the SOURCE branch being
+                      // requested from (plus shared central stock without a
+                      // branch assignment) — never my own branch's stock.
+                      const sourceBranchId =
+                        modal.data.from_branch_id || modal.data.to_branch_id || '';
+                      const sourceCoffins = coffins.filter((c) => {
+                        const matchesSource =
+                          !c.branch_id || c.branch_id == sourceBranchId;
+                        const hasStock = (parseInt(c.stock) || 0) > 0;
+                        return sourceBranchId && matchesSource && hasStock;
+                      });
+                      return sourceCoffins.length > 0 ? (
+                        sourceCoffins.map((c) => (
+                          <option key={c.coffin_id || c.id} value={c.coffin_id || c.id}>
+                            {c.name} ({c.stock} left)
+                          </option>
+                        ))
+                      ) : (
+                        <option value="" disabled>
+                          {sourceBranchId
+                            ? 'No coffins available at this branch'
+                            : 'Select a source branch first'}
                         </option>
-                      ))}
+                      );
+                    })()}
                   </select>
                 </div>
               </div>
@@ -2968,6 +2987,17 @@ const CoffinDashboard = () => {
                     }
                   />
                 </div>
+              </div>
+              <div style={styles.fg}>
+                <label style={styles.fl}>Expected Date (optional)</label>
+                <input
+                  type="date"
+                  style={styles.fi}
+                  value={modal.data.service_date || ''}
+                  onChange={(e) =>
+                    setModal({ ...modal, data: { ...modal.data, service_date: e.target.value } })
+                  }
+                />
               </div>
               <div style={styles.fg}>
                 <label style={styles.fl}>Notes</label>

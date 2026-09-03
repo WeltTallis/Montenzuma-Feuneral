@@ -448,7 +448,11 @@ const CoffinTransfers = ({
                 }}
               >
                 <i className="fa-regular fa-clock" style={{ fontSize: 11 }}></i>{' '}
-                {r.transfer_date ? formatDate(r.transfer_date) : '—'}
+                {r.service_date
+                  ? `Expected ${formatDate(r.service_date)}`
+                  : r.transfer_date
+                    ? formatDate(r.transfer_date)
+                    : '—'}
               </span>
             </div>
 
@@ -519,6 +523,19 @@ const CoffinTransfers = ({
                     <div style={styles.detailLabel}>Coffin</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: S.text }}>
                       {coffin?.name || r.coffin_name || 'N/A'}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      background: '#fff',
+                      padding: '12px 16px',
+                      borderRadius: 8,
+                      border: `1px solid ${S.borderLight}`,
+                    }}
+                  >
+                    <div style={styles.detailLabel}>Expected Date</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: S.text }}>
+                      {r.service_date ? formatDate(r.service_date) : 'Not set'}
                     </div>
                   </div>
                   {r.client_name && (

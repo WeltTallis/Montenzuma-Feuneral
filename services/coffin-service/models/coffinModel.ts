@@ -316,12 +316,17 @@ class CoffinModel {
   static async requestStock(tenantSlug: string, data: any): Promise<any> {
     const requestId = `REQ-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
+    // Normalise the expected (service) date down to YYYY-MM-DD so the DATE
+    // column accepts it (the UI may send a full ISO datetime string).
+    const serviceDate = data.service_date ? String(data.service_date).slice(0, 10) : null;
+
     const sql = `
       INSERT INTO stock_requests
         (request_id, tenant_slug, tenant_id, coffin_id, coffin_name, color, size,
          requested_by, booked_for, requesting_branch, from_branch_id, to_branch_id,
-         from_branch_name, to_branch_name, quantity, req_type, image_url, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
+         from_branch_name, to_branch_name, quantity, client_name, client_phone,
+         deceased_name, service_date, notes, req_type, image_url, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
     `;
 
     const result: any = await coffinQuery(sql, [
@@ -334,7 +339,16 @@ class CoffinModel {
       (data.from_branch_id != null && String(data.from_branch_id).trim() !== '') ? String(data.from_branch_id).trim() : null,
       (data.to_branch_id != null && String(data.to_branch_id).trim() !== '') ? String(data.to_branch_id).trim() : null,
       data.from_branch_name || null, data.to_branch_name || null,
-      parseInt(data.quantity) || 1, data.req_type || 'replenishment', data.image_url || null
+      parseInt(data.quantity) || 1,
+      (data.client_name || '').trim() || null,
+      (data.client_phone || '').trim() || null,
+      (data.deceased_name || '').trim() || null,
+      serviceDate,
+      (data.notes || '').trim() || null,
+      // UI stock requests default to CLIENT transfers (a coffin requested for a
+      // client elsewhere) — only an explicit replenishment marker overrides.
+      data.req_type || 'client',
+      data.image_url || null
     ]);
 
     return {
@@ -352,8 +366,56 @@ class CoffinModel {
       from_branch_name: data.from_branch_name || null,
       to_branch_name: data.to_branch_name || null,
       quantity: parseInt(data.quantity) || 1,
+      client_name: (data.client_name || '').trim() || null,
+      client_phone: (data.client_phone || '').trim() || null,
+      deceased_name: (data.deceased_name || '').trim() || null,
+      service_date: serviceDate,
+      notes: (data.notes || '').trim() || null,
       image: data.image_url || null
     };
+  }
+
+  /**
+   * Register a delivered cross-branch client transfer as a REAL reservation
+   * (coffin_bookings row) belonging to the requesting branch, linked back to
+   * the stock request via `source_request_id`. Idempotent: a transfer can only
+   * ever produce ONE reservation — repeated "Delivered" calls return the
+   * already-created order without inserting a duplicate.
+   */
+  static async createTransferOrder(tenantSlug: string, data: any): Promise<any> {
+    if (data.source_request_id) {
+      const existing: any[] = await coffinQuery(
+        'SELECT order_id FROM coffin_bookings WHERE source_request_id = ? LIMIT 1',
+        [data.source_request_id]
+      );
+      if (existing.length > 0) {
+        return { order_id: existing[0].order_id, created: false };
+      }
+    }
+
+    const orderId = `ORD-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    const serviceDate = data.service_date ? String(data.service_date).slice(0, 10) : null;
+
+    await coffinQuery(
+      `INSERT INTO coffin_bookings
+         (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size,
+          quantity, booked_by, booked_for, client_phone, service_date, paid, source_request_id, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'active', NOW())`,
+      [
+        orderId, tenantSlug,
+        (data.tenant_id != null && String(data.tenant_id).trim() !== '') ? String(data.tenant_id).trim() : null,
+        (data.branch_id != null && String(data.branch_id).trim() !== '') ? String(data.branch_id).trim() : null,
+        data.coffin_id || null, data.coffin_name || null,
+        data.color ?? null, data.size ?? null,
+        parseInt(data.quantity) || 1,
+        data.client_name || null, data.booked_for || null,
+        data.client_phone || null,
+        serviceDate,
+        data.source_request_id || null
+      ]
+    );
+
+    return { order_id: orderId, created: true };
   }
 
   /**
