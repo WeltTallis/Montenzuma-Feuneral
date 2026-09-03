@@ -1,8 +1,11 @@
 const dotenv = require('dotenv');
 const path = require('path');
 
-// Load .env from leave-service directory
-dotenv.config({ path: path.join(__dirname, '.env'), override: true });
+// Load .env from leave-service directory — NEVER override variables that were
+// explicitly set in the environment. override:true used to clobber compose's
+// PORT / DB_HOST / DB_PASSWORD with local dev values (e.g. binding the
+// container to the wrong port), and explicit environment must always win.
+dotenv.config({ path: path.join(__dirname, '.env'), override: false });
 // Also load global .env as fallback
 dotenv.config({ path: path.join(__dirname, '../../.env'), override: false });
 

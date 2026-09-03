@@ -14,6 +14,7 @@ const SOCKET_FALLBACK = Object.freeze({
     socket: null,
     connected: false,
     reconnecting: false,
+    connectionError: null,
     joinBranch: () => {},
     joinAdmin: () => {},
 });
@@ -61,6 +62,7 @@ export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
     const [connected, setConnected] = useState(false);
     const [reconnecting, setReconnecting] = useState(false);
+    const [connectionError, setConnectionError] = useState(null);
 
     useEffect(() => {
         const socketUrl = getSocketUrl();
@@ -73,7 +75,17 @@ export const SocketProvider = ({ children }) => {
         // always attaches the freshest token + tenant + user id, and every
         // reconnect_attempt below re-reads it so it never goes stale.
         const socketInstance = io(socketUrl, {
-            transports: ['websocket', 'polling'],
+            // Polling FIRST, WebSocket second. Starting with 'websocket' made
+            // every handshake a hard failure whenever a proxy in the path
+            // (host nginx, Cloudflare) dropped or misrouted the upgrade — the
+            // client surfaced a bare "websocket error" with no detail. Polling
+            // is plain HTTP(S) and works through any correctly configured
+            // proxy; Engine.IO then transparently UPGRADES to WebSocket once
+            // both ends agree it can. If the upgrade fails the socket stays
+            // connected on polling instead of dying.
+            transports: ['polling', 'websocket'],
+            // Must match the server's Socket.IO path (server default: /socket.io/).
+            path: env.SOCKET_PATH || '/socket.io/',
             autoConnect: true,
             reconnection: true,
             reconnectionAttempts: 20,
@@ -162,6 +174,7 @@ export const SocketProvider = ({ children }) => {
             console.log('✅ Socket connected:', socketInstance.id);
             setConnected(true);
             setReconnecting(false);
+            setConnectionError(null);
             emitJoinTenant();
         });
 
@@ -174,7 +187,41 @@ export const SocketProvider = ({ children }) => {
         });
 
         socketInstance.on('connect_error', (error) => {
-            console.error('[Socket] Connection error:', error.message);
+            // Log EVERYTHING. A bare "websocket error" message is useless —
+            // engine.io attaches .description and .context (HTTP status of the
+            // failed handshake request) which pinpoint the actual cause.
+            const status = error?.context?.status ?? error?.description?.status;
+            const transportName = socketInstance?.io?.engine?.transport?.name;
+            console.error('[Socket] Connection error:', {
+                message: error?.message,
+                description: error?.description,
+                type: error?.type,
+                httpStatus: status,
+                transport: transportName,
+                url: socketUrl,
+                path: env.SOCKET_PATH || '/socket.io/',
+            });
+            // Actionable hints for the three failure modes we actually hit.
+            if (status === 401 || status === 403) {
+                console.error(
+                    '[Socket] Handshake rejected by the server (auth). Refreshing token and retrying on next attempt.'
+                );
+                refreshSocketAuth(socketInstance);
+            } else if (status === 502 || status === 504) {
+                console.error(
+                    '[Socket] 502/504 from the proxy: nginx cannot reach the socketio-service. ' +
+                    'Check the upstream port — PROD publishes it on host port 5013 (container 5000); ' +
+                    '5018 is the DEV port.'
+                );
+            } else if (!status) {
+                console.error(
+                    '[Socket] No HTTP response at all: /socket.io/ is probably NOT reaching the socket ' +
+                    'server (SPA fallback serving index.html, or the upgrade is being dropped). Verify ' +
+                    "with: curl -i '" + socketUrl + "/socket.io/?EIO=4&transport=polling' — it must return " +
+                    "a body starting with 0{\"sid\":...}, NEVER HTML."
+                );
+            }
+            setConnectionError(error?.message || 'connection error');
             setConnected(false);
         });
 
@@ -225,12 +272,32 @@ export const SocketProvider = ({ children }) => {
         };
         window.addEventListener('auth-state-changed', handleAuthChange);
 
+        // Reconnect immediately when the network or tab comes back instead of
+        // waiting out the backoff timer — sockets die silently during sleep,
+        // offline periods and mobile backgrounding.
+        const handleOnline = () => {
+            console.log('[Socket] Network back online — reconnecting now');
+            refreshSocketAuth(socketInstance);
+            if (!socketInstance.connected) socketInstance.connect();
+        };
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && !socketInstance.connected) {
+                console.log('[Socket] Tab visible again — reconnecting now');
+                refreshSocketAuth(socketInstance);
+                socketInstance.connect();
+            }
+        };
+        window.addEventListener('online', handleOnline);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         setSocket(socketInstance);
 
         // Cleanup on unmount
         return () => {
             console.log('[Socket] Disconnecting socket');
             window.removeEventListener('auth-state-changed', handleAuthChange);
+            window.removeEventListener('online', handleOnline);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             if (socketInstance) {
                 socketInstance.removeAllListeners();
                 socketInstance.disconnect();
@@ -259,6 +326,7 @@ export const SocketProvider = ({ children }) => {
         socket,
         connected,
         reconnecting,
+        connectionError,
         joinBranch,
         joinAdmin,
     };
