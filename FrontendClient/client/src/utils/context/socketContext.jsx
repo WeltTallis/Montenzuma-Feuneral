@@ -45,9 +45,12 @@ const getSocketUrl = () => {
         return env.SOCKET_URL;
     }
 
-    // Production: use the dedicated WebSocket subdomain
+    // Production: connect to the same origin — nginx proxies /socket.io/ to
+    // the socketio-service (host port 5013 → container port 5000).
+    // Do NOT use a separate subdomain (ws.restpoint.co.ke) — it doesn't exist
+    // in this deployment and would cause a DNS failure / connection timeout.
     if (import.meta.env.PROD) {
-        const url = 'wss://ws.restpoint.co.ke';
+        const url = 'wss://restpoint.co.ke';
         console.log('[Socket] Production URL:', url);
         return url;
     }
@@ -192,19 +195,24 @@ export const SocketProvider = ({ children }) => {
             // failed handshake request) which pinpoint the actual cause.
             const status = error?.context?.status ?? error?.description?.status;
             const transportName = socketInstance?.io?.engine?.transport?.name;
+            const authCode = error?.code || error?.description?.code;
             console.error('[Socket] Connection error:', {
                 message: error?.message,
                 description: error?.description,
                 type: error?.type,
+                code: authCode,
                 httpStatus: status,
                 transport: transportName,
                 url: socketUrl,
                 path: env.SOCKET_PATH || '/socket.io/',
+                authPresent: !!getSocketAuth()?.token,
+                authTokenLength: getSocketAuth()?.token?.length,
             });
             // Actionable hints for the three failure modes we actually hit.
-            if (status === 401 || status === 403) {
+            if (status === 401 || status === 403 || authCode === 'AUTH_REQUIRED' || authCode === 'INVALID_TOKEN') {
                 console.error(
-                    '[Socket] Handshake rejected by the server (auth). Refreshing token and retrying on next attempt.'
+                    `[Socket] Handshake rejected by the server (auth). Code: ${authCode}, Status: ${status}. ` +
+                    'Refreshing token and retrying on next attempt.'
                 );
                 refreshSocketAuth(socketInstance);
             } else if (status === 502 || status === 504) {

@@ -6,6 +6,7 @@ import { AuthProvider } from './utils/context/AuthContext';
 import { TenantProvider } from './utils/context/TenantContext';
 import { UserProvider } from './utils/context/userContext';
 import { SocketProvider } from './utils/context/socketContext';
+import SocketStatus from './components/layout/SocketStatus';
 import InstallPrompt from './components/pwa/InstallPrompt';
 import Loader, { GlobalLoaderStyles } from './components/loader/loader';
 import './index.css';

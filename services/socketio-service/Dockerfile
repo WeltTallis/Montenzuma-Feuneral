@@ -35,7 +35,7 @@ RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && np
 # (services/socketio-service/node_modules/redis) instead of hoisting it to the
 # repo root, so a plain `node -e "require('redis')"` from /usr/src/app fails
 # with MODULE_NOT_FOUND even though the service itself resolves it fine.
-RUN cd services/socketio-service && node -e "require('redis'); require('@socket.io/redis-adapter'); require('socket.io'); console.log('[GUARD] redis + @socket.io/redis-adapter + socket.io OK')"
+RUN cd services/socketio-service && node -e "require('redis'); require('@socket.io/redis-adapter'); require('socket.io'); require('jsonwebtoken'); console.log('[GUARD] redis + @socket.io/redis-adapter + socket.io + jsonwebtoken OK')"
 
 # Copy source code
 COPY services/configurations/ ./configurations/

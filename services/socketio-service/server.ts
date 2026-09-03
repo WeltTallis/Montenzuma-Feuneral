@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { createClient } from 'redis';
 import { error } from 'console';
 import dotenv from 'dotenv';
+import * as jwt from 'jsonwebtoken';
 import helmet from 'helmet';
 import cors from 'cors';
 import http from 'http';
@@ -14,6 +15,21 @@ dotenv.config();
 
 // ERROR HANDLING UTILITIES
 
+class AppError extends Error {
+  public statusCode: number;
+  public details: any;
+  public isOperational: boolean;
+  public code: string;
+
+  constructor(message: string, statusCode: number, details: any = null, code: string = 'ERROR') {
+    super(message);
+    this.statusCode = statusCode;
+    this.details = details;
+    this.isOperational = true;
+    this.code = code;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
 class AppError extends Error {
   public statusCode: number;
   public details: any;
@@ -296,22 +312,57 @@ io.use((socket, next) => {
     const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
 
     if (!token) {
+      // No token provided — reject in production, allow in development
       if (process.env.NODE_ENV === 'production') {
+        Logger.warn({
+          message: 'Socket handshake rejected: no token provided',
+          handshakeAuth: socket.handshake.auth,
+          headers: socket.handshake.headers,
+        });
         const err = new AppError('Authentication required', 401);
-
-        Logger.error({
-          message:   'Authentication Required ',
-          error:   err
-        })
+        err.code = 'AUTH_REQUIRED';
         return next(err);
       }
+      // Development: allow connection without token
+      socket.data.authenticated = false;
+      return next();
     }
 
-    socket.data.authenticated = true;
-    next();
-  } catch (error) {
+    // Verify the JWT token
+    const jwtSecret = process.env.JWT_SECRET || 'RestPointJWTSecret2024ChangeMe!SuperSecureInProduction';
+    try {
+      const decoded = jwt.verify(token, jwtSecret) as any;
+      socket.data.authenticated = true;
+      socket.data.user = decoded;
+      socket.data.userId = decoded.userId || decoded.user_id || decoded.id;
+      socket.data.tenantSlug = decoded.tenantSlug || decoded.tenant_slug;
+
+      Logger.info({
+        message: 'Socket authenticated',
+        userId: socket.data.userId,
+        tenantSlug: socket.data.tenantSlug,
+      });
+
+      next();
+    } catch (jwtError: any) {
+      // JWT verification failed
+      Logger.warn({
+        message: 'Socket handshake rejected: invalid token',
+        error: jwtError.message,
+      });
+      const err = new AppError('Invalid authentication token', 401);
+      err.code = 'INVALID_TOKEN';
+      next(err);
+    }
+  } catch (error: any) {
+    Logger.error({
+      message: 'Socket middleware error',
+      error: error.message,
+    });
     if (process.env.NODE_ENV === 'production') {
-      next(new AppError('Invalid authentication token', 401));
+      const err = new AppError('Authentication failed', 401);
+      err.code = 'AUTH_FAILED';
+      next(err);
     } else {
       next();
     }
