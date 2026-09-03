@@ -30,7 +30,12 @@ RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && np
 # package-lock.json used to deploy WITHOUT `redis` and only failed at runtime
 # ("Cannot find module 'redis'"), leaving Socket.IO in fallback mode. Fail the
 # build here instead of shipping a broken image.
-RUN node -e "require('redis'); require('@socket.io/redis-adapter'); require('socket.io'); console.log('[GUARD] redis + @socket.io/redis-adapter + socket.io OK')"
+# NOTE: resolution must run from services/socketio-service (like server.ts does
+# at runtime). npm keeps `redis` NESTED in the workspace's own node_modules
+# (services/socketio-service/node_modules/redis) instead of hoisting it to the
+# repo root, so a plain `node -e "require('redis')"` from /usr/src/app fails
+# with MODULE_NOT_FOUND even though the service itself resolves it fine.
+RUN cd services/socketio-service && node -e "require('redis'); require('@socket.io/redis-adapter'); require('socket.io'); console.log('[GUARD] redis + @socket.io/redis-adapter + socket.io OK')"
 
 # Copy source code
 COPY services/configurations/ ./configurations/
