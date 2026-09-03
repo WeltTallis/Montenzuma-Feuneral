@@ -1,6 +1,8 @@
 const { safeTenantQuery, safeTenantExecute } = require('../../shared/dbConfig');
 const { validateTenantActive } = require('../../shared/tenancy');
-const { io } = require('./server');
+// NOTE: do NOT require('./server') at module load — server.js loads this
+// module (via leaveRoutes), so a top-level require is circular and yields an
+// empty export. emitUpdate() below requires it lazily instead.
 
 // ============================================
 // LEAVE TYPES
@@ -34,7 +36,14 @@ const getTenantSlug = (req) => {
 // ============================================
 // HELPER: Emit real-time updates
 // ============================================
+// NOTE: './server' requires THIS module (server.js → leaveRoutes →
+// leaveController → './server'), so requiring it at module load time returns
+// an empty partial export — `io` was always undefined here and every
+// real-time leave update was silently dropped. Requiring lazily (after
+// server.js has finished loading and set module.exports) gets the live io
+// instance.
 const emitUpdate = (tenantSlug, event, data) => {
+    const { io } = require('./server');
     if (io) {
         io.to(`tenant_${tenantSlug}`).emit(event, data);
         io.to('admin').emit(event, data);

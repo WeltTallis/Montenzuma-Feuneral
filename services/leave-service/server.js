@@ -267,27 +267,58 @@ async function migrateAllTenantDatabases() {
 // ============================================
 // START SERVER
 // ============================================
-async function startServer() {
-  // Run auto-migration on the main database
-  const mainDb = process.env.DB_NAME || 'restpoint_main';
-  console.log(`🔧 Running auto-migration for leave tables in: ${mainDb}`);
-  await ensureLeaveTables(mainDb);
+// IMPORTANT: server.listen() MUST come before the auto-migrations. Migrations
+// used to run first, which meant that whenever MariaDB was slow/unreachable
+// the port never opened: the container stayed "running" but /health never
+// answered, Docker marked it unhealthy and the api-gateway answered every
+// /leaves/* request with 503 "Now API Gateway is Down". Listening first makes
+// the service reachable immediately; migrations then complete in the
+// background and only gate actual DB traffic.
+const PORT = process.env.PORT || 5017;
 
-  // Migrate all tenant databases
-  console.log(`🔧 Migrating leave tables for all tenant databases...`);
-  await migrateAllTenantDatabases();
+server.on('error', (err) => {
+  console.error(`[LEAVE] Server error (${err.code || 'unknown'}):`, err.message);
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[LEAVE] FATAL: Port ${PORT} is already in use — is another leave-service instance running?`);
+  }
+  process.exit(1);
+});
 
-  const PORT = process.env.PORT || 5017;
-  server.listen(PORT, () => {
-    console.log('========================================');
-    console.log(`📅 Leave Management Service`);
-    console.log(`   Port: ${PORT}`);
-    console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`   Default Leave Days: 26 per user per year`);
-    console.log('========================================');
-  });
-}
+server.listen(PORT, () => {
+  console.log('========================================');
+  console.log(`📅 Leave Management Service`);
+  console.log(`   Port: ${PORT}`);
+  console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`   Default Leave Days: 26 per user per year`);
+  console.log('========================================');
+});
 
-startServer();
+// Background auto-migration — never blocks startup traffic (see comment above).
+(async () => {
+  try {
+    // Run auto-migration on the main database
+    const mainDb = process.env.DB_NAME || 'restpoint_main';
+    console.log(`🔧 Running auto-migration for leave tables in: ${mainDb}`);
+    await ensureLeaveTables(mainDb);
+
+    // Migrate all tenant databases
+    console.log(`🔧 Migrating leave tables for all tenant databases...`);
+    await migrateAllTenantDatabases();
+    console.log('[LEAVE] Background migrations finished — service fully ready.');
+  } catch (error) {
+    // ensureLeaveTables/migrateAllTenantDatabases already catch per-step errors;
+    // this guard just makes sure an unexpected throw can never take the
+    // process down after it has started serving traffic.
+    console.error('[LEAVE] Background migration failed (service stays up):', error.message);
+  }
+})();
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[LEAVE] Unhandled Rejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[LEAVE] Uncaught Exception:', err);
+});
 
 module.exports = { app, server, io };

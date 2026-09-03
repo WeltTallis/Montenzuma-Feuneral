@@ -1,0 +1,58 @@
+(node:169112) Warning: Accessing non-existent property 'io' of module exports inside circular dependency
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"level":"error","msg":"Tenant database connection failed","data":{"dbName":"restpoint_main","error":"Unknown database 'restpoint_main'"},"ts":"2026-09-03T18:30:33.721Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"CREATE TABLE IF NOT EXISTS leave_requests (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id VARCHAR(36) NOT NULL,\n  tenant_slug VARCHAR(100) NOT NULL,\n  leave_type VARCHAR(50) NOT NULL,\n  priority ENUM"},"ts":"2026-09-03T18:30:33.742Z"}
+[LEAVE] Migration warning: Unknown database 'restpoint_main'
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"CREATE TABLE IF NOT EXISTS leave_day_additions (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id VARCHAR(36) NOT NULL,\n  tenant_slug VARCHAR(100) NOT NULL,\n  days INT NOT NULL,\n  reason TEXT,\n  added_b"},"ts":"2026-09-03T18:30:33.749Z"}
+[LEAVE] Migration warning: Unknown database 'restpoint_main'
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"CREATE TABLE IF NOT EXISTS holiday_compensations (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id VARCHAR(36) NOT NULL,\n  tenant_slug VARCHAR(100) NOT NULL,\n  holiday_date DATE NOT NULL,\n  holiday_nam"},"ts":"2026-09-03T18:30:33.755Z"}
+[LEAVE] Migration warning: Unknown database 'restpoint_main'
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS tenant_slug VARCHAR(100) DEFAULT 'system_shared'"},"ts":"2026-09-03T18:30:33.760Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_day_additions ADD COLUMN IF NOT EXISTS tenant_slug VARCHAR(100) DEFAULT 'system_shared'"},"ts":"2026-09-03T18:30:33.765Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE holiday_compensations ADD COLUMN IF NOT EXISTS tenant_slug VARCHAR(100) DEFAULT 'system_shared'"},"ts":"2026-09-03T18:30:33.772Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_requests MODIFY COLUMN user_id VARCHAR(36) NOT NULL"},"ts":"2026-09-03T18:30:33.780Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_requests MODIFY COLUMN approved_by VARCHAR(36) NULL"},"ts":"2026-09-03T18:30:33.787Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_day_additions MODIFY COLUMN user_id VARCHAR(36) NOT NULL"},"ts":"2026-09-03T18:30:33.794Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_day_additions MODIFY COLUMN added_by VARCHAR(36) NOT NULL"},"ts":"2026-09-03T18:30:33.800Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE holiday_compensations MODIFY COLUMN user_id VARCHAR(36) NOT NULL"},"ts":"2026-09-03T18:30:33.813Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE holiday_compensations MODIFY COLUMN recorded_by VARCHAR(36) NOT NULL"},"ts":"2026-09-03T18:30:33.818Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS reference_code VARCHAR(40) NULL"},"ts":"2026-09-03T18:30:33.823Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE users ADD COLUMN IF NOT EXISTS annual_leave_balance DECIMAL(5,2) DEFAULT 26.00"},"ts":"2026-09-03T18:30:33.828Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"CREATE TABLE IF NOT EXISTS leave_requests (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id VARCHAR(36) NOT NULL,\n  tenant_slug VARCHAR(100) NOT NULL,\n  leave_type VARCHAR(50) NOT NULL,\n  priority ENUM"},"ts":"2026-09-03T18:30:33.859Z"}
+[LEAVE] Migration warning: Unknown database 'restpoint_main'
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"CREATE TABLE IF NOT EXISTS leave_day_additions (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id VARCHAR(36) NOT NULL,\n  tenant_slug VARCHAR(100) NOT NULL,\n  days INT NOT NULL,\n  reason TEXT,\n  added_b"},"ts":"2026-09-03T18:30:33.863Z"}
+[LEAVE] Migration warning: Unknown database 'restpoint_main'
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"CREATE TABLE IF NOT EXISTS holiday_compensations (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id VARCHAR(36) NOT NULL,\n  tenant_slug VARCHAR(100) NOT NULL,\n  holiday_date DATE NOT NULL,\n  holiday_nam"},"ts":"2026-09-03T18:30:33.868Z"}
+[LEAVE] Migration warning: Unknown database 'restpoint_main'
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS tenant_slug VARCHAR(100) DEFAULT 'system_shared'"},"ts":"2026-09-03T18:30:33.872Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_day_additions ADD COLUMN IF NOT EXISTS tenant_slug VARCHAR(100) DEFAULT 'system_shared'"},"ts":"2026-09-03T18:30:33.878Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE holiday_compensations ADD COLUMN IF NOT EXISTS tenant_slug VARCHAR(100) DEFAULT 'system_shared'"},"ts":"2026-09-03T18:30:33.882Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_requests MODIFY COLUMN user_id VARCHAR(36) NOT NULL"},"ts":"2026-09-03T18:30:33.887Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_requests MODIFY COLUMN approved_by VARCHAR(36) NULL"},"ts":"2026-09-03T18:30:33.899Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_day_additions MODIFY COLUMN user_id VARCHAR(36) NOT NULL"},"ts":"2026-09-03T18:30:33.904Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_day_additions MODIFY COLUMN added_by VARCHAR(36) NOT NULL"},"ts":"2026-09-03T18:30:33.912Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE holiday_compensations MODIFY COLUMN user_id VARCHAR(36) NOT NULL"},"ts":"2026-09-03T18:30:33.917Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE holiday_compensations MODIFY COLUMN recorded_by VARCHAR(36) NOT NULL"},"ts":"2026-09-03T18:30:33.922Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS reference_code VARCHAR(40) NULL"},"ts":"2026-09-03T18:30:33.927Z"}
+{"level":"error","msg":"safeTenantQuery error","data":{"dbName":"restpoint_main","message":"Unknown database 'restpoint_main'","sql":"ALTER TABLE users ADD COLUMN IF NOT EXISTS annual_leave_balance DECIMAL(5,2) DEFAULT 26.00"},"ts":"2026-09-03T18:30:33.932Z"}
+node:events:487
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::5017
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at startServer (C:\Users\User\Downloads\restpoint\services\leave-service\server.js:281:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:2045:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 5017
+}
+
+Node.js v24.18.0
