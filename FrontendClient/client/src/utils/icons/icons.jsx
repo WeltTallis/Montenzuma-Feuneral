@@ -373,6 +373,13 @@ export const Hash = (p) => (
   <Icon {...p}><line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /><line x1="10" y1="3" x2="8" y2="21" /><line x1="14" y1="3" x2="16" y2="21" /></Icon>
 );
 
+
+
+export    const  FileCheck  = (p) => (
+  <Icon {...p}><line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /><line x1="10" y1="3" x2="8" y2="21" /><line x1="14" y1="3" x2="16" y2="21" /></Icon>
+);
+
+
 export const Tag = (p) => (
   <Icon {...p}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1" fill="currentColor" /></Icon>
 );
@@ -1033,7 +1040,7 @@ export const Icons = {
   // Buildings & Places
   Building, Building2, Warehouse,
     // Misc
-  Heart, Zap, Settings, LogOut,
+  Heart, Zap, Settings, LogOut,  FileCheck    , 
   Sun, Moon, CloudSun, Play, Pause, Smartphone, MonitorSmartphone, Camera, Music, Mic, Wifi, WifiOff, Github, Linkedin, Twitter, Brain, Cpu,
     // Additional
   ArrowUpRight, Code2, Paintbrush, Bug, Lightbulb, HelpCircle, Crown, BookText, Eraser, HardHat, TrafficCone, Flame, Video, Percent, Badge, Scale, UploadCloud, Hourglass, CheckSquare, PlusSquare, CheckCircle2,
