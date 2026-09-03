@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ENDPOINTS } from './endpoints';
 import { io } from 'socket.io-client';
+import { getSocketAuth, refreshSocketAuth } from '../utils/socket/socketAuth';
 
 // Call service runs on its own port (8120), NOT through the API Gateway
 const CALL_SERVICE_URL = import.meta.env.VITE_CALL_SERVICE_URL || 'http://localhost:8120';
@@ -51,12 +52,19 @@ export const callTenant = async (targetTenantSlug, callerTenantSlug) => {
 
 // Create a WebSocket connection for the call room
 export const createCallSocket = (tenantSlug, userId, userName, token) => {
+  const callAuth = getSocketAuth({ tenantSlug, userId, userName, token });
   const socket = io(CALL_SERVICE_URL, {
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 10,
     reconnectionDelay: 1000,
+    // Send credentials on the handshake itself, not only via the
+    // join-call-room event, so auth-gated servers accept the connection.
+    auth: callAuth,
   });
+
+  // Keep the handshake credentials fresh across reconnections
+  socket.on('reconnect_attempt', () => refreshSocketAuth(socket, { tenantSlug, userId, userName, token }));
 
   socket.on('connect', () => {
     console.log('[CallSocket] Connected to call service');

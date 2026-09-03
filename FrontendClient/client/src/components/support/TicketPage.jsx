@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import api from '../../api/axios';
 import env from '../../utils/config/env';
+import { getSocketAuth, refreshSocketAuth } from '../../utils/socket/socketAuth';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKETIO_URL || 'http://localhost:5018';
+const SOCKET_URL = env.SOCKET_URL;
 
 const C = {
     ink: '#0F1117',
@@ -85,12 +86,15 @@ export default function TicketPage() {
     }, [tenantSlug]);
 
     useEffect(() => {
-        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        // Handshake auth is REQUIRED by the socketio-service in production.
+        // getSocketAuth() attaches the current token + tenantSlug and the
+        // reconnect_attempt hook below re-reads it on every retry.
         const socket = io(SOCKET_URL, {
-            auth: { token, tenantSlug },
+            auth: getSocketAuth({ tenantSlug }),
             transports: ['websocket', 'polling'],
             reconnection: true,
         });
+        socket.on('reconnect_attempt', () => refreshSocketAuth(socket, { tenantSlug }));
         socket.on('connect', () => {
             socket.emit('join-tenant', { tenantSlug, userId: 'ticket-page' });
         });

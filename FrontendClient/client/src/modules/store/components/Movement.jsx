@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Form, Button, Card, Table, Badge } from 'react-bootstrap';
 import { useStoreContext } from '../storeContext';
-import { PICK_REASONS, STAFF_MEMBERS, getStatus, statusBadge } from '../seed';
+import { PICK_REASONS, getStatus, statusBadge } from '../seed';
 
 export default function MovementView() {
   const ctx = useStoreContext();
@@ -10,7 +10,7 @@ export default function MovementView() {
   const [mode, setMode] = useState('pick');
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({
-    qty: '', reason: PICK_REASONS[0], staff: STAFF_MEMBERS[0], notes: '', supplier: '',
+    qty: '', reason: PICK_REASONS[0], staff: '', notes: '', supplier: '',
   });
 
   useEffect(() => {
@@ -30,11 +30,12 @@ export default function MovementView() {
     if (!selectedItem) return;
     if (qty <= 0) { alert('Enter a valid quantity'); return; }
     if (mode === 'pick') {
-      pickItem(selectedItem.id, qty, form.staff, form.reason, form.notes);
+      if (!form.staff.trim()) { alert('Please enter your name in "Staff"'); return; }
+      pickItem(selectedItem.id, qty, form.staff.trim(), form.reason, form.notes);
     } else {
       restockItem(selectedItem.id, qty, form.supplier || undefined);
     }
-    setForm({ qty: '', reason: PICK_REASONS[0], staff: STAFF_MEMBERS[0], notes: '', supplier: '' });
+    setForm({ qty: '', reason: PICK_REASONS[0], staff: '', notes: '', supplier: '' });
   };
 
   const quickQty = (n) => setForm((f) => ({ ...f, qty: String(n) }));
@@ -135,9 +136,13 @@ export default function MovementView() {
                     </Form.Group>
                     <Form.Group className="mb-2">
                       <Form.Label className="small">Staff</Form.Label>
-                      <Form.Select size="sm" value={form.staff} onChange={(e) => upd('staff', e.target.value)}>
-                        {STAFF_MEMBERS.map((s) => <option key={s} value={s}>{s}</option>)}
-                      </Form.Select>
+                      <Form.Control
+                        size="sm"
+                        type="text"
+                        placeholder="Enter your name"
+                        value={form.staff}
+                        onChange={(e) => upd('staff', e.target.value)}
+                      />
                     </Form.Group>
                     <Form.Group className="mb-2">
                       <Form.Label className="small">Notes (optional)</Form.Label>

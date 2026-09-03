@@ -915,7 +915,7 @@ volumes:
     driver: local
   workshop_service_data:
     driver: local
-    hearse_service_data:
+  hearse_service_data:
     driver: local
   loki_data:
     driver: local

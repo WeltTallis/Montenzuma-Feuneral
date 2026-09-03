@@ -1,8 +1,11 @@
 import { io } from 'socket.io-client';
 import { useState, useEffect } from 'react';
+import env from '../utils/config/env';
+import { getSocketAuth, refreshSocketAuth } from '../utils/socket/socketAuth';
 
-// Socket.io Configuration
-const SOCKET_URL =  'http://localhost:5000';
+// Socket.io Configuration — always resolved through the central env config so
+// the URL matches the rest of the app (never hardcoded localhost in prod).
+const SOCKET_URL = env.SOCKET_URL;
 
 class NotificationService {
   constructor() {
@@ -21,7 +24,9 @@ class NotificationService {
     }
 
     this.socket = io(SOCKET_URL, {
-      auth: { userId },
+      // Handshake auth is REQUIRED by the socketio-service in production —
+      // sending only userId always results in a 401 rejection.
+      auth: getSocketAuth(),
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
@@ -29,6 +34,9 @@ class NotificationService {
       reconnectionAttempts: this.maxReconnectAttempts,
       timeout: 20000
     });
+
+    // Re-read credentials before every reconnect (tokens rotate every ~10 min)
+    this.socket.on('reconnect_attempt', () => refreshSocketAuth(this.socket));
 
     // Connection events
     this.socket.on('connect', () => {

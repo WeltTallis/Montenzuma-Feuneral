@@ -157,10 +157,8 @@ export const DASH_NAV = [
     ],
   },
   {
-    section: "Analytics & Admin",
+    section: "Admin",
     items: [
-      { i: "Ch", label: "Chemical Analytics", path: "chemicals/analytics" },
-      { i: "De", label: "Deceased Analytics", path: "deceased/analytics" },
       { i: "L", label: "Leaves Dashboard", path: "leaves" },
       { i: "A", label: "Apply Leave", path: "leaves/apply" },
       { i: "St", label: "Settings", path: "settings" },

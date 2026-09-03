@@ -6,11 +6,6 @@
 // Mirrors the KitchenTrack sample dataset, store-flavoured.
 // ============================================================
 
-export const STAFF_MEMBERS = [
-  'Ahmed Mansour', 'Sara Khalil', 'Omar Hassan', 'Fatima Al-Rashid',
-  'Youssef Nader', 'Layla Ibrahim',
-];
-
 export const STORE_CATEGORIES = [
   'Snacks', 'Beverages', 'Dairy & Chilled', 'Bakery', 'Frozen',
   'Groceries', 'Household', 'Toiletries', 'Cleaning Supplies', 'Other',

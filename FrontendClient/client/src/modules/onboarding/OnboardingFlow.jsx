@@ -5,6 +5,7 @@ import api from '../../api/axios';
 import { io } from 'socket.io-client';
 import Footer from '../../components/layout/Footer';
 import env from '../../utils/config/env';
+import { getSocketAuth, refreshSocketAuth } from '../../utils/socket/socketAuth';
 
 const C = {
   ink: '#08090A',
@@ -206,7 +207,14 @@ export default function OnboardingFlow() {
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      // Attach handshake auth when a session token already exists (pre-login
+      // onboarding may have none — the socketio-service accepts that in dev).
+      auth: getSocketAuth(),
     });
+
+    // Re-read credentials before every reconnect so retries never replay a
+    // stale token.
+    newSocket.on('reconnect_attempt', () => refreshSocketAuth(newSocket));
 
     newSocket.on('onboarding-progress', (data) => {
       setProgress({

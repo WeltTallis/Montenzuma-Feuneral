@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Button, Form } from 'react-bootstrap';
 import { useStoreContext } from '../storeContext';
-import { STORE_CATEGORIES, STAFF_MEMBERS, STORE_UNITS } from '../seed';
+import { STORE_CATEGORIES, STORE_UNITS } from '../seed';
 
 export default function AddItemModal({ show, onHide }) {
   const { addItem } = useStoreContext();
@@ -11,19 +11,23 @@ export default function AddItemModal({ show, onHide }) {
     unit: 'pcs',
     stock: '',
     minStock: '',
-    staff: STAFF_MEMBERS[0],
+    staff: '',
   });
 
   const upd = (k, v) => setPayload((p) => ({ ...p, [k]: v }));
   const reset = () =>
-    setPayload({ name: '', category: STORE_CATEGORIES[0], unit: 'pcs', stock: '', minStock: '', staff: STAFF_MEMBERS[0] });
+    setPayload({ name: '', category: STORE_CATEGORIES[0], unit: 'pcs', stock: '', minStock: '', staff: '' });
 
   const onSave = () => {
     if (!payload.name || !payload.stock) {
       alert('Name and stock are required');
       return;
     }
-    addItem({ ...payload, stock: Number(payload.stock), minStock: Number(payload.minStock) });
+    if (!payload.staff.trim()) {
+      alert('Please enter your name in "Added by"');
+      return;
+    }
+    addItem({ ...payload, staff: payload.staff.trim(), stock: Number(payload.stock), minStock: Number(payload.minStock) });
     reset();
     onHide();
   };
@@ -87,9 +91,12 @@ export default function AddItemModal({ show, onHide }) {
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label>Added by</Form.Label>
-            <Form.Select value={payload.staff} onChange={(e) => upd('staff', e.target.value)}>
-              {STAFF_MEMBERS.map((s) => <option key={s} value={s}>{s}</option>)}
-            </Form.Select>
+            <Form.Control
+              type="text"
+              placeholder="Enter your name"
+              value={payload.staff}
+              onChange={(e) => upd('staff', e.target.value)}
+            />
           </Form.Group>
         </Form>
       </Modal.Body>

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import env from '../config/env';
+import { getSocketAuth, refreshSocketAuth } from '../socket/socketAuth';
 
 
 const SocketContext = createContext(null);
@@ -67,6 +68,10 @@ export const SocketProvider = ({ children }) => {
         console.log('[Socket] Connecting to:', socketUrl);
 
         // Connect to Socket.IO server (central socketio-service)
+        // The socketio-service handshake middleware REQUIRES a token in
+        // production (401 "Authentication required" otherwise). getSocketAuth()
+        // always attaches the freshest token + tenant + user id, and every
+        // reconnect_attempt below re-reads it so it never goes stale.
         const socketInstance = io(socketUrl, {
             transports: ['websocket', 'polling'],
             autoConnect: true,
@@ -76,9 +81,7 @@ export const SocketProvider = ({ children }) => {
             reconnectionDelayMax: 5000,
             timeout: 20000,
             withCredentials: false,
-            auth: {
-                token: localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '',
-            },
+            auth: getSocketAuth(),
             extraHeaders: {
                 'x-tenant-slug':
                     localStorage.getItem('tenantSlug') ||
@@ -183,7 +186,12 @@ export const SocketProvider = ({ children }) => {
         });
 
         socketInstance.on('reconnect_attempt', (attemptNumber) => {
-            console.log('[Socket] Reconnect attempt', attemptNumber);
+            // Re-read storage so every retry carries the CURRENT access token.
+            // Tokens rotate every ~10 minutes; without this the handshake
+            // replays the (possibly empty) token captured at mount and the
+            // server keeps rejecting with 401 "Authentication required".
+            refreshSocketAuth(socketInstance);
+            console.log('[Socket] Reconnect attempt', attemptNumber, '(auth refreshed)');
             setReconnecting(true);
         });
 
@@ -206,6 +214,13 @@ export const SocketProvider = ({ children }) => {
         // without a full page reload). AuthContext dispatches a custom event
         // after it persists the new user + tenantSlug to localStorage.
         const handleAuthChange = () => {
+            // Login/refresh just happened — reload the handshake credentials
+            // so the socket stops failing with 401 and (re)connect immediately
+            // if it was never authenticated (e.g. provider mounted pre-login).
+            refreshSocketAuth(socketInstance);
+            if (!socketInstance.connected) {
+                socketInstance.connect();
+            }
             emitJoinTenant();
         };
         window.addEventListener('auth-state-changed', handleAuthChange);

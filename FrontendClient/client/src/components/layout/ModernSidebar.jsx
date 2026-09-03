@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Calendar, Box, Hammer, ShoppingCart, Package, Truck, Beaker, Activity, BarChart3, FileBarChart, LifeBuoy, Settings, LogOut, Menu, X, ChevronLeft, ChevronRight } from '../../utils/icons/icons';
+import { LayoutDashboard, Users, FileText, Calendar, Box, Hammer, ShoppingCart, Package, Truck, Beaker, Activity, LifeBuoy, Settings, LogOut, Menu, X, ChevronLeft, ChevronRight } from '../../utils/icons/icons';
 
 // ============================================================
 // DESIGN SYSTEM
@@ -576,14 +576,7 @@ const ModernSidebar = ({
         { icon: Hammer, label: 'Workshop', path: `/tenant/${tenantSlug}/workshop` },
         { icon: ShoppingCart, label: 'Flower Bookings', path: `/tenant/${tenantSlug}/flowers` },
         { icon: Box, label: 'Mini Store', path: `/tenant/${tenantSlug}/mini-store` },
-      ]
-    },
-    {
-      section: 'Analytics',
-      items: [
         { icon: LayoutDashboard, label: 'Dashboard', path: `/tenant/${tenantSlug}/dashboard` },
-        { icon: BarChart3, label: 'Chemical Analytics', path: `/tenant/${tenantSlug}/chemicals/analytics` },
-        { icon: FileBarChart, label: 'Deceased Analytics', path: `/tenant/${tenantSlug}/deceased/analytics` },
       ]
     },
     {

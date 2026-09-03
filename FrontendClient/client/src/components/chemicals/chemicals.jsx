@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { Package, TrendingUp, AlertTriangle, CheckCircle, Search, Beaker, Plus, X, Save, History, Shield, FlaskConical, RefreshCw, Zap, Syringe, Truck, ArrowRight, TestTube2, ClipboardList, ChevronDown, CircleDot } from '../../utils/icons/icons';
 import { toast } from 'react-toastify';
@@ -37,6 +37,41 @@ const modalSlideUp = keyframes`
 const pulseSoft = keyframes`
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+`;
+
+/* ─── Low stock alert banner ─────────────────────────────────── */
+const LowStockBanner = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-left: 4px solid ${COLORS.dangerRed};
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  animation: ${fadeIn} 0.25s ease;
+`;
+
+const LowStockBannerText = styled.div`
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #7F1D1D;
+
+  strong { font-weight: 800; }
+`;
+
+const LowStockBannerClose = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #B91C1C;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+
+  &:hover { color: #7F1D1D; }
 `;
 
 /* ═══════════════════════════════════════════════════════════
@@ -848,6 +883,8 @@ const ChemicalManagementDashboard = () => {
   const [showUsageModal, setShowUsageModal] = useState(false);
   const [showPPEModal, setShowPPEModal] = useState(false);
   const [selectedChemical, setSelectedChemical] = useState(null);
+  const [showLowStockBanner, setShowLowStockBanner] = useState(true);
+  const lowStockToastShownRef = useRef(false);
   const [dashboardStats, setDashboardStats] = useState({
     total_chemicals: 0,
     low_stock_count: 0,
@@ -886,7 +923,16 @@ const ChemicalManagementDashboard = () => {
   const fetchChemicals = async () => {
     try {
       const r = await api.get('/chemicals');
-      if (r.data.success) setChemicals(r.data.data || []);
+      if (r.data.success) {
+        const list = r.data.data || [];
+        setChemicals(list);
+        const low = list.filter(c => Number(c.is_low_stock) === 1 || parseFloat(c.current_stock) <= parseFloat(c.min_stock_level));
+        if (low.length > 0 && !lowStockToastShownRef.current) {
+          lowStockToastShownRef.current = true;
+          const names = low.slice(0, 4).map(c => `${c.chemical_name} (${parseFloat(c.current_stock)}${c.unit === 'liters' ? 'L' : ' ' + c.unit})`).join(', ');
+          toast.warning(`⚠ ${low.length} chemical${low.length > 1 ? 's are' : ' is'} LOW on stock: ${names}${low.length > 4 ? '…' : ''}. Please restock!`, { autoClose: 8000 });
+        }
+      }
     } catch (e) { console.error(e); }
   };
 
@@ -1055,6 +1101,7 @@ const ChemicalManagementDashboard = () => {
   );
 
   const lowStockCount = dashboardStats.low_stock_count || 0;
+  const lowStockItems = chemicals.filter(c => Number(c.is_low_stock) === 1 || parseFloat(c.current_stock) <= parseFloat(c.min_stock_level));
 
   /* ─── Loading ──────────────────────────────────────────────── */
   if (loading) {
@@ -1095,6 +1142,20 @@ const ChemicalManagementDashboard = () => {
           </Btn>
         </HeaderBtns>
       </PageHeader>
+
+      {/* ─── Low Stock Alert Banner ──────────────────────────── */}
+      {showLowStockBanner && lowStockItems.length > 0 && (
+        <LowStockBanner>
+          <AlertTriangle size={16} color={COLORS.dangerRed} />
+          <LowStockBannerText>
+            <strong>⚠ Low stock alert ({lowStockItems.length}):</strong>{' '}
+            {lowStockItems.map(c => `${c.chemical_name} — ${parseFloat(c.current_stock)}${c.unit === 'liters' ? 'L' : ' ' + c.unit} left (min ${parseFloat(c.min_stock_level)})`).join(' · ')}
+          </LowStockBannerText>
+          <LowStockBannerClose onClick={() => setShowLowStockBanner(false)}>
+            <X size={14} />
+          </LowStockBannerClose>
+        </LowStockBanner>
+      )}
 
       {/* ─── Stats ───────────────────────────────────────────── */}
       <StatsRow>

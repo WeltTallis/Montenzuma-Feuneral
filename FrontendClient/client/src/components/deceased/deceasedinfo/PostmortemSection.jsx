@@ -4,6 +4,8 @@ import { Activity, Plus, Calendar, Clock, User, FileText, CheckCircle, AlertTria
 import { COLORS } from '../../../utils/colors';
 import axios from 'axios';
 import { getTenantSlug } from '../../../utils/globalAuth';
+import { getSocketAuth, refreshSocketAuth } from '../../../utils/socket/socketAuth';
+import env from '../../../utils/config/env';
 import { ToastContainer } from 'react-toastify';
 import { showToast } from '../../../utils/toast';
 import { io } from 'socket.io-client';
@@ -202,10 +204,16 @@ const PostmortemSection = ({ deceasedId, deceasedData, onUpdate }) => {
     // Socket connection for real-time updates
     useEffect(() => {
         const tenantSlug = getTenantSlug();
-        const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
-            transports: ['websocket']
+        // Use the central socket URL (NOT the REST gateway) and attach the
+        // handshake auth the socketio-service requires in production.
+        const socket = io(env.SOCKET_URL, {
+            transports: ['websocket', 'polling'],
+            auth: getSocketAuth()
         });
-        
+
+        // Re-read credentials before every reconnect (tokens rotate ~10 min)
+        socket.on('reconnect_attempt', () => refreshSocketAuth(socket));
+
         socket.on('connect', () => {
             console.log('[SOCKET] Connected to server');
             socket.emit('join-tenant', tenantSlug);

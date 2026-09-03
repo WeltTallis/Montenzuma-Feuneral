@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import {
   FlaskConical, Clock, Users, TrendingUp, AlertTriangle,
@@ -938,6 +938,58 @@ const SectionTitle = styled.div`
 //  COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ─── Low stock alert banner ──────────────────────────────────────────────
+const LowStockBanner = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: ${T.dangerBg};
+  border: 1px solid ${T.dangerLight};
+  border-left: 4px solid ${T.danger};
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+`;
+
+const LowStockBannerText = styled.div`
+  flex: 1;
+  min-width: 200px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #7F1D1D;
+
+  strong { font-weight: 800; }
+`;
+
+const LowStockBannerBtn = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: ${T.danger};
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover { background: #B91C1C; }
+`;
+
+const LowStockBannerClose = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #B91C1C;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+
+  &:hover { color: #7F1D1D; }
+`;
+
 const ChemicalInventoryAnalytics = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('30d');
@@ -953,6 +1005,8 @@ const ChemicalInventoryAnalytics = () => {
   const [chemicalsList, setChemicalsList] = useState([]);
   const [showRestock, setShowRestock] = useState(false);
   const [restockForm, setRestockForm] = useState({ chemical_id: '', quantity: '', received_by: '', notes: '' });
+  const [showLowStockBanner, setShowLowStockBanner] = useState(true);
+  const lowStockToastShownRef = useRef(false);
 
   const fetchAll = useCallback(async () => {
     setIsLoading(true);
@@ -966,7 +1020,14 @@ const ChemicalInventoryAnalytics = () => {
         setDashboardSummary(analyticsRes.value.data.data);
       }
       if (listRes.status === 'fulfilled' && listRes.value?.data?.success) {
-        setChemicalsList((listRes.value.data.data || []).map(c => ({ ...c, id: c.chemical_id || c.id, name: c.chemical_name || c.name })));
+        const mapped = (listRes.value.data.data || []).map(c => ({ ...c, id: c.chemical_id || c.id, name: c.chemical_name || c.name }));
+        setChemicalsList(mapped);
+        const low = mapped.filter(c => Number(c.is_low_stock) === 1 || parseFloat(c.current_stock) <= parseFloat(c.min_stock_level));
+        if (low.length > 0 && !lowStockToastShownRef.current) {
+          lowStockToastShownRef.current = true;
+          const names = low.slice(0, 4).map(c => `${c.name} (${parseFloat(c.current_stock)}${c.unit === 'liters' ? 'L' : ' ' + c.unit})`).join(', ');
+          toast.warning(`⚠ ${low.length} chemical${low.length > 1 ? 's are' : ' is'} LOW on stock: ${names}${low.length > 4 ? '…' : ''}. Please restock!`, { autoClose: 8000 });
+        }
       }
     } catch (e) {
       console.error('Failed to fetch chemical data:', e);
@@ -1028,6 +1089,7 @@ const ChemicalInventoryAnalytics = () => {
 
   const totalChemicals = data.total_chemicals || 0;
   const lowStockCount = data.low_stock_count || 0;
+  const lowStockItems = chemicalsList.filter(c => Number(c.is_low_stock) === 1 || parseFloat(c.current_stock) <= parseFloat(c.min_stock_level));
   const totalUsage30d = parseFloat(data.total_usage_30d) || 0;
   const pickupTransactions = recentTransactions.filter(t => t.transaction_type === 'consumed');
   const totalPickupCount = pickupTransactions.length;
@@ -1157,6 +1219,23 @@ const ChemicalInventoryAnalytics = () => {
           </ErrorContent>
           <ErrorRetryBtn onClick={handleRetry}><RefreshCw size={14} /> Retry</ErrorRetryBtn>
         </ErrorBanner>
+      )}
+
+      {/* ─── Low Stock Alert Banner ───────────────────────────────────── */}
+      {showLowStockBanner && lowStockItems.length > 0 && (
+        <LowStockBanner>
+          <AlertTriangle size={16} color={T.danger} />
+          <LowStockBannerText>
+            <strong>⚠ Low stock alert ({lowStockItems.length}):</strong>{' '}
+            {lowStockItems.map(c => `${c.name} — ${parseFloat(c.current_stock)}${c.unit === 'liters' ? 'L' : ' ' + c.unit} left (min ${parseFloat(c.min_stock_level)})`).join(' · ')}
+          </LowStockBannerText>
+          <LowStockBannerBtn onClick={() => setShowRestock(true)}>
+            <Plus size={12} /> Restock now
+          </LowStockBannerBtn>
+          <LowStockBannerClose onClick={() => setShowLowStockBanner(false)}>
+            <X size={14} />
+          </LowStockBannerClose>
+        </LowStockBanner>
       )}
 
       {/* ─── Chemical Stock List ─────────────────────────────────────── */}
