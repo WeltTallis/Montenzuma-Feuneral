@@ -44,20 +44,38 @@ const initialOfName = (n) => {
   return (tail.trim().charAt(0) || "?").toUpperCase();
 };
 
-/* Local YYYY-MM-DD key — mirrors dashboardDataApi.toKey (no TZ shift) */
+/* Local YYYY-MM-DD key — Kenya wall-clock datetimes ("YYYY-MM-DD HH:mm:ss",
+   Africa/Nairobi, fixed UTC+3, see shared-utils/timestamps.ts) are parsed as
+   +03:00 instants and bucketed by the BROWSER-LOCAL day, so a request made
+   "now" lands on the viewer's "today" instead of drifting to "tomorrow" for
+   users west of Nairobi. Date-only strings stay as-is; Z/offset ISO strings
+   are real instants and converted as-is. */
 const keyOf = (v) => {
   if (v == null || v === "") return "";
-  if (typeof v === "string") {
-    const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-    const dt = new Date(v);
-    if (!Number.isNaN(dt.getTime())) {
-      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
-    }
-    return "";
-  }
-  if (v instanceof Date && !Number.isNaN(v.getTime())) {
+  if (v instanceof Date) {
+    if (Number.isNaN(v.getTime())) return "";
     return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`;
+  }
+  if (typeof v === "string") {
+    const m = v.trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?/);
+    if (m) {
+      const [, y, mo, d, hh, mm, ss] = m;
+      /* date-only (adm_date, dispatch_date …): already a plain calendar day */
+      if (hh == null) return `${y}-${mo}-${d}`;
+      /* explicit UTC marker (Z) or ±hh:mm offset → real instant, use as-is */
+      const dt = /Z$|[+-]\d{2}:\d{2}$/i.test(v.trim())
+        ? new Date(v.trim())
+        : /* naive Kenya wall-clock → exact instant (fixed UTC+3) */
+          new Date(`${y}-${mo}-${d}T${hh}:${mm}:${ss || "00"}+03:00`);
+      if (!Number.isNaN(dt.getTime())) {
+        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+      }
+      return `${y}-${mo}-${d}`;
+    }
+  }
+  const d = new Date(v);
+  if (!Number.isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
   return "";
 };

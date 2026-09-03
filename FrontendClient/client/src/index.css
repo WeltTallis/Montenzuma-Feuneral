@@ -1,6 +1,18 @@
 /* Google Fonts are loaded via <link> tags in index.html (preconnect +
-   one combined request). Do NOT re-add @import rules here — each CSS
+   one combined request). Do NOT re-add @font @import rules here — each CSS
    @import is a sequential round-trip that delays first paint. */
+
+/* Tailwind v4 utility layer (DeceasedSidePanel on the dashboard and other
+   components are styled with Tailwind classes, but Tailwind was never
+   imported into the app bundle, so every utility class resolved to NOTHING
+   and the dashboard side panel rendered completely unstyled).
+   Deliberately imports ONLY theme + utilities — NO preflight — so the global
+   reset is never applied and existing Bootstrap / custom CSS is untouched.
+   These live in cascade layers, and unlayered app CSS always wins over
+   layered utilities on conflicting properties. Processed inline at build
+   time by @tailwindcss/vite (no runtime round-trips). */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
 
 
 
