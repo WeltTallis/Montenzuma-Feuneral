@@ -929,17 +929,21 @@ export default function App() {
             <Showcase no="05" title="Document automation engine" desc="Generate release forms, autopsy records, death certificates, and burial permits automatically. Digital signatures included." reverse={false}>
               <AppWindow title="restpoint.app/documents" dark><MockDocumentAutomation /></AppWindow>
             </Showcase>
-            <Showcase no="06" title="Real-Time Customer Support" desc="Clients can submit issues directly through the platform, while support agents receive, respond to, and resolve requests in real time. The system provides status tracking, communication history, and centralized issue management — so no question ever goes unanswered." reverse={true}>
+            <Showcase no="06" title="Real Time Customer Support" desc="Clients can submit issues directly through the platform, while support agents receive, respond to, and resolve requests in real time. The system provides status tracking, communication history no question ever goes unanswered." reverse={true}>
               <AppWindow title="restpoint.app/support"><MockSupport /></AppWindow>
             </Showcase>
             <Showcase no="07" title="The Right Flowers. Right in Front of Them." reverse={false} desc={
-              <>
-                Families shouldn't have to search the internet for hours trying to figure out what flowers are right for the moment.
-                <br /><br />
-                Give them a tablet. Show them a curated selection. Let them choose with confidence.
-                <br /><br />
-                <strong style={{ color: C.ink }}>Less searching. Less thinking. A better experience.</strong>
-              </>
+           <>
+  Families shouldn't have to search the internet for hours trying to figure out what flowers are right for the moment.
+  <br /><br />
+  Give them a tablet at the front desk. Show them a curated selection of arrangements .
+  <br /><br />
+  Once they choose, the booking appears instantly in the software. Your florist gets notified right away. 
+  <br /><br />
+  They can even add custom details on the spot  like ribbon colors, specific flower preferences, or personalized messages.
+  <br /><br />
+
+</>
             }>
               <AppWindow title="restpoint.app/floral" dark>
                 <div className="flp-bleed"><FloralPreview /></div>
