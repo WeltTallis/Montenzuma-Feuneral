@@ -1,4 +1,4 @@
-   // src/config/env.js
+// src/utils/config/env.js
 // Centralized configuration for the application environment
 // ALL services import from here - single source of truth
 
@@ -35,16 +35,19 @@ const env = {
 
   // WebSocket URL for real-time features
   // Development: connects directly to socketio-service on port 5018
-  // Production: connects to the main domain, nginx proxies /socket.io/ to socketio-service
-    SOCKET_URL: import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_SOCKETIO_URL || (import.meta.env.PROD ? 'https://restpoint.co.ke' : 'http://localhost:5018'),
+  // Production: connects to ws.restpoint.co.ke:5013 for WebSocket
+  // Priority: VITE_WS_URL > VITE_SOCKET_URL > VITE_SOCKETIO_URL > default
+  SOCKET_URL: import.meta.env.VITE_WS_URL || 
+               import.meta.env.VITE_SOCKET_URL || 
+               import.meta.env.VITE_SOCKETIO_URL || 
+               (import.meta.env.PROD ? 'ws://ws.restpoint.co.ke:5013' : 'http://localhost:5018'),
 
   // Centralized uploads folder - served by the API gateway (same-origin /uploads)
   // via the tenant-service static mount. NOT a separate uploads-service.
   UPLOADS_URL: import.meta.env.VITE_UPLOADS_URL || (import.meta.env.PROD ? 'https://restpoint.co.ke' : 'http://localhost:5000'),
 
-      // Mini Store service - inventory + pick/restock (routed through the API gateway)
-  STORE_SERVICE_API:
-    import.meta.env.VITE_STORE_SERVICE_API ||
+  // Mini Store service - inventory + pick/restock (routed through the API gateway)
+  STORE_SERVICE_API: import.meta.env.VITE_STORE_SERVICE_API ||
     (import.meta.env.PROD
       ? 'https://restpoint.co.ke/api/v1/restpoint/store'
       : 'http://localhost:5000/api/v1/restpoint/store'),

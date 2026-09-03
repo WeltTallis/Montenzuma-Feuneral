@@ -94,7 +94,7 @@ scrape_configs:
 
   - job_name: 'florist-service'
     static_configs:
-      - targets: ['host.docker.internal:7070']
+      - targets: ['restpoint_florist_service:5000']
     metrics_path: '/metrics'
     scrape_interval: 15s
 

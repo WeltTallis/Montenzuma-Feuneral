@@ -206,6 +206,48 @@ exports.receiveStock = async (req, res) => {
 };
 
 // ============================================
+// RESTOCK (body-keyed receive stock)
+// The chemical analytics UI posts /chemicals/restock with
+// { chemical_id, quantity, received_by, notes } — this is the same
+// operation as /:id/receive but keyed by chemical_id in the body.
+// ============================================
+exports.restockChemical = async (req, res) => {
+  try {
+    const tenantDb = req.tenant?.db_name;
+    const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
+    if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
+
+    const { chemical_id, quantity, received_by, notes } = req.body;
+    if (!chemical_id) return res.status(400).json({ success: false, message: 'chemical_id is required' });
+    if (!quantity || parseFloat(quantity) <= 0) return res.status(400).json({ success: false, message: 'Valid quantity required' });
+
+    const chem = await safeTenantQuery(tenantDb, 'SELECT id, current_stock, unit FROM chemicals WHERE id=? AND is_active=1 AND tenant_slug=?', [chemical_id, tenantSlug]);
+    if (!chem.length) return res.status(404).json({ success: false, message: 'Chemical not found' });
+
+    // Record who received this stock (same policy as pickups: explicit name
+    // from the client first, then the authenticated user identity)
+    const rawReceivedBy = typeof received_by === 'string' ? received_by.trim() : '';
+    const performedByName = rawReceivedBy || req.user?.full_name || req.user?.name || req.user?.email || null;
+
+    const previousStock = parseFloat(chem[0].current_stock);
+    const qty = parseFloat(quantity);
+    const newStock = previousStock + qty;
+
+    await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [newStock, chem[0].id, tenantSlug]);
+    await safeTenantExecute(tenantDb,
+      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, performed_by_name, notes, created_at)
+       VALUES (?, ?, 'received', ?, ?, ?, ?, ?, ?, NOW())`,
+      [tenantSlug, chem[0].id, qty, chem[0].unit, previousStock, newStock, performedByName, notes || 'Stock restocked']
+    );
+
+    res.json({ success: true, message: 'Restock recorded successfully', chemical_id: chem[0].id, previous_stock: previousStock, new_stock: newStock });
+  } catch (error) {
+    console.error('[chemicalController.restockChemical]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ============================================
 // ADJUST STOCK
 // ============================================
 exports.adjustStock = async (req, res) => {

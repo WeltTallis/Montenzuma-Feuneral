@@ -41,6 +41,9 @@ router.post('/:id/receive', chemicalController.receiveStock);
 // Adjust stock (manual correction)
 router.post('/:id/adjust', chemicalController.adjustStock);
 
+// Restock (analytics UI posts /chemicals/restock with { chemical_id, quantity, ... })
+router.post('/restock', chemicalController.restockChemical);
+
 // Get transaction history for a chemical
 router.get('/:id/transactions', chemicalController.getTransactions);
 

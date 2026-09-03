@@ -119,9 +119,9 @@
       - SCANNER_SERVICE_URL=http://restpoint_scanner_service:2024
       - SUPPORT_SERVICE_URL=http://restpoint_support_service:5000
       - LEAVE_SERVICE_URL=http://restpoint_leave_service:5000
-      # Florist runs as a HOST process on port 7070 (no florist container) —
-      # the gateway reaches it via host.docker.internal (see extra_hosts below).
-      - FLORIST_SERVICE_URL=http://host.docker.internal:7070
+      # Florist runs as a container (restpoint_florist_service, internal port
+      # 5000, published on the host as 7070 — see the florist-service block).
+      - FLORIST_SERVICE_URL=http://restpoint_florist_service:5000
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     env_file:
@@ -655,6 +655,42 @@
       retries: 3
       start_period: 40s
 
+  # Florist Service (runs TypeScript directly via tsx; publishes host port 7070)
+  florist-service:
+    build:
+      context: .
+      dockerfile: ./services/florist-service/Dockerfile
+    container_name: restpoint_florist_service
+    ports:
+      - '7070:5000'
+    volumes:
+      - florist_service_data:/opt/storage/uploads
+    environment:
+      - PORT=5000
+      - FLORIST_PORT=5000
+      - NODE_ENV=production
+      - SERVICE_NAME=florist-service
+      - SERVICE_VERSION=1.0.0
+      - DB_HOST=restpoint_mariadb
+      - DB_PORT=3306
+      - DB_USER=restpoint_user
+      - DB_PASSWORD=${DB_PASSWORD}
+      - OPERATIONS_DATABASE=restpoint_operations
+    env_file:
+      - .env
+    networks:
+      - restpoint_network
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   # Workshop Service
   workshop-service:
     build:
@@ -884,4 +920,6 @@ volumes:
   loki_data:
     driver: local
   shared_uploads:
+    driver: local
+  florist_service_data:
     driver: local

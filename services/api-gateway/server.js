@@ -107,15 +107,12 @@ const DOCKER_SERVICE_DEFAULTS = {
   hearse: 'http://restpoint_hearse_service:5000',
   leave: 'http://restpoint_leave_service:5000',
   support: 'http://restpoint_support_service:5000',
-  // Florist service is NOT a container in this repo (there is no
-  // services/florist-service/Dockerfile). It runs as a HOST process bound to
-  // port 7070 (FLORIST_PORT=7070 in services/florist-service/.env) and
-  // prometheus scrapes it at host.docker.internal:7070. The gateway container
-  // must therefore reach it via host.docker.internal (requires the
-  // `extra_hosts: ["host.docker.internal:host-gateway"]` entry on the gateway
-  // in docker-compose.yml / docker-compose.prod.yml). When the gateway runs
-  // on the host, DOCKER_HOSTNAME_RE below rewrites this to 127.0.0.1:7070.
-  florist: 'http://host.docker.internal:7070',
+  // Florist service IS a container now (services/florist-service/Dockerfile,
+  // container restpoint_florist_service on the restpoint_network, internal port
+  // 5000, published on the host as 7070). The gateway container reaches it via
+  // the Docker network hostname below; FLORIST_SERVICE_URL in
+  // docker-compose.yml / docker-compose.prod.yml overrides this default.
+  florist: 'http://restpoint_florist_service:5000',
   store: 'http://restpoint_store_service:5000',
 };
 
