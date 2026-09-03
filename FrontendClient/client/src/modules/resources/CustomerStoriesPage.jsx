@@ -1,56 +1,20 @@
 import { Helmet } from 'react-helmet-async';
 import Footer from '../../components/layout/Footer';
 import { useNavigate } from 'react-router-dom';
-import { Quote, Users, TrendingUp, CheckCircle } from '../../utils/icons/icons';
+import { Quote, Users, TrendingUp, CheckCircle, Clock, MessageCircle } from '../../utils/icons/icons';
 
 const CustomerStoriesPage = () => {
     const navigate = useNavigate();
 
-    const stories = [
-        {
-            id: 1,
-            organization: 'Nairobi Baptist Church',
-            type: 'Church',
-            location: 'Nairobi',
-            members: 850,
-            quote: 'RestPoint transformed how we manage our funeral welfare program. What used to take days now takes minutes. Our members love the SMS notifications and transparency.',
-            author: 'Rev. James Mwangi',
-            role: 'Senior Pastor',
-            results: ['Reduced claims processing time by 80%', 'Increased member participation by 45%', 'Zero manual errors in 2 years']
-        },
-        {
-            id: 2,
-            organization: 'Mwalimu Cooperative SACCO',
-            type: 'SACCO',
-            location: 'Nairobi',
-            members: 3200,
-            quote: 'Managing welfare benefits for 3,200 members seemed impossible until we found RestPoint. The M-Pesa integration alone saved us countless hours every month.',
-            author: 'Grace Wanjiku',
-            role: 'Welfare Manager',
-            results: ['Automated 95% of contribution tracking', 'Process claims 3x faster', 'Member satisfaction increased to 98%']
-        },
-        {
-            id: 3,
-            organization: 'Karen Community Chama',
-            type: 'Chama',
-            location: 'Karen, Nairobi',
-            members: 120,
-            quote: 'As a women\'s chama, we needed something simple yet powerful. RestPoint helped us maintain complete transparency and trust among our members.',
-            author: 'Mary Njeri',
-            role: 'Chairperson',
-            results: ['100% transparency in fund management', 'Reduced meeting time by 60%', 'Grew membership by 50% in 1 year']
-        },
-        {
-            id: 4,
-            organization: 'St. Stephen\'s Catholic Church',
-            type: 'Church',
-            location: 'Nairobi',
-            members: 1500,
-            quote: 'The multi-branch support is exactly what we needed. We manage 5 different congregations from one dashboard. RestPoint understands Kenyan churches.',
-            author: 'Father John Kamau',
-            role: 'Parish Priest',
-            results: ['Unified 5 branches in one system', 'Improved financial reporting', 'Better member engagement']
-        }
+    // Empty stories array - no stories available yet
+    const stories = [];
+
+    // Statistics remain visible
+    const stats = [
+        { icon: Users, number: '500+', label: 'Organizations' },
+        { icon: TrendingUp, number: '50K+', label: 'Members Served' },
+        { icon: CheckCircle, number: '10K+', label: 'Claims Processed' },
+        { icon: Quote, number: '98%', label: 'Satisfaction Rate' }
     ];
 
     return (
@@ -93,7 +57,7 @@ const CustomerStoriesPage = () => {
                             textTransform: 'uppercase',
                             marginBottom: '1.5rem'
                         }}>
-                            Success Stories
+                            Coming Soon
                         </div>
 
                         <h1 style={{
@@ -104,7 +68,7 @@ const CustomerStoriesPage = () => {
                             marginBottom: '1.5rem',
                             letterSpacing: '-0.02em'
                         }}>
-                            Real Results from Real Organizations
+                            Customer Success Stories
                         </h1>
 
                         <p style={{
@@ -114,7 +78,8 @@ const CustomerStoriesPage = () => {
                             maxWidth: '700px',
                             marginBottom: '2rem'
                         }}>
-                            Discover how Kenyan churches, SACCOs, and chamas are transforming their funeral welfare programs with RestPoint.
+                            Real stories from organizations transforming their funeral welfare programs with RestPoint.
+                            Check back soon for inspiring success stories.
                         </p>
                     </div>
                 </div>
@@ -128,12 +93,7 @@ const CustomerStoriesPage = () => {
                             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
                             gap: '1.5rem'
                         }}>
-                            {[
-                                { icon: Users, number: '500+', label: 'Organizations' },
-                                { icon: TrendingUp, number: '50K+', label: 'Members Served' },
-                                { icon: CheckCircle, number: '10K+', label: 'Claims Processed' },
-                                { icon: Quote, number: '98%', label: 'Satisfaction Rate' }
-                            ].map((stat, idx) => {
+                            {stats.map((stat, idx) => {
                                 const IconComponent = stat.icon;
                                 return (
                                     <div key={idx} style={{
@@ -173,114 +133,102 @@ const CustomerStoriesPage = () => {
                         </div>
                     </section>
 
-                    {/* Stories Grid */}
+                    {/* No Stories Message */}
                     <section style={{ marginBottom: '4rem' }}>
                         <div style={{
-                            display: 'grid',
-                            gap: '2rem'
+                            background: 'white',
+                            borderRadius: '12px',
+                            border: '1px solid #E3DDD0',
+                            padding: '4rem 2rem',
+                            textAlign: 'center'
                         }}>
-                            {stories.map((story, idx) => (
-                                <div
-                                    key={story.id}
+                            <div style={{
+                                width: '80px',
+                                height: '80px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #3D4F47 0%, #2E3F37 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                margin: '0 auto 1.5rem'
+                            }}>
+                                <Clock size={40} color="#FAF8F4" />
+                            </div>
+                            <h2 style={{
+                                fontFamily: "'Fraunces', serif",
+                                fontSize: '2rem',
+                                color: '#15171A',
+                                marginBottom: '1rem'
+                            }}>
+                                No Stories Yet
+                            </h2>
+                            <p style={{
+                                fontSize: '1.1rem',
+                                color: '#6B6862',
+                                maxWidth: '500px',
+                                margin: '0 auto 0.5rem',
+                                lineHeight: 1.7
+                            }}>
+                                We're currently collecting inspiring stories from our users.
+                            </p>
+                            <p style={{
+                                fontSize: '1rem',
+                                color: '#8B7355',
+                                maxWidth: '500px',
+                                margin: '0 auto 2rem',
+                                lineHeight: 1.6
+                            }}>
+                                Check back soon to see how organizations are transforming their funeral welfare management with RestPoint.
+                            </p>
+                            <div style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                justifyContent: 'center',
+                                gap: '1rem'
+                            }}>
+                                <button
+                                    onClick={() => navigate('/register')}
                                     style={{
-                                        background: 'white',
-                                        borderRadius: '12px',
-                                        border: '1px solid #E3DDD0',
-                                        overflow: 'hidden'
+                                        background: 'linear-gradient(135deg, #3D4F47 0%, #2E3F37 100%)',
+                                        color: '#FAF8F4',
+                                        border: 'none',
+                                        padding: '0.75rem 2rem',
+                                        borderRadius: '4px',
+                                        fontSize: '1rem',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'transform 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                                >
+                                    Get Started
+                                </button>
+                                <button
+                                    onClick={() => navigate('/contact')}
+                                    style={{
+                                        background: 'transparent',
+                                        color: '#3D4F47',
+                                        border: '1px solid #3D4F47',
+                                        padding: '0.75rem 2rem',
+                                        borderRadius: '4px',
+                                        fontSize: '1rem',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = '#3D4F47';
+                                        e.currentTarget.style.color = '#FAF8F4';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'transparent';
+                                        e.currentTarget.style.color = '#3D4F47';
                                     }}
                                 >
-                                    <div style={{ padding: '2.5rem' }}>
-                                        {/* Header */}
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'flex-start',
-                                            marginBottom: '1.5rem',
-                                            flexWrap: 'wrap',
-                                            gap: '1rem'
-                                        }}>
-                                            <div>
-                                                <h3 style={{
-                                                    fontFamily: "'Fraunces', serif",
-                                                    fontSize: '1.5rem',
-                                                    color: '#15171A',
-                                                    marginBottom: '0.5rem'
-                                                }}>{story.organization}</h3>
-                                                <div style={{
-                                                    display: 'flex',
-                                                    gap: '1rem',
-                                                    fontSize: '0.85rem',
-                                                    color: '#6B6862'
-                                                }}>
-                                                    <span>{story.type}</span>
-                                                    <span>|</span>
-                                                    <span>{story.location}</span>
-                                                    <span>|</span>
-                                                    <span>{story.members.toLocaleString()} members</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Quote */}
-                                        <div style={{
-                                            background: '#F3EFE6',
-                                            padding: '1.5rem',
-                                            borderRadius: '8px',
-                                            marginBottom: '1.5rem',
-                                            borderLeft: '4px solid #8B7355'
-                                        }}>
-                                            <Quote size={24} color="#8B7355" style={{ marginBottom: '0.8rem' }} />
-                                            <p style={{
-                                                fontSize: '1.05rem',
-                                                lineHeight: 1.7,
-                                                color: '#15171A',
-                                                margin: 0,
-                                                fontStyle: 'italic'
-                                            }}>{story.quote}</p>
-                                            <div style={{
-                                                marginTop: '1rem',
-                                                fontSize: '0.95rem',
-                                                color: '#3D4F47',
-                                                fontWeight: 600
-                                            }}>
-                                                {story.author} - {story.role}
-                                            </div>
-                                        </div>
-
-                                        {/* Results */}
-                                        <div>
-                                            <h4 style={{
-                                                fontSize: '0.85rem',
-                                                color: '#6B6862',
-                                                marginBottom: '0.8rem',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.05em'
-                                            }}>Key Results</h4>
-                                            <div style={{
-                                                display: 'grid',
-                                                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                                                gap: '0.8rem'
-                                            }}>
-                                                {story.results.map((result, resultIdx) => (
-                                                    <div
-                                                        key={resultIdx}
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '0.5rem',
-                                                            fontSize: '0.95rem',
-                                                            color: '#15171A'
-                                                        }}
-                                                    >
-                                                        <CheckCircle size={18} color="#3D4F47" />
-                                                        {result}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                                    Share Your Story
+                                </button>
+                            </div>
                         </div>
                     </section>
 
@@ -292,13 +240,22 @@ const CustomerStoriesPage = () => {
                         borderRadius: '12px',
                         textAlign: 'center'
                     }}>
-                        <h3 style={{
-                            fontFamily: "'Fraunces', serif",
-                            fontSize: '2rem',
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.8rem',
                             marginBottom: '1rem'
                         }}>
-                            Ready to Write Your Success Story?
-                        </h3>
+                            <MessageCircle size={28} color="#FAF8F4" />
+                            <h3 style={{
+                                fontFamily: "'Fraunces', serif",
+                                fontSize: '2rem',
+                                margin: 0
+                            }}>
+                                Got a Success Story?
+                            </h3>
+                        </div>
                         <p style={{
                             fontSize: '1.05rem',
                             lineHeight: 1.7,
@@ -306,10 +263,10 @@ const CustomerStoriesPage = () => {
                             maxWidth: '600px',
                             margin: '0 auto 2rem'
                         }}>
-                            Join hundreds of organizations already using RestPoint. Start your free trial today.
+                            We'd love to hear how RestPoint has helped your organization. Share your story with us.
                         </p>
                         <button
-                            onClick={() => navigate('/register')}
+                            onClick={() => navigate('/contact')}
                             style={{
                                 background: '#FAF8F4',
                                 color: '#3D4F47',
@@ -324,10 +281,10 @@ const CustomerStoriesPage = () => {
                                 gap: '0.5rem',
                                 transition: 'transform 0.2s'
                             }}
-                            onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
-                            onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                         >
-                            Start Free Trial
+                            Share Your Story
                             <Quote size={18} />
                         </button>
                     </div>

@@ -268,7 +268,7 @@ export default function AboutPage() {
               <div className="mono-label" style={{ marginBottom: '1rem' }}>About Rest Point</div>
               <h1>Built for funeral homes that take their reputation seriously.</h1>
               <p className="hero-desc">
-                Rest Point is the system of record for funeral homes across East Africa — case management, family communication, dispatch, documents, and billing, run with the same care you bring to every service.
+                Rest Point is the system of record for funeral homes across East Africa  case management, family communication, dispatch, documents, and billing, run with the same care you bring to every service.
               </p>
             </Reveal>
           </div>
@@ -286,13 +286,13 @@ export default function AboutPage() {
                 No report. No document. Nothing to hold. Nothing to read.
               </p>
               <p className="story-text">
-                I left that place with questions. I wanted to see the full report. I wanted to understand exactly what happened. I didn't want to be told — I wanted to read it for myself, on my phone, in my own time, with clarity and dignity.
+                I left that place with questions. I wanted to see the full report. I wanted to understand exactly what happened. I didn't want to be told  I wanted to read it for myself, on my phone, in my own time, with clarity and dignity.
               </p>
               <p className="story-text">
                 That moment changed everything.
               </p>
               <p className="story-text">
-                I realized that families deserve more than words spoken in a room. They deserve access. They deserve transparency. They deserve the complete picture — not just what they're told, but what the data actually says.
+                I realized that families deserve more than words spoken in a room. They deserve access. They deserve transparency. They deserve the complete picture  not just what they're told, but what the data actually says.
               </p>
               <p className="story-text">
                 So I built Rest Point.
@@ -301,7 +301,7 @@ export default function AboutPage() {
                 Not for the morticians. Not for the system. For the families. For the ones left behind. For anyone who has ever sat in a funeral home and wondered: What really happened?
               </p>
               <p className="story-text">
-                Rest Point gives families the full report — the actual data, the complete picture — right on their phone. Because in moments of loss, truth matters.
+                Rest Point gives families the full report — the actual data, the complete picture right on their phone. Because in moments of loss, truth matters.
               </p>
               <p className="story-text" style={{ fontWeight: 500, color: C.ink }}>
                 That is why Rest Point exists. That is the story.
@@ -322,7 +322,7 @@ export default function AboutPage() {
                 Welt Tallis Technologies is a software company dedicated to building robust, scalable platforms for African businesses. Rest Point is our flagship product — a complete operating system for funeral homes.
               </p>
               <p style={{ color: C.grayLight, fontSize: '1.1rem', lineHeight: 1.8 }}>
-                We understand that technology infrastructure is extremely expensive — costs run into millions of shillings. We are dedicated to making it affordable for our clients without compromising on quality, security, or reliability.
+                We understand that technology infrastructure is extremely expensive costs run into millions of shillings. We are dedicated to making it affordable for our clients without compromising on quality, security, or reliability.
               </p>
             </Reveal>
 
@@ -378,8 +378,8 @@ export default function AboutPage() {
                     </div>
                   </div>
                   <p style={{ fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.7 }}>
-                    Rest Point is the complete operating system for funeral homes 
-                     case management, family communication, dispatch, and billing in one dignified platform.
+                    Rest Point is the complete operating system for funeral homes
+                    case management, family communication, dispatch, and billing in one dignified platform.
                   </p>
                   <a href="/" className="link-arrow">
                     Visit Rest Point <ArrowRight size={14} />

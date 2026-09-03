@@ -1,0 +1,263 @@
+﻿diff --git a/FrontendClient/client/src/modules/landing/LandingPage.jsx b/FrontendClient/client/src/modules/landing/LandingPage.jsx
+index f89aad91..5e0e6a24 100644
+--- a/FrontendClient/client/src/modules/landing/LandingPage.jsx
++++ b/FrontendClient/client/src/modules/landing/LandingPage.jsx
+@@ -1,7 +1,7 @@
+ ﻿import { useState, useEffect, useRef, Children } from 'react';
+ import { useNavigate } from 'react-router-dom';
+ 
+-import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, Search, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy, Flower2 } from '../../utils/icons/icons';
++import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy } from '../../utils/icons/icons';
+ 
+ import NewsroomSection from '../newsroom/NewsroomSection';
+ import LandingPageSEO from '../seo/LandingPageSEO';
+@@ -405,42 +405,123 @@ const MockSupport = () => (
+   </div>
+ );
+ 
+-/* ── Floral tablet mock: the curated selection a family browses at the front desk ── */
+-const MockFloral = () => (
+-  <div className="mock-inner">
+-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+-      <div>
+-        <div className="mono-label" style={{ color: C.verdigris }}>FLORAL SELECTION</div>
+-        <div style={{ fontSize: '1.15rem', fontFamily: "'Fraunces', serif", color: C.ink, marginTop: '0.3rem' }}>Choose a tribute</div>
++/* ── Floral Preview (Module 07): the REAL interactive experience — an
++   Instagram-stories-style browser families use on a tablet at the front desk ── */
++const FLP_FONTS_ID = 'flp-fraunces-font';
++const FLP_DEFAULT_TITLE = (
++  <>Choose your<br /><em>floral tribute</em></>
++);
++const FLP_FLOWERS = [
++  {
++    img: 'https://www.purpink.co.ke/cdn/shop/products/mixed-rose-and-baby-breath-funeral-heart-flowers-15918094876735.jpg?v=1611511543&width=1240',
++    label: 'Heart',
++    alt: 'Mixed Rose and Baby Breath Heart',
++    title: (<>Mixed Rose &amp;<br /><em>Baby Breath Heart</em></>),
++  },
++  {
++    img: 'https://spearwoodflorist.com.au/cdn/shop/articles/wreaths_and_cross_on_stand_at_church_2d6f4e25-0eea-40d7-8288-7eaeff6403ca.jpg?v=1768882058&width=2000',
++    label: 'Cross',
++    alt: 'Wreaths and Cross on Stand',
++    title: (<>Wreaths &amp; Cross<br /><em>on Stand</em></>),
++  },
++  {
++    img: 'https://lh3.googleusercontent.com/grass-cs/ACvplmNcnjmG_DCkbiEq13xxkcDXWJ1z3V-j1e6EAEsPQPvmIyRP3OAqntGk_Y6UGfOPwWIIM73WQABVhLWZzm1QPBUeogNK8nkJxTIzd2TWXKXMCxrL759AgbZCVLwzjqblHsVds02pL-moRo-O=s1360-w1360-h1020-rw',
++    label: 'Spray',
++    alt: 'Elegant Floral Spray',
++    title: (<>Elegant<br /><em>Floral Spray</em></>),
++  },
++  {
++    img: 'https://www.purpink.co.ke/cdn/shop/files/Eternal_Embrace.png?v=1773229345&width=1240',
++    label: 'Embrace',
++    alt: 'The Eternal Embrace',
++    title: (<>The Eternal<br /><em>Embrace</em></>),
++  },
++];
++
++const FloralPreview = () => {
++  const [index, setIndex] = useState(0);
++  const [title, setTitle] = useState(FLP_DEFAULT_TITLE);
++  const [fading, setFading] = useState(false);
++  const fadeTimer = useRef(null);
++
++  useEffect(() => {
++    // The page only loads Fraunces 400/700 — the preview needs the light
++    // (200/300) and italic cuts for its serif headline. Idempotent injection.
++    if (!document.getElementById(FLP_FONTS_ID)) {
++      const link = document.createElement('link');
++      link.id = FLP_FONTS_ID;
++      link.rel = 'stylesheet';
++      link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;1,9..144,200;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap';
++      document.head.appendChild(link);
++    }
++    // Preload every tribute so image swaps never flash empty.
++    FLP_FLOWERS.forEach((f) => { const im = document.createElement('img'); im.src = f.img; });
++    return () => { if (fadeTimer.current) clearTimeout(fadeTimer.current); };
++  }, []);
++
++  // Fade out → swap image + title → fade back in (mirrors the 2-status design).
++  const setFlower = (next) => {
++    let i = next;
++    if (i < 0) i = FLP_FLOWERS.length - 1;
++    if (i >= FLP_FLOWERS.length) i = 0;
++    if (i === index && title !== FLP_DEFAULT_TITLE) return;
++    setFading(true);
++    if (fadeTimer.current) clearTimeout(fadeTimer.current);
++    fadeTimer.current = setTimeout(() => {
++      setIndex(i);
++      setTitle(FLP_FLOWERS[i].title);
++      setFading(false);
++    }, 300);
++  };
++
++  return (
++    <div className="flp-root">
++      {/* Background hero image — changes dynamically */}
++      <img
++        className="flp-hero"
++        src={FLP_FLOWERS[index].img}
++        alt={FLP_FLOWERS[index].alt}
++        style={{ opacity: fading ? 0 : 1 }}
++      />
++      <div className="flp-overlay" />
++
++      {/* Invisible click zones for left/right navigation */}
++      <div className="flp-zone flp-prev" onClick={() => setFlower(index - 1)} />
++      <div className="flp-zone flp-next" onClick={() => setFlower(index + 1)} />
++
++      {/* Swipeable Instagram-story strip */}
++      <div className="flp-strip">
++        {FLP_FLOWERS.map((f, i) => (
++          <button
++            key={f.label}
++            className="flp-story"
++            style={{ animationDelay: `${i * 0.18}s` }}
++            onClick={(e) => { e.stopPropagation(); setFlower(i); }}
++          >
++            <div className={`flp-ring ${i === index ? 'flp-unseen' : 'flp-seen'}`} style={{ width: 78, height: 78 }}>
++              <div className="flp-ring-inner" style={{ width: 72, height: 72 }}>
++                <img src={f.img} alt={f.alt} />
++              </div>
++            </div>
++            <span className="flp-story-label">{f.label}</span>
++          </button>
++        ))}
+       </div>
+-      <span className="status-badge verified"><Check size={11} style={{ marginRight: 4, verticalAlign: '-1px' }} />Curated</span>
+-    </div>
+ 
+-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1.1rem' }}>
+-      {[
+-        { n: 'White Lily Cross', p: 'KES 8,500', tint: 'rgba(77,155,127,0.12)' },
+-        { n: 'Rose & Carnation Wreath', p: 'KES 12,000', tint: 'rgba(139,115,85,0.14)' },
+-        { n: 'Gladioli Sheaf', p: 'KES 6,200', tint: 'rgba(61,79,71,0.10)' },
+-        { n: 'Sunflower Tribute', p: 'KES 7,400', tint: 'rgba(199,123,94,0.14)' },
+-      ].map((f, i) => (
+-        <div key={i} style={{ border: `1px solid ${C.line}`, borderRadius: '10px', padding: '0.9rem', background: C.bone2 }}>
+-          <div style={{ width: 38, height: 38, borderRadius: '50%', background: f.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.5rem' }}>
+-            <Flower2 size={18} color={C.verdigris} />
+-          </div>
+-          <div style={{ fontSize: '0.82rem', color: C.ink, fontWeight: 600, lineHeight: 1.35 }}>{f.n}</div>
+-          <div style={{ fontSize: '0.72rem', fontFamily: "'JetBrains Mono', monospace", color: C.gray, marginTop: '0.3rem' }}>{f.p}</div>
+-        </div>
+-      ))}
+-    </div>
++      {/* Bottom-left title block */}
++      <div className="flp-title-block">
++        <div className="flp-name-tag">Floral Tributes</div>
++        <h2 className="flp-headline" style={{ opacity: fading ? 0 : 1 }}>{title}</h2>
++      </div>
+ 
+-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `1px solid ${C.line}`, paddingTop: '0.9rem' }}>
+-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.72rem', fontFamily: "'JetBrains Mono', monospace", color: C.gray }}>
+-        <Search size={12} /> No catalogs. No searching.
+-      </span>
+-      <button className="pay-btn">Book on tablet</button>
++      {/* Bottom-right wordmark */}
++      <div className="flp-wordmark">
++        <div className="flp-wordmark-name">Memorial Florals</div>
++        <div className="flp-wordmark-sub">Est. since care began</div>
++      </div>
+     </div>
+-  </div>
+-);
++  );
++};
+ 
+ const Showcase = ({ no, title, desc, reverse, children }) => (
+   <Reveal className="showcase-mobile" style={{ display: 'grid', gridTemplateColumns: reverse ? '1fr 1.1fr' : '1.1fr 1fr', gap: '4rem', alignItems: 'center', marginBottom: '6rem' }}>
+@@ -761,6 +842,43 @@ export default function App() {
+         .app-window.dark .window-body{background:${C.ink}}
+         .app-window.dark .window-title{color:${C.grayLight}}
+         .mock-inner{padding:0.5rem}
++
++        /* ── Floral Preview (Module 07) — real interactive tribute browser ── */
++        .flp-bleed{margin:-2rem}
++        .flp-root{position:relative;height:clamp(360px,44vw,540px);overflow:hidden;background:#0a0b0c;cursor:pointer;font-family:'Inter',sans-serif;user-select:none}
++        .flp-hero{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.75) saturate(0.95);transition:opacity .6s ease-in-out}
++        .flp-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,11,12,0.5) 0%,rgba(10,11,12,0.02) 30%,rgba(10,11,12,0.02) 55%,rgba(10,11,12,0.85) 100%);pointer-events:none;z-index:5}
++        .flp-zone{position:absolute;top:0;bottom:0;width:35%;z-index:2}
++        .flp-prev{left:0}
++        .flp-next{right:0}
++        .flp-strip{position:absolute;top:0;left:0;right:0;z-index:20;padding:22px 30px 0;display:flex;align-items:flex-start;gap:16px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
++        .flp-strip::-webkit-scrollbar{display:none}
++        .flp-story{display:flex;flex-direction:column;align-items:center;gap:9px;background:none;border:none;cursor:pointer;padding:0;flex-shrink:0;animation:flpFloat 3.2s ease-in-out infinite;position:relative;z-index:25}
++        .flp-ring{border-radius:50%;padding:2.5px;transition:transform .3s cubic-bezier(0.16,1,0.3,1);position:relative}
++        .flp-ring.flp-unseen{background:conic-gradient(rgba(255,255,255,0.85) 0deg,rgba(200,200,200,0.5) 90deg,rgba(255,255,255,0.85) 180deg,rgba(200,200,200,0.5) 270deg,rgba(255,255,255,0.85) 360deg);box-shadow:0 0 14px rgba(255,255,255,0.15),0 8px 24px rgba(0,0,0,0.6);animation:flpFloat 3.2s ease-in-out infinite,flpPulse 2.8s ease-in-out infinite}
++        .flp-ring.flp-seen{background:rgba(255,255,255,0.18);box-shadow:0 6px 20px rgba(0,0,0,0.5)}
++        .flp-story:hover .flp-ring{transform:scale(1.06)}
++        .flp-ring-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;border:2.5px solid #0a0b0c;background:#1a1b1c}
++        .flp-ring-inner img{width:100%;height:100%;object-fit:cover;display:block;filter:brightness(0.88);transition:filter .3s,transform .4s cubic-bezier(0.16,1,0.3,1)}
++        .flp-story:hover .flp-ring-inner img{filter:brightness(1.05);transform:scale(1.1)}
++        .flp-story-label{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,0.6);text-align:center;transition:color .2s;max-width:70px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
++        .flp-story:hover .flp-story-label{color:rgba(255,255,255,0.95)}
++        .flp-title-block{position:absolute;bottom:34px;left:30px;z-index:10;animation:flpFadeUp 1.2s cubic-bezier(0.16,1,0.3,1);pointer-events:none}
++        .flp-name-tag{font-size:9px;font-weight:600;letter-spacing:.35em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:10px}
++        .flp-headline{font-family:'Fraunces',serif;font-weight:200;font-size:clamp(26px,3.4vw,44px);line-height:1.05;color:#fff;letter-spacing:-0.02em;margin:0;transition:opacity .3s ease}
++        .flp-headline em{font-style:italic;font-weight:200;color:rgba(255,255,255,0.65)}
++        .flp-wordmark{position:absolute;bottom:34px;right:30px;z-index:10;text-align:right;animation:flpFadeUp 1.4s cubic-bezier(0.16,1,0.3,1);pointer-events:none}
++        .flp-wordmark-name{font-family:'Fraunces',serif;font-size:14px;font-weight:300;color:rgba(255,255,255,0.4);letter-spacing:.04em}
++        .flp-wordmark-sub{font-size:8px;font-weight:500;letter-spacing:.28em;color:rgba(255,255,255,0.2);text-transform:uppercase;margin-top:4px}
++        @keyframes flpFadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
++        @keyframes flpFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
++        @keyframes flpPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0),0 8px 32px rgba(0,0,0,0.5)}50%{box-shadow:0 0 0 4px rgba(255,255,255,0.12),0 8px 32px rgba(0,0,0,0.5)}}
++        @media (max-width:768px){
++          .flp-strip{padding:16px 18px 0;gap:12px}
++          .flp-title-block{left:18px;bottom:22px}
++          .flp-wordmark{right:18px;bottom:22px}
++          .flp-root{height:340px}
++        }
+         .mock-list-header{display:flex;justify-content:space-between;font-size:0.7rem;font-family:'JetBrains Mono',monospace;color:${C.gray};padding-bottom:0.5rem;border-bottom:1px solid ${C.line};margin-bottom:0.5rem}
+         .mock-row{display:flex;justify-content:space-between;align-items:center;padding:1rem 0;border-bottom:1px solid ${C.line};font-size:0.9rem}
+         .file-icon{width:32px;height:32px;background:${C.bone2};border-radius:6px;display:flex;align-items:center;justify-content:center}
+@@ -1012,7 +1130,9 @@ export default function App() {
+                 <strong style={{ color: C.ink }}>Less searching. Less thinking. A better experience.</strong>
+               </>
+             }>
+-              <AppWindow title="restpoint.app/floral"><MockFloral /></AppWindow>
++              <AppWindow title="restpoint.app/floral" dark>
++                <div className="flp-bleed"><FloralPreview /></div>
++              </AppWindow>
+             </Showcase>
+           </div>
+         </section>
+@@ -1081,11 +1201,11 @@ export default function App() {
+         <section className="about-section">
+           <div className="wrap about-grid">
+             <Reveal>
+-                            <div className="label" style={{ marginBottom: '1rem' }}>Our Mission</div>
++              <div className="label" style={{ marginBottom: '1rem' }}>Our Mission</div>
+               <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', marginBottom: '1.5rem', color: C.ink }}>To make it easier to care for people when it matters most.</h2>
+               <p style={{ color: C.gray, marginBottom: '2rem', lineHeight: 1.8 }}>We give funeral homes and funeral insurers the technology to simplify operations, protect every detail, and deliver a better experience for the families they serve.</p>
+               <p style={{ color: C.gray, marginBottom: '2rem', lineHeight: 1.8, fontFamily: "'Fraunces', serif", fontSize: '1.2rem', fontWeight: 600 }}>Less complexity. More care.</p>
+-              <p style={{ color: C.verdigris, marginBottom: '2rem', lineHeight: 1.8, fontFamily: "'Fraunces', serif", fontSize: '1.2rem', fontWeight: 600 }}>Give families a digital experience they'll remember.</p>
++              <p style={{ color: C.verdigris, marginBottom: '2rem', lineHeight: 1.8, fontFamily: "'Fraunces', serif", fontSize: '1.2rem', fontWeight: 600 }}>Give Families a Digital Experience They'll Remember.</p>
+               <button className="btn btn-line" onClick={goAbout}>Learn more about us</button>
+             </Reveal>
+             <Reveal delay={100} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+@@ -1138,13 +1258,13 @@ export default function App() {
+               <h2 className="lockin-title">Start using Rest Point.</h2>
+               <p className="lockin-sub">Grief is heavy enough. Running the operations behind it shouldn't be.</p>
+               <p className="lockin-desc">
+-                Imagine the modern flow of your home: A family walks in, and instead of drowning in carbon-copy paper,
+-                they sign admission forms directly on an iPad. At the front desk, they browse real, high-resolution images
+-                of floral arrangements on a tablet, select the perfect tribute, and book it instantly—no physical
++                Imagine the modern flow of your home: A family walks in, and instead of drowning in carbon copy paper,
++                they sign admission forms directly on an iPad. At the front desk, they browse real, high resolution images
++                of floral arrangements on a tablet, select the perfect tribute, and book it instantly no physical
+                 catalogs or messy ledgers required. Down the hall, body releases are processed seamlessly on the same screen.
+               </p>
+               <p className="lockin-desc">
+-                You step in to provide families with dignity and a seamless send-off. Rest Point steps in to power how
++                You step in to provide families with dignity and a seamless send off. Rest Point steps in to power how
+                 you do it.
+               </p>
+               <p className="lockin-desc">
+@@ -1187,4 +1307,4 @@ export default function App() {
+       </main>
+     </>
+   );
+-}
++}
+\ No newline at end of file

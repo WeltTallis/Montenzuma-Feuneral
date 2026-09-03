@@ -1,4 +1,4 @@
-services:
+﻿services:
   # INFRASTRUCTURE SERVICES
 
   # MariaDB Database
@@ -831,16 +831,14 @@ services:
       dockerfile: Dockerfile
     container_name: restpoint_frontend
     ports:
-      - '8080:8080'
-    volumes:
-      - frontend_dist:/usr/share/frontend-dist
+      - '8080:80'
     depends_on:
       - api-gateway
     networks:
       - restpoint_network
     restart: unless-stopped
     healthcheck:
-      test: ['CMD', 'test', '-f', '/usr/share/frontend-dist/index.html']
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -881,9 +879,7 @@ volumes:
     driver: local
   workshop_service_data:
     driver: local
-  hearse_service_data:
-    driver: local
-  frontend_dist:
+    hearse_service_data:
     driver: local
   loki_data:
     driver: local

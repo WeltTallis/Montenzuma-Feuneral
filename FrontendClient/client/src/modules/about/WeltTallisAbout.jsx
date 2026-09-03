@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Menu, X, ArrowRight, ArrowUpRight,   GraduationCap   , ShieldCheck, Users, Zap, CheckCircle, Code2, Server, Settings, Trophy, Building2, Smartphone, MonitorSmartphone, Brain, Cpu } from '../../utils/icons/icons';
+import { ChevronDown, Menu, X, ArrowRight, ArrowUpRight, GraduationCap, ShieldCheck, Users, Zap, CheckCircle, Code2, Server, Settings, Trophy, Building2, Smartphone, MonitorSmartphone, Brain, Cpu } from '../../utils/icons/icons';
 import Footer from '../../components/layout/Footer';
 
 const C = {
@@ -334,7 +334,7 @@ export default function WeltTallisAbout() {
                                 <div className="mono-label" style={{ color: 'rgba(250,248,244,0.35)', marginBottom: '1.5rem', letterSpacing: '0.2em' }}>SOFTWARE DEVELOPMENT COMPANY</div>
                                 <h1>We build software that <span className="hero-accent">solves real problems</span></h1>
                                 <p className="about-hero-desc">
-                                    Welt Tallis is a software development company designing and engineering products for industries that matter — funeral services, insurance, and STEM education. We don't build toys. We build systems people depend on.
+                                    Welt Tallis is a software development company designing and engineering products for industries that matter  funeral services, insurance, and STEM education. We don't build toys. We build systems people depend on.
                                 </p>
                                 <div className="about-hero-buttons">
                                     <button className="btn btn-brass" onClick={goStart}>Explore our products <ArrowRight size={16} /></button>

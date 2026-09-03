@@ -1,4 +1,4 @@
-# PRODUCTION Docker Compose - Single Network Configuration
+﻿# PRODUCTION Docker Compose - Single Network Configuration
 # All internal services run on port 5000
 # All services have health checks and proper dependencies
 
@@ -17,7 +17,7 @@ services:
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "${MARIADB_EXTERNAL_PORT:-3306}:3306"
+      - '${MARIADB_EXTERNAL_PORT:-3306}:3306'
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./docker/mariadb/custom-mysqld.cnf:/etc/mysql/conf.d/custom-mysqld.cnf:ro
@@ -27,7 +27,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized" ]
+      test: ['CMD', 'healthcheck.sh', '--su-mysql', '--connect', '--innodb_initialized']
       interval: 15s
       timeout: 10s
       retries: 5
@@ -39,13 +39,13 @@ services:
     restart: always
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 1gb --maxmemory-policy allkeys-lru
     ports:
-      - "${REDIS_EXTERNAL_PORT:-6379}:6379"
+      - '${REDIS_EXTERNAL_PORT:-6379}:6379'
     volumes:
       - redis_data:/data
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: 15s
       timeout: 10s
       retries: 5
@@ -58,8 +58,8 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     ports:
-      - "${RABBITMQ_EXTERNAL_PORT:-5672}:5672"
-      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+      - '${RABBITMQ_EXTERNAL_PORT:-5672}:5672'
+      - '${RABBITMQ_MANAGEMENT_PORT:-15672}:15672'
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
@@ -72,7 +72,6 @@ services:
 
   # API GATEWAY
 
-
   api-gateway:
     build:
       context: .
@@ -81,13 +80,13 @@ services:
     container_name: restpoint_api_gateway
     restart: always
     ports:
-      - "${API_GATEWAY_EXTERNAL_PORT:-5000}:5000"
+      - '${API_GATEWAY_EXTERNAL_PORT:-5000}:5000'
     env_file:
       - .env.production
     environment:
       NODE_ENV: production
       PORT: 5000
-      # Service URLs 
+      # Service URLs
       AUTH_SERVICE_URL: http://restpoint_auth_service:5000
       TENANT_SERVICE_URL: http://restpoint_tenant_service:5000
       DECEASED_SERVICE_URL: http://restpoint_deceased_service:5000
@@ -103,20 +102,11 @@ services:
       HEARSE_SERVICE_URL: http://restpoint_hearse_service:5000
       SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
       EXTRA_SERVICES_URL: http://restpoint_extra_services:5000
-      # Previously missing — without these the gateway fell back to 127.0.0.1:PORT
-      # inside its own container (the gateway itself), marking running services as DOWN.
       WORKSHOP_SERVICE_URL: http://restpoint_workshop_service:6969
       SCANNER_SERVICE_URL: http://restpoint_scanner_service:2024
       SUPPORT_SERVICE_URL: http://restpoint_support_service:5000
       LEAVE_SERVICE_URL: http://restpoint_leave_service:5000
-      # Florist runs as a HOST process on port 7070 (no florist container) —
-      # the gateway reaches it via host.docker.internal (see extra_hosts below).
-      FLORIST_SERVICE_URL: http://host.docker.internal:7070
       REDIS_URL: redis://restpoint_redis:6379
-    extra_hosts:
-      # Lets the gateway container reach HOST-run services (florist on 7070)
-      # via the host.docker.internal hostname.
-      - "host.docker.internal:host-gateway"
     depends_on:
       mariadb:
         condition: service_healthy
@@ -127,7 +117,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -143,7 +133,7 @@ services:
     container_name: restpoint_auth_service
     restart: always
     ports:
-      - "${AUTH_SERVICE_EXTERNAL_PORT:-5001}:5000"
+      - '${AUTH_SERVICE_EXTERNAL_PORT:-5001}:5000'
     env_file:
       - .env.production
     environment:
@@ -166,7 +156,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -180,7 +170,7 @@ services:
     container_name: restpoint_tenant_service
     restart: always
     ports:
-      - "${TENANT_SERVICE_EXTERNAL_PORT:-5002}:5000"
+      - '${TENANT_SERVICE_EXTERNAL_PORT:-5002}:5000'
     env_file:
       - .env.production
     environment:
@@ -203,7 +193,7 @@ services:
       - tenant_service_data:/usr/src/app/data
       # The ONE shared uploads folder served to browsers at /uploads/...
       # (same volume every service writes signatures/logos/documents to)
-      - ${UPLOADS_BASE_DIR:-/opt/storage/uploads}:/opt/storage/uploads
+      - shared_uploads:/opt/storage/uploads
     depends_on:
       mariadb:
         condition: service_healthy
@@ -214,7 +204,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -228,7 +218,7 @@ services:
     container_name: restpoint_deceased_service
     restart: always
     ports:
-      - "${DECEASED_SERVICE_EXTERNAL_PORT:-5003}:5000"
+      - '${DECEASED_SERVICE_EXTERNAL_PORT:-5003}:5000'
     env_file:
       - .env.production
     environment:
@@ -243,12 +233,12 @@ services:
       - deceased_service_data:/usr/src/app/data
       # Write signatures/reports into the SAME shared uploads folder the
       # tenant-service serves at /uploads/... (single source of truth)
-      - ${UPLOADS_BASE_DIR:-/opt/storage/uploads}:/opt/storage/uploads
+      - shared_uploads:/opt/storage/uploads
       - ./services/deceased-service/uploads:/usr/src/app/uploads
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -262,7 +252,7 @@ services:
     container_name: restpoint_invoice_service
     restart: always
     ports:
-      - "${INVOICE_SERVICE_EXTERNAL_PORT:-5005}:5000"
+      - '${INVOICE_SERVICE_EXTERNAL_PORT:-5005}:5000'
     env_file:
       - .env.production
     environment:
@@ -279,7 +269,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -293,7 +283,7 @@ services:
     container_name: restpoint_coffin_service
     restart: always
     ports:
-      - "${COFFIN_SERVICE_EXTERNAL_PORT:-5006}:5000"
+      - '${COFFIN_SERVICE_EXTERNAL_PORT:-5006}:5000'
     env_file:
       - .env.production
     environment:
@@ -310,11 +300,11 @@ services:
       # Coffin-service imports @montezuma/shared-services, whose barrel
       # immediately inits FileStorageService → mkdir /opt/storage/uploads.
       # Without this mount the non-root container crashes with EACCES.
-      - ${UPLOADS_BASE_DIR:-/opt/storage/uploads}:/opt/storage/uploads
+      - shared_uploads:/opt/storage/uploads
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -328,7 +318,7 @@ services:
     container_name: restpoint_documents_service
     restart: always
     ports:
-      - "${DOCUMENTS_SERVICE_EXTERNAL_PORT:-5007}:5000"
+      - '${DOCUMENTS_SERVICE_EXTERNAL_PORT:-5007}:5000'
     env_file:
       - .env.production
     environment:
@@ -342,12 +332,12 @@ services:
     volumes:
       - documents_service_data:/usr/src/app/data
       # Documents service serves /uploads AND writes to it — use the shared volume
-      - ${UPLOADS_BASE_DIR:-/opt/storage/uploads}:/opt/storage/uploads
+      - shared_uploads:/opt/storage/uploads
       - ./services/documents-service/uploads:/usr/src/app/uploads
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -361,7 +351,7 @@ services:
     container_name: restpoint_analytics_service
     restart: always
     ports:
-      - "${ANALYTICS_SERVICE_EXTERNAL_PORT:-5009}:5000"
+      - '${ANALYTICS_SERVICE_EXTERNAL_PORT:-5009}:5000'
     env_file:
       - .env.production
     environment:
@@ -377,7 +367,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -398,7 +388,7 @@ services:
     container_name: restpoint_socketio_service
     restart: always
     ports:
-      - "${SOCKETIO_SERVICE_EXTERNAL_PORT:-5013}:5000"
+      - '${SOCKETIO_SERVICE_EXTERNAL_PORT:-5013}:5000'
     env_file:
       - .env.production
     environment:
@@ -413,7 +403,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -427,7 +417,7 @@ services:
     container_name: restpoint_bodycheckout_service
     restart: always
     ports:
-      - "${BODYCHECKOUT_SERVICE_EXTERNAL_PORT:-5015}:5000"
+      - '${BODYCHECKOUT_SERVICE_EXTERNAL_PORT:-5015}:5000'
     env_file:
       - .env.production
     environment:
@@ -441,11 +431,11 @@ services:
     volumes:
       - bodycheckout_service_data:/usr/src/app/data
       # Body-release signatures are stored under /opt/storage/uploads/<tenant>/signatures
-      - ${UPLOADS_BASE_DIR:-/opt/storage/uploads}:/opt/storage/uploads
+      - shared_uploads:/opt/storage/uploads
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -459,7 +449,7 @@ services:
     container_name: restpoint_extra_services
     restart: always
     ports:
-      - "${EXTRA_SERVICES_EXTERNAL_PORT:-5016}:5000"
+      - '${EXTRA_SERVICES_EXTERNAL_PORT:-5016}:5000'
     env_file:
       - .env.production
     environment:
@@ -473,7 +463,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -487,7 +477,7 @@ services:
     container_name: restpoint_support_service
     restart: always
     ports:
-      - "${SUPPORT_SERVICE_EXTERNAL_PORT:-8111}:5000"
+      - '${SUPPORT_SERVICE_EXTERNAL_PORT:-8111}:5000'
     env_file:
       - .env.production
     environment:
@@ -498,13 +488,13 @@ services:
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
-      SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
+      SOCKETIO_SERVICE_URL: http://socketio-service:5013
     volumes:
       - support_service_data:/usr/src/app/data
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -518,7 +508,7 @@ services:
     container_name: restpoint_chemical_service
     restart: always
     ports:
-      - "${CHEMICAL_SERVICE_EXTERNAL_PORT:-5105}:5000"
+      - '${CHEMICAL_SERVICE_EXTERNAL_PORT:-5105}:5000'
     env_file:
       - .env.production
     environment:
@@ -532,7 +522,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -546,7 +536,7 @@ services:
     container_name: restpoint_billing_service
     restart: always
     ports:
-      - "${BILLING_SERVICE_EXTERNAL_PORT:-5020}:5000"
+      - '${BILLING_SERVICE_EXTERNAL_PORT:-5020}:5000'
     env_file:
       - .env.production
     environment:
@@ -563,7 +553,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -581,7 +571,7 @@ services:
     container_name: restpoint_scanner_service
     restart: always
     ports:
-      - "${SCANNER_SERVICE_EXTERNAL_PORT:-2024}:2024"
+      - '${SCANNER_SERVICE_EXTERNAL_PORT:-2024}:2024'
     environment:
       SERVER_PORT: 2024
       SERVER_HOST: 0.0.0.0
@@ -598,7 +588,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:2024/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:2024/health']
       interval: 30s
       timeout: 3s
       retries: 3
@@ -616,7 +606,7 @@ services:
     container_name: restpoint_hearse_service
     restart: always
     ports:
-      - "${HEARSE_SERVICE_EXTERNAL_PORT:-5008}:5000"
+      - '${HEARSE_SERVICE_EXTERNAL_PORT:-5008}:5000'
     env_file:
       - .env.production
     environment:
@@ -633,7 +623,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -651,7 +641,7 @@ services:
     container_name: restpoint_workshop_service
     restart: always
     ports:
-      - "${WORKSHOP_SERVICE_EXTERNAL_PORT:-6969}:6969"
+      - '${WORKSHOP_SERVICE_EXTERNAL_PORT:-6969}:6969'
     env_file:
       - .env.production
     environment:
@@ -663,7 +653,8 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6969/api/health" ]
+      test:
+        ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:6969/api/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -681,7 +672,7 @@ services:
     container_name: restpoint_leave_service
     restart: always
     ports:
-      - "${LEAVE_SERVICE_EXTERNAL_PORT:-5025}:5000"
+      - '${LEAVE_SERVICE_EXTERNAL_PORT:-5025}:5000'
     env_file:
       - .env.production
     environment:
@@ -693,7 +684,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -705,20 +696,20 @@ services:
 
   frontend:
     build:
-      context: ./FrontendClient/client
+      context: ./FrontendClient
       dockerfile: Dockerfile
     image: restpoint-frontend:latest
     container_name: restpoint_frontend
     restart: always
-    volumes:
-      - frontend_dist:/usr/share/frontend-dist
+    ports:
+      - '${FRONTEND_EXTERNAL_PORT:-8080}:80'
     depends_on:
       api-gateway:
         condition: service_healthy
     networks:
       - restpoint_network
     healthcheck:
-      test: [ "CMD", "test", "-f", "/usr/share/frontend-dist/index.html" ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -780,6 +771,4 @@ volumes:
   workshop_service_data:
     driver: local
   leave_service_data:
-    driver: local
-  frontend_dist:
     driver: local

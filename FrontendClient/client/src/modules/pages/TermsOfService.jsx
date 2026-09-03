@@ -126,7 +126,7 @@ export default function TermsOfService() {
 
           <Reveal delay={250}>
             <h2>Payment Terms</h2>
-            <p>We accept payments monthly, annually, or as agreed. There are no strict restrictions — fees remain flexible and we work with you. Refunds are processed only if the client specifically requests otherwise. We accept all major payment methods including M-Pesa, bank transfer, and card.</p>
+            <p>We accept payments monthly, annually, or as agreed. There are no strict restrictions  fees remain flexible and we work with you. Refunds are processed only if the client specifically requests otherwise. We accept all major payment methods including M-Pesa, bank transfer, and card.</p>
           </Reveal>
 
           <Reveal delay={300}>

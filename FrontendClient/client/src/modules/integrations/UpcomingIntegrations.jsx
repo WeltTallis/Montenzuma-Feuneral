@@ -116,7 +116,7 @@ export default function UpcomingIntegrations() {
               <span className="int-chip">Upcoming Integrations</span>
               <h1>Built into Rest Point.<br />Not bolted on afterwards.</h1>
               <p className="int-hero-sub">
-                One platform for cases, payments and compliance — so you can retire the patchwork of
+                One platform for cases, payments and compliance  so you can retire the patchwork of
                 external tools, including standalone accounting software. Here is everything currently
                 on our integration roadmap, in detail.
               </p>
@@ -160,16 +160,16 @@ export default function UpcomingIntegrations() {
                 <p className="int-lead">
                   We're adding eTIMS to eliminate the need for external accounting software.
                   Tax compliance stops being a separate chore and becomes a silent by-product of
-                  running your day-to-day operations inside Rest Point.
+                  running your day to day operations inside Rest Point.
                 </p>
                 <ul className="int-feats">
-                  <li className="int-feat"><Check size={16} color={KRA_RED} />Generate KRA-compliant electronic tax invoices automatically at the point of payment.</li>
-                  <li className="int-feat"><Check size={16} color={KRA_RED} />Sync directly with the Kenya Revenue Authority eTIMS — no exports, no re-keying, no separate portal.</li>
+                  <li className="int-feat"><Check size={16} color={KRA_RED} />Generate KRA compliant electronic tax invoices automatically at the point of payment.</li>
+                  <li className="int-feat"><Check size={16} color={KRA_RED} />Sync directly with the Kenya Revenue Authority eTIMS  no exports, no re keying, no separate portal.</li>
                   <li className="int-feat"><Check size={16} color={KRA_RED} />Every invoice and receipt is stored audit-ready against its case, forever retrievable.</li>
-                  <li className="int-feat"><Check size={16} color={KRA_RED} />Works hand-in-hand with RestPay: a family pays once and the compliance paperwork is done.</li>
+                  <li className="int-feat"><Check size={16} color={KRA_RED} />Works hand in hand with RestPay: a family pays once and the compliance paperwork is done.</li>
                   <li className="int-feat"><Check size={16} color={KRA_RED} />Retire the cost and complexity of maintaining standalone accounting packages entirely.</li>
                 </ul>
-                <span className="int-note">One less external tool on your bill — compliance built in.</span>
+                <span className="int-note">One less external tool on your bill  compliance built in.</span>
               </article>
             </Reveal>
 
@@ -181,11 +181,11 @@ export default function UpcomingIntegrations() {
                 </div>
                 <h2>M-Pesa Payments</h2>
                 <p className="int-lead">
-                  Families will soon be able to pay directly through the portal via M-Pesa,
+                  Families will soon be able to pay directly through the portal via M Pesa,
                   bringing contributions and case payments into the same flow as everything else.
                 </p>
                 <ul className="int-feats">
-                  <li className="int-feat"><Check size={16} color={C.verdigris} />Secure STK-push payments straight from the family portal.</li>
+                  <li className="int-feat"><Check size={16} color={C.verdigris} />Secure STK push payments straight from the family portal.</li>
                   <li className="int-feat"><Check size={16} color={C.verdigris} />Instant confirmation updates the case ledger in real time.</li>
                   <li className="int-feat"><Check size={16} color={C.verdigris} />Frees reception teams from manually tracking and matching payments.</li>
                 </ul>

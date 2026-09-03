@@ -400,7 +400,7 @@ export default function ReleasePolicy() {
               </span>
               <h1>Release Management Policy</h1>
               <p className="subtitle">
-                How we ship updates to production — planned, tested, and zero-disruption.
+                How we ship updates to production  planned, tested, and zero-disruption.
               </p>
             </Reveal>
           </div>

@@ -1,47 +1,102 @@
 import { Helmet } from 'react-helmet-async';
 import Footer from '../../components/layout/Footer';
 import { useNavigate } from 'react-router-dom';
-import { Calculator, ArrowRight, Users, DollarSign, TrendingUp } from '../../utils/icons/icons';
+import { Shield, Users, Heart, FileCheck, ArrowRight, TrendingUp, DollarSign, Clock } from '../../utils/icons/icons';
 
 const CalculatorsPage = () => {
     const navigate = useNavigate();
 
-    const calculators = [
+    const features = [
         {
-            icon: Calculator,
-            title: 'Funeral Contribution Calculator',
-            description: 'Calculate optimal monthly contributions based on member count, expected benefits, and fund sustainability goals.',
-            path: '/calculators/contribution',
+            icon: Shield,
+            title: 'Funeral Insurance Cover',
+            description: 'Comprehensive funeral insurance that provides financial protection for your family during difficult times.',
             color: '#3D4F47'
-        },
-        {
-            icon: DollarSign,
-            title: 'Welfare Fund Calculator',
-            description: 'Estimate total fund growth over time with different contribution amounts and member participation rates.',
-            path: '/calculators/fund-growth',
-            color: '#8B7355'
         },
         {
             icon: Users,
-            title: 'Benefit Calculator',
-            description: 'Determine fair benefit amounts for members based on contribution history and fund availability.',
-            path: '/calculators/benefits',
+            title: 'Group Funeral Plans',
+            description: 'Affordable group funeral coverage for churches, SACCOs, chamas, and organizations.',
+            color: '#8B7355'
+        },
+        {
+            icon: Heart,
+            title: 'Family Protection',
+            description: 'Ensure your loved ones are protected with a funeral insurance plan that covers all funeral expenses.',
             color: '#3D4F47'
         },
         {
-            icon: TrendingUp,
-            title: 'Premium Calculator',
-            description: 'Calculate insurance premiums for group funeral cover and welfare benefit plans.',
-            path: '/calculators/premiums',
+            icon: FileCheck,
+            title: 'Hassle-Free Claims',
+            description: 'Quick and easy claims process with compassionate support when you need it most.',
             color: '#8B7355'
+        }
+    ];
+
+    const benefits = [
+        {
+            title: '24/7 Emergency Support',
+            desc: 'Our team is available around the clock to assist you with any funeral-related emergencies.'
+        },
+        {
+            title: 'Affordable Premiums',
+            desc: 'Flexible payment plans designed to fit every budget. Get comprehensive coverage without breaking the bank.'
+        },
+        {
+            title: 'Fast Claim Processing',
+            desc: 'We understand the urgency during difficult times. Claims are processed within 24 hours.'
+        },
+        {
+            title: 'Nationwide Coverage',
+            desc: 'Our funeral insurance plans cover funeral services across all counties in Kenya.'
+        }
+    ];
+
+    const plans = [
+        {
+            name: 'Basic Plan',
+            price: 'KSh 500',
+            period: 'per month',
+            features: [
+                'Up to KSh 50,000 cover',
+                'Standard funeral services',
+                '24/7 support',
+                'Nationwide coverage'
+            ]
+        },
+        {
+            name: 'Standard Plan',
+            price: 'KSh 1,000',
+            period: 'per month',
+            features: [
+                'Up to KSh 150,000 cover',
+                'Premium funeral services',
+                'Priority claim processing',
+                '24/7 support',
+                'Nationwide coverage'
+            ],
+            popular: true
+        },
+        {
+            name: 'Premium Plan',
+            price: 'KSh 2,000',
+            period: 'per month',
+            features: [
+                'Up to KSh 300,000 cover',
+                'Premium funeral services',
+                'Immediate claim processing',
+                '24/7 support',
+                'Nationwide coverage',
+                'Transport assistance'
+            ]
         }
     ];
 
     return (
         <>
             <Helmet>
-                <title>Funeral Welfare Calculators | RestPoint</title>
-                <meta name="description" content="Free calculators for funeral welfare management. Calculate contributions, fund growth, benefits, and premiums for churches, SACCOs, and chamas." />
+                <title>Funeral Insurance & Welfare Management | RestPoint</title>
+                <meta name="description" content="Comprehensive funeral insurance and welfare plans for churches, SACCOs, and chamas. Protect your loved ones with affordable funeral coverage." />
                 <link rel="canonical" href="https://restpoint.co.ke/calculators" />
             </Helmet>
 
@@ -77,7 +132,7 @@ const CalculatorsPage = () => {
                             textTransform: 'uppercase',
                             marginBottom: '1.5rem'
                         }}>
-                            Free Tools
+                            Funeral Insurance
                         </div>
 
                         <h1 style={{
@@ -88,7 +143,7 @@ const CalculatorsPage = () => {
                             marginBottom: '1.5rem',
                             letterSpacing: '-0.02em'
                         }}>
-                            Funeral Welfare Calculators
+                            Funeral Insurance & Welfare Plans
                         </h1>
 
                         <p style={{
@@ -98,32 +153,31 @@ const CalculatorsPage = () => {
                             maxWidth: '700px',
                             marginBottom: '2rem'
                         }}>
-                            Free interactive tools to help churches, SACCOs, and chamas plan and optimize their funeral welfare programs.
+                            Protect your family with comprehensive funeral insurance coverage. 
+                            Affordable plans designed for churches, SACCOs, chamas, and individuals.
                         </p>
                     </div>
                 </div>
 
                 {/* Content */}
                 <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '4rem 2rem' }}>
-                    {/* Calculators Grid */}
+                    {/* Features Grid */}
                     <div style={{
                         display: 'grid',
                         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                         gap: '2rem',
                         marginBottom: '4rem'
                     }}>
-                        {calculators.map((calc, idx) => {
-                            const IconComponent = calc.icon;
+                        {features.map((feature, idx) => {
+                            const IconComponent = feature.icon;
                             return (
                                 <div
                                     key={idx}
-                                    onClick={() => navigate(calc.path)}
                                     style={{
                                         background: 'white',
                                         padding: '2rem',
                                         borderRadius: '12px',
                                         border: '1px solid #E3DDD0',
-                                        cursor: 'pointer',
                                         transition: 'transform 0.2s, box-shadow 0.2s',
                                         display: 'flex',
                                         flexDirection: 'column'
@@ -157,7 +211,7 @@ const CalculatorsPage = () => {
                                         color: '#15171A',
                                         marginBottom: '0.8rem'
                                     }}>
-                                        {calc.title}
+                                        {feature.title}
                                     </h3>
 
                                     <p style={{
@@ -167,24 +221,157 @@ const CalculatorsPage = () => {
                                         marginBottom: '1.5rem',
                                         flex: 1
                                     }}>
-                                        {calc.description}
+                                        {feature.description}
                                     </p>
-
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        color: '#3D4F47',
-                                        fontSize: '0.9rem',
-                                        fontWeight: 600
-                                    }}>
-                                        Use Calculator
-                                        <ArrowRight size={16} />
-                                    </div>
                                 </div>
                             );
                         })}
                     </div>
+
+                    {/* Insurance Plans Section */}
+                    <section style={{ marginBottom: '4rem' }}>
+                        <h2 style={{
+                            fontFamily: "'Fraunces', serif",
+                            fontSize: '2rem',
+                            color: '#15171A',
+                            marginBottom: '0.5rem',
+                            textAlign: 'center'
+                        }}>
+                            Our Funeral Insurance Plans
+                        </h2>
+                        <p style={{
+                            textAlign: 'center',
+                            color: '#6B6862',
+                            marginBottom: '2rem',
+                            fontSize: '1.05rem'
+                        }}>
+                            Choose the plan that best suits your needs and budget
+                        </p>
+
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                            gap: '2rem'
+                        }}>
+                            {plans.map((plan, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        background: 'white',
+                                        padding: '2rem',
+                                        borderRadius: '12px',
+                                        border: plan.popular ? '2px solid #3D4F47' : '1px solid #E3DDD0',
+                                        position: 'relative',
+                                        textAlign: 'center',
+                                        transition: 'transform 0.2s, box-shadow 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-4px)';
+                                        e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.08)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                    }}
+                                >
+                                    {plan.popular && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '-12px',
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            background: '#3D4F47',
+                                            color: 'white',
+                                            padding: '0.25rem 1.5rem',
+                                            borderRadius: '20px',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 600,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em'
+                                        }}>
+                                            Most Popular
+                                        </div>
+                                    )}
+                                    <h3 style={{
+                                        fontFamily: "'Fraunces', serif",
+                                        fontSize: '1.5rem',
+                                        color: '#15171A',
+                                        marginBottom: '0.5rem'
+                                    }}>
+                                        {plan.name}
+                                    </h3>
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <span style={{
+                                            fontSize: '2.5rem',
+                                            fontWeight: 700,
+                                            color: '#3D4F47'
+                                        }}>
+                                            {plan.price}
+                                        </span>
+                                        <span style={{
+                                            fontSize: '0.9rem',
+                                            color: '#6B6862'
+                                        }}>
+                                            {' '}{plan.period}
+                                        </span>
+                                    </div>
+                                    <ul style={{
+                                        listStyle: 'none',
+                                        padding: 0,
+                                        margin: '1.5rem 0',
+                                        textAlign: 'left'
+                                    }}>
+                                        {plan.features.map((feature, fIdx) => (
+                                            <li key={fIdx} style={{
+                                                padding: '0.5rem 0',
+                                                borderBottom: fIdx < plan.features.length - 1 ? '1px solid #F0EDE8' : 'none',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                color: '#15171A'
+                                            }}>
+                                                <span style={{ color: '#3D4F47', fontSize: '1.2rem' }}>✓</span>
+                                                {feature}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <button
+                                        onClick={() => navigate('/register')}
+                                        style={{
+                                            background: plan.popular ? '#3D4F47' : 'white',
+                                            color: plan.popular ? '#FAF8F4' : '#3D4F47',
+                                            border: plan.popular ? 'none' : '1px solid #3D4F47',
+                                            padding: '0.75rem 2rem',
+                                            borderRadius: '4px',
+                                            fontSize: '1rem',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            width: '100%',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (plan.popular) {
+                                                e.target.style.background = '#2E3F37';
+                                            } else {
+                                                e.target.style.background = '#3D4F47';
+                                                e.target.style.color = '#FAF8F4';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (plan.popular) {
+                                                e.target.style.background = '#3D4F47';
+                                            } else {
+                                                e.target.style.background = 'white';
+                                                e.target.style.color = '#3D4F47';
+                                            }
+                                        }}
+                                    >
+                                        Get Started
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
 
                     {/* Benefits Section */}
                     <section style={{ marginBottom: '4rem' }}>
@@ -195,7 +382,7 @@ const CalculatorsPage = () => {
                             marginBottom: '2rem',
                             textAlign: 'center'
                         }}>
-                            Why Use Our Calculators?
+                            Why Choose RestPoint Funeral Insurance?
                         </h2>
 
                         <div style={{
@@ -209,24 +396,7 @@ const CalculatorsPage = () => {
                                 gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
                                 gap: '2rem'
                             }}>
-                                {[
-                                    {
-                                        title: 'Accurate Planning',
-                                        desc: 'Make informed decisions about contribution rates and benefit amounts based on real calculations.'
-                                    },
-                                    {
-                                        title: 'Save Time',
-                                        desc: 'Get instant results without manual calculations. Adjust variables and see outcomes immediately.'
-                                    },
-                                    {
-                                        title: 'Free to Use',
-                                        desc: 'All calculators are completely free. No registration or payment required.'
-                                    },
-                                    {
-                                        title: 'Expert Insights',
-                                        desc: 'Built with best practices from funeral welfare management experts across Kenya.'
-                                    }
-                                ].map((benefit, idx) => (
+                                {benefits.map((benefit, idx) => (
                                     <div key={idx} style={{ textAlign: 'center' }}>
                                         <div style={{
                                             width: '48px',
@@ -260,6 +430,68 @@ const CalculatorsPage = () => {
                         </div>
                     </section>
 
+                    {/* FAQ Section */}
+                    <section style={{ marginBottom: '4rem' }}>
+                        <h2 style={{
+                            fontFamily: "'Fraunces', serif",
+                            fontSize: '2rem',
+                            color: '#15171A',
+                            marginBottom: '2rem',
+                            textAlign: 'center'
+                        }}>
+                            Frequently Asked Questions
+                        </h2>
+
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+                            gap: '1.5rem'
+                        }}>
+                            {[
+                                {
+                                    q: 'What does funeral insurance cover?',
+                                    a: 'Funeral insurance covers funeral service costs, coffin/body transport, venue hire, burial arrangements, and other related expenses.'
+                                },
+                                {
+                                    q: 'How do I make a claim?',
+                                    a: 'Claims are processed within 24 hours. Contact our support team, provide the required documents, and we\'ll handle the rest.'
+                                },
+                                {
+                                    q: 'Can I get coverage for my group/church?',
+                                    a: 'Yes! We offer group funeral plans for churches, SACCOs, chamas, and organizations with competitive rates.'
+                                },
+                                {
+                                    q: 'What is the waiting period?',
+                                    a: 'The waiting period varies by plan. Basic plans have a 3-month waiting period, while premium plans offer immediate coverage.'
+                                }
+                            ].map((faq, idx) => (
+                                <div key={idx} style={{
+                                    background: 'white',
+                                    padding: '1.5rem',
+                                    borderRadius: '8px',
+                                    border: '1px solid #E3DDD0'
+                                }}>
+                                    <h4 style={{
+                                        fontFamily: "'Fraunces', serif",
+                                        fontSize: '1.1rem',
+                                        color: '#15171A',
+                                        marginBottom: '0.5rem'
+                                    }}>
+                                        {faq.q}
+                                    </h4>
+                                    <p style={{
+                                        fontSize: '0.95rem',
+                                        color: '#6B6862',
+                                        lineHeight: 1.6,
+                                        margin: 0
+                                    }}>
+                                        {faq.a}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
                     {/* CTA Section */}
                     <div style={{
                         background: 'linear-gradient(135deg, #3D4F47 0%, #2E3F37 100%)',
@@ -273,7 +505,7 @@ const CalculatorsPage = () => {
                             fontSize: '2rem',
                             marginBottom: '1rem'
                         }}>
-                            Need More Advanced Tools?
+                            Protect Your Loved Ones Today
                         </h3>
                         <p style={{
                             fontSize: '1.05rem',
@@ -282,7 +514,7 @@ const CalculatorsPage = () => {
                             maxWidth: '600px',
                             margin: '0 auto 2rem'
                         }}>
-                            RestPoint includes all these calculators and more, integrated directly into your welfare management dashboard.
+                            Get comprehensive funeral insurance coverage and peace of mind knowing your family is protected.
                         </p>
                         <button
                             onClick={() => navigate('/register')}
@@ -300,10 +532,10 @@ const CalculatorsPage = () => {
                                 gap: '0.5rem',
                                 transition: 'transform 0.2s'
                             }}
-                            onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
-                            onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                         >
-                            Try RestPoint Free
+                            Get Started Now
                             <ArrowRight size={18} />
                         </button>
                     </div>

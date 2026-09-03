@@ -1397,9 +1397,9 @@ const DeceasedReleaseForm = () => {
             <form onSubmit={handleSubmit} noValidate>
               {/* Section 1 */}
               <Section>
-                <SectionHead>
+                <SectionHead>      
                   <SectionNum>01</SectionNum>
-                  <SectionTitle>Receiving & Facility Information</SectionTitle>
+                  <SectionTitle>Release & Facility Information</SectionTitle>
                 </SectionHead>
 
                 <Row>
