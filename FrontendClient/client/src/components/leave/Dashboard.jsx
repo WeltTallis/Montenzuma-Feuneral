@@ -1,2372 +1,700 @@
-// 
-// NEXUS OS — Operations & Leave Management (Dashboard)
-// Modern light console: stat cards, calendar, team view,
-// leave requests, and Kenyan-holiday operations calendar.
-// Retains Nexus OS color palette with refined modern aesthetic.
-// Tailwind CSS implementation.
-// 
-import React, { useState, useEffect, useMemo, useCallback, createContext, useContext } from 'react';
-import { Doughnut } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip } from 'chart.js';
-import { useSocket } from '../../utils/context/socketContext';
-import { api, ENDPOINTS } from '../../api';
-import { getUserId, getTenantSlug, getParentTenantSlug } from '../../utils/globalAuth';
+﻿/**
+ * Leave Dashboard — Redesigned with elegant "official document" aesthetic.
+ * Retains the existing Nexus OS color palette from leaveTheme.js.
+ * Features: sidebar nav, stat cards, team calendar, leave application form,
+ * team directory with detail panel, pending requests with approve/reject.
+ */
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { COLORS, LEAVE_TYPES, leaveTypeLabel, typeStyle, statusLabel, statusStyle, MONTH_NAMES, DAY_NAMES, toDateStr, formatDate, countBusinessDays } from './leaveTheme';
 
-ChartJS.register(ArcElement, Tooltip);
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// DESIGN TOKENS — Nexus OS palette (unchanged colors, modern application)
-// These map to Tailwind color classes used throughout the dashboard.
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const LEAVE_TYPE_COLORS = {
-  Annual:    { bg: 'bg-indigo-50',  text: 'text-indigo-700',  dot: 'bg-indigo-500',  chart: '#4338CA' },
-  Sick:      { bg: 'bg-rose-50',    text: 'text-rose-700',    dot: 'bg-rose-500',    chart: '#DC2626' },
-  Emergency: { bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-500',   chart: '#D97706' },
-  Maternity: { bg: 'bg-violet-50',  text: 'text-violet-700',  dot: 'bg-violet-500',  chart: '#7C3AED' },
-  Casual:    { bg: 'bg-teal-50',    text: 'text-teal-700',    dot: 'bg-teal-500',    chart: '#059669' },
-  Study:     { bg: 'bg-cyan-50',    text: 'text-cyan-700',    dot: 'bg-cyan-500',    chart: '#0891B2' },
-  Compassionate: { bg: 'bg-pink-50', text: 'text-pink-700',  dot: 'bg-pink-500',    chart: '#DB2777' },
-  Unpaid:    { bg: 'bg-slate-100',  text: 'text-slate-600',  dot: 'bg-slate-400',  chart: '#9CA3AF' },
-};
-
-const STATUS_STYLES = {
-  pending:    { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200' },
-  approved:   { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  rejected:   { bg: 'bg-rose-50',   text: 'text-rose-700',   border: 'border-rose-200' },
-  cancelled:  { bg: 'bg-slate-100', text: 'text-slate-500',  border: 'border-slate-200' },
-};
-
-const DEFAULT_LEAVE_DAYS = 26;
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const AVATAR_COLORS = ['#4338CA', '#059669', '#D97706', '#DC2626', '#7C3AED', '#0891B2', '#DB2777'];
-const CRITICAL_DEPARTMENTS = ['Mortuary', 'Hearse/Transport', 'Body Preparation', 'Funeral Services'];
-const DEPARTMENT_ORDER = [
-  ...CRITICAL_DEPARTMENTS,
-  'Reception/Front Office',
-  'Administration',
-  'Finance',
-  'Florist',
-  'Workshop/Maintenance',
-  'Cleaning',
-  'Security',
-  'Management',
-  'General Assignment'
-];
-const ROLE_TO_DEPARTMENT = {
-  mortician: 'Mortuary',
-  embalmer: 'Body Preparation',
-  mortuary_attendant: 'Mortuary',
-  hearse_driver: 'Hearse/Transport',
-  driver: 'Hearse/Transport',
-  receptionist: 'Reception/Front Office',
-  hr: 'Administration',
-  accounts: 'Finance',
-  accountant: 'Finance',
-  florist: 'Florist',
-  technician: 'Workshop/Maintenance',
-  workshop_manager: 'Workshop/Maintenance',
-  cleaner: 'Cleaning',
-  security: 'Security',
-  admin: 'Management',
-  manager: 'Management',
-  supervisor: 'Funeral Services',
-  funeral_officer: 'Funeral Services'
-};
-
-// Kenyan Public Holidays (Month-Day format)
-const KENYAN_HOLIDAYS = [
-  { date: '01-01', name: "New Year's Day" },
-  { date: '05-01', name: 'Labour Day' },
-  { date: '06-01', name: 'Madaraka Day' },
-  { date: '10-20', name: 'Mashujaa Day' },
-  { date: '12-12', name: 'Jamhuri Day' },
-  { date: '12-25', name: 'Christmas Day' },
-  { date: '12-26', name: 'Boxing Day' }
+// Sample data for demonstration
+const EMPLOYEES = [
+  { id: 'e1', name: 'Sarah Mitchell', role: 'Senior Designer', department: 'Product', avatar: 'SM', email: 's.mitchell@corp.com', totalLeave: 26, usedLeave: 8, pendingLeave: 3, leaveHistory: [
+    { id: 'l1', employeeId: 'e1', type: 'annual', startDate: '2026-01-15', endDate: '2026-01-17', days: 3, reason: 'Family vacation', status: 'approved', appliedOn: '2026-01-08', approvedBy: 'James Park' },
+    { id: 'l2', employeeId: 'e1', type: 'sick', startDate: '2026-03-04', endDate: '2026-03-05', days: 2, reason: 'Flu recovery', status: 'approved', appliedOn: '2026-03-04', approvedBy: 'James Park' },
+    { id: 'l3', employeeId: 'e1', type: 'annual', startDate: '2026-07-21', endDate: '2026-07-23', days: 3, reason: 'Summer holiday', status: 'approved', appliedOn: '2026-07-01', approvedBy: 'James Park' },
+    { id: 'l4', employeeId: 'e1', type: 'annual', startDate: '2026-09-10', endDate: '2026-09-12', days: 3, reason: 'Personal time', status: 'pending', appliedOn: '2026-08-28' },
+  ]},
+  { id: 'e2', name: 'James Park', role: 'Engineering Manager', department: 'Engineering', avatar: 'JP', email: 'j.park@corp.com', totalLeave: 26, usedLeave: 12, pendingLeave: 0, leaveHistory: [
+    { id: 'l5', employeeId: 'e2', type: 'annual', startDate: '2026-02-10', endDate: '2026-02-14', days: 5, reason: 'Winter break', status: 'approved', appliedOn: '2026-01-20', approvedBy: 'CEO' },
+    { id: 'l6', employeeId: 'e2', type: 'study', startDate: '2026-04-07', endDate: '2026-04-09', days: 3, reason: 'AWS certification', status: 'approved', appliedOn: '2026-03-25', approvedBy: 'CEO' },
+    { id: 'l7', employeeId: 'e2', type: 'annual', startDate: '2026-08-03', endDate: '2026-08-06', days: 4, reason: 'Family trip', status: 'approved', appliedOn: '2026-07-15', approvedBy: 'CEO' },
+  ]},
+  { id: 'e3', name: 'Amara Osei', role: 'Product Manager', department: 'Product', avatar: 'AO', email: 'a.osei@corp.com', totalLeave: 26, usedLeave: 5, pendingLeave: 5, leaveHistory: [
+    { id: 'l8', employeeId: 'e3', type: 'maternity', startDate: '2026-10-01', endDate: '2026-10-31', days: 5, reason: 'Maternity leave (partial)', status: 'approved', appliedOn: '2026-08-01', approvedBy: 'James Park' },
+    { id: 'l9', employeeId: 'e3', type: 'annual', startDate: '2026-09-15', endDate: '2026-09-19', days: 5, reason: 'Pre-maternity break', status: 'pending', appliedOn: '2026-08-25' },
+  ]},
+  { id: 'e4', name: 'Liam Torres', role: 'Backend Engineer', department: 'Engineering', avatar: 'LT', email: 'l.torres@corp.com', totalLeave: 26, usedLeave: 18, pendingLeave: 2, leaveHistory: [
+    { id: 'l10', employeeId: 'e4', type: 'annual', startDate: '2026-01-02', endDate: '2026-01-10', days: 7, reason: 'New year break', status: 'approved', appliedOn: '2025-12-20', approvedBy: 'James Park' },
+    { id: 'l11', employeeId: 'e4', type: 'sick', startDate: '2026-05-12', endDate: '2026-05-14', days: 3, reason: 'Surgery recovery', status: 'approved', appliedOn: '2026-05-11', approvedBy: 'James Park', document: 'medical_cert.pdf' },
+    { id: 'l12', employeeId: 'e4', type: 'annual', startDate: '2026-06-22', endDate: '2026-06-26', days: 5, reason: 'Summer vacation', status: 'approved', appliedOn: '2026-06-01', approvedBy: 'James Park' },
+    { id: 'l13', employeeId: 'e4', type: 'unpaid', startDate: '2026-09-05', endDate: '2026-09-06', days: 2, reason: 'Family emergency', status: 'pending', appliedOn: '2026-09-01' },
+  ]},
+  { id: 'e5', name: 'Nadia Cheung', role: 'QA Lead', department: 'Engineering', avatar: 'NC', email: 'n.cheung@corp.com', totalLeave: 26, usedLeave: 4, pendingLeave: 0, leaveHistory: [
+    { id: 'l14', employeeId: 'e5', type: 'annual', startDate: '2026-03-20', endDate: '2026-03-23', days: 2, reason: 'Easter break', status: 'approved', appliedOn: '2026-03-10', approvedBy: 'James Park' },
+    { id: 'l15', employeeId: 'e5', type: 'study', startDate: '2026-07-14', endDate: '2026-07-15', days: 2, reason: 'Testing conference', status: 'approved', appliedOn: '2026-07-01', approvedBy: 'James Park' },
+  ]},
+  { id: 'e6', name: 'Omar Al-Rashid', role: 'Data Scientist', department: 'Analytics', avatar: 'OA', email: 'o.alrashid@corp.com', totalLeave: 26, usedLeave: 9, pendingLeave: 4, leaveHistory: [
+    { id: 'l16', employeeId: 'e6', type: 'annual', startDate: '2026-04-14', endDate: '2026-04-17', days: 4, reason: 'Eid celebration', status: 'approved', appliedOn: '2026-04-01', approvedBy: 'James Park' },
+    { id: 'l17', employeeId: 'e6', type: 'study', startDate: '2026-08-18', endDate: '2026-08-19', days: 2, reason: 'ML conference', status: 'approved', appliedOn: '2026-08-05', approvedBy: 'James Park' },
+    { id: 'l18', employeeId: 'e6', type: 'annual', startDate: '2026-09-22', endDate: '2026-09-25', days: 4, reason: 'Family visit', status: 'pending', appliedOn: '2026-08-30' },
+  ]},
+  { id: 'e7', name: 'Priya Sharma', role: 'HR Manager', department: 'People Ops', avatar: 'PS', email: 'p.sharma@corp.com', totalLeave: 26, usedLeave: 6, pendingLeave: 0, leaveHistory: [
+    { id: 'l19', employeeId: 'e7', type: 'annual', startDate: '2026-05-25', endDate: '2026-05-29', days: 5, reason: 'Holiday', status: 'approved', appliedOn: '2026-05-10', approvedBy: 'CEO' },
+    { id: 'l20', employeeId: 'e7', type: 'sick', startDate: '2026-08-11', endDate: '2026-08-11', days: 1, reason: 'Medical appointment', status: 'approved', appliedOn: '2026-08-11', approvedBy: 'CEO' },
+  ]},
+  { id: 'e8', name: 'Felix Brandt', role: 'DevOps Engineer', department: 'Infrastructure', avatar: 'FB', email: 'f.brandt@corp.com', totalLeave: 26, usedLeave: 14, pendingLeave: 0, leaveHistory: [
+    { id: 'l21', employeeId: 'e8', type: 'annual', startDate: '2026-07-06', endDate: '2026-07-17', days: 10, reason: 'Extended summer holiday', status: 'approved', appliedOn: '2026-06-01', approvedBy: 'James Park' },
+    { id: 'l22', employeeId: 'e8', type: 'unpaid', startDate: '2026-05-07', endDate: '2026-05-08', days: 2, reason: 'Pipe burst at home', status: 'approved', appliedOn: '2026-05-07', approvedBy: 'James Park' },
+    { id: 'l23', employeeId: 'e8', type: 'sick', startDate: '2026-08-24', endDate: '2026-08-25', days: 2, reason: 'Back pain', status: 'approved', appliedOn: '2026-08-24', approvedBy: 'James Park' },
+  ]},
 ];
 
-// ─── UTILITIES ───
-const pad2 = (n) => String(n).padStart(2, '0');
-const toYmd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-const TODAY_STR = toYmd(new Date());
-const parseDate = (str) => new Date(`${String(str || '').slice(0, 10)}T00:00:00`);
-const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
-const round1 = (v) => Math.round(num(v) * 10) / 10;
-const getInitials = (name) => (name ? String(name).trim().split(/\s+/).map((n) => n[0]).join('').slice(0, 2).toUpperCase() : '??');
-const avatarColor = (id) => AVATAR_COLORS[Math.abs(num(id)) % AVATAR_COLORS.length];
-const fmtDate = (dateStr, full = false) => {
-  if (!dateStr) return '—';
-  const d = parseDate(dateStr);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-US', full
-    ? { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
-    : { month: 'short', day: 'numeric', year: 'numeric' });
-};
-const coversDay = (leave, ymd) => {
-  const start = String(leave.start_date || '').slice(0, 10);
-  const end = String(leave.end_date || '').slice(0, 10);
-  return start <= ymd && ymd <= end;
-};
-const isPastDay = (ymd) => String(ymd).slice(0, 10) < TODAY_STR;
-const holidayOf = (ymd) => KENYAN_HOLIDAYS.find((h) => h.date === ymd.slice(5));
-
-// Type pill "kind" — drives colour classes (Emergency when flagged priority)
-const typeKind = (leave) => {
-  if (String(leave.priority || '') === 'emergency') return 'Emergency';
-  switch (String(leave.leave_type || '').toLowerCase()) {
-    case 'annual': return 'Annual';
-    case 'sick': return 'Sick';
-    case 'maternity':
-    case 'paternity': return 'Maternity';
-    default: return 'Casual';
-  }
-};
-const typeLabel = (leave) => {
-  if (String(leave.priority || '') === 'emergency') return 'Emergency';
-  const t = String(leave.leave_type || '').toLowerCase();
-  if (t === 'annual') return 'Annual';
-  if (t === 'sick') return 'Sick';
-  if (t === 'maternity') return 'Maternity';
-  if (t === 'paternity') return 'Paternity';
-  if (t === 'compassionate') return 'Compassionate';
-  if (t === 'study') return 'Study';
-  if (t === 'unpaid') return 'Unpaid';
-  return t || 'Leave';
-};
-
-const deriveDepartment = (emp) => {
-  const explicit = emp?.department || emp?.user_department || emp?.department_name;
-  if (explicit) return explicit;
-  const role = String(emp?.role || emp?.user_role || '').toLowerCase().trim();
-  if (ROLE_TO_DEPARTMENT[role]) return ROLE_TO_DEPARTMENT[role];
-  if (emp?.user_branch) return emp.user_branch;
-  return 'General Assignment';
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// GLOBAL THEME (design tokens from the Nexus OS light palette)
-// ═══════════════════════════════════════════════════════════════════════════
-const GlobalStyle = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-  :root {
-    --nx-bg: #F8F9FB;
-    --nx-surface: #FFFFFF;
-    --nx-surface-2: #F1F3F6;
-    --nx-surface-hover: #EDF0F4;
-    --nx-border: #E5E7EB;
-    --nx-border-light: #F1F3F6;
-    --nx-border-strong: #D1D5DB;
-    --nx-text: #111827;
-    --nx-text-dim: #4B5563;
-    --nx-text-mute: #9CA3AF;
-    --nx-primary: #4338CA;
-    --nx-primary-dark: #3730A3;
-    --nx-primary-light: #EEF2FF;
-    --nx-success: #059669;
-    --nx-success-light: #ECFDF5;
-    --nx-warning: #D97706;
-    --nx-warning-light: #FFFBEB;
-    --nx-danger: #DC2626;
-    --nx-danger-light: #FEF2F2;
-    --nx-purple: #7C3AED;
-    --nx-purple-light: #F5F3FF;
-    --nx-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-    --nx-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    --nx-shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
-    --nx-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  }
-  .ops-leave-root *::-webkit-scrollbar { width: 8px; height: 8px; }
-  .ops-leave-root *::-webkit-scrollbar-track { background: transparent; }
-  .ops-leave-root *::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
-  .ops-leave-root *::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
-`;
-
-// ═══════════════════════════════════════════════════════════════════════════
-// LAYOUT
-// ═══════════════════════════════════════════════════════════════════════════
-const Root = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 1.5rem;
-  color: var(--nx-text);
-  font-family: 'Inter', sans-serif;
-  -webkit-font-smoothing: antialiased;
-
-  @media (max-width: 1024px) {
-    flex-direction: column;
-  }
-`;
-
-// ─── SIDEBAR ───
-const Sidebar = styled.aside`
-  width: 300px;
-  flex-shrink: 0;
-  background: var(--nx-surface);
-  border: 1px solid var(--nx-border);
-  border-radius: 14px;
-  box-shadow: var(--nx-shadow-sm);
-  display: flex;
-  flex-direction: column;
-  position: sticky;
-  top: 0.75rem;
-  height: calc(100vh - 6rem);
-  min-height: 480px;
-  overflow: hidden;
-
-  @media (max-width: 1024px) {
-    width: 100%;
-    position: relative;
-    top: 0;
-    height: auto;
-    max-height: 70vh;
-    min-height: 380px;
-  }
-`;
-
-const SidebarHeader = styled.div`
-  padding: 1.25rem;
-  border-bottom: 1px solid var(--nx-border);
-`;
-
-const Logo = styled.div`
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 1.25rem;
-  color: var(--nx-text);
-`;
-
-const LogoIcon = styled.div`
-  width: 30px;
-  height: 30px;
-  background: var(--nx-primary);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  color: white;
-  font-size: 0.85rem;
-  box-shadow: 0 4px 6px -1px rgba(67, 56, 202, 0.2);
-`;
-
-const DeptSelect = styled.select`
-  margin-bottom: 0.75rem;
-  width: 100%;
-  padding: 0.65rem 0.85rem;
-  background: var(--nx-surface-2);
-  border: 1px solid var(--nx-border);
-  border-radius: 8px;
-  color: var(--nx-text);
-  font-size: 0.8rem;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  transition: all 0.2s;
-  &:focus { outline: none; border-color: var(--nx-primary); box-shadow: 0 0 0 3px var(--nx-primary-light); }
-`;
-
-const SearchBox = styled.div`
-  position: relative;
-  svg { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--nx-text-mute); }
-  input {
-    width: 100%;
-    padding: 0.65rem 0.85rem 0.65rem 2.25rem;
-    background: var(--nx-surface-2);
-    border: 1px solid var(--nx-border);
-    border-radius: 8px;
-    color: var(--nx-text);
-    font-size: 0.8rem;
-    font-family: 'Inter', sans-serif;
-    transition: all 0.2s;
-    &:focus { outline: none; border-color: var(--nx-primary); background: var(--nx-surface); box-shadow: 0 0 0 3px var(--nx-primary-light); }
-  }
-`;
-
-const EmployeeList = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  padding: 0.5rem;
-`;
-
-const EmployeeItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  padding: 0.75rem;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 0.25rem;
-  border: 1px solid transparent;
-  position: relative;
-  &:hover { background: var(--nx-surface-2); }
-  ${props => props.$active && `
-    background: var(--nx-primary-light);
-    border-color: rgba(67, 56, 202, 0.1);
-    &::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 25%;
-      bottom: 25%;
-      width: 3px;
-      background: var(--nx-primary);
-      border-radius: 0 3px 3px 0;
-    }
-  `}
-`;
-
-const Avatar = styled.div`
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 600;
-  font-size: 0.8rem;
-  flex-shrink: 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-`;
-
-const EmpInfo = styled.div`
-  flex: 1;
-  min-width: 0;
-`;
-
-const EmpName = styled.div`
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: var(--nx-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const EmpRole = styled.div`
-  font-size: 0.7rem;
-  color: var(--nx-text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const StatusDot = styled.div`
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-`;
-
-const ListNote = styled.div`
-  text-align: center;
-  color: var(--nx-text-mute);
-  font-size: 0.8rem;
-  padding: 2rem 1rem;
-`;
-
-// ─── MAIN CONTENT ───
-const Main = styled.main`
-  flex: 1;
-  min-width: 0;
-`;
-
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-`;
-
-const H1 = styled.h1`
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.25rem;
-  color: var(--nx-text);
-`;
-
-const Subtitle = styled.p`
-  color: var(--nx-text-dim);
-  font-size: 0.9rem;
-  margin: 0;
-`;
-
-const HeaderActions = styled.div`
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-`;
-
-const Btn = styled.button`
-  padding: 0.65rem 1.1rem;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.8rem;
-  cursor: pointer;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  transition: all 0.2s;
-  font-family: 'Inter', sans-serif;
-  white-space: nowrap;
-  ${props => {
-    switch (props.$variant) {
-      case 'primary': return `background: var(--nx-primary); color: white; box-shadow: 0 2px 4px rgba(67,56,202,0.2); &:hover { background: var(--nx-primary-dark); transform: translateY(-1px); }`;
-      case 'danger': return `background: var(--nx-danger); color: white; box-shadow: 0 2px 4px rgba(220,38,38,0.2); &:hover { background: #B91C1C; transform: translateY(-1px); }`;
-      case 'success': return `background: var(--nx-success); color: white; box-shadow: 0 2px 4px rgba(5,150,105,0.2); &:hover { background: #047857; transform: translateY(-1px); }`;
-      default: return `background: var(--nx-surface); color: var(--nx-text-dim); border: 1px solid var(--nx-border); box-shadow: var(--nx-shadow-sm); &:hover { background: var(--nx-surface-2); color: var(--nx-text); border-color: var(--nx-border-strong); }`;
-    }
-  }}
-  &:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; }
-`;
-
-// ─── OPERATIONAL CAPACITY GRID ───
-const OpsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-bottom: 2rem;
-
-  @media (max-width: 1280px) { grid-template-columns: repeat(2, 1fr); }
-  @media (max-width: 640px) { grid-template-columns: 1fr; }
-`;
-
-const OpsCard = styled.div`
-  background: var(--nx-surface);
-  border: 1px solid var(--nx-border);
-  padding: 1.25rem;
-  border-radius: 12px;
-  transition: all 0.3s;
-  position: relative;
-  overflow: hidden;
-  box-shadow: var(--nx-shadow-sm);
-  cursor: pointer;
-  &:hover { box-shadow: var(--nx-shadow); transform: translateY(-2px); }
-  ${props => props.$status === 'danger' && `
-    border-color: rgba(220, 38, 38, 0.2);
-    background: linear-gradient(135deg, var(--nx-danger-light) 0%, var(--nx-surface) 100%);
-  `}
-  ${props => props.$status === 'warning' && `
-    border-color: rgba(217, 119, 6, 0.2);
-    background: linear-gradient(135deg, var(--nx-warning-light) 0%, var(--nx-surface) 100%);
-  `}
-`;
-
-const OpsTitle = styled.div`
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--nx-text-mute);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.75rem;
-  font-family: 'JetBrains Mono', monospace;
-`;
-
-const OpsStats = styled.div`
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-`;
-
-const OpsVal = styled.span`
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: ${props => (props.$tone === 'danger' ? 'var(--nx-danger)' : props.$tone === 'warning' ? 'var(--nx-warning)' : 'var(--nx-text)')};
-`;
-
-const OpsTotal = styled.span`
-  font-size: 0.9rem;
-  color: var(--nx-text-dim);
-  font-family: 'JetBrains Mono', monospace;
-`;
-
-const OpsStatus = styled.div`
-  font-size: 0.75rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  &::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  color: ${props => (props.$tone === 'danger' ? 'var(--nx-danger)' : props.$tone === 'warning' ? 'var(--nx-warning)' : 'var(--nx-success)')};
-`;
-
-// ─── EMPLOYEE STATS GRID ───
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-
-  @media (max-width: 1280px) { grid-template-columns: repeat(2, 1fr); }
-  @media (max-width: 640px) { grid-template-columns: 1fr; }
-`;
-
-const StatCard = styled.div`
-  background: var(--nx-surface);
-  border: 1px solid var(--nx-border);
-  padding: 1.25rem;
-  border-radius: 12px;
-  box-shadow: var(--nx-shadow-sm);
-`;
-
-const StatHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-`;
-
-const StatLabel = styled.span`
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--nx-text-dim);
-`;
-
-const StatIcon = styled.div`
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: ${props => props.$bg || 'var(--nx-primary-light)'};
-  color: ${props => props.$fg || 'var(--nx-primary)'};
-`;
-
-const StatValue = styled.div`
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  letter-spacing: -0.02em;
-  color: ${props => props.$color || 'var(--nx-text)'};
-`;
-
-const StatSub = styled.div`
-  font-size: 0.7rem;
-  color: var(--nx-text-mute);
-  font-family: 'JetBrains Mono', monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-`;
-
-const ProgressBar = styled.div`
-  height: 6px;
-  background: var(--nx-surface-2);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-top: 0.5rem;
-`;
-
-const ProgressFill = styled.div`
-  height: 100%;
-  border-radius: 3px;
-  width: 0;
-  transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
-  background: ${props => props.$color || 'var(--nx-primary)'};
-  width: ${props => props.$on ? `${props.$pct}%` : '0'};
-`;
-
-// ─── DASHBOARD GRID / CARDS ───
-const DashGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1.8fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-
-  @media (max-width: 1280px) { grid-template-columns: 1fr; }
-`;
-
-const Card = styled.div`
-  background: var(--nx-surface);
-  border: 1px solid var(--nx-border);
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: var(--nx-shadow-sm);
-`;
-
-const CardHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-`;
-
-const CardTitle = styled.div`
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--nx-text);
-`;
-
-// ─── TABLE ───
-const TableContainer = styled.div`
-  overflow-x: auto;
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-`;
-
-const Th = styled.th`
-  text-align: left;
-  padding: 0.75rem 0.5rem;
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--nx-text-mute);
-  border-bottom: 1px solid var(--nx-border);
-  letter-spacing: 0.08em;
-  font-family: 'JetBrains Mono', monospace;
-  white-space: nowrap;
-`;
-
-const Td = styled.td`
-  padding: 1rem 0.5rem;
-  font-size: 0.875rem;
-  border-bottom: 1px solid var(--nx-border-light);
-  color: var(--nx-text-dim);
-  vertical-align: middle;
-`;
-
-const Tr = styled.tr`
-  transition: background 0.2s;
-  cursor: pointer;
-  &:hover td { background: var(--nx-surface-hover); }
-  &:last-child td { border-bottom: none; }
-`;
-
-const TypePill = styled.span`
-  padding: 0.25rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-  ${props => {
-    switch (props.$kind) {
-      case 'Annual': return 'background: var(--nx-success-light); color: var(--nx-success);';
-      case 'Sick': return 'background: var(--nx-danger-light); color: var(--nx-danger);';
-      case 'Maternity': return 'background: var(--nx-purple-light); color: var(--nx-purple);';
-      case 'Emergency': return `background: var(--nx-danger); color: white; animation: ${keyframes`0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }`} 2s infinite;`;
-      default: return 'background: var(--nx-warning-light); color: var(--nx-warning);';
-    }
-  }}
-`;
-
-const StatusPill = styled.span`
-  padding: 0.25rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  display: inline-block;
-  text-transform: capitalize;
-  white-space: nowrap;
-  ${props => {
-    switch (props.$status) {
-      case 'approved': return 'background: var(--nx-success-light); color: var(--nx-success);';
-      case 'pending': return 'background: var(--nx-warning-light); color: var(--nx-warning);';
-      case 'rejected': return 'background: var(--nx-danger-light); color: var(--nx-danger);';
-      default: return 'background: var(--nx-surface-2); color: var(--nx-text-mute);';
-    }
-  }}
-`;
-
-// ─── CHART ───
-const ChartContainer = styled.div`
-  position: relative;
-  height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const ChartCenterText = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  pointer-events: none;
-`;
-
-const ChartCenterVal = styled.div`
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--nx-text);
-`;
-
-const ChartCenterLabel = styled.div`
-  font-size: 0.65rem;
-  color: var(--nx-text-mute);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-family: 'JetBrains Mono', monospace;
-`;
-
-const ChartLegend = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 1rem;
-  flex-wrap: wrap;
-`;
-
-const LegendItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.75rem;
-  color: var(--nx-text-dim);
-`;
-
-const LegendDot = styled.div`
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  background: ${props => props.$color};
-`;
-
-// ─── CALENDAR ───
-const CalControls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const CalBtn = styled.button`
-  background: var(--nx-surface-2);
-  border: 1px solid var(--nx-border);
-  color: var(--nx-text-dim);
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  &:hover { color: var(--nx-primary); border-color: var(--nx-primary); background: var(--nx-primary-light); }
-`;
-
-const CalMonth = styled.span`
-  font-size: 0.875rem;
-  font-weight: 600;
-  min-width: 120px;
-  text-align: center;
-  color: var(--nx-text);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-`;
-
-const CalGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-`;
-
-const CalDayName = styled.div`
-  text-align: center;
-  font-size: 0.65rem;
-  color: var(--nx-text-mute);
-  font-weight: 600;
-  padding-bottom: 0.5rem;
-  font-family: 'JetBrains Mono', monospace;
-  text-transform: uppercase;
-`;
-
-const CalDay = styled.div`
-  aspect-ratio: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  color: var(--nx-text-dim);
-  border-radius: 8px;
-  position: relative;
-  border: 1px solid transparent;
-  background: var(--nx-surface-2);
-  ${props => props.$clickable && 'cursor: pointer; transition: all 0.2s;'}
-  ${props => props.$clickable && ':hover { border-color: var(--nx-border-strong); transform: translateY(-1px); box-shadow: var(--nx-shadow); }'}
-  ${props => props.$empty && 'background: transparent; cursor: default; pointer-events: none;'}
-  ${props => props.$today && 'border-color: var(--nx-primary); color: var(--nx-primary); background: var(--nx-primary-light); font-weight: 700;'}
-  ${props => props.$holiday && 'background: var(--nx-danger-light); color: var(--nx-danger); border: 1px solid rgba(220, 38, 38, 0.1);'}
-  ${props => props.$kind === 'Annual' && 'background: var(--nx-success-light); color: var(--nx-success); border: 1px solid rgba(5, 150, 105, 0.1);'}
-  ${props => props.$kind === 'Sick' && 'background: var(--nx-danger-light); color: var(--nx-danger); border: 1px solid rgba(220, 38, 38, 0.1);'}
-  ${props => props.$kind === 'Maternity' && 'background: var(--nx-purple-light); color: var(--nx-purple); border: 1px solid rgba(124, 58, 237, 0.1);'}
-  ${props => props.$kind === 'Emergency' && 'background: var(--nx-danger); color: white; border: 1px solid var(--nx-danger);'}
-  ${props => (props.$kind === 'Casual') && 'background: var(--nx-warning-light); color: var(--nx-warning); border: 1px solid rgba(217, 119, 6, 0.1);'}
-`;
-
-const CalHolidayTag = styled.div`
-  font-size: 0.55rem;
-  margin-top: 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  opacity: 0.9;
-  font-weight: 600;
-  line-height: 1;
-`;
-
-// ─── SIDE PANEL & MODALS ───
-const Overlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(17, 24, 39, 0.4);
-  backdrop-filter: blur(4px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s;
-  z-index: ${props => props.$z || 998};
-  ${props => props.$open && 'opacity: 1; pointer-events: auto;'}
-`;
-
-const SidePanel = styled.div`
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: ${props => props.$width || 480}px;
-  max-width: 100vw;
-  height: 100vh;
-  background: var(--nx-surface);
-  border-left: 1px solid var(--nx-border);
-  box-shadow: var(--nx-shadow-lg);
-  transform: translateX(100%);
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: ${props => props.$z || 999};
-  display: flex;
-  flex-direction: column;
-  ${props => props.$open && 'transform: translateX(0);'}
-`;
-
-const PanelHeader = styled.div`
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--nx-border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-`;
-
-const PanelTitle = styled.div`
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 1.1rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: ${props => props.$color || 'var(--nx-text)'};
-`;
-
-const PanelClose = styled.button`
-  background: var(--nx-surface-2);
-  border: 1px solid var(--nx-border);
-  cursor: pointer;
-  color: var(--nx-text-dim);
-  padding: 0.4rem;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  transition: all 0.2s;
-  &:hover { color: var(--nx-text); border-color: var(--nx-border-strong); background: var(--nx-surface-hover); }
-`;
-
-const PanelBody = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.5rem;
-`;
-
-const PanelFooter = styled.div`
-  padding: 1.5rem;
-  border-top: 1px solid var(--nx-border);
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  background: var(--nx-surface);
-  flex-wrap: wrap;
-`;
-
-const DetailSection = styled.div`
-  margin-bottom: 2rem;
-`;
-
-const DetailSectionTitle = styled.div`
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--nx-text-mute);
-  margin-bottom: 0.75rem;
-  letter-spacing: 0.1em;
-  font-family: 'JetBrains Mono', monospace;
-`;
-
-const DetailGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-`;
-
-const DetailItem = styled.div`
-  background: var(--nx-surface-2);
-  padding: 1rem;
-  border-radius: 8px;
-  border: 1px solid var(--nx-border-light);
-`;
-
-const DetailLabel = styled.div`
-  font-size: 0.65rem;
-  color: var(--nx-text-mute);
-  margin-bottom: 0.35rem;
-  text-transform: uppercase;
-  font-weight: 600;
-  font-family: 'JetBrains Mono', monospace;
-`;
-
-const DetailValue = styled.div`
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--nx-text);
-`;
-
-const ReasonBox = styled.div`
-  background: var(--nx-surface-2);
-  padding: 1rem;
-  border-radius: 8px;
-  border: 1px solid var(--nx-border-light);
-  border-left: 3px solid var(--nx-primary);
-  font-size: 0.875rem;
-  color: var(--nx-text-dim);
-  line-height: 1.5;
-`;
-
-const ActivityList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-`;
-
-const ActivityCard = styled.div`
-  border: 1px solid var(--nx-border);
-  border-radius: 10px;
-  padding: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: var(--nx-surface);
-  box-shadow: var(--nx-shadow-sm);
-  &:hover { border-color: var(--nx-primary); box-shadow: var(--nx-shadow); transform: translateY(-1px); }
-`;
-
-const ActivityHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-  gap: 0.5rem;
-`;
-
-const ActivityName = styled.div`
-  font-weight: 600;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--nx-text);
-  min-width: 0;
-`;
-
-const ActivityMeta = styled.div`
-  font-size: 0.7rem;
-  color: var(--nx-text-dim);
-`;
-
-const DocItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--nx-border);
-  border-radius: 8px;
-  color: var(--nx-text);
-  transition: all 0.2s;
-  cursor: pointer;
-  background: var(--nx-surface);
-  &:hover { border-color: var(--nx-primary); background: var(--nx-primary-light); }
-`;
-
-const DocIcon = styled.div`
-  width: 36px;
-  height: 36px;
-  background: var(--nx-danger-light);
-  color: var(--nx-danger);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-`;
-
-const DocInfo = styled.div`
-  flex: 1;
-  min-width: 0;
-`;
-
-const DocName = styled.div`
-  font-size: 0.85rem;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const DocSize = styled.div`
-  font-size: 0.7rem;
-  color: var(--nx-text-mute);
-  font-family: 'JetBrains Mono', monospace;
-`;
-
-const EmptyPanel = styled.div`
-  text-align: center;
-  color: var(--nx-text-mute);
-  padding: 3rem 0;
-  font-size: 0.875rem;
-  svg { margin-bottom: 1rem; opacity: 0.3; }
-`;
-
-const WarningBox = styled.div`
-  background: ${props => (props.$danger ? 'var(--nx-danger-light)' : 'var(--nx-warning-light)')};
-  border: 1px solid ${props => (props.$danger ? 'rgba(220, 38, 38, 0.2)' : 'rgba(217, 119, 6, 0.2)')};
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  color: ${props => (props.$danger ? '#991B1B' : '#92400E')};
-  svg { flex-shrink: 0; color: ${props => (props.$danger ? 'var(--nx-danger)' : 'var(--nx-warning)')}; }
-`;
-
-const WarningText = styled.div`
-  font-size: 0.8rem;
-  line-height: 1.4;
-`;
-
-// ─── FORMS ───
-const FormGroup = styled.div`
-  margin-bottom: 1.25rem;
-`;
-
-const FormLabel = styled.label`
-  display: block;
-  margin-bottom: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--nx-text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-`;
-
-const FormInput = styled.input`
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--nx-surface-2);
-  border: 1px solid var(--nx-border);
-  border-radius: 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.875rem;
-  color: var(--nx-text);
-  transition: all 0.2s;
-  &:focus { outline: none; border-color: var(--nx-primary); background: var(--nx-surface); box-shadow: 0 0 0 3px var(--nx-primary-light); }
-`;
-
-const FormSelect = styled.select`
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--nx-surface-2);
-  border: 1px solid var(--nx-border);
-  border-radius: 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.875rem;
-  color: var(--nx-text);
-  transition: all 0.2s;
-  &:focus { outline: none; border-color: var(--nx-primary); background: var(--nx-surface); box-shadow: 0 0 0 3px var(--nx-primary-light); }
-`;
-
-const FormTextarea = styled.textarea`
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--nx-surface-2);
-  border: 1px solid var(--nx-border);
-  border-radius: 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.875rem;
-  color: var(--nx-text);
-  min-height: 90px;
-  resize: vertical;
-  transition: all 0.2s;
-  &:focus { outline: none; border-color: var(--nx-primary); background: var(--nx-surface); box-shadow: 0 0 0 3px var(--nx-primary-light); }
-`;
-
-// ─── CENTERED MODAL (rejection / registration) ───
-const Modal = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(17, 24, 39, 0.4);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1002;
-  padding: 1rem;
-`;
-
-const ModalContent = styled.div`
-  background: var(--nx-surface);
-  border-radius: 14px;
-  box-shadow: var(--nx-shadow-lg);
-  width: 100%;
-  max-width: ${props => (props.$wide ? '640px' : '440px')};
-  max-height: 90vh;
-  overflow-y: auto;
-  padding: 1.5rem;
-  animation: ${keyframes`from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); }`} 0.25s ease both;
-`;
-
-const ModalHeaderRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.25rem;
-`;
-
-const ModalTitle = styled.div`
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 1.1rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--nx-text);
-`;
-
-// ─── TOASTS & LOADER ───
-const ToastContainer = styled.div`
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  z-index: 1003;
-`;
-
-const Toast = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.1rem;
-  border-radius: 10px;
-  color: white;
-  font-size: 0.85rem;
-  font-weight: 500;
-  box-shadow: var(--nx-shadow-md);
-  animation: ${keyframes`from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); }`} 0.3s ease both;
-  max-width: 360px;
-`;
-
-const LoadingBox = styled.div`
-  text-align: center;
-  padding: 5rem 1rem;
-  color: var(--nx-text-dim);
-  font-size: 0.9rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-  justify-content: center;
-`;
-
-const Spin = styled.div`
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--nx-border);
-  border-top-color: var(--nx-primary);
-  border-radius: 50%;
-  animation: ${keyframes`to { transform: rotate(360deg); }`} 0.8s linear infinite;
-`;
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
-const LeaveDashboard = () => {
-  const { socket, connected } = useSocket();
-
-  const [leaves, setLeaves] = useState([]);
-  const [usersOnLeave, setUsersOnLeave] = useState([]);
-  const [balances, setBalances] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [toasts, setToasts] = useState([]);
-
-  const [selectedId, setSelectedId] = useState(null);
-  const [deptFilter, setDeptFilter] = useState('all');
-  const [search, setSearch] = useState('');
-
-  const [calMonth, setCalMonth] = useState(new Date().getMonth());
-  const [calYear, setCalYear] = useState(new Date().getFullYear());
-
-  const [panel, setPanel] = useState(null); // { type: 'leave', leaveId } | { type: 'day', date }
-  const [adjustOpen, setAdjustOpen] = useState(false);
-  const [adjustForm, setAdjustForm] = useState({ employeeId: '', kind: 'add', days: 1, reason: '' });
-  const [emergencyOpen, setEmergencyOpen] = useState(false);
-  const [emergencyForm, setEmergencyForm] = useState({ employeeId: '', start: TODAY_STR, end: TODAY_STR, reason: '', submitting: false });
-  const [registerOpen, setRegisterOpen] = useState(false);
-  const [registerForm, setRegisterForm] = useState({ full_name: '', email: '', phone: '', role: 'staff', submitting: false });
-  const [rejectState, setRejectState] = useState({ open: false, leaveId: null, reason: '' });
-  const [returnsConfirmed, setReturnsConfirmed] = useState({});
-  const [barsOn, setBarsOn] = useState(false);
-
-  const showToast = useCallback((message, type = 'success') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
-  }, []);
-
-  const fetchData = useCallback(async () => {
-    try {
-      // Leaves always live in the PARENT tenant's main database (the apply flow
-      // stores rows with the parent slug). HR may be viewing from a branch
-      // context, so pin every dashboard read to the parent slug — otherwise the
-      // requests employees submit are invisible here even though they exist.
-      const parentSlug = getParentTenantSlug() || getTenantSlug() || 'system_shared';
-      const tenantHeaders = { headers: { 'x-tenant-slug': parentSlug } };
-      const [leavesRes, onLeaveRes, balancesRes] = await Promise.all([
-        api.get(ENDPOINTS.LEAVE.ALL, tenantHeaders).catch(() => ({ data: { data: [] } })),
-        api.get(ENDPOINTS.LEAVE.USERS_ON_LEAVE, tenantHeaders).catch(() => ({ data: { data: [] } })),
-        api.get(ENDPOINTS.LEAVE.BALANCES, tenantHeaders).catch(() => ({ data: { data: [] } })),
-      ]);
-      const leavesData = leavesRes?.data?.data || leavesRes?.data || [];
-      setLeaves(Array.isArray(leavesData) ? leavesData : []);
-      const onLeaveData = onLeaveRes?.data?.data || onLeaveRes?.data || [];
-      setUsersOnLeave(Array.isArray(onLeaveData) ? onLeaveData : []);
-      const balancesData = balancesRes?.data?.data || balancesRes?.data || [];
-      setBalances(Array.isArray(balancesData) ? balancesData : []);
-    } catch (error) {
-      console.error('Error fetching leave data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  // Auto-select the first employee once balances arrive
-  useEffect(() => {
-    if (!loading && balances.length > 0) {
-      setSelectedId(prev => (prev != null && balances.some(b => b.user_id === prev)
-        ? prev
-        : balances[0].user_id));
-    }
-  }, [loading, balances]);
-
-  // Animate stat progress bars on employee change
-  useEffect(() => {
-    setBarsOn(false);
-    const t = setTimeout(() => setBarsOn(true), 120);
-    return () => clearTimeout(t);
-  }, [selectedId]);
-
-  // Real-time updates
-  useEffect(() => {
-    if (!socket) return undefined;
-    const handleLeaveCreated = (data) => { if (data) showToast(`New leave request from ${data.name || 'staff'}`, 'success'); fetchData(); };
-    const handleLeaveUpdated = () => fetchData();
-    const handleDaysAdded = () => { showToast('Leave days updated successfully', 'success'); fetchData(); };
-    const handleHolidayRecorded = () => { showToast('Holiday compensation recorded', 'success'); fetchData(); };
-    socket.on('leave:created', handleLeaveCreated);
-    socket.on('leave:updated', handleLeaveUpdated);
-    socket.on('leave:days_added', handleDaysAdded);
-    socket.on('leave:holiday_recorded', handleHolidayRecorded);
-    return () => {
-      socket.off('leave:created', handleLeaveCreated);
-      socket.off('leave:updated', handleLeaveUpdated);
-      socket.off('leave:days_added', handleDaysAdded);
-      socket.off('leave:holiday_recorded', handleHolidayRecorded);
-    };
-  }, [socket, fetchData, showToast]);
-
-  // ─── DERIVED DATA ───
-  const deptOfUser = useCallback((userId) => {
-    const emp = balances.find(b => b.user_id === userId);
-    return emp ? deriveDepartment(emp) : 'General Assignment';
-  }, [balances]);
-
-  const departmentList = useMemo(() => {
-    const found = new Set(balances.map(emp => deriveDepartment(emp)));
-    return DEPARTMENT_ORDER.filter(d => found.has(d));
-  }, [balances]);
-
-  const filteredEmployees = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return balances.filter(emp => {
-      const dept = deriveDepartment(emp);
-      const matchDept = deptFilter === 'all' || dept === deptFilter;
-      const matchSearch = !q
-        || String(emp.name || '').toLowerCase().includes(q)
-        || String(emp.email || '').toLowerCase().includes(q);
-      return matchDept && matchSearch;
-    });
-  }, [balances, deptFilter, search]);
-
-  // Distinct user_ids with an APPROVED leave covering today
-  const onLeaveTodayIds = useMemo(() => {
-    const ids = new Set();
-    (usersOnLeave || []).forEach(l => { if (l?.user_id != null) ids.add(l.user_id); });
-    (leaves || []).forEach(l => {
-      if (l?.user_id != null && l.status === 'approved' && coversDay(l, TODAY_STR)) ids.add(l.user_id);
-    });
-    return ids;
-  }, [usersOnLeave, leaves]);
-
-  const opsCards = useMemo(() => {
-    const byDept = new Map();
-    balances.forEach(emp => {
-      const dept = deriveDepartment(emp);
-      if (!byDept.has(dept)) byDept.set(dept, { total: 0, absent: 0 });
-      const bucket = byDept.get(dept);
-      bucket.total += 1;
-      if (onLeaveTodayIds.has(emp.user_id)) bucket.absent += 1;
-    });
-    let depts = [...byDept.keys()]
-      .sort((a, b) => (DEPARTMENT_ORDER.indexOf(a) - DEPARTMENT_ORDER.indexOf(b)));
-    if (depts.length === 1 && depts[0] === 'General Assignment') depts = ['Overall Operations'];
-    return depts.slice(0, 4).map(dept => {
-      const bucket = byDept.get(dept) || { total: balances.length, absent: 0 };
-      const available = bucket.total - bucket.absent;
-      let status = '';
-      let text = 'Fully Operational';
-      if (available <= 0) { status = 'danger'; text = 'CRITICAL: No Staff'; }
-      else if (available === 1 && bucket.total > 2) { status = 'warning'; text = 'Warning: Minimal Staff'; }
-      return { dept, total: bucket.total, absent: bucket.absent, available, status, text };
-    });
-  }, [balances, onLeaveTodayIds]);
-
-  const selectedBal = useMemo(
-    () => balances.find(b => b.user_id === selectedId) || null,
-    [balances, selectedId]
+const ALL_LEAVE_RECORDS = EMPLOYEES.flatMap(e => e.leaveHistory);
+const PENDING_REQUESTS = ALL_LEAVE_RECORDS.filter(r => r.status === 'pending');
+const CURRENT_USER = EMPLOYEES[0];
+
+// Helpers
+function getDaysInMonth(year, month) { return new Date(year, month + 1, 0).getDate(); }
+function getFirstDayOfMonth(year, month) { return new Date(year, month, 1).getDay(); }
+function dateInRange(dateStr, start, end) { const d = new Date(dateStr).getTime(); return d >= new Date(start).getTime() && d <= new Date(end).getTime(); }
+
+function Avatar({ initials, size = 'md' }) {
+  const colors = ['bg-emerald-100 text-emerald-700', 'bg-blue-100 text-blue-700', 'bg-purple-100 text-purple-700', 'bg-rose-100 text-rose-700', 'bg-amber-100 text-amber-700'];
+  const colorIdx = initials.charCodeAt(0) % colors.length;
+  const sizeClass = { sm: 'w-7 h-7 text-xs', md: 'w-9 h-9 text-sm', lg: 'w-12 h-12 text-base' }[size];
+  return <div className={`${sizeClass} ${colors[colorIdx]} rounded-full flex items-center justify-center font-semibold flex-shrink-0`}>{initials}</div>;
+}
+
+function LeaveBadge({ type }) {
+  const s = typeStyle(type);
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: s.bg, color: s.fg }}>
+      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.fg }} />
+      {leaveTypeLabel(type)}
+    </span>
   );
+}
 
-  const selectedStats = useMemo(() => {
-    if (!selectedBal) return null;
-    return {
-      total: round1(num(selectedBal.initial) + num(selectedBal.manualAdditions) + num(selectedBal.holidayCompensations) || DEFAULT_LEAVE_DAYS),
-      used: round1(selectedBal.leaveTaken),
-      remaining: round1(selectedBal.currentBalance),
-      pending: round1(selectedBal.pendingDays)
-    };
-  }, [selectedBal]);
+function StatusBadge({ status }) {
+  const s = statusStyle(status);
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize" style={{ backgroundColor: s.bg, color: s.fg }}>
+      {statusLabel(status)}
+    </span>
+  );
+}
 
-  const selectedLeaves = useMemo(() => {
-    if (selectedId == null) return [];
-    return (leaves || [])
-      .filter(l => l.user_id === selectedId)
-      .sort((a, b) => String(b.start_date).localeCompare(String(a.start_date)));
-  }, [leaves, selectedId]);
+function LeaveBar({ used, pending, total }) {
+  const usedPct = (used / total) * 100;
+  const pendingPct = (pending / total) * 100;
+  return (
+    <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: COLORS.border }}>
+      <div className="h-full flex">
+        <div className="h-full" style={{ width: `${usedPct}%`, backgroundColor: COLORS.success }} />
+        <div className="h-full" style={{ width: `${pendingPct}%`, backgroundColor: COLORS.warning }} />
+      </div>
+    </div>
+  );
+}
 
-  const distribution = useMemo(() => {
-    const counts = { Annual: 0, Sick: 0, Maternity: 0, Other: 0 };
-    (leaves || []).forEach(l => {
-      if (l.user_id !== selectedId || l.status !== 'approved') return;
-      const kind = typeKind(l);
-      if (kind === 'Annual') counts.Annual += num(l.days);
-      else if (kind === 'Sick' || kind === 'Emergency') counts.Sick += num(l.days);
-      else if (kind === 'Maternity') counts.Maternity += num(l.days);
-      else counts.Other += num(l.days);
-    });
-    return {
-      values: [round1(counts.Annual), round1(counts.Sick), round1(counts.Maternity), round1(counts.Other)],
-      totalUsed: round1(counts.Annual + counts.Sick + counts.Maternity + counts.Other)
-    };
-  }, [leaves, selectedId]);
+function CalendarView({ records, compact = false, selectable = false, onRangeSelect }) {
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
+  const [dragStart, setDragStart] = useState(null);
+  const [dragEnd, setDragEnd] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const chartData = useMemo(() => ({
-    labels: ['Annual', 'Sick', 'Maternity', 'Other'],
-    datasets: [{
-      data: distribution.values,
-      backgroundColor: ['#059669', '#DC2626', '#7C3AED', '#D97706'],
-      borderWidth: 2,
-      borderColor: '#FFFFFF',
-      hoverOffset: 4
-    }]
-  }), [distribution]);
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDayOfMonth(year, month);
+  const pad = Array.from({ length: firstDay });
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const chartOptions = useMemo(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    cutout: '75%',
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#111827',
-        titleColor: '#F9FAFB',
-        bodyColor: '#D1D5DB',
-        borderColor: 'rgba(0,0,0,0.1)',
-        borderWidth: 1,
-        padding: 12,
-        boxPadding: 4,
-        usePointStyle: true
-      }
-    }
-  }), []);
+  const toDateStrLocal = (day) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-  // ─── ACTIONS ───
-  const selectEmployee = (id) => setSelectedId(id);
-  const closePanel = () => setPanel(null);
-
-  const openLeavePanel = (leaveId) => setPanel({ type: 'leave', leaveId });
-  const openDayPanel = (dateStr) => setPanel({ type: 'day', date: String(dateStr).slice(0, 10) });
-
-  const changeMonth = (dir) => {
-    setCalMonth(prev => {
-      let m = prev + dir;
-      let y = calYear;
-      if (m < 0) { m = 11; y -= 1; }
-      else if (m > 11) { m = 0; y += 1; }
-      setCalYear(y);
-      return m;
-    });
-  };
-
-  const approveLeave = async (leaveId) => {
-    try {
-      await api.patch(ENDPOINTS.LEAVE.UPDATE_STATUS(leaveId), {
-        status: 'approved',
-        approved_by: getUserId() || 1
-      });
-      showToast('Leave request approved', 'success');
-      fetchData();
-    } catch (error) {
-      console.error('Error approving leave:', error);
-      showToast('Failed to approve leave', 'error');
-    }
-  };
-
-  const submitRejection = async () => {
-    if (!rejectState.reason.trim()) { showToast('Please provide a rejection reason', 'warning'); return; }
-    try {
-      await api.patch(ENDPOINTS.LEAVE.UPDATE_STATUS(rejectState.leaveId), {
-        status: 'rejected',
-        rejection_reason: rejectState.reason,
-        approved_by: getUserId() || 1
-      });
-      setRejectState({ open: false, leaveId: null, reason: '' });
-      showToast('Leave request rejected', 'warning');
-      fetchData();
-    } catch (error) {
-      console.error('Error rejecting leave:', error);
-      showToast('Failed to reject leave', 'error');
-    }
-  };
-
-  const confirmReturn = (leaveId) => {
-    setReturnsConfirmed(prev => ({ ...prev, [leaveId]: true }));
-    showToast('Return to work recorded', 'success');
-  };
-
-  const openAdjustModal = () => {
-    setAdjustForm({ employeeId: selectedId != null ? String(selectedId) : '', kind: 'add', days: 1, reason: '' });
-    setAdjustOpen(true);
-  };
-
-  const submitAdjustment = async () => {
-    const { employeeId, kind, days, reason } = adjustForm;
-    if (!employeeId) { showToast('Please select an employee', 'error'); return; }
-    const dayCount = parseInt(days, 10);
-    if (!dayCount || dayCount < 1) { showToast('Enter a valid number of days', 'error'); return; }
-    if (!reason.trim()) { showToast('Please provide a reason / note', 'error'); return; }
-    try {
-      if (kind === 'holiday') {
-        await api.post(ENDPOINTS.LEAVE.HOLIDAY_COMPENSATION, {
-          user_id: employeeId,
-          holiday_date: TODAY_STR,
-          holiday_name: reason.trim(),
-          note: reason.trim(),
-          recorded_by: getUserId() || 1
-        });
-        showToast('Holiday compensation recorded (+1 day)', 'success');
-      } else {
-        const prefix = kind === 'carry' ? 'Carry-forward: ' : '';
-        await api.post(ENDPOINTS.LEAVE.ADD_DAYS, {
-          user_id: employeeId,
-          days: dayCount,
-          reason: `${prefix}${reason.trim()}`,
-          added_by: getUserId() || 1
-        });
-        showToast(`Balance updated (+${dayCount} days)`, 'success');
-      }
-      setAdjustOpen(false);
-      fetchData();
-    } catch (error) {
-      console.error('Error applying adjustment:', error);
-      showToast(error?.response?.data?.message || 'Failed to apply adjustment', 'error');
-    }
-  };
-
-  const openEmergencyModal = () => {
-    setEmergencyForm({
-      employeeId: selectedId != null ? String(selectedId) : '',
-      start: TODAY_STR,
-      end: TODAY_STR,
-      reason: '',
-      submitting: false
-    });
-    setEmergencyOpen(true);
-  };
-
-  const submitEmergencyLeave = async () => {
-    const { employeeId, start, end, reason } = emergencyForm;
-    if (!employeeId) { showToast('Please select an employee', 'error'); return; }
-    if (!reason.trim()) { showToast('Please provide a reason for the emergency', 'error'); return; }
-    if (String(end) < String(start)) { showToast('End date must be after start date', 'error'); return; }
-    setEmergencyForm(prev => ({ ...prev, submitting: true }));
-    try {
-      const applyRes = await api.post(ENDPOINTS.LEAVE.APPLY, {
-        user_id: employeeId,
-        leave_type: 'annual',
-        priority: 'emergency',
-        start_date: start,
-        end_date: end,
-        reason: `[EMERGENCY] ${reason.trim()}`,
-        is_half_day: false
-      });
-      const created = applyRes?.data?.data;
-      if (created?.id) {
-        await api.patch(ENDPOINTS.LEAVE.UPDATE_STATUS(created.id), {
-          status: 'approved',
-          approved_by: getUserId() || 1
-        });
-      }
-      setEmergencyOpen(false);
-      showToast('Emergency leave logged (auto-approved, HR validation on return)', 'warning');
-      fetchData();
-    } catch (error) {
-      console.error('Error logging emergency leave:', error);
-      showToast(error?.response?.data?.message || 'Failed to log emergency leave', 'error');
-    } finally {
-      setEmergencyForm(prev => ({ ...prev, submitting: false }));
-    }
-  };
-
-  const submitRegisterEmployee = async () => {
-    const { full_name, email, phone, role } = registerForm;
-    if (!full_name.trim() || !email.trim()) { showToast('Please provide employee name and email', 'error'); return; }
-    setRegisterForm(prev => ({ ...prev, submitting: true }));
-    try {
-      const response = await api.post(ENDPOINTS.LEAVE.ADD_EMPLOYEE, {
-        full_name: full_name.trim(),
-        email: email.trim(),
-        phone: phone.trim() || undefined,
-        role: role || 'staff'
-      });
-      if (response?.data?.status === 'success') {
-        showToast(response.data.message || 'Employee registered successfully', 'success');
-        setRegisterOpen(false);
-        setRegisterForm({ full_name: '', email: '', phone: '', role: 'staff', submitting: false });
-        fetchData();
-      } else {
-        showToast(response?.data?.message || 'Failed to register employee', 'error');
-        setRegisterForm(prev => ({ ...prev, submitting: false }));
-      }
-    } catch (error) {
-      console.error('Error registering employee:', error);
-      showToast(error?.response?.data?.message || 'Failed to register employee', 'error');
-      setRegisterForm(prev => ({ ...prev, submitting: false }));
-    }
-  };
-
-  // ─── CALENDAR CELLS ───
-  const calendarCells = useMemo(() => {
-    const cells = [];
-    const firstDay = new Date(calYear, calMonth, 1).getDay();
-    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-    for (let i = 0; i < firstDay; i += 1) cells.push(<CalDay key={`e${i}`} className="empty" $empty />);
-    for (let day = 1; day <= daysInMonth; day += 1) {
-      const dateStr = `${calYear}-${pad2(calMonth + 1)}-${pad2(day)}`;
-      const holiday = holidayOf(dateStr);
-      let kind = '';
-      let mine = false;
-      (leaves || []).forEach(l => {
-        if (l.user_id !== selectedId) return;
-        if (l.status === 'rejected' || l.status === 'cancelled') return;
-        if (coversDay(l, dateStr)) { mine = true; kind = typeKind(l); }
-      });
-      let others = 0;
-      (leaves || []).forEach(l => {
-        if (l.user_id === selectedId || l.status !== 'approved') return;
-        if (coversDay(l, dateStr)) others += 1;
-      });
-      const clickable = Boolean(holiday || mine || others > 0);
-      cells.push(
-        <CalDay
-          key={dateStr}
-          $today={dateStr === TODAY_STR}
-          $holiday={Boolean(holiday)}
-          $kind={holiday ? '' : kind}
-          $clickable={clickable}
-          onClick={clickable ? () => openDayPanel(dateStr) : undefined}
-        >
-          <span>{day}</span>
-          {holiday && <CalHolidayTag>{holiday.name.split(' ')[0]}</CalHolidayTag>}
-        </CalDay>
-      );
-    }
-    return cells;
-  }, [calYear, calMonth, leaves, selectedId]);
-
-  if (loading) {
-    return (
-      <Root className="ops-leave-root">
-        <GlobalStyle />
-        <LoadingBox>
-          <Spin />
-          <span>Loading leave data...</span>
-        </LoadingBox>
-      </Root>
-    );
+  function getRecordsForDay(day) {
+    const ds = toDateStrLocal(day);
+    return records.filter(r => dateInRange(ds, r.startDate, r.endDate) && r.status !== 'cancelled');
   }
+
+  function isInDragRange(day) {
+    if (!dragStart || !dragEnd) return false;
+    const ds = toDateStrLocal(day);
+    const a = dragStart < dragStart ? dragStart : dragEnd;
+    const b = dragStart < dragEnd ? dragEnd : dragStart;
+    return ds >= a && ds <= b;
+  }
+
+  function handleMouseDown(day) {
+    if (!selectable) return;
+    const ds = toDateStrLocal(day);
+    setDragStart(ds);
+    setDragEnd(ds);
+    setIsDragging(true);
+  }
+
+  function handleMouseEnter(day) {
+    if (!isDragging || !selectable) return;
+    setDragEnd(toDateStrLocal(day));
+  }
+
+  function handleMouseUp(day) {
+    if (!selectable || !dragStart) return;
+    const end = toDateStrLocal(day);
+    setIsDragging(false);
+    const a = dragStart < end ? dragStart : end;
+    const b = dragStart < end ? end : dragStart;
+    onRangeSelect?.(a, b);
+    setDragStart(null);
+    setDragEnd(null);
+  }
+
+  const cellH = compact ? 'h-14' : 'h-24';
+  const todayStr = toDateStr(today);
 
   return (
-    <Root className="ops-leave-root">
-      <GlobalStyle />
+    <div className="select-none" onMouseLeave={() => { if (isDragging) setIsDragging(false); }}>
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={() => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); }}
+          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors">
+          &larr;
+        </button>
+        <span className="font-serif text-lg" style={{ color: COLORS.text }}>{MONTH_NAMES[month]} {year}</span>
+        <button onClick={() => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); }}
+          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors">
+          &rarr;
+        </button>
+      </div>
+      <div className="grid grid-cols-7 mb-1">
+        {DAY_NAMES.map(d => <div key={d} className="text-center text-xs font-medium py-1" style={{ color: COLORS.textSecondary }}>{d}</div>)}
+      </div>
+      <div className="grid grid-cols-px gap-px rounded-xl overflow-hidden" style={{ backgroundColor: COLORS.border, border: `1px solid ${COLORS.border}` }}>
+        {pad.map((_, i) => <div key={`p${i}`} className="bg-white" />)}
+        {days.map(day => {
+          const ds = toDateStrLocal(day);
+          const dayRecords = getRecordsForDay(day);
+          const isToday = ds === todayStr;
+          const inRange = isInDragRange(day);
+          const isWeekend = ((firstDay + day - 1) % 7 === 0 || (firstDay + day - 1) % 7 === 6);
+          return (
+            <div key={day} onMouseDown={() => handleMouseDown(day)} onMouseEnter={() => handleMouseEnter(day)} onMouseUp={() => handleMouseUp(day)}
+              className={`bg-white ${cellH} p-1 overflow-hidden transition-colors ${selectable ? 'cursor-pointer' : ''} ${isWeekend ? 'bg-gray-50' : ''}`}
+              style={{ backgroundColor: inRange ? 'rgba(10, 36, 99, 0.06)' : undefined }}>
+              <div className="w-6 h-6 flex items-center justify-center rounded-full text-xs font-medium mb-1"
+                style={{ backgroundColor: isToday ? COLORS.primary : 'transparent', color: isToday ? '#fff' : COLORS.text }}>
+                {day}
+              </div>
+              {!compact && dayRecords.slice(0, 2).map(r => {
+                const c = typeStyle(r.type);
+                const emp = EMPLOYEES.find(e => e.id === r.employeeId);
+                return (
+                  <div key={r.id} className="text-xs px-1 py-0.5 rounded mb-0.5 truncate leading-tight" style={{ backgroundColor: c.bg, color: c.fg }}>
+                    {emp?.name.split(' ')[0]} &middot; {leaveTypeLabel(r.type)}
+                  </div>
+                );
+              })}
+              {!compact && dayRecords.length > 2 && <div className="text-xs px-1" style={{ color: COLORS.textSecondary }}>+{dayRecords.length - 2} more</div>}
+              {compact && dayRecords.length > 0 && (
+                <div className="flex gap-0.5 flex-wrap">
+                  {dayRecords.slice(0, 3).map(r => <span key={r.id} className="w-2 h-2 rounded-full" style={{ backgroundColor: typeStyle(r.type).fg }} />)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {selectable && <p className="text-xs mt-3 text-center" style={{ color: COLORS.textSecondary }}>Click and drag to select your leave dates</p>}
+    </div>
+  );
+}
 
-      {/* ─── SIDEBAR ─── */}
-      <Sidebar>
-        <SidebarHeader>
-          <Logo>
-            <LogoIcon>N</LogoIcon>
-            NEXUS OS
-          </Logo>
-          <DeptSelect value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
-            <option value="all">All Departments</option>
-            {departmentList.map(d => <option key={d} value={d}>{d}</option>)}
-          </DeptSelect>
-          <SearchBox>
-            <Search size={16} />
-            <input
-              type="text"
-              value={search}
-              placeholder="Search personnel..."
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </SearchBox>
-        </SidebarHeader>
-        <EmployeeList>
-          {filteredEmployees.length === 0 ? (
-            <ListNote>No personnel match this view</ListNote>
-          ) : filteredEmployees.map(emp => {
-            const remaining = round1(emp.currentBalance);
+function DashboardView({ onNavigate }) {
+  const totalEmployees = EMPLOYEES.length;
+  const onLeaveToday = ALL_LEAVE_RECORDS.filter(r => { const today = '2026-09-01'; return r.status === 'approved' && dateInRange(today, r.startDate, r.endDate); }).length;
+
+  const stats = [
+    { label: 'Total Employees', value: totalEmployees, sub: 'Active headcount', icon: '👥' },
+    { label: 'On Leave Today', value: onLeaveToday, sub: 'Sep 1, 2026', icon: '🏖️' },
+    { label: 'Pending Requests', value: PENDING_REQUESTS.length, sub: 'Awaiting approval', icon: '⏳' },
+    { label: 'Avg. Leave Used', value: '9.5', sub: 'Days per employee', icon: '📊' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-4 gap-4">
+        {stats.map(s => (
+          <div key={s.label} className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow" style={{ border: `1px solid ${COLORS.border}` }}>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: COLORS.textSecondary }}>{s.label}</p>
+                <p className="font-serif text-3xl" style={{ color: COLORS.text }}>{s.value}</p>
+                <p className="text-xs mt-1" style={{ color: COLORS.textSecondary }}>{s.sub}</p>
+              </div>
+              <span className="text-2xl">{s.icon}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-2 bg-white rounded-2xl p-5 shadow-sm" style={{ border: `1px solid ${COLORS.border}` }}>
+          <h3 className="font-serif text-lg mb-4" style={{ color: COLORS.text }}>Team Calendar Overview</h3>
+          <CalendarView records={ALL_LEAVE_RECORDS} compact={false} />
+        </div>
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: `1px solid ${COLORS.border}` }}>
+            <h3 className="font-medium text-sm mb-3" style={{ color: COLORS.text }}>Leave Types</h3>
+            {LEAVE_TYPES.filter(t => ['annual', 'sick', 'maternity', 'study', 'unpaid'].includes(t)).map(type => (
+              <div key={type} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: COLORS.border }}>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: typeStyle(type).fg }} />
+                  <span className="text-sm" style={{ color: COLORS.text }}>{leaveTypeLabel(type)}</span>
+                </div>
+                <span className="text-xs font-mono" style={{ color: COLORS.textSecondary }}>
+                  {ALL_LEAVE_RECORDS.filter(r => r.type === type && r.status === 'approved').reduce((a, r) => a + r.days, 0)}d
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: `1px solid ${COLORS.border}` }}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-medium text-sm" style={{ color: COLORS.text }}>Pending Approval</h3>
+              <button onClick={() => onNavigate('requests')} className="text-xs hover:underline" style={{ color: COLORS.info }}>View all</button>
+            </div>
+            <div className="space-y-2">
+              {PENDING_REQUESTS.slice(0, 4).map(r => {
+                const emp = EMPLOYEES.find(e => e.id === r.employeeId);
+                return (
+                  <div key={r.id} className="flex items-center gap-2 py-2 border-b last:border-0" style={{ borderColor: COLORS.border }}>
+                    <Avatar initials={emp?.avatar} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate" style={{ color: COLORS.text }}>{emp?.name.split(' ')[0]}</p>
+                      <p className="text-xs" style={{ color: COLORS.textSecondary }}>{r.days}d &middot; {leaveTypeLabel(r.type)}</p>
+                    </div>
+                    <StatusBadge status="pending" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamView() {
+  const [selected, setSelected] = useState(null);
+  const [search, setSearch] = useState('');
+  const [deptFilter, setDeptFilter] = useState('All');
+
+  const depts = ['All', ...Array.from(new Set(EMPLOYEES.map(e => e.department)))];
+  const filtered = EMPLOYEES.filter(e => (deptFilter === 'All' || e.department === deptFilter) && e.name.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="flex gap-4 h-full">
+      <div className="w-72 flex-shrink-0 flex flex-col gap-3">
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search employees..."
+          className="w-full px-3 py-2 text-sm rounded-xl focus:outline-none focus:ring-2 bg-white"
+          style={{ border: `1px solid ${COLORS.border}`, '--tw-ring-color': COLORS.info }} />
+        <div className="flex gap-1.5 flex-wrap">
+          {depts.map(d => (
+            <button key={d} onClick={() => setDeptFilter(d)}
+              className="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+              style={{ backgroundColor: deptFilter === d ? COLORS.primary : '#fff', color: deptFilter === d ? '#fff' : COLORS.text, border: `1px solid ${deptFilter === d ? COLORS.primary : COLORS.border}` }}>
+              {d}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-1.5">
+          {filtered.map(emp => {
+            const remaining = emp.totalLeave - emp.usedLeave - emp.pendingLeave;
+            const isSelected = selected?.id === emp.id;
             return (
-              <EmployeeItem
-                key={emp.user_id}
-                $active={emp.user_id === selectedId}
-                onClick={() => selectEmployee(emp.user_id)}
-              >
-                <Avatar style={{ background: avatarColor(emp.user_id) }}>{getInitials(emp.name)}</Avatar>
-                <EmpInfo>
-                  <EmpName>{emp.name || 'Unknown'}</EmpName>
-                  <EmpRole>{emp.email || '—'}</EmpRole>
-                </EmpInfo>
-                <StatusDot style={{ background: remaining > 0 ? 'var(--nx-success)' : 'var(--nx-danger)' }} />
-              </EmployeeItem>
+              <button key={emp.id} onClick={() => setSelected(emp)}
+                className="w-full text-left p-3 rounded-xl transition-all"
+                style={{ backgroundColor: isSelected ? 'rgba(10, 36, 99, 0.06)' : '#fff', border: `1px solid ${isSelected ? COLORS.primary : COLORS.border}` }}>
+                <div className="flex items-center gap-2.5">
+                  <Avatar initials={emp.avatar} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{emp.name}</p>
+                    <p className="text-xs truncate" style={{ color: COLORS.textSecondary }}>{emp.role}</p>
+                  </div>
+                  <span className="text-xs font-mono font-semibold" style={{ color: remaining < 5 ? COLORS.danger : COLORS.success }}>{remaining}d</span>
+                </div>
+                <div className="mt-2"><LeaveBar used={emp.usedLeave} pending={emp.pendingLeave} total={emp.totalLeave} /></div>
+              </button>
             );
           })}
-        </EmployeeList>
-      </Sidebar>
-
-      {/* ─── MAIN ─── */}
-      <Main>
-        <Header>
-          <div>
-            <H1>{selectedBal ? `${selectedBal.name || 'Employee'} — Leave Profile` : 'Operations Dashboard'}</H1>
-            <Subtitle>
-              {selectedBal
-                ? `${deptOfUser(selectedId)} • ${selectedBal.email || ''}`
-                : 'Monitor capacity and manage personnel leave'}
-            </Subtitle>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {selected ? <EmployeeDetail employee={selected} /> : (
+          <div className="h-full flex items-center justify-center" style={{ color: COLORS.textSecondary }}>
+            <div className="text-center"><div className="text-4xl mb-3">👈</div><p className="text-sm">Select an employee to view their leave details</p></div>
           </div>
-          <HeaderActions>
-            {!connected && (
-              <WarningBox $danger style={{ margin: 0, padding: '0.6rem 0.9rem' }}>
-                <WarningText>Real-time updates disconnected</WarningText>
-              </WarningBox>
-            )}
-            <Btn $variant="secondary" onClick={() => setRegisterOpen(true)}>
-              <UserPlus size={14} />
-              Register Employee
-            </Btn>
-            <Btn $variant="secondary" onClick={openAdjustModal}>
-              <SlidersHorizontal size={14} />
-              Adjust Balances
-            </Btn>
-            <Btn $variant="danger" onClick={openEmergencyModal}>
-              <Zap size={14} />
-              Emergency Leave
-            </Btn>
-          </HeaderActions>
-        </Header>
-
-        {!selectedBal ? (
-          <LoadingBox>
-            <Users size={40} style={{ opacity: 0.3 }} />
-            <span>No personnel found. Register an employee to get started.</span>
-          </LoadingBox>
-        ) : (
-          <>
-            {/* Operational Capacity */}
-            <OpsGrid>
-              {opsCards.map(card => (
-                <OpsCard
-                  key={card.dept}
-                  $status={card.status}
-                  onClick={() => setDeptFilter(departmentList.includes(card.dept) ? card.dept : 'all')}
-                >
-                  <OpsTitle>{card.dept}</OpsTitle>
-                  <OpsStats>
-                    <OpsVal $tone={card.status || 'ok'}>{card.available}</OpsVal>
-                    <OpsTotal>/ {card.total} Available</OpsTotal>
-                  </OpsStats>
-                  <OpsStatus $tone={card.status || 'ok'}>
-                    {card.text}{card.absent > 0 ? ` (${card.absent} on leave)` : ''}
-                  </OpsStatus>
-                </OpsCard>
-              ))}
-            </OpsGrid>
-
-            {/* Employee Leave Stats */}
-            <StatsGrid>
-              <StatCard>
-                <StatHeader>
-                  <StatLabel>Total Allocation</StatLabel>
-                  <StatIcon $bg="var(--nx-primary-light)" $fg="var(--nx-primary)"><Calendar size={16} /></StatIcon>
-                </StatHeader>
-                <StatValue $color="var(--nx-primary)">{selectedStats?.total ?? 0}</StatValue>
-                <StatSub>Days / Year</StatSub>
-                <ProgressBar>
-                  <ProgressFill $on={barsOn} $pct={100} $color="var(--nx-primary)" />
-                </ProgressBar>
-              </StatCard>
-              <StatCard>
-                <StatHeader>
-                  <StatLabel>Used Leave</StatLabel>
-                  <StatIcon $bg="var(--nx-danger-light)" $fg="var(--nx-danger)"><CheckCircle size={16} /></StatIcon>
-                </StatHeader>
-                <StatValue $color="var(--nx-danger)">{selectedStats?.used ?? 0}</StatValue>
-                <StatSub>Days Taken</StatSub>
-                <ProgressBar>
-                  <ProgressFill
-                    $on={barsOn}
-                    $pct={Math.min(((selectedStats?.used || 0) / (selectedStats?.total || 1)) * 100, 100)}
-                    $color="var(--nx-danger)"
-                  />
-                </ProgressBar>
-              </StatCard>
-              <StatCard>
-                <StatHeader>
-                  <StatLabel>Remaining</StatLabel>
-                  <StatIcon $bg="var(--nx-success-light)" $fg="var(--nx-success)"><Wallet size={16} /></StatIcon>
-                </StatHeader>
-                <StatValue $color="var(--nx-success)">{selectedStats?.remaining ?? 0}</StatValue>
-                <StatSub>Days Available</StatSub>
-                <ProgressBar>
-                  <ProgressFill
-                    $on={barsOn}
-                    $pct={Math.min(((selectedStats?.remaining || 0) / (selectedStats?.total || 1)) * 100, 100)}
-                    $color="var(--nx-success)"
-                  />
-                </ProgressBar>
-              </StatCard>
-              <StatCard>
-                <StatHeader>
-                  <StatLabel>Pending Requests</StatLabel>
-                  <StatIcon $bg="var(--nx-warning-light)" $fg="var(--nx-warning)"><Clock size={16} /></StatIcon>
-                </StatHeader>
-                <StatValue $color="var(--nx-warning)">{selectedStats?.pending ?? 0}</StatValue>
-                <StatSub>Awaiting Approval</StatSub>
-                <ProgressBar>
-                  <ProgressFill
-                    $on={barsOn}
-                    $pct={Math.min(((selectedStats?.pending || 0) / (selectedStats?.total || 1)) * 100, 100)}
-                    $color="var(--nx-warning)"
-                  />
-                </ProgressBar>
-              </StatCard>
-            </StatsGrid>
-
-            {/* Requests + Distribution */}
-            <DashGrid>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Leave Requests (Click row for details)</CardTitle>
-                </CardHeader>
-                <TableContainer>
-                  <Table>
-                    <thead>
-                      <tr>
-                        <Th>Employee</Th>
-                        <Th>Type</Th>
-                        <Th>Dates</Th>
-                        <Th>Days</Th>
-                        <Th>Status</Th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedLeaves.length === 0 ? (
-                        <tr>
-                          <Td colSpan={5} style={{ textAlign: 'center', color: 'var(--nx-text-mute)', cursor: 'default' }}>
-                            No leave requests found
-                          </Td>
-                        </tr>
-                      ) : selectedLeaves.map(leave => (
-                        <Tr key={leave.id} onClick={() => openLeavePanel(leave.id)}>
-                          <Td style={{ fontWeight: 600, color: 'var(--nx-text)' }}>
-                            {leave.name || selectedBal?.name || 'Unknown'}
-                          </Td>
-                          <Td>
-                            <TypePill $kind={typeKind(leave)}>{typeLabel(leave)}</TypePill>
-                          </Td>
-                          <Td style={{ fontSize: '0.8rem' }}>
-                            {fmtDate(leave.start_date)}
-                          </Td>
-                          <Td style={{ fontWeight: 500, color: 'var(--nx-text)' }}>{round1(leave.days)}d</Td>
-                          <Td><StatusPill $status={leave.status}>{leave.status}</StatusPill></Td>
-                        </Tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                </TableContainer>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Leave Distribution</CardTitle>
-                </CardHeader>
-                <ChartContainer>
-                  <Doughnut data={chartData} options={chartOptions} />
-                  <ChartCenterText>
-                    <ChartCenterVal>{distribution.totalUsed}</ChartCenterVal>
-                    <ChartCenterLabel>Total Used</ChartCenterLabel>
-                  </ChartCenterText>
-                </ChartContainer>
-                <ChartLegend>
-                  <LegendItem><LegendDot $color="#059669" /> Annual</LegendItem>
-                  <LegendItem><LegendDot $color="#DC2626" /> Sick</LegendItem>
-                  <LegendItem><LegendDot $color="#D97706" /> Other</LegendItem>
-                  <LegendItem><LegendDot $color="#7C3AED" /> Maternity</LegendItem>
-                </ChartLegend>
-              </Card>
-            </DashGrid>
-
-            {/* Operations Calendar */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Operations Calendar (Kenyan Public Holidays Highlighted)</CardTitle>
-                <CalControls>
-                  <CalBtn onClick={() => changeMonth(-1)}><ChevronLeft size={14} /></CalBtn>
-                  <CalMonth>{MONTH_NAMES[calMonth]} {calYear}</CalMonth>
-                  <CalBtn onClick={() => changeMonth(1)}><ChevronRight size={14} /></CalBtn>
-                </CalControls>
-              </CardHeader>
-              <CalGrid>
-                {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(d => (
-                  <CalDayName key={d}>{d}</CalDayName>
-                ))}
-                {calendarCells}
-              </CalGrid>
-            </Card>
-          </>
         )}
-      </Main>
+      </div>
+    </div>
+  );
+}
 
-      {/* ─── SIDE PANEL ─── */}
-      <Overlay $z={998} $open={Boolean(panel)} onClick={closePanel} />
+function EmployeeDetail({ employee: emp }) {
+  const remaining = emp.totalLeave - emp.usedLeave - emp.pendingLeave;
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ border: `1px solid ${COLORS.border}` }}>
+        <div className="flex items-center gap-4">
+          <Avatar initials={emp.avatar} size="lg" />
+          <div>
+            <h2 className="font-serif text-2xl" style={{ color: COLORS.text }}>{emp.name}</h2>
+            <p className="text-sm" style={{ color: COLORS.textSecondary }}>{emp.role} &middot; {emp.department}</p>
+            <p className="text-xs mt-0.5" style={{ color: COLORS.textSecondary }}>{emp.email}</p>
+          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-4 gap-3">
+          {[
+            { label: 'Total Entitlement', value: emp.totalLeave, color: COLORS.text },
+            { label: 'Used', value: emp.usedLeave, color: COLORS.success },
+            { label: 'Pending', value: emp.pendingLeave, color: COLORS.warning },
+            { label: 'Remaining', value: remaining, color: remaining < 5 ? COLORS.danger : COLORS.success },
+          ].map(item => (
+            <div key={item.label} className="rounded-xl p-3 text-center" style={{ backgroundColor: COLORS.bg }}>
+              <p className="font-serif text-2xl" style={{ color: item.color }}>{item.value}</p>
+              <p className="text-xs mt-0.5" style={{ color: COLORS.textSecondary }}>{item.label}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4">
+          <div className="flex justify-between text-xs mb-1"><span style={{ color: COLORS.textSecondary }}>Leave usage</span><span style={{ color: COLORS.textSecondary }}>{Math.round((emp.usedLeave / emp.totalLeave) * 100)}% used</span></div>
+          <LeaveBar used={emp.usedLeave} pending={emp.pendingLeave} total={emp.totalLeave} />
+        </div>
+      </div>
+      <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: `1px solid ${COLORS.border}` }}>
+        <h3 className="font-medium text-sm mb-4" style={{ color: COLORS.text }}>Leave Calendar</h3>
+        <CalendarView records={emp.leaveHistory} compact />
+      </div>
+      <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: `1px solid ${COLORS.border}` }}>
+        <h3 className="font-medium text-sm mb-4" style={{ color: COLORS.text }}>Leave History</h3>
+        <table className="w-full">
+          <thead><tr style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+            {['Type', 'Period', 'Days', 'Status', 'Applied', 'Approved By'].map(h => <th key={h} className="text-left text-xs font-medium pb-2 pr-3" style={{ color: COLORS.textSecondary }}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {emp.leaveHistory.map(r => (
+              <tr key={r.id} className="hover:bg-gray-50 transition-colors" style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+                <td className="py-2.5 pr-3"><LeaveBadge type={r.type} /></td>
+                <td className="py-2.5 pr-3 text-xs" style={{ color: COLORS.text }}>{formatDate(r.startDate)} &ndash; {formatDate(r.endDate)}</td>
+                <td className="py-2.5 pr-3 text-xs font-mono" style={{ color: COLORS.text }}>{r.days}d</td>
+                <td className="py-2.5 pr-3"><StatusBadge status={r.status} /></td>
+                <td className="py-2.5 pr-3 text-xs" style={{ color: COLORS.textSecondary }}>{formatDate(r.appliedOn)}</td>
+                <td className="py-2.5 text-xs" style={{ color: COLORS.textSecondary }}>{r.approvedBy || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
-      {/* Leave details */}
-      <SidePanel $open={panel?.type === 'leave'}>
-        {(() => {
-          if (panel?.type !== 'leave') return null;
-          const leave = (leaves || []).find(l => l.id === panel.leaveId);
-          if (!leave) return null;
-          const docName = leave.supporting_document ? String(leave.supporting_document).split(/[\\/]/).pop() : '';
-          return (
-            <>
-              <PanelHeader>
-                <PanelTitle>
-                  <FileText size={18} style={{ color: 'var(--nx-primary)' }} />
-                  {`${typeLabel(leave)} Leave Details`}
-                </PanelTitle>
-                <PanelClose onClick={closePanel}><X size={16} /></PanelClose>
-              </PanelHeader>
-              <PanelBody>
-                <DetailSection>
-                  <DetailSectionTitle>Request Overview</DetailSectionTitle>
-                  <DetailGrid>
-                    <DetailItem>
-                      <DetailLabel>Status</DetailLabel>
-                      <DetailValue><StatusPill $status={leave.status}>{leave.status}</StatusPill></DetailValue>
-                    </DetailItem>
-                    <DetailItem>
-                      <DetailLabel>Duration</DetailLabel>
-                      <DetailValue>{round1(leave.days)} Days</DetailValue>
-                    </DetailItem>
-                    <DetailItem>
-                      <DetailLabel>Date Applied</DetailLabel>
-                      <DetailValue style={{ fontSize: '0.8rem' }}>{fmtDate(leave.created_at, true)}</DetailValue>
-                    </DetailItem>
-                    <DetailItem>
-                      <DetailLabel>Approver</DetailLabel>
-                      <DetailValue style={{ fontSize: '0.8rem' }}>
-                        {leave.status === 'approved' ? (leave.approved_by ? `Admin (ID ${leave.approved_by})` : 'HR Admin') : 'N/A'}
-                      </DetailValue>
-                    </DetailItem>
-                  </DetailGrid>
-                </DetailSection>
-                <DetailSection>
-                  <DetailSectionTitle>Leave Dates</DetailSectionTitle>
-                  <DetailGrid>
-                    <DetailItem>
-                      <DetailLabel>Start Date</DetailLabel>
-                      <DetailValue style={{ fontSize: '0.8rem' }}>{fmtDate(leave.start_date, true)}</DetailValue>
-                    </DetailItem>
-                    <DetailItem>
-                      <DetailLabel>End Date</DetailLabel>
-                      <DetailValue style={{ fontSize: '0.8rem' }}>{fmtDate(leave.end_date, true)}</DetailValue>
-                    </DetailItem>
-                  </DetailGrid>
-                </DetailSection>
-                <DetailSection>
-                  <DetailSectionTitle>Reason / Notes</DetailSectionTitle>
-                  <ReasonBox>{leave.reason || 'No reason provided.'}</ReasonBox>
-                  {leave.rejection_reason && (
-                    <ReasonBox style={{ borderLeftColor: 'var(--nx-danger)', marginTop: '0.5rem' }}>
-                      <strong>Rejection Reason:</strong> {leave.rejection_reason}
-                    </ReasonBox>
-                  )}
-                </DetailSection>
-                <DetailSection>
-                  <DetailSectionTitle>Supporting Documents</DetailSectionTitle>
-                  {docName ? (
-                    <DocItem
-                      onClick={() => {
-                        const url = String(leave.supporting_document);
-                        if (/^https?:\/\//.test(url)) window.open(url, '_blank', 'noopener');
-                      }}
-                    >
-                      <DocIcon><FileText size={16} /></DocIcon>
-                      <DocInfo>
-                        <DocName>{docName}</DocName>
-                        <DocSize>Supporting Document</DocSize>
-                      </DocInfo>
-                      <Download size={16} style={{ color: 'var(--nx-text-mute)' }} />
-                    </DocItem>
+function MyLeaveView() {
+  const [showForm, setShowForm] = useState(false);
+  const [selectedRange, setSelectedRange] = useState(null);
+  const [form, setForm] = useState({ type: 'annual', reason: '', document: '' });
+  const [submitted, setSubmitted] = useState(false);
+  const emp = CURRENT_USER;
+  const remaining = emp.totalLeave - emp.usedLeave - emp.pendingLeave;
+
+  function handleRangeSelect(start, end) { setSelectedRange({ start, end }); setShowForm(true); setSubmitted(false); }
+  const businessDays = selectedRange ? countBusinessDays(selectedRange.start, selectedRange.end) : 0;
+  function handleSubmit() { setSubmitted(true); setTimeout(() => { setShowForm(false); setSelectedRange(null); setSubmitted(false); setForm({ type: 'annual', reason: '', document: '' }); }, 2000); }
+
+  return (
+    <div className="flex gap-4 h-full">
+      <div className="flex-1 space-y-4 overflow-y-auto">
+        <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: `1px solid ${COLORS.border}` }}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-serif text-lg" style={{ color: COLORS.text }}>My Leave Calendar</h3>
+            <button onClick={() => { setShowForm(true); setSelectedRange(null); }}
+              className="text-white text-sm px-4 py-2 rounded-xl transition-colors hover:opacity-90"
+              style={{ backgroundColor: COLORS.primary }}>+ Apply for Leave</button>
+          </div>
+          <CalendarView records={emp.leaveHistory} selectable onRangeSelect={handleRangeSelect} />
+        </div>
+        {showForm && (
+          <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: `1px solid ${COLORS.info}` }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium" style={{ color: COLORS.text }}>Leave Application</h3>
+              <button onClick={() => setShowForm(false)} style={{ color: COLORS.textSecondary }}>✕</button>
+            </div>
+            {submitted ? (
+              <div className="text-center py-8"><div className="text-4xl mb-2">✅</div><p className="font-medium" style={{ color: COLORS.success }}>Application submitted!</p><p className="text-sm mt-1" style={{ color: COLORS.textSecondary }}>Your manager will review it shortly.</p></div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>Date Range</label>
+                  {selectedRange ? (
+                    <div className="flex items-center gap-2 p-3 rounded-xl" style={{ backgroundColor: 'rgba(10, 36, 99, 0.06)', border: `1px solid ${COLORS.primary}` }}>
+                      <span className="text-sm font-medium" style={{ color: COLORS.primary }}>{formatDate(selectedRange.start)}</span>
+                      <span style={{ color: COLORS.textSecondary }}>→</span>
+                      <span className="text-sm font-medium" style={{ color: COLORS.primary }}>{formatDate(selectedRange.end)}</span>
+                      <span className="ml-auto text-xs font-mono px-2 py-0.5 rounded" style={{ backgroundColor: 'rgba(10, 36, 99, 0.1)', color: COLORS.primary }}>{businessDays} working day{businessDays !== 1 ? 's' : ''}</span>
+                    </div>
                   ) : (
-                    <div style={{ color: 'var(--nx-text-mute)', fontSize: '0.85rem', padding: '0.5rem 0' }}>
-                      No documents attached.
+                    <p className="text-sm italic p-3 rounded-xl" style={{ color: COLORS.textSecondary, border: `1px dashed ${COLORS.border}` }}>Drag on the calendar above to select dates</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>Leave Type</label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {LEAVE_TYPES.filter(t => ['annual', 'sick', 'maternity', 'study', 'unpaid'].includes(t)).map(type => {
+                      const s = typeStyle(type);
+                      return (
+                        <button key={type} onClick={() => setForm(f => ({ ...f, type }))}
+                          className="py-2 px-1 rounded-xl text-xs font-medium transition-all"
+                          style={{ backgroundColor: form.type === type ? s.bg : '#fff', color: form.type === type ? s.fg : COLORS.textSecondary, border: `1px solid ${form.type === type ? s.fg : COLORS.border}` }}>
+                          {leaveTypeLabel(type)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>Reason</label>
+                  <textarea value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} rows={3}
+                    placeholder="Briefly describe your reason for leave..."
+                    className="w-full px-3 py-2 text-sm rounded-xl focus:outline-none focus:ring-2 resize-none"
+                    style={{ border: `1px solid ${COLORS.border}`, '--tw-ring-color': COLORS.info }} />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => setShowForm(false)}
+                    className="flex-1 py-2.5 rounded-xl text-sm transition-colors hover:bg-gray-50"
+                    style={{ border: `1px solid ${COLORS.border}`, color: COLORS.text }}>Cancel</button>
+                  <button disabled={!selectedRange || !form.reason} onClick={handleSubmit}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: COLORS.primary }}>Submit Application</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="w-64 flex-shrink-0 space-y-4 overflow-y-auto">
+        <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: `1px solid ${COLORS.border}` }}>
+          <h3 className="font-medium text-sm mb-4" style={{ color: COLORS.text }}>My Balance</h3>
+          <div className="text-center mb-4"><p className="font-serif text-5xl" style={{ color: COLORS.text }}>{remaining}</p><p className="text-sm mt-1" style={{ color: COLORS.textSecondary }}>days remaining</p></div>
+          <LeaveBar used={emp.usedLeave} pending={emp.pendingLeave} total={emp.totalLeave} />
+          <div className="mt-3 space-y-2">
+            {[
+              { label: 'Entitlement', value: emp.totalLeave, cls: COLORS.text },
+              { label: 'Used', value: emp.usedLeave, cls: COLORS.success },
+              { label: 'Pending', value: emp.pendingLeave, cls: COLORS.warning },
+              { label: 'Remaining', value: remaining, cls: remaining < 5 ? COLORS.danger : COLORS.success },
+            ].map(item => (
+              <div key={item.label} className="flex justify-between items-center">
+                <span className="text-xs" style={{ color: COLORS.textSecondary }}>{item.label}</span>
+                <span className="text-sm font-mono" style={{ color: item.cls }}>{item.value}d</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: `1px solid ${COLORS.border}` }}>
+          <h3 className="font-medium text-sm mb-3" style={{ color: COLORS.text }}>My Requests</h3>
+          <div className="space-y-2">
+            {emp.leaveHistory.map(r => (
+              <div key={r.id} className="p-2.5 rounded-xl" style={{ backgroundColor: COLORS.bg }}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <LeaveBadge type={r.type} />
+                  <span className="ml-auto"><StatusBadge status={r.status} /></span>
+                </div>
+                <p className="text-xs" style={{ color: COLORS.textSecondary }}>{formatDate(r.startDate)} &middot; {r.days}d</p>
+                <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textSecondary }}>{r.reason}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RequestsView() {
+  const [filter, setFilter] = useState('pending');
+  const [requests, setRequests] = useState(ALL_LEAVE_RECORDS);
+  const [expanded, setExpanded] = useState(null);
+  const filtered = requests.filter(r => filter === 'all' || r.status === filter);
+  const counts = { all: requests.length, pending: requests.filter(r => r.status === 'pending').length, approved: requests.filter(r => r.status === 'approved').length, rejected: requests.filter(r => r.status === 'rejected').length };
+
+  function handleAction(id, action) { setRequests(prev => prev.map(r => r.id === id ? { ...r, status: action, approvedBy: 'Priya Sharma' } : r)); }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        {['pending', 'all', 'approved', 'rejected'].map(s => (
+          <button key={s} onClick={() => setFilter(s)}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors capitalize flex items-center gap-2"
+            style={{ backgroundColor: filter === s ? COLORS.primary : '#fff', color: filter === s ? '#fff' : COLORS.text, border: `1px solid ${filter === s ? COLORS.primary : COLORS.border}` }}>
+            {s}
+            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: filter === s ? 'rgba(255,255,255,0.2)' : COLORS.bg, color: filter === s ? '#fff' : COLORS.textSecondary }}>{counts[s]}</span>
+          </button>
+        ))}
+      </div>
+      <div className="space-y-2">
+        {filtered.map(r => {
+          const emp = EMPLOYEES.find(e => e.id === r.employeeId);
+          const isOpen = expanded === r.id;
+          return (
+            <div key={r.id} className="bg-white rounded-2xl shadow-sm overflow-hidden transition-all" style={{ border: `1px solid ${isOpen ? COLORS.info : COLORS.border}` }}>
+              <button className="w-full text-left p-4" onClick={() => setExpanded(isOpen ? null : r.id)}>
+                <div className="flex items-center gap-3">
+                  <Avatar initials={emp?.avatar} size="md" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm" style={{ color: COLORS.text }}>{emp?.name}</p>
+                      <span style={{ color: COLORS.textSecondary }}>·</span>
+                      <p className="text-xs" style={{ color: COLORS.textSecondary }}>{emp?.role}</p>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <LeaveBadge type={r.type} />
+                      <span className="text-xs" style={{ color: COLORS.textSecondary }}>{formatDate(r.startDate)} → {formatDate(r.endDate)}</span>
+                      <span className="text-xs font-mono" style={{ color: COLORS.text }}>{r.days} days</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={r.status} />
+                    <span style={{ color: COLORS.textSecondary }}>{isOpen ? '▲' : '▼'}</span>
+                  </div>
+                </div>
+              </button>
+              {isOpen && (
+                <div className="px-4 pb-4" style={{ borderTop: `1px solid ${COLORS.border}` }}>
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div><p className="text-xs font-medium mb-1" style={{ color: COLORS.textSecondary }}>Reason</p><p className="text-sm" style={{ color: COLORS.text }}>{r.reason}</p></div>
+                    <div><p className="text-xs font-medium mb-1" style={{ color: COLORS.textSecondary }}>Applied On</p><p className="text-sm" style={{ color: COLORS.text }}>{formatDate(r.appliedOn)}</p></div>
+                    {r.document && <div><p className="text-xs font-medium mb-1" style={{ color: COLORS.textSecondary }}>Document</p><div className="flex items-center gap-1.5 text-sm" style={{ color: COLORS.info }}><span>📎</span> {r.document}</div></div>}
+                    <div><p className="text-xs font-medium mb-1" style={{ color: COLORS.textSecondary }}>Employee Balance</p><div className="flex items-center gap-2"><LeaveBar used={emp.usedLeave} pending={emp.pendingLeave} total={emp.totalLeave} /><span className="text-xs font-mono whitespace-nowrap" style={{ color: COLORS.textSecondary }}>{emp.totalLeave - emp.usedLeave - emp.pendingLeave}d left</span></div></div>
+                  </div>
+                  {r.status === 'pending' && (
+                    <div className="flex gap-2 mt-4">
+                      <button onClick={() => handleAction(r.id, 'rejected')}
+                        className="flex-1 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-red-50"
+                        style={{ border: `1px solid ${COLORS.danger}`, color: COLORS.danger }}>Reject</button>
+                      <button onClick={() => handleAction(r.id, 'approved')}
+                        className="flex-1 py-2 rounded-xl text-sm font-medium text-white transition-colors hover:opacity-90"
+                        style={{ backgroundColor: COLORS.success }}>Approve</button>
                     </div>
                   )}
-                </DetailSection>
-              </PanelBody>
-              <PanelFooter>
-                {leave.status === 'pending' ? (
-                  <>
-                    <Btn $variant="danger" onClick={() => setRejectState({ open: true, leaveId: leave.id, reason: '' })}>
-                      Reject Request
-                    </Btn>
-                    <Btn $variant="success" onClick={() => approveLeave(leave.id)}>
-                      Approve Leave
-                    </Btn>
-                  </>
-                ) : leave.status === 'approved' && isPastDay(leave.end_date) && !returnsConfirmed[leave.id] ? (
-                  <>
-                    <Btn $variant="secondary" onClick={closePanel}>Close</Btn>
-                    <Btn $variant="success" onClick={() => confirmReturn(leave.id)}>
-                      Confirm Return to Work
-                    </Btn>
-                  </>
-                ) : (
-                  <Btn $variant="secondary" onClick={closePanel}>Close</Btn>
-                )}
-              </PanelFooter>
-            </>
-          );
-        })()}
-      </SidePanel>
-
-      {/* Operations day view */}
-      <SidePanel $open={panel?.type === 'day'}>
-        {(() => {
-          if (panel?.type !== 'day') return null;
-          const dateStr = panel.date;
-          const holiday = holidayOf(dateStr);
-        const dayLeaves = (leaves || []).filter(l => {
-          if (l.status === 'rejected' || l.status === 'cancelled') return false;
-          return coversDay(l, dateStr);
-        });
-        const deptCounts = {};
-        dayLeaves.forEach(l => {
-          if (l.status !== 'approved') return;
-          const dept = deptOfUser(l.user_id);
-          deptCounts[dept] = (deptCounts[dept] || 0) + 1;
-        });
-        const conflicts = Object.keys(deptCounts).filter(dept => {
-          const totalInDept = balances.filter(b => deriveDepartment(b) === dept).length;
-          return totalInDept > 1 && deptCounts[dept] >= totalInDept / 2;
-        });
-        return (
-          <>
-            <PanelHeader>
-                <PanelTitle>
-                  <Calendar size={18} style={{ color: 'var(--nx-primary)' }} />
-                  {`Operations on ${fmtDate(dateStr, true)}`}
-                </PanelTitle>
-                <PanelClose onClick={closePanel}><X size={16} /></PanelClose>
-              </PanelHeader>
-              <PanelBody>
-                {holiday && (
-                  <WarningBox $danger>
-                    <AlertTriangle size={20} />
-                    <WarningText><strong>Public Holiday:</strong> {holiday.name}. Offices are closed.</WarningText>
-                  </WarningBox>
-                )}
-                {conflicts.length > 0 && (
-                  <WarningBox>
-                    <AlertTriangle size={20} />
-                    <WarningText>
-                      <strong>Operational Conflict Warning:</strong> Over 50% of staff in{' '}
-                      <strong>{conflicts.join(', ')}</strong> are on leave this day. Approvals for this
-                      department should be halted.
-                    </WarningText>
-                  </WarningBox>
-                )}
-                {dayLeaves.length === 0 ? (
-                  <EmptyPanel>
-                    <CheckCircle size={40} />
-                    <br />
-                    No leave activities on this day.
-                  </EmptyPanel>
-                ) : (
-                  <>
-                    <DetailSectionTitle>Active Leaves ({dayLeaves.length})</DetailSectionTitle>
-                    <ActivityList>
-                      {dayLeaves.map(item => {
-                        const emp = balances.find(b => b.user_id === item.user_id);
-                        return (
-                          <ActivityCard
-                            key={item.id}
-                            onClick={() => { selectEmployee(item.user_id); openLeavePanel(item.id); }}
-                          >
-                            <ActivityHeader>
-                              <ActivityName>
-                                <Avatar style={{ width: 28, height: 28, fontSize: '0.7rem', background: avatarColor(item.user_id) }}>
-                                  {getInitials(item.name || emp?.name)}
-                                </Avatar>
-                                {item.name || emp?.name || 'Unknown'}
-                              </ActivityName>
-                              <TypePill $kind={typeKind(item)}>{typeLabel(item)}</TypePill>
-                            </ActivityHeader>
-                            <ActivityMeta>
-                              {deptOfUser(item.user_id)} • {item.status} • Ends on {fmtDate(item.end_date)}
-                            </ActivityMeta>
-                          </ActivityCard>
-                        );
-                      })}
-                    </ActivityList>
-                  </>
-                )}
-              </PanelBody>
-              <PanelFooter>
-                <Btn $variant="secondary" onClick={closePanel}>Close</Btn>
-              </PanelFooter>
-            </>
-          );
-        })()}
-      </SidePanel>
-
-      {/* ─── ADJUST BALANCE MODAL ─── */}
-      <Overlay $z={1000} $open={adjustOpen} onClick={() => setAdjustOpen(false)} />
-      <SidePanel $z={1001} $width={450} $open={adjustOpen}>
-        <PanelHeader>
-          <PanelTitle><SlidersHorizontal size={18} /> Adjust Leave Balance</PanelTitle>
-          <PanelClose onClick={() => setAdjustOpen(false)}><X size={16} /></PanelClose>
-        </PanelHeader>
-        <PanelBody>
-          <FormGroup>
-            <FormLabel>Select Employee</FormLabel>
-            <FormSelect
-              value={adjustForm.employeeId}
-              onChange={(e) => setAdjustForm({ ...adjustForm, employeeId: e.target.value })}
-            >
-              <option value="">Select employee...</option>
-              {balances.map(emp => (
-                <option key={emp.user_id} value={emp.user_id}>
-                  {emp.name || 'Unknown'} ({deriveDepartment(emp)}) — Balance: {round1(emp.currentBalance)}d
-                </option>
-              ))}
-            </FormSelect>
-          </FormGroup>
-          <FormGroup>
-            <FormLabel>Adjustment Type</FormLabel>
-            <FormSelect
-              value={adjustForm.kind}
-              onChange={(e) => setAdjustForm({ ...adjustForm, kind: e.target.value })}
-            >
-              <option value="add">Add Manual Days</option>
-              <option value="carry">Carry-Forward from Previous Year</option>
-              <option value="holiday">Holiday Compensation (Worked Public Holiday, +1)</option>
-            </FormSelect>
-          </FormGroup>
-          {adjustForm.kind !== 'holiday' && (
-            <FormGroup>
-              <FormLabel>Number of Days</FormLabel>
-              <FormInput
-                type="number"
-                min="1"
-                value={adjustForm.days}
-                onChange={(e) => setAdjustForm({ ...adjustForm, days: e.target.value })}
-              />
-            </FormGroup>
-          )}
-          <FormGroup>
-            <FormLabel>{adjustForm.kind === 'holiday' ? 'Holiday Name / Note' : 'Reason / Note'}</FormLabel>
-            <FormInput
-              type="text"
-              value={adjustForm.reason}
-              placeholder={adjustForm.kind === 'carry' ? 'e.g. Carried over 5 days from last year' : 'e.g. Approved by HR'}
-              onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })}
-            />
-          </FormGroup>
-        </PanelBody>
-        <PanelFooter>
-          <Btn $variant="secondary" onClick={() => setAdjustOpen(false)}>Cancel</Btn>
-          <Btn $variant="primary" onClick={submitAdjustment}>Apply Adjustment</Btn>
-        </PanelFooter>
-      </SidePanel>
-
-      {/* ─── EMERGENCY LEAVE MODAL ─── */}
-      <Overlay $z={1000} $open={emergencyOpen} onClick={() => setEmergencyOpen(false)} />
-      <SidePanel $z={1001} $width={450} $open={emergencyOpen}>
-        <PanelHeader>
-          <PanelTitle $color="var(--nx-danger)"><Zap size={18} /> Log Emergency Leave</PanelTitle>
-          <PanelClose onClick={() => setEmergencyOpen(false)}><X size={16} /></PanelClose>
-        </PanelHeader>
-        <PanelBody>
-          <WarningBox $danger>
-            <AlertTriangle size={20} />
-            <WarningText>
-              Emergency leaves bypass normal approval workflows but require HR validation upon return.
-            </WarningText>
-          </WarningBox>
-          <FormGroup>
-            <FormLabel>Select Employee</FormLabel>
-            <FormSelect
-              value={emergencyForm.employeeId}
-              onChange={(e) => setEmergencyForm({ ...emergencyForm, employeeId: e.target.value })}
-            >
-              <option value="">Select employee...</option>
-              {balances.map(emp => (
-                <option key={emp.user_id} value={emp.user_id}>{emp.name || 'Unknown'} ({deriveDepartment(emp)})</option>
-              ))}
-            </FormSelect>
-          </FormGroup>
-          <FormGroup>
-            <FormLabel>Start Date</FormLabel>
-            <FormInput
-              type="date"
-              value={emergencyForm.start}
-              onChange={(e) => setEmergencyForm({ ...emergencyForm, start: e.target.value })}
-            />
-          </FormGroup>
-          <FormGroup>
-            <FormLabel>End Date</FormLabel>
-            <FormInput
-              type="date"
-              value={emergencyForm.end}
-              min={emergencyForm.start}
-              onChange={(e) => setEmergencyForm({ ...emergencyForm, end: e.target.value })}
-            />
-          </FormGroup>
-          <FormGroup>
-            <FormLabel>Emergency Reason</FormLabel>
-            <FormInput
-              type="text"
-              value={emergencyForm.reason}
-              placeholder="Brief description of emergency"
-              onChange={(e) => setEmergencyForm({ ...emergencyForm, reason: e.target.value })}
-            />
-          </FormGroup>
-        </PanelBody>
-        <PanelFooter>
-          <Btn $variant="secondary" onClick={() => setEmergencyOpen(false)}>Cancel</Btn>
-          <Btn $variant="danger" onClick={submitEmergencyLeave} disabled={emergencyForm.submitting}>
-            {emergencyForm.submitting ? 'Logging...' : 'Log Emergency'}
-          </Btn>
-        </PanelFooter>
-      </SidePanel>
-
-      {/* ─── REJECTION MODAL ─── */}
-      {rejectState.open && (
-        <Modal onClick={(e) => { if (e.target === e.currentTarget) setRejectState({ open: false, leaveId: null, reason: '' }); }}>
-          <ModalContent>
-            <ModalHeaderRow>
-              <ModalTitle><XCircle size={20} style={{ color: 'var(--nx-danger)' }} /> Reject Leave Request</ModalTitle>
-              <PanelClose onClick={() => setRejectState({ open: false, leaveId: null, reason: '' })}><X size={16} /></PanelClose>
-            </ModalHeaderRow>
-            <p style={{ marginBottom: '1rem', color: 'var(--nx-text-dim)', fontSize: '0.875rem' }}>
-              Please provide a reason for rejecting this leave request:
-            </p>
-            <FormTextarea
-              value={rejectState.reason}
-              placeholder="Enter rejection reason..."
-              autoFocus
-              onChange={(e) => setRejectState({ ...rejectState, reason: e.target.value })}
-            />
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
-              <Btn $variant="secondary" onClick={() => setRejectState({ open: false, leaveId: null, reason: '' })}>Cancel</Btn>
-              <Btn $variant="danger" onClick={submitRejection} disabled={!rejectState.reason.trim()}>Reject Leave</Btn>
+                  {r.status !== 'pending' && r.approvedBy && <p className="text-xs mt-3" style={{ color: COLORS.textSecondary }}>{r.status === 'approved' ? 'Approved' : 'Rejected'} by {r.approvedBy}</p>}
+                </div>
+              )}
             </div>
-          </ModalContent>
-        </Modal>
-      )}
-
-      {/* ─── REGISTER EMPLOYEE MODAL ─── */}
-      {registerOpen && (
-        <Modal onClick={(e) => { if (e.target === e.currentTarget) setRegisterOpen(false); }}>
-          <ModalContent>
-            <ModalHeaderRow>
-              <ModalTitle><UserPlus size={20} style={{ color: 'var(--nx-primary)' }} /> Register Employee</ModalTitle>
-              <PanelClose onClick={() => setRegisterOpen(false)}><X size={16} /></PanelClose>
-            </ModalHeaderRow>
-            <p style={{ marginBottom: '1.25rem', color: 'var(--nx-text-dim)', fontSize: '0.875rem' }}>
-              Register a new employee to the leaves database. Each employee automatically receives{' '}
-              <strong>{DEFAULT_LEAVE_DAYS} days</strong> of annual leave per year.
-            </p>
-            <FormGroup>
-              <FormLabel>Full Name</FormLabel>
-              <FormInput
-                type="text"
-                value={registerForm.full_name}
-                placeholder="e.g. Jane Wanjiru"
-                onChange={(e) => setRegisterForm({ ...registerForm, full_name: e.target.value })}
-              />
-            </FormGroup>
-            <FormGroup>
-              <FormLabel>Email</FormLabel>
-              <FormInput
-                type="email"
-                value={registerForm.email}
-                placeholder="e.g. jane@restpoint.co.ke"
-                onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-              />
-            </FormGroup>
-            <FormGroup>
-              <FormLabel>Phone (Optional)</FormLabel>
-              <FormInput
-                type="text"
-                value={registerForm.phone}
-                placeholder="e.g. +254 700 000 000"
-                onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
-              />
-            </FormGroup>
-            <FormGroup>
-              <FormLabel>Role</FormLabel>
-              <FormSelect
-                value={registerForm.role}
-                onChange={(e) => setRegisterForm({ ...registerForm, role: e.target.value })}
-              >
-                <option value="staff">Staff</option>
-                <option value="mortician">Mortician</option>
-                <option value="embalmer">Embalmer</option>
-                <option value="hearse_driver">Hearse Driver</option>
-                <option value="receptionist">Receptionist</option>
-                <option value="hr">HR</option>
-                <option value="accounts">Accounts</option>
-                <option value="florist">Florist</option>
-                <option value="technician">Technician</option>
-                <option value="cleaner">Cleaner</option>
-                <option value="security">Security</option>
-                <option value="admin">Admin</option>
-              </FormSelect>
-            </FormGroup>
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
-              <Btn $variant="secondary" onClick={() => setRegisterOpen(false)}>Cancel</Btn>
-              <Btn
-                $variant="primary"
-                onClick={submitRegisterEmployee}
-                disabled={registerForm.submitting || !registerForm.full_name.trim() || !registerForm.email.trim()}
-              >
-                <Loader2 size={14} style={{ display: registerForm.submitting ? 'inline-block' : 'none' }} />
-                {registerForm.submitting ? 'Registering...' : 'Register Employee'}
-              </Btn>
-            </div>
-          </ModalContent>
-        </Modal>
-      )}
-
-      {/* ─── TOASTS ─── */}
-      <ToastContainer>
-        {toasts.map(toast => (
-          <Toast key={toast.id} style={{ background: toast.type === 'success' ? 'var(--nx-success)' : toast.type === 'error' ? 'var(--nx-danger)' : 'var(--nx-warning)' }}>
-            {toast.type === 'success' && <CheckCircle size={16} />}
-            {toast.type === 'error' && <XCircle size={16} />}
-            {toast.type === 'warning' && <AlertCircle size={16} />}
-            {toast.message}
-          </Toast>
-        ))}
-      </ToastContainer>
-    </Root>
+          );
+        })}
+        {filtered.length === 0 && <div className="text-center py-12" style={{ color: COLORS.textSecondary }}><div className="text-3xl mb-2">📭</div><p className="text-sm">No {filter} requests</p></div>}
+      </div>
+    </div>
   );
-};
+}
 
-export default LeaveDashboard;
+function FullCalendarView() {
+  const [deptFilter, setDeptFilter] = useState('All');
+  const depts = ['All', ...Array.from(new Set(EMPLOYEES.map(e => e.department)))];
+  const filteredEmployees = deptFilter === 'All' ? EMPLOYEES : EMPLOYEES.filter(e => e.department === deptFilter);
+  const filteredRecords = ALL_LEAVE_RECORDS.filter(r => filteredEmployees.some(e => e.id === r.employeeId));
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <span className="text-sm" style={{ color: COLORS.textSecondary }}>Department:</span>
+        {depts.map(d => (
+          <button key={d} onClick={() => setDeptFilter(d)}
+            className="px-3 py-1.5 rounded-lg text-sm transition-colors"
+            style={{ backgroundColor: deptFilter === d ? COLORS.primary : '#fff', color: deptFilter === d ? '#fff' : COLORS.text, border: `1px solid ${deptFilter === d ? COLORS.primary : COLORS.border}` }}>
+            {d}
+          </button>
+        ))}
+        <div className="ml-auto flex gap-3">
+          {LEAVE_TYPES.filter(t => ['annual', 'sick', 'maternity', 'study', 'unpaid'].includes(t)).map(type => (
+            <div key={type} className="flex items-center gap-1.5 text-xs" style={{ color: COLORS.textSecondary }}>
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: typeStyle(type).fg }} />
+              {leaveTypeLabel(type)}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: `1px solid ${COLORS.border}` }}>
+        <CalendarView records={filteredRecords} />
+      </div>
+    </div>
+  );
+}
 
+const NAV_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: '◻' },
+  { id: 'calendar', label: 'Calendar', icon: '📅' },
+  { id: 'my-leave', label: 'My Leave', icon: '🏖️' },
+  { id: 'team', label: 'Team', icon: '👥' },
+  { id: 'requests', label: 'Requests', icon: '📋' },
+];
 
+export default function Dashboard() {
+  const [view, setView] = useState('dashboard');
+  const pending = PENDING_REQUESTS.length;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  return (
+    <div className="h-full flex" style={{ backgroundColor: COLORS.bg }}>
+      <aside className="w-56 flex-shrink-0 flex flex-col bg-white" style={{ borderRight: `1px solid ${COLORS.border}` }}>
+        <div className="px-5 py-5" style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+          <h1 className="font-serif text-xl" style={{ color: COLORS.text }}>LeaveOS</h1>
+          <p className="text-xs mt-0.5" style={{ color: COLORS.textSecondary }}>HR Management</p>
+        </div>
+        <nav className="flex-1 px-3 py-4 space-y-0.5">
+          {NAV_ITEMS.map(item => (
+            <button key={item.id} onClick={() => setView(item.id)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors"
+              style={{ backgroundColor: view === item.id ? 'rgba(10, 36, 99, 0.06)' : 'transparent', color: view === item.id ? COLORS.primary : COLORS.textSecondary }}>
+              <span className="text-base">{item.icon}</span>
+              {item.label}
+              {item.id === 'requests' && pending > 0 && (
+                <span className="ml-auto text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-mono"
+                  style={{ backgroundColor: COLORS.warning }}>{pending}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+        <div className="px-3 py-4" style={{ borderTop: `1px solid ${COLORS.border}` }}>
+          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+            <Avatar initials={CURRENT_USER.avatar} size="sm" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium truncate" style={{ color: COLORS.text }}>{CURRENT_USER.name}</p>
+              <p className="text-xs truncate" style={{ color: COLORS.textSecondary }}>{CURRENT_USER.role}</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <header className="bg-white px-6 py-4 flex items-center justify-between" style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+          <div>
+            <h2 className="font-serif text-xl" style={{ color: COLORS.text }}>{NAV_ITEMS.find(n => n.id === view)?.label}</h2>
+            <p className="text-xs mt-0.5" style={{ color: COLORS.textSecondary }}>September 2026 · Fiscal Year 2026</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-xs px-3 py-1.5 rounded-lg font-mono" style={{ backgroundColor: COLORS.bg, border: `1px solid ${COLORS.border}`, color: COLORS.textSecondary }}>
+              {CURRENT_USER.totalLeave - CURRENT_USER.usedLeave - CURRENT_USER.pendingLeave}d remaining
+            </div>
+            <button onClick={() => setView('my-leave')}
+              className="text-white text-sm px-4 py-2 rounded-xl transition-colors hover:opacity-90 font-medium"
+              style={{ backgroundColor: COLORS.primary }}>+ Apply Leave</button>
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto p-6">
+          {view === 'dashboard' && <DashboardView onNavigate={setView} />}
+          {view === 'calendar' && <FullCalendarView />}
+          {view === 'my-leave' && <MyLeaveView />}
+          {view === 'team' && <TeamView />}
+          {view === 'requests' && <RequestsView />}
+        </div>
+      </main>
+    </div>
+  );
+}

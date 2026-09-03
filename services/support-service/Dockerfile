@@ -23,7 +23,7 @@ COPY packages/shared-utils/package.json ./packages/shared-utils/
 COPY services/support-service/package.json ./services/support-service/
 
 # Install ALL dependencies (including dev for building)
-RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --no-audit --no-fund --omit=optional
+RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && NODE_OPTIONS=--max-old-space-size=2048 npm install --no-audit --no-fund --omit=optional
 
 # Copy source code
 COPY services/configurations/ ./configurations/

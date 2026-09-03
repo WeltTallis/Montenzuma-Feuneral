@@ -7,16 +7,32 @@ export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
 
 # ============================================================
+# ============================================================================
 # OOM-SAFE BUILD PARALLELISM
-# ============================================================
+# ============================================================================
 # `docker compose up`/`build` builds every image in parallel and each image
 # runs its own heavy monorepo `npm install`. On a low-RAM VPS the combined
 # memory spike gets processes SIGKILLed by the OOM killer (exit code 137).
 # COMPOSE_PARALLEL_LIMIT caps concurrent compose operations. 1 = serial
 # (safe default). Override on bigger machines:  make up PARALLEL=4
-# ============================================================
+# ============================================================================
 PARALLEL ?= 1
 export COMPOSE_PARALLEL_LIMIT := $(PARALLEL)
+
+# ----------------------------------------------------------------------------
+# Serial image building — list of services that actually have a build: key.
+# We build them one-by-one (`docker compose build SVC ...`) so that only ONE
+# `npm install` / `go build` runs at a time. This is the guaranteed-OOM-safe
+# path and does NOT rely on COMPOSE_PARALLEL_LIMIT being honoured by the
+# installed Compose version. (Image-only infra — mariadb/redis/rabbitmq — is
+# pulled from the registry, never built, so it is intentionally absent here.)
+# Regenerate with:  make show-build-services
+BUILD_SERVICES := api-gateway auth-service tenant-service deceased-service billing-service support-service leave-service documents-service socketio-service scanner-service invoice-service coffin-service analytics-service bodycheckout-service chemical-service workshop-service extra-services hearse-service frontend
+
+# Cap the V8 heap of the npm install + tsx steps so a single image can never
+# balloon the box. Applied in the Dockerfiles as NODE_OPTIONS=...
+export NODE_OPTIONS := --max-old-space-size=2048
+
 
 .PHONY: help build build-fast build-no-cache build-no-cache-fast build-service build-service-fast build-all build-all-fast up up-force down restart logs logs-service clean health test dev prod stop ps shell exec deploy-prod deploy-staging backup restore rebuild-fast clear-cache build-optimized usage-tips
 
@@ -40,13 +56,13 @@ help:
 	@echo ""
 	@echo "$(GREEN) FAST Build Commands (BuildKit enabled):$(NC)"
 	@echo "  make build                - Build all Docker images (with cache)"
-	@echo "  make build-fast           - Build all images with BuildKit (parallel, cached)"
+	@echo "  make build-fast           - Build all images with BuildKit (serial, cached)"
 	@echo "  make build-no-cache       - Rebuild all images from scratch (sequential)"
-	@echo "  make build-no-cache-fast  - Rebuild all images from scratch (parallel, BuildKit)"
+	@echo "  make build-no-cache-fast  - Rebuild all images from scratch (serial, BuildKit)"
 	@echo "  make build-service SVC=X  - Build specific service (no cache)"
 	@echo "  make build-service-fast SVC=X - Build specific service with BuildKit"
 	@echo "  make build-all            - Build all services with no cache"
-	@echo "  make build-all-fast       - Build all services with no cache (parallel)"
+	@echo "  make build-all-fast       - Build all services with no cache (serial)"
 	@echo "  make clear-cache          - Clear Docker build cache"
 	@echo "  make rebuild-fast         - Clear cache + rebuild all (ULTRA FAST)"
 	@echo ""
@@ -85,40 +101,40 @@ help:
 # BUILD TARGETS
 # ============================================================
 
-# Standard build (with cache)
+# Standard build (with cache) — builds ONE image at a time (OOM-safe)
 build:
-	@echo "$(BLUE)Building all Docker images...$(NC)"
-	@$(COMPOSE) build
+	@echo "$(BLUE)Building all Docker images (serial, 1 at a time)...$(NC)"
+	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build $$svc; done
 	@echo "$(GREEN)✓ Build complete$(NC)"
 
-# FAST build with BuildKit (parallel, cached)
+# FAST build with BuildKit (cached) — still serial to avoid OOM
 build-fast:
-	@echo "$(BLUE)Building all images with BuildKit (parallel, cached layers)...$(NC)"
-	@DOCKER_BUILDKIT=1 $(COMPOSE) build
+	@echo "$(BLUE)Building all images with BuildKit (serial, 1 at a time)...$(NC)"
+	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE) build $$svc; done
 	@echo "$(GREEN)✓ Fast build complete$(NC)"
 
-# Standard no-cache build (sequential)
+# Standard no-cache build
 build-no-cache:
-	@echo "$(BLUE)Rebuilding all images from scratch...$(NC)"
-	@$(COMPOSE) build --no-cache
+	@echo "$(BLUE)Rebuilding all images from scratch (serial)...$(NC)"
+	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build --no-cache $$svc; done
 	@echo "$(GREEN)✓ Build complete$(NC)"
 
-# FAST no-cache build with BuildKit (parallel)
+# FAST no-cache build with BuildKit — still serial to avoid OOM
 build-no-cache-fast:
-	@echo "$(BLUE)Rebuilding all images from scratch with BuildKit (parallel)...$(NC)"
-	@DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache
+	@echo "$(BLUE)Rebuilding all images from scratch with BuildKit (serial)...$(NC)"
+	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache $$svc; done
 	@echo "$(GREEN)✓ Fast build complete$(NC)"
 
 # Build all services
 build-all:
-	@echo "$(BLUE)Building all services with no cache...$(NC)"
-	@$(COMPOSE) build --no-cache
+	@echo "$(BLUE)Building all services with no cache (serial)...$(NC)"
+	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build --no-cache $$svc; done
 	@echo "$(GREEN)✓ Build complete$(NC)"
 
-# Build all services FAST (parallel)
+# Build all services FAST (cached, serial)
 build-all-fast:
-	@echo "$(BLUE)Building ALL services in parallel with BuildKit...$(NC)"
-	@DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache
+	@echo "$(BLUE)Building ALL services with BuildKit (serial)...$(NC)"
+	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache $$svc; done
 	@echo "$(GREEN)✓ All services built$(NC)"
 
 # Build specific service (standard)
@@ -143,9 +159,8 @@ build-service-fast:
 
 # Build with cache optimizations
 build-optimized:
-	@echo "$(BLUE)Building with cache optimizations...$(NC)"
-	@DOCKER_BUILDKIT=1 $(COMPOSE) build \
-		--build-arg BUILDKIT_INLINE_CACHE=1
+	@echo "$(BLUE)Building with cache optimizations (serial)...$(NC)"
+	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build --build-arg BUILDKIT_INLINE_CACHE=1 $$svc; done
 	@echo "$(GREEN)✓ Optimized build complete$(NC)"
 
 # Clear Docker build cache
@@ -166,8 +181,8 @@ rebuild-fast: clear-cache build-no-cache-fast up
 up: validate
 	@echo "$(BLUE)Stopping old containers and starting fresh...$(NC)"
 	@$(COMPOSE) down --remove-orphans 2>/dev/null || true
-	@echo "$(BLUE)Building images (max parallel=$(PARALLEL))...$(NC)"
-	@$(COMPOSE) build
+	@echo "$(BLUE)Building images (serial, 1 at a time)...$(NC)"
+	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build $$svc; done
 	@echo "$(BLUE)Starting all services...$(NC)"
 	@$(COMPOSE) up -d --no-build --remove-orphans
 	@echo "$(GREEN)✓ Services started$(NC)"
@@ -178,7 +193,7 @@ up: validate
 up-force:
 	@echo "$(BLUE)Force recreating all containers...$(NC)"
 	@$(COMPOSE) down --remove-orphans 2>/dev/null || true
-	@$(COMPOSE) build
+	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build $$svc; done
 	@$(COMPOSE) up -d --no-build --remove-orphans --force-recreate
 	@echo "$(GREEN)✓ Services recreated$(NC)"
 	@sleep 30
@@ -337,10 +352,10 @@ deploy-prod: validate
 	@echo "$(YELLOW)Configuring production environment...$(NC)"
 	@cp .env.production .env
 	@echo "$(BLUE)Building production images...$(NC)"
-	@$(COMPOSE_PROD) build --no-cache
+	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE_PROD) build --no-cache $$svc; done
 	@echo "$(GREEN)✓ Production build complete$(NC)"
 	@echo "$(BLUE)Starting production services...$(NC)"
-	@$(COMPOSE_PROD) up -d
+	@$(COMPOSE_PROD) up -d --no-build
 	@echo "$(GREEN)✓ Production deployment complete$(NC)"
 	@echo "Waiting 30s for services to stabilize..."
 	@sleep 30
@@ -348,13 +363,13 @@ deploy-prod: validate
 
 deploy-staging:
 	@echo "$(BLUE)Deploying to STAGING...$(NC)"
-	@$(COMPOSE) build
-	@$(COMPOSE) up -d
+	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build $$svc; done
+	@$(COMPOSE) up -d --no-build
 	@echo "$(GREEN)✓ Staging deployment complete$(NC)"
 
 prod-up: validate
 	@echo "$(BLUE)Starting production services (docker-compose.prod.yml)...$(NC)"
-	@$(COMPOSE_PROD) up -d
+	@$(COMPOSE_PROD) up -d --no-build
 	@echo "$(GREEN)✓ Production services started$(NC)"
 	@sleep 30
 	@$(COMPOSE_PROD) ps
@@ -525,7 +540,7 @@ fix-gateway:
 fix-all:
 	@echo "$(BLUE)Fixing all services...$(NC)"
 	@$(COMPOSE) down --remove-orphans
-	@$(COMPOSE) build --no-cache
+	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build --no-cache $$svc; done
 	@$(COMPOSE) up -d --no-build --remove-orphans
 	@echo "$(GREEN)✓ All services rebuilt and started$(NC)"
 	@sleep 30
@@ -541,7 +556,7 @@ usage-tips:
 	@echo "$(GREEN)1. BuildKit is already enabled (export DOCKER_BUILDKIT=1)$(NC)"
 	@echo ""
 	@echo "$(GREEN)2. Fastest build options:$(NC)"
-	@echo "   make build-no-cache-fast  # Rebuild everything (parallel)"
+		@echo "   make build-no-cache-fast  # Rebuild everything (serial)"
 	@echo "   make rebuild-fast         # Clear cache + rebuild (ULTRA FAST)"
 	@echo "   make build-service-fast SVC=service  # Rebuild single service"
 	@echo ""

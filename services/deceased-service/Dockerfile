@@ -20,7 +20,7 @@ COPY services/deceased-service/package.json ./services/deceased-service/
 # Do NOT use `--omit=optional`: it prunes sharp's platform binaries
 # (@img/sharp-linuxmusl-x64 / @img/sharp-libvips-linuxmusl-x64) on Alpine,
 # causing "Could not load the sharp module using the linuxmusl-x64 runtime".
-RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && npm install --no-audit --no-fund --include=optional
+RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && NODE_OPTIONS=--max-old-space-size=2048 npm install --no-audit --no-fund --include=optional
 
 COPY services/configurations/ ./configurations/
 COPY packages/ ./packages/

@@ -8,10 +8,10 @@ WORKDIR /app
 COPY client/package*.json ./
 
 # Install ALL dependencies (including devDependencies)
-RUN npm install --legacy-peer-deps
+RUN NODE_OPTIONS=--max-old-space-size=2048 npm install --legacy-peer-deps
 
 # Install esbuild separately (required by Vite 8 for transpilation)
-RUN npm install esbuild --legacy-peer-deps
+RUN NODE_OPTIONS=--max-old-space-size=2048 npm install esbuild --legacy-peer-deps
 
 # Copy source code
 COPY client/ .
