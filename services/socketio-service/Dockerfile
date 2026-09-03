@@ -25,6 +25,13 @@ COPY services/socketio-service/package.json ./services/socketio-service/
 # Install ALL dependencies (including dev for building shared packages)
 RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && NODE_OPTIONS=--max-old-space-size=2048 npm install --no-audit --no-fund --omit=optional
 
+# GUARD: this service hard-requires the redis client (Socket.IO Redis adapter
+# + the notification REST store). A build from a stale package.json /
+# package-lock.json used to deploy WITHOUT `redis` and only failed at runtime
+# ("Cannot find module 'redis'"), leaving Socket.IO in fallback mode. Fail the
+# build here instead of shipping a broken image.
+RUN node -e "require('redis'); require('@socket.io/redis-adapter'); require('socket.io'); console.log('[GUARD] redis + @socket.io/redis-adapter + socket.io OK')"
+
 # Copy source code
 COPY services/configurations/ ./configurations/
 COPY packages/ ./packages/

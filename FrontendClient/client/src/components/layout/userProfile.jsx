@@ -27,8 +27,11 @@ const UserProfile = () => {
         setLoading(true);
         try {
             const r = await api.get(ENDPOINTS.NOTIFICATION.BASE + '/notifications');
-            if (r.data?.success) {
-                const d = r.data.data || [];
+            // The socketio-service (which now serves /notification/*) returns
+            // { notifications, total } — accept the legacy { success, data }
+            // shape too.
+            if (r.data?.success || Array.isArray(r.data?.notifications)) {
+                const d = r.data.data || r.data.notifications || [];
                 setNotifications(d);
                 setUnreadCount(d.filter(n => !n.is_read).length);
             }

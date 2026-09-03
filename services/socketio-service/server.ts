@@ -169,6 +169,8 @@ const io = new SocketIOServer(server, {
 let redisConnected = false;
 let pubClient: ReturnType<typeof createClient> | null = null;
 let subClient: ReturnType<typeof createClient> | null = null;
+let redisRetryTimer: ReturnType<typeof setTimeout> | null = null;
+const REDIS_RETRY_DELAY_MS = 10_000;
 
 const initializeRedis = async (): Promise<void> => {
   try {
@@ -176,15 +178,17 @@ const initializeRedis = async (): Promise<void> => {
       url: REDIS_URL,
       socket: {
         reconnectStrategy: (retries: number) => {
-          if (retries > 10) {
-            Logger.error({
-              message:   'Redis    max    reconection attempts  reached',
-              error:     error
-            })
-          
-            return new Error('Redis connection failed');
+          // NEVER give up permanently. Returning an Error here stops the client
+          // from reconnecting FOREVER, which left redisConnected=false (empty
+          // notification list, no cross-instance pub/sub) even after Redis came
+          // back — this was the "Redis max reconnection attempts reached"
+          // outage. Retry forever with a capped 5s backoff instead.
+          if (retries > 0 && retries % 12 === 0) {
+            Logger.warn({
+              message: `Redis still reconnecting (attempt ${retries}) — retrying with 5s backoff`
+            });
           }
-          return Math.min(retries * 100, 3000);
+          return Math.min(retries * 200, 5000);
         },
         timeout: 10000
       }
@@ -210,6 +214,18 @@ const initializeRedis = async (): Promise<void> => {
       console.log('Redis Sub Client connected');
     });
 
+    // 'ready' fires after the handshake (and auth) completes — this is when the
+    // clients are truly usable. Tracking the flag here (and resetting it on
+    // 'error') keeps the health endpoint and the REST notification endpoints
+    // honest during reconnects.
+    pubClient.on('ready', () => {
+      redisConnected = true;
+    });
+
+    subClient.on('ready', () => {
+      redisConnected = true;
+    });
+
     await Promise.all([
       pubClient.connect(),
       subClient.connect()
@@ -219,6 +235,21 @@ const initializeRedis = async (): Promise<void> => {
     io.adapter(createAdapter(pubClient, subClient));
     console.log('Socket.IO Redis Adapter connected successfully');
 
+    // Redis recovered AFTER startup (or after a fallback window): cancel any
+    // pending retry and re-attach every tracked socket to its rooms, because
+    // swapping the adapter resets room membership for clients that connected
+    // while the service was running in in-memory mode.
+    if (redisRetryTimer) {
+      clearTimeout(redisRetryTimer);
+      redisRetryTimer = null;
+    }
+    io.sockets.sockets.forEach((s) => {
+      const rooms = socketTenantRooms.get(s.id);
+      if (rooms) rooms.forEach((r) => s.join(r));
+      const userData = userRooms.get(s.id);
+      if (userData) s.join(`user_${userData.userId}`);
+    });
+
   } catch (error: any) {
     console.warn('Redis connection failed, falling back to in-memory adapter:', error.message);
     redisConnected = false;
@@ -227,19 +258,30 @@ const initializeRedis = async (): Promise<void> => {
       if (pubClient) await pubClient.disconnect();
       if (subClient) await subClient.disconnect();
     } catch (cleanupError: any) {
-
-
       Logger.error({
-        message:    ' Redis   clen up    error   detected ',
-        error:   error
+        message: 'Redis cleanup error detected during fallback',
+        error: cleanupError
       })
-
     }
     Logger.warn({
      message:          'Socket.IO running in-memory mode - horizontal scaling unavailable',
-     
-     
     })
+
+    // SELF-HEAL: keep retrying in the background so a Redis container that
+    // boots late (or restarts) is re-attached WITHOUT a socketio-service
+    // restart. Previously a startup failure meant permanent in-memory mode.
+    if (!redisRetryTimer) {
+      redisRetryTimer = setTimeout(() => {
+        redisRetryTimer = null;
+        if (!redisConnected) {
+          console.log(`Retrying Redis adapter initialization (${REDIS_URL})...`);
+          initializeRedis().catch((retryError: any) =>
+            console.error('Redis retry failed:', retryError?.message || retryError)
+          );
+        }
+      }, REDIS_RETRY_DELAY_MS);
+      redisRetryTimer.unref?.();
+    }
   }
 };
 

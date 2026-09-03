@@ -85,7 +85,12 @@ const DOCKER_SERVICE_DEFAULTS = {
   mpesa: 'http://restpoint_mpesa_service:5000',
   portal: 'http://restpoint_portal_service:5000',
   invoices: 'http://restpoint_invoice_service:5000',
-  notification: 'http://restpoint_notification_service:5000',
+  // Notification REST (bell list / mark-read / delete) is implemented by the
+  // socketio-service (see services/socketio-service/server.ts). There is NO
+  // notification-service container in this repo: pointing at the old name
+  // produced a guaranteed ECONNREFUSED on every request, so the UI bell never
+  // showed anything even when Redis and Socket.IO were perfectly healthy.
+  notification: 'http://restpoint_socketio_service:5000',
   documents: 'http://restpoint_documents_service:5000',
   analytics: 'http://restpoint_analytics_service:5000',
   bodycheckout: 'http://restpoint_bodycheckout_service:5000',
@@ -133,6 +138,9 @@ const HOST_SERVICE_DEFAULTS = {
   documents: 'http://127.0.0.1:5011',
   analytics: 'http://127.0.0.1:5009',
   socketio: 'http://127.0.0.1:5018',
+  // Notification REST is served by the socketio-service, so in host mode it
+  // uses the same host-published port as socketio.
+  notification: 'http://127.0.0.1:5018',
   bodycheckout: 'http://127.0.0.1:5015',
   chemicals: 'http://127.0.0.1:5105',
   billing: 'http://127.0.0.1:5020',

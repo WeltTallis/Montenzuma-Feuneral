@@ -92,7 +92,9 @@ services:
       DECEASED_SERVICE_URL: http://restpoint_deceased_service:5000
       INVOICES_SERVICE_URL: http://restpoint_invoice_service:5000
       COFFIN_SERVICE_URL: http://restpoint_coffin_service:5000
-      NOTIFICATION_SERVICE_URL: http://restpoint_notification_service:5000
+      # Notification REST (bell list / mark-read / delete) is implemented by the
+      # socketio-service — there is no notification-service container in this repo.
+      NOTIFICATION_SERVICE_URL: http://restpoint_socketio_service:5000
       DOCUMENTS_SERVICE_URL: http://restpoint_documents_service:5000
       ANALYTICS_SERVICE_URL: http://restpoint_analytics_service:5000
       BODYCHECKOUT_SERVICE_URL: http://restpoint_bodycheckout_service:5000
@@ -373,11 +375,12 @@ services:
       retries: 3
       start_period: 40s
 
-  # NOTE: No notification-service container. The notification gateway runs as a
-  # host process on port 8111 (see the api-gateway health output:
-  # "notification": { "url": "http://localhost:8111" }). There is no
-  # services/notification-service source folder in this repo, so a build block
-  # here makes every `docker compose up --build` fail with
+  # NOTE: No notification-service container — and none is needed. The
+  # notification REST endpoints used by the UI bell (list / mark-read / delete)
+  # are implemented by the socketio-service below, and the gateway's
+  # NOTIFICATION_SERVICE_URL points at that container. Do NOT re-add a
+  # services/notification-service build block: there is no source folder, so
+  # every `docker compose up --build` would fail with
   #   resolve: lstat .../services/notification-service: no such file or directory
 
   socketio-service:

@@ -564,15 +564,16 @@ const NotificationBell = () => {
         pendingNotificationsRef.current.push(formatted);
       }
 
-      // Coffin events
-      else if (['coffin-created', 'coffin-updated', 'coffin-deleted', 'coffin-assigned'].includes(eventName)) {
+      // Coffin events (the socketio-service /emit endpoint prefixes event names
+      // with "notification:", so accept both the raw and the prefixed variant)
+      else if (['coffin-created', 'coffin-updated', 'coffin-deleted', 'coffin-assigned'].includes(eventName.replace(/^notification:/, ''))) {
         const eventMeta = {
           'coffin-created': { type: 'coffin-created', title: 'New Coffin Added', priority: 'medium' },
           'coffin-updated': { type: 'coffin-updated', title: 'Coffin Updated', priority: 'low' },
           'coffin-deleted': { type: 'coffin-deleted', title: 'Coffin Removed', priority: 'medium' },
           'coffin-assigned': { type: 'coffin-assigned', title: 'Coffin Assigned', priority: 'high' },
         };
-        const meta = eventMeta[eventName];
+        const meta = eventMeta[eventName.replace(/^notification:/, '')];
         formatted = {
           id: data.id || `coffin-${Date.now()}`,
           type: meta.type, title: data.title || meta.title,
@@ -707,7 +708,10 @@ const NotificationBell = () => {
       'notification:upcoming_bookings_24h', 'notification:urgent_bookings_2h', 'notification:weekly_bookings_summary',
       'new_booking', 'booking_status_updated', 'booking_postponed',
       'hearse-booking-reminder',
-      'coffin-created', 'coffin-updated', 'coffin-deleted', 'coffin-assigned',
+      'coffin-created', 'notification:coffin-created',
+      'coffin-updated', 'notification:coffin-updated',
+      'coffin-deleted', 'notification:coffin-deleted',
+      'coffin-assigned', 'notification:coffin-assigned',
       'coffin-booking-created', 'notification:coffin-booking-created',
       'coffin-stock-request', 'notification:coffin-stock-request',
       'body-released', 'postmortem-results-ready',
@@ -715,17 +719,49 @@ const NotificationBell = () => {
       'notification:postmortem-request-created', 'postmortem-request-created',
       'notification:postmortem-request-sent', 'postmortem-request-sent',
       'notification:postmortem-request-status',
+      // Workshop / store service notifications (pushed through socketio-service /emit,
+      // which prefixes them with "notification:")
+      'notification:production-stage-updated', 'notification:worker-assigned',
+      'notification:worker-assignment-updated',
     ];
+    const uniqueEvents = Array.from(new Set(notificationEvents));
 
     const handlers = {};
-    notificationEvents.forEach(event => {
+    uniqueEvents.forEach(event => {
       const handler = handleNotification(event);
       handlers[event] = handler;
       socket.on(event, handler);
     });
 
+    // CATCH-ALL: the socketio-service prefixes EVERY /emit/<event> with
+    // "notification:" (or "alert:"), and backend services add new events over
+    // time. Listening only to the fixed list above silently drops every event
+    // that is not listed, which is why the bell missed notifications. Listen to
+    // everything and render whatever looks like a notification through the
+    // generic formatter. Events with a specific handler above are skipped so
+    // nothing is ever shown twice.
+    const registeredEvents = new Set(uniqueEvents);
+    const serverControlEvents = new Set([
+      'connected', 'joined', 'joined-deceased', 'error',
+      'connect', 'disconnect', 'reconnect', 'ping', 'pong',
+    ]);
+    const onAnyNotification = (eventName, ...args) => {
+      if (registeredEvents.has(eventName)) return;
+      if (serverControlEvents.has(eventName)) return;
+      const isNotificationEvent =
+        eventName.startsWith('notification:') ||
+        eventName.startsWith('alert:') ||
+        eventName.startsWith('booking_') ||
+        eventName === 'new_booking';
+      if (!isNotificationEvent) return;
+      const data = args.find(a => a && typeof a === 'object') || {};
+      handleNotification(eventName)(data);
+    };
+    socket.onAny(onAnyNotification);
+
     return () => {
       Object.entries(handlers).forEach(([event, handler]) => socket.off(event, handler));
+      socket.offAny(onAnyNotification);
     };
   }, [socket, flushNotifications]);
 
