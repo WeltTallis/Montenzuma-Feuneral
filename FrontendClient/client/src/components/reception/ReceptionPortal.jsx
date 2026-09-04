@@ -401,7 +401,7 @@ export default function App() {
       let redirectPath = "/"
       if (serviceName === "Body Admission") redirectPath = `/tenant/${tenantSlug}/deceased/register`
       else if (serviceName === "Body Release") redirectPath = `/tenant/${tenantSlug}/release-form/new`
-      else if (serviceName === "Flower Arrangements") redirectPath = `/tenant/${tenantSlug}/flowers/new`
+      else if (serviceName === "Flower Arrangements") redirectPath = `/tenant/${tenantSlug}/flowers`
       else if (serviceName === "Postmortem Records") redirectPath = `/tenant/${tenantSlug}/postmortem-qr`
       navigate(redirectPath)
       setShowOverlay(false)
@@ -416,7 +416,7 @@ export default function App() {
         {/* ── Hero ── */}
         <Hero>
           <div style={{ position: "absolute", inset: 0 }}>
-            <HeroImg src="https://access.vheer.com/results/iYANfSwa_1787051254399.jpg" alt="Montezuma Funeral Home chapel" />
+            <HeroImg src="/portal.webp" alt="Montezuma Funeral Home reception portal" />
           </div>
           <Scrim $g="linear-gradient(to right, rgba(14,14,25,0.95) 0%, rgba(5,5,7,0.85) 15%, rgba(5,5,7,0.4) 90%)" />
           <Scrim $g="linear-gradient(to top, rgba(5,5,7,1) 0%, rgba(5,5,7,0) 25%)" />

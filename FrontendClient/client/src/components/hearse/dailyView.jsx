@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
-import { BR, HH, MAX_H, SC, SM, VIEWER_CSS, dk, ft, layout } from './viewerShared';
+import { BR, HH, MAX_H, SC, SM, VIEWER_CSS, dk, ft, layout, resolveBranchName, resolveBranchColor, isMultiDay, getMultiDayColor, getBookingDateRange } from './viewerShared';
 
 
 // --- Constants ---
@@ -73,19 +73,32 @@ export default function DispatchBoard({
   }, []);
 
   const normalizeBooking = useCallback((b) => {
+    // Preserve ALL branch-related fields so resolveBranchName() can find the
+    // real name. The backend may send branch_slug (complete slug like
+    // "org-home-machakos"), branch_name ("Main Branch" fallback), branch_id,
+    // or branch (short slug). We keep them all and let resolveBranchName()
+    // pick the best one.
     return {
       id: b.id || b.booking_id,
       client: b.client || b.client_name || b.booking_code || '—',
       dest: b.dest || b.destination || b.to_location || '—',
-      from: b.from || b.from_location || b.branch_name || '—',
+      from: b.from || b.from_location || '',
       start: b.start || (typeof b.start_time === 'number' ? b.start_time : START_DEFAULT),
       end: b.end || (typeof b.end_time === 'number' ? b.end_time : END_DEFAULT),
       allDay: b.allDay === true || (!b.start && !b.start_time && !b.estimated_departure_time && !b.end && !b.end_time && !b.estimated_arrival_time),
       status: b.status || b.booking_status || 'booked',
       phone: b.phone || b.client_phone || '',
       plate: b.plate || b.plate_number || b.hearse_plate || '—',
-      branch: b.branch || b.branch_name || 'nairobi',
-      branchName: b.branchName || b.branch_name || ''
+      // Keep original fields for branch resolution
+      branch: b.branch || b.branch_slug || b.branchSlug || b.branch_name || 'nairobi',
+      branch_slug: b.booking_branch_slug || b.branch_slug || b.branchSlug || b.branch || '',
+      booking_branch_slug: b.booking_branch_slug || '',
+      branchName: b.branchName || b.branch_name || '',
+      branch_id: b.branch_id || b.branchId || null,
+      // Preserve multi-day fields
+      start_date: b.start_date || b.startDate || b.date || null,
+      end_date: b.end_date || b.endDate || null,
+      is_multi_day: b.is_multi_day || b.multi_day || b.isMultiDay || false,
     };
   }, []);
 
@@ -162,22 +175,65 @@ export default function DispatchBoard({
       if (bk) setTimeout(() => openEditModal(bk), 250);
     };
 
+    // Resolve the REAL branch name from the booking data (not the hardcoded BR object).
+    const realBranchName = resolveBranchName(b);
+    const realBranchColor = resolveBranchColor(b);
+    const multiDay = isMultiDay(b);
+    const bookingDates = multiDay ? getBookingDateRange(b) : [];
+    const multiDayColor = multiDay ? getMultiDayColor(b) : realBranchColor;
+
     return (
       <>
         <div className={`sov ${sidebarOpen ? 'op' : ''}`} onClick={() => { setSidebarOpen(false); setViewingId(null); }}></div>
         <aside className={`sb ${sidebarOpen ? 'op' : ''}`} role="dialog" aria-label="Booking details">
           <div className="sbh"><h3>Booking Details</h3><button className="cbtn" onClick={() => { setSidebarOpen(false); setViewingId(null); }} aria-label="Close"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button></div>
           <div className="sbd">
-            <div className="scb" style={{ background: br.color }}></div>
+            <div className="scb" style={{ background: multiDay ? multiDayColor : realBranchColor }}></div>
+
+            {/* Multi-day booking badge */}
+            {multiDay && (
+              <div style={{ background: multiDayColor, color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Multi-Day Booking ({bookingDates.length} days)
+              </div>
+            )}
+
             <div className="sbs"><div className="sbst">Client Information</div><div className="sig"><div className="sic"><div className="sil">Client</div><div className="siv">{b.client}</div></div><div className="sic"><div className="sil">Phone</div><div className="siv">{b.phone}</div></div></div></div>
             <div className="sbs"><div className="sbst">Schedule</div>
-              <div className="sdr"><span className="sdl">Date</span><span className="sdvl">{DF[curDay.getDay()]}, {MN[curDay.getMonth()]} {curDay.getDate()}</span></div>
+              <div className="sdr"><span className="sdl">{multiDay ? 'Start Date' : 'Date'}</span><span className="sdvl">{DF[curDay.getDay()]}, {MN[curDay.getMonth()]} {curDay.getDate()}</span></div>
+              {multiDay && bookingDates.length > 1 && (
+                <div className="sdr"><span className="sdl">End Date</span><span className="sdvl">{(() => { const d = new Date(bookingDates[bookingDates.length - 1] + 'T00:00:00'); return `${DF[d.getDay()]}, ${MN[d.getMonth()]} ${d.getDate()}`; })()}</span></div>
+              )}
               <div className="sdr"><span className="sdl">Time</span><span className="sdvl">{ft(b.start)} — {ft(b.end)}</span></div>
               <div className="sdr"><span className="sdl">Duration</span><span className="sdvl">{ds}</span></div>
               <div className="sdr"><span className="sdl">Status</span><span className="sdvl" style={{ color: SC[b.status] || '#000' }}>{SM[b.status] || b.status}</span></div>
-              <div className="sdr"><span className="sdl">Branch</span><span className="sdvl" style={{ color: br.color }}>{br.name}</span></div>
+              <div className="sdr"><span className="sdl">Branch</span><span className="sdvl" style={{ color: multiDayColor, fontWeight: 700 }}>{realBranchName}</span></div>
             </div>
-            <div className="sbs"><div className="sbst">Route</div><div className="srt"><div className="srl"><div className="srdt" style={{ borderColor: br.color }}></div><div className="srdsh"></div><div className="srdt" style={{ borderColor: br.color }}></div></div><div className="sri"><div><div className="srpt">{b.from}</div><div className="srsb">Departure Point</div></div><div><div className="srpt">{b.dest}</div><div className="srsb">Destination</div></div></div></div></div>
+            {/* Multi-day booking: show all dates */}
+            {multiDay && bookingDates.length > 1 && (
+              <div className="sbs"><div className="sbst">Booking Dates</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {bookingDates.map((dateStr, idx) => {
+                    const d = new Date(dateStr + 'T00:00:00');
+                    return (
+                      <span key={dateStr} style={{
+                        background: multiDayColor,
+                        color: '#fff',
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontSize: 10,
+                        fontWeight: 600,
+                        opacity: idx === 0 || idx === bookingDates.length - 1 ? 1 : 0.85,
+                      }}>
+                        {d.getDate()}/{d.getMonth() + 1}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="sbs"><div className="sbst">Route</div><div className="srt"><div className="srl"><div className="srdt" style={{ borderColor: multiDayColor }}></div><div className="srdsh"></div><div className="srdt" style={{ borderColor: multiDayColor }}></div></div><div className="sri"><div><div className="srpt">{b.from}</div><div className="srsb">Departure Point</div></div><div><div className="srpt">{b.dest}</div><div className="srsb">Destination</div></div></div></div></div>
             <div className="sbs"><div className="sbst">Vehicle</div><div className="sig"><div className="sic"><div className="sil">Plate</div><div className="siv">{b.plate}</div></div><div className="sic"><div className="sil">Type</div><div className="siv">Hearse</div></div></div></div>
             <div className="sbs"><div className="sbst">Progress</div><div className="stl">{steps.map((s, i) => <div className={`sts${s.dn ? ' dn' : ''}${s.ac ? ' ac' : ''}`} key={i}><div className="std"></div><div className="stt">{s.l}</div></div>)}</div></div>
           </div>
@@ -419,7 +475,10 @@ export default function DispatchBoard({
                     const height = Math.min(MAX_H, Math.max(HH * 0.2, (Math.min(b.end, eh) - Math.max(b.start, sh)) * HH));
                     const wp = 100 / b._t;
                     const lp = b._c * wp;
-                    const br = BR[b.branch] || BR.nairobi;
+                    const multiDay = isMultiDay(b);
+                    const branchColor = multiDay ? getMultiDayColor(b) : resolveBranchColor(b);
+                    const branchName = resolveBranchName(b);
+                    const bookingDates = multiDay ? getBookingDateRange(b) : [];
                     const showTm = height > 30;
                     const showDs = height > 48;
                     const showDt = height > 66;
@@ -433,8 +492,10 @@ export default function DispatchBoard({
                           height: `${height}px`,
                           left: `calc(${lp}% + 2px)`,
                           width: `calc(${wp}% - 4px)`,
-                          background: br.color,
-                          animationDelay: `${i * 0.04}s`
+                          background: branchColor,
+                          animationDelay: `${i * 0.04}s`,
+                          border: multiDay ? `2px solid ${branchColor}` : 'none',
+                          boxShadow: multiDay ? `0 0 0 1px ${branchColor}40` : 'none',
                         }}
                         onClick={(e) => { 
                           e.stopPropagation(); 
@@ -444,7 +505,13 @@ export default function DispatchBoard({
                         }}
                       >
                         <div className="bb-sp">{SM[b.status] || b.status}</div>
-                        <div className="bb-br">{b.branchName || br.name}</div>
+                        {multiDay && (
+                          <div style={{ fontSize: 9, fontWeight: 700, color: '#fff', background: 'rgba(0,0,0,0.3)', padding: '1px 4px', borderRadius: 3, display: 'inline-flex', alignItems: 'center', gap: 2, marginBottom: 2 }}>
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            {bookingDates.length}d
+                          </div>
+                        )}
+                        <div className="bb-br">{branchName}</div>
                         <div className="bb-cl">{b.client}</div>
                         {showTm && <div className="bb-tm">{b.allDay ? 'All Day' : `${ft(b.start)} – ${ft(b.end)}`}</div>}
                         {showDs && <div className="bb-ds">{b.dest}</div>}
@@ -454,8 +521,68 @@ export default function DispatchBoard({
                     );
                   });
                 }
+                // Collect multi-day bookings that span this date (for overlay bar at top)
+                const allBookings = Object.values(bookings).flat();
+                const multiDayBookings = allBookings.filter(b => {
+                  if (!isMultiDay(b)) return false;
+                  const dates = getBookingDateRange(b);
+                  return dates.includes(k);
+                });
+
                 return (
                   <>
+                    {/* Multi-day booking overlay bar at top of grid */}
+                    {multiDayBookings.length > 0 && (
+                      <div style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 10,
+                        background: '#fff',
+                        borderBottom: '2px solid #E5E7EB',
+                        padding: '6px 12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                      }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#9CA3AF' }}>
+                          Multi-Day Bookings
+                        </div>
+                        {multiDayBookings.map((b, idx) => {
+                          const color = getMultiDayColor(b);
+                          const dates = getBookingDateRange(b);
+                          const branchName = resolveBranchName(b);
+                          return (
+                            <div
+                              key={`md-${b.id}`}
+                              onClick={(e) => { e.stopPropagation(); setViewingId(b.id); setSidebarOpen(true); }}
+                              style={{
+                                background: color,
+                                color: '#fff',
+                                padding: '5px 10px',
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 8,
+                                boxShadow: '0 1px 3px rgba(0,0,0,.1)',
+                              }}
+                            >
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                {b.client}
+                              </span>
+                              <span style={{ fontSize: 10, opacity: 0.9 }}>
+                                {branchName} · {dates.length}d
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     {rows}
                     <div className="tg-ov">
                       {bookingElements}

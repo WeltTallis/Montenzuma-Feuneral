@@ -32,6 +32,7 @@ const PricingPage = lazy(() => import('../modules/seo/PricingPage'));
 const BereavementManagementGuide = lazy(() => import('../modules/blog/BereavementManagementGuide'));
 const MemberContributionsGuide = lazy(() => import('../modules/blog/MemberContributionsGuide'));
 const FuneralWelfareGuide = lazy(() => import('../modules/blog/FuneralWelfareGuide'));
+const FutureDeathCareGuide = lazy(() => import('../modules/blog/FutureDeathCareGuide'));
 
 // Comparison Pages
 const BestChurchSoftwareKenya = lazy(() => import('../modules/compare/BestChurchSoftwareKenya'));
@@ -729,6 +730,7 @@ const AppRouter = () => (
       <Route path="/blog/funeral-welfare-management" element={<FuneralWelfareGuide />} />
       <Route path="/blog/bereavement-management" element={<BereavementManagementGuide />} />
       <Route path="/blog/member-contributions" element={<MemberContributionsGuide />} />
+      <Route path="/blog/future-of-death-care-software-restpoint" element={<FutureDeathCareGuide />} />
 
       // Comparison Routes
       <Route path="/compare/restpoint-vs-excel" element={<RestPointVsExcel />} />

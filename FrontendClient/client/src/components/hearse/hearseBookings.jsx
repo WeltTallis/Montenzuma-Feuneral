@@ -12,6 +12,7 @@ import {
   ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, List, Grid, X,
   Calendar, MapPin, Phone, User, Filter
 } from '../../utils/icons/icons';
+import { resolveBranchName, isMultiDay, getBookingDateRange, getMultiDayColor } from './viewerShared';
 import BookNewHearseModal from './BookNewHearseModal';
 import notify from '../../utils/notify';
 
@@ -1111,7 +1112,38 @@ const HearseBookings = () => {
                 </DetailItem>
                 <DetailItem>
                   <DetailLabel>Dates</DetailLabel>
-                  <DetailValue>{fmtBookingDates(selectedBooking)}</DetailValue>
+                  <DetailValue>
+                    {(() => {
+                      const multiDay = isMultiDay(selectedBooking);
+                      const dates = multiDay ? getBookingDateRange(selectedBooking) : [];
+                      const color = multiDay ? getMultiDayColor(selectedBooking) : null;
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <div>{fmtBookingDates(selectedBooking)}</div>
+                          {multiDay && dates.length > 1 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                              {dates.map((d, idx) => {
+                                const dt = new Date(d + 'T00:00:00');
+                                const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
+                                return (
+                                  <span key={d} style={{
+                                    background: color,
+                                    color: '#fff',
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                  }}>
+                                    {dayName} {dt.getDate()}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </DetailValue>
                 </DetailItem>
                 <DetailItem>
                   <DetailLabel>Hearse</DetailLabel>
@@ -1126,7 +1158,21 @@ const HearseBookings = () => {
                 </DetailItem>
                 <DetailItem>
                   <DetailLabel>Branch</DetailLabel>
-                  <DetailValue>{selectedBooking.branch_name || 'N/A'}</DetailValue>
+                  <DetailValue style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {(() => {
+                      const name = resolveBranchName(selectedBooking);
+                      const multiDay = isMultiDay(selectedBooking);
+                      const color = multiDay ? getMultiDayColor(selectedBooking) : null;
+                      return (
+                        <>
+                          {color && (
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
+                          )}
+                          <span style={{ fontWeight: 600, color: color || 'inherit' }}>{name}</span>
+                        </>
+                      );
+                    })()}
+                  </DetailValue>
                 </DetailItem>
                 <DetailItem>
                   <DetailLabel>Booked By</DetailLabel>

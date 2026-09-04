@@ -79,7 +79,7 @@ export const getTimeInfo = b => {
   return { sd, ed, allDay, sm, dur, fs, fe, range: allDay ? 'All Day' : (fe ? fs + ' – ' + fe : fs) };
 };
 
-// ===== HELPER: Get booking dates safely =====
+//  HELPER: Get booking dates safely 
 const getBookingDates = (b) => {
   if (b.booking_dates) {
     try {
@@ -690,17 +690,23 @@ const StatIcon = styled.span`
 // ===== MAIN CALENDAR COMPONENT =====
 const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedDate, onDateSelect, onDateClick }) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
+  const [selectedMultiDay, setSelectedMultiDay] = useState(null);
   const calendarRef = useRef(null);
 
   // Build a branch lookup map from cached branches to resolve branch_id → branch_name
+  // Also maps branch_slug → branchName for slug-based lookups
   const branchLookup = useMemo(() => {
     try {
       const branches = getBranches();
       const map = new Map();
       branches.forEach((b) => {
         const id = b.branchId || b.branch_id || b.id;
+        const slug = b.branchSlug || b.branch_slug || '';
         const name = b.branchName || b.branch_name || b.name || '';
-        if (id && name) map.set(String(id), name);
+        if (id && name) map.set(`id:${String(id)}`, name);
+        if (slug && name) map.set(`slug:${slug}`, name);
+        // Also map slug → name for partial slug matches
+        if (slug && name) map.set(`slug:${slug}`, name);
       });
       return map;
     } catch (e) {
@@ -708,9 +714,41 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     }
   }, []);
 
-  const resolveBranchName = (branchId) => {
-    if (!branchId) return '';
-    return branchLookup.get(String(branchId)) || '';
+  // Extract a readable branch name from a slug like "org-home-machakos" → "Machakos"
+  const slugToReadableName = (slug) => {
+    if (!slug) return '';
+    const parts = slug.split('-');
+    // Take the last meaningful part (e.g., "machakos" from "org-home-machakos")
+    const lastPart = parts[parts.length - 1];
+    // Capitalize first letter
+    return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
+  };
+
+  const resolveBranchName = (branchId, branchSlug, bookingBranchName) => {
+    // Skip generic fallback names like "Main Branch", "Main", "Default"
+    const GENERIC = new Set(['main branch', 'main', 'default', 'unknown', 'n/a', '—', '']);
+    const name = (bookingBranchName || '').trim();
+    if (name && !GENERIC.has(name.toLowerCase())) {
+      return name;
+    }
+    // Lookup by branch ID
+    if (branchId) {
+      const byId = branchLookup.get(`id:${String(branchId)}`);
+      if (byId) return byId;
+    }
+    // Lookup by branch slug (complete slug like "org-home-machakos")
+    if (branchSlug) {
+      const bySlug = branchLookup.get(`slug:${branchSlug}`);
+      if (bySlug) return bySlug;
+      // Try the global BRANCH_SLUG_TO_NAME map
+      if (BRANCH_SLUG_TO_NAME[branchSlug]) return BRANCH_SLUG_TO_NAME[branchSlug];
+      // Extract readable name from slug (last segment after dash)
+      return slugToReadableName(branchSlug);
+    }
+    // If we have a generic name, try the legacy BR lookup
+    if (name && BR[name.toLowerCase()]) return BR[name.toLowerCase()].name;
+    // Last resort
+    return name || 'Unknown';
   };
 
   // Convert bookings to FullCalendar events with rich data
@@ -746,7 +784,24 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         const datePart = startDate ? String(startDate).split('T')[0]?.replace(/[-]/g, '') : 'nodate';
         const randPart = Math.random().toString(36).substring(2, 7).toUpperCase();
         const readableId = `BK-${hearseName}-${clientName}-${datePart}-${randPart}`;
-        const resolvedBranchName = resolveBranchName(b.branch_id) || b.branch_name || b.branch || '';
+        const resolvedBranchName = resolveBranchName(
+          b.branch_id,
+          b.booking_branch_slug || b.branch_slug || b.branchSlug,
+          b.branch_name || b.branchName || b.hearse_branch_name || b.branch
+        );
+
+        // Detect multi-day bookings
+        const bookingDates = getBookingDates(b);
+        const isMultiDay = bookingDates.length > 1 || (() => {
+          if (bookingDates.length === 1) {
+            const d = new Date(bookingDates[0]);
+            const nextDay = new Date(d);
+            nextDay.setDate(nextDay.getDate() + 1);
+            // Check if booking spans past midnight
+            return b.end_date && new Date(b.end_date).toDateString() !== d.toDateString();
+          }
+          return false;
+        })();
 
         return {
           id: b.booking_id || b.id || `booking-${Math.random()}`,
@@ -768,6 +823,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             from: b.from_location || b.origin || '—',
             plate: b.plate_number || b.hearse_plate || b.number_plate || '—',
             branchName: resolvedBranchName,
+            isMultiDay,
+            multiDayDates: bookingDates,
             phone: b.client_phone || b.phone || '',
             clientName: clientName,
             startTime,
@@ -812,9 +869,12 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     if (onDateClick) onDateClick(dateStr);
   }, [onDateSelect, onDateClick]);
 
-  // Handle event click
+  // Handle event click - show multi-day overlay for multi-day bookings
   const handleEventClick = useCallback((info) => {
     const booking = info.event.extendedProps;
+    if (booking.isMultiDay) {
+      setSelectedMultiDay(booking);
+    }
     if (onItemClick) onItemClick(booking);
   }, [onItemClick]);
 
@@ -834,6 +894,12 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       return null;
     }
 
+    const isMultiDay = props.isMultiDay;
+    const multiDayStyle = isMultiDay ? {
+      background: `repeating-linear-gradient(45deg, ${status.color}, ${status.color} 4px, ${status.color}dd 4px, ${status.color}dd 8px)`,
+      border: `2px solid ${status.color}`,
+    } : {};
+
     // Week/Day view - show full card with all details
     return (
       <div style={{
@@ -845,23 +911,28 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         justifyContent: 'center',
         overflow: 'hidden',
         gap: '1px',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        ...multiDayStyle
       }}>
-        {!isAllDay && props.startTime && (
-          <div style={{
-            fontSize: isAllDay ? '9px' : '9px',
-            fontWeight: 600,
-            opacity: 0.85,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '3px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
-          }}>
-            <Clock size={9} /> {props.startTime}{props.endTime ? ` - ${props.endTime}` : ''}
+        {isMultiDay && (
+          <div style={{ fontSize: '7px', fontWeight: 700, color: status.color, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+            Multi-Day
           </div>
         )}
+        <div style={{
+          fontSize: isAllDay ? '9px' : '9px',
+          fontWeight: 600,
+          opacity: 0.85,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '3px',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>
+          <Clock size={9} /> {props.startTime}{props.endTime ? ` - ${props.endTime}` : ''}
+        </div>
+
         <div style={{
           fontWeight: 700,
           fontSize: isAllDay ? '11px' : '11px',
@@ -1161,8 +1232,70 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           forceEventDuration={true}
         />
       </CalendarWrapper>
+      <MultiDayOverlay booking={selectedMultiDay} onClose={() => setSelectedMultiDay(null)} />
     </Shell>
   );
 };
 
-export default HearseCalendar;
+// ===== MULTI-DAY BOOKING OVERLAY =====
+const MULTI_DAY_PALETTE = ['#7C3AED', '#DB2777', '#0891B2', '#CA8A04', '#4F46E5', '#059669', '#DC2626', '#EA580C'];
+const getMultiDayColor = (id) => {
+  const hash = String(id || '0').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return MULTI_DAY_PALETTE[hash % MULTI_DAY_PALETTE.length];
+};
+
+const MultiDayOverlay = ({ booking, onClose }) => {
+  if (!booking) return null;
+  const dates = booking.multiDayDates || [];
+  const sc = STATUS_CONFIG[booking.status] || STATUS_CONFIG.pending;
+  // Use a distinct multi-day color based on booking ID (not the status color)
+  const multiDayColor = getMultiDayColor(booking.bookingId || booking.id);
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }} onClick={onClose}>
+      <div style={{ background: '#fff', borderRadius: '16px', maxWidth: '500px', width: '100%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px', background: multiDayColor, borderRadius: '16px 16px 0 0', color: '#fff' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '4px' }}>Multi-Day Booking</div>
+              <div style={{ fontSize: '20px', fontWeight: 700 }}>{booking.clientName || 'Unknown'}</div>
+            </div>
+            <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: '#fff' }}>✕</button>
+          </div>
+        </div>
+        <div style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            <span style={{ padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, background: sc.bg || sc.color + '20', color: sc.color }}>{sc.label || booking.status}</span>
+            {booking.branchName && <span style={{ padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, background: '#f3f4f6', color: '#374151' }}>📍 {booking.branchName}</span>}
+          </div>
+          <div style={{ background: '#f9fafb', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '8px' }}>Booking Period</div>
+            <div style={{ fontSize: '16px', fontWeight: 600, color: '#111827' }}>
+              {dates.length > 1 ? `${new Date(dates[0]).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} — ${new Date(dates[dates.length - 1]).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : new Date(dates[0]).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            </div>
+            <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>{dates.length} day{dates.length > 1 ? 's' : ''} total</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            {booking.dest && booking.dest !== '—' && <div><div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '4px' }}>Destination</div><div style={{ fontSize: '14px', color: '#111827' }}>{booking.dest}</div></div>}
+            {booking.from && booking.from !== '—' && <div><div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '4px' }}>From</div><div style={{ fontSize: '14px', color: '#111827' }}>{booking.from}</div></div>}
+            {booking.plate && booking.plate !== '—' && <div><div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '4px' }}>Vehicle</div><div style={{ fontSize: '14px', color: '#111827' }}>{booking.plate}</div></div>}
+            {booking.hearseName && <div><div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '4px' }}>Hearse</div><div style={{ fontSize: '14px', color: '#111827' }}>{booking.hearseName}</div></div>}
+            {booking.phone && booking.phone !== '—' && <div><div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '4px' }}>Phone</div><div style={{ fontSize: '14px', color: '#111827' }}>{booking.phone}</div></div>}
+            {booking.bookingCode && <div><div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '4px' }}>Code</div><div style={{ fontSize: '14px', color: '#111827', fontFamily: 'monospace' }}>{booking.bookingCode}</div></div>}
+          </div>
+          {dates.length > 1 && (
+            <div style={{ marginTop: '20px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '8px' }}>Daily Breakdown</div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {dates.map((d, i) => (
+                  <div key={i} style={{ padding: '8px 12px', borderRadius: '8px', background: i === 0 ? multiDayColor : i === dates.length - 1 ? multiDayColor + 'cc' : multiDayColor + '22', color: i === 0 || i === dates.length - 1 ? '#fff' : multiDayColor, fontSize: '11px', fontWeight: 600, border: `1px solid ${multiDayColor}44` }}>
+                    Day {i + 1}: {new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

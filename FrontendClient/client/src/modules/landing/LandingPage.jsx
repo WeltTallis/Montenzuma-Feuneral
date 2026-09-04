@@ -8,6 +8,7 @@ import LandingPageSEO from '../seo/LandingPageSEO';
 import Footer from '../../components/layout/Footer';
 import ModuleGridSection from './imageCard';
 import FloatingCTA from './FloatingCTA';
+import FaqSection from './FaqSection';
 import C from '../../utils/colors/index'
 
 
@@ -1061,6 +1062,9 @@ export default function App() {
         </section>
 
         <NewsroomSection />
+
+        {/* ── FAQ ── */}
+        <FaqSection />
 
         {/* ── Lock-in CTA ── */}
         <section className="lockin-section">

@@ -16,6 +16,205 @@ export const BR = {
   kisumu: { name: 'Kisumu', color: '#EA580C' }
 };
 
+// Real branch name mapping from backend slugs → human-readable names.
+// The backend stores the complete branch slug (e.g. "montenzuma-monalisa-feuneral-home-machakos")
+// in booking.branch / booking.branch_slug. This map resolves those to display names.
+export const BRANCH_SLUG_TO_NAME = {
+  // Parent / main branches (complete slugs)
+  'montenzuma-monalisa-feuneral-home-nairobi': 'Nairobi',
+  'montenzuma-monalisa-feuneral-home-machakos': 'Machakos',
+  'montenzuma-monalisa-feuneral-home-thika': 'Thika',
+  'montenzuma-monalisa-feuneral-home-mombasa': 'Mombasa',
+  'montenzuma-monalisa-feuneral-home-nakuru': 'Nakuru',
+  'montenzuma-monalisa-feuneral-home-kisumu': 'Kisumu',
+  // Short slugs (fallback)
+  'nairobi': 'Nairobi',
+  'machakos': 'Machakos',
+  'thika': 'Thika',
+  'mombasa': 'Mombasa',
+  'nakuru': 'Nakuru',
+  'kisumu': 'Kisumu',
+};
+
+// Dynamically update the branch name map from API data.
+// Call this when branches are fetched from the backend.
+// branches: array of { branch_id, branch_slug, branch_name, branch_city, ... }
+export function updateBranchNameMap(branches) {
+  if (!Array.isArray(branches)) return;
+  branches.forEach((b) => {
+    const slug = b.branch_slug || b.slug || b.branchSlug || '';
+    const name = b.branch_name || b.name || b.branchName || b.city || '';
+    if (slug && name) {
+      BRANCH_SLUG_TO_NAME[slug] = name;
+    }
+  });
+}
+
+// Generic fallback values from the backend that are NOT real branch names.
+// When branch_name is one of these, we skip it and try slug resolution instead.
+const GENERIC_BRANCH_FALLBACKS = new Set([
+  'main branch',
+  'main',
+  'default',
+  'unknown',
+  'n/a',
+  '—',
+  '',
+]);
+
+// Try to load branches from localStorage and update the map.
+// This runs once on module load to pick up any cached branch data.
+function loadBranchesFromStorage() {
+  try {
+    const stored = localStorage.getItem('branches') || localStorage.getItem('tenant_branches') || localStorage.getItem('branchList');
+    if (stored) {
+      const branches = JSON.parse(stored);
+      if (Array.isArray(branches)) {
+        updateBranchNameMap(branches);
+      }
+    }
+  } catch (e) {
+    // ignore parse errors
+  }
+}
+loadBranchesFromStorage();
+
+// Resolve a booking's branch name from its data.
+// Checks every possible field the backend might populate.
+// Returns the REAL human-readable name (e.g. "Machakos", "Nairobi"),
+// never the raw slug or a generic fallback like "Main Branch".
+export function resolveBranchName(booking) {
+  if (!booking) return 'Unknown';
+
+  // 1. booking_branch_slug (the booking's own branch slug from backend) — MOST RELIABLE.
+  //    This is the complete slug like "org-home-machakos" set at booking time.
+  const bookingSlug = booking.booking_branch_slug || booking.branch_slug || booking.branchSlug || booking.branch || '';
+  if (bookingSlug && BRANCH_SLUG_TO_NAME[bookingSlug]) return BRANCH_SLUG_TO_NAME[bookingSlug];
+
+  // 2. Try to extract branch name from the END of a complete slug.
+  //    Complete slugs look like "org-name-branch-city" — the last segment is the city.
+  //    E.g. "montenzuma-monalisa-feuneral-home-machakos" → "Machakos"
+  if (bookingSlug && bookingSlug.includes('-')) {
+    const lastSegment = bookingSlug.split('-').pop();
+    if (lastSegment) {
+      // Capitalize first letter
+      const candidate = lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1);
+      // Only use it if it's a known city (not "home", "funeral", etc.)
+      const knownCities = new Set(['nairobi', 'machakos', 'thika', 'mombasa', 'nakuru', 'kisumu', 'eldoret', 'naivasha', 'kitale', 'malaba', 'garissa', 'embu', 'meru', 'nyeri', 'kericho', 'kakamega', 'bungoma', 'nyeri', 'mombasa', 'machakos']);
+      if (knownCities.has(lastSegment.toLowerCase())) {
+        return candidate;
+      }
+    }
+  }
+
+  // 3. Explicit branch_name field — but skip generic fallbacks like "Main Branch".
+  const branchName = (booking.branch_name || booking.branchName || booking.hearse_branch_name || '').trim();
+  if (branchName && !GENERIC_BRANCH_FALLBACKS.has(branchName.toLowerCase())) {
+    return branchName;
+  }
+
+  // 4. branch_id — look up in a map if we have one.
+  const branchId = booking.branch_id || booking.branchId;
+  if (branchId && BRANCH_SLUG_TO_NAME[String(branchId)]) return BRANCH_SLUG_TO_NAME[String(branchId)];
+
+  // 5. Legacy short slug (e.g. "machakos", "nairobi").
+  if (bookingSlug && BR[bookingSlug]) return BR[bookingSlug].name;
+
+  // 6. If branch_name was a generic fallback, try the legacy BR lookup on it.
+  if (branchName && BR[branchName.toLowerCase()]) return BR[branchName.toLowerCase()].name;
+
+  // 7. If we have a complete slug but no match, extract and return the last segment as fallback.
+  if (bookingSlug && bookingSlug.includes('-')) {
+    const lastSegment = bookingSlug.split('-').pop();
+    if (lastSegment && lastSegment.length > 2) {
+      return lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1);
+    }
+  }
+
+  // 8. Last resort — return the branch_name if we have one (even if generic),
+  //    otherwise the slug, otherwise "Unknown".
+  return branchName || bookingSlug || 'Unknown';
+}
+
+// Resolve a booking's branch color.
+// For multi-day bookings, returns the multi-day color (distinct palette).
+// For single-day bookings, returns the branch color.
+export function resolveBranchColor(booking) {
+  if (!booking) return '#6B7280';
+  
+  // Multi-day bookings get their own distinct color
+  if (isMultiDay(booking)) {
+    return getMultiDayColor(booking);
+  }
+  
+  const slug = booking.branch_slug || booking.branchSlug || booking.branch || 'nairobi';
+  return BR[slug]?.color || '#6B7280';
+}
+
+// Detect if a booking spans multiple days.
+// Returns true if start_date and end_date differ, or if is_multi_day / multi_day flag is set.
+export function isMultiDay(booking) {
+  if (!booking) return false;
+  if (booking.is_multi_day || booking.multi_day || booking.isMultiDay) return true;
+
+  const startDate = booking.start_date || booking.startDate || booking.date;
+  const endDate = booking.end_date || booking.endDate;
+
+  if (startDate && endDate) {
+    const s = new Date(startDate);
+    const e = new Date(endDate);
+    if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+      s.setHours(0, 0, 0, 0);
+      e.setHours(0, 0, 0, 0);
+      return e.getTime() !== s.getTime();
+    }
+  }
+  return false;
+}
+
+// Get all dates a booking covers as an array of "YYYY-MM-DD" strings.
+export function getBookingDateRange(booking) {
+  const startDate = booking.start_date || booking.startDate || booking.date;
+  const endDate = booking.end_date || booking.endDate || startDate;
+
+  if (!startDate) return [];
+
+  const s = new Date(startDate);
+  const e = new Date(endDate);
+  if (isNaN(s.getTime())) return [];
+  if (isNaN(e.getTime())) e.setTime(s.getTime());
+
+  s.setHours(0, 0, 0, 0);
+  e.setHours(0, 0, 0, 0);
+
+  const dates = [];
+  const cur = new Date(s);
+  while (cur <= e) {
+    dates.push(dk(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
+
+// Multi-day booking colors — distinct palette so they stand out from single-day bookings.
+export const MULTI_DAY_COLORS = [
+  '#7C3AED', // purple
+  '#DB2777', // pink
+  '#0891B2', // cyan
+  '#CA8A04', // amber
+  '#4F46E5', // indigo
+  '#059669', // emerald
+  '#DC2626', // red
+  '#EA580C', // orange
+];
+
+// Get a consistent color for a multi-day booking based on its ID.
+export function getMultiDayColor(booking) {
+  const id = booking?.id || booking?.booking_id || booking?.bookingId || 0;
+  const hash = String(id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return MULTI_DAY_COLORS[hash % MULTI_DAY_COLORS.length];
+}
+
 export const SM = { pending: 'Pending', booked: 'Booked', transit: 'In Transit', completed: 'Completed', reserved: 'Reserved', standby: 'Standby' };
 export const SC = { pending: '#D97706', booked: '#2563EB', transit: '#DC2626', completed: '#059669', reserved: '#7C3AED', standby: '#0D9488' };
 

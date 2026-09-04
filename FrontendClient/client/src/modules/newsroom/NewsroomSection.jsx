@@ -83,6 +83,7 @@ const NewsroomSection = () => {
     { featured: true, category: 'COMING SOON', catColor: C.brass, title: 'RestPay: Unified Payment Processing', excerpt: 'We\'re introducing RestPay, our upcoming payment module that will integrate card payments alongside M-Pesa. Accept all major payment methods through a single, seamless platform. More payment options, less friction for families.', date: 'May 2026', cta: 'Learn more', ctaTo: '/integrations' },
     { category: 'INTEGRATION', catColor: KRA_RED, logo: KRA_LOGO_URL, title: 'KRA eTIMS Integration', excerpt: 'We\'re adding eTIMS to eliminate the need for external accounting software. Generate KRA-compliant electronic tax invoices and sync fiscal records with the Kenya Revenue Authority directly from Rest Point — no extra tools, no manual exports.', date: 'August 2026' },
     { category: 'PRODUCT', catColor: C.verdigris, dark: true, title: 'Multi-Tenant Architecture Now Available', excerpt: 'Serve multiple funeral homes from a single instance with complete data isolation.', date: 'May 2026' },
+    { category: 'BLOG', catColor: C.verdigris, dark: true, title: 'The Future of Death Care: Fully Automated Funeral Homes', excerpt: 'From QR-scanned intake and digital release to hearse self-booking, coffin marketplaces, and 24/7 family portals — how modern funeral homes are going fully automated. Written by Peter Mumo, Developer at Restpoint.', date: 'September 2026', link: '/blog/future-of-death-care-software-restpoint' },
     { category: 'COMING SOON', catColor: C.brass, title: 'M-Pesa Payments - Coming Soon', excerpt: 'Families will soon be able to pay directly through the portal via M-Pesa.', date: 'May 2026' },
   ];
   const hideBrokenLogo = (e) => { e.currentTarget.style.display = 'none'; };
@@ -115,7 +116,7 @@ const NewsroomSection = () => {
           <div className="newsroom-side">
             {articles.filter(a => !a.featured).map((a, i) => (
               <RevealDir key={i} from="right" delay={(i + 1) * 150}>
-                <a href="#" className={`newsroom-card${a.dark ? ' dark' : ''}`} style={{ '--card-accent': a.catColor }}>
+                <a href={a.link || '#'} onClick={a.link ? () => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate(a.link); } : undefined} className={`newsroom-card${a.dark ? ' dark' : ''}`} style={{ '--card-accent': a.catColor }}>
                   <div className="newsroom-card-top">
                     <div className="newsroom-cat" style={{ color: a.catColor }}><span className="newsroom-cat-dot" style={{ background: a.catColor }} />{a.category}</div>
                     <ExternalLink size={14} className="newsroom-card-ext" />

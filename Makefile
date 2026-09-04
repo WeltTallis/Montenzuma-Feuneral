@@ -27,7 +27,7 @@ export COMPOSE_PARALLEL_LIMIT := $(PARALLEL)
 # installed Compose version. (Image-only infra — mariadb/redis/rabbitmq — is
 # pulled from the registry, never built, so it is intentionally absent here.)
 # Regenerate with:  make show-build-services
-BUILD_SERVICES := api-gateway auth-service tenant-service deceased-service billing-service support-service leave-service documents-service socketio-service scanner-service invoice-service coffin-service analytics-service bodycheckout-service chemical-service workshop-service extra-services hearse-service frontend
+BUILD_SERVICES := api-gateway auth-service tenant-service deceased-service billing-service support-service leave-service documents-service socketio-service scanner-service invoice-service coffin-service analytics-service bodycheckout-service chemical-service workshop-service extra-services hearse-service store-service frontend
 
 # Cap the V8 heap of the npm install + tsx steps so a single image can never
 # balloon the box. Applied in the Dockerfiles as NODE_OPTIONS=...
@@ -526,7 +526,7 @@ start-essential:
 	@make ps
 
 fix-tenant:
-	@echo "$(BLUE)Checking tenant service...$(NC)"
+	@echo "$(BLUE)Checking tenant service...$(NC) "
 	@docker ps -a | grep tenant-service
 	@echo "$(BLUE)Removing and rebuilding tenant service...$(NC)"
 	@docker rm -f restpoint_tenant_service 2>/dev/null || true

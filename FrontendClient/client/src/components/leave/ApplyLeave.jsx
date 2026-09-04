@@ -800,7 +800,7 @@ const ApplyLeave = () => {
     const [submitting, setSubmitting] = useState(false);
     const [banner, setBanner] = useState(null); // { type: 'success'|'error', msg }
     const [range, setRange] = useState({ start: null, end: null });
-    const [form, setForm] = useState({ type: 'annual', priority: 'medium', halfDay: false, reason: '' });
+    const [form, setForm] = useState({ type: '', priority: 'medium', reason: '' });
     const [file, setFile] = useState(null);
     const [drag, setDrag] = useState(false);
 
@@ -826,13 +826,12 @@ const ApplyLeave = () => {
     // ── Derived ──
     const days = useMemo(() => {
         if (!range.start || !range.end) return 0;
-        if (form.halfDay) return 0.5;
         let count = 0;
         const d = new Date(`${range.start}T00:00:00`);
         const end = new Date(`${range.end}T00:00:00`);
         while (d <= end) { count += 1; d.setDate(d.getDate() + 1); }
         return count;
-    }, [range, form.halfDay]);
+    }, [range]);
 
     const initial = Number(balance?.initial) || 26;
     const used = Number(balance?.leaveTaken) || 0;
@@ -871,13 +870,15 @@ const ApplyLeave = () => {
                 start_date: range.start,
                 end_date: range.end,
                 days,
-                is_half_day: form.halfDay,
                 reason: form.reason.trim(),
                 tenant_slug: parentSlug,
                 parent_slug: parentSlug,
             };
+            console.log('[ApplyLeave] Submitting payload:', payload);
+            console.log('[ApplyLeave] Headers:', tenantHeaders);
             const res = await api.post(ENDPOINTS.LEAVE.APPLY, payload, tenantHeaders);
             const created = res?.data?.data || res?.data;
+            console.log('[ApplyLeave] Response:', created);
 
             // Optional supporting document upload
             if (file && created?.id) {
@@ -894,11 +895,17 @@ const ApplyLeave = () => {
             }
 
             setBanner({ type: 'success', msg: `Leave request submitted for ${formatDate(range.start)} → ${formatDate(range.end)}` });
-            setForm({ type: 'annual', priority: 'medium', halfDay: false, reason: '' });
+            setForm({ type: '', priority: 'medium', reason: '' });
             setFile(null);
             setRange({ start: null, end: null });
             await loadData();
         } catch (err) {
+            console.error('[ApplyLeave] Submit failed:', {
+                message: err?.message,
+                status: err?.response?.status,
+                data: err?.response?.data,
+                stack: err?.stack
+            });
             const msg = err?.response?.data?.message || err?.message || 'Failed to submit leave request';
             setBanner({ type: 'error', msg });
         } finally {
@@ -963,18 +970,24 @@ const ApplyLeave = () => {
                         <FormGrid>
                             <FormGroup className="full">
                                 <Label>Leave type <Required>*</Required></Label>
-                                <TypeChips>
-                                    {LEAVE_TYPES.map((t) => (
-                                        <TypeChip
-                                            key={t.value}
-                                            type="button"
-                                            $active={form.type === t.value}
-                                            onClick={() => setForm({ ...form, type: t.value })}
-                                        >
-                                            {t.label}
-                                        </TypeChip>
-                                    ))}
-                                </TypeChips>
+                                <input
+                                    id="leaveType"
+                                    type="text"
+                                    placeholder="e.g. Annual, Sick, Maternity, Paternity, Compassionate, Study, Unpaid"
+                                    value={form.type}
+                                    onChange={(e) => setForm({ ...form, type: e.target.value })}
+                                    style={{
+                                        padding: '0.6rem 0.75rem',
+                                        border: '1px solid #E8ECF0',
+                                        borderRadius: '10px',
+                                        fontSize: '0.875rem',
+                                        color: '#1A1D24',
+                                        background: '#FFFFFF',
+                                        fontFamily: 'inherit',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
                             </FormGroup>
 
                             <FormGroup>
@@ -996,25 +1009,13 @@ const ApplyLeave = () => {
                                     <DateRangeBox>
                                         <DateText>{formatDate(range.start)} &rarr; {formatDate(range.end)}</DateText>
                                         <DaysBadge>
-                                            {days} day{days === 1 ? '' : 's'}{form.halfDay ? ' (half)' : ''}
+                                            {days} day{days === 1 ? '' : 's'}
                                         </DaysBadge>
                                         <CardTitleAction type="button" onClick={clearRange}>Clear</CardTitleAction>
                                     </DateRangeBox>
                                 ) : (
                                     <Empty>No dates selected yet — drag on the calendar above.</Empty>
                                 )}
-                            </FormGroup>
-
-                            <FormGroup className="full">
-                                <HalfDayRow>
-                                    <input
-                                        id="halfDay"
-                                        type="checkbox"
-                                        checked={form.halfDay}
-                                        onChange={(e) => setForm({ ...form, halfDay: e.target.checked })}
-                                    />
-                                    <label htmlFor="halfDay">Half day (counts as 0.5 days)</label>
-                                </HalfDayRow>
                             </FormGroup>
 
                             <FormGroup className="full">

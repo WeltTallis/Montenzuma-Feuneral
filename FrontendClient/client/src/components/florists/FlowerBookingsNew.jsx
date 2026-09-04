@@ -1148,30 +1148,13 @@ const FlowerBookingsNew = () => {
 
           {/* ── 2 · Ribbon Colour ── */}
           <label style={lbl}>Ribbon Colour</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '22px' }}>
-            {ribbonOptions.map(r => {
-              const active = (newBooking.ribbon || 'None') === r;
-              return (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setNewBooking(prev => ({ ...prev, ribbon: r }))}
-                  style={{
-                    padding: '8px 14px',
-                    borderRadius: '99px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    background: active ? '#2F4F3E' : '#fff',
-                    color: active ? '#fff' : '#574F47',
-                    border: `1px solid ${active ? '#2F4F3E' : '#EAE7E2'}`
-                  }}
-                >
-                  {r}
-                </button>
-              );
-            })}
-          </div>
+          <input
+            type="text"
+            style={{ ...inp, marginBottom: '22px' }}
+            placeholder="e.g. ivory white, gold, deep red…"
+            value={newBooking.ribbon}
+            onChange={e => setNewBooking(prev => ({ ...prev, ribbon: e.target.value }))}
+          />
 
           {/* ── Flower Size ── */}
           <label style={lbl}>Flower Size</label>
