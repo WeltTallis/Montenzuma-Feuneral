@@ -864,6 +864,7 @@ const DeceasedReleaseForm = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [releaseId, setReleaseId] = useState('');
+  const [releasedRecord, setReleasedRecord] = useState(null);
 
   const branding = useMemo(() => resolveTenantBranding(), []);
 
@@ -1250,6 +1251,15 @@ const DeceasedReleaseForm = () => {
         setReleaseId(result.data.release_id);
       }
 
+      // Capture the released record so it stays on this page after submission.
+      setReleasedRecord({
+        full_name: formData.full_name,
+        admission_number: String(formData.admission_number || '').toUpperCase(),
+        release_id: result.data?.release_id || '',
+        release_date: formData.release_date,
+      });
+      setShowSuccess(true);
+
       setFormData({
         ...initialFormData,
         verified_by: getLoggedInUserEmail(),
@@ -1261,9 +1271,8 @@ const DeceasedReleaseForm = () => {
       sigPadRef1.current?.clear();
       setErrors({});
 
-      setTimeout(() => {
-        navigate(`/tenant/${tenantSlug}/all-deceased`);
-      }, 3000);
+      // NOTE: no auto-redirect here — after a successful release the record
+      // remains on this page instead of bouncing back to the all-deceased list.
 
     } catch (error) {
       notify.error('Release failed', error.message || 'Please check the details and try again.');
@@ -1288,6 +1297,8 @@ const DeceasedReleaseForm = () => {
     setErrors({});
     setMessage({ type: '', text: '' });
     setReleaseId('');
+    setShowSuccess(false);
+    setReleasedRecord(null);
     setIsFound(false);
     setIsSearching(false);
     lastSearchedRef.current = '';
@@ -1313,6 +1324,90 @@ const DeceasedReleaseForm = () => {
         <div style={{ textAlign: 'center' }}>
           <Loader2 size={48} color={COLORS.ink} className="animate-spin" />
           <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Saira', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Processing Release...</p>
+        </div>
+      </Container>
+    );
+  }
+
+  // ── Success view ──
+  // After a successful release the record stays on this page. It does NOT
+  // navigate anywhere automatically — the released deceased remains here.
+  if (showSuccess) {
+    const rec = releasedRecord || {};
+    const detailStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '0.55rem 0', borderBottom: `1px dashed ${COLORS.line}`, fontSize: '0.92rem' };
+    const detailLabel = { color: COLORS.gray, fontFamily: "'Saira', sans-serif", display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 500 };
+    const detailValue = { color: COLORS.ink, fontWeight: 600, textAlign: 'right', wordBreak: 'break-word', textTransform: 'uppercase' };
+
+    return (
+      <Container style={{ alignItems: 'center', padding: '2.5rem 1rem' }}>
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+        />
+        <div style={{
+          width: '100%',
+          maxWidth: 620,
+          margin: '0 auto',
+          background: COLORS.bone2,
+          borderRadius: 18,
+          border: `1px solid ${COLORS.line}`,
+          padding: '2.6rem 2.2rem',
+          textAlign: 'center',
+          boxShadow: '0 24px 70px rgba(21,23,26,0.12)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: 4,
+            background: 'linear-gradient(90deg, #22c55e, #16a34a, #22c55e)',
+          }} />
+          <div style={{
+            width: 76, height: 76, borderRadius: '50%', margin: '0 auto 1.2rem',
+            background: 'rgba(34,197,94,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 0 0 8px rgba(34,197,94,0.06)',
+          }}>
+            <CheckCircle size={40} color={COLORS.green} />
+          </div>
+          <h2 style={{ fontFamily: "'Saira', sans-serif", fontSize: '1.55rem', color: COLORS.ink, margin: '0 0 0.4rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+            Release Successful
+          </h2>
+          <p style={{ color: COLORS.gray, fontSize: '0.98rem', margin: '0 0 1.7rem', lineHeight: 1.7 }}>
+            <strong style={{ color: COLORS.ink }}>{rec.full_name || 'The deceased'}</strong> has been released successfully.
+            The record remains here — this page has not navigated away.
+          </p>
+
+          <div style={{ background: COLORS.bone, border: `1px solid ${COLORS.line}`, borderRadius: 14, padding: '0.6rem 1.4rem', marginBottom: '1.8rem', textAlign: 'left' }}>
+            <div style={detailStyle}>
+              <span style={detailLabel}><User size={15} /> Deceased</span>
+              <span style={detailValue}>{rec.full_name || '—'}</span>
+            </div>
+            <div style={detailStyle}>
+              <span style={detailLabel}><IdCard size={15} /> Admission Number</span>
+              <span style={detailValue}>{rec.admission_number || '—'}</span>
+            </div>
+            <div style={detailStyle}>
+              <span style={detailLabel}><FileText size={15} /> Release Reference</span>
+              <span style={detailValue}>{rec.release_id || '—'}</span>
+            </div>
+            <div style={{ ...detailStyle, borderBottom: 'none' }}>
+              <span style={detailLabel}><Calendar size={15} /> Release Date</span>
+              <span style={detailValue}>{rec.release_date || '—'}</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <GoldButton type="button" onClick={() => { setShowSuccess(false); handleClear(); }}>
+              <RotateCcw size={14} /> New Release
+            </GoldButton>
+            <BlackButton type="button" onClick={() => navigate(-1)}>
+              Done
+            </BlackButton>
+          </div>
         </div>
       </Container>
     );

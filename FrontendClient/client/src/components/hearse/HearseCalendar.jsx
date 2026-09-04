@@ -1299,3 +1299,4 @@ const MultiDayOverlay = ({ booking, onClose }) => {
     </div>
   );
 };
+export default HearseCalendar;
