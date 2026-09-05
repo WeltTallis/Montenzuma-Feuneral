@@ -22,8 +22,24 @@ app.use(helmet());
 app.use(express.json());
 
 // ============ GLOBAL UPLOADS CONFIGURATION ============
-// Use global uploads folder (same as coffin service)
+// Use the ONE shared uploads folder the whole platform writes to
+// (GLOBAL_UPLOADS_DIR -> /opt/storage/uploads). The old code IGNORED the env
+// var and wrote into container-local paths — files were lost on every rebuild
+// and never served through nginx /uploads -> tenant-service.
 const getGlobalUploadsDir = () => {
+  const envDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR;
+  if (envDir) {
+    try {
+      if (!fs.existsSync(envDir)) {
+        fs.mkdirSync(envDir, { recursive: true });
+      }
+      return envDir;
+    } catch (e) {
+      console.warn(`[DOCUMENTS] Configured uploads dir "${envDir}" unusable (${e.message}) — falling back.`);
+    }
+  }
+
+  // Dev-only fallbacks
   const possiblePaths = [
     path.join(process.cwd(), 'uploads'),
     path.join(__dirname, '../../uploads'),
@@ -46,14 +62,29 @@ const getGlobalUploadsDir = () => {
   return path.join(require('os').tmpdir(), 'restpoint-uploads');
 };
 
+// Sanitize tenant slugs exactly like generateSlug() so the on-disk folder and
+// the /uploads/... URL always match and tenants can never mix files.
+const sanitizeSlug = (v) => String(v || 'system_shared')
+  .toLowerCase()
+  .replace(/[^a-z0-9._-]+/g, '-')
+  .replace(/-+/g, '-')
+  .replace(/^-|-$/g, '') || 'system_shared';
+
+// Per-tenant documents directory: <uploads>/<slug>/documents/<deceasedId>/
+const tenantUploadDir = (tenantSlug, deceasedId) => {
+  const safeDead = String(deceasedId || 'unknown')
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .slice(0, 100) || 'unknown';
+  return path.join(GLOBAL_UPLOADS_DIR, sanitizeSlug(tenantSlug), 'documents', safeDead);
+};
+
 const GLOBAL_UPLOADS_DIR = getGlobalUploadsDir();
 
 // ============ STORAGE CONFIGURATION ============
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const tenantSlug = req.headers['x-tenant-slug'] || 'system_shared';
-    const deceasedId = req.params.deceasedId || req.body.deceasedId || 'unknown';
-    const uploadPath = path.join(GLOBAL_UPLOADS_DIR, 'documents', tenantSlug, deceasedId);
+    const tenantSlug = req.tenantSlug || sanitizeSlug(req.headers['x-tenant-slug']) || 'system_shared';
+    const uploadPath = tenantUploadDir(tenantSlug, req.params.deceasedId || req.body.deceasedId);
 
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
@@ -83,7 +114,7 @@ const upload = multer({
 
 // ============ TENANT RESOLUTION MIDDLEWARE ============
 app.use(async (req, res, next) => {
-  const tenantSlug = req.headers['x-tenant-slug'] || 'system_shared';
+  const tenantSlug = sanitizeSlug(req.headers['x-tenant-slug'] || 'system_shared');
   req.tenantSlug = tenantSlug;
 
   if (tenantSlug !== 'system_shared') {
@@ -126,8 +157,11 @@ app.use('/uploads', express.static(GLOBAL_UPLOADS_DIR, {
 
 // ============ API ROUTES ============
 
+// ─── Documents router (mounted at full + gateway-stripped prefixes below) ──
+const documentsRouter = express.Router();
+
 // Get all documents for a specific deceased
-app.get('/api/v1/restpoint/documents/:deceasedId', async (req, res) => {
+documentsRouter.get('/:deceasedId', async (req, res) => {
   const { deceasedId } = req.params;
   const tenantSlug = req.tenantSlug;
 
@@ -163,7 +197,7 @@ app.get('/api/v1/restpoint/documents/:deceasedId', async (req, res) => {
       documentId: doc.document_id,
       originalName: doc.original_name,
       storedName: doc.stored_name,
-      url: `/uploads/documents/${tenantSlug}/${deceasedId}/${doc.stored_name}`,
+      url: `/uploads/${tenantSlug}/documents/${deceasedId}/${doc.stored_name}`,
       mimeType: doc.mime_type,
       sizeKB: Math.round(doc.file_size / 1024),
       category: doc.category || 'General',
@@ -175,14 +209,14 @@ app.get('/api/v1/restpoint/documents/:deceasedId', async (req, res) => {
     console.warn(`[DOCUMENTS] DB query failed for listing, falling back to filesystem: ${dbError.message}`);
 
     // Fallback: List files from filesystem
-    const uploadDir = path.join(GLOBAL_UPLOADS_DIR, 'documents', tenantSlug, deceasedId);
+    const uploadDir = path.join(GLOBAL_UPLOADS_DIR, tenantSlug, 'documents', deceasedId);
     if (fs.existsSync(uploadDir)) {
       const files = fs.readdirSync(uploadDir);
       formattedDocs = files.map((fileName, index) => ({
         documentId: `fs-${Date.now()}-${index}`,
         originalName: fileName.replace(/^doc-\d+-\d+-/, ''),
         storedName: fileName,
-        url: `/uploads/documents/${tenantSlug}/${deceasedId}/${fileName}`,
+        url: `/uploads/${tenantSlug}/documents/${deceasedId}/${fileName}`,
         mimeType: 'application/octet-stream',
         sizeKB: Math.round((fs.statSync(path.join(uploadDir, fileName)).size) / 1024),
         category: 'General',
@@ -201,7 +235,7 @@ app.get('/api/v1/restpoint/documents/:deceasedId', async (req, res) => {
 });
 
 // Upload a new document for a deceased
-app.post('/v1/restpoint/documents/:deceasedId/upload', upload.single('document'), async (req, res) => {
+documentsRouter.post('/:deceasedId/upload', upload.single('document'), async (req, res) => {
   try {
     const { deceasedId } = req.params;
     const { category, uploadedBy } = req.body;
@@ -219,7 +253,7 @@ app.post('/v1/restpoint/documents/:deceasedId/upload', upload.single('document')
     const originalName = req.file.originalname;
     const mimeType = req.file.mimetype;
     const fileSize = req.file.size;
-    const filePath = `/uploads/documents/${tenantSlug}/${deceasedId}/${storedName}`;
+    const filePath = `/uploads/${tenantSlug}/documents/${deceasedId}/${storedName}`;
 
     // Try to insert document record into database
     let documentId = Date.now();
@@ -280,7 +314,7 @@ app.post('/v1/restpoint/documents/:deceasedId/upload', upload.single('document')
 });
 
 // Download/View a document
-app.get('/v1/restpoint/documents/download/:documentId', async (req, res) => {
+documentsRouter.get('/download/:documentId', async (req, res) => {
   try {
     const { documentId } = req.params;
 
@@ -298,7 +332,7 @@ app.get('/v1/restpoint/documents/download/:documentId', async (req, res) => {
 
     const doc = docs[0];
     const tenantSlug = req.tenantSlug;
-    const filePath = path.join(GLOBAL_UPLOADS_DIR, 'documents', tenantSlug, doc.deceased_id, doc.stored_name);
+    const filePath = tenantUploadDir(tenantSlug, doc.deceased_id) + path.sep + doc.stored_name;
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ success: false, message: 'File not found on server' });
@@ -319,7 +353,7 @@ app.get('/v1/restpoint/documents/download/:documentId', async (req, res) => {
 });
 
 // Delete a document
-app.delete('/v1/restpoint/documents/:deceasedId/:documentId', async (req, res) => {
+documentsRouter.delete('/:deceasedId/:documentId', async (req, res) => {
   try {
     const { documentId, deceasedId } = req.params;
     const { deletedBy } = req.body;
@@ -334,7 +368,7 @@ app.delete('/v1/restpoint/documents/:deceasedId/:documentId', async (req, res) =
     }
 
     const doc = docs[0];
-    const filePath = path.join(GLOBAL_UPLOADS_DIR, 'documents', tenantSlug, deceasedId, doc.stored_name);
+    const filePath = tenantUploadDir(tenantSlug, deceasedId) + path.sep + doc.stored_name;
 
     // Delete file from filesystem
     if (fs.existsSync(filePath)) {
@@ -360,7 +394,7 @@ app.delete('/v1/restpoint/documents/:deceasedId/:documentId', async (req, res) =
 });
 
 // Share document via email
-app.post('/v1/restpoint/documents/share', async (req, res) => {
+documentsRouter.post('/share', async (req, res) => {
   try {
     const { documentId, recipientEmail, message, documentName } = req.body;
 
@@ -381,6 +415,14 @@ app.post('/v1/restpoint/documents/share', async (req, res) => {
     });
   }
 });
+
+// ============ ROUTER MOUNTS ============
+// Mount under BOTH the full prefixes (direct/localhost access) and the
+// gateway-stripped prefix — the api-gateway forwards /api/v1/restpoint/documents/...
+// as /documents/... after stripping the base path.
+app.use('/api/v1/restpoint/documents', documentsRouter);
+app.use('/v1/restpoint/documents', documentsRouter);
+app.use('/documents', documentsRouter);
 
 // ============ ERROR HANDLERS ============
 const { notFoundHandler, errorHandler } = require('../../services/app-global/middlewares/errorHandler');

@@ -190,7 +190,7 @@ class CentralizedUploadService {
       const safeRel = String(filePath || '')
         .replace(/^\\+/, '')
         .replace(/^uploads\//, '')
-        .replace(/^\.\.?(\\/|$)/, '');
+        .replace(/^\.{1,2}(\/|$)/, '');
       if (!safeRel) return false;
       const base = path.resolve(this.baseDir);
       const full = path.resolve(base, safeRel);

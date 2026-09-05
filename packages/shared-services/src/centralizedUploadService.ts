@@ -1,33 +1,28 @@
-/**
- * Centralized Upload Service
- * 
- * Provides a unified interface for all services to upload files to the centralized uploads-service.
- * This ensures all files are stored in the correct tenant-specific folders.
- * 
- * Usage:
- *   const result = await centralizedUploadService.uploadSignature(buffer, filename, tenantSlug);
- *   const result = await centralizedUploadService.uploadDocument(buffer, filename, tenantSlug, 'deceased');
- *   const result = await centralizedUploadService.uploadImage(buffer, filename, tenantSlug, 'coffins');
+﻿/**
+ * Centralized Upload Service - DIRECT-TO-DISK implementation.
+ *
+ * Writes every file straight into the ONE shared uploads folder all services
+ * bind-mount in production (/opt/storage/uploads) and that the tenant-service
+ * serves to browsers at /uploads/...
+ *
+ *   /opt/storage/uploads/<tenant-slug>/<category>[/<subFolder>]/<file>
+ *
+ * Guarantees:
+ *   - per-tenant isolation: the sanitized tenant slug is part of the path, so
+ *     tenants can never mix files;
+ *   - no dependency on a separate "uploads-service" container (there is NO
+ *     such container in docker-compose.prod.yml);
+ *   - failures are returned as { success:false, error } - never thrown away.
  */
 
-import axios, { AxiosInstance } from 'axios';
-import FormData from 'form-data';
 import fs from 'fs';
 import path from 'path';
 
-const UPLOADS_SERVICE_URL = process.env.UPLOADS_SERVICE_URL || 'http://localhost:5012';
-const UPLOADS_SERVICE_API_KEY = process.env.UPLOADS_SERVICE_API_KEY;
-
-// Candidate URLs to try in order (Docker DNS, localhost, 127.0.0.1)
-const getCandidateUrls = (): string[] => {
-  const configured = process.env.UPLOADS_SERVICE_URL || '';
-  return [
-    configured,
-    'http://localhost:5012',
-    'http://127.0.0.1:5012',
-    'http://uploads-service:5012',
-  ].filter(Boolean);
-};
+const GLOBAL_UPLOADS_DIR =
+  process.env.GLOBAL_UPLOADS_DIR ||
+  process.env.UPLOADS_BASE_DIR ||
+  process.env.UPLOAD_PATH ||
+  '/opt/storage/uploads';
 
 export interface UploadResult {
   success: boolean;
@@ -49,64 +44,130 @@ export interface UploadOptions {
   format?: 'jpeg' | 'png' | 'webp';
 }
 
-/**
- * Centralized Upload Service
- */
+// Standard subfolders every tenant root gets so every service lands in a
+// predictable, non-overlapping place.
+const TENANT_SUBDIRS = [
+  'signatures', 'documents', 'images', 'logos', 'pdf', 'exports',
+  'flowers', 'deceased', 'receipts', 'reports', 'contracts',
+  'employees', 'chemicals', 'invoices',
+];
+
+// Mirrors generateSlug(): letters, digits, dash, underscore, dot, lowercase.
+const sanitize = (name: string): string => {
+  const cleaned = String(name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return cleaned || 'system';
+};
+
+const sanitizeFilename = (name: string): string => {
+  const cleaned = String(name || 'file')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/_+/g, '_')
+    .slice(0, 120);
+  return cleaned || 'file';
+};
+
+const mimeOf = (filename: string, fallback?: string): string => {
+  if (fallback && /^[a-z]+\/[a-z0-9.+-]+$/i.test(String(fallback))) return fallback;
+  const ext = path.extname(String(filename || '')).toLowerCase();
+  const map: Record<string, string> = {
+    '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp', '.gif': 'image/gif', '.svg': 'image/svg+xml',
+    '.pdf': 'application/pdf', '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls': 'application/vnd.ms-excel',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.csv': 'text/csv', '.txt': 'text/plain', '.zip': 'application/zip',
+  };
+  return map[ext] || 'application/octet-stream';
+};
+
 class CentralizedUploadService {
-  private axiosInstance: AxiosInstance;
+  private baseDir: string;
 
   constructor() {
-    this.axiosInstance = axios.create({
-      baseURL: UPLOADS_SERVICE_URL,
-      timeout: 30000, // 30 seconds
-      headers: {
-        ...(UPLOADS_SERVICE_API_KEY && { 'X-API-Key': UPLOADS_SERVICE_API_KEY }),
-      },
-    });
+    this.baseDir = GLOBAL_UPLOADS_DIR;
+    try {
+      fs.mkdirSync(this.baseDir, { recursive: true });
+    } catch (err: any) {
+      console.warn('[UPLOAD] Could not pre-create base uploads dir:', err && err.message);
+    }
   }
 
-  /**
-   * Upload signature
-   */
+  private resolveTenantDir(tenantSlug: string): string {
+    return path.join(this.baseDir, sanitize(tenantSlug));
+  }
+
+  private ensureDir(dir: string): void {
+    fs.mkdirSync(dir, { recursive: true });
+    // Verify writability up-front so callers get a loud, clear error instead
+    // of a silently lost file.
+    fs.accessSync(dir, fs.constants.W_OK);
+  }
+
+  private async writeBuffer(
+    buffer: Buffer,
+    originalName: string,
+    tenantSlug: string,
+    category: string,
+    subFolder?: string
+  ): Promise<UploadResult> {
+    try {
+      const safeSlug = sanitize(tenantSlug);
+      const safeCat = sanitize(category) || 'documents';
+      const sub = subFolder ? sanitize(subFolder) : null;
+      const folder = sub
+        ? path.join(this.baseDir, safeSlug, safeCat, sub)
+        : path.join(this.baseDir, safeSlug, safeCat);
+
+      this.ensureDir(folder);
+
+      const timestamp = Date.now();
+      const safeFile = sanitizeFilename(originalName);
+      // Prefix with a timestamp so identical filenames never collide/overwrite.
+      const filename = `${timestamp}-${safeFile}`;
+      const fullPath = path.join(folder, filename);
+      await fs.promises.writeFile(fullPath, buffer);
+
+      const rel = sub
+        ? path.posix.join(safeSlug, safeCat, sub, filename)
+        : path.posix.join(safeSlug, safeCat, filename);
+
+      console.log(`[UPLOAD] Saved: ${fullPath}`);
+      return {
+        success: true,
+        filename,
+        path: fullPath,
+        urlPath: `/uploads/${rel}`,
+        size: buffer.length,
+        mimeType: mimeOf(originalName),
+      };
+    } catch (error: any) {
+      console.error('[UPLOAD] Save failed:', error && error.message);
+      return {
+        success: false,
+        filename: '',
+        path: '',
+        urlPath: '',
+        size: 0,
+        mimeType: '',
+        error: `${error && error.code ? error.code + ' ' : ''}${error && error.message ? error.message : String(error)}`,
+      };
+    }
+  }
+
   async uploadSignature(
     buffer: Buffer,
     filename: string,
     tenantSlug: string,
     options?: Partial<UploadOptions>
   ): Promise<UploadResult> {
-    console.log('[UPLOAD] uploadSignature called:', {
-      filename,
-      tenantSlug,
-      bufferSize: buffer.length,
-      uploadUrl: this.axiosInstance.defaults.baseURL,
-      options
-    });
-    
-    // Ensure tenant folders exist first
-    await this.createTenantFolders(tenantSlug);
-    
-    // Use the dedicated signature upload endpoint
-    const result = await this.uploadToSignatureEndpoint(buffer, filename, tenantSlug, {
-      quality: 85,
-      maxWidth: 800,
-      maxHeight: 300,
-      format: 'png',
-      ...options,
-    });
-    
-    console.log('[UPLOAD] uploadSignature result:', {
-      success: result.success,
-      urlPath: result.urlPath,
-      error: result.error,
-      filename: result.filename
-    });
-    
-    return result;
+    return this.writeBuffer(buffer, filename, tenantSlug, 'signatures', options && options.subFolder);
   }
 
-  /**
-   * Upload document (PDF, DOC, etc.)
-   */
   async uploadDocument(
     buffer: Buffer,
     filename: string,
@@ -114,17 +175,9 @@ class CentralizedUploadService {
     subFolder?: string,
     options?: Partial<UploadOptions>
   ): Promise<UploadResult> {
-    return this.uploadFile(buffer, filename, tenantSlug, 'documents', {
-      quality: 90,
-      format: 'jpeg',
-      subFolder,
-      ...options,
-    });
+    return this.writeBuffer(buffer, filename, tenantSlug, 'documents', subFolder || (options && options.subFolder));
   }
 
-  /**
-   * Upload image (coffins, hearses, florist, etc.)
-   */
   async uploadImage(
     buffer: Buffer,
     filename: string,
@@ -133,361 +186,85 @@ class CentralizedUploadService {
     subFolder?: string,
     options?: Partial<UploadOptions>
   ): Promise<UploadResult> {
-    return this.uploadFile(buffer, filename, tenantSlug, category, {
-      quality: 85,
-      format: 'webp',
-      subFolder,
-      ...options,
-    });
+    return this.writeBuffer(buffer, filename, tenantSlug, category || 'images', subFolder || (options && options.subFolder));
   }
 
-  /**
-   * Upload tenant logo
-   */
-  async uploadTenantLogo(
-    buffer: Buffer,
-    filename: string,
-    tenantSlug: string
-  ): Promise<UploadResult> {
-    return this.uploadFile(buffer, filename, tenantSlug, 'logos', {
-      quality: 90,
-      maxWidth: 400,
-      maxHeight: 400,
-      format: 'webp',
-    });
+  async uploadTenantLogo(buffer: Buffer, filename: string, tenantSlug: string): Promise<UploadResult> {
+    return this.writeBuffer(buffer, filename, tenantSlug, 'logos');
   }
 
-  /**
-   * Upload PDF document
-   */
-  async uploadPDF(
-    buffer: Buffer,
-    filename: string,
-    tenantSlug: string,
-    subFolder?: string
-  ): Promise<UploadResult> {
-    // For PDFs, we don't want to process them with Sharp
-    // We'll upload them as-is to the documents folder
-    return this.uploadRawFile(buffer, filename, tenantSlug, 'documents', subFolder);
+  async uploadPDF(buffer: Buffer, filename: string, tenantSlug: string, subFolder?: string): Promise<UploadResult> {
+    return this.writeBuffer(buffer, filename, tenantSlug, 'pdf', subFolder);
   }
 
-  /**
-   * Upload Excel file
-   */
-  async uploadExcel(
-    buffer: Buffer,
-    filename: string,
-    tenantSlug: string,
-    subFolder?: string
-  ): Promise<UploadResult> {
-    return this.uploadRawFile(buffer, filename, tenantSlug, 'exports', subFolder);
+  async uploadExcel(buffer: Buffer, filename: string, tenantSlug: string, subFolder?: string): Promise<UploadResult> {
+    return this.writeBuffer(buffer, filename, tenantSlug, 'exports', subFolder);
   }
 
-  /**
-   * Upload signature to the dedicated signature endpoint
-   * CRITICAL: Signatures are ALWAYS uploaded as PNG (never webp).
-   */
-  private async uploadToSignatureEndpoint(
-    buffer: Buffer,
-    originalName: string,
-    tenantSlug: string,
-    options: {
-      quality?: number;
-      maxWidth?: number;
-      maxHeight?: number;
-      format?: 'jpeg' | 'png' | 'webp';
-    }
-  ): Promise<UploadResult> {
-    const candidateUrls = getCandidateUrls();
-    
-    // CRITICAL: Always force PNG format for signatures regardless of what was passed
-    const signatureOptions = {
-      ...options,
-      format: 'png' as const, // Always PNG for signatures
-    };
-
-    // Ensure the filename has a .png extension
-    let pngFilename = originalName;
-    if (!pngFilename.toLowerCase().endsWith('.png')) {
-      // Replace any existing extension with .png, or append .png
-      pngFilename = pngFilename.replace(/\.[^.]+$/, '') + '.png';
-    }
-
-    for (const baseUrl of candidateUrls) {
-      try {
-        // Create a dedicated axios instance for this candidate URL
-        // (previously all iterations used the same fixed-baseURL instance, which was a bug)
-        const instance = axios.create({
-          baseURL: baseUrl,
-          timeout: 30000,
-          headers: {
-            ...(UPLOADS_SERVICE_API_KEY && { 'X-API-Key': UPLOADS_SERVICE_API_KEY }),
-          },
-        });
-
-        const form = new FormData();
-        form.append('file', buffer, {
-          filename: pngFilename,
-          contentType: 'image/png',
-        });
-        form.append('tenantSlug', tenantSlug);
-        form.append('category', 'signatures');
-        form.append('format', 'png'); // Always PNG for signatures
-        
-        if (signatureOptions.quality) form.append('quality', signatureOptions.quality.toString());
-        if (signatureOptions.maxWidth) form.append('maxWidth', signatureOptions.maxWidth.toString());
-        if (signatureOptions.maxHeight) form.append('maxHeight', signatureOptions.maxHeight.toString());
-
-        const response = await instance.post('/api/upload/signature', form, {
-          headers: form.getHeaders(),
-          timeout: 30000,
-        });
-
-        console.log('[UPLOAD] Signature upload response from', baseUrl, ':', {
-          status: response.status,
-          hasSuccess: response.data.hasOwnProperty('success'),
-          success: response.data.success,
-          hasData: response.data.hasOwnProperty('data'),
-          keys: Object.keys(response.data)
-        });
-
-        // Handle both response formats: {success: true, data: {...}} or just {...}
-        if (response.data.success && response.data.data) {
-          // Verify the uploaded file is actually PNG
-          const result = response.data.data;
-          if (result.filename && !result.filename.toLowerCase().endsWith('.png')) {
-            console.warn(`[UPLOAD] Signature was not saved as PNG! Got: ${result.filename}. Forcing mimeType to image/png.`);
-            result.mimeType = 'image/png';
-          }
-          return result;
-        } else if (response.data.urlPath) {
-          return response.data;
-        } else {
-          return {
-            success: false,
-            filename: '',
-            path: '',
-            urlPath: '',
-            size: 0,
-            mimeType: '',
-            error: response.data.message || response.data.error || 'Upload failed',
-          };
-        }
-      } catch (error: any) {
-        console.warn(`[UPLOAD] Signature upload failed for ${baseUrl}:`, error.message);
-        // Try next URL
-      }
-    }
-    
-    return {
-      success: false,
-      filename: '',
-      path: '',
-      urlPath: '',
-      size: 0,
-      mimeType: '',
-      error: 'All upload service URLs failed',
-    };
-  }
-
-  /**
-   * Generic file upload with Sharp processing
-   */
   private async uploadFile(
     buffer: Buffer,
-    originalName: string,
+    filename: string,
     tenantSlug: string,
     category: string,
-    options: {
-      subFolder?: string;
-      quality?: number;
-      maxWidth?: number;
-      maxHeight?: number;
-      format?: 'jpeg' | 'png' | 'webp';
-    }
+    options?: Partial<UploadOptions>
   ): Promise<UploadResult> {
-    const candidateUrls = getCandidateUrls();
-    
-    for (const baseUrl of candidateUrls) {
-      try {
-        const form = new FormData();
-        form.append('file', buffer, {
-          filename: originalName,
-          contentType: 'application/octet-stream',
-        });
-        form.append('tenantSlug', tenantSlug);
-        form.append('category', category);
-        
-        if (options.subFolder) {
-          form.append('subFolder', options.subFolder);
-        }
-        if (options.quality) {
-          form.append('quality', options.quality.toString());
-        }
-        if (options.maxWidth) {
-          form.append('maxWidth', options.maxWidth.toString());
-        }
-        if (options.maxHeight) {
-          form.append('maxHeight', options.maxHeight.toString());
-        }
-        if (options.format) {
-          form.append('format', options.format);
-        }
-
-        // Create a dedicated axios instance for this candidate URL
-        const instance = axios.create({
-          baseURL: baseUrl,
-          timeout: 30000,
-          headers: {
-            ...(UPLOADS_SERVICE_API_KEY && { 'X-API-Key': UPLOADS_SERVICE_API_KEY }),
-          },
-        });
-
-        const response = await instance.post('/api/upload/image', form, {
-          headers: form.getHeaders(),
-          timeout: 30000,
-        });
-
-        console.log('[UPLOAD] Raw response from', baseUrl, ':', {
-          hasSuccess: response.data.hasOwnProperty('success'),
-          success: response.data.success,
-          hasData: response.data.hasOwnProperty('data'),
-          keys: Object.keys(response.data)
-        });
-
-        // Handle both response formats: {success: true, data: {...}} or just {...}
-        if (response.data.success && response.data.data) {
-          // Standard format: {success: true, data: result}
-          return response.data.data;
-        } else if (response.data.urlPath) {
-          // Direct format: the response IS the result object
-          return response.data;
-        } else {
-          return {
-            success: false,
-            filename: '',
-            path: '',
-            urlPath: '',
-            size: 0,
-            mimeType: '',
-            error: response.data.message || response.data.error || 'Upload failed',
-          };
-        }
-      } catch (error: any) {
-        console.warn(`[UPLOAD] Upload failed for ${baseUrl}:`, error.message);
-        // Try next URL
-      }
-    }
-    
-    return {
-      success: false,
-      filename: '',
-      path: '',
-      urlPath: '',
-      size: 0,
-      mimeType: '',
-      error: 'All upload service URLs failed',
-    };
+    return this.writeBuffer(buffer, filename, tenantSlug, category || 'documents', options && options.subFolder);
   }
 
-  /**
-   * Upload raw file without Sharp processing (for PDFs, Excel, etc.)
-   */
   private async uploadRawFile(
     buffer: Buffer,
-    originalName: string,
+    filename: string,
     tenantSlug: string,
     category: string,
     subFolder?: string
   ): Promise<UploadResult> {
-    try {
-      const form = new FormData();
-      form.append('file', buffer, {
-        filename: originalName,
-        contentType: 'application/octet-stream',
-      });
-      form.append('tenantSlug', tenantSlug);
-      form.append('category', category);
-      
-      if (subFolder) {
-        form.append('subFolder', subFolder);
-      }
-
-      const response = await this.axiosInstance.post('/api/upload/document', form, {
-        headers: form.getHeaders(),
-      });
-
-      if (response.data.success) {
-        return response.data.data;
-      } else {
-        return {
-          success: false,
-          filename: '',
-          path: '',
-          urlPath: '',
-          size: 0,
-          mimeType: '',
-          error: response.data.message || 'Upload failed',
-        };
-      }
-    } catch (error: any) {
-      console.error('Upload error:', error.message);
-      return {
-        success: false,
-        filename: '',
-        path: '',
-        urlPath: '',
-        size: 0,
-        mimeType: '',
-        error: error.message,
-      };
-    }
+    return this.writeBuffer(buffer, filename, tenantSlug, category || 'documents', subFolder);
   }
 
-  /**
-   * Create tenant folders
-   */
+  // Ensure the standard per-tenant folder skeleton exists. Local + idempotent -
+  // the old implementation POSTed to a dedicated uploads-service that does not
+  // exist in production and therefore always failed.
   async createTenantFolders(tenantSlug: string): Promise<boolean> {
     try {
-      const response = await this.axiosInstance.post(`/api/tenants/${tenantSlug}/folders`);
-      return response.data.success;
+      const root = this.resolveTenantDir(tenantSlug);
+      this.ensureDir(root);
+      for (const sub of TENANT_SUBDIRS) {
+        fs.mkdirSync(path.join(root, sub), { recursive: true });
+      }
+      return true;
     } catch (error: any) {
-      console.error('Failed to create tenant folders:', error.message);
+      console.error('Failed to create tenant folders:', error && error.message);
       return false;
     }
   }
 
-  /**
-   * Check if tenant folder exists
-   */
   async tenantFolderExists(tenantSlug: string): Promise<boolean> {
     try {
-      const response = await this.axiosInstance.get(`/api/tenants/${tenantSlug}/folders/exists`);
-      return response.data.exists;
-    } catch (error: any) {
-      console.error('Failed to check tenant folder:', error.message);
+      return fs.existsSync(this.resolveTenantDir(tenantSlug));
+    } catch (e) {
       return false;
     }
   }
 
-  /**
-   * Delete file
-   */
   async deleteFile(filePath: string): Promise<boolean> {
     try {
-      const response = await this.axiosInstance.delete('/api/files', {
-        params: { filePath },
-      });
-      return response.data.success;
+      const safeRel = String(filePath || '')
+        .replace(/^[\\/]+/, '')
+        .replace(/^uploads\//, '')
+        .replace(/^[\.]{1,2}(\/|$)/, '');
+      if (!safeRel) return false;
+      const base = path.resolve(this.baseDir);
+      const full = path.resolve(base, safeRel);
+      if (full !== base && !full.startsWith(base + path.sep)) return false;
+      if (!fs.existsSync(full)) return false;
+      await fs.promises.unlink(full);
+      return true;
     } catch (error: any) {
-      console.error('Failed to delete file:', error.message);
+      console.error('Failed to delete file:', error && error.message);
       return false;
     }
   }
 
-  /**
-   * Upload from file path
-   */
   async uploadFromFile(
     filePath: string,
     tenantSlug: string,
@@ -498,27 +275,16 @@ class CentralizedUploadService {
     try {
       const buffer = await fs.promises.readFile(filePath);
       const filename = path.basename(filePath);
-
       switch (type) {
-        case 'signature':
-          return this.uploadSignature(buffer, filename, tenantSlug);
-        case 'document':
-          return this.uploadDocument(buffer, filename, tenantSlug, subFolder);
-        case 'image':
-          return this.uploadImage(buffer, filename, tenantSlug, category || 'images', subFolder);
-        case 'logo':
-          return this.uploadTenantLogo(buffer, filename, tenantSlug);
-        case 'pdf':
-          return this.uploadPDF(buffer, filename, tenantSlug, subFolder);
-        case 'excel':
-          return this.uploadExcel(buffer, filename, tenantSlug, subFolder);
-        default:
-          return this.uploadFile(buffer, filename, tenantSlug, category || 'general', {
-            format: 'webp',
-          } as any);
+        case 'signature': return this.uploadSignature(buffer, filename, tenantSlug);
+        case 'document': return this.uploadDocument(buffer, filename, tenantSlug, subFolder);
+        case 'image': return this.uploadImage(buffer, filename, tenantSlug, category || 'images', subFolder);
+        case 'logo': return this.uploadTenantLogo(buffer, filename, tenantSlug);
+        case 'pdf': return this.uploadPDF(buffer, filename, tenantSlug, subFolder);
+        case 'excel': return this.uploadExcel(buffer, filename, tenantSlug, subFolder);
+        default: return this.uploadFile(buffer, filename, tenantSlug, category || 'documents', { subFolder });
       }
     } catch (error: any) {
-      console.error('Failed to upload file:', error.message);
       return {
         success: false,
         filename: '',
@@ -526,7 +292,7 @@ class CentralizedUploadService {
         urlPath: '',
         size: 0,
         mimeType: '',
-        error: error.message,
+        error: error && error.message ? error.message : String(error),
       };
     }
   }
