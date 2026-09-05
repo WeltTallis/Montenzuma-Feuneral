@@ -69,7 +69,7 @@ const NS_STYLES = `
   .newsroom-card-title{font-size:1rem;font-weight:600;color:${C.ink};margin-bottom:0.5rem;line-height:1.35;font-family:'Inter',sans-serif}
   .newsroom-card-excerpt{font-size:0.82rem;color:${C.gray};line-height:1.6;flex:1}
   .newsroom-card-logo{height:34px;width:auto;object-fit:contain;margin-bottom:0.75rem}
-  .newsroom-featured-logo{align-self:flex-start;height:120px;width:auto;object-fit:contain;margin-bottom:1.1rem;padding:0.4rem 0.85rem;background:${C.bone};border-radius:8px}
+  .newsroom-featured-logo{align-self:flex-start;width:100%;max-width:100%;height:140px;object-fit:contain;margin-bottom:1.1rem;padding:0.5rem 1rem;background:${C.bone};border-radius:8px;box-sizing:border-box}
   .ns-btn{display:inline-flex;align-items:center;gap:0.5rem;background:${C.brass};color:${C.bone};border:none;border-radius:50px;cursor:pointer;font-weight:600;font-family:'Inter',sans-serif;font-size:0.9rem;padding:0.8rem 2rem;transition:all 0.35s cubic-bezier(0.16,1,0.3,1)}
   .ns-btn:hover{background:${C.brassLight};transform:translateY(-2px);box-shadow:0 10px 24px rgba(139,115,85,0.35)}
   @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.7)}}
