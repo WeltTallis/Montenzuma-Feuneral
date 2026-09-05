@@ -91,8 +91,8 @@ const FutureDeathCareGuide = () => {
         ))}
       </Helmet>
 
-`      `<JournalArticle
-`        slug="future-of-death-care-software-restpoint"
+<JournalArticle
+slug="future-of-death-care-software-restpoint"
         navMeta={['Vol. 01', '2026', 'Death Care']}
         heroMeta={['Field Notes', '9 Min Read', 'September 2026']}
         title="The Future of"

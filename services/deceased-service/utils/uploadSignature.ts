@@ -50,8 +50,10 @@ export async function processSignature(
         const alpha = data[i + 3] / 255;
         const luminance = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
         // Darkness of the stroke: white background → 0, full ink → 1.
-        // Gamma boost keeps the core strokes at (near) full opacity.
-        const ink = alpha * Math.pow(1 - luminance, 0.45);
+        // Gamma boost keeps core strokes at FULL opacity so the rendered
+        // signature matches the drawn ink blue #0f33e7 exactly (×1.13 lifts
+        // the 0.8845 max of the ink-blue gamma back to 1.0).
+        const ink = alpha * Math.min(1, Math.pow(1 - luminance, 0.45) * 1.13);
         normalized[i] = INK_BLUE.r;
         normalized[i + 1] = INK_BLUE.g;
         normalized[i + 2] = INK_BLUE.b;

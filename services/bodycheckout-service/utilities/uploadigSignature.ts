@@ -81,7 +81,7 @@ const processSignature = async (
     for (let i = 0; i < raw.length; i += 4) {
         const alpha = raw[i + 3] / 255;
         const luminance = (raw[i] * 0.299 + raw[i + 1] * 0.587 + raw[i + 2] * 0.114) / 255;
-        const ink = alpha * Math.pow(1 - luminance, 0.45);
+        const ink = alpha * Math.min(1, Math.pow(1 - luminance, 0.45) * 1.13);
         normalized[i] = INK_BLUE.r;
         normalized[i + 1] = INK_BLUE.g;
         normalized[i + 2] = INK_BLUE.b;

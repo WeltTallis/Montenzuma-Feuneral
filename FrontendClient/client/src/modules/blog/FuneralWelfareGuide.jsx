@@ -29,8 +29,8 @@ const FuneralWelfareGuide = () => {
         <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
-`      `<JournalArticle
-`        slug="funeral-welfare-management"
+<JournalArticle
+slug="funeral-welfare-management"
         navMeta={['Vol. 01', '2026', 'Welfare']}
         heroMeta={['Field Guide', '8 Min Read', 'March 2026']}
         title="Funeral Welfare,"

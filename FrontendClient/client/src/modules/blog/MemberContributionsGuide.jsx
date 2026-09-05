@@ -29,8 +29,8 @@ const MemberContributionsGuide = () => {
         <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
-`      `<JournalArticle
-`        slug="member-contributions"
+<JournalArticle
+slug="member-contributions"
         navMeta={['Vol. 01', '2026', 'Welfare']}
         heroMeta={['Welfare Guide', '10 Min Read', 'February 2026']}
         title="Member Contributions,"
