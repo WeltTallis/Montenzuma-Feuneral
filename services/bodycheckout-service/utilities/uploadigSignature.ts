@@ -130,7 +130,14 @@ const processSignature = async (
     // scoped per tenant so every signature lives at
     // /opt/storage/uploads/<tenant>/signatures/)
     const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
-    const signatureDir = path.join(globalUploadsDir, tenantSlug || 'system', 'signatures');
+    // Sanitize the slug exactly like generateSlug() so the on-disk folder and
+    // the /uploads/... URL always match and tenant signatures never mix.
+    const safeSlug = String(tenantSlug || 'system')
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') || 'system';
+    const signatureDir = path.join(globalUploadsDir, safeSlug, 'signatures');
 
     // Ensure directory exists
     await fs.promises.mkdir(signatureDir, { recursive: true });

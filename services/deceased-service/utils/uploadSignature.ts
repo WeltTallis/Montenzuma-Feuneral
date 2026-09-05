@@ -88,7 +88,14 @@ export async function processSignature(
     
     // Get global uploads directory from environment or use default
     const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
-    const signatureDir = path.join(globalUploadsDir, tenantSlug || 'system', 'signatures');
+    // Sanitize the slug exactly like generateSlug() so the on-disk folder and
+    // the /uploads/... URL always match and tenant signatures never mix.
+    const safeSlug = String(tenantSlug || 'system')
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') || 'system';
+    const signatureDir = path.join(globalUploadsDir, safeSlug, 'signatures');
     
     // Ensure directory exists
     await fs.promises.mkdir(signatureDir, { recursive: true });
@@ -99,7 +106,7 @@ export async function processSignature(
     await fs.promises.writeFile(fullPath, finalBuffer);
     
     // Create the URL path (relative path for database storage)
-    const urlPath = `/uploads/${tenantSlug || 'system'}/signatures/${pngFilename}`;
+    const urlPath = `/uploads/${safeSlug}/signatures/${pngFilename}`;
     
     console.log('[UPLOAD SIGNATURE] Saved PNG directly:', {
         filename: pngFilename,

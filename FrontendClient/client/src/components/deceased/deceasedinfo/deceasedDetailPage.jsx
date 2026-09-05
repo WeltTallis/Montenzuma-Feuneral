@@ -251,10 +251,10 @@ const DeceasedDetailPage = () => {
         }
       }
 
-      // 4) Documents - fetch from documents service (port 8112) directly
+      // 4) Documents - fetch from documents service (through the API gateway)
       try {
         const tenantSlug = getTenantSlug();
-        const docRes = await axios.get(`http://localhost:8112/api/v1/restpoint/documents/${deceasedId}`, {
+        const docRes = await axios.get(`${env.FULL_API_URL}/documents/${deceasedId}`, {
           headers: {
             'x-tenant-slug': tenantSlug,
             'Authorization': token ? `Bearer ${token}` : ''

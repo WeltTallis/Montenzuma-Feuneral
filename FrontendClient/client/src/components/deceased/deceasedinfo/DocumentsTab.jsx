@@ -132,7 +132,7 @@ const DocumentsTab = ({ documents, deceasedId }) => {
       formData.append('document', file);
       formData.append('deceasedId', deceasedId);
 
-      const response = await api.post(`http://localhost:8112/v1/restpoint/documents/${deceasedId}/upload`, formData, {
+      const response = await api.post(`/documents/${deceasedId}/upload`, formData, {
         headers: {
           'x-tenant-slug': tenantSlug,
           'Content-Type': 'multipart/form-data'
