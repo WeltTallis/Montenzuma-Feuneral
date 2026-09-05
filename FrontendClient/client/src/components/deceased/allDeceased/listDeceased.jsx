@@ -83,17 +83,25 @@ const AppContainer = styled.div`
   line-height: 1.5;
   min-height: 100dvh;
   margin: 0;
+  padding: 0;
   animation: ${fadeIn} 0.25s ease-out;
   box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 
   @media (min-width: 901px) {
     margin: 0 auto;
     max-width: 1400px;
     padding: 32px;
+    overflow-x: visible;
   }
 
   @media (max-width: 900px) {
     padding: 16px;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 `;
 
@@ -268,6 +276,11 @@ const CalDateBtn = styled.div`
     color: white;
     box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   `}
+
+  @media (max-width: 600px) {
+    min-width: 34px;
+    padding: 4px 2px;
+  }
 `;
 
 const CalWeekday = styled.div`
@@ -303,6 +316,8 @@ const ListCard = styled.div`
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
 `;
 
 const ListHeader = styled.div`
@@ -446,10 +461,16 @@ const MobileCard = styled.div`
   cursor: pointer;
   transition: 0.2s;
   box-sizing: border-box;
-  
+  width: 100%;
+  max-width: 100%;
+
   &:active {
     transform: scale(0.98);
     background: ${C.bgField};
+  }
+
+  @media (max-width: 600px) {
+    padding: 12px;
   }
 `;
 
@@ -474,12 +495,18 @@ const MobileCardDetails = styled.div`
   gap: 12px;
   padding-top: 16px;
   border-top: 1px solid ${C.borderLight};
-  
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding-top: 12px;
+  }
+
   div {
     display: flex;
     flex-direction: column;
   }
-  
+
   span {
     font-size: 10px;
     font-weight: 700;
@@ -488,7 +515,7 @@ const MobileCardDetails = styled.div`
     letter-spacing: 0.08em;
     margin-bottom: 4px;
   }
-  
+
   strong {
     font-size: 14px;
     color: ${C.dark};

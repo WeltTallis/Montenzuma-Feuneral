@@ -401,8 +401,11 @@ const FaqSection = () => {
           font-size: 1rem;
           line-height: 1.8;
           color: #5C5C5C;
-          max-width: 700px;
+                    max-width: 700px;
         }
+
+        /* Mobile hero hidden on desktop */
+        .faq-mobile-hero { display: none; }
 
         /* Responsive */
         @media(max-width: 900px) {
@@ -413,6 +416,9 @@ const FaqSection = () => {
           .faq-nav-item { border: 1px solid #E8E2D8; background: #FFFFFF; }
           .faq-q { font-size: 1.1rem; gap: 1rem; }
           .faq-a-text { padding-right: 0; }
+          .faq-mobile-hero { display: block; margin-bottom: 1.5rem; }
+          .faq-q-hero { font-size: 1.15rem; font-weight: 600; }
+          .faq-answer { margin-top: 0.5rem; }
         }
       `}</style>
 
@@ -429,6 +435,31 @@ const FaqSection = () => {
               Everything front-desk teams and funeral directors ask before bringing the premium
               tablet portal experience to their funeral home.
             </p>
+
+            {/* Mobile: show first quiz prominently before the rest */}
+            <div className="faq-mobile-hero">
+              {FAQ_CATEGORIES[0]?.items[0] && (() => {
+                const firstQ = FAQ_CATEGORIES[0].items[0];
+                                return (
+                  <div className="faq-item open">
+                    <button
+                      type="button"
+                      className="faq-q faq-q-hero"
+                      onClick={() => toggle('0-0')}
+                      aria-expanded={open === '0-0'}
+                    >
+                      <span className="faq-q-text">{firstQ.q}</span>
+                      <span className="faq-q-icon"></span>
+                    </button>
+                    <div className="faq-answer" role="region">
+                      <div className="faq-answer-inner">
+                        <p className="faq-a-text">{firstQ.a}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
 
             <nav className="faq-nav" aria-label="FAQ categories">
               {FAQ_CATEGORIES.map((g, i) => (

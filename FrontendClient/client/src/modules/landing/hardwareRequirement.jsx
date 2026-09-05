@@ -28,16 +28,16 @@ const GlobalFonts = createGlobalStyle`
 const HardwareSection = styled.section`
   max-width: 1200px;
   margin: 60px auto;
-  padding: 0 24px;
+  padding: 0 10px;
   font-family: 'Inter', sans-serif;
 `;
 
 const SectionContainer = styled.div`
-  background: ${C.bone};
+
   border: 1px solid ${C.line};
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 20px 50px -15px rgba(0,0,0,0.1);
+ 
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
   position: relative;
@@ -268,7 +268,7 @@ const HardwareRequirementSection = () => {
                     <ImageSide>
                         <ImageFrame>
                             <TabletImage
-                                src="https://avechi.co.ke/wp-content/uploads/2026/08/S400890941_1-1-300x300.jpg"
+                                src="/tab.jpg"
                                 alt="Family using the tablet interface"
                             />
                         </ImageFrame>

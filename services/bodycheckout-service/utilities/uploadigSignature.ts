@@ -59,12 +59,8 @@ const processSignature = async (
     hash: string;
 }> => {
     const {
-        quality = 90,
         maxWidth = 1200,
         maxHeight = 800,
-        background = '#ffffff',
-        grayscale = false,
-        outputFormat = 'png'
     } = options || {};
 
     // Generate unique filename
@@ -179,14 +175,19 @@ const uploadCheckOutSignature = async (req: any, res: any, next: any) => {
             }
 
             try {
-                // Process the signature with high quality
-                const result = await processSignature(req.file, {
-                    quality: 95,
+                // Resolve the tenant so the signature lands in the GLOBAL
+                // uploads folder: /opt/storage/uploads/<tenant>/signatures
+                const tenantSlug: string | undefined =
+                    req.tenantSlug ||
+                    req.headers['x-tenant-slug'] ||
+                    req.headers['x-slug'] ||
+                    req.body?.tenantSlug ||
+                    undefined;
+
+                // Process the signature (always stored ink blue in the global uploads)
+                const result = await processSignature(req.file, tenantSlug, {
                     maxWidth: 1500,
                     maxHeight: 1000,
-                    background: '#ffffff',
-                    grayscale: false,
-                    outputFormat: 'png',
                 });
 
                 // Add signature info to request for further processing
@@ -310,14 +311,18 @@ const uploadEnhancedSignature = async (req: any, res: any, next: any) => {
             }
 
             try {
-                // Process with advanced options
-                const result = await processSignature(req.file, {
-                    quality: 92,
+                // Resolve the tenant for the GLOBAL uploads folder
+                const tenantSlug: string | undefined =
+                    req.tenantSlug ||
+                    req.headers['x-tenant-slug'] ||
+                    req.headers['x-slug'] ||
+                    req.body?.tenantSlug ||
+                    undefined;
+
+                // Process with the global-uploads pipeline (ink blue, no local paths)
+                const result = await processSignature(req.file, tenantSlug, {
                     maxWidth: 1600,
                     maxHeight: 1200,
-                    background: '#ffffff',
-                    grayscale: false,
-                    outputFormat: 'png',
                 });
 
                 // Generate thumbnail as well
