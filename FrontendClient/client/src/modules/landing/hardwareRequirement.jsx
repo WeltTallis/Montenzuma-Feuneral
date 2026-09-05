@@ -268,7 +268,7 @@ const HardwareRequirementSection = () => {
                     <ImageSide>
                         <ImageFrame>
                             <TabletImage
-                                src="/tab.jpg"
+                                src="https://avechi.co.ke/wp-content/uploads/2026/08/S400890941_1-1-300x300.jpg"
                                 alt="Family using the tablet interface"
                             />
                         </ImageFrame>

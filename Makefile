@@ -19,15 +19,26 @@ export COMPOSE_DOCKER_CLI_BUILD=1
 PARALLEL ?= 1
 export COMPOSE_PARALLEL_LIMIT := $(PARALLEL)
 
-# ----------------------------------------------------------------------------
-# Serial image building — list of services that actually have a build: key.
+# ------------------------------------------------------------------------------
+# Serial image building — wishlist of services that have a build: key.
 # We build them one-by-one (`docker compose build SVC ...`) so that only ONE
-# `npm install` / `go build` runs at a time. This is the guaranteed-OOM-safe
-# path and does NOT rely on COMPOSE_PARALLEL_LIMIT being honoured by the
-# installed Compose version. (Image-only infra — mariadb/redis/rabbitmq — is
-# pulled from the registry, never built, so it is intentionally absent here.)
-# Regenerate with:  make show-build-services
-BUILD_SERVICES := api-gateway auth-service tenant-service deceased-service billing-service support-service leave-service documents-service socketio-service scanner-service invoice-service coffin-service analytics-service bodycheckout-service chemical-service workshop-service extra-services hearse-service store-service frontend
+# `npm install` / `go build` runs at a time (OOM-safe). Image-only infra
+# (mariadb/redis/rabbitmq/loki/...) is pulled from the registry, never built.
+#
+# The two lists below are AUTO-FILTERED against the compose file they will be
+# built from, so the wishlist can never go stale again:
+#   • store-service exists ONLY in docker-compose.prod.yml
+#   • florist-service was missing from this list entirely before
+# (One `docker compose config` call per file at parse time; if docker is not
+# reachable the list is simply empty and the build loop is a no-op.)
+# ------------------------------------------------------------------------------
+RAW_BUILD_SERVICES := api-gateway auth-service tenant-service deceased-service billing-service support-service leave-service documents-service socketio-service scanner-service invoice-service coffin-service analytics-service bodycheckout-service chemical-service workshop-service extra-services hearse-service store-service florist-service frontend
+
+# For the DEV compose file (docker-compose.yml) — used by build/build-fast/up/...
+BUILD_SERVICES := $(shell for svc in $(RAW_BUILD_SERVICES); do docker compose config --services 2>/dev/null | grep -qx "$$svc" && echo "$$svc"; done)
+
+# For the PROD compose file (docker-compose.prod.yml) — used by deploy-prod
+BUILD_SERVICES_PROD := $(shell for svc in $(RAW_BUILD_SERVICES); do docker compose -f docker-compose.prod.yml config --services 2>/dev/null | grep -qx "$$svc" && echo "$$svc"; done)
 
 # Cap the V8 heap of the npm install + tsx steps so a single image can never
 # balloon the box. Applied in the Dockerfiles as NODE_OPTIONS=...
@@ -360,7 +371,7 @@ deploy-prod: validate
 	@echo "$(YELLOW)Configuring production environment...$(NC)"
 	@cp .env.production .env
 	@echo "$(BLUE)Building production images...$(NC)"
-	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE_PROD) build --no-cache $$svc; done
+	@set -e; for svc in $(BUILD_SERVICES_PROD); do echo "  -> building $$svc"; $(COMPOSE_PROD) build --no-cache $$svc; done
 	@echo "$(GREEN)✓ Production build complete$(NC)"
 	@echo "$(BLUE)Starting production services...$(NC)"
 	@$(COMPOSE_PROD) up -d --no-build
