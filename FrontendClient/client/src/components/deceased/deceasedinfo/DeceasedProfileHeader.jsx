@@ -47,8 +47,7 @@ const RouteCalcBtn = styled.button`
 /* ─── Admission barcode (same Code128 configuration as the intake page) ─── */
 const BarcodeBox = styled.div`
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  background: white; border: 1px solid ${C.borderLight}; border-radius: 6px;
-  padding: 6px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  background: transparent; border: none; padding: 0; box-shadow: none;
 `;
 const BarcodeCode = styled.span`
   font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700;
@@ -83,7 +82,6 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
   const navigate = useNavigate();
   const { id: deceasedId } = useParams();
   const [showRouteOptimizer, setShowRouteOptimizer] = useState(false);
-  const name = deceased?.full_name || deceased?.name || 'Unknown';
   const displayId = deceased?.deceased_id || deceased?.id;
   const admissionNo = deceased?.admission_number || deceased?.admission_no || '—';
   const navigateToReleaseForm = () => {
@@ -98,20 +96,20 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
     });
   };
 
-  return (
+    return (
     <>
       {showRouteOptimizer && <RouteOptimizer onClose={() => setShowRouteOptimizer(false)} />}
       <BackBtn onClick={onBack}>← Back to List</BackBtn>
       <ProfileHeader>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <div>
-            <h2>{name}</h2>
-            <p><span>{displayId}</span> | <span>{admissionNo}</span></p>
+          {/* Barcode at top-left */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <BarcodeBox title="Admission barcode">
+              <Barcode value={admissionNo !== '—' ? admissionNo : 'AWAITING-ID'} />
+            </BarcodeBox>
+            <BarcodeCode style={{ fontWeight: 700, fontSize: 11 }}>{displayId}</BarcodeCode>
+            <BarcodeCode style={{ fontWeight: 400, fontSize: 10, opacity: 0.7 }}>{admissionNo !== '—' ? admissionNo : 'AWAITING-ID'}</BarcodeCode>
           </div>
-          <BarcodeBox title="Admission barcode">
-            <Barcode value={admissionNo !== '—' ? admissionNo : 'AWAITING-ID'} />
-            <BarcodeCode>{admissionNo !== '—' ? admissionNo : 'AWAITING-ID'}</BarcodeCode>
-          </BarcodeBox>
         </div>
         <HeaderActions>
           <RouteCalcBtn onClick={() => setShowRouteOptimizer(true)}>

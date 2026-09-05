@@ -75,15 +75,53 @@ exports.createTicket = async (req, res) => {
     }
 };
 
-// Get tickets for a specific tenant
+// Get tickets for a specific tenant (with replies)
 exports.getTickets = async (req, res) => {
     try {
         const tenantSlug = req.query.tenant || req.headers['x-tenant-slug'] || 'system_shared';
+
+        // Fetch tickets with their replies via LEFT JOIN
         const [tickets] = await pool.query(
-            'SELECT * FROM support_tickets WHERE tenant_slug = ? ORDER BY created_at DESC LIMIT 100',
+            `SELECT t.*, r.reply_id, r.user_type, r.message AS reply_message, r.created_at AS reply_created_at
+               FROM support_tickets t
+               LEFT JOIN ticket_replies r ON r.ticket_id = t.ticket_id
+              WHERE t.tenant_slug = ?
+              ORDER BY t.created_at DESC, r.created_at ASC
+              LIMIT 200`,
             [tenantSlug]
         );
-        res.json({ success: true, tickets });
+
+        // Group flat rows into tickets with nested replies arrays
+        const ticketsMap = {};
+        tickets.forEach(row => {
+            const tid = row.ticket_id;
+            if (!ticketsMap[tid]) {
+                ticketsMap[tid] = {
+                    ...row,
+                    replies: [],
+                    reply_count: 0,
+                };
+                // remove join columns that don't belong on the ticket
+                delete ticketsMap[tid].reply_id;
+                delete ticketsMap[tid].user_type;
+                delete ticketsMap[tid].reply_message;
+                delete ticketsMap[tid].reply_created_at;
+            }
+
+            // If this row has reply data, push it
+            if (row.reply_id) {
+                ticketsMap[tid].replies.push({
+                    reply_id: row.reply_id,
+                    user_type: row.user_type,
+                    message: row.reply_message,
+                    created_at: row.reply_created_at,
+                });
+                ticketsMap[tid].reply_count = ticketsMap[tid].replies.length;
+            }
+        });
+
+        const ticketsList = Object.values(ticketsMap);
+        res.json({ success: true, tickets: ticketsList });
     } catch (error) {
         console.error('[Support] Error fetching tickets:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch tickets' });

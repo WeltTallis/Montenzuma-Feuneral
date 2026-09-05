@@ -110,6 +110,17 @@ export default function TicketPage() {
     }, [tenantSlug, fetchTickets, notify]);
 
     useEffect(() => { fetchTickets(); const i = setInterval(fetchTickets, 30000); return () => clearInterval(i); }, [fetchTickets]);
+
+    // Sync selectedTicket with fresh data from tickets array
+    useEffect(() => {
+        if (selectedTicket) {
+            const fresh = tickets.find(t => t.ticket_id === selectedTicket.ticket_id);
+            if (fresh && fresh !== selectedTicket) {
+                setSelectedTicket(fresh);
+            }
+        }
+    }, [tickets, selectedTicket]);
+
     useEffect(() => { replyEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [selectedTicket]);
 
     const goHome = () => {
@@ -334,18 +345,21 @@ export default function TicketPage() {
 
                         <div style={{ padding: '1.25rem 1.5rem' }}>
                             {/* Replies */}
-                            {selectedTicket.replies?.map((reply, idx) => (
-                                <div key={idx} style={{ padding: '0.75rem 0', borderBottom: idx < selectedTicket.replies.length - 1 ? '1px solid ' + C.line : 'none' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
-                                        <span style={{ fontWeight: 600, fontSize: '0.82rem', color: reply.is_admin || reply.userType === 'admin' ? C.brass : C.ink }}>
-                                            {reply.is_admin || reply.userType === 'admin' ? 'Support Team' : 'You'}
-                                        </span>
-                                        {reply.is_admin && <span className="tp-badge" style={{ color: C.brass, background: 'rgba(154,123,90,0.10)', fontSize: '0.6rem' }}>STAFF</span>}
-                                        <span style={{ fontSize: '0.68rem', color: C.grayLight, fontFamily: "'JetBrains Mono', monospace" }}>{formatDate(reply.created_at)}</span>
+                            {selectedTicket.replies?.map((reply, idx) => {
+                                const isStaff = reply.user_type === 'admin';
+                                return (
+                                    <div key={reply.reply_id || idx} style={{ padding: '0.75rem 0', borderBottom: idx < selectedTicket.replies.length - 1 ? '1px solid ' + C.line : 'none' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
+                                            <span style={{ fontWeight: 600, fontSize: '0.82rem', color: isStaff ? C.brass : C.ink }}>
+                                                {isStaff ? 'Support Team' : 'You'}
+                                            </span>
+                                            {isStaff && <span className="tp-badge" style={{ color: C.brass, background: 'rgba(154,123,90,0.10)', fontSize: '0.6rem' }}>STAFF</span>}
+                                            <span style={{ fontSize: '0.68rem', color: C.grayLight, fontFamily: "'JetBrains Mono', monospace" }}>{formatDate(reply.created_at)}</span>
+                                        </div>
+                                        <p style={{ fontSize: '0.85rem', lineHeight: 1.6, color: C.ink }}>{reply.message}</p>
                                     </div>
-                                    <p style={{ fontSize: '0.85rem', lineHeight: 1.6, color: C.ink }}>{reply.message}</p>
-                                </div>
-                            ))}
+                                );
+                            })}
                             <div ref={replyEndRef} />
 
                             {/* Reply Form */}

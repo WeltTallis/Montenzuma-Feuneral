@@ -674,8 +674,8 @@ services:
 
   scanner-service:
     build:
-      context: .
-      dockerfile: services/scanner-service/Dockerfile
+      context: services/scanner-service
+      dockerfile: Dockerfile
     image: restpoint-scanner-service:latest
     container_name: restpoint_scanner_service
     restart: always

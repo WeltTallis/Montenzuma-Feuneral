@@ -83,9 +83,16 @@ const OverviewTab = ({ deceased, nextOfKin }) => {
   const d = deceased || {};
   const nok = nextOfKin || {};
   const signaturePath = d.signature || nok.signature;
+  const deceasedName = d.full_name || d.name || 'Unknown';
 
   return (
     <>
+      {/* Deceased Name — blue, top-left */}
+      <DetailItem $full style={{ marginBottom: '20px' }}>
+        <DetailLabel style={{ fontSize: 11, opacity: 0.55 }}>Deceased Name</DetailLabel>
+        <DetailValue style={{ color: '#2563eb', fontSize: 24, fontWeight: 700, fontFamily: 'Merriweather', marginBottom: 8 }}>{deceasedName}</DetailValue>
+      </DetailItem>
+
       {/* 01 — Admission */}
       <SectionHead $mt0><span>01</span> Admission</SectionHead>
       <DetailGrid>
