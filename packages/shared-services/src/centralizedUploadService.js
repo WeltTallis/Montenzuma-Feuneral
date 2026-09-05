@@ -1,284 +1,235 @@
-"use strict";
+﻿"use strict";
 /**
- * Centralized Upload Service
+ * Centralized Upload Service - DIRECT-TO-DISK implementation.
  *
- * Provides a unified interface for all services to upload files to the centralized uploads-service.
- * This ensures all files are stored in the correct tenant-specific folders.
+ * Writes every file straight into the ONE shared uploads folder all services
+ * bind-mount in production (/opt/storage/uploads) and that the tenant-service
+ * serves to browsers at /uploads/...
  *
- * Usage:
- *   const result = await centralizedUploadService.uploadSignature(buffer, filename, tenantSlug);
- *   const result = await centralizedUploadService.uploadDocument(buffer, filename, tenantSlug, 'deceased');
- *   const result = await centralizedUploadService.uploadImage(buffer, filename, tenantSlug, 'coffins');
+ *   /opt/storage/uploads/<tenant-slug>/<category>[/<subFolder>]/<file>
+ *
+ * Guarantees:
+ *   - per-tenant isolation: the sanitized tenant slug is part of the path, so
+ *     tenants can never mix files;
+ *   - no dependency on a separate "uploads-service" container (there is NO
+ *     such container in docker-compose.prod.yml);
+ *   - failures are returned as { success:false, error } - never thrown away.
  */
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+
+const fs = require('fs');
+const path = require('path');
+
+const GLOBAL_UPLOADS_DIR = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || process.env.UPLOAD_PATH || '/opt/storage/uploads';
+
+// Standard subfolders every tenant root gets so every service lands in a
+// predictable, non-overlapping place.
+const TENANT_SUBDIRS = [
+  'signatures', 'documents', 'images', 'logos', 'pdf', 'exports',
+  'flowers', 'deceased', 'receipts', 'reports', 'contracts',
+  'employees', 'chemicals', 'invoices',
+];
+
+// Mirrors generateSlug(): letters, digits, dash, underscore, dot, lowercase.
+const sanitize = (name) => {
+  const cleaned = String(name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return cleaned || 'system';
 };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.centralizedUploadService = void 0;
-const axios_1 = __importDefault(require("axios"));
-const form_data_1 = __importDefault(require("form-data"));
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const UPLOADS_SERVICE_URL = process.env.UPLOADS_SERVICE_URL || 'http://localhost:5012';
-const UPLOADS_SERVICE_API_KEY = process.env.UPLOADS_SERVICE_API_KEY;
-/**
- * Centralized Upload Service
- */
+
+const sanitizeFilename = (name) => {
+  const cleaned = String(name || 'file')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/_+/g, '_')
+    .slice(0, 120);
+  return cleaned || 'file';
+};
+
+const mimeOf = (filename, fallback) => {
+  if (fallback && /^[a-z]+\/[a-z0-9.+-]+$/i.test(String(fallback))) return fallback;
+  const ext = path.extname(String(filename || '')).toLowerCase();
+  const map = {
+    '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp', '.gif': 'image/gif', '.svg': 'image/svg+xml',
+    '.pdf': 'application/pdf', '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls': 'application/vnd.ms-excel',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.csv': 'text/csv', '.txt': 'text/plain', '.zip': 'application/zip',
+  };
+  return map[ext] || 'application/octet-stream';
+};
+
 class CentralizedUploadService {
-    axiosInstance;
-    constructor() {
-        this.axiosInstance = axios_1.default.create({
-            baseURL: UPLOADS_SERVICE_URL,
-            timeout: 30000, // 30 seconds
-            headers: {
-                ...(UPLOADS_SERVICE_API_KEY && { 'X-API-Key': UPLOADS_SERVICE_API_KEY }),
-            },
-        });
+  constructor() {
+    this.baseDir = GLOBAL_UPLOADS_DIR;
+    try {
+      fs.mkdirSync(this.baseDir, { recursive: true });
+    } catch (err) {
+      console.warn('[UPLOAD] Could not pre-create base uploads dir:', err && err.message);
     }
-    /**
-     * Upload signature
-     */
-    async uploadSignature(buffer, filename, tenantSlug, options) {
-        return this.uploadFile(buffer, filename, tenantSlug, 'signatures', {
-            quality: 85,
-            maxWidth: 800,
-            maxHeight: 300,
-            format: 'webp',
-            ...options,
-        });
+  }
+
+  resolveTenantDir(tenantSlug) {
+    return path.join(this.baseDir, sanitize(tenantSlug));
+  }
+
+  ensureDir(dir) {
+    fs.mkdirSync(dir, { recursive: true });
+    // Verify writability up-front so callers get a loud, clear error instead
+    // of a silently lost file.
+    fs.accessSync(dir, fs.constants.W_OK);
+  }
+
+  async writeBuffer(buffer, originalName, tenantSlug, category, subFolder) {
+    try {
+      const safeSlug = sanitize(tenantSlug);
+      const safeCat = sanitize(category) || 'documents';
+      const sub = subFolder ? sanitize(subFolder) : null;
+      const folder = sub
+        ? path.join(this.baseDir, safeSlug, safeCat, sub)
+        : path.join(this.baseDir, safeSlug, safeCat);
+
+      this.ensureDir(folder);
+
+      const timestamp = Date.now();
+      const safeFile = sanitizeFilename(originalName);
+      // Prefix with a timestamp so identical filenames never collide/overwrite.
+      const filename = timestamp + '-' + safeFile;
+      const fullPath = path.join(folder, filename);
+      await fs.promises.writeFile(fullPath, buffer);
+
+      const rel = sub
+        ? path.posix.join(safeSlug, safeCat, sub, filename)
+        : path.posix.join(safeSlug, safeCat, filename);
+
+      console.log('[UPLOAD] Saved: ' + fullPath);
+      return {
+        success: true,
+        filename: filename,
+        path: fullPath,
+        urlPath: '/uploads/' + rel,
+        size: buffer.length,
+        mimeType: mimeOf(originalName),
+      };
+    } catch (error) {
+      console.error('[UPLOAD] Save failed:', error && error.message);
+      return {
+        success: false,
+        filename: '',
+        path: '',
+        urlPath: '',
+        size: 0,
+        mimeType: '',
+        error: (error && error.code ? error.code + ' ' : '') + (error && error.message ? error.message : String(error)),
+      };
     }
-    /**
-     * Upload document (PDF, DOC, etc.)
-     */
-    async uploadDocument(buffer, filename, tenantSlug, subFolder, options) {
-        return this.uploadFile(buffer, filename, tenantSlug, 'documents', {
-            quality: 90,
-            format: 'jpeg',
-            subFolder,
-            ...options,
-        });
+  }
+
+  async uploadSignature(buffer, filename, tenantSlug, options) {
+    return this.writeBuffer(buffer, filename, tenantSlug, 'signatures', options && options.subFolder);
+  }
+
+  async uploadDocument(buffer, filename, tenantSlug, subFolder, options) {
+    return this.writeBuffer(buffer, filename, tenantSlug, 'documents', subFolder || (options && options.subFolder));
+  }
+
+  async uploadImage(buffer, filename, tenantSlug, category, subFolder, options) {
+    return this.writeBuffer(buffer, filename, tenantSlug, category || 'images', subFolder || (options && options.subFolder));
+  }
+
+  async uploadTenantLogo(buffer, filename, tenantSlug) {
+    return this.writeBuffer(buffer, filename, tenantSlug, 'logos');
+  }
+
+  async uploadPDF(buffer, filename, tenantSlug, subFolder) {
+    return this.writeBuffer(buffer, filename, tenantSlug, 'pdf', subFolder);
+  }
+
+  async uploadExcel(buffer, filename, tenantSlug, subFolder) {
+    return this.writeBuffer(buffer, filename, tenantSlug, 'exports', subFolder);
+  }
+
+  async uploadFile(buffer, filename, tenantSlug, category, options) {
+    return this.writeBuffer(buffer, filename, tenantSlug, category || 'documents', options && options.subFolder);
+  }
+
+  async uploadRawFile(buffer, filename, tenantSlug, category, subFolder) {
+    return this.writeBuffer(buffer, filename, tenantSlug, category || 'documents', subFolder);
+  }
+
+  // Ensure the standard per-tenant folder skeleton exists. Local, idempotent -
+  // the old implementation POSTed to a dedicated uploads-service that does not
+  // exist in production and therefore always failed.
+  async createTenantFolders(tenantSlug) {
+    try {
+      const root = this.resolveTenantDir(tenantSlug);
+      this.ensureDir(root);
+      for (const sub of TENANT_SUBDIRS) {
+        fs.mkdirSync(path.join(root, sub), { recursive: true });
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to create tenant folders:', error && error.message);
+      return false;
     }
-    /**
-     * Upload image (coffins, hearses, florist, etc.)
-     */
-    async uploadImage(buffer, filename, tenantSlug, category = 'images', subFolder, options) {
-        return this.uploadFile(buffer, filename, tenantSlug, category, {
-            quality: 85,
-            format: 'webp',
-            subFolder,
-            ...options,
-        });
+  }
+
+  async tenantFolderExists(tenantSlug) {
+    try {
+      return fs.existsSync(this.resolveTenantDir(tenantSlug));
+    } catch (e) {
+      return false;
     }
-    /**
-     * Upload tenant logo
-     */
-    async uploadTenantLogo(buffer, filename, tenantSlug) {
-        return this.uploadFile(buffer, filename, tenantSlug, 'logos', {
-            quality: 90,
-            maxWidth: 400,
-            maxHeight: 400,
-            format: 'webp',
-        });
+  }
+
+  async deleteFile(filePath) {
+    try {
+      const safeRel = String(filePath || '')
+        .replace(/^\\+/, '')
+        .replace(/^uploads\//, '')
+        .replace(/^\.\.?(\\/|$)/, '');
+      if (!safeRel) return false;
+      const base = path.resolve(this.baseDir);
+      const full = path.resolve(base, safeRel);
+      if (full !== base && !full.startsWith(base + path.sep)) return false;
+      if (!fs.existsSync(full)) return false;
+      await fs.promises.unlink(full);
+      return true;
+    } catch (error) {
+      console.error('Failed to delete file:', error && error.message);
+      return false;
     }
-    /**
-     * Upload PDF document
-     */
-    async uploadPDF(buffer, filename, tenantSlug, subFolder) {
-        // For PDFs, we don't want to process them with Sharp
-        // We'll upload them as-is to the documents folder
-        return this.uploadRawFile(buffer, filename, tenantSlug, 'documents', subFolder);
+  }
+
+  async uploadFromFile(filePath, tenantSlug, type, category, subFolder) {
+    try {
+      const buffer = await fs.promises.readFile(filePath);
+      const filename = path.basename(filePath);
+      switch (type) {
+        case 'signature': return this.uploadSignature(buffer, filename, tenantSlug);
+        case 'document': return this.uploadDocument(buffer, filename, tenantSlug, subFolder);
+        case 'image': return this.uploadImage(buffer, filename, tenantSlug, category || 'images', subFolder);
+        case 'logo': return this.uploadTenantLogo(buffer, filename, tenantSlug);
+        case 'pdf': return this.uploadPDF(buffer, filename, tenantSlug, subFolder);
+        case 'excel': return this.uploadExcel(buffer, filename, tenantSlug, subFolder);
+        default: return this.uploadFile(buffer, filename, tenantSlug, category || 'documents', { subFolder: subFolder });
+      }
+    } catch (error) {
+      return {
+        success: false,
+        filename: '',
+        path: '',
+        urlPath: '',
+        size: 0,
+        mimeType: '',
+        error: error && error.message ? error.message : String(error),
+      };
     }
-    /**
-     * Upload Excel file
-     */
-    async uploadExcel(buffer, filename, tenantSlug, subFolder) {
-        return this.uploadRawFile(buffer, filename, tenantSlug, 'exports', subFolder);
-    }
-    /**
-     * Generic file upload with Sharp processing
-     */
-    async uploadFile(buffer, originalName, tenantSlug, category, options) {
-        try {
-            const form = new form_data_1.default();
-            form.append('file', buffer, {
-                filename: originalName,
-                contentType: 'application/octet-stream',
-            });
-            form.append('tenantSlug', tenantSlug);
-            form.append('category', category);
-            if (options.subFolder) {
-                form.append('subFolder', options.subFolder);
-            }
-            if (options.quality) {
-                form.append('quality', options.quality.toString());
-            }
-            if (options.maxWidth) {
-                form.append('maxWidth', options.maxWidth.toString());
-            }
-            if (options.maxHeight) {
-                form.append('maxHeight', options.maxHeight.toString());
-            }
-            if (options.format) {
-                form.append('format', options.format);
-            }
-            const response = await this.axiosInstance.post('/api/upload/image', form, {
-                headers: form.getHeaders(),
-            });
-            if (response.data.success) {
-                return response.data.data;
-            }
-            else {
-                return {
-                    success: false,
-                    filename: '',
-                    path: '',
-                    urlPath: '',
-                    size: 0,
-                    mimeType: '',
-                    error: response.data.message || 'Upload failed',
-                };
-            }
-        }
-        catch (error) {
-            console.error('Upload error:', error.message);
-            return {
-                success: false,
-                filename: '',
-                path: '',
-                urlPath: '',
-                size: 0,
-                mimeType: '',
-                error: error.message,
-            };
-        }
-    }
-    /**
-     * Upload raw file without Sharp processing (for PDFs, Excel, etc.)
-     */
-    async uploadRawFile(buffer, originalName, tenantSlug, category, subFolder) {
-        try {
-            const form = new form_data_1.default();
-            form.append('file', buffer, {
-                filename: originalName,
-                contentType: 'application/octet-stream',
-            });
-            form.append('tenantSlug', tenantSlug);
-            form.append('category', category);
-            if (subFolder) {
-                form.append('subFolder', subFolder);
-            }
-            const response = await this.axiosInstance.post('/api/upload/document', form, {
-                headers: form.getHeaders(),
-            });
-            if (response.data.success) {
-                return response.data.data;
-            }
-            else {
-                return {
-                    success: false,
-                    filename: '',
-                    path: '',
-                    urlPath: '',
-                    size: 0,
-                    mimeType: '',
-                    error: response.data.message || 'Upload failed',
-                };
-            }
-        }
-        catch (error) {
-            console.error('Upload error:', error.message);
-            return {
-                success: false,
-                filename: '',
-                path: '',
-                urlPath: '',
-                size: 0,
-                mimeType: '',
-                error: error.message,
-            };
-        }
-    }
-    /**
-     * Create tenant folders
-     */
-    async createTenantFolders(tenantSlug) {
-        try {
-            const response = await this.axiosInstance.post(`/api/tenants/${tenantSlug}/folders`);
-            return response.data.success;
-        }
-        catch (error) {
-            console.error('Failed to create tenant folders:', error.message);
-            return false;
-        }
-    }
-    /**
-     * Check if tenant folder exists
-     */
-    async tenantFolderExists(tenantSlug) {
-        try {
-            const response = await this.axiosInstance.get(`/api/tenants/${tenantSlug}/folders/exists`);
-            return response.data.exists;
-        }
-        catch (error) {
-            console.error('Failed to check tenant folder:', error.message);
-            return false;
-        }
-    }
-    /**
-     * Delete file
-     */
-    async deleteFile(filePath) {
-        try {
-            const response = await this.axiosInstance.delete('/api/files', {
-                params: { filePath },
-            });
-            return response.data.success;
-        }
-        catch (error) {
-            console.error('Failed to delete file:', error.message);
-            return false;
-        }
-    }
-    /**
-     * Upload from file path
-     */
-    async uploadFromFile(filePath, tenantSlug, type, category, subFolder) {
-        try {
-            const buffer = await fs_1.default.promises.readFile(filePath);
-            const filename = path_1.default.basename(filePath);
-            switch (type) {
-                case 'signature':
-                    return this.uploadSignature(buffer, filename, tenantSlug);
-                case 'document':
-                    return this.uploadDocument(buffer, filename, tenantSlug, subFolder);
-                case 'image':
-                    return this.uploadImage(buffer, filename, tenantSlug, category || 'images', subFolder);
-                case 'logo':
-                    return this.uploadTenantLogo(buffer, filename, tenantSlug);
-                case 'pdf':
-                    return this.uploadPDF(buffer, filename, tenantSlug, subFolder);
-                case 'excel':
-                    return this.uploadExcel(buffer, filename, tenantSlug, subFolder);
-                default:
-                    return this.uploadFile(buffer, filename, tenantSlug, category || 'general', {
-                        format: 'webp',
-                    });
-            }
-        }
-        catch (error) {
-            console.error('Failed to upload file:', error.message);
-            return {
-                success: false,
-                filename: '',
-                path: '',
-                urlPath: '',
-                size: 0,
-                mimeType: '',
-                error: error.message,
-            };
-        }
-    }
+  }
 }
-// Export singleton instance
+
 exports.centralizedUploadService = new CentralizedUploadService();
 exports.default = exports.centralizedUploadService;

@@ -90,44 +90,54 @@ const generateArrangementId = (): string => {
   return `ARR-${timestamp}-${random}`;
 };
 
-// ─── Upload path fallbacks ───
-const getUploadBaseDir = (): string[] => {
+// ─── Upload path resolution ───
+// Canonical per-tenant layout (production):
+//   /opt/storage/uploads/<tenant-slug>/flowers/<file>.webp
+//   → browser URL  /uploads/<tenant-slug>/flowers/<file>.webp
+// Each tenant gets its OWN folder; legacy layouts are tried as fallbacks so
+// existing deployments keep working during the transition.
+const getUploadDirs = (tenantSlug: string): { dir: string; urlPrefix: string }[] => {
   const globalDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
   return [
-    path.join(globalDir, 'FlowerSamples'),
-    path.join(__dirname, '../../uploads/FlowerSamples'),
-    path.join(__dirname, '../../../uploads/FlowerSamples'),
-    path.join(process.cwd(), 'uploads/FlowerSamples'),
-    '/app/uploads/FlowerSamples',
+    { dir: path.join(globalDir, tenantSlug, 'flowers'), urlPrefix: `/uploads/${tenantSlug}/flowers` },
+    { dir: path.join(globalDir, 'FlowerSamples', tenantSlug), urlPrefix: `/uploads/FlowerSamples/${tenantSlug}` },
+    { dir: path.join(__dirname, '../../uploads/FlowerSamples', tenantSlug), urlPrefix: `/uploads/FlowerSamples/${tenantSlug}` },
+    { dir: path.join(process.cwd(), 'uploads/FlowerSamples', tenantSlug), urlPrefix: `/uploads/FlowerSamples/${tenantSlug}` },
+    { dir: path.join('/app/uploads/FlowerSamples', tenantSlug), urlPrefix: `/uploads/FlowerSamples/${tenantSlug}` },
   ];
 };
 
-const ensureUploadDir = async (tenantSlug: string): Promise<string> => {
-  const possiblePaths = getUploadBaseDir();
-  let dir: string | null = null;
-
-  for (const basePath of possiblePaths) {
-    const candidate = path.join(basePath, tenantSlug);
+const ensureUploadDir = async (tenantSlug: string): Promise<{ dir: string; urlPrefix: string }> => {
+  for (const candidate of getUploadDirs(tenantSlug)) {
     try {
-      await fs.mkdir(candidate, { recursive: true });
-      const testFile = path.join(candidate, '.write-test');
+      await fs.mkdir(candidate.dir, { recursive: true });
+      const testFile = path.join(candidate.dir, '.write-test');
       await fs.writeFile(testFile, 'test');
       await fs.unlink(testFile);
-      dir = candidate;
-      console.log(`[FLOWER] Upload dir set: ${dir}`);
-      break;
+      console.log(`[FLOWER] Upload dir set: ${candidate.dir}`);
+      return candidate;
     } catch (e: any) {
-      console.warn(`[FLOWER] Cannot use upload path: ${candidate} - ${e.message}`);
+      console.warn(`[FLOWER] Cannot use upload path: ${candidate.dir} - ${e.message}`);
     }
   }
 
-  if (!dir) {
-    dir = path.join(os.tmpdir(), 'flower-uploads', tenantSlug);
-    await fs.mkdir(dir, { recursive: true });
-    console.log(`[FLOWER] Using temp upload dir: ${dir}`);
+  if (process.env.NODE_ENV === 'production') {
+    // NEVER silently write to a container-local / temp dir in production: the
+    // stored URL would 404 for every client. Fail the request loudly instead so
+    // the operator immediately sees the real cause (missing bind mount or wrong
+    // ownership on /opt/storage).
+    const globalDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+    throw new Error(
+      '[FLOWER] No writable upload directory. The shared uploads folder (' + globalDir + ') must be ' +
+      'writable by the container user (uid 1001). On the server run: ' +
+      'bash /opt/restpoint/scripts/setup-production-storage.sh'
+    );
   }
 
-  return dir;
+  const dir = path.join(os.tmpdir(), 'flower-uploads', tenantSlug);
+  await fs.mkdir(dir, { recursive: true });
+  console.warn(`[FLOWER] DEV fallback temp upload dir: ${dir} — images will NOT be served (dev only)`);
+  return { dir, urlPrefix: `/uploads/${tenantSlug}/flowers` };
 };
 
 // ─── Image compression ───
@@ -136,7 +146,7 @@ const compressAndSaveImage = async (
   filename: string,
   tenantSlug: string
 ): Promise<string> => {
-  const dir = await ensureUploadDir(tenantSlug);
+  const { dir, urlPrefix } = await ensureUploadDir(tenantSlug);
 
   const safeName = filename
     .replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -169,7 +179,7 @@ const compressAndSaveImage = async (
     const stats = await fs.stat(outputPath);
     console.log(`[FLOWER] Image saved: ${webpName} (${(stats.size / 1024).toFixed(1)}KB)`);
 
-    return `/uploads/FlowerSamples/${tenantSlug}/${webpName}`;
+    return `${urlPrefix}/${webpName}`;
   } catch (err) {
     console.error(`[FLOWER] Image processing error:`, err);
     throw err;
@@ -580,11 +590,21 @@ export const deleteFlowerArrangement = async (req: any, res: any): Promise<any> 
       });
     }
 
-    // Delete associated images from filesystem
+    // Delete associated images from the shared filesystem (supports both the
+    // canonical /uploads/<slug>/flowers/... and legacy /uploads/FlowerSamples/
+    // layouts).
+    const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
     for (const image of existingArrangement.images) {
       try {
-        const imagePath = path.join(process.cwd(), 'public', image.url);
-        await fs.unlink(imagePath).catch(() => { });
+        const rel = String(image.url || '').replace(/^\/uploads\//, '');
+        if (!rel) continue;
+        const candidates = [
+          path.join(globalUploadsDir, rel),
+          path.join(globalUploadsDir, 'FlowerSamples', rel.split('/').pop() || ''),
+        ];
+        for (const p of candidates) {
+          await fs.unlink(p).catch(() => { /* file already gone */ });
+        }
       } catch (err) {
         console.warn(`[FLOWER] Could not delete image: ${image.url}`);
       }

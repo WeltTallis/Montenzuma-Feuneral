@@ -236,7 +236,8 @@ function emitOnboardingProgress(tenantSlug: string, step: string, progress: numb
 
 const UPLOAD_SUBDIRS = [
     'logos', 'employees', 'chemicals', 'documents', 'images',
-    'deceased', 'receipts', 'reports', 'contracts', 'signatures'
+    'deceased', 'receipts', 'reports', 'contracts', 'signatures',
+    'flowers', 'pdf', 'exports'
 ];
 
 async function createTenantUploadDirectories(tenantSlug: string): Promise<void> {
