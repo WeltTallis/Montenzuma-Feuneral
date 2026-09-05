@@ -20,14 +20,16 @@ const {
 const { protect, authorizeAny } = require('../../services/app-global/middlewares/authMiddleware');
 const router = express.Router();
 
-// Multer for supporting-document uploads. Files land in uploads/leave-documents,
-// which matches the /uploads static mount in server.js and the
+// Multer for supporting-document uploads. Files land in the ONE shared
+// uploads folder (<UPLOADS_BASE_DIR>/leave-documents), which matches the
+// /uploads static mount in server.js and the
 // /uploads/leave-documents/<file> path written by uploadDocument.
 const multer = require('multer');
 const path = require('path');
+const UPLOADS_BASE_DIR = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
 const documentStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    const dir = path.join(__dirname, 'uploads', 'leave-documents');
+    const dir = path.join(UPLOADS_BASE_DIR, 'leave-documents');
     require('fs').mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },

@@ -1,5 +1,6 @@
 // components/InvoiceView.js
 import React, { useState } from 'react';
+import env from '../../utils/config/env';
 
 const InvoiceView = ({ invoice, deceased, onBack, onEdit, onDownload }) => {
   const [downloading, setDownloading] = useState(false);
@@ -182,9 +183,13 @@ const InvoiceView = ({ invoice, deceased, onBack, onEdit, onDownload }) => {
             <div className="col-md-6 offset-md-6 text-center">
               <div className="border-top pt-4">
                 <p className="mb-2"><strong>Authorized Signature</strong></p>
-                <img 
-                  src={invoice.signature_url} 
-                  alt="Signature" 
+                <img
+                  src={
+                    /^(data:|https?:\/\/)/.test(invoice.signature_url)
+                      ? invoice.signature_url
+                      : `${env.API_GATEWAY_URL}${invoice.signature_url.startsWith('/') ? '' : '/'}${invoice.signature_url}`
+                  }
+                  alt="Signature"
                   style={{ maxWidth: '200px', maxHeight: '80px' }}
                   className="img-fluid border"
                   onError={(e) => {

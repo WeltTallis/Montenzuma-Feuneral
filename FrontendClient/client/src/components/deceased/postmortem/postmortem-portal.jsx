@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import api from '../../../api/axios';
 import { ENDPOINTS, getTenantHeaders } from '../../../api/endpoints';
 import { useSocket } from '../../../utils/context/socketContext';
+import env from '../../../utils/config/env';
 
 
 
@@ -710,7 +711,7 @@ const AutopsyPortal = () => {
     underlyingCause: record.underlying_cause || 'N/A',
     contributingFactors: record.contributing_factors || 'N/A',
     examinationSummary: record.examination_summary || record.summary || 'No examination summary available.',
-    pathologistSignature: record.pathologist_signature || record.pathologist || 'N/A',
+    pathologistSignature: record.signature || record.pathologist_signature || record.pathologist || 'N/A',
     verificationId: record.verification_id || record.reference_no || 'N/A',
     digitalTimestamp: record.digital_timestamp || record.report_date || 'N/A',
     status: record.status || record.autopsy_status || 'Completed'
@@ -885,7 +886,27 @@ const AutopsyPortal = () => {
 
             <SigGrid>
               <SigBox>
-                <div className="sig-img">{reportData?.pathologistSignature}</div>
+                <div className="sig-img">
+                  {(() => {
+                    const sig = reportData?.pathologistSignature;
+                    // Signature values may be a data-URL, an absolute URL or an
+                    // /uploads/... path — render as an IMAGE, otherwise as text.
+                    if (sig && /^(data:image|https?:\/\/|\/)/.test(String(sig))) {
+                      const src = /^(data:image|https?:\/\/)/.test(String(sig))
+                        ? sig
+                        : `${env.API_GATEWAY_URL}${String(sig).startsWith('/') ? '' : '/'}${sig}`;
+                      return (
+                        <img
+                          src={src}
+                          alt="Pathologist Signature"
+                          style={{ maxWidth: '100%', maxHeight: '70px', objectFit: 'contain' }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      );
+                    }
+                    return sig || 'N/A';
+                  })()}
+                </div>
                 <label>Pathologist Signature</label>
               </SigBox>
               <SigBox className="right">

@@ -6,7 +6,11 @@ import asyncHandler from 'express-async-handler';
 import { getHearsePool } from '../database';
 import { getKenyaTimeISO, getKenyaDate } from '@montezuma/shared-utils';
 
-const hearsesDir = path.join(__dirname, '../../uploads/hearses');
+// Hearse images live in the ONE shared uploads folder (/opt/storage/uploads in
+// production, bind-mounted from the host) and are served to browsers at
+// /uploads/hearses/<file> — the DB stores the relative "uploads/hearses/<file>".
+const UPLOADS_BASE_DIR = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+const hearsesDir = path.join(UPLOADS_BASE_DIR, 'hearses');
 if (!fs.existsSync(hearsesDir)) {
     fs.mkdirSync(hearsesDir, { recursive: true });
 }

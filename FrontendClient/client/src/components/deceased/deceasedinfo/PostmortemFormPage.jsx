@@ -675,7 +675,7 @@ const PostmortemFormPage = () => {
       ctx.scale(ratio, ratio);
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
-      ctx.strokeStyle = '#000080';
+      ctx.strokeStyle = '#0f33e7'; // platform ink blue — matches every other signature
     };
 
     resize();

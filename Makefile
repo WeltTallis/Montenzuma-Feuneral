@@ -415,12 +415,16 @@ validate-dockerfiles:
 
 # ============================================================
 # BACKUP & RECOVERY
+# All backups are written to /opt/backups on the production
+# server (override with BACKUP_DIR=... for local runs).
 # ============================================================
 
+BACKUP_DIR ?= /opt/backups
+
 backup:
-	@echo "$(BLUE)Creating backup...$(NC)"
-	@mkdir -p ./backups
-	@BACKUP_FILE="./backups/restpoint_$$(date +%Y%m%d_%H%M%S).tar.gz"; \
+	@echo "$(BLUE)Creating database backup in $(BACKUP_DIR)...$(NC)"
+	@mkdir -p $(BACKUP_DIR)/db
+	@BACKUP_FILE="$(BACKUP_DIR)/db/restpoint_db_$$(date +%Y%m%d_%H%M%S).sql.gz"; \
 	docker-compose exec -T mariadb mysqldump -uroot -p$${DB_ROOT_PASSWORD:-rootpassword} --all-databases 2>/dev/null | gzip > $$BACKUP_FILE; \
 	if [ $$? -eq 0 ]; then \
 		echo "$(GREEN)✓ Database backup created: $$BACKUP_FILE$(NC)"; \
@@ -428,9 +432,28 @@ backup:
 		echo "$(RED)✗ Backup failed$(NC)"; \
 	fi
 
+# Archive every tenant upload (signatures, logos, documents, hearse images,
+# scans, invoices) from the shared host storage directory.
+backup-uploads:
+	@echo "$(BLUE)Archiving /opt/storage/uploads into $(BACKUP_DIR)...$(NC)"
+	@mkdir -p $(BACKUP_DIR)/uploads
+	@ARCHIVE="$(BACKUP_DIR)/uploads/uploads_$$(date +%Y%m%d_%H%M%S).tar.gz"; \
+	tar -czf $$ARCHIVE -C /opt/storage uploads 2>/dev/null; \
+	if [ $$? -eq 0 ]; then \
+		echo "$(GREEN)✓ Uploads backup created: $$ARCHIVE$(NC)"; \
+	else \
+		echo "$(RED)✗ Uploads backup failed$(NC)"; \
+	fi
+
+backup-all: backup backup-uploads
+	@echo "$(GREEN)✓ Full backup (database + uploads) stored in $(BACKUP_DIR)$(NC)"
+
 restore:
 	@echo "$(RED)WARNING: This will overwrite the current database!$(NC)"
-	@read -p "Enter backup file path: " backup_file; \
+	@read -p "Enter backup file path [default: newest in $(BACKUP_DIR)/db]: " backup_file; \
+	if [ -z "$$backup_file" ]; then \
+		backup_file=$$(ls -1t $(BACKUP_DIR)/db/*.sql.gz 2>/dev/null | head -n 1); \
+	fi; \
 	if [ -f "$$backup_file" ]; then \
 		echo "$(BLUE)Restoring from $$backup_file...$(NC)"; \
 		gunzip -c $$backup_file | docker-compose exec -T mariadb mysql -uroot -p$${DB_ROOT_PASSWORD:-rootpassword}; \

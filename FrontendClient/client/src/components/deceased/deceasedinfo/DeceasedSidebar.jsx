@@ -41,6 +41,17 @@ const StatLabel = styled.div`
   font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: ${C.gray}; margin-top: 4px;
 `;
 
+const ChargeRow = styled.div`
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px dashed ${C.borderLight}; font-size: 13px;
+  color: ${C.mid};
+  &:last-child { border-bottom: none; }
+  strong { color: ${p => (p.$highlight ? C.danger : C.black)}; font-weight: 700; }
+`;
+const ChargeNote = styled.p`
+  font-size: 11px; color: ${C.gray}; margin: 10px 0 0; line-height: 1.5;
+`;
+
 const SidebarSection = styled.div`
   margin-bottom: 24px;
   h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; color: ${C.black}; margin-bottom: 12px; letter-spacing: 0.05em; }
@@ -78,6 +89,13 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, totalCharges, balan
   const isFemale = sex.toLowerCase() === 'female';
   const daysInMorgue = getDaysInMorgue(deceased?.date_admitted || deceased?.admission_date || deceased?.created_at);
 
+  // ─── Days → charges counter ─────────────────────────────────────────
+  // The sidebar counts how many days the body has been in the morgue and
+  // the storage charge those days accrue at the tenant's daily rate
+  // (Charge Settings → "Storage Rate (Ksh/day)", default KES 500/day).
+  const dailyRate = parseFloat(deceased?.charges?.storage_rate) || 500;
+  const storageCharge = Math.round(daysInMorgue * dailyRate);
+
   return (
     <SidebarCard>
       <SidebarHeader>
@@ -106,6 +124,34 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, totalCharges, balan
           <StatLabel>Balance (KES)</StatLabel>
         </StatBox>
       </StatGrid>
+
+      <SidebarSection>
+        <h3>Storage Charges</h3>
+        <ChargeRow>
+          <span>Days in morgue</span>
+          <strong>{daysInMorgue} day{daysInMorgue === 1 ? '' : 's'}</strong>
+        </ChargeRow>
+        <ChargeRow>
+          <span>Daily storage rate</span>
+          <strong>KES {dailyRate.toLocaleString()}</strong>
+        </ChargeRow>
+        <ChargeRow $highlight>
+          <span>Storage charge so far</span>
+          <strong>KES {storageCharge.toLocaleString()}</strong>
+        </ChargeRow>
+        <ChargeRow>
+          <span>Total charges (all services)</span>
+          <strong>{totalCharges}K</strong>
+        </ChargeRow>
+        <ChargeRow>
+          <span>Balance</span>
+          <strong>{balance}K</strong>
+        </ChargeRow>
+        <ChargeNote>
+          Storage charge = days in morgue × daily rate (set under Charge Settings).
+          Embalming and extra charges are listed under the Financials tab.
+        </ChargeNote>
+      </SidebarSection>
 
       <SidebarSection>
         <h3>Notifications</h3>

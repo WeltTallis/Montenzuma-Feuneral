@@ -425,7 +425,14 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         narrativeText = narrativeText.trim();
 
         let signatureBuffer: Buffer | null = null;
-        const signaturePath = deceased?.signature;
+        // Embed the EXAMINER's signature captured on the postmortem form
+        // (postmortem.signature, saved from signature_base64). The deceased's
+        // own signature is the next-of-kin ADMISSION signature — only a fallback.
+        const signaturePath =
+            postmortem?.signature ||
+            postmortem?.pathologist_signature ||
+            deceased?.pathologist_signature ||
+            deceased?.signature;
         if (signaturePath && typeof signaturePath === 'string') {
             try {
                 if (signaturePath.startsWith('data:image')) {

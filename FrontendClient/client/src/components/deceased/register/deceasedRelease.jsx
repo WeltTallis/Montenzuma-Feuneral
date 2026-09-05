@@ -1252,11 +1252,14 @@ const DeceasedReleaseForm = () => {
       }
 
       // Capture the released record so it stays on this page after submission.
+      // Include the signatures so the success receipt can display them.
       setReleasedRecord({
         full_name: formData.full_name,
         admission_number: String(formData.admission_number || '').toUpperCase(),
         release_id: result.data?.release_id || '',
         release_date: formData.release_date,
+        signature: result.data?.signature || signatureData || '',
+        staff_signature: result.data?.staff_signature || '',
       });
       setShowSuccess(true);
 
@@ -1399,6 +1402,23 @@ const DeceasedReleaseForm = () => {
               <span style={detailValue}>{rec.release_date || '—'}</span>
             </div>
           </div>
+
+          {(rec.signature || rec.staff_signature) && (
+            <div style={{ background: COLORS.bone, border: `1px solid ${COLORS.line}`, borderRadius: 14, padding: '1.2rem 1.4rem', marginBottom: '1.8rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: COLORS.gray, marginBottom: '0.6rem', fontFamily: "'Saira', sans-serif" }}>Authorizing Signature</div>
+              {rec.signature && (
+                <img
+                  src={/^(data:|https?:\/\/)/.test(rec.signature) ? rec.signature : `${env.API_GATEWAY_URL}${rec.signature.startsWith('/') ? '' : '/'}${rec.signature}`}
+                  alt="Authorizing Signature"
+                  style={{ maxHeight: 90, maxWidth: '100%', objectFit: 'contain' }}
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              )}
+              <div style={{ borderTop: `1px solid ${COLORS.line}`, marginTop: 8, paddingTop: 6, fontSize: '0.78rem', color: COLORS.gray }}>
+                {rec.full_name || 'Next of Kin'} — Authorizing Party
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <GoldButton type="button" onClick={() => { setShowSuccess(false); handleClear(); }}>

@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { C, formatDate } from './theme';
 import api from '../../../api/axios';
 import { getTenantHeaders } from '../../../api/endpoints';
+import env from '../../../utils/config/env';
 
 const SectionHead = styled.div`
   font-size: 12px; 
@@ -278,6 +279,36 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
           </DetailGrid>
         </Col>
       </TwoColGrid>
+
+      {(releaseData?.signature || releaseData?.staff_signature) && (
+        <Col style={{ marginBottom: 24 }}>
+          <SectionHead $mt0><span>03</span> Authorizing Signature</SectionHead>
+          <DetailGrid $cols>
+            {releaseData?.signature && (
+              <DetailItem>
+                <DetailLabel>Next of Kin Signature</DetailLabel>
+                <img
+                  src={/^(data:|https?:\/\/)/.test(releaseData.signature) ? releaseData.signature : `${env.API_GATEWAY_URL}${releaseData.signature.startsWith('/') ? '' : '/'}${releaseData.signature}`}
+                  alt="Next of Kin Signature"
+                  style={{ maxHeight: 80, maxWidth: 260, objectFit: 'contain', background: 'white', border: `1px solid ${C.borderLight}`, borderRadius: 6, padding: 6 }}
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              </DetailItem>
+            )}
+            {releaseData?.staff_signature && (
+              <DetailItem>
+                <DetailLabel>Staff Signature</DetailLabel>
+                <img
+                  src={/^(data:|https?:\/\/)/.test(releaseData.staff_signature) ? releaseData.staff_signature : `${env.API_GATEWAY_URL}${releaseData.staff_signature.startsWith('/') ? '' : '/'}${releaseData.staff_signature}`}
+                  alt="Staff Signature"
+                  style={{ maxHeight: 80, maxWidth: 260, objectFit: 'contain', background: 'white', border: `1px solid ${C.borderLight}`, borderRadius: 6, padding: 6 }}
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              </DetailItem>
+            )}
+          </DetailGrid>
+        </Col>
+      )}
     </>
   );
 };

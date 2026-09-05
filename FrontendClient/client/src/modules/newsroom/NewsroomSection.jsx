@@ -80,7 +80,7 @@ const NS_STYLES = `
 const NewsroomSection = () => {
   const navigate = useNavigate();
   const articles = [
-    { featured: true, category: 'COMING SOON', catColor: C.brass, title: 'RestPay: Unified Payment Processing', excerpt: 'We\'re introducing RestPay, our upcoming payment module that will integrate card payments alongside M-Pesa. Accept all major payment methods through a single, seamless platform. More payment options, less friction for families.', date: 'May 2026', cta: 'Learn more', ctaTo: '/integrations' },
+    { featured: true, category: 'COMING SOON', catColor: C.brass, logo: '/restpay.jpg', title: 'RestPay: Unified Payment Processing', excerpt: 'We\'re introducing RestPay, our upcoming payment module that will integrate card payments alongside M-Pesa. Accept all major payment methods through a single, seamless platform. More payment options, less friction for families.', date: 'May 2026', cta: 'Learn more', ctaTo: '/integrations' },
     { category: 'INTEGRATION', catColor: KRA_RED, logo: KRA_LOGO_URL, title: 'KRA eTIMS Integration', excerpt: 'We\'re adding eTIMS to eliminate the need for external accounting software. Generate KRA-compliant electronic tax invoices and sync fiscal records with the Kenya Revenue Authority directly from Rest Point — no extra tools, no manual exports.', date: 'August 2026' },
     { category: 'PRODUCT', catColor: C.verdigris, dark: true, title: 'Multi-Tenant Architecture Now Available', excerpt: 'Serve multiple funeral homes from a single instance with complete data isolation.', date: 'May 2026' },
     { category: 'BLOG', catColor: C.verdigris, dark: true, title: 'The Future of Death Care: Fully Automated Funeral Homes', excerpt: 'From QR-scanned intake and digital release to hearse self-booking, coffin marketplaces, and 24/7 family portals — how modern funeral homes are going fully automated. Written by Peter Mumo, Developer at Restpoint.', date: 'September 2026', link: '/blog/future-of-death-care-software-restpoint' },
@@ -100,7 +100,7 @@ const NewsroomSection = () => {
             <RevealDir key={i} from="left" delay={0}>
               <div className="newsroom-featured" style={{ '--glow-color': a.catColor }}>
                 <div className="newsroom-featured-shine" />
-                {a.logo && <img src={a.logo} alt="KRA logo" className="newsroom-featured-logo" onError={hideBrokenLogo} />}
+                {a.logo && <img src={a.logo} alt={`${a.title} logo`} className="newsroom-featured-logo" onError={hideBrokenLogo} />}
                 <div className="newsroom-cat" style={{ color: a.catColor }}><span className="newsroom-cat-dot" style={{ background: a.catColor }} />{a.category}</div>
                 <h3 className="newsroom-featured-title">{a.title}</h3>
                 <p className="newsroom-featured-excerpt">{a.excerpt}</p>
@@ -121,7 +121,7 @@ const NewsroomSection = () => {
                     <div className="newsroom-cat" style={{ color: a.catColor }}><span className="newsroom-cat-dot" style={{ background: a.catColor }} />{a.category}</div>
                     <ExternalLink size={14} className="newsroom-card-ext" />
                   </div>
-                  {a.logo && <img src={a.logo} alt="KRA logo" className="newsroom-card-logo" onError={hideBrokenLogo} />}
+                  {a.logo && <img src={a.logo} alt={`${a.title} logo`} className="newsroom-card-logo" onError={hideBrokenLogo} />}
                   <h4 className="newsroom-card-title">{a.title}</h4>
                   <p className="newsroom-card-excerpt">{a.excerpt}</p>
                   <span className="newsroom-date">{a.date}</span>

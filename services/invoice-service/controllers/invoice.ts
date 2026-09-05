@@ -9,7 +9,37 @@ import { AppError } from '../middlewares/errorHandler';
 // Standardized to ES Imports
 import { safeQuery } from '../../../shared/config/db';
 import { getKenyaTimeISO, getKenyaTimeFormatted } from '../../../packages/shared-utils/dist/timestamps';
-import { loadTenantBranding } from './tenantBranding';
+import { loadTenantBranding, toUploadsUrl } from './tenantBranding';
+
+// Shared uploads base — the ONE folder every service writes to and the
+// tenant-service serves at /uploads/... (host bind mount /opt/storage).
+const UPLOADS_BASE_DIR = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+
+/**
+ * Resolve a stored logo/signature reference to a filesystem path inside the
+ * shared uploads folder. Accepts:
+ *   - absolute filesystem paths (legacy branding rows)
+ *   - /uploads/<tenant>/... URL paths (what the DB stores)
+ *   - full https URLs that contain /uploads/...
+ * Returns null when the reference is a data-URL or the file does not exist.
+ */
+function resolveUploadFsPath(ref: string | null | undefined): string | null {
+  if (!ref) return null;
+  let p = String(ref).replace(/\\/g, '/');
+  if (p.startsWith('data:')) return null;
+  if (/^https?:\/\//.test(p)) {
+    const m = p.match(/\/uploads\/(.+)$/);
+    if (!m) return null;
+    p = m[1];
+  } else if (p.startsWith('/uploads/')) {
+    p = p.replace(/^\/uploads\//, '');
+  }
+  if (path.isAbsolute(p)) {
+    return fs.existsSync(p) ? p : null;
+  }
+  const full = path.join(UPLOADS_BASE_DIR, p);
+  return fs.existsSync(full) ? full : null;
+}
 
 // Redis client for caching
 let redisClient: Redis | null = null;
@@ -170,7 +200,7 @@ const generateInvoicePDFBuffer = async (invoice: InvoiceData, branding: any = nu
       doc.on('end', () => resolve(Buffer.concat(buffers)));
 
       const headerTop = 40;
-      const logoPath = tenantLogo || path.join(__dirname, '../../public/logo/montezuma.png');
+      const logoPath = resolveUploadFsPath(tenantLogo) || path.join(__dirname, '../../public/logo/montezuma.png');
 
       if (logoPath && fs.existsSync(logoPath)) {
         doc.rect(45, headerTop - 5, 90, 45).fill('#ffffff').stroke('#e0e0e0');
@@ -358,7 +388,9 @@ const generateInvoicePDFBuffer = async (invoice: InvoiceData, branding: any = nu
       doc.fontSize(8).font('Helvetica-Bold').fillColor('#1a5276')
         .text(`${tenantPhone} | ${tenantEmail}`, 50, footerTop + 50, { width: 300 });
 
-      const signaturePath = tenantSignature || path.join(__dirname, '../../uploads/signature/signature.png');
+      const signaturePath = resolveUploadFsPath(tenantSignature)
+        || resolveUploadFsPath('/uploads/signature/signature.png')
+        || path.join(__dirname, '../../uploads/signature/signature.png');
       if (signaturePath && fs.existsSync(signaturePath)) {
         doc.image(signaturePath, 400, footerTop + 25, { width: 50, height: 25 });
       } else {
@@ -696,7 +728,7 @@ export const createSystemInvoice = async (req: Request, res: Response, next: Nex
     mortuary_name: branding.tenant_name,
     mortuary_phone: branding.phone,
     stamp_hash,
-    signature_url: branding.signature_path || '/uploads/signature/signature.png',
+    signature_url: toUploadsUrl(branding.signature_path) || '',
     created_at: getKenyaTimeISO(),
     invoice_number,
     deceased_id: (deceased as any).id,
@@ -704,7 +736,9 @@ export const createSystemInvoice = async (req: Request, res: Response, next: Nex
   };
 
   const pdfBuffer = await generateInvoicePDFBuffer(invoiceData, branding);
-  const baseInvoicesDir = path.join(__dirname, '../../uploads/invoices');
+  // Write invoice PDFs into the SHARED uploads folder (/opt/storage/uploads in
+  // production) so they persist on the host and are served at /uploads/...
+  const baseInvoicesDir = path.join(UPLOADS_BASE_DIR, 'invoices');
   if (!fs.existsSync(baseInvoicesDir)) fs.mkdirSync(baseInvoicesDir, { recursive: true });
 
   const deceasedFolderName = `${(deceased as any).full_name.replace(/[^a-zA-Z0-9]/g, '_')}_${(deceased as any).id}`;
@@ -790,7 +824,7 @@ export const createInvoice = async (req: Request, res: Response, next: NextFunct
     mortuary_name: 'System Shared',
     mortuary_phone: '',
     stamp_hash,
-    signature_url: signature_url || '/uploads/signature/signature.png',
+    signature_url: signature_url || '',
     created_at: getKenyaTimeISO(),
     invoice_number,
     deceased_id,

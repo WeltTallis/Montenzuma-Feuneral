@@ -14,7 +14,10 @@ const CONFIG = {
     packageName: '@montezuma/restpoint',
     updateCheckInterval: 24 * 60 * 60 * 1000, // 24 hours
     autoUpdate: true,
-    backupBeforeUpdate: true
+    backupBeforeUpdate: true,
+    // Production backups MUST live in /opt/backups on the server
+    // (override with BACKUP_DIR for local/dev runs).
+    backupDir: process.env.BACKUP_DIR || '/opt/backups'
 };
 
 const COLORS = {
@@ -103,7 +106,7 @@ const checkForUpdates = async () => {
  */
 const backupCurrentInstallation = async () => {
     try {
-        const backupDir = path.join(process.cwd(), 'backups', `backup-${Date.now()}`);
+        const backupDir = path.join(CONFIG.backupDir, `backup-${Date.now()}`);
         fs.mkdirSync(backupDir, { recursive: true });
 
         log.info('Creating backup...');

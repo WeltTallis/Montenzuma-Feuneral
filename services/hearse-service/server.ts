@@ -56,7 +56,10 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve hearse images from the ONE shared uploads folder (same directory the
+// tenant-service serves platform-wide at /uploads/...).
+const UPLOADS_BASE_DIR = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+app.use('/uploads', express.static(UPLOADS_BASE_DIR));
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {

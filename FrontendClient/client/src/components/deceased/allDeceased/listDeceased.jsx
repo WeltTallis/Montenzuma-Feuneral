@@ -52,7 +52,8 @@ const STATUS_CONFIG = {
   active: { label: 'Active', color: '#1e3a8a', bg: '#e0e7ff' },
   'in morgue': { label: 'In Morgue', color: '#1e3a8a', bg: '#e0e7ff' },
   'postmortem requested': { label: 'Postmortem Requested', color: '#6d28d9', bg: '#f3e8ff' },
-  'pending autopsy': { label: 'Pending Autopsy', color: '#b45309', bg: '#fffbeb' },
+  'pending autopsy': { label: 'Postmortem Done', color: '#b45309', bg: '#fffbeb' },
+  'postmortem done': { label: 'Postmortem Done', color: '#b45309', bg: '#fffbeb' },
   pending: { label: 'Pending', color: '#b45309', bg: '#fffbeb' },
   released: { label: 'Released', color: '#047857', bg: '#ecfdf5' },
   transferred: { label: 'Transferred', color: '#6b7280', bg: '#f3f4f6' },
@@ -64,16 +65,24 @@ const getStatusInfo = (statusStr) => {
   return STATUS_CONFIG[s] || STATUS_CONFIG.default;
 };
 
-// ─── Styled Components ──────────────────────────────────────────────
+// ─── Helper: Format Date to YYYY-MM-DD ──────────────────────────────
+const toDateString = (dateObj) => {
+  if (!dateObj || isNaN(new Date(dateObj).getTime())) return null;
+  const d = new Date(dateObj);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+// ─── Styled Components ──────
 const AppContainer = styled.div`
   font-family: 'Source Sans 3', -apple-system, sans-serif;
   color: ${C.dark};
   font-size: 14px;
   line-height: 1.5;
-  min-height: 100dvh; /* Fixed mobile viewport issue */
-
+  min-height: 100dvh;
   margin: 0;
-
   animation: ${fadeIn} 0.25s ease-out;
   box-sizing: border-box;
 
@@ -92,7 +101,7 @@ const PageHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
   gap: 16px;
   box-sizing: border-box;
@@ -173,6 +182,120 @@ const Btn = styled.button`
   }
 `;
 
+// ─── Sleek Calendar Components ──────────────────────────────────────
+const CalendarContainer = styled.div`
+  background: white;
+  border: 1px solid ${C.borderLight};
+  border-radius: 10px;
+  padding: 8px 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-sizing: border-box;
+
+  @media (max-width: 900px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+`;
+
+const CalendarControls = styled.div`
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  border-right: 1px solid ${C.borderLight};
+  padding-right: 16px;
+
+  @media (max-width: 900px) {
+    border-right: none;
+    padding-right: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid ${C.borderLight};
+  }
+`;
+
+const CalSelect = styled.select`
+  border: 1px solid transparent;
+  background: ${C.bgField};
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: ${C.black};
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 6px 8px;
+  transition: 0.2s;
+  &:hover { background: ${C.borderLight}; }
+  &:focus { outline: none; border-color: ${C.gray}; }
+`;
+
+const CalendarDates = styled.div`
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 2px;
+  scroll-behavior: smooth;
+  flex: 1;
+  align-items: center;
+
+  &::-webkit-scrollbar { height: 4px; }
+  &::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 10px; }
+`;
+
+const CalDateBtn = styled.div`
+  min-width: 42px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+
+  &:hover { background: ${C.bgField}; }
+
+  ${p => p.$active && `
+    background: ${C.black};
+    color: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  `}
+`;
+
+const CalWeekday = styled.div`
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  opacity: 0.6;
+  line-height: 1;
+`;
+
+const CalDayNum = styled.div`
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Merriweather', serif;
+  line-height: 1;
+`;
+
+const EventDot = styled.div`
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: ${p => p.$active ? 'white' : C.exportBtn};
+  position: absolute;
+  bottom: 3px;
+  opacity: 0.8;
+`;
+
+// ─── List Components ────────────────────────────────────────────────
 const ListCard = styled.div`
   background: white;
   border: 1px solid ${C.borderLight};
@@ -264,7 +387,6 @@ const TableWrap = styled.div`
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   
-  /* Hide Table completely on mobile */
   @media (max-width: 900px) {
     display: none;
   }
@@ -304,7 +426,6 @@ const StyledTable = styled.table`
   }
 `;
 
-// ─── Mobile Sleek Card Layout ───────────────────────────────────────
 const MobileCardContainer = styled.div`
   display: none;
   
@@ -463,7 +584,7 @@ const ModalOverlay = styled.div`
 
   @media (max-width: 900px) {
     padding: 0;
-    align-items: flex-end; /* Bottom sheet style */
+    align-items: flex-end;
   }
 `;
 
@@ -472,7 +593,7 @@ const ModalContent = styled.div`
   border-radius: 8px; 
   width: 100%; 
   max-width: 700px;
-  max-height: 90dvh; /* Fixed mobile viewport issue */
+  max-height: 90dvh;
   overflow-y: auto; 
   -webkit-overflow-scrolling: touch;
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
@@ -679,16 +800,24 @@ const ProgressWidget = styled.div`
   }
 `;
 
+
 // ─── Main Component ─────────────────────────────────────────────────
 const DeceasedListPage = () => {
   const navigate = useNavigate();
+  const today = new Date();
+
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
-  
+
+  // Calendar State
+  const [calMonth, setCalMonth] = useState(today.getMonth());
+  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [selectedDate, setSelectedDate] = useState(null); // 'YYYY-MM-DD'
+  const activeDateRef = useRef(null);
+
   const [showExport, setShowExport] = useState(false);
   const [exportStart, setExportStart] = useState('');
   const [exportEnd, setExportEnd] = useState('');
@@ -697,10 +826,10 @@ const DeceasedListPage = () => {
   const [exportStatus, setExportStatus] = useState('');
   const [exporting, setExporting] = useState(false);
   const [exportHistory, setExportHistory] = useState([]);
-  
+
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const [unavailableMessage, setUnavailableMessage] = useState('');
-  
+
   const exportCleanupRef = useRef(null);
 
   // ─── Fetch Deceased ──────────────────────────────────────────────
@@ -713,7 +842,7 @@ const DeceasedListPage = () => {
       const params = {};
       if (search) params.search = search;
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
-      
+
       const res = await axios.get(`${BASE_URL}/deceased-all`, {
         params,
         headers: {
@@ -721,7 +850,7 @@ const DeceasedListPage = () => {
           'x-tenant-slug': tenantSlug,
         },
       });
-      
+
       const data = res.data?.data || res.data || [];
       setRecords(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -748,22 +877,41 @@ const DeceasedListPage = () => {
     };
   }, []);
 
+  // Scroll active date into view
+  useEffect(() => {
+    if (activeDateRef.current) {
+      activeDateRef.current.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }, [selectedDate, calMonth, calYear]);
+
   // ─── Filters ─────────────────────────────────────────────────────
   const filteredRecords = records.filter(r => {
     const name = (r.full_name || r.name || '').toLowerCase();
     const id = (r.deceased_id || r.id || '').toLowerCase();
     const adm = (r.admission_number || r.admission_no || '').toLowerCase();
     const searchTerm = search.toLowerCase();
+
     if (search && !name.includes(searchTerm) && !id.includes(searchTerm) && !adm.includes(searchTerm)) return false;
+
     if (statusFilter) {
       const statusInfo = getStatusInfo(r.body_status || r.status);
       if (statusFilter === 'Active' && statusInfo.label !== 'Active' && statusInfo.label !== 'In Morgue') return false;
+      if (statusFilter === 'Postmortem Requested' && statusInfo.label !== 'Postmortem Requested') return false;
+      if (statusFilter === 'Postmortem Done' && statusInfo.label !== 'Postmortem Done' && statusInfo.label !== 'Pending Autopsy') return false;
       if (statusFilter === 'Released' && statusInfo.label !== 'Released' && statusInfo.label !== 'Transferred') return false;
     }
+
     if (genderFilter) {
       const sex = (r.sex || r.gender || '').toLowerCase();
       if (genderFilter.toLowerCase() !== sex) return false;
     }
+
+    if (selectedDate) {
+      const admitted = r.created_at || r.date_admitted || r.admission_date;
+      const recordDateStr = toDateString(admitted);
+      if (recordDateStr !== selectedDate) return false;
+    }
+
     return true;
   });
 
@@ -774,12 +922,9 @@ const DeceasedListPage = () => {
 
   const getDaysInMorgue = (admittedDate) => {
     if (!admittedDate) return 0;
-    // Use daysFromNow for correct local-date math (no UTC shift bug)
     const days = daysFromNow(admittedDate);
     return days != null ? Math.abs(days) : 0;
   };
-
-  // formatDate is now imported from utils/dates/parseDates (single source of truth)
 
   const openProfile = (id) => {
     const tenantSlug = getTenantSlug();
@@ -792,15 +937,15 @@ const DeceasedListPage = () => {
       exportCleanupRef.current();
       exportCleanupRef.current = null;
     }
-    
+
     setExporting(true);
     setExportProgress(0);
     setExportStatus('Queuing export job...');
-    
+
     try {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
-      
+
       const response = await axios.post(
         `${BASE_URL}/export-excel`,
         {
@@ -832,8 +977,8 @@ const DeceasedListPage = () => {
   };
 
   const pollExportStatus = async (jobId) => {
-    const maxAttempts = 60; 
-    const pollInterval = 2000; 
+    const maxAttempts = 60;
+    const pollInterval = 2000;
     let attempts = 0;
     let timeoutId;
 
@@ -848,7 +993,7 @@ const DeceasedListPage = () => {
       try {
         const tenantSlug = getTenantSlug();
         const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
-        
+
         const response = await axios.get(
           `${BASE_URL}/export-status/${jobId}`,
           {
@@ -864,7 +1009,7 @@ const DeceasedListPage = () => {
         const contentType = response.headers['content-type'];
         if (contentType && (contentType.includes('spreadsheetml') || contentType.includes('zip'))) {
           cleanup();
-          
+
           const blob = new Blob([response.data], { type: 'application/zip' });
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement('a');
@@ -874,9 +1019,9 @@ const DeceasedListPage = () => {
           link.click();
           document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
-          
+
           showToast('Export completed successfully! (Compressed ZIP file)', 'success');
-          
+
           setTimeout(() => {
             setExporting(false);
             setShowExport(false);
@@ -884,7 +1029,7 @@ const DeceasedListPage = () => {
             setExportProgress(0);
             setExportJobId(null);
           }, 1500);
-          
+
           return;
         }
 
@@ -892,7 +1037,7 @@ const DeceasedListPage = () => {
         if (data?.success && data?.status) {
           setExportProgress(data.progress || 0);
           setExportStatus(data.message || 'Processing...');
-          
+
           attempts++;
           if (attempts < maxAttempts) {
             timeoutId = setTimeout(poll, pollInterval);
@@ -907,7 +1052,7 @@ const DeceasedListPage = () => {
       } catch (err) {
         cleanup();
         console.error('Poll error:', err);
-        
+
         if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
           showToast('Request timeout - retrying...', 'warning');
           attempts++;
@@ -924,7 +1069,7 @@ const DeceasedListPage = () => {
           }
           return;
         }
-        
+
         if (err.response?.status === 202) {
           attempts++;
           if (attempts < maxAttempts) {
@@ -940,7 +1085,7 @@ const DeceasedListPage = () => {
           }
           return;
         }
-        
+
         showToast('Export failed. Please try again.', 'error');
         setTimeout(() => {
           setExporting(false);
@@ -962,7 +1107,7 @@ const DeceasedListPage = () => {
       try {
         const tenantSlug = getTenantSlug();
         const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
-        
+
         const response = await axios.get(
           `${BASE_URL}/export-history`,
           {
@@ -986,6 +1131,25 @@ const DeceasedListPage = () => {
     }
   }, [showExport]);
 
+  // ─── Calendar Helpers ────────────────────────────────────────────
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const years = [today.getFullYear() - 1, today.getFullYear(), today.getFullYear() + 1, today.getFullYear() + 2];
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  const handleMonthChange = (e) => {
+    setCalMonth(parseInt(e.target.value));
+    setSelectedDate(null);
+  };
+
+  const handleYearChange = (e) => {
+    setCalYear(parseInt(e.target.value));
+    setSelectedDate(null);
+  };
+
+  const handleDateClick = (dateStr) => {
+    setSelectedDate(prev => prev === dateStr ? null : dateStr);
+  };
+
   return (
     <>
       <GlobalFonts />
@@ -1002,19 +1166,62 @@ const DeceasedListPage = () => {
             <Btn $export onClick={() => setShowExport(true)}>
               <i className="fas fa-file-export" style={{ fontSize: 12 }}></i> Export Data to Excel
             </Btn>
-            <Btn $primary onClick={() => {
-              const slug = getTenantSlug();
-              navigate(`/tenant/${slug}/deceased/register`);
-            }}>
-              <i className="fas fa-plus" style={{ fontSize: 12 }}></i> New Admission
-            </Btn>
+            {/* "New Admission" button removed */}
           </Actions>
         </PageHeader>
+
+        {/* Sleek Horizontal Calendar */}
+        <CalendarContainer>
+          <CalendarControls>
+            <CalSelect value={calMonth} onChange={handleMonthChange}>
+              {monthNames.map((m, i) => <option key={i} value={i}>{m}</option>)}
+            </CalSelect>
+            <CalSelect value={calYear} onChange={handleYearChange}>
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            </CalSelect>
+          </CalendarControls>
+          <CalendarDates>
+            <CalDateBtn
+              $active={!selectedDate}
+              onClick={() => setSelectedDate(null)}
+              style={{ minWidth: '38px' }}
+            >
+              <CalWeekday>View</CalWeekday>
+              <CalDayNum style={{ fontSize: '11px', marginTop: '1px' }}>All</CalDayNum>
+            </CalDateBtn>
+
+            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+              const loopDate = new Date(calYear, calMonth, day);
+              const dateStr = toDateString(loopDate);
+              const weekday = loopDate.toLocaleDateString('en-US', { weekday: 'short' });
+              const hasEvents = records.some(r => {
+                const admitted = r.created_at || r.date_admitted || r.admission_date;
+                return toDateString(admitted) === dateStr;
+              });
+              const isActive = selectedDate === dateStr;
+
+              return (
+                <CalDateBtn
+                  key={day}
+                  $active={isActive}
+                  onClick={() => handleDateClick(dateStr)}
+                  ref={isActive ? activeDateRef : null}
+                >
+                  <CalWeekday>{weekday}</CalWeekday>
+                  <CalDayNum>{day}</CalDayNum>
+                  {hasEvents && <EventDot $active={isActive} />}
+                </CalDateBtn>
+              );
+            })}
+          </CalendarDates>
+        </CalendarContainer>
 
         {/* Main Card */}
         <ListCard>
           <ListHeader>
-            <h2>All Deceased ({filteredRecords.length})</h2>
+            <h2>
+              {selectedDate ? `Deceased for ${formatDate(selectedDate)}` : 'All Deceased'} ({filteredRecords.length})
+            </h2>
           </ListHeader>
 
           {/* Filters */}
@@ -1029,20 +1236,15 @@ const DeceasedListPage = () => {
             />
             <FormSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
               <option value="">All Statuses</option>
-              <option value="Active">Active</option>
-              <option value="Released">Released</option>
+              <option value="Active">Active / In Morgue</option>
+              <option value="Postmortem Requested">Postmortem Requested</option>
+              <option value="Postmortem Done">Postmortem Done</option>
+              <option value="Released">Released / Transferred</option>
             </FormSelect>
             <FormSelect value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
               <option value="">All Genders</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
-            </FormSelect>
-            <FormSelect value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
-              <option value="">All Time</option>
-              <option value="today">Today</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="year">This Year</option>
             </FormSelect>
           </FilterToolbar>
 
@@ -1092,7 +1294,7 @@ const DeceasedListPage = () => {
             </div>
           )}
 
-          {/* Desktop Table Layout (Visible > 900px) */}
+          {/* Desktop Table Layout */}
           <TableWrap>
             <StyledTable>
               <thead>
@@ -1136,9 +1338,9 @@ const DeceasedListPage = () => {
                       <td>{formatDate(admitted)}</td>
                       <td>{days} days</td>
                       <td>
-                        <StatusBadge 
-                          $bg={statusInfo.bg} 
-                          $color={statusInfo.color} 
+                        <StatusBadge
+                          $bg={statusInfo.bg}
+                          $color={statusInfo.color}
                           $border={statusInfo.color + '40'}
                         >
                           {statusInfo.label}
@@ -1154,7 +1356,7 @@ const DeceasedListPage = () => {
             </StyledTable>
           </TableWrap>
 
-          {/* Mobile Sleek Card Layout (Visible <= 900px) */}
+          {/* Mobile Sleek Card Layout */}
           <MobileCardContainer>
             {loading ? (
               <LoadingState><div className="spinner" /> Loading records...</LoadingState>
@@ -1176,7 +1378,7 @@ const DeceasedListPage = () => {
                 const statusInfo = getStatusInfo(r.body_status || r.status);
                 const sex = r.sex || r.gender || '';
                 const isFemale = sex.toLowerCase() === 'female';
-                
+
                 return (
                   <MobileCard key={id} onClick={() => openProfile(id)}>
                     <MobileCardHeader>
@@ -1189,15 +1391,15 @@ const DeceasedListPage = () => {
                           </div>
                         </div>
                       </MobileCardNameWrap>
-                      <StatusBadge 
-                        $bg={statusInfo.bg} 
-                        $color={statusInfo.color} 
+                      <StatusBadge
+                        $bg={statusInfo.bg}
+                        $color={statusInfo.color}
                         $border={statusInfo.color + '40'}
                       >
                         {statusInfo.label}
                       </StatusBadge>
                     </MobileCardHeader>
-                    
+
                     <MobileCardDetails>
                       <div>
                         <span>Admission No.</span>
@@ -1212,7 +1414,7 @@ const DeceasedListPage = () => {
                         <strong>{formatDate(admitted)}</strong>
                       </div>
                     </MobileCardDetails>
-                    
+
                     <MobileCardFooter>
                       <Btn $sm onClick={(e) => { e.stopPropagation(); openProfile(id); }}>
                         View Profile
@@ -1244,7 +1446,7 @@ const DeceasedListPage = () => {
                   <ModalInput type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} disabled={exporting} />
                 </FormGroup>
               </FormRow>
-              
+
               <SectionHead $mt4><span>02</span> Export History</SectionHead>
               <div style={{ border: `1px solid ${C.borderLight}`, borderRadius: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <DataTable>
@@ -1291,11 +1493,11 @@ const DeceasedListPage = () => {
         {/* Export Progress Widget */}
         {exporting && (
           <ProgressWidget>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '12px', 
-              marginBottom: '12px' 
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '12px'
             }}>
               <div style={{
                 width: '32px',

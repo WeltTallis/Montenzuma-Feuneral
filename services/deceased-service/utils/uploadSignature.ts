@@ -25,73 +25,60 @@ export async function processSignature(
 ): Promise<string> {
     // Default options optimized for signatures
     const {
-        quality = 85,
         maxWidth = 600,
         maxHeight = 250,
         compressionLevel = 9, // Max compression for PNG
-        format = 'png' // Always use PNG for signatures
     } = options || {};
 
-    // Step 1: Pre-process - DO NOT change colors, just slightly enhance quality
-    let processedBuffer = await sharp(inputBuffer)
-        .sharpen({
-            sigma: 0.8,
-            m1: 0.5,
-            m2: 0.2,
-        })
+    // ─── INK-BLUE NORMALIZATION ─────────────────────────────────────────
+    // Every signature must render in ink blue. Client pads draw with
+    // penColor #0f33e7, but sharpening + palette-quantised PNG encoding
+    // were darkening the blue ink to black. Rebuild the image
+    // pixel-by-pixel so the stored signature is ALWAYS pure ink blue:
+    //   • ink intensity = alpha × darkness (works for ink on white OR transparent)
+    //   • RGB forced to the platform ink blue (#0f33e7)
+    //   • transparent background, palette-free PNG
+    const INK_BLUE = { r: 15, g: 51, b: 231 }; // #0f33e7 — same as the signature pad
+
+    const { data, info } = await sharp(inputBuffer)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+    const normalized = Buffer.alloc(data.length);
+    for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i + 3] / 255;
+        const luminance = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
+        // Darkness of the stroke: white background → 0, full ink → 1.
+        // Gamma boost keeps the core strokes at (near) full opacity.
+        const ink = alpha * Math.pow(1 - luminance, 0.45);
+        normalized[i] = INK_BLUE.r;
+        normalized[i + 1] = INK_BLUE.g;
+        normalized[i + 2] = INK_BLUE.b;
+        normalized[i + 3] = Math.round(Math.min(1, Math.max(0, ink)) * 255);
+    }
+
+    const inkBuffer = await sharp(normalized, {
+        raw: { width: info.width, height: info.height, channels: 4 },
+    })
+        .png({ compressionLevel: 9 })
         .toBuffer();
 
-    // Step 2: Convert to desired format with optimal settings
+    // Step 2: Resize to fit within the max dimensions — never enlarges and
+    // keeps the transparent background. NO sharpening: it is what turned
+    // the blue ink black, and no `quality` option: libvips turns PNGs into
+    // palette-quantised images when quality < 100 (also darkened the ink).
     let finalBuffer;
-    let finalFormat = format;
-
-    if (format === 'png') {
-        finalBuffer = await sharp(processedBuffer)
-            .resize(maxWidth, maxHeight, {
-                fit: 'contain',
-                background: { r: 255, g: 255, b: 255, alpha: 1 }
-            })
-            .png({
-                quality: quality,
-                compressionLevel: compressionLevel,
-                adaptiveFiltering: true,
-            })
-            .toBuffer();
-    } else if (format === 'jpeg') {
-        finalBuffer = await sharp(processedBuffer)
-            .resize(maxWidth, maxHeight, {
-                fit: 'contain',
-                background: { r: 255, g: 255, b: 255 }
-            })
-            .jpeg({
-                quality: quality,
-                progressive: true,
-                mozjpeg: true,
-                chromaSubsampling: '4:4:4', // Better for text
-            })
-            .toBuffer();
-    } else if (format === 'webp') {
-        finalBuffer = await sharp(processedBuffer)
-            .resize(maxWidth, maxHeight, {
-                fit: 'contain',
-                background: { r: 255, g: 255, b: 255, alpha: 1 }
-            })
-            .webp({
-                quality: quality,
-                lossless: false,
-                alphaQuality: 100,
-                smartSubsample: true,
-            })
-            .toBuffer();
-    } else {
-        // Fallback to PNG
-        finalBuffer = await sharp(processedBuffer)
-            .png({
-                quality: quality,
-                compressionLevel: compressionLevel,
-            })
-            .toBuffer();
-    }
+    finalBuffer = await sharp(inkBuffer)
+        .resize(maxWidth, maxHeight, {
+            fit: 'inside',
+            withoutEnlargement: true,
+        })
+        .png({
+            compressionLevel: compressionLevel,
+            adaptiveFiltering: true,
+        })
+        .toBuffer();
 
     // Step 3: Save PNG directly to global uploads folder
     // IMPORTANT: Always use PNG format for signatures

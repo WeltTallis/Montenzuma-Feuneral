@@ -1,16 +1,17 @@
+
+import Logger from '../../../packages/shared-logger/dist/index'
 import multer from 'multer';
 import sharp from 'sharp';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import   Logger   from   '../../../packages/shared-logger/dist/index'
 
 
 const generateDatedCheckoutId = (): string => {
     const date = new Date();
-    const dateStr = date.getFullYear().toString().slice(2) + 
-                   String(date.getMonth() + 1).padStart(2, '0') +
-                   String(date.getDate()).padStart(2, '0');
+    const dateStr = date.getFullYear().toString().slice(2) +
+        String(date.getMonth() + 1).padStart(2, '0') +
+        String(date.getDate()).padStart(2, '0');
     const random = crypto.randomBytes(4).toString('hex').toUpperCase();
     return `RLS-${dateStr}-${random}`;
 };
@@ -35,7 +36,7 @@ const upload = multer({
         fileSize: 5 * 1024 * 1024, // 5MB max
     },
     fileFilter: fileFilter,
-});     
+});
 
 // Signature processing function with high-quality compression
 const processSignature = async (
@@ -72,8 +73,30 @@ const processSignature = async (
     const timestamp = Date.now();
     const filename = `signature_${id}_${timestamp}.png`;
 
+    // ─── INK-BLUE ENFORCEMENT ───────────────────────────────────────────
+    // Signatures must always be stored as ink blue (#0f33e7) on a
+    // transparent background — flatten/grayscale/palette encoding could
+    // render the ink black. Normalize the pixels first.
+    const INK_BLUE = { r: 15, g: 51, b: 231 }; // #0f33e7 — same as the signature pad
+    const { data: raw, info: rawInfo } = await sharp(file.buffer)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+    const normalized = Buffer.alloc(raw.length);
+    for (let i = 0; i < raw.length; i += 4) {
+        const alpha = raw[i + 3] / 255;
+        const luminance = (raw[i] * 0.299 + raw[i + 1] * 0.587 + raw[i + 2] * 0.114) / 255;
+        const ink = alpha * Math.pow(1 - luminance, 0.45);
+        normalized[i] = INK_BLUE.r;
+        normalized[i + 1] = INK_BLUE.g;
+        normalized[i + 2] = INK_BLUE.b;
+        normalized[i + 3] = Math.round(Math.min(1, Math.max(0, ink)) * 255);
+    }
+
     // Process image with Sharp
-    let sharpInstance = sharp(file.buffer);
+    let sharpInstance = sharp(normalized, {
+        raw: { width: rawInfo.width, height: rawInfo.height, channels: 4 },
+    });
 
     // Get metadata before processing
     const metadata = await sharpInstance.metadata();
@@ -88,22 +111,11 @@ const processSignature = async (
         }
     }
 
-    // Apply grayscale if requested
-    if (grayscale) {
-        sharpInstance = sharpInstance.grayscale();
-    }
-
-    // Flatten with background (for transparent PNGs)
-    if (background) {
-        sharpInstance = sharpInstance.flatten({ background: background });
-    }
-
-    // Compress and save as PNG (lossless)
+    // Compress and save as PNG (lossless, palette-free — keeps the blue ink)
     sharpInstance = sharpInstance.png({
         compressionLevel: 9, // 0-9, 9 is highest compression
         adaptiveFiltering: true,
-        palette: false, // Use true for 8-bit PNG (smaller but lossy)
-        quality: quality,
+        palette: false,
     });
 
     // Save to disk
@@ -124,14 +136,14 @@ const processSignature = async (
     // /opt/storage/uploads/<tenant>/signatures/)
     const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
     const signatureDir = path.join(globalUploadsDir, tenantSlug || 'system', 'signatures');
-    
+
     // Ensure directory exists
     await fs.promises.mkdir(signatureDir, { recursive: true });
-    
+
     // Save the PNG file
     const fullPath = path.join(signatureDir, filename);
     await fs.promises.writeFile(fullPath, processedBuffer);
-    
+
     // Return file info
     return {
         filename,
@@ -160,6 +172,7 @@ const uploadCheckOutSignature = async (req: any, res: any, next: any) => {
             }
 
             if (!req.file) {
+
                 return res.status(400).json({
                     success: false,
                     message: 'No signature file uploaded',

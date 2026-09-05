@@ -5,8 +5,7 @@ import C from '../../utils/colors/index';
 
 /* ═══════════════════════════════════════
    FAQ — FREQUENTLY ASKED QUESTIONS
-   Self-contained accordion section for the
-   premium tablet portal experience.
+   Editorial Light Theme Redesign
    ═══════════════════════════════════════ */
 
 const useReveal = () => {
@@ -51,8 +50,7 @@ const Reveal = ({ children, className = '', style = {}, delay = 0 }) => {
 const FAQ_CATEGORIES = [
   {
     tag: 'The Premium Tablet Portal Experience',
-    accent: '#A98F6E',
-    glow: 'rgba(169,143,110,0.35)',
+    accent: '#C26B5A', // Terracotta
     items: [
       {
         q: 'How does the tablet portal elevate the front desk experience?',
@@ -62,8 +60,7 @@ const FAQ_CATEGORIES = [
   },
   {
     tag: 'Digital Intake & Release',
-    accent: '#4D9B7F',
-    glow: 'rgba(77,155,127,0.35)',
+    accent: '#5A7A6B', // Sage Green
     items: [
       {
         q: 'How does the digital intake process work for families?',
@@ -77,8 +74,7 @@ const FAQ_CATEGORIES = [
   },
   {
     tag: 'Cloud Infrastructure & 24/7 Uptime',
-    accent: '#6FA8C9',
-    glow: 'rgba(111,168,201,0.35)',
+    accent: '#5E7C9A', // Slate Blue
     items: [
       {
         q: 'Is the portal cloud-based, and what happens if our funeral home loses internet connection?',
@@ -92,8 +88,7 @@ const FAQ_CATEGORIES = [
   },
   {
     tag: 'Security & Compliance',
-    accent: '#C77B5E',
-    glow: 'rgba(199,123,94,0.35)',
+    accent: '#A3875A', // Antique Brass
     items: [
       {
         q: 'How do you ensure the highest standards of security for sensitive data on a tablet?',
@@ -116,293 +111,402 @@ const FaqSection = () => {
   return (
     <>
       <style>{`
+        /* Import premium fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
         html { scroll-behavior: smooth; }
 
         .faq-section {
-          position: relative;
-          padding: clamp(5rem,10vw,7rem) 0;
-          background: ${C.ink};
-          color: ${C.bone};
-          overflow: hidden;
-          border-top: 1px solid ${C.lineDark};
-        }
-        .faq-section::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          background:
-            radial-gradient(900px 480px at 8% 0%, rgba(139,115,85,0.12) 0%, transparent 60%),
-            radial-gradient(900px 520px at 92% 100%, rgba(77,155,127,0.10) 0%, transparent 60%),
-            radial-gradient(600px 360px at 80% 12%, rgba(199,123,94,0.07) 0%, transparent 55%);
-        }
-        .faq-grid {
-          display: grid;
-          grid-template-columns: minmax(280px, 380px) 1fr;
-          gap: clamp(2.5rem,6vw,5.5rem);
-          position: relative;
-          z-index: 1;
-        }
-        .faq-intro { position: sticky; top: 2rem; align-self: start; }
-        .faq-eyebrow {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.6rem;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 0.72rem;
-          letter-spacing: 0.22em;
-          text-transform: uppercase;
-          color: ${C.brassLight};
-          margin-bottom: 1.4rem;
-        }
-        .faq-eyebrow-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: ${C.accent};
-          box-shadow: 0 0 0 4px rgba(199,123,94,0.18), 0 0 14px rgba(199,123,94,0.5);
-        }
-        .faq-title {
-          font-family: 'Fraunces', serif;
-          font-weight: 500;
-          font-size: clamp(2.4rem,5vw,3.9rem);
-          line-height: 1.06;
-          letter-spacing: -0.02em;
-          margin: 0 0 1.2rem;
-        }
-        .faq-title-accent {
-          font-style: italic;
-          background: linear-gradient(135deg, ${C.bone} 0%, ${C.brassLight} 55%, ${C.verdigris} 110%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        .faq-lead {
-          font-size: 1.02rem;
-          line-height: 1.8;
-          color: rgba(250,248,244,0.55);
-          margin: 0 0 2rem;
-          max-width: 360px;
+          background-color: #F9F7F4; /* Warm alabaster */
+          color: #1A1A1A;
+          padding: 5rem 1.5rem;
+          font-family: 'Inter', sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          border-top: 1px solid #E8E2D8;
         }
 
-        .faq-nav { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 2.4rem; }
+        .faq-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: 380px 1fr;
+          gap: 5rem;
+          position: relative;
+        }
+
+        /* Left Sidebar */
+        .faq-sidebar { 
+          position: sticky; 
+          top: 3rem; 
+          align-self: start; 
+        }
+
+        .faq-eyebrow {
+          font-family: 'Inter', sans-serif;
+          font-size: 0.75rem;
+          font-weight: 600;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: #A3875A; /* Brass */
+          margin-bottom: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .faq-eyebrow::before {
+          content: '';
+          display: block;
+          width: 24px;
+          height: 2px;
+          background: #A3875A;
+        }
+
+        .faq-title {
+          font-family: 'Fraunces', serif;
+          font-size: 3rem;
+          font-weight: 600;
+          line-height: 1.1;
+          margin: 0 0 1.5rem;
+          color: #1A1A1A;
+        }
+
+        .faq-title span {
+          font-style: italic;
+          font-weight: 400;
+          color: #5A7A6B; /* Sage */
+        }
+
+        .faq-lead {
+          font-size: 1rem;
+          line-height: 1.7;
+          color: #5C5C5C;
+          margin: 0 0 2.5rem;
+          max-width: 320px;
+        }
+
+        .faq-nav { 
+          display: flex; 
+          flex-direction: column; 
+          gap: 0.5rem; 
+          margin-bottom: 3rem; 
+        }
+
         .faq-nav-item {
           display: flex;
           align-items: center;
-          gap: 0.8rem;
-          padding: 0.6rem 0.7rem;
-          border-radius: 10px;
-          color: rgba(250,248,244,0.5);
+          gap: 0.75rem;
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
           text-decoration: none;
-          font-family: 'Inter', sans-serif;
+          color: #5C5C5C;
           font-size: 0.9rem;
-          line-height: 1.4;
+          font-weight: 500;
+          transition: all 0.2s ease;
           border: 1px solid transparent;
-          transition: all 0.35s cubic-bezier(0.16,1,0.3,1);
         }
-        .faq-nav-item:hover { color: ${C.bone}; background: rgba(250,248,244,0.045); border-color: rgba(250,248,244,0.08); }
-        .faq-nav-num { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--faq-accent); opacity: 0.9; flex-shrink: 0; }
 
+        .faq-nav-item:hover { 
+          background: #FFFFFF; 
+          border-color: #E8E2D8; 
+          color: #1A1A1A; 
+        }
+
+        .faq-nav-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: var(--faq-accent);
+        }
+
+        /* Dark Contact Card */
         .faq-support {
-          margin-top: 0.4rem;
-          padding: 1.5rem;
-          border: 1px solid rgba(250,248,244,0.1);
-          border-radius: 16px;
-          background: linear-gradient(145deg, rgba(250,248,244,0.05) 0%, rgba(250,248,244,0.02) 100%);
-          position: relative;
-          overflow: hidden;
+          background: #1A1A1A;
+          color: #FFFFFF;
+          padding: 2rem;
+          border-radius: 12px;
         }
-        .faq-support::after {
-          content: '';
-          position: absolute;
-          top: 0; left: 0; right: 0;
-          height: 2px;
-          background: linear-gradient(90deg, transparent 0%, ${C.brassLight} 50%, transparent 100%);
-          opacity: 0.7;
+
+        .faq-support-icon {
+          margin-bottom: 1rem;
+          opacity: 0.8;
+          display: inline-block;
         }
-        .faq-support-title { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 500; margin: 0.7rem 0 0.4rem; color: ${C.bone}; }
-        .faq-support-desc { font-size: 0.86rem; line-height: 1.7; color: rgba(250,248,244,0.45); margin: 0 0 1.2rem; }
+
+        .faq-support-title { 
+          font-family: 'Fraunces', serif; 
+          font-size: 1.25rem; 
+          margin: 0 0 0.5rem; 
+        }
+
+        .faq-support-desc { 
+          font-size: 0.875rem; 
+          line-height: 1.6; 
+          color: rgba(255,255,255,0.7); 
+          margin: 0 0 1.5rem; 
+        }
+
         .faq-support-btn {
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;
-          background: transparent;
-          color: ${C.bone};
-          border: 1.5px solid rgba(250,248,244,0.22);
-          padding: 0.7rem 1.5rem;
-          border-radius: 50px;
-          font-size: 0.85rem;
-          font-weight: 500;
+          background: #FFFFFF;
+          color: #1A1A1A;
+          padding: 0.75rem 1.25rem;
+          border-radius: 6px;
+          border: none;
+          font-size: 0.875rem;
+          font-weight: 600;
+          text-decoration: none;
           cursor: pointer;
-          transition: all 0.35s cubic-bezier(0.16,1,0.3,1);
+          transition: transform 0.2s ease;
         }
-        .faq-support-btn:hover { background: ${C.bone}; color: ${C.ink}; border-color: ${C.bone}; transform: translateY(-1px); }
 
-        .faq-list { display: flex; flex-direction: column; gap: 2.6rem; }
-        .faq-cat { scroll-margin-top: 5rem; }
-        .faq-cat-head { display: flex; align-items: baseline; gap: 1rem; margin: 0 0 1.1rem 0.3rem; }
-        .faq-cat-num { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--faq-accent); letter-spacing: 0.08em; line-height: 1; }
+        .faq-support-btn:hover { 
+          transform: translateY(-2px); 
+        }
+
+        /* Right Content - Accordions */
+        .faq-list { 
+          display: flex; 
+          flex-direction: column; 
+          gap: 3.5rem; 
+        }
+
+        .faq-cat { 
+          scroll-margin-top: 2rem; 
+        }
+
+        .faq-cat-head { 
+          display: flex; 
+          align-items: center; 
+          gap: 0.75rem; 
+          margin: 0 0 1.5rem; 
+          border-bottom: 1px solid #E8E2D8; 
+          padding-bottom: 1rem; 
+        }
+
+        .faq-cat-line {
+          width: 16px;
+          height: 3px;
+          background: var(--faq-accent);
+          border-radius: 2px;
+        }
+
         .faq-cat-title {
           margin: 0;
           font-family: 'Inter', sans-serif;
-          font-size: 0.88rem;
+          font-size: 0.875rem;
           font-weight: 600;
-          letter-spacing: 0.06em;
           text-transform: uppercase;
-          color: rgba(250,248,244,0.85);
+          letter-spacing: 0.08em;
+          color: #1A1A1A;
         }
 
-        .faq-items { display: flex; flex-direction: column; gap: 0.6rem; }
+        .faq-items { 
+          display: flex; 
+          flex-direction: column; 
+        }
+
         .faq-item {
-          border: 1px solid rgba(250,248,244,0.08);
-          border-radius: 14px;
-          background: rgba(250,248,244,0.028);
-          overflow: hidden;
-          transition: border-color 0.4s ease, background 0.4s ease, box-shadow 0.4s ease;
+          border-bottom: 1px solid #E8E2D8;
+          transition: border-color 0.3s ease;
         }
-        .faq-item:hover { border-color: rgba(250,248,244,0.16); }
+
         .faq-item.open {
-          border-color: var(--faq-accent);
-          background: rgba(250,248,244,0.045);
-          box-shadow: 0 18px 44px -18px var(--faq-glow), 0 0 0 1px var(--faq-glow);
+          border-bottom: 1px solid #1A1A1A;
         }
+
         .faq-q {
           width: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 1rem;
-          text-align: left;
           background: none;
           border: none;
-          padding: 1.1rem 1.2rem;
-          cursor: pointer;
-          color: ${C.bone};
-          font-family: 'Inter', sans-serif;
-          font-size: 1rem;
-          font-weight: 500;
-          line-height: 1.5;
-        }
-        .faq-q-text { flex: 1; }
-        .faq-q-icon {
-          flex-shrink: 0;
-          width: 26px;
-          height: 26px;
-          border-radius: 50%;
+          padding: 1.5rem 0;
           display: flex;
+          justify-content: space-between;
           align-items: center;
-          justify-content: center;
-          border: 1px solid rgba(250,248,244,0.18);
-          color: rgba(250,248,244,0.60);
-          transition: all 0.45s cubic-bezier(0.16,1,0.3,1);
+          gap: 2rem;
+          text-align: left;
+          cursor: pointer;
+          font-family: 'Fraunces', serif;
+          font-size: 1.35rem;
+          font-weight: 400;
+          color: #1A1A1A;
+          transition: color 0.2s ease;
         }
-        .faq-q-icon svg { transition: transform 0.45s cubic-bezier(0.16,1,0.3,1); }
-        .faq-item.open .faq-q-icon { background: var(--faq-accent); border-color: var(--faq-accent); color: ${C.ink}; }
-        .faq-item.open .faq-q-icon svg { transform: rotate(135deg); }
-        .faq-answer { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.5s cubic-bezier(0.16,1,0.3,1); }
-        .faq-item.open .faq-answer { grid-template-rows: 1fr; }
-        .faq-answer-inner { overflow: hidden; }
+
+        .faq-q:hover {
+          color: var(--faq-accent);
+        }
+
+        .faq-q-text { flex: 1; }
+
+        /* Minimalist plus/minus icon */
+        .faq-q-icon {
+          position: relative;
+          width: 20px;
+          height: 20px;
+          flex-shrink: 0;
+        }
+
+        .faq-q-icon::before, .faq-q-icon::after {
+          content: '';
+          position: absolute;
+          background: #1A1A1A;
+          transition: transform 0.3s ease, background 0.3s ease;
+        }
+
+        .faq-q-icon::before {
+          top: 50%;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          transform: translateY(-50%);
+        }
+
+        .faq-q-icon::after {
+          left: 50%;
+          top: 0;
+          width: 2px;
+          height: 100%;
+          transform: translateX(-50%);
+        }
+
+        .faq-item.open .faq-q-icon::after {
+          transform: translateX(-50%) scaleY(0);
+        }
+
+        .faq-item.open .faq-q-icon::before {
+          background: var(--faq-accent);
+        }
+
+        .faq-answer { 
+          display: grid; 
+          grid-template-rows: 0fr; 
+          transition: grid-template-rows 0.35s ease; 
+        }
+
+        .faq-item.open .faq-answer { 
+          grid-template-rows: 1fr; 
+        }
+
+        .faq-answer-inner { 
+          overflow: hidden; 
+        }
+
         .faq-a-text {
           margin: 0;
-          padding: 1rem 1.2rem 1.3rem;
-          font-size: 0.94rem;
-          line-height: 1.85;
-          color: rgba(250,248,244,0.62);
-          border-top: 1px solid rgba(250,248,244,0.07);
+          padding: 0 3rem 1.5rem 0;
+          font-size: 1rem;
+          line-height: 1.8;
+          color: #5C5C5C;
+          max-width: 700px;
         }
 
-        @media(max-width:768px) {
-          .faq-grid { grid-template-columns: 1fr; }
-          .faq-intro { position: static; }
+        /* Responsive */
+        @media(max-width: 900px) {
+          .faq-section { padding: 3rem 1rem; }
+          .faq-container { grid-template-columns: 1fr; gap: 3rem; }
+          .faq-sidebar { position: static; }
           .faq-nav { flex-direction: row; flex-wrap: wrap; gap: 0.5rem; }
-          .faq-nav-item { border: 1px solid rgba(250,248,244,0.1); padding: 0.5rem 0.9rem; }
-          .faq-support { max-width: 420px; }
+          .faq-nav-item { border: 1px solid #E8E2D8; background: #FFFFFF; }
+          .faq-q { font-size: 1.1rem; gap: 1rem; }
+          .faq-a-text { padding-right: 0; }
         }
       `}</style>
+
       <section id="faq" className="faq-section">
-        <div className="wrap">
-          <div className="faq-grid">
-            <Reveal className="faq-intro" style={{ position: 'relative', zIndex: 2 }}>
-              <div className="faq-eyebrow">
-                <span className="faq-eyebrow-dot" /> Questions &amp; Answers
+        <div className="faq-container">
+
+          {/* Left Sidebar */}
+          <Reveal className="faq-sidebar">
+            <div className="faq-eyebrow">Support Center</div>
+            <h2 className="faq-title">
+              Frequently Asked <span>Questions</span>
+            </h2>
+            <p className="faq-lead">
+              Everything front-desk teams and funeral directors ask before bringing the premium
+              tablet portal experience to their funeral home.
+            </p>
+
+            <nav className="faq-nav" aria-label="FAQ categories">
+              {FAQ_CATEGORIES.map((g, i) => (
+                <a
+                  key={i}
+                  href={`#faq-cat-${i}`}
+                  className="faq-nav-item"
+                  style={{ '--faq-accent': g.accent }}
+                >
+                  <span className="faq-nav-dot" style={{ background: g.accent }}></span>
+                  <span>{g.tag}</span>
+                </a>
+              ))}
+            </nav>
+
+            <div className="faq-support">
+              <div className="faq-support-icon">
+                <LifeBuoy size={24} color="#FFFFFF" />
               </div>
-              <h2 className="faq-title">
-                Frequently Asked <span className="faq-title-accent">Questions</span>
-              </h2>
-              <p className="faq-lead">
-                Everything front-desk teams and funeral directors ask before bringing the premium
-                tablet portal experience to their funeral home.
+              <h4 className="faq-support-title">Still have a question?</h4>
+              <p className="faq-support-desc">
+                Our team is one message away and happy to walk you through a live demo on your own tablets.
               </p>
+              <button
+                className="faq-support-btn"
+                type="button"
+                onClick={() => navigate('/contact')}
+              >
+                Talk to our team <ArrowRight size={14} />
+              </button>
+            </div>
+          </Reveal>
 
-              <nav className="faq-nav" aria-label="FAQ categories">
-                {FAQ_CATEGORIES.map((g, i) => (
-                  <a key={i} href={`#faq-cat-${i}`} className="faq-nav-item" style={{ '--faq-accent': g.accent }}>
-                    <span className="faq-nav-num">0{i + 1}</span>
-                    <span className="faq-nav-label">{g.tag}</span>
-                  </a>
-                ))}
-              </nav>
-
-              <div className="faq-support">
-                <LifeBuoy size={18} color="#C77B5E" />
-                <h4 className="faq-support-title">Still have a question?</h4>
-                <p className="faq-support-desc">
-                  Our team is one message away and happy to walk you through a live demo on your own tablets.
-                </p>
-                <button className="faq-support-btn" type="button" onClick={() => navigate('/contact')}>
-                  Talk to our team <ArrowRight size={14} />
-                </button>
-              </div>
-            </Reveal>
-
-            <div className="faq-list">
-              {FAQ_CATEGORIES.map((g, ci) => {
-                const catId = `faq-cat-${ci}`;
-                return (
-                  <div
-                    key={ci}
-                    id={catId}
-                    className="faq-cat"
-                    style={{ '--faq-accent': g.accent, '--faq-glow': g.glow }}
-                  >
-                    <div className="faq-cat-head">
-                      <span className="faq-cat-num">0{ci + 1}</span>
-                      <h3 className="faq-cat-title">{g.tag}</h3>
-                    </div>
-                    <div className="faq-items">
-                      {g.items.map((it, ii) => {
-                        const id = `${ci}-${ii}`;
-                        const isOpen = open === id;
-                        return (
-                          <div key={id} className={`faq-item${isOpen ? ' open' : ''}`} style={{ '--faq-accent': g.accent, '--faq-glow': g.glow }}>
-                            <button
-                              type="button"
-                              className="faq-q"
-                              onClick={() => toggle(id)}
-                              aria-expanded={isOpen}
-                              aria-controls={`faq-a-${id}`}
-                            >
-                              <span className="faq-q-text">{it.q}</span>
-                              <span className="faq-q-icon">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-                                  <path d="M12 5v14M5 12h14" />
-                                </svg>
-                              </span>
-                            </button>
-                            <div id={`faq-a-${id}`} className="faq-answer" role="region">
-                              <div className="faq-answer-inner">
-                                <p className="faq-a-text">{it.a}</p>
-                              </div>
+          {/* Right Content */}
+          <div className="faq-list">
+            {FAQ_CATEGORIES.map((g, ci) => {
+              const catId = `faq-cat-${ci}`;
+              return (
+                <div
+                  key={ci}
+                  id={catId}
+                  className="faq-cat"
+                  style={{ '--faq-accent': g.accent }}
+                >
+                  <div className="faq-cat-head">
+                    <span className="faq-cat-line"></span>
+                    <h3 className="faq-cat-title">{g.tag}</h3>
+                  </div>
+                  <div className="faq-items">
+                    {g.items.map((it, ii) => {
+                      const id = `${ci}-${ii}`;
+                      const isOpen = open === id;
+                      return (
+                        <div key={id} className={`faq-item${isOpen ? ' open' : ''}`}>
+                          <button
+                            type="button"
+                            className="faq-q"
+                            onClick={() => toggle(id)}
+                            aria-expanded={isOpen}
+                            aria-controls={`faq-a-${id}`}
+                          >
+                            <span className="faq-q-text">{it.q}</span>
+                            <span className="faq-q-icon"></span>
+                          </button>
+                          <div id={`faq-a-${id}`} className="faq-answer" role="region">
+                            <div className="faq-answer-inner">
+                              <p className="faq-a-text">{it.a}</p>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
+
         </div>
       </section>
     </>

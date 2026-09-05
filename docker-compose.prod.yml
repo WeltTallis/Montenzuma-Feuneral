@@ -192,11 +192,15 @@ services:
       DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD:-${DB_ROOT_PASSWORD}}
       # Onboarding progress events are POSTed to this URL by Tenant.model.ts
       SOCKET_SERVICE_URL: http://restpoint_socketio_service:5000
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
     volumes:
       - tenant_service_data:/usr/src/app/data
-      # The ONE shared uploads folder served to browsers at /uploads/...
-      # (same volume every service writes signatures/logos/documents to)
-      - shared_uploads:/opt/storage/uploads
+      # The ONE shared uploads folder — HOST DIRECTORY /opt/storage (bind mount,
+      # host path == container path). Every service writes signatures/logos/
+      # documents here and this service serves it to browsers at /uploads/...
+      # NOTE: the host dir must be writable by container uid 1001 — run
+      # scripts/setup-production-storage.sh (chown -R 1001:1001 /opt/storage).
+      - /opt/storage:/opt/storage
     depends_on:
       mariadb:
         condition: service_healthy
@@ -228,16 +232,20 @@ services:
       NODE_ENV: production
       PORT: 5000
       SERVICE_NAME: deceased-service
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
     volumes:
       - deceased_service_data:/usr/src/app/data
-      # Write signatures/reports into the SAME shared uploads folder the
-      # tenant-service serves at /uploads/... (single source of truth)
-      - shared_uploads:/opt/storage/uploads
-      - ./services/deceased-service/uploads:/usr/src/app/uploads
+      # Write signatures/reports into the SAME shared host folder
+      # (/opt/storage) the tenant-service serves at /uploads/...
+      # (single source of truth). Bind mount: host == container path.
+      - /opt/storage:/opt/storage
+      # Legacy mount kept for old code paths that still write to
+      # /usr/src/app/uploads — now redirected INTO the shared storage.
+      - /opt/storage/uploads/_legacy/deceased:/usr/src/app/uploads
     networks:
       - restpoint_network
     healthcheck:
@@ -262,13 +270,18 @@ services:
       NODE_ENV: production
       PORT: 5000
       SERVICE_NAME: invoice-service
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
     volumes:
       - invoice_service_data:/usr/src/app/data
-      - ./services/invoice-service/generated:/usr/src/app/generated
+      # Generated invoice PDFs now live on the host under /opt/storage too
+      - /opt/storage/invoices/invoice-service:/usr/src/app/generated
+      # Shared uploads (reads tenant signature/logo images from
+      # /opt/storage/uploads/<tenant>/signatures when stamping PDFs)
+      - /opt/storage:/opt/storage
     networks:
       - restpoint_network
     healthcheck:
@@ -293,6 +306,7 @@ services:
       NODE_ENV: production
       PORT: 5000
       SERVICE_NAME: coffin-service
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
       OPERATIONS_DATABASE: restpoint_operations
@@ -303,7 +317,8 @@ services:
       # Coffin-service imports @montezuma/shared-services, whose barrel
       # immediately inits FileStorageService → mkdir /opt/storage/uploads.
       # Without this mount the non-root container crashes with EACCES.
-      - shared_uploads:/opt/storage/uploads
+      # Bind mount to the HOST /opt/storage directory (uid 1001 writable).
+      - /opt/storage:/opt/storage
     networks:
       - restpoint_network
     healthcheck:
@@ -328,15 +343,18 @@ services:
       NODE_ENV: production
       PORT: 5000
       SERVICE_NAME: documents-service
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
     volumes:
       - documents_service_data:/usr/src/app/data
-      # Documents service serves /uploads AND writes to it — use the shared volume
-      - shared_uploads:/opt/storage/uploads
-      - ./services/documents-service/uploads:/usr/src/app/uploads
+      # Documents service serves /uploads AND writes to it — use the shared
+      # HOST directory /opt/storage (host path == container path)
+      - /opt/storage:/opt/storage
+      # Legacy mount redirected INTO the shared storage as well
+      - /opt/storage/uploads/_legacy/documents:/usr/src/app/uploads
     networks:
       - restpoint_network
     healthcheck:
@@ -466,6 +484,7 @@ services:
       NODE_ENV: production
       PORT: 5000
       SERVICE_NAME: bodycheckout-service
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
@@ -473,7 +492,8 @@ services:
     volumes:
       - bodycheckout_service_data:/usr/src/app/data
       # Body-release signatures are stored under /opt/storage/uploads/<tenant>/signatures
-      - shared_uploads:/opt/storage/uploads
+      # (HOST bind mount — host path == container path)
+      - /opt/storage:/opt/storage
     networks:
       - restpoint_network
     healthcheck:
@@ -591,8 +611,12 @@ services:
       DB_PORT: 3306
       DB_USER: restpoint_user
       OPERATIONS_DATABASE: restpoint_operations
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
     volumes:
-      - florist_service_data:/opt/storage/uploads
+      # Flower-sample images go to the SAME host /opt/storage as every other
+      # service (was a separate florist-only volume before — data migrated by
+      # scripts/setup-production-storage.sh)
+      - /opt/storage:/opt/storage
     networks:
       - restpoint_network
     healthcheck:
@@ -623,7 +647,8 @@ services:
       REDIS_PORT: 6379
     volumes:
       - billing_service_data:/usr/src/app/data
-      - ./services/billing-service/invoices:/usr/src/app/invoices
+      # Billing invoice PDFs live on the shared HOST storage too
+      - /opt/storage/invoices/billing:/usr/src/app/invoices
     networks:
       - restpoint_network
     healthcheck:
@@ -657,7 +682,8 @@ services:
       SCANNER_DEFAULT_FORMAT: pdf
       TZ: Africa/Nairobi
     volumes:
-      - scanner_uploads:/app/uploads
+      # Scanned documents land on the shared HOST storage as well
+      - /opt/storage/uploads/scanner:/app/uploads
       - scanner_config:/app/config
     networks:
       - restpoint_network
@@ -687,13 +713,16 @@ services:
       NODE_ENV: production
       PORT: 5000
       SERVICE_NAME: hearse-service
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
     volumes:
       - hearse_service_data:/usr/src/app/data
-      - ./services/hearse-service/uploads:/usr/src/app/uploads
+      # Hearse images are stored in the shared HOST uploads folder
+      # /opt/storage/uploads/hearses and served via /uploads/hearses/...
+      - /opt/storage:/opt/storage
     networks:
       - restpoint_network
     healthcheck:
@@ -755,6 +784,11 @@ services:
       SERVICE_NAME: leave-service
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+    volumes:
+      # Leave supporting documents live in the shared HOST uploads folder
+      # /opt/storage/uploads/leave-documents (served at /uploads/leave-documents/...)
+      - /opt/storage:/opt/storage
     networks:
       - restpoint_network
     healthcheck:
@@ -805,8 +839,6 @@ volumes:
     driver: local
   rabbitmq_data:
     driver: local
-  scanner_uploads:
-    driver: local
   scanner_config:
     driver: local
   auth_service_data:
@@ -821,12 +853,14 @@ volumes:
     driver: local
   documents_service_data:
     driver: local
-  # ONE shared uploads volume — every service writes here at /opt/storage/uploads
-  shared_uploads:
-    driver: local
+  # NOTE: uploads are NOT a docker named volume anymore — every service
+  # bind-mounts the HOST directory /opt/storage (host path == container
+  # path), so all tenant uploads (signatures, logos, documents, hearse
+  # images, scans, invoices) physically live in /opt/storage on the server.
+  # Run scripts/setup-production-storage.sh once before `docker compose up`
+  # to create the dirs, migrate old volume data and set uid-1001 ownership.
+  # Database dumps / upload archives go to /opt/backups (see `make backup`).
   analytics_service_data:
-    driver: local
-  florist_service_data:
     driver: local
   notification_service_data:
     driver: local

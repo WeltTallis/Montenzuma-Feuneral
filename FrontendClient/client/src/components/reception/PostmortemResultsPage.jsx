@@ -768,7 +768,7 @@ const PostmortemResultsPage = () => {
               <SigBlock>
                 <SigScript>
                   {(() => {
-                    const signatureUrl = reportData?.deceased?.signature || reportData?.deceased?.pathologist_signature || reportData?.postmortem?.pathologist_signature;
+                    const signatureUrl = reportData?.postmortem?.signature || reportData?.postmortem?.pathologist_signature || reportData?.deceased?.pathologist_signature || reportData?.deceased?.signature;
                     console.log('[PostmortemResults] Signature URL:', signatureUrl, 'Full reportData:', reportData);
                     if (signatureUrl && !signatureError) {
                       const absoluteUrl = signatureUrl.startsWith('http') 

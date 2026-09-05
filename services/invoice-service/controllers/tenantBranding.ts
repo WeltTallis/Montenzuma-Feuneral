@@ -78,18 +78,32 @@ async function loadTenantBranding(tenantSlug: string, tenantDbName: string | nul
       }
     }
 
-    // 3. Resolve logo path (check tenant uploads dir first, then default)
+    // 3. Resolve logo/signature paths — the SHARED uploads folder
+    // (/opt/storage/uploads, bind-mounted into this container) is checked
+    // FIRST, then the legacy repo-relative paths.
+    const sharedUploadsBase = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+    const sharedTenantDir = path.join(sharedUploadsBase, tenantSlug);
     const baseUploads = path.join(__dirname, '../../uploads');
     const tenantDir = path.join(baseUploads, 'tenants', tenantSlug);
 
     const possibleLogoPaths = [
+      path.join(sharedTenantDir, 'documents', 'logos', 'logo.png'),
+      path.join(sharedTenantDir, 'logos', 'logo.png'),
+      path.join(sharedTenantDir, 'logo.png'),
       path.join(tenantDir, 'logo.png'),
       path.join(tenantDir, 'logo.jpg'),
       path.join(baseUploads, 'logo', `${tenantSlug}.png`),
       path.join(baseUploads, 'logo', `${tenantSlug}.jpg`),
     ];
 
+    // NOTE: signatures are matched by explicit name only — the
+    // <tenant>/signatures folder also holds per-deceased admission
+    // signatures (sig_*.png) which must NOT be used as the company stamp.
     const possibleSignaturePaths = [
+      path.join(sharedTenantDir, 'signatures', 'signature.png'),
+      path.join(sharedTenantDir, 'signature.png'),
+      path.join(sharedUploadsBase, 'signature', `${tenantSlug}.png`),
+      path.join(sharedUploadsBase, 'signature', 'signature.png'),
       path.join(tenantDir, 'signature.png'),
       path.join(tenantDir, 'signature.jpg'),
       path.join(baseUploads, 'signature', `${tenantSlug}.png`),
@@ -119,4 +133,22 @@ async function loadTenantBranding(tenantSlug: string, tenantDbName: string | nul
   return defaults;
 }
 
-export { loadTenantBranding };
+/**
+ * Convert a filesystem path under the shared uploads folder to the public
+ * /uploads/... URL the tenant-service serves. URLs and data-URLs are returned
+ * unchanged; null/undefined yields null.
+ */
+function toUploadsUrl(p: string | null | undefined): string | null {
+  if (!p) return null;
+  if (/^(https?:\/\/|data:|\/uploads\/)/.test(p)) return p;
+  const sharedUploadsBase = (process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads')
+    .replace(/\\/g, '/')
+    .replace(/\/+$/, '');
+  const norm = String(p).replace(/\\/g, '/');
+  if (norm.startsWith(`${sharedUploadsBase}/`)) {
+    return `/uploads/${norm.slice(sharedUploadsBase.length + 1)}`;
+  }
+  return p;
+}
+
+export { loadTenantBranding, toUploadsUrl };

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy } from '../../utils/icons/icons';
 
 import NewsroomSection from '../newsroom/NewsroomSection';
+import HardwareRequirementSection from './hardwareRequirement';
 import LandingPageSEO from '../seo/LandingPageSEO';
 import Footer from '../../components/layout/Footer';
 import ModuleGridSection from './imageCard';
@@ -513,12 +514,6 @@ export default function App() {
     { dark: true, to: true, category: 'NEW · SUPPORT CENTER', accent: C.brass, title: 'Real-Time Customer Support', excerpt: 'Submit issues directly through the platform and our support agents receive, respond, and resolve them in real time — with full status tracking and communication history.', status: 'NOW LIVE' },
   ];
 
-  const infraFeatures = [
-    { icon: ShieldCheck, title: 'Bank grade Security', desc: 'Role-based access, audit logs, and end to end encryption ensure data remains protected and compliant.' },
-    { icon: Server, title: 'Reliable Infrastructure', desc: '99.9% uptime guarantee with automated daily backups. Your data is always available when you need it.' },
-    { icon: Zap, title: 'Seamless Integrations', desc: 'Connect with local payment gateways, accounting software, and communication tools effortlessly.' },
-  ];
-
   const marqueeItems = ['Case Management', 'Family Portal', 'Smart Dispatch', 'Fleet Tracking', 'Funeral Insurance', 'Real-Time Support', 'Billing & Invoicing', 'Analytics & Reports', 'Welfare Schemes'];
 
   return (
@@ -649,19 +644,6 @@ export default function App() {
         .insurance-card h3 { font-family: 'Inter',sans-serif; font-size: 1.05rem; font-weight: 600; color: ${C.ink}; margin-bottom: 0.5rem; }
         .insurance-card p { font-size: 0.86rem; color: ${C.gray}; line-height: 1.7; }
         .insurance-card:hover p { color: ${C.ink}; }
-
-        .infra-section { background: #0A0A0A; padding: clamp(5rem,10vw,7rem) 0; position: relative; overflow: hidden; border-top: 1px solid rgba(250,248,244,0.06); }
-        .infra-grid-bg { position: absolute; inset: 0; background-image: linear-gradient(rgba(61,79,71,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(61,79,71,0.04) 1px,transparent 1px); background-size: 48px 48px; pointer-events: none; }
-        .infra-glow { position: absolute; width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(circle,rgba(61,79,71,0.1) 0%,transparent 60%); top: 50%; left: 50%; transform: translate(-50%,-50%); pointer-events: none; }
-        .infra-card-dark { background: rgba(250,248,244,0.03); border: 1px solid rgba(250,248,244,0.08); padding: clamp(1.8rem,3vw,2.5rem); border-radius: 16px; transition: all 0.5s cubic-bezier(0.16,1,0.3,1); position: relative; overflow: hidden; }
-        .infra-card-dark::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg,transparent,rgba(61,79,71,0.3),transparent); opacity: 0; transition: opacity 0.5s ease; }
-        .infra-card-dark:hover { border-color: rgba(61,79,71,0.35); background: rgba(250,248,244,0.05); transform: translateY(-6px); box-shadow: 0 16px 40px -8px rgba(61,79,71,0.12),0 0 0 1px rgba(61,79,71,0.1); }
-        .infra-card-dark:hover::before { opacity: 1; }
-        .infra-icon-dark { width: 52px; height: 52px; border-radius: 14px; background: rgba(61,79,71,0.12); border: 1px solid rgba(61,79,71,0.15); display: flex; align-items: center; justify-content: center; margin-bottom: 1.4rem; transition: all 0.4s ease; }
-        .infra-card-dark:hover .infra-icon-dark { background: rgba(61,79,71,0.2); border-color: rgba(61,79,71,0.3); box-shadow: 0 0 24px rgba(61,79,71,0.15); }
-        .infra-title-dark { font-family: 'Inter',sans-serif; font-size: 1.1rem; font-weight: 600; color: ${C.bone}; margin-bottom: 0.7rem; }
-        .infra-desc-dark { font-size: 0.9rem; color: rgba(250,248,244,0.45); line-height: 1.75; }
-        .infra-card-dark:hover .infra-desc-dark { color: rgba(250,248,244,0.65); }
 
         .app-window { border-radius: 12px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(21,23,26,0.2); border: 1px solid ${C.line}; width: 100%; transition: transform 0.4s cubic-bezier(0.16,1,0.3,1); }
         .app-window:hover { transform: translateY(-8px); }
@@ -975,39 +957,8 @@ export default function App() {
           </div>
         </section>
 
-        {/* ── Infrastructure ── */}
-        <section id="infra" className="infra-section">
-          <div className="infra-grid-bg" />
-          <div className="infra-glow" />
-          <div className="wrap" style={{ position: 'relative', zIndex: 1 }}>
-            <Reveal style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
-              <div className="mono-label" style={{ color: 'rgba(250,248,244,0.35)', marginBottom: '1rem', letterSpacing: '0.2em' }}>Enterprise-Grade Infrastructure</div>
-              <h2 style={{ color: C.bone, fontSize: 'clamp(2rem, 4.5vw, 3rem)', marginBottom: '1rem' }}>Built for scale, secured by design</h2>
-              <p style={{ color: 'rgba(250,248,244,0.45)', marginTop: '0.5rem', fontSize: '1.02rem', lineHeight: 1.8 }}>Modern infrastructure ensuring your data is safe, accessible, and scalable as your organization grows.</p>
-            </Reveal>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: '1.25rem', marginTop: '3.5rem' }}>
-              {infraFeatures.map((feat, i) => (
-                <Reveal key={i} delay={i * 120}>
-                  <div className="infra-card-dark">
-                    <div className="infra-icon-dark"><feat.icon size={24} color="#4D9B7F" /></div>
-                    <h3 className="infra-title-dark">{feat.title}</h3>
-                    <p className="infra-desc-dark">{feat.desc}</p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-            <Reveal delay={400} style={{ textAlign: 'center', marginTop: '3rem' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2rem', padding: '1.2rem 2.5rem', background: 'rgba(250,248,244,0.03)', border: '1px solid rgba(250,248,244,0.07)', borderRadius: '12px' }}>
-                {[{ val: '99.9%', label: 'Uptime SLA' }, { val: '24/7', label: 'Monitoring' }, { val: 'AES-256', label: 'Encryption' }].map((s, i) => (
-                  <div key={i} style={{ textAlign: 'center' }}>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.1rem', color: '#4D9B7F', fontWeight: 600 }}>{s.val}</div>
-                    <div style={{ fontSize: '0.7rem', color: 'rgba(250,248,244,0.35)', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginTop: '0.2rem' }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </Reveal>
-          </div>
-        </section>
+        {/* ── Hardware Requirement (replaces the old uptime/audit-trail infrastructure block) ── */}
+        <HardwareRequirementSection />
 
         {/* ── About ── */}
         <section className="about-section">

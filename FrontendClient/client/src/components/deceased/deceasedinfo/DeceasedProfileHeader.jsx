@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
+import bwipjs from '@bwip-js/browser';
 import { C } from './theme';
 import RouteOptimizer from '../../hearse/RouteOptimizer';
 
@@ -43,6 +44,41 @@ const RouteCalcBtn = styled.button`
   &:hover { background: #0d2d3a; border-color: #0d2d3a; }
 `;
 
+/* ─── Admission barcode (same Code128 configuration as the intake page) ─── */
+const BarcodeBox = styled.div`
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: white; border: 1px solid ${C.borderLight}; border-radius: 6px;
+  padding: 6px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+`;
+const BarcodeCode = styled.span`
+  font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; color: ${C.black};
+`;
+
+const Barcode = ({ value }) => {
+  const canvasRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (canvasRef.current) {
+      try {
+        bwipjs.toCanvas(canvasRef.current, {
+          bcid: 'code128',
+          text: value || 'AWAITING-ID',
+          scale: 2,
+          height: 8,
+          includetext: false,
+          paddingwidth: 0,
+          paddingheight: 0,
+        });
+      } catch (e) {
+        console.error('Barcode generation error:', e);
+      }
+    }
+  }, [value]);
+
+  return <canvas ref={canvasRef} style={{ display: 'block', width: 'auto', height: '40px' }} />;
+};
+
 const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettingsClick }) => {
   const navigate = useNavigate();
   const { id: deceasedId } = useParams();
@@ -67,9 +103,15 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
       {showRouteOptimizer && <RouteOptimizer onClose={() => setShowRouteOptimizer(false)} />}
       <BackBtn onClick={onBack}>← Back to List</BackBtn>
       <ProfileHeader>
-        <div>
-          <h2>{name}</h2>
-          <p><span>{displayId}</span> | <span>{admissionNo}</span></p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <h2>{name}</h2>
+            <p><span>{displayId}</span> | <span>{admissionNo}</span></p>
+          </div>
+          <BarcodeBox title="Admission barcode">
+            <Barcode value={admissionNo !== '—' ? admissionNo : 'AWAITING-ID'} />
+            <BarcodeCode>{admissionNo !== '—' ? admissionNo : 'AWAITING-ID'}</BarcodeCode>
+          </BarcodeBox>
         </div>
         <HeaderActions>
           <RouteCalcBtn onClick={() => setShowRouteOptimizer(true)}>

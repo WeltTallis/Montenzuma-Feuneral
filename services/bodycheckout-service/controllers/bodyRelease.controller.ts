@@ -7,6 +7,35 @@ import { getTenantDB } from '../../../shared/dbConfig';
 import sharp from 'sharp';
 
 /**
+ * Force a signature image into pure INK-BLUE ink on a transparent background.
+ * Client pads draw with penColor #0f33e7, but flatten/palette PNG encoding
+ * could darken the blue ink towards black. Rebuilding the pixels guarantees
+ * every stored signature is always ink blue.
+ */
+async function toInkBlue(buffer: Buffer): Promise<Buffer> {
+  const { data, info } = await sharp(buffer)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const INK_BLUE = { r: 15, g: 51, b: 231 }; // #0f33e7 — same as the signature pad
+  const out = Buffer.alloc(data.length);
+  for (let i = 0; i < data.length; i += 4) {
+    const alpha = data[i + 3] / 255;
+    const luminance = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
+    const ink = alpha * Math.pow(1 - luminance, 0.45);
+    out[i] = INK_BLUE.r;
+    out[i + 1] = INK_BLUE.g;
+    out[i + 2] = INK_BLUE.b;
+    out[i + 3] = Math.round(Math.min(1, Math.max(0, ink)) * 255);
+  }
+
+  return sharp(out, { raw: { width: info.width, height: info.height, channels: 4 } })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+}
+
+/**
  * Process a base64 signature and upload it to the centralized uploads service.
  * Returns the URL path of the uploaded signature, or the original data URL on failure.
  */
@@ -28,11 +57,11 @@ async function processAndUploadSignature(
       const base64Data = signatureData.replace(/^data:image\/\w+;base64,/, '');
       const buffer = Buffer.from(base64Data, 'base64');
 
-      // Compress with sharp first
-      const processedBuffer = await sharp(buffer)
+      // Force ink-blue color, then fit within 800x300 (no palette quantisation)
+      const inkBuffer = await toInkBlue(buffer);
+      const processedBuffer = await sharp(inkBuffer)
         .resize(800, 300, { fit: 'inside', withoutEnlargement: true })
-        .flatten({ background: '#ffffff' })
-        .png({ compressionLevel: 9, quality: 85 })
+        .png({ compressionLevel: 9 })
         .toBuffer();
 
       // Save directly to global uploads folder
