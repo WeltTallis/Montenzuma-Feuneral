@@ -21,13 +21,11 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./docker/mariadb/custom-mysqld.cnf:/etc/mysql/conf.d/custom-mysqld.cnf:ro
-
       - ./docker/mariadb/exporter-user.sql:/docker-entrypoint-initdb.d/01-exporter-user.sql:ro
-
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'healthcheck.sh', '--su-mysql', '--connect', '--innodb_initialized']
+      test: [ 'CMD', 'healthcheck.sh', '--su-mysql', '--connect', '--innodb_initialized' ]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -37,7 +35,7 @@ services:
     image: redis:7-alpine
     container_name: restpoint_redis
     restart: always
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 1gb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123} --maxmemory 1gb --maxmemory-policy allkeys-lru
     ports:
       - '${REDIS_EXTERNAL_PORT:-6379}:6379'
     volumes:
@@ -45,10 +43,11 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      test: [ 'CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-redis123}', 'ping' ]
       interval: 15s
       timeout: 10s
       retries: 5
+      start_period: 10s
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -109,7 +108,7 @@ services:
       SUPPORT_SERVICE_URL: http://restpoint_support_service:5000
       LEAVE_SERVICE_URL: http://restpoint_leave_service:5000
       FLORIST_SERVICE_URL: http://restpoint_florist_service:5000
-      REDIS_URL: redis://restpoint_redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis123}@restpoint_redis:6379
     depends_on:
       mariadb:
         condition: service_healthy
@@ -120,7 +119,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -147,6 +146,7 @@ services:
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
       JWT_SECRET: ${JWT_SECRET}
       REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
       JWT_EXPIRY: 24h
@@ -159,7 +159,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -184,6 +184,7 @@ services:
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
       RABBITMQ_HOST: restpoint_rabbitmq
       RABBITMQ_PORT: 5672
       # Admin credentials used at runtime to AUTO-PROVISION tenant databases
@@ -211,7 +212,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -237,6 +238,7 @@ services:
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - deceased_service_data:/usr/src/app/data
       # Write signatures/reports into the SAME shared host folder
@@ -249,7 +251,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -275,6 +277,7 @@ services:
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - invoice_service_data:/usr/src/app/data
       # Generated invoice PDFs now live on the host under /opt/storage too
@@ -285,7 +288,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -312,6 +315,7 @@ services:
       OPERATIONS_DATABASE: restpoint_operations
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - coffin_service_data:/usr/src/app/data
       # Coffin-service imports @montezuma/shared-services, whose barrel
@@ -322,7 +326,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -348,6 +352,7 @@ services:
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - documents_service_data:/usr/src/app/data
       # Documents service serves /uploads AND writes to it — use the shared
@@ -358,7 +363,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -383,12 +388,13 @@ services:
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - analytics_service_data:/usr/src/app/data
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -428,13 +434,14 @@ services:
       OPERATIONS_DATABASE: restpoint_operations
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     depends_on:
       mariadb:
         condition: service_healthy
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'node', '-e', "fetch('http://localhost:5000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: [ 'CMD', 'node', '-e', "fetch('http://localhost:5000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -457,13 +464,13 @@ services:
       SERVICE_NAME: socketio-service
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - socketio_service_data:/usr/src/app/data
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -489,6 +496,7 @@ services:
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - bodycheckout_service_data:/usr/src/app/data
       # Body-release signatures are stored under /opt/storage/uploads/<tenant>/signatures
@@ -497,7 +505,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -525,7 +533,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -550,13 +558,14 @@ services:
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
       SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
     volumes:
       - support_service_data:/usr/src/app/data
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -584,7 +593,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -620,7 +629,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -645,6 +654,7 @@ services:
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - billing_service_data:/usr/src/app/data
       # Billing invoice PDFs live on the shared HOST storage too
@@ -652,7 +662,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -688,7 +698,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:2024/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:2024/health' ]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -718,6 +728,7 @@ services:
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - hearse_service_data:/usr/src/app/data
       # Hearse images are stored in the shared HOST uploads folder
@@ -726,7 +737,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -756,8 +767,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test:
-        ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:6969/api/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:6969/api/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -792,7 +802,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -817,7 +827,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/']
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/' ]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -1,5 +1,4 @@
 
-import Logger from '../../../packages/shared-logger/dist/index'
 import multer from 'multer';
 import sharp from 'sharp';
 import crypto from 'crypto';
@@ -39,16 +38,16 @@ const upload = multer({
 });
 
 // Signature processing function with high-quality compression
+// NOTE: signatures are ALWAYS stored as ink blue (#0f33e7) on a transparent
+// background inside the ONE global uploads folder
+// (/opt/storage/uploads/<tenant>/signatures) — no local paths, no options
+// that could change the colour or location.
 const processSignature = async (
     file: Express.Multer.File,
     tenantSlug?: string,
     options?: {
-        quality?: number; // 1-100, default 90
         maxWidth?: number;
         maxHeight?: number;
-        background?: string; // e.g., '#ffffff'
-        grayscale?: boolean;
-        outputFormat?: 'png' | 'jpeg' | 'webp';
     }
 ): Promise<{
     filename: string;
