@@ -19,6 +19,7 @@ const ReusableSignaturePad = React.lazy(() => import('../../utils/signature/sign
 
 const COLORS = {
   ink: '#15171A',
+  inkBlue: '#0f33e7',
   white: '#FFFFFF',
   gray: '#6B6862',
   grayLight: '#F5F5F5',
@@ -1196,7 +1197,7 @@ function ReleaseFormPage() {
                       </div>
                     ) : (
                       <Suspense fallback={<div style={{ color: COLORS.gray }}>Loading signature pad...</div>}>
-                        <ReusableSignaturePad onChange={setSignature} width={800} height={200} />
+                        <ReusableSignaturePad onChange={setSignature} width={800} height={200} penColor={COLORS.inkBlue} />
                       </Suspense>
                     )}
                   </SigCanvasWrap>

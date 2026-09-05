@@ -1,0 +1,106 @@
+import React from 'react';
+import JournalArticle, { JournalFigure, JournalList } from '../JournalArticle';
+
+/* =================================================================
+   RESTPOINT JOURNAL — The Architecture of Blooms
+   ================================================================= */
+
+const FlowerTypes = () => (
+  <JournalList
+    items={[
+      'Casket Arrangements — Casket wreaths and sprays should be saved for the immediate family to purchase, resting directly atop the casket.',
+      'Wreaths & Crosses — Popular arrangement choices appropriate for family and close friends to send to either the home or the wake. The circular shape of a wreath represents eternal life, while crosses represent faith.',
+      'Tied Sheaves — Similar to bouquets but without plastic wrapping. Instead, they are tied with a suitable material, making an appropriate arrangement for mourners to send or bring.',
+      'Funeral Sprays — Standing sprays are typically purchased by the extended family of the deceased and displayed near the casket; they can be viewed from one side only and rest against an easel.',
+      'Baskets — Floral baskets make for a lovely display that comes in an array of sizes and is usually delivered to the church or the funeral home.',
+      'Hearts — A popular shape for funeral wreaths because they display a universal symbol of caring and love.',
+      'Pillows — Flower pillows are usually displayed in the casket, though they can also be used at the home of family members. Traditionally, they represent the young children or grandchildren of the deceased.',
+    ]}
+  />
+);
+
+const chapterOneContent = (
+  <>
+    <p>There is a moment in the arrangement room, usually an hour into the consultation, when the conversation turns to flowers. It is a delicate pivot. The family has just finished discussing the weightiest matters the service, the transport, the legalities—and now they are asked to make a series of aesthetic choices that will define the visual memory of their loved one's farewell.</p>
+
+    <p>Historically, this is where the friction began. A funeral director would slide a heavy, laminated catalog across the desk. The photos would be outdated, heavily watermarked stock images from 1998. The family would point to a picture, only to be told that specific arrangement wasn't available from the local florist that week. More flipping. More waiting. More phone calls.</p>
+
+    <p>We realized that this process was not just outdated; it was a disruption of grief. It pulled families out of their emotional space and forced them into a transactional, frustrating loop. We knew technology could solve this, but it had to be done with an extreme level of taste.</p>
+  </>
+);
+
+const chapterTwoContent = (
+  <>
+    <p>With the Restpoint FrontDesk tablet, we introduced a curated floral marketplace. But we didn't just scan old catalogs into a PDF. We built a system where the funeral home pre-uploads high-resolution, true-to-life images of the exact arrangements they offer. When a family picks up the tablet, they aren't looking at a database; they are walking through a digital garden.</p>
+
+    <p>We drew inspiration from the most engaging consumer apps in the world. The interface is designed to feel like exploring Instagram Stories. Families can simply swipe or tap to view full screen, high resolution images of the arrangements. This immersive, visual first approach makes the interface incredibly easy to see and deeply engaging. By allowing families to truly visualize the flowers seeing the exact textures and colors fill the screen they aren't just picking a product; they are curating an atmosphere.</p>
+
+    <p>This visual clarity changes everything. When families can see exactly what they are buying, hesitation disappears. They no longer have to guess what a "Standing Spray" or a "Casket Wreath" looks like from a tiny, blurred thumbnail. They see the real thing, in full screen, and as a result, they book with confidence. It directly translates to higher floral bookings because the friction of imagination has been removed; they can finally see the beauty they are choosing.</p>
+
+    <p>More importantly, the tablet educates. It is important to note that the type of arrangement you choose is far less important than simply being present for your friend or family member in their time of loss. However, traditionally, condolence flowers come in a variety of styles, each carrying its own silent meaning. Within standard funeral etiquette, they are all equally acceptable. The tablet guides families through these choices:</p>
+
+    <FlowerTypes />
+
+    <p>By allowing the family to browse these meanings independently, at their own pace, we return a small piece of agency to them. They can pass the tablet around the room. A sibling in another city can view the same catalog via the family portal and offer their input. The selection becomes a moment of connection, not a point of friction.</p>
+
+    <JournalFigure
+      src="https://bouqs.com/blog/wp-content/uploads/2018/08/flower-for-funeral.jpg"
+      alt="A beautiful floral arrangement for a funeral"
+            caption="Fig 02 · The digital catalog brings the florist's artistry directly to the family's fingertips."
+    />
+  </>
+);
+
+const conclusionContent = (
+  <>
+    <p>When a family selects a premium casket spray on the Restpoint tablet, they don't need to ask if it fits the budget. The system already knows the parameters of their arrangement plan. It doesn't block them; it simply guides them. If they choose a bouquet that requires a specific type of vase, the system adds it to the cart automatically.</p>
+
+    <p>Behind the scenes, the funeral director is notified on their own device. The order is compiled, the local florist is synced, and the inventory is updated in real-time. <strong>The friction is eliminated entirely.</strong> The family only experiences the beauty of the selection. They never see the logistics.</p>
+  </>
+);
+
+const ArchitectureOfBlooms = () => (
+  <JournalArticle
+    slug="architecture-of-blooms"
+    navMeta={['Vol. 02', '2026', 'Product & Tech']}
+    heroMeta={['Product Deep Dive', '7 Min Read', 'October 2026']}
+    title="The Architecture"
+    titleAccent="of Blooms."
+    excerpt="Why we digitized the floral selection process, replacing glossy catalogs and stressful phone calls with a serene, educational marketplace right on the funeral home's tablet."
+    author={{ initials: 'RP', name: 'Restpoint Design Team', role: 'FrontDesk Experience' }}
+    heroImage={{
+      src: 'https://bouqs.com/blog/wp-content/uploads/2018/08/funeral-casket-arrangement.jpg',
+      alt: 'Elegant funeral casket flower arrangement',
+    }}
+    chapterOne={{
+      num: '01',
+      title: 'The Digital',
+      em: 'Garden',
+      children: chapterOneContent,
+    }}
+    pullQuote={{
+      text: "We didn't digitize flowers to make them cheaper. We digitized them to make the choosing peaceful.",
+      author: 'Restpoint Design Team',
+    }}
+    chapterTwo={{
+      num: '02',
+      title: 'The Language of',
+      em: 'Flowers',
+      children: chapterTwoContent,
+    }}
+    conclusion={{
+      num: '03',
+      title: 'Eliminating the',
+      em: 'Friction',
+      children: conclusionContent,
+      signoff: {
+        note: 'End of Field Notes.',
+        meta: 'Restpoint Journal · Vol. 02',
+      },
+    }}
+    bannerWords={['Digitizing Dignity', 'Restpoint Journal', 'FrontDesk Experience']}
+  />
+);
+
+export default ArchitectureOfBlooms;
+

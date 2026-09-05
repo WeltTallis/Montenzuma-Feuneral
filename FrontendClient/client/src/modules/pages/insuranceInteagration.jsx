@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, CheckCircle, Clock, FileText, Users, TrendingUp, ArrowRight, Mail, Phone, MapPin, ChevronDown, Lock, Box, Zap, Wallet, Calendar, PieChart, Building2, UserPlus, RefreshCw } from '../../utils/icons/icons';
 
 /* ============================================================
-   INSURANCE PAGE — Rest Point Insurance System
+   INSURANCE PAGE â€” Rest Point Insurance System
    A full insurance platform for funeral homes to sell policies,
    manage contributions, track claims, and integrate seamlessly.
    ============================================================ */
@@ -134,7 +134,7 @@ export default function InsurancePage() {
 
     // System stats
     const stats = [
-        { number: 'KES 250k–900k', label: 'Average funeral cover gap' },
+        { number: 'KES 250kâ€“900k', label: 'Average funeral cover gap' },
         { number: '85%', label: 'Families underinsured' },
         { number: '15+', label: 'Insurance partners integrated' },
         { number: '98%', label: 'Claim approval rate' },
@@ -396,7 +396,7 @@ export default function InsurancePage() {
           gap: 0.5rem;
         }
         .timeline-card li:last-child { border-bottom: none; }
-        .timeline-card li::before { content: '✓'; color: ${C.verdigris}; font-weight: bold; }
+        .timeline-card li::before { content: 'âœ“'; color: ${C.verdigris}; font-weight: bold; }
 
         @media (max-width: 800px) {
           .timeline-grid { grid-template-columns: 1fr; }
@@ -567,6 +567,7 @@ export default function InsurancePage() {
                     <div className="nav-links">
                         <a href="/#features" className="nav-link">Features</a>
                         <a href="/#pricing" className="nav-link">Pricing</a>
+                        <button onClick={() => navigate('/blog')} className="nav-link">Blog</button>
                         <PolicyDropdown navigate={navigate} goTerms={goTerms} />
                     </div>
                     <div className="nav-cta">
@@ -770,7 +771,7 @@ export default function InsurancePage() {
 
                     <div className="footer-bottom">
                         <span>&copy; {new Date().getFullYear()} Rest Point. All rights reserved.</span>
-                        <span>Designed in Nairobi · Built on the cloud</span>
+                        <span>Designed in Nairobi Â· Built on the cloud</span>
                     </div>
                 </div>
             </footer>

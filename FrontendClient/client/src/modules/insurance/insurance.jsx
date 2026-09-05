@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, Check, ArrowRight, X, ShieldCheck, Activity, Layers, DollarSign, Users, FileText, Zap } from '../../utils/icons/icons';
 import Footer from '../../components/layout/Footer';
@@ -126,6 +126,7 @@ const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
                     <button onClick={() => { navigate('/'); setOpen(false); }} className="mobile-link">Home</button>
                     <button onClick={() => { navigate('/about'); setOpen(false); }} className="mobile-link">About</button>
                     <button onClick={() => { navigate('/insurance'); setOpen(false); }} className="mobile-link" style={{ color: C.brass, fontWeight: 600 }}>Insurance Brokers</button>
+                    <button onClick={() => { navigate('/blog'); setOpen(false); }} className="mobile-link">Blog</button>
                     <div className="mobile-policies-header">
                         <div className="mono-label" style={{ color: C.brass, padding: '0.6rem 1.2rem' }}>Policies</div>
                         {policies.map((p, i) => (
@@ -219,7 +220,7 @@ export default function InsurancePage() {
     ];
 
     const steps = [
-        { num: '1', title: 'Share your details', desc: 'Families register online and share basic details — age and the dependants they wish to cover — in minutes.' },
+        { num: '1', title: 'Share your details', desc: 'Families register online and share basic details â€” age and the dependants they wish to cover â€” in minutes.' },
         { num: '2', title: 'Review your options', desc: 'Staff present suitable last expense plans from the funeral home\u2019s panel of IRA-accredited insurers, including individual and family plans.' },
         { num: '3', title: 'Select your plan', desc: 'Members pick a benefit amount and payment frequency that fits their budget. The plan is configured instantly in the system.' },
         { num: '4', title: 'Cover begins', desc: 'Premiums are collected monthly, quarterly, or annually via STK push. Waiting periods and cover status are tracked automatically.' },
@@ -232,7 +233,7 @@ export default function InsurancePage() {
         { icon: DollarSign, title: 'Claims Processing', desc: 'Streamline claims from submission to payout. Automated workflows reduce processing time significantly.' },
     ];
 
-    // Who needs last expense cover — software enabled
+    // Who needs last expense cover â€” software enabled
     const whoNeeds = [
         'Family breadwinners who want to protect their household from sudden funeral costs',
         'Parents wishing to extend cover to a spouse, children, or elderly dependants',
@@ -257,7 +258,7 @@ export default function InsurancePage() {
 
     // Common mistakes
     const mistakes = [
-        { title: 'Assuming a harambee will always be enough', desc: 'Community support is valuable, but it is unpredictable — and often arrives after urgent costs are already due.' },
+        { title: 'Assuming a harambee will always be enough', desc: 'Community support is valuable, but it is unpredictable â€” and often arrives after urgent costs are already due.' },
         { title: 'Delaying cover until it feels urgent', desc: 'Last expense cover is most useful when it is already in place before it is needed.' },
         { title: 'Not telling family about the policy', desc: 'A policy your family does not know exists cannot help them when the time comes.' },
         { title: 'Choosing a benefit without checking current costs', desc: 'An outdated benefit level may fall short of real funeral expenses in Kenya today.' },
@@ -266,7 +267,7 @@ export default function InsurancePage() {
     // Benefits of running cover through Rest Point software
     const softBenefits = [
         { icon: Zap, title: 'Fast claims payout', desc: 'Digital claims workflows get funds to families quickly, when they need them most.' },
-        { icon: DollarSign, title: 'Affordable premium tracking', desc: 'Last expense cover is designed to be accessible — Rest Point makes collections and reminders effortless.' },
+        { icon: DollarSign, title: 'Affordable premium tracking', desc: 'Last expense cover is designed to be accessible â€” Rest Point makes collections and reminders effortless.' },
         { icon: Users, title: 'Family and individual options', desc: 'Cover one person or extend protection to spouses, children, and dependants with a few clicks.' },
         { icon: ShieldCheck, title: 'Dignity in difficult moments', desc: 'Families can focus on honouring their loved one, not scrambling for funds.' },
         { icon: Layers, title: 'Combine with broader protection', desc: 'Pair last expense cover with life insurance or medical cover for complete family protection.' },
@@ -274,10 +275,10 @@ export default function InsurancePage() {
 
     // How to get started
     const getStarted = [
-        { num: '1', title: 'Talk to us', desc: 'Share your funeral home or scheme details — how many members you expect and the families you want to cover.' },
+        { num: '1', title: 'Talk to us', desc: 'Share your funeral home or scheme details â€” how many members you expect and the families you want to cover.' },
         { num: '2', title: 'Review benefit amounts & plans', desc: 'We configure the benefit amounts and plans from your panel of insurers inside the platform.' },
         { num: '3', title: 'Select the plan that fits', desc: 'Choose individual or family plans and payment schedules that match your members\u2019 budgets and needs.' },
-        { num: '4', title: 'Pay premium and issue documents', desc: 'Members pay their premium and receive policy documents instantly — no chasing, no lost paperwork.' },
+        { num: '4', title: 'Pay premium and issue documents', desc: 'Members pay their premium and receive policy documents instantly â€” no chasing, no lost paperwork.' },
         { num: '5', title: 'Share with your family', desc: 'Policies and coverage details are visible in the family portal so everyone knows what to do when the time comes.' },
     ];
 
@@ -421,6 +422,7 @@ export default function InsurancePage() {
                             <button onClick={() => navigate('/')} className="nav-link">Features</button>
                             <button onClick={() => navigate('/about')} className="nav-link">About Infrastructure</button>
                             <button onClick={() => navigate('/insurance')} className="nav-link" style={{ color: C.brass, fontWeight: 600 }}>Insurance Brokers</button>
+                            <button onClick={() => navigate('/blog')} className="nav-link">Blog</button>
                             <PolicyDropdown navigate={navigate} goTerms={goTerms} />
                         </div>
                         <div className="nav-cta">
@@ -439,7 +441,7 @@ export default function InsurancePage() {
                                 <div className="mono-label" style={{ marginBottom: '1rem' }}>FUNERAL INSURANCE &amp; LAST EXPENSE COVER</div>
                                 <h1>Easing the burden when families need it most.</h1>
                                 <p className="hero-desc">
-                                    Grief is heavy enough on its own. In Kenya, families facing the loss of a loved one are often forced to face an urgent financial burden: the cost of a decent send-off. Harambees can help, but they take time your family may not have, and they place the burden of asking on people who are already grieving. Rest Point gives funeral homes and welfare schemes the software to run last expense cover and funeral insurance for the families they serve — so when the worst happens, money is the one thing a family does not have to worry about.
+                                    Grief is heavy enough on its own. In Kenya, families facing the loss of a loved one are often forced to face an urgent financial burden: the cost of a decent send-off. Harambees can help, but they take time your family may not have, and they place the burden of asking on people who are already grieving. Rest Point gives funeral homes and welfare schemes the software to run last expense cover and funeral insurance for the families they serve â€” so when the worst happens, money is the one thing a family does not have to worry about.
                                 </p>
                                 <div className="hero-buttons">
                                     <button className="btn btn-dark" onClick={goStart}>Get Started <ArrowRight size={16} /></button>
@@ -499,7 +501,7 @@ export default function InsurancePage() {
                             <div className="edu-kicker"><Activity size={16} /> How It Works with Rest Point&rsquo;s Funeral Insurance</div>
                             <h2 className="edu-head">From enquiry to payout, managed in one place</h2>
                             <p className="edu-sub">
-                                Rest Point runs the entire funeral insurance lifecycle for your funeral home or welfare scheme. Families don&rsquo;t get lost in paperwork — every step is tracked, every contribution is recorded, and every claim is visible in real time.
+                                Rest Point runs the entire funeral insurance lifecycle for your funeral home or welfare scheme. Families don&rsquo;t get lost in paperwork â€” every step is tracked, every contribution is recorded, and every claim is visible in real time.
                             </p>
                             <div className="steps-grid" style={{ marginTop: '0.5rem' }}>
                                 {steps.map((step, i) => (
@@ -524,7 +526,7 @@ export default function InsurancePage() {
                                 <div className="edu-kicker"><Users size={16} /> Who Needs Last Expense Cover in Kenya</div>
                                 <h2 className="edu-head">Protection that starts with your members</h2>
                                 <p className="edu-sub">
-                                    With Rest Point, your organisation can offer affordable last expense cover to the people who need it most — and manage every policy without a single manual ledger.
+                                    With Rest Point, your organisation can offer affordable last expense cover to the people who need it most â€” and manage every policy without a single manual ledger.
                                 </p>
                             </div>
                             <ul className="content-list" style={{ marginTop: '0.5rem' }}>
@@ -543,7 +545,7 @@ export default function InsurancePage() {
                             <div className="edu-kicker"><DollarSign size={16} /> Why Kenyan Families Need a Plan, Not Just a Harambee</div>
                             <h2 className="edu-head">A safety net that does not depend on the generosity of others</h2>
                             <p className="edu-sub">
-                                Funeral costs in Kenya can run into hundreds of thousands of shillings once transport, venue, catering, and burial costs are added up. Harambees have long filled this gap, but they depend on the generosity and availability of others at exactly the moment your family is least able to organise one. With Rest Point, your funeral home or scheme gives members a plan that pays out quickly — while still leaning on friends and community for support rather than survival.
+                                Funeral costs in Kenya can run into hundreds of thousands of shillings once transport, venue, catering, and burial costs are added up. Harambees have long filled this gap, but they depend on the generosity and availability of others at exactly the moment your family is least able to organise one. With Rest Point, your funeral home or scheme gives members a plan that pays out quickly â€” while still leaning on friends and community for support rather than survival.
                             </p>
                             <div className="compare-grid">
                                 <div className="compare-col compare-warn">
@@ -594,7 +596,7 @@ export default function InsurancePage() {
                             <div className="edu-kicker"><Layers size={16} /> Benefits of Last Expense Cover with Rest Point</div>
                             <h2 className="edu-head">The software that keeps cover simple and claims fast</h2>
                             <p className="edu-sub">
-                                Families deserve dignity in difficult moments — and your team deserves tools that make running funeral cover effortless.
+                                Families deserve dignity in difficult moments â€” and your team deserves tools that make running funeral cover effortless.
                             </p>
                             <div className="feature-grid" style={{ marginTop: '1.5rem' }}>
                                 {softBenefits.map((feat, i) => (

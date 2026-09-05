@@ -6,6 +6,7 @@ import { DateTime } from 'luxon';
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import fs from 'fs';
+import sharp from 'sharp';
 
 interface TenantRequest extends Request {
     tenantSlug?: string;
@@ -105,6 +106,57 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
     }
 };
 
+/**
+ * Force a signature image buffer into pure INK-BLUE ink (#0f33e7) on a
+ * transparent background. The client canvas draws with penColor #0f33e7, but
+ * anti-aliased edge pixels and PNG encoding can shift the colour after
+ * processing. Rebuilding the pixels guarantees every stored/rendered signature
+ * is always pure ink blue — identical to the other signature pipelines
+ * (bodyRelease, deceased-service).
+ */
+async function toInkBlueBuffer(buffer: Buffer): Promise<Buffer> {
+    const { data, info } = await sharp(buffer)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+    const INK_BLUE = { r: 15, g: 51, b: 231 }; // #0f33e7 — matches the signature pad penColor
+    const normalized = Buffer.alloc(data.length);
+    for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i + 3] / 255;
+        const luminance = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
+        const ink = alpha * Math.pow(1 - luminance, 0.45);
+        normalized[i] = INK_BLUE.r;
+        normalized[i + 1] = INK_BLUE.g;
+        normalized[i + 2] = INK_BLUE.b;
+        normalized[i + 3] = Math.round(Math.min(1, Math.max(0, ink)) * 255);
+    }
+
+    return sharp(normalized, { raw: { width: info.width, height: info.height, channels: 4 } })
+        .png({ compressionLevel: 9, palette: false })
+        .toBuffer();
+}
+
+/**
+ * Normalize a base64 data-URL signature to pure ink blue and return a fresh
+ * base64 data URL. Used before persisting the signature so the stored value
+ * is always ink blue.
+ */
+async function normalizeSignatureToInkBlue(signatureDataUrl: string): Promise<string> {
+    if (!signatureDataUrl || !signatureDataUrl.startsWith('data:image')) {
+        return signatureDataUrl;
+    }
+    try {
+        const base64Data = signatureDataUrl.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        const inkBuffer = await toInkBlueBuffer(buffer);
+        return `data:image/png;base64,${inkBuffer.toString('base64')}`;
+    } catch (error: any) {
+        Logger.warn(`[POSTMORTEM] Failed to normalize signature to ink blue: ${error.message}`);
+        return signatureDataUrl;
+    }
+}
+
 export const savePostmortem = async (req: TenantRequest, res: Response): Promise<Response> => {
     const tenantSlug = req.headers['x-slug'] as string || req.headers['x-tenant-slug'] as string || req.tenantSlug;
 
@@ -124,6 +176,15 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
 
         const dbName = await resolveDatabase(tenantSlug);
         if (!dbName) return res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
+
+        // ─── INK-BLUE NORMALIZATION ──────────────────────────────────────
+        // Normalize the signature to pure ink blue (#0f33e7) before storing,
+        // so it always renders as ink blue in the generated PDF — matching the
+        // canvas stroke colour and the other signature pipelines.
+        const rawSignature = (req.body as any).signature_base64;
+        const signature_base64 = rawSignature
+            ? await normalizeSignatureToInkBlue(rawSignature)
+            : null;
 
         const existingQuery = 'SELECT id FROM postmortem WHERE deceased_id = ?';
         const existing = await safeTenantQuery(dbName, existingQuery, [deceased_id]);
@@ -146,7 +207,7 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                 manner_of_death, requesting_authority,
                 typeof findings === 'string' ? findings : JSON.stringify(findings),
                 head_findings || null, chest_findings || null, abdomen_findings || null, extremities_findings || null,
-                toxicology_findings || null, custom_findings || null, (req.body as any).signature_base64 || null,
+                toxicology_findings || null, custom_findings || null, signature_base64,
                 staff_username || null, mortuary_name || null, now, deceased_id
             ]);
 
@@ -194,7 +255,7 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                 typeof findings === 'string' ? findings : JSON.stringify(findings),
                 head_findings || null, chest_findings || null, abdomen_findings || null, extremities_findings || null,
                 toxicology_findings || null, custom_findings || null, staff_username || null, mortuary_name || null,
-                (req.body as any).signature_base64 || null, now, now
+                signature_base64, now, now
             ]);
 
             emitPostmortemUpdate(tenantSlug, deceased_id, { status: 'completed', pathologist_name, cause_of_death, manner_of_death, completed_at: now });
@@ -624,8 +685,12 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         const sigImgY = sigBoxY + 12;
         if (signatureBuffer) {
             try {
+                // Force ink-blue normalization so the signature always renders
+                // as pure #0f33e7 on the PDF, even for signatures saved before
+                // normalization was introduced.
+                const inkSigBuffer = await toInkBlueBuffer(signatureBuffer);
                 // Constrained to 200x40 to prevent overlapping the stamp
-                doc.image(signatureBuffer, MARGIN, sigImgY, { fit: [200, 35] });
+                doc.image(inkSigBuffer, MARGIN, sigImgY, { fit: [200, 35] });
             } catch (err) {
                 doc.fillColor('#0f33e7').font('Times-Italic').fontSize(18).text(examinerName, MARGIN, sigImgY, { width: sigWidth });
             }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, ArrowRight, ChevronDown, Menu, X, Users, Building, Building2, Quote } from '../../utils/icons/icons';
 import Footer from '../../components/layout/Footer';
@@ -110,6 +110,7 @@ const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
                     <button onClick={() => { navigate('/'); setOpen(false); }} className="mobile-link">Home</button>
                     <button onClick={() => { navigate('/about-welt-tallis'); setOpen(false); }} className="mobile-link">About</button>
                     <button onClick={() => { navigate('/insurance'); setOpen(false); }} className="mobile-link">Insurance Brokers</button>
+                    <button onClick={() => { navigate('/blog'); setOpen(false); }} className="mobile-link">Blog</button>
                     <div className="mobile-policies-header">
                         <div className="mono-label" style={{ color: C.brass, padding: '0.6rem 1.2rem' }}>Policies</div>
                         {policies.map((p, i) => (
@@ -356,6 +357,7 @@ export default function SACCOFuneralInsurance() {
                         <button onClick={() => navigate('/')} className="nav-link">Home</button>
                         <button onClick={() => navigate('/about-welt-tallis')} className="nav-link">About</button>
                         <button onClick={() => navigate('/insurance')} className="nav-link">Insurance Brokers</button>
+                        <button onClick={() => navigate('/blog')} className="nav-link">Blog</button>
                         <PolicyDropdown navigate={navigate} goTerms={goTerms} />
                     </div>
                     <div className="nav-cta">

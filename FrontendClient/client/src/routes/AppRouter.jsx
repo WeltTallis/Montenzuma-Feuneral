@@ -29,10 +29,12 @@ const MortuaryBillingSoftware = lazy(() => import('../modules/seo/MortuaryBillin
 const PricingPage = lazy(() => import('../modules/seo/PricingPage'));
 
 // Blog and Resource Pages
+const BlogIndex = lazy(() => import('../modules/blog/BlogIndex'));
 const BereavementManagementGuide = lazy(() => import('../modules/blog/BereavementManagementGuide'));
 const MemberContributionsGuide = lazy(() => import('../modules/blog/MemberContributionsGuide'));
 const FuneralWelfareGuide = lazy(() => import('../modules/blog/FuneralWelfareGuide'));
 const FutureDeathCareGuide = lazy(() => import('../modules/blog/FutureDeathCareGuide'));
+const ArchitectureOfBlooms = lazy(() => import('../modules/blog/Journals/ArchitectureOfBlooms'));
 
 // Comparison Pages
 const BestChurchSoftwareKenya = lazy(() => import('../modules/compare/BestChurchSoftwareKenya'));
@@ -727,10 +729,12 @@ const AppRouter = () => (
       <Route path="/pricing" element={<PricingPage />} />
 
       // Blog and Resource Routes
+      <Route path="/blog" element={<BlogIndex />} />
       <Route path="/blog/funeral-welfare-management" element={<FuneralWelfareGuide />} />
       <Route path="/blog/bereavement-management" element={<BereavementManagementGuide />} />
       <Route path="/blog/member-contributions" element={<MemberContributionsGuide />} />
-      <Route path="/blog/future-of-death-care-software-restpoint" element={<FutureDeathCareGuide />} />
+            <Route path="/blog/future-of-death-care-software-restpoint" element={<FutureDeathCareGuide />} />
+      <Route path="/blog/architecture-of-blooms" element={<ArchitectureOfBlooms />} />
 
       // Comparison Routes
       <Route path="/compare/restpoint-vs-excel" element={<RestPointVsExcel />} />

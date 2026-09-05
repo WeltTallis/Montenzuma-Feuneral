@@ -373,6 +373,7 @@ export default function ReleasePolicy() {
             <li><a href="/terms" onClick={(e) => { e.preventDefault(); navigate('/terms'); }}>Terms</a></li>
             <li><a href="/sla" onClick={(e) => { e.preventDefault(); navigate('/sla'); }}>SLA</a></li>
             <li><a href="/security" onClick={(e) => { e.preventDefault(); navigate('/security'); }}>Security</a></li>
+            <li><a href="/blog" onClick={(e) => { e.preventDefault(); navigate('/blog'); }}>Blog</a></li>
             <li><a href="/contact" onClick={(e) => { e.preventDefault(); navigate('/contact'); }}>Contact</a></li>
           </ul>
           <div className="nav-cta">

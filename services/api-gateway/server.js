@@ -475,6 +475,8 @@ const SERVICE_ROUTES = {
   'tenants': SERVICE_URLS.tenant,
   'system-admin': SERVICE_URLS.tenant,
   'uploads': SERVICE_URLS.tenant,
+  'blog': SERVICE_URLS.tenant,
+  'blog-engagement': SERVICE_URLS.tenant,
 
   'deceased': SERVICE_URLS.deceased,
   'autopsy': SERVICE_URLS.deceased,

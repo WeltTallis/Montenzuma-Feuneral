@@ -7,6 +7,7 @@ import * as mysql from 'mysql2/promise';
 import { TenantModel } from './models/Tenant.model';
 import onboardingRoutes from './routes/onboardingRoutes';
 import systemAdminRoutes from './routes/systemAdminRoutes';
+import blogEngagementRoutes from './routes/blogEngagementRoutes';
 import { UserController } from './controllers/userController';
 import { BranchController } from './controllers/branchController';
 import { errorHandler, notFoundHandler, asyncHandler } from '../app-global/middlewares/errorHandler';
@@ -730,6 +731,13 @@ app.use('/onboarding', onboardingRoutes);
 // SYSTEM ADMIN ROUTES
 // ============================================
 app.use('/system-admin', systemAdminRoutes);
+
+// ============================================
+// BLOG ENGAGEMENT (Restpoint Journal - views / likes / comments)
+// Persisted in a JSON file; reached through the API gateway at
+// /api/v1/restpoint/blog-engagement/...
+// ============================================
+app.use('/blog-engagement', blogEngagementRoutes);
 
 // ============================================
 // HEALTH CHECK

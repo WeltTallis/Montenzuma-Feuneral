@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Children } from 'react';
+﻿import { useState, useEffect, useRef, Children } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, TrendingUp, Search, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy } from '../../utils/icons/icons';
@@ -11,9 +11,9 @@ import NewsroomSection from '../newsroom/NewsroomSection';
 import C from '../../utils/colors/index'
 
 
-/* ═══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    HOOKS
-   ═══════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function useReveal() {
     const ref = useRef(null);
     const [shown, setShown] = useState(false);
@@ -43,9 +43,9 @@ const useOutsideClick = (ref, callback) => {
     }, [ref]);
 };
 
-/* ═══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    ANIMATION COMPONENTS
-   ═══════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const Reveal = ({ children, delay = 0, style = {}, className = '' }) => {
     const [ref, shown] = useReveal();
     return (
@@ -103,9 +103,9 @@ const AnimatedNumber = ({ end, suffix = '', duration = 2000 }) => {
     return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
 };
 
-/* ═══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    SHARED COMPONENTS
-   ═══════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const Mark = ({ size = 28, color = C.verdigris }) => (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
         <circle cx="16" cy="16" r="15" stroke={color} strokeWidth="1.5" />
@@ -141,9 +141,9 @@ const Marquee = ({ items, speed = 35 }) => (
     </div>
 );
 
-/* ═══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    NAVIGATION (FIXED DROPDOWN)
-   ═══════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const PolicyDropdown = ({ navigate, goTerms }) => {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
@@ -205,6 +205,7 @@ const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
                     <a href="#features" onClick={() => setOpen(false)} className="mobile-link">Features</a>
                     <a href="#modules" onClick={() => setOpen(false)} className="mobile-link">Modules</a>
                     <button onClick={() => { navigate('/about'); setOpen(false); }} className="mobile-link">About</button>
+                    <button onClick={() => { navigate('/blog'); setOpen(false); }} className="mobile-link">Blog</button>
                     <div className="mobile-policies-header">
                         <div className="mono-label" style={{ color: C.brass, padding: '0.6rem 1.2rem' }}>Policies</div>
                         {policies.map((p, i) => (
@@ -219,9 +220,9 @@ const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
     );
 };
 
-/* ═══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MOCK COMPONENTS
-   ═══════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const MockDocuments = () => (
     <div className="mock-inner">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -335,7 +336,7 @@ const MockDocumentAutomation = () => {
                     <>
                         <div style={{ borderBottom: `1px solid ${C.lineDark}`, paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
                             <div style={{ fontSize: '0.95rem', fontWeight: 600, color: C.bone }}>{docs[selectedDoc].name}</div>
-                            <div style={{ fontSize: '0.7rem', fontFamily: "'JetBrains Mono', monospace", color: C.grayLight, marginTop: '0.2rem' }}>Template {docs[selectedDoc].version} · Auto-filled from case data</div>
+                            <div style={{ fontSize: '0.7rem', fontFamily: "'JetBrains Mono', monospace", color: C.grayLight, marginTop: '0.2rem' }}>Template {docs[selectedDoc].version} Â· Auto-filled from case data</div>
                         </div>
                         <div style={{ fontSize: '0.82rem', color: C.grayLight, lineHeight: 1.8 }}>
                             <div className="doc-field"><span>Deceased:</span> <strong style={{ color: C.bone }}>Otieno, James M.</strong></div>
@@ -369,7 +370,7 @@ const MockDocumentAutomation = () => {
     );
 };
 
-/* ── Support Ticket mock: live conversation between client & support team ── */
+/* â”€â”€ Support Ticket mock: live conversation between client & support team â”€â”€ */
 const MockSupport = () => (
     <div className="mock-inner">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
@@ -388,7 +389,7 @@ const MockSupport = () => (
         <div style={{ display: 'flex', gap: '0.7rem', marginBottom: '1rem' }}>
             <div className="avatar" style={{ background: C.accent, width: 30, height: 30, fontSize: '0.7rem', flexShrink: 0 }}>SM</div>
             <div style={{ background: C.bone2, borderRadius: '10px 10px 10px 2px', padding: '0.75rem 1rem', flex: 1 }}>
-                <div style={{ fontSize: '0.68rem', fontFamily: "'JetBrains Mono', monospace", color: C.gray, marginBottom: '0.3rem' }}>Sarah M. · 10:32 AM</div>
+                <div style={{ fontSize: '0.68rem', fontFamily: "'JetBrains Mono', monospace", color: C.gray, marginBottom: '0.3rem' }}>Sarah M. Â· 10:32 AM</div>
                 <div style={{ fontSize: '0.84rem', color: C.ink, lineHeight: 1.6 }}>Booking freezes when I click confirm on the hearse page.</div>
             </div>
         </div>
@@ -397,8 +398,8 @@ const MockSupport = () => (
         <div style={{ display: 'flex', gap: '0.7rem', marginBottom: '1rem', flexDirection: 'row-reverse' }}>
             <div className="avatar" style={{ background: C.verdigris, width: 30, height: 30, fontSize: '0.62rem', flexShrink: 0 }}>RP</div>
             <div style={{ background: C.verdigrisTint || 'rgba(61,79,71,0.08)', border: `1px solid ${C.line}`, borderRadius: '10px 10px 2px 10px', padding: '0.75rem 1rem', flex: 1 }}>
-                <div style={{ fontSize: '0.68rem', fontFamily: "'JetBrains Mono', monospace", color: C.verdigris, marginBottom: '0.3rem', fontWeight: 600 }}>RESTPOINT SUPPORT · 10:35 AM</div>
-                <div style={{ fontSize: '0.84rem', color: C.ink, lineHeight: 1.6 }}>Thanks Sarah — our team is on it. A fix is being deployed now; we'll update you here the moment it's live.</div>
+                <div style={{ fontSize: '0.68rem', fontFamily: "'JetBrains Mono', monospace", color: C.verdigris, marginBottom: '0.3rem', fontWeight: 600 }}>RESTPOINT SUPPORT Â· 10:35 AM</div>
+                <div style={{ fontSize: '0.84rem', color: C.ink, lineHeight: 1.6 }}>Thanks Sarah â€” our team is on it. A fix is being deployed now; we'll update you here the moment it's live.</div>
             </div>
         </div>
 
@@ -409,7 +410,7 @@ const MockSupport = () => (
             fontSize: '0.72rem', fontFamily: "'JetBrains Mono', monospace", color: C.gray,
         }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.verdigris, display: 'inline-block', animation: 'subtle-pulse 2s ease infinite' }} />
-            Support agent online · replies arrive in real time
+            Support agent online Â· replies arrive in real time
             <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: C.verdigris, fontWeight: 500 }}>
                 <MessageSquare size={12} /> Reply
             </span>
@@ -428,9 +429,9 @@ const Showcase = ({ no, title, desc, reverse, children }) => (
     </Reveal>
 );
 
-/* ═══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    QUICK FIND
-   ═══════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const QuickFindSection = () => {
     const [query, setQuery] = useState('');
     const [focused, setFocused] = useState(false);
@@ -477,9 +478,9 @@ const QuickFindSection = () => {
 };
 
 
-/* ═══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MAIN APP
-   ═══════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export default function App() {
     const [loaded, setLoaded] = useState(false);
     const [scrolled, setScrolled] = useState(false);
@@ -497,10 +498,10 @@ export default function App() {
         {
             dark: true,
             to: true,
-            category: 'NEW · INTEGRATED',
+            category: 'NEW Â· INTEGRATED',
             accent: C.brass,
             title: 'Leave Management',
-            excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve and track time off in real time — no spreadsheets, no external HR tools.',
+            excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve and track time off in real time â€” no spreadsheets, no external HR tools.',
             status: 'NOW LIVE',
         },
         {
@@ -514,10 +515,10 @@ export default function App() {
         {
             dark: true,
             to: true,
-            category: 'NEW · SUPPORT CENTER',
+            category: 'NEW Â· SUPPORT CENTER',
             accent: C.brass,
             title: 'Real-Time Customer Support',
-            excerpt: 'Submit issues directly through the platform and our support agents receive, respond, and resolve them in real time — with full status tracking and communication history.',
+            excerpt: 'Submit issues directly through the platform and our support agents receive, respond, and resolve them in real time â€” with full status tracking and communication history.',
             status: 'NOW LIVE',
         },
     ];
@@ -556,7 +557,7 @@ export default function App() {
         .wrap{max-width:1180px;margin:0 auto;padding:0 clamp(1.25rem,5vw,2.5rem)}
         nav .wrap{overflow:visible!important}
 
-        /* ── Nav ── */
+        /* â”€â”€ Nav â”€â”€ */
         nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(250,248,244,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid ${C.line};padding:1.2rem 0;transition:all 0.4s ease}
         nav.scrolled{background:rgba(250,248,244,0.96);box-shadow:0 1px 12px rgba(21,23,26,0.06)}
         .nav-wrap{display:flex;justify-content:space-between;align-items:center}
@@ -570,7 +571,7 @@ export default function App() {
         .nav-cta{display:flex;gap:0.75rem}
         .mobile-nav{display:none}
 
-        /* ── Policy Dropdown (REDESIGNED) ── */
+        /* â”€â”€ Policy Dropdown (REDESIGNED) â”€â”€ */
         .policy-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:${C.bone};border:1px solid ${C.line};border-radius:12px;min-width:280px;z-index:1000;box-shadow:0 24px 48px rgba(21,23,26,0.12),0 0 0 1px rgba(21,23,26,0.03);overflow:hidden;transition:all 0.3s cubic-bezier(0.16,1,0.3,1);transform-origin:top right}
         .policy-dropdown-inner{padding:0.4rem}
         .policy-dropdown-item{width:100%;padding:0.75rem 1rem;background:none;border:none;text-align:left;cursor:pointer;font-size:0.84rem;color:${C.gray};border-radius:8px;transition:all 0.2s;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:0.75rem}
@@ -585,14 +586,14 @@ export default function App() {
         .mobile-link:hover{background:${C.bone2}}
         .mobile-policies-header{padding:0.5rem 0;border-bottom:1px solid ${C.line};background:${C.bone2}}
 
-        /* ── Hero ── */
+        /* â”€â”€ Hero â”€â”€ */
         .hero{padding-top:140px;padding-bottom:0;position:relative;overflow:hidden}
         .hero::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 20% 50%,rgba(61,79,71,0.06) 0%,transparent 50%),radial-gradient(circle at 80% 80%,rgba(139,115,85,0.05) 0%,transparent 50%);pointer-events:none}
         .hero-grid{display:grid;grid-template-columns:1.2fr 0.8fr;gap:4rem;align-items:center;position:relative;z-index:1}
         .hero-desc{font-size:1.1rem;max-width:540px;margin-bottom:2rem;color:${C.gray};line-height:1.8}
         .hero-buttons{display:flex;gap:1rem;flex-wrap:wrap}
 
-        /* ── Sales Banner ── */
+        /* â”€â”€ Sales Banner â”€â”€ */
         .sales-banner{position:relative;border-radius:16px;overflow:hidden;margin-top:3rem;box-shadow:0 30px 60px -15px rgba(21,23,26,0.2);border:1px solid ${C.line};animation:subtle-float 6s ease-in-out infinite}
         .sales-banner-img{width:100%;height:clamp(250px,35vw,420px);object-fit:cover;display:block;transition:transform 8s ease}
         .sales-banner:hover .sales-banner-img{transform:scale(1.03)}
@@ -600,13 +601,13 @@ export default function App() {
         .sales-banner-shine{position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(250,248,244,0.07),transparent);animation:shine 5s ease-in-out infinite 3s;pointer-events:none}
         .sales-banner-content{position:absolute;bottom:clamp(1.5rem,4vw,3rem);left:clamp(1.5rem,4vw,3rem);z-index:2;max-width:480px}
 
-        /* ── Marquee ── */
+        /* â”€â”€ Marquee â”€â”€ */
         .marquee-strip{overflow:hidden;border-top:1px solid ${C.line};border-bottom:1px solid ${C.line};padding:0.9rem 0;background:#000000}
         .marquee-track{display:flex;width:max-content;animation:marquee 35s linear infinite}
         .marquee-item{display:inline-flex;align-items:center;gap:0.6rem;padding:0 1.8rem;font-size:0.78rem;color:#FFFFFF;font-family:'JetBrains Mono',monospace;white-space:nowrap;text-transform:uppercase;letter-spacing:0.1em}
         .marquee-dot{width:4px;height:4px;border-radius:50%;background:#FFFFFF;display:inline-block;flex-shrink:0}
 
-        /* ── Quick Find ── */
+        /* â”€â”€ Quick Find â”€â”€ */
         .quickfind-section{padding:clamp(4rem,8vw,6rem) 0;background:${C.bone}}
         .search-bar{display:flex;align-items:center;gap:0.8rem;padding:0.9rem 1.4rem;border:1.5px solid ${C.line};border-radius:12px;background:${C.bone};transition:all 0.35s ease;box-shadow:0 2px 8px rgba(21,23,26,0.03)}
         .search-bar.focused{border-color:${C.verdigris};box-shadow:0 4px 20px rgba(61,79,71,0.1),0 0 0 3px rgba(61,79,71,0.06)}
@@ -623,9 +624,9 @@ export default function App() {
         .quickfind-arrow{margin-left:auto;flex-shrink:0;color:${C.gray};opacity:0;transform:translateX(-6px);transition:all 0.3s ease}
         .quickfind-card:hover .quickfind-arrow{opacity:1;transform:translateX(0);color:var(--card-color)}
 
-        /* ══════════════════════════════════
-           UNIFIED PLATFORM — REDESIGNED
-           ══════════════════════════════════ */
+        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+           UNIFIED PLATFORM â€” REDESIGNED
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         .unified-section{padding:clamp(5rem,10vw,8rem) 0;background:#0C0C0C;position:relative;overflow:hidden}
         .unified-bg-grid{position:absolute;inset:0;background-image:radial-gradient(rgba(250,248,244,0.06) 1px,transparent 1px);background-size:28px 28px;pointer-events:none}
         .unified-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Fraunces',serif;font-size:clamp(6rem,18vw,16rem);font-weight:700;color:rgba(250,248,244,0.02);pointer-events:none;white-space:nowrap;letter-spacing:-0.03em;user-select:none}
@@ -674,9 +675,9 @@ export default function App() {
         }
         .unified-micro{margin-top:1.2rem;font-size:0.78rem;color:rgba(250,248,244,0.3);font-family:'JetBrains Mono',monospace;letter-spacing:0.05em}
 
-        /* ══════════════════════════════════
-           INSURANCE — REDESIGNED (LIGHT)
-           ══════════════════════════════════ */
+        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+           INSURANCE â€” REDESIGNED (LIGHT)
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         .insurance-section{
           padding:clamp(5rem,10vw,7rem) 0;background:${C.bone};
           border-top:1px solid ${C.line};position:relative;overflow:hidden;
@@ -704,9 +705,9 @@ export default function App() {
           border:1px solid ${C.line};background:${C.bone2};color:${C.brass};
         }
 
-        /* ══════════════════════════════════
-           INFRASTRUCTURE — BLACK REDESIGN
-           ══════════════════════════════════ */
+        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+           INFRASTRUCTURE â€” BLACK REDESIGN
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         .infra-section{
           background:#0A0A0A;padding:clamp(5rem,10vw,7rem) 0;
           position:relative;overflow:hidden;border-top:1px solid rgba(250,248,244,0.06);
@@ -753,7 +754,7 @@ export default function App() {
         .infra-desc-dark{font-size:0.9rem;color:rgba(250,248,244,0.45);line-height:1.75}
         .infra-card-dark:hover .infra-desc-dark{color:rgba(250,248,244,0.65)}
 
-        /* ── App Window ── */
+        /* â”€â”€ App Window â”€â”€ */
         .app-window{border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -15px rgba(21,23,26,0.2);border:1px solid ${C.line};width:100%;transition:transform 0.4s cubic-bezier(0.16,1,0.3,1)}
         .app-window:hover{transform:translateY(-8px)}
         .window-header{display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1.2rem;border-bottom:1px solid ${C.line};background:${C.bone2}}
@@ -806,7 +807,7 @@ export default function App() {
         .progress-track{width:100%;height:6px;background:rgba(250,248,244,0.1);border-radius:3px;overflow:hidden}
         .progress-fill{width:72%;height:100%;background:${C.brass};border-radius:3px}
 
-        /* ── Sections ── */
+        /* â”€â”€ Sections â”€â”€ */
         .section{padding:clamp(4rem,8vw,6rem) 0}
         .showcase-mobile{display:grid;grid-template-columns:1.1fr 1fr;gap:4rem;align-items:center;margin-bottom:6rem}
         .about-section{background:${C.bone};padding:clamp(3rem,6vw,4rem) 0;border-top:1px solid ${C.line}}
@@ -835,10 +836,10 @@ export default function App() {
         @keyframes module-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.7)}}
         @keyframes subtle-pulse{0%,100%{box-shadow:0 0 0 0 rgba(61,79,71,0.4)}70%{box-shadow:0 0 0 6px rgba(61,79,71,0)}}
 
-        /* ── CTA ── */
-        /* ── Newsroom moved to modules/newsroom ── */
+        /* â”€â”€ CTA â”€â”€ */
+        /* â”€â”€ Newsroom moved to modules/newsroom â”€â”€ */
 
-        /* ── Keyframes ── */
+        /* â”€â”€ Keyframes â”€â”€ */
         @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-25%)}}
         @keyframes shine{0%{left:-100%}50%,100%{left:200%}}
         @keyframes subtle-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
@@ -846,7 +847,7 @@ export default function App() {
         @keyframes gradient-text{0%{background-position:0% center}50%{background-position:100% center}100%{background-position:0% center}}
         @keyframes truckMove{from{left:30%}to{left:60%}}
 
-        /* ── Responsive ── */
+        /* â”€â”€ Responsive â”€â”€ */
         @media(max-width:800px){.nav-links{display:none}.nav-cta{display:none}.mobile-nav{display:flex;gap:0.5rem;align-items:center}}
         @media(max-width:768px){
           .hero-grid{grid-template-columns:1fr;gap:2.5rem}
@@ -875,7 +876,7 @@ export default function App() {
       `}</style>
 
             <main>
-                {/* ── Navigation ── */}
+                {/* â”€â”€ Navigation â”€â”€ */}
                 <nav className={scrolled ? 'scrolled' : ''}>
                     <div className="wrap nav-wrap">
                         <div className="logo" onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/'); }}>
@@ -885,6 +886,7 @@ export default function App() {
                             <a href="#features" className="nav-link">Features</a>
                             <a href="#modules" className="nav-link">Modules</a>
                             <button onClick={goAbout} className="nav-link">About</button>
+                            <button onClick={() => navigate('/blog')} className="nav-link">Blog</button>
                             <PolicyDropdown navigate={navigate} goTerms={goTerms} />
                         </div>
                         <div className="nav-cta">
@@ -895,7 +897,7 @@ export default function App() {
                     </div>
                 </nav>
 
-                {/* ── Hero ── */}
+                {/* â”€â”€ Hero â”€â”€ */}
                 <section className="hero">
                     <div className="wrap">
                         <div style={{ opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(20px)', transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1)' }}>
@@ -953,7 +955,7 @@ export default function App() {
 
                 <ModuleGridSection />
 
-                {/* ── Features ── */}
+                {/* â”€â”€ Features â”€â”€ */}
                 <section id="features" className="section">
                     <div className="wrap">
                         <Reveal>
@@ -978,15 +980,15 @@ export default function App() {
                         <Showcase no="05" title="Document automation engine" desc="Generate release forms, autopsy records, death certificates, and burial permits automatically. Digital signatures included." reverse={false}>
                             <AppWindow title="restpoint.app/documents" dark><MockDocumentAutomation /></AppWindow>
                         </Showcase>
-                        <Showcase no="06" title="Real-Time Customer Support" desc="Clients can submit issues directly through the platform, while support agents receive, respond to, and resolve requests in real time. The system provides status tracking, communication history, and centralized issue management — so no question ever goes unanswered." reverse={true}>
+                        <Showcase no="06" title="Real-Time Customer Support" desc="Clients can submit issues directly through the platform, while support agents receive, respond to, and resolve requests in real time. The system provides status tracking, communication history, and centralized issue management â€” so no question ever goes unanswered." reverse={true}>
                             <AppWindow title="restpoint.app/support"><MockSupport /></AppWindow>
                         </Showcase>
                     </div>
                 </section>
 
-                {/* ══════════════════════════════════
-            INSURANCE — REDESIGNED (LIGHT)
-            ══════════════════════════════════ */}
+                {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+            INSURANCE â€” REDESIGNED (LIGHT)
+            â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
                 <section id="insurance" className="insurance-section">
                     <div className="insurance-accent-bar" />
                     <div className="insurance-decor-circle" />
@@ -1004,7 +1006,7 @@ export default function App() {
                                     Families go through immense pain when they lose a loved one, only to be burdened with huge hospital bills and funeral expenses. We break down these barriers by bringing comprehensive funeral insurance solutions directly to your organization.
                                 </p>
                                 <p style={{ color: C.gray, lineHeight: 1.9, marginBottom: '2.5rem', fontSize: '1.02rem' }}>
-                                    Rest Point now includes funeral insurance management and welfare scheme administration tools — claims, contributions, member tracking, and automated payouts all in one place.
+                                    Rest Point now includes funeral insurance management and welfare scheme administration tools â€” claims, contributions, member tracking, and automated payouts all in one place.
                                 </p>
                                 <button className="btn btn-dark" onClick={() => navigate('/insurance')} style={{ padding: '1rem 2rem' }}>
                                     Learn about funeral insurance <ArrowRight size={16} />
@@ -1017,9 +1019,9 @@ export default function App() {
                     </div>
                 </section>
 
-                {/* ══════════════════════════════════
-            INFRASTRUCTURE — BLACK REDESIGN
-            ══════════════════════════════════ */}
+                {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+            INFRASTRUCTURE â€” BLACK REDESIGN
+            â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
                 <section id="infra" className="infra-section">
                     <div className="infra-grid-bg" />
                     <div className="infra-glow" />
@@ -1053,13 +1055,13 @@ export default function App() {
                     </div>
                 </section>
 
-                {/* ── About ── */}
+                {/* â”€â”€ About â”€â”€ */}
                 <section className="about-section">
                     <div className="wrap about-grid">
                         <Reveal>
                             <div className="label" style={{ marginBottom: '1rem' }}>Our Mission</div>
                             <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', marginBottom: '1.5rem' }}>Rest Point was created to bring peace to families during their darkest moments.</h2>
-                            <p style={{ color: C.gray, marginBottom: '1.5rem', lineHeight: 1.8 }}>We recognized a gap in how funeral homes and welfare groups manage operations. The paperwork, the miscommunication, the delayed claims—it all adds unnecessary stress to grieving families.</p>
+                            <p style={{ color: C.gray, marginBottom: '1.5rem', lineHeight: 1.8 }}>We recognized a gap in how funeral homes and welfare groups manage operations. The paperwork, the miscommunication, the delayed claimsâ€”it all adds unnecessary stress to grieving families.</p>
                             <p style={{ color: C.gray, marginBottom: '2rem', lineHeight: 1.8 }}>Our platform streamlines the entire process so you can focus on what truly matters: providing compassionate care and supporting families with dignity and respect.</p>
                             <button className="btn btn-line" onClick={goAbout}>Learn more about us</button>
                         </Reveal>
@@ -1071,7 +1073,7 @@ export default function App() {
                     </div>
                 </section>
 
-                {/* ── Modules ── */}
+                {/* â”€â”€ Modules â”€â”€ */}
                 <section id="modules" className="modules-section">
                     <div className="wrap">
                         <div className="modules-header">
@@ -1102,7 +1104,7 @@ export default function App() {
                     </div>
                 </section>
 
-                {/* ── Newsroom ── */}
+                {/* â”€â”€ Newsroom â”€â”€ */}
                 <NewsroomSection />
 
                 <Footer />

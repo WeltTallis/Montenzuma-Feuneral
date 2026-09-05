@@ -193,6 +193,7 @@ const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
           <a href="#features" onClick={() => setOpen(false)} className="mobile-link">Features</a>
           <a href="#modules" onClick={() => setOpen(false)} className="mobile-link">Modules</a>
           <button onClick={() => { navigate('/about'); setOpen(false); }} className="mobile-link">About</button>
+          <button onClick={() => { navigate('/blog'); setOpen(false); }} className="mobile-link">Blog</button>
           <div className="mobile-policies-header">
             <div className="mono-label" style={{ color: C.brass, padding: '0.6rem 1.2rem' }}>Policies</div>
             {policies.map((p, i) => (
@@ -818,6 +819,7 @@ export default function App() {
               <a href="#features" className="nav-link">Features</a>
               <a href="#modules" className="nav-link">Modules</a>
               <button onClick={goAbout} className="nav-link">About</button>
+              <button onClick={() => navigate('/blog')} className="nav-link">Blog</button>
               <PolicyDropdown navigate={navigate} goTerms={goTerms} />
             </div>
             <div className="nav-cta">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, X, ArrowRight, ArrowUpRight, GraduationCap, ShieldCheck, Users, Zap, CheckCircle, Code2, Server, Settings, Trophy, Building2, Smartphone, MonitorSmartphone, Brain, Cpu } from '../../utils/icons/icons';
 import Footer from '../../components/layout/Footer';
@@ -129,6 +129,7 @@ const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
                     <button onClick={() => { navigate('/'); setOpen(false); }} className="mobile-link">Home</button>
                     <button onClick={() => { navigate('/about-welt-tallis'); setOpen(false); }} className="mobile-link">About</button>
                     <button onClick={() => { navigate('/insurance'); setOpen(false); }} className="mobile-link">Insurance Brokers</button>
+                    <button onClick={() => { navigate('/blog'); setOpen(false); }} className="mobile-link">Blog</button>
                     <div className="mobile-policies-header">
                         <div className="mono-label" style={{ color: C.brass, padding: '0.6rem 1.2rem' }}>Policies</div>
                         {policies.map((p, i) => (
@@ -210,7 +211,7 @@ export default function WeltTallisAbout() {
                 .mobile-link:hover{background:${C.bone2}}
                 .mobile-policies-header{padding:0.5rem 0;border-bottom:1px solid ${C.line};background:${C.bone2}}
 
-                /* ── Hero ── */
+                /* â”€â”€ Hero â”€â”€ */
                 .about-hero{padding-top:160px;padding-bottom:clamp(4rem,8vw,7rem);position:relative;overflow:hidden;background:#0A0A0A}
                 .about-hero-grid-bg{position:absolute;inset:0;background-image:radial-gradient(rgba(250,248,244,0.05) 1px,transparent 1px);background-size:28px 28px;pointer-events:none}
                 .about-hero-glow{position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(61,79,71,0.12) 0%,transparent 60%);top:-200px;left:10%;pointer-events:none}
@@ -221,7 +222,7 @@ export default function WeltTallisAbout() {
                 .about-hero-desc{color:rgba(250,248,244,0.55);font-size:1.15rem;max-width:620px;margin:1.8rem 0 2.5rem;line-height:1.85}
                 .about-hero-buttons{display:flex;gap:1rem;flex-wrap:wrap}
 
-                /* ── What We Do ── */
+                /* â”€â”€ What We Do â”€â”€ */
                 .what-we-do{padding:clamp(5rem,10vw,7rem) 0;background:${C.bone};border-top:1px solid ${C.line}}
                 .capabilities-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:${C.line};margin-top:3.5rem;border:1px solid ${C.line};border-radius:12px;overflow:hidden}
                 .capability-cell{background:${C.bone};padding:clamp(1.8rem,3vw,2.5rem);transition:all 0.4s ease;position:relative}
@@ -234,7 +235,7 @@ export default function WeltTallisAbout() {
                 .capability-title{font-family:'Inter',sans-serif;font-size:1rem;font-weight:600;color:${C.ink};margin-bottom:0.6rem}
                 .capability-desc{font-size:0.85rem;color:${C.gray};line-height:1.65}
 
-                /* ── Products ── */
+                /* â”€â”€ Products â”€â”€ */
                 .products-section{padding:clamp(5rem,10vw,7rem) 0;background:#0A0A0A;position:relative;overflow:hidden}
                 .products-grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(61,79,71,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(61,79,71,0.03) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
                 .product-card{position:relative;background:rgba(250,248,244,0.03);border:1px solid rgba(250,248,244,0.07);border-radius:20px;overflow:hidden;transition:all 0.5s cubic-bezier(0.16,1,0.3,1)}
@@ -254,7 +255,7 @@ export default function WeltTallisAbout() {
                 .product-link-arrow{transition:transform 0.3s ease}
                 .product-link:hover .product-link-arrow{transform:translateX(4px)}
 
-                /* ── Team ── */
+                /* â”€â”€ Team â”€â”€ */
                 .team-section{padding:clamp(5rem,10vw,7rem) 0;background:${C.bone};border-top:1px solid ${C.line}}
                 .team-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:3.5rem;max-width:960px}
                 .team-member{background:${C.bone};border:1px solid ${C.line};border-radius:16px;padding:clamp(2rem,3vw,3rem);transition:all 0.5s cubic-bezier(0.16,1,0.3,1);position:relative;overflow:hidden}
@@ -273,7 +274,7 @@ export default function WeltTallisAbout() {
                 .team-tech-tags{display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:1.2rem}
                 .team-tech-tag{padding:0.3rem 0.7rem;border-radius:4px;font-size:0.68rem;font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;background:${C.bone2};color:${C.grayDark};border:1px solid ${C.line}}
 
-                /* ── CTA ── */
+                /* â”€â”€ CTA â”€â”€ */
                 .cta-wrapper{background:${C.bone};padding:clamp(4rem,8vw,7rem) 0}
                 .cta-card{position:relative;background:linear-gradient(135deg,${C.ink} 0%,${C.verdigrisDark} 100%);border-radius:24px;padding:clamp(3rem,6vw,5rem) 2rem;overflow:hidden;border:1px solid ${C.lineDark};box-shadow:0 40px 80px -20px rgba(21,23,26,0.3)}
                 .cta-card::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background-image:radial-gradient(circle at 50% 0%,rgba(139,115,85,0.15) 0%,transparent 50%),linear-gradient(rgba(250,248,244,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(250,248,244,0.03) 1px,transparent 1px);background-size:100% 100%,40px 40px,40px 40px;pointer-events:none}
@@ -313,6 +314,7 @@ export default function WeltTallisAbout() {
                             <button onClick={() => navigate('/')} className="nav-link">Home</button>
                             <button onClick={() => navigate('/about-welt-tallis')} className="nav-link" style={{ color: C.verdigris, fontWeight: 600 }}>About</button>
                             <button onClick={() => navigate('/insurance')} className="nav-link">Insurance Brokers</button>
+                            <button onClick={() => navigate('/blog')} className="nav-link">Blog</button>
                             <PolicyDropdown navigate={navigate} goTerms={goTerms} />
                         </div>
                         <div className="nav-cta">
@@ -323,7 +325,7 @@ export default function WeltTallisAbout() {
                     </div>
                 </nav>
 
-                {/* ── Hero ── */}
+                {/* â”€â”€ Hero â”€â”€ */}
                 <section className="about-hero">
                     <div className="about-hero-grid-bg" />
                     <div className="about-hero-glow" />
@@ -345,7 +347,7 @@ export default function WeltTallisAbout() {
                     </div>
                 </section>
 
-                {/* ── What We Do ── */}
+                {/* â”€â”€ What We Do â”€â”€ */}
                 <section className="what-we-do">
                     <div className="wrap">
                         <Reveal style={{ maxWidth: '600px' }}>
@@ -360,7 +362,7 @@ export default function WeltTallisAbout() {
                                 { num: '01', icon: Code2, title: 'Software Architecture', desc: 'Designing system architectures that are scalable, maintainable, and built to handle real-world complexity from day one.' },
                                 { num: '02', icon: MonitorSmartphone, title: 'Frontend Engineering', desc: 'Building responsive, performant interfaces with modern frameworks that users actually enjoy interacting with.' },
                                 { num: '03', icon: Server, title: 'Backend Engineering', desc: 'Engineering robust APIs, database layers, and server infrastructure that power everything under the hood.' },
-                                { num: '04', icon: Brain, title: 'AI & Machine Learning', desc: 'Developing and deploying ML algorithms — from predictive models to intelligent automation — that make products smarter.' },
+                                { num: '04', icon: Brain, title: 'AI & Machine Learning', desc: 'Developing and deploying ML algorithms â€” from predictive models to intelligent automation â€” that make products smarter.' },
                                 { num: '05', icon: Cpu, title: 'Embedded & IoT', desc: 'Hardware-software integrations for remote-controlled simulations and real-time sensor systems.' },
                                 { num: '06', icon: ShieldCheck, title: 'Security & Infrastructure', desc: 'Bank-grade encryption, access controls, CI/CD pipelines, and monitoring for reliable 99.9% uptime.' },
                             ].map((cap, i) => (
@@ -377,7 +379,7 @@ export default function WeltTallisAbout() {
                     </div>
                 </section>
 
-                {/* ── Products ── */}
+                {/* â”€â”€ Products â”€â”€ */}
                 <section id="products" className="products-section">
                     <div className="products-grid-bg" />
                     <div className="wrap" style={{ position: 'relative', zIndex: 1 }}>
@@ -401,7 +403,7 @@ export default function WeltTallisAbout() {
                                         </div>
                                         <h3 className="product-title">RestPoint</h3>
                                         <p className="product-desc">
-                                            A complete operational platform for funeral homes and welfare organizations. Case management, family portals, smart dispatch, fleet tracking, funeral insurance administration, and billing — all in one system.
+                                            A complete operational platform for funeral homes and welfare organizations. Case management, family portals, smart dispatch, fleet tracking, funeral insurance administration, and billing â€” all in one system.
                                         </p>
                                         <button className="product-link" onClick={() => navigate('/')}>
                                             Explore RestPoint <ArrowUpRight size={16} className="product-link-arrow" />
@@ -436,7 +438,7 @@ export default function WeltTallisAbout() {
                     </div>
                 </section>
 
-                {/* ── Team ── */}
+                {/* â”€â”€ Team â”€â”€ */}
                 <section className="team-section">
                     <div className="wrap">
                         <Reveal style={{ maxWidth: '550px' }}>
@@ -493,7 +495,7 @@ export default function WeltTallisAbout() {
                     </div>
                 </section>
 
-                {/* ── CTA ── */}
+                {/* â”€â”€ CTA â”€â”€ */}
                 <section className="cta-wrapper">
                     <div className="wrap">
                         <Reveal>

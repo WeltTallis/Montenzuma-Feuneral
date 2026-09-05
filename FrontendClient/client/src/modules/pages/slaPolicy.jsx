@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, X, ArrowRight, ShieldCheck, Server, Zap, Activity, Clock, Mail } from '../../utils/icons/icons';
 import Footer from '../../components/layout/Footer';
@@ -130,6 +130,7 @@ const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
           <button onClick={() => { navigate('/'); setOpen(false); }} className="mobile-link">Home</button>
           <button onClick={() => { navigate('/about-welt-tallis'); setOpen(false); }} className="mobile-link">About</button>
           <button onClick={() => { navigate('/contact'); setOpen(false); }} className="mobile-link">Contact</button>
+          <button onClick={() => { navigate('/blog'); setOpen(false); }} className="mobile-link">Blog</button>
           <div className="mobile-policies-header">
             <div className="mono-label" style={{ color: C.brass, padding: '0.6rem 1.2rem' }}>Policies</div>
             {policies.map((p, i) => (
@@ -274,6 +275,7 @@ export default function SLAPolicy() {
             <button onClick={() => navigate('/')} className="nav-link">Home</button>
             <button onClick={() => navigate('/about-welt-tallis')} className="nav-link">About</button>
             <button onClick={() => navigate('/contact')} className="nav-link">Contact</button>
+            <button onClick={() => navigate('/blog')} className="nav-link">Blog</button>
             <PolicyDropdown navigate={navigate} goTerms={goTerms} />
           </div>
           <div className="nav-cta">
@@ -310,7 +312,7 @@ export default function SLAPolicy() {
           <Reveal>
             <h2>Our Commitment</h2>
             <p>
-              When an organization chooses RestPoint, they are doing far more than purchasing software—they are entrusting us with one of the most critical parts of their daily operations.
+              When an organization chooses RestPoint, they are doing far more than purchasing softwareâ€”they are entrusting us with one of the most critical parts of their daily operations.
             </p>
             <p>
               We understand that a mortuary never stops operating. Admissions, deceased registration, billing, dispatch, body tracking, and releases can happen at any hour of the day or night. Every minute of availability matters.
@@ -326,7 +328,7 @@ export default function SLAPolicy() {
                 Our engineering and support teams work continuously to maintain a secure, reliable, and highly available platform that your staff can depend on every day. We proactively monitor system performance, perform preventive maintenance, and respond rapidly to any issue that could affect your operations.
               </p>
               <p style={{ marginTop: '1rem' }}>
-                We target <strong>99.9% monthly uptime</strong>, with the goal of ensuring your team has uninterrupted access to the system whenever it is needed. Through our advanced PM2 cluster deployment architecture, we achieve <strong>zero-downtime deployments</strong> for system updates and maintenance—meaning your operations continue without interruption during software updates.
+                We target <strong>99.9% monthly uptime</strong>, with the goal of ensuring your team has uninterrupted access to the system whenever it is needed. Through our advanced PM2 cluster deployment architecture, we achieve <strong>zero-downtime deployments</strong> for system updates and maintenanceâ€”meaning your operations continue without interruption during software updates.
               </p>
             </div>
           </Reveal>
@@ -413,7 +415,7 @@ export default function SLAPolicy() {
                 "Your operations should never have to stop because of your software."
               </p>
               <p style={{ marginTop: '1rem', marginBottom: 0 }}>
-                Through our <strong>zero-downtime deployment architecture</strong>, we ensure that software updates, maintenance, and improvements happen seamlessly—without interrupting your critical mortuary operations. Your staff can continue their work without interruption, even during system updates.
+                Through our <strong>zero-downtime deployment architecture</strong>, we ensure that software updates, maintenance, and improvements happen seamlesslyâ€”without interrupting your critical mortuary operations. Your staff can continue their work without interruption, even during system updates.
               </p>
             </div>
           </Reveal>

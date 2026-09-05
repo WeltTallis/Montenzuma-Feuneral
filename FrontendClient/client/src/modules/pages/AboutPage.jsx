@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, X, ArrowRight, ExternalLink, Server, Lock, Zap, Box, Layers, ShieldCheck, Cpu, Cloud } from '../../utils/icons/icons';
 import Footer from '../../components/layout/Footer';
@@ -126,6 +126,7 @@ const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
           <button onClick={() => { navigate('/'); setOpen(false); }} className="mobile-link">Home</button>
           <button onClick={() => { navigate('/about-welt-tallis'); setOpen(false); }} className="mobile-link">About</button>
           <button onClick={() => { navigate('/insurance'); setOpen(false); }} className="mobile-link">Insurance Brokers</button>
+          <button onClick={() => { navigate('/blog'); setOpen(false); }} className="mobile-link">Blog</button>
           <div className="mobile-policies-header">
             <div className="mono-label" style={{ color: C.brass, padding: '0.6rem 1.2rem' }}>Policies</div>
             {policies.map((p, i) => (
@@ -249,6 +250,7 @@ export default function AboutPage() {
             <button onClick={() => navigate('/')} className="nav-link">Home</button>
             <button onClick={() => navigate('/about-welt-tallis')} className="nav-link" style={{ color: C.brass, fontWeight: 600 }}>About</button>
             <button onClick={() => navigate('/insurance')} className="nav-link">Insurance Brokers</button>
+            <button onClick={() => navigate('/blog')} className="nav-link">Blog</button>
             <PolicyDropdown navigate={navigate} goTerms={goTerms} />
           </div>
           <div className="nav-cta">
@@ -301,7 +303,7 @@ export default function AboutPage() {
                 Not for the morticians. Not for the system. For the families. For the ones left behind. For anyone who has ever sat in a funeral home and wondered: What really happened?
               </p>
               <p className="story-text">
-                Rest Point gives families the full report — the actual data, the complete picture right on their phone. Because in moments of loss, truth matters.
+                Rest Point gives families the full report â€” the actual data, the complete picture right on their phone. Because in moments of loss, truth matters.
               </p>
               <p className="story-text" style={{ fontWeight: 500, color: C.ink }}>
                 That is why Rest Point exists. That is the story.
@@ -319,7 +321,7 @@ export default function AboutPage() {
               <div className="mono-label" style={{ color: C.brass, marginBottom: '1rem' }}>About Welt Tallis Technologies</div>
               <h2 style={{ color: C.bone }}>The company behind Rest Point.</h2>
               <p style={{ color: C.grayLight, fontSize: '1.1rem', lineHeight: 1.8, marginBottom: '1.5rem' }}>
-                Welt Tallis Technologies is a software company dedicated to building robust, scalable platforms for African businesses. Rest Point is our flagship product — a complete operating system for funeral homes.
+                Welt Tallis Technologies is a software company dedicated to building robust, scalable platforms for African businesses. Rest Point is our flagship product â€” a complete operating system for funeral homes.
               </p>
               <p style={{ color: C.grayLight, fontSize: '1.1rem', lineHeight: 1.8 }}>
                 We understand that technology infrastructure is extremely expensive costs run into millions of shillings. We are dedicated to making it affordable for our clients without compromising on quality, security, or reliability.
