@@ -9,6 +9,7 @@ import styled from 'styled-components';
 import { getBranches } from '../../utils/globalAuth';
 import { Calendar, CheckCircle, Truck, Clock, Check, BarChart3, MapPin, Home, Car, Phone, Building } from '../../utils/icons/icons';
 import { STATUS_CONFIG } from './statusColors';
+import { BR, BRANCH_SLUG_TO_NAME } from './viewerShared';
 
 // ===== SHARED CONSTANTS =====
 // STATUS_CONFIG below is imported from ./statusColors — the exact status →
