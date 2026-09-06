@@ -846,7 +846,7 @@ const ApplyLeave = () => {
     );
     const recentRequests = useMemo(() => myLeaves.slice(0, 6), [myLeaves]);
 
-    const canSubmit = Boolean(userId && range.start && range.end && form.reason.trim() && !submitting);
+    const canSubmit = Boolean(userId && form.type && range.start && range.end && form.reason.trim() && !submitting);
 
     // ── Actions ──
     const handleRangeChange = useCallback((start, end) => {
@@ -858,6 +858,13 @@ const ApplyLeave = () => {
 
     const handleSubmit = async () => {
         if (!canSubmit) return;
+        // Explicit guard so the user sees WHICH field is missing (the backend
+        // only returns a combined "Leave type, start date, and end date are
+        // required" message).
+        if (!form.type.trim()) {
+            setBanner({ type: 'error', msg: 'Please select a leave type' });
+            return;
+        }
         setSubmitting(true);
         setBanner(null);
         try {
@@ -865,7 +872,7 @@ const ApplyLeave = () => {
                 // Identity comes from localStorage — the service trusts x-user-id
                 // header (set by the axios interceptor) and body user_id.
                 user_id: userId,
-                leave_type: form.type,
+                leave_type: form.type.trim(),
                 priority: form.priority,
                 start_date: range.start,
                 end_date: range.end,
@@ -969,25 +976,17 @@ const ApplyLeave = () => {
                         <CardTitle><FileText size={16} /> 2. Leave details</CardTitle>
                         <FormGrid>
                             <FormGroup className="full">
-                                <Label>Leave type <Required>*</Required></Label>
-                                <input
+                                <Label htmlFor="leaveType">Leave type <Required>*</Required></Label>
+                                <Select
                                     id="leaveType"
-                                    type="text"
-                                    placeholder="e.g. Annual, Sick, Maternity, Paternity, Compassionate, Study, Unpaid"
                                     value={form.type}
                                     onChange={(e) => setForm({ ...form, type: e.target.value })}
-                                    style={{
-                                        padding: '0.6rem 0.75rem',
-                                        border: '1px solid #E8ECF0',
-                                        borderRadius: '10px',
-                                        fontSize: '0.875rem',
-                                        color: '#1A1D24',
-                                        background: '#FFFFFF',
-                                        fontFamily: 'inherit',
-                                        width: '100%',
-                                        boxSizing: 'border-box'
-                                    }}
-                                />
+                                >
+                                    <option value="">Select leave type…</option>
+                                    {LEAVE_TYPES.map((t) => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                    ))}
+                                </Select>
                             </FormGroup>
 
                             <FormGroup>
