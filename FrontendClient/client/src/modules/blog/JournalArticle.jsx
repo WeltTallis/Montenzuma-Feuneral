@@ -1,173 +1,668 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 
 /* =================================================================
-   RESTPOINT JOURNAL - shared editorial template v2
-   "The Space Between Grief and Truth" design:
-   reading-progress bar, floating engagement dock (like / comment /
-   reads), masthead nav, hero, drop-cap chapters, dark pull quote,
-   beige chapter, emerald conclusion, community discussion (overlay
-   + inline), scrolling banner.
-   Views / likes / comments are persisted via the tenant-service
-   blog-engagement API (JSON-file storage) at
-   /api/v1/restpoint/blog-engagement/<slug>/...
+   RESTPOINT JOURNAL — shared editorial article template.
+   Rendered exactly like the "Architecture of Blooms" reference:
+   reading-progress bar, floating engagement dock (reads / like /
+   comment), masthead, hero, bone article body (chapters 1 + 2),
+   ink dark break (conclusion), verdigris pull-quote section,
+   massive scrolling banner, and the full-screen "Reader's
+   Lounge" discussion overlay (guestbook + magazine comments).
+   Views / likes / comments persist via the tenant-service
+   blog-engagement API at
+   /api/v1/restpoint/blog-engagment/<slug>/...
    ================================================================= */
 
 export const JOURNAL_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-  :root{--ink:#000000;--bone:#FAF8F4;--bone2:#F3EFE6;--brass:#8B7355;--brassLight:#A98F6E;--verdigris:#3D4F47;--verdigrisDark:#2E3F37;--line:#E3DDD0;--gray:#8A8780;--grayLight:rgba(0,0,0,0.6);--accent:#C77B5E}
-  *{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:smooth}
-  body{font-family:'Inter',system-ui,sans-serif;background:var(--bone);color:var(--ink);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden;line-height:1.6}
+  @import url('https://fonts.googleapis.com/css2?famliley=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display==swap');
+  :root {
+    --ink: #000000;
+    --bone: #FAF8F4;
+    --bone2: #F3EFE6;
+    --brass: #8B7355;
+    --brassLight: #A98F6E;
+    --verdigris: #3D4F47;
+    --verdigrisDark: #2E3F37;
+    --ine: #E3DDD0;
+    --gray: #8A8780;
+    --grayLight: rgba(0,0,0,0.6);
+    --accent: #C77B5E;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bone);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    line-height: 1.6;  }
 
   /* ============ READING PROGRESS BAR ============ */
-  .progress-bar{position:fixed;top:0;left:0;height:3px;width:0%;background:var(--accent);z-index:300;transition:width .1s ease}
+  .progress-bar {
+    position: fixed;    top: 0; left: 0;
+    height: 3px; width: 0%;
+    background: var(--accent);    z-index: 100;
+    transition: width 0.1s ease;
+  }
 
   /* ============ FLOATING ENGAGEMENT DOCK ============ */
-  .engagement-dock{position:fixed;left:30px;top:50%;transform:translateY(-50%);z-index:120;display:flex;flex-direction:column;gap:1.3rem;padding:1rem .6rem;background:rgba(250,248,244,.85);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:50px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
-  .dock-item{display:flex;flex-direction:column;align-items:center;gap:.25rem;cursor:pointer;background:transparent;border:none;color:var(--gray);transition:all .3s ease;font-family:inherit;padding:0}
-  .dock-item:hover{color:var(--accent);transform:translateY(-3px)}
-  .dock-item.liked{color:var(--accent)}
-  .dock-item svg{width:18px;height:18px}
-  .dock-count{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:600;color:var(--ink)}
-  .dock-divider{width:20px;height:1px;background:var(--line);margin:0 auto}
+  .engagment-dock {
+    position: fixed;    left: 30px;    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem 0.6rem;
+    background: rgba(250, 248, 244, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--line);
+    border-radius: 50px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  }
+  .dock-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    color: var(--gray);
+    transition: all 0.3s ease;
+  }
+  .dock-item:hover { color: var(--accent); transform: translateY(-3px); }
+  .dock-item.liked { color: var(--accent); }
+  .dock-item svg { width: 18px; height: 18px; }
+  .dock-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--ink);  }
+  .dock-divider {
+    width: 20px;    height: 1px;
+    background: var(--line);    margin: 0 auto;
+  }
 
   /* ============ MASTHEAD ============ */
-  .blog-nav{padding:2rem clamp(1.5rem,4vw,3rem);display:flex;justify-content:space-between;align-items:center;font-family:'JetBrains Mono',monospace;font-size:0.75rem;letter-spacing:0.18em;text-transform:uppercase}
-  .blog-nav-left{display:flex;align-items:center;gap:0.6rem;font-weight:600;background:none;border:none;cursor:pointer;font-family:inherit;font-size:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;padding:0}
-  .blog-nav-left::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%;flex-shrink:0}
-  .blog-nav-right{display:flex;gap:2rem;color:var(--gray);flex-wrap:wrap;justify-content:flex-end}
+  .blog-nav {
+    padding: 2rem clamp(1.5rem, 4vw, 3rem);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .blog-nav-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 600;
+  }
+  .blog-nav-left::before {
+    content: '';
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  .blog-nav-right { display: flex; gap: 2rem; color: var(--gray); }
 
-  /* ============ HERO ============ */
-  .blog-hero{position:relative;background:var(--bone);padding:2rem clamp(1.5rem,4vw,3rem) 0}
-  .hero-content{max-width:1100px;margin:0 auto;text-align:center}
-  .hero-meta{display:flex;justify-content:center;gap:2rem;font-family:'JetBrains Mono',monospace;font-size:0.7rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--gray);margin-bottom:2rem;flex-wrap:wrap}
-  .hero-meta span{display:flex;align-items:center;gap:0.4rem}
-  .hero-meta span::before{content:'';width:4px;height:4px;background:var(--accent);border-radius:50%}
-  .hero-title{font-family:'Fraunces',serif;font-size:clamp(3.5rem,8vw,7rem);font-weight:300;line-height:0.9;letter-spacing:-0.035em;color:var(--ink);margin-bottom:2.5rem}
-  .hero-title em{font-style:italic;font-weight:300;color:var(--accent);display:block}
-  .hero-excerpt{font-family:'Fraunces',serif;font-size:clamp(1.1rem,2vw,1.4rem);color:var(--grayLight);line-height:1.5;max-width:720px;margin:0 auto 3rem;font-weight:400}
-  .hero-author{display:flex;align-items:center;justify-content:center;gap:1rem;border-top:1px solid var(--line);padding-top:2rem;max-width:400px;margin:0 auto}
-  .author-avatar{width:44px;height:44px;border-radius:50%;background:var(--ink);color:var(--bone);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:500;font-size:1rem}
-  .author-info{text-align:left}
-  .author-info h4{font-size:0.9rem;font-weight:600;color:var(--ink)}
-  .author-info p{font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--gray);letter-spacing:0.1em;text-transform:uppercase}
-  .hero-image-container{margin-top:4rem;position:relative;width:100%;height:60vh;min-height:450px;overflow:hidden}
-  .hero-image-container img{width:100%;height:100%;object-fit:cover;filter:contrast(1.05)}
+  /* ============ HERO SECTION ============ */
+  .blog-hero {
+    position: relative;
+    background: var(--bone);
+    padding: 2rem clamp(1.5rem, 4vw, 3rem) 0;
+  }
+  .hero-content {
+    max-width: 1100px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .hero-meta {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 2rem;
+  }
+  .hero-meta span { display: flex; align-items: center; gap: 0.4rem; }
+  .hero-meta span::before {
+    content: '';
+    width: 4px; height: 4px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  .hero-title {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(3.5rem, 8vw, 7rem);
+    font-weight: 300;
+    line-height: 0.9;
+    letter-spacing: -0.035em;
+    color: var(--ink);
+    margin-bottom: 2.5rem;
+  }
+  .hero-title em {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--acent);
+    display: block;
+  }
+  .hero-exceprt {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(1.1rem, 2vw, 1.4rem);
+    color: var(--grayLight);
+    line-height: 1.5;
+    max-width: 700px;
+    margin: 0 auto 3rem;
+    font-weight: 400;
+  }
+  .hero-uthor {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    border-top: 1px solid var(--line);    padding-top: 2rem;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  .uthor-avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--bone);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+  }
+  .uthor-info { text-align: left; }
+  .uthor-info h4 { font-size: 0.9rem; font-weight: 600; color: var(--ink); }
+  .uthor-info p {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--gray);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .hero-image-container {
+    margin-top: 4rem;
+    position: relative;
+    width: 100%;
+    height: 60vh;
+    min-height: 450px;
+    overflow: hidden;
+  }
+  .hero-image-container img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    filter: contrast(1.05) saturate(0.9);
+  }
 
   /* ============ ARTICLE BODY ============ */
-  .article-body{background:var(--bone);padding:6rem 0;position:relative}
-  .article-container{max-width:720px;margin:0 auto;padding:0 1.5rem}
-  .article-body>.article-container>p:first-of-type::first-letter{font-family:'Fraunces',serif;font-size:5.5rem;font-weight:400;float:left;line-height:0.85;padding-right:1rem;padding-top:0.5rem;color:var(--accent)}
-  .article-body p{font-family:'Inter',sans-serif;font-size:1.15rem;line-height:1.85;color:var(--grayLight);margin-bottom:2rem}
-  .article-body p strong{color:var(--ink);font-weight:600}
-  .chapter-heading{display:flex;align-items:baseline;gap:1.5rem;margin:4rem 0 2rem;border-bottom:1px solid var(--line);padding-bottom:1.5rem}
-  .chapter-heading:first-child{margin-top:0}
-  .chapter-num{font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--accent);letter-spacing:0.15em;flex-shrink:0}
-  .chapter-title{font-family:'Fraunces',serif;font-size:clamp(1.75rem,3vw,2.5rem);font-weight:400;color:var(--ink);line-height:1.1;letter-spacing:-0.02em}
-  .chapter-title em{font-style:italic;color:var(--brass)}
+  .article-body {
+    background: var(--bone);
+    padding: 6rem 0;
+    position: relative;
+  }
+  .article-container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+  .article-body > .article-container > p:first-of-type::first-letter {
+    font-family: 'Fraunces', serif;
+    font-size: 5.5rem;
+    font-weight: 400;
+    float: left;
+    line-height: 0.85;
+    padding-right: 1rem;
+    padding-top: 0.5rem;
+    color: var(--accent);
+  }
+  .article-body p {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.15rem;
+    line-height: 1.85;
+    color: var(--grayLight);
+    margin-bottom: 2rem;
+  }
+  .article-body p strong { color: var(--ink); font-weight: 600; }
+  .chapter-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+    margin: 4rem 0 2rem;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 1.5rem;
+  }
+  .chapter-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+  }
+  .chapter-title {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    font-weight: 400;
+    color: var(--ink);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+  .chapter-title em { font-style: italic; color: var(--brass); }
 
-  /* ============ DARK PULL QUOTE ============ */
-  .dark-break{background:var(--ink);color:var(--bone);padding:6rem 0;position:relative;overflow:hidden}
-  .dark-break::before{content:'';position:absolute;top:0;left:0;width:400px;height:400px;background:radial-gradient(circle,rgba(199,123,94,0.15) 0%,transparent 70%);filter:blur(60px)}
-  .pull-quote-container{max-width:900px;margin:0 auto;padding:0 2rem;position:relative;z-index:2;text-align:center}
-  .pull-quote-container::before{content:'\u201C';display:block;font-family:'Fraunces',serif;font-size:8rem;color:var(--accent);line-height:0.5;margin-bottom:2rem;opacity:0.8}
-  .pull-quote{font-family:'Fraunces',serif;font-size:clamp(1.75rem,3.5vw,2.75rem);font-style:italic;font-weight:300;line-height:1.35;color:var(--bone);margin:0 0 2rem 0}
-  .pull-quote-author{font-family:'JetBrains Mono',monospace;font-size:0.7rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--brassLight);display:flex;align-items:center;justify-content:center;gap:1rem}
-  .pull-quote-author::before,.pull-quote-author::after{content:'';width:30px;height:1px;background:var(--brassLight);opacity:0.5}
+  /* ============ INLINE ARTICLE IMAGE ============ */
+  .article-inline-image {
+    margin: 4rem 0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .article-inline-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: contrast(1.05) saturate(0.9);
+  }
+  .article-inline-image figcaption {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--gray);
+    margin-top: 1rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: center;
+  }
 
-  /* ============ SECOND BODY + FIGURE ============ */
-  .article-secondary{background:var(--bone2)}
-  .article-image{margin:4rem auto;max-width:1000px;border-radius:4px;overflow:hidden}
-  .article-image img{width:100%;height:auto;display:block;filter:contrast(1.05)}
-  .article-image-caption{display:block;text-align:center;font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--gray);margin-top:1rem;letter-spacing:0.1em;text-transform:uppercase}
+  /* ============ FLOWER ETIQUETTE LIST ============ */
+  .flower-types {
+    list-style: none;
+    margin: 3rem 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+  }
+  .flower-type-item {
+    padding: 2rem 0;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 2rem;
+    align-items: baseline;
+  }
+  .flower-type-name {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 500;
+    color: var(--accent);
+    font-size: 1.25rem;
+  }
+  .flower-type-desc {
+    font-size: 1rem;
+    color: var(--grayLight);
+    line-height: 1.6;
+  }
 
-  /* ============ EMERALD CONCLUSION ============ */
-  .emerald-conclusion{background:var(--verdigrisDark);color:var(--bone);padding:6rem 0}
-  .emerald-conclusion .chapter-heading{border-bottom:1px solid rgba(250,248,244,0.15)}
-  .emerald-conclusion .chapter-title{color:var(--bone)}
-  .emerald-conclusion .chapter-num{color:var(--brassLight)}
-  .emerald-conclusion p{color:rgba(250,248,244,0.75)}
-  .emerald-conclusion p strong{color:var(--bone)}
-  .conclusion-signoff{margin-top:4rem;text-align:center;border-top:1px solid rgba(250,248,244,0.15);padding-top:3rem}
-  .conclusion-signoff p{font-family:'Fraunces',serif;font-size:1.5rem;font-style:italic;color:var(--brassLight);margin-bottom:1rem}
-  .conclusion-signoff span{font-family:'JetBrains Mono',monospace;font-size:0.7rem;letter-spacing:0.15em;text-transform:uppercase;color:rgba(250,248,244,0.5)}
+  /* ============ DARK BREAK ============ */
+  .dark-break {
+    background: var(--ink);
+    color: var(--bone);
+    padding: 6rem 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .dark-break::before {
+    content: '';
+    position: absolute;
+    top: 20%; right: -10%;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(199, 123, 94, 0.1) 0%, transparent 70%);
+    filter: blur(60px);
+  }
+  .dark-break-content {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    position: relative;
+    z-index: 2;
+  }
+  .dark-break p {
+    font-family: 'Fraunces', serif;
+    font-size: 1.3rem;
+    line-height: 1.7;
+    color: rgba(250, 248, 244, 0.8);
+    margin-bottom: 2rem;
+  }
+  .dark-break p strong { color: var(--bone); font-weight: 600; }
+  .dark-break .chapter-heading { border-color: rgba(250, 248, 244, 0.15); }
+  .dark-break .chapter-title { color: var(--bone); }
+  .dark-break .chapter-title em { color: var(--brassLight); }
 
-  /* ============ SCROLLING BANNER ============ */
-  .blog-banner{background:var(--accent);color:var(--ink);padding:2.5rem 0;overflow:hidden;position:relative}
-  .banner-track{display:flex;align-items:center;white-space:nowrap;animation:scroll-text 30s linear infinite;width:max-content}
-  .banner-item{font-family:'Fraunces',serif;font-size:clamp(3rem,6vw,5rem);font-weight:400;font-style:italic;padding:0 3rem;display:flex;align-items:center;gap:3rem}
-  .banner-item span{font-style:normal;font-weight:300}
-  .banner-icon{width:40px;height:40px;border-radius:50%;border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  @keyframes scroll-text{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+  /* ============ PULL QUOTE ============ */
+  .pull-quote-section {
+    background: var(--verdigrisDark);
+    padding: 8rem 0;
+    text-align: center;
+  }
+  .pull-quote-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    position: relative;
+    z-index: 2;
+  }
+  .pull-quote-container::before {
+    content: '"';
+    display: block;
+    font-family: 'Fraunces', serif;
+    font-size: 8rem;
+    color: var(--accent);
+    line-height: 0.5;
+    margin-bottom: 2rem;
+    opacity: 0.8;
+  }
+  .pull-quote {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+    font-style: italic;
+    font-weight: 300;
+    line-height: 1.35;
+    color: var(--bone);
+    margin: 0;
+  }
 
-  /* ===== SHARED CONTENT PRIMITIVES ===== */
+  /* ============ MAGAZINE-STYLE DISCUSSION OVERLAY ============ */
+  .discussion-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: var(--bone2);
+    z-index: 200;
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: opacity 0.5s ease, transform 0.5s ease, visibility 0s 0.5s;
+  }
+  .discussion-overlay.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    transition: opacity 0.5s ease, transform 0.5s ease, visibility 0s 0s;
+  }
+  .discussion-header {
+    position: sticky;
+    top: 0;
+    background: rgba(243, 239, 230, 0.9);
+    border-bottom: 1px solid var(--line);
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+    backdrop-filter: blur(10px);
+  }
+  .discussion-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    font-style: italic;
+    color: var(--ink);
+  }
+  .close-discussion {
+    background: var(--ink);
+    color: var(--bone);
+    border: none;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+  }
+  .close-discussion:hover { transform: rotate(90deg); }
+  .discussion-content {
+    max-width: 800px;
+    margin: 4rem auto;
+    padding: 0 2rem;
+  }
+  .discussion-intro {
+    text-align: center;
+    margin-bottom: 5rem;
+  }
+  .discussion-intro h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 3rem;
+    font-weight: 300;
+    color: var(--ink);
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+  }
+  .discussion-intro p {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gray);
+  }
+  .guestbook-form {
+    background: var(--bone);
+    border: 1px solid var(--line);
+    padding: 2.5rem;
+    border-radius: 4px;
+    margin-bottom: 6rem;
+    text-align: center;
+  }
+  .guestbook-form h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+  .guestbook-form p {
+    font-size: 0.9rem;
+    color: var(--gray);
+    margin-bottom: 2rem;
+  }
+  .guestbook-input {
+    width: 100%;
+    background: var(--bone2);
+    border: 1px solid var(--line);
+    padding: 1.5rem;
+    font-family: 'Fraunces', serif;
+    font-size: 1.1rem;
+    color: var(--ink);
+    border-radius: 4px;
+    resize: vertical;
+    min-height: 120px;
+    margin-bottom: 1rem;
+    transition: border 0.3s ease;
+  }
+  .guestbook-input:focus { outline: none; border-color: var(--accent); }
+  .guestbook-submit {
+    background: var(--ink);
+    color: var(--bone);
+    border: none;
+    padding: 1rem 2.5rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.3s ease;
+  }
+  .guestbook-submit:hover { background: var(--verdigrisDark); }
+  .comment-list { display: flex; flex-direction: column; gap: 4rem; }
+
+  .mag-comment {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 2rem;
+    padding-bottom: 4rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .mag-comment:last-child { border-bottom: none; }
+  .mag-avatar {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--bone);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    font-weight: 500;
+  }
+  .mag-content { flex: 1; }
+  .mag-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .mag-name {
+    font-family: 'Fraunces', serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .mag-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--gray);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .mag-text {
+    font-family: 'Fraunces', serif;
+    font-size: 1.25rem;
+    line-height: 1.7;
+    color: var(--grayLight);
+    margin-bottom: 1.5rem;
+  }
+  .mag-text::first-letter {
+    font-size: 3rem;
+    float: left;
+    line-height: 0.8;
+    padding-right: 0.5rem;
+    padding-top: 0.3rem;
+    color: var(--accent);
+    font-weight: 400;
+  }
+  .mag-actions { display: flex; gap: 1.5rem; }
+  .mag-action {
+    background: none;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--gray);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: color 0.3s ease;
+  }
+  .mag-action:hover { color: var(--accent); }
+  .comment-empty {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--gray);
+    text-align: center;
+    padding: 3rem 0;
+  }
+
+  /* ============ MASSIVE SCROLLING BANNER ============ */
+  .blog-banner {
+    background: var(--accent);
+    color: var(--ink);
+    padding: 2.5rem 0;
+    overflow: hidden;
+  }
+  .banner-track {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    animation: scroll-text 30s linear infinite;
+  }
+  .banner-item {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(3rem, 6vw, 5rem);
+    font-weight: 400;
+    font-style: italic;
+    padding: 0 3rem;
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+  }
+  .banner-item span { font-style: normal; font-weight: 300; }
+  .banner-icon {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  @keyframes scroll-text {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 900px) {
+    .engagment-dock {
+      left: auto;
+      right: 20px;
+      top: auto;
+      bottom: 20px;
+      transform: none;
+      flex-direction: row;
+      padding: 0.8rem 1rem;
+      gap: 1rem;
+    }
+    .dock-item { flex-direction: row; gap: 0.5rem; }
+    .dock-divider { width: 1px; height: 20px; margin: 0; }
+    .blog-nav-right { display: none; }
+    .hero-image-container { height: 40vh; min-height: 300px; }
+    .mag-comment { grid-template-columns: 1fr; gap: 1rem; }
+    .discussion-content { margin: 2rem auto; }
+    .flower-type-item { grid-template-columns: 1fr; gap: 0.5rem; }
+  }
+/* ============ SHARED CONTENT PRIMITIVES ============ */
   .journal-list{margin:0 0 2rem;padding:0;list-style:none}
   .journal-list li{display:flex;gap:1.1rem;align-items:baseline;padding:0.85rem 0;border-bottom:1px solid var(--line);font-size:1.05rem;line-height:1.7;color:var(--grayLight)}
   .journal-list li:last-child{border-bottom:none}
   .journal-list .n{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--accent);letter-spacing:0.12em;min-width:2rem;flex-shrink:0}
   .journal-list li strong{color:var(--ink);font-weight:600}
+  .dark-break .journal-list li{border-bottom:1px solid rgba(250,248,244,0.12);color:rgba(250,248,244,0.75)}
+  .dark-break .journal-list .n{color:var(--brassLight)}
+  .dark-break .journal-list li strong{color:var(--bone)}
   .journal-qa{margin:3rem 0 0;border-top:1px solid rgba(250,248,244,0.18);padding-top:2.5rem}
   .journal-qa h3{font-family:'JetBrains Mono',monospace;font-size:0.7rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--brassLight);margin-bottom:1.6rem;font-weight:500}
   .journal-qa .qa{margin-bottom:1.6rem}
   .journal-qa .q{font-family:'Fraunces',serif;font-size:1.15rem;color:var(--bone);margin-bottom:0.4rem;font-weight:400}
   .journal-qa .a{font-size:0.98rem;line-height:1.75;color:rgba(250,248,244,0.66)}
   .journal-cta{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;margin-top:3rem}
-  .journal-btn{display:inline-flex;align-items:center;gap:0.6rem;background:var(--bone);color:var(--ink);border:none;padding:0.95rem 2rem;border-radius:50px;font-size:0.95rem;font-weight:600;cursor:pointer;transition:all .3s ease;font-family:'Inter',sans-serif}
+  .journal-btn{display:inline-flex;align-items:center;gap:0.6rem;background:var(--bone);color:var(--ink);border:none;padding:0.95rem 2rem;border-radius:50px;font-size:0.95rem;font-weight:600;cursor:pointer;transition:all 0.3s ease;font-family:'Inter',sans-serif}
   .journal-btn:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(0,0,0,0.28)}
   .journal-btn.ghost{background:transparent;color:var(--bone);border:1.5px solid rgba(250,248,244,0.35);box-shadow:none}
   .journal-btn.ghost:hover{border-color:var(--bone);transform:translateY(-2px)}
-  .emerald-conclusion .journal-list li{border-bottom:1px solid rgba(250,248,244,0.12);color:rgba(250,248,244,0.75)}
-  .emerald-conclusion .journal-list .n{color:var(--brassLight)}
-  .emerald-conclusion .journal-list li strong{color:var(--bone)}
-
-  /* ============ DISCUSSION OVERLAY ============ */
-  .discussion-overlay{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--bone);border-left:1px solid var(--line);box-shadow:-30px 0 60px rgba(0,0,0,0.12);z-index:400;transform:translateX(102%);transition:transform .45s cubic-bezier(.16,1,.3,1);display:flex;flex-direction:column}
-  .discussion-overlay.open{transform:translateX(0)}
-  .do-header{display:flex;justify-content:space-between;align-items:center;padding:1.6rem 1.8rem;border-bottom:1px solid var(--line)}
-  .do-title{font-family:'Fraunces',serif;font-size:1.6rem;color:var(--ink);font-weight:400}
-  .do-sub{font-family:'JetBrains Mono',monospace;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gray);margin-top:0.2rem}
-  .do-close{background:none;border:1px solid var(--line);border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);transition:all .25s ease;flex-shrink:0}
-  .do-close:hover{background:var(--bone2);transform:rotate(90deg)}
-  .do-list{flex:1;overflow-y:auto;padding:1.5rem 1.8rem;display:flex;flex-direction:column;gap:1.3rem}
-  .do-empty{font-family:'Fraunces',serif;font-style:italic;color:var(--gray);text-align:center;padding:3rem 0}
-  .do-scrim{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:390;backdrop-filter:blur(2px)}
-
-  /* ============ COMMUNITY COMMENTS ============ */
-  .mag-comments{background:var(--bone2);border-top:1px solid var(--line);padding:5rem clamp(1.5rem,4vw,3rem)}
-  .mag-wrap{max-width:900px;margin:0 auto}
-  .mag-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:1.2rem;margin-bottom:2rem;gap:1rem;flex-wrap:wrap}
-  .mag-title{font-family:'Fraunces',serif;font-size:clamp(1.8rem,3vw,2.4rem);font-weight:400;color:var(--ink)}
-  .mag-title em{font-style:italic;color:var(--accent)}
-  .mag-count{font-family:'JetBrains Mono',monospace;font-size:0.7rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gray)}
-  .mag-list{display:flex;flex-direction:column;gap:1.4rem}
-  .mag-comment{display:flex;gap:1rem;background:var(--bone);border:1px solid var(--line);border-radius:6px;padding:1.4rem}
-  .mag-avatar{width:42px;height:42px;border-radius:50%;background:var(--verdigris);color:var(--bone);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:500;flex-shrink:0}
-  .mag-content{flex:1;min-width:0}
-  .mag-meta{display:flex;gap:0.8rem;align-items:baseline;margin-bottom:0.5rem;flex-wrap:wrap}
-  .mag-name{font-weight:600;font-size:0.9rem;color:var(--ink)}
-  .mag-date{font-family:'JetBrains Mono',monospace;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--gray)}
-  .mag-text{font-size:0.98rem;line-height:1.7;color:var(--grayLight);margin:0 0 0.8rem}
-  .mag-actions{display:flex;gap:1.2rem}
-  .mag-action{display:inline-flex;align-items:center;gap:0.45rem;background:none;border:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--gray);padding:0;transition:color .2s ease}
-  .mag-action:hover{color:var(--accent)}
-  .mag-form{display:flex;flex-direction:column;gap:0.7rem;margin-bottom:2rem}
-  .mag-input,.mag-textarea{width:100%;background:var(--bone);border:1px solid var(--line);border-radius:6px;padding:0.85rem 1rem;font-family:'Inter',sans-serif;font-size:0.95rem;color:var(--ink);outline:none;transition:border-color .2s ease;resize:vertical}
-  .mag-input:focus,.mag-textarea:focus{border-color:var(--accent)}
-  .mag-submit{align-self:flex-start;display:inline-flex;align-items:center;gap:0.5rem;background:var(--ink);color:var(--bone);border:none;padding:0.8rem 1.6rem;border-radius:50px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .25s ease}
-  .mag-submit:hover{background:var(--accent);color:var(--ink)}
-  .mag-submit:disabled{opacity:0.6;cursor:wait}
-
-  @media (max-width:768px){
-    .blog-nav-right{display:none}
-    .hero-title{font-size:3rem}
-    .article-image{margin:3rem -1.5rem}
-    .chapter-heading{gap:1rem}
-  }
-  @media (max-width:1180px){
-    .engagement-dock{display:none}
-  }
+  .conclusion-signoff{margin-top:4rem;text-align:center;border-top:1px solid rgba(250,248,244,0.15);padding-top:3rem}
+  .conclusion-signoff p{font-family:'Fraunces',serif;font-size:1.5rem;font-style:italic;color:var(--brassLight);margin-bottom:1rem}
+  .conclusion-signoff span{font-family:'JetBrains Mono',monospace;font-size:0.7rem;letter-spacing:0.15em;text-transform:uppercase;color:rgba(250,248,244,0.5)}
 `;
 
 /* ---- inline icons (match the Journal design) ---- */
@@ -228,9 +723,9 @@ const ChapterHead = ({ num, title, em }) => (
 );
 
 export const JournalFigure = ({ src, alt, caption }) => (
-  <figure className="article-image">
+  <figure className="article-inline-image">
     <img src={src} alt={alt || ''} loading="lazy" />
-    {caption ? <figcaption className="article-image-caption">{caption}</figcaption> : null}
+    {caption ? <figcaption>{caption}</figcaption> : null}
   </figure>
 );
 
@@ -240,6 +735,17 @@ export const JournalList = ({ items }) => (
       <li key={i}>
         <span className="n">{String(i + 1).padStart(2, '0')}</span>
         <span>{item}</span>
+      </li>
+    ))}
+  </ul>
+);
+
+export const JournalFlowerList = ({ items }) => (
+  <ul className="flower-types">
+    {items.map((it, i) => (
+      <li className="flower-type-item" key={i}>
+        <span className="flower-type-name">{it.name}</span>
+        <span className="flower-type-desc">{it.desc}</span>
       </li>
     ))}
   </ul>
@@ -271,8 +777,9 @@ const JournalArticle = ({
   title,
   titleAccent,
   excerpt,
-  author = { initials: 'PM', name: 'Peter Mumo', role: 'Developer \u00B7 Restpoint' },
+  author = { initials: 'PM', name: 'Peter Mumo', role: 'Developer · Restpoint' },
   heroImage,
+  intro,
   chapterOne,
   pullQuote,
   chapterTwo,
@@ -387,43 +894,36 @@ const JournalArticle = ({
     }
   };
 
+  const bannerWordsFull =
+    bannerWords.length >= 3
+      ? [bannerWords[0], bannerWords[1], bannerWords[2], bannerWords[0]]
+      : [bannerWords[0], bannerWords[1] || bannerWords[0], bannerWords[0], bannerWords[1] || bannerWords[0]];
+
   const bannerItem = (hidden) => (
     <div className="banner-item" aria-hidden={hidden ? 'true' : undefined}>
-      <span>{bannerWords[0]}</span>
-      <div className="banner-icon"><ArrowSvg /></div>
-      <em>Read More</em>
-      <div className="banner-icon"><ArrowSvg /></div>
-      {bannerWords[1] ? (
-        <>
-          <span>{bannerWords[1]}</span>
+      {bannerWordsFull.map((w, i) => (
+        <Fragment key={i}>
+          {i % 2 === 0 ? <span>{w}</span> : <em>{w}</em>}
           <div className="banner-icon"><ArrowSvg /></div>
-          <em>Read More</em>
-          <div className="banner-icon"><ArrowSvg /></div>
-        </>
-      ) : null}
+        </Fragment>
+      ))}
     </div>
   );
 
   const commentForm = (
-    <form className="mag-form" onSubmit={submitComment}>
-      <input
-        className="mag-input"
-        type="text"
-        placeholder="Your name (optional)"
-        value={name}
-        maxLength={60}
-        onChange={(e) => setName(e.target.value)}
-      />
+    <form className="guestbook-form" onSubmit={submitComment}>
+      <h3>Share your thoughts</h3>
+      <p>The best reflections surface here — join the conversation.</p>
       <textarea
-        className="mag-textarea"
-        placeholder="Share your thoughts on this story..."
-        rows={3}
+        className="guestbook-input"
+        placeholder="Write your reflection here..."
+        rows={5}
         value={text}
         maxLength={2000}
         onChange={(e) => setText(e.target.value)}
       />
-      <button className="mag-submit" type="submit" disabled={sending || !text.trim()}>
-        {sending ? 'Posting...' : 'Post Comment'} <ArrowSvg />
+      <button className="guestbook-submit" type="submit" disabled={sending || !text.trim()}>
+        {sending ? 'Posting...' : 'Post Comment'}
       </button>
     </form>
   );
@@ -432,7 +932,7 @@ const JournalArticle = ({
     <CommentCard key={c.id} c={c} onResonate={resonate} />
   ));
 
-  return (
+return (
     <>
       <style>{JOURNAL_CSS}</style>
 
@@ -441,6 +941,11 @@ const JournalArticle = ({
 
       {/* FLOATING ENGAGEMENT DOCK */}
       <div className="engagement-dock">
+        <div className="dock-item" style={{ cursor: 'default' }} aria-label="Reads">
+          <EyeSvg />
+          <span className="dock-count">{fmtCount(views)}</span>
+        </div>
+        <div className="dock-divider" />
         <button className={liked ? 'dock-item liked' : 'dock-item'} onClick={toggleLike} aria-label="Like this story">
           <HeartSvg />
           <span className="dock-count">{fmtCount(likes)}</span>
@@ -450,36 +955,31 @@ const JournalArticle = ({
           <CommentSvg />
           <span className="dock-count">{fmtCount(comments.length)}</span>
         </button>
-        <div className="dock-divider" />
-        <div className="dock-item" style={{ cursor: 'default' }} aria-label="Reads">
-          <EyeSvg />
-          <span className="dock-count">{fmtCount(views)}</span>
-        </div>
       </div>
 
-      {/* DISCUSSION OVERLAY */}
-      {overlayOpen && <div className="do-scrim" onClick={() => setOverlayOpen(false)} />}
+      {/* READER'S LOUNGE OVERLAY */}
       <div className={overlayOpen ? 'discussion-overlay open' : 'discussion-overlay'}>
-        <div className="do-header">
-          <div>
-            <div className="do-title">Discussion</div>
-            <div className="do-sub">{comments.length} {comments.length === 1 ? 'comment' : 'comments'} \u00B7 Restpoint Journal</div>
-          </div>
-          <button className="do-close" onClick={() => setOverlayOpen(false)} aria-label="Close discussion">
+        <div className="discussion-header">
+          <div className="discussion-title">The Reader's Lounge</div>
+          <button className="close-discussion" onClick={() => setOverlayOpen(false)} aria-label="Close discussion">
             <CloseSvg />
           </button>
         </div>
-        <div className="do-list">
-          {comments.length === 0 ? (
-            <div className="do-empty">No comments yet. Be the first to share your thoughts.</div>
-          ) : commentCards}
-        </div>
-        <div style={{ borderTop: '1px solid var(--line)', padding: '1.2rem 1.8rem 1.6rem' }}>
+        <div className="discussion-content">
+          <div className="discussion-intro">
+            <h2>Letters &amp; Reflections</h2>
+            <p>Join the conversation · {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}</p>
+          </div>
           {commentForm}
+          <div className="comment-list">
+            {comments.length === 0 ? (
+              <div className="comment-empty">No comments yet. Be the first to share your thoughts.</div>
+            ) : commentCards}
+          </div>
         </div>
       </div>
 
-      {/* MASTHEAD NAV */}
+      {/* MASTHEAD */}
       <nav className="blog-nav">
         <button
           className="blog-nav-left"
@@ -514,87 +1014,66 @@ const JournalArticle = ({
         </div>
         {heroImage ? (
           <div className="hero-image-container">
-            <img src={heroImage.src} alt={heroImage.alt || ''} />
+            <img src={heroImage.src} alt={heroImage.alt || ''} loading="lazy" />
           </div>
         ) : null}
       </header>
 
-      {/* CHAPTER 01 - light bone */}
+      {/* ARTICLE BODY — chapters 1 + 2 */}
       <section className="article-body">
         <div className="article-container">
-          <ChapterHead num={chapterOne.num} title={chapterOne.title} em={chapterOne.em} />
-          {chapterOne.children}
+          {intro}
+          {chapterOne ? <ChapterHead num={chapterOne.num} title={chapterOne.title} em={chapterOne.em} /> : null}
+          {chapterOne ? chapterOne.children : null}
+          {chapterTwo ? <ChapterHead num={chapterTwo.num} title={chapterTwo.title} em={chapterTwo.em} /> : null}
+          {chapterTwo ? chapterTwo.children : null}
         </div>
       </section>
-
-      {/* DARK PULL QUOTE BREAK */}
-      {pullQuote ? (
+{/* DARK BREAK — conclusion */}
+      {conclusion ? (
         <section className="dark-break">
-          <div className="pull-quote-container">
-            <blockquote className="pull-quote">{pullQuote.text}</blockquote>
-            <div className="pull-quote-author">{pullQuote.author}</div>
+          <div className="dark-break-content">
+            <ChapterHead num={conclusion.num} title={conclusion.title} em={conclusion.em} />
+            {conclusion.children}
+            {conclusion.faq ? (
+              <div className="journal-qa">
+                <h3>Common Questions</h3>
+                {conclusion.faq.map((f, i) => (
+                  <div className="qa" key={i}>
+                    <div className="q">{f.question}</div>
+                    <div className="a">{f.answer}</div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {conclusion.cta ? (
+              <div className="journal-cta">
+                <button className="journal-btn" onClick={conclusion.cta.onStart}>
+                  Start Free Trial <ArrowSvg />
+                </button>
+                <button className="journal-btn ghost" onClick={conclusion.cta.onDemo}>
+                  Book a Demo
+                </button>
+              </div>
+            ) : null}
+            {conclusion.signoff ? (
+              <div className="conclusion-signoff">
+                <p>{conclusion.signoff.note}</p>
+                <span>{conclusion.signoff.meta}</span>
+              </div>
+            ) : null}
           </div>
         </section>
       ) : null}
 
-      {/* CHAPTER 02 - beige */}
-      <section className="article-body article-secondary">
-        <div className="article-container">
-          <ChapterHead num={chapterTwo.num} title={chapterTwo.title} em={chapterTwo.em} />
-          {chapterTwo.children}
-        </div>
-      </section>
-
-      {/* EMERALD CONCLUSION */}
-      <section className="emerald-conclusion">
-        <div className="article-container">
-          <ChapterHead num={conclusion.num} title={conclusion.title} em={conclusion.em} />
-          {conclusion.children}
-          {conclusion.faq ? (
-            <div className="journal-qa">
-              <h3>Common Questions</h3>
-              {conclusion.faq.map((f, i) => (
-                <div className="qa" key={i}>
-                  <div className="q">{f.question}</div>
-                  <div className="a">{f.answer}</div>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          {conclusion.cta ? (
-            <div className="journal-cta">
-              <button className="journal-btn" onClick={conclusion.cta.onStart}>
-                Start Free Trial <ArrowSvg />
-              </button>
-              <button className="journal-btn ghost" onClick={conclusion.cta.onDemo}>
-                Book a Demo
-              </button>
-            </div>
-          ) : null}
-          {conclusion.signoff ? (
-            <div className="conclusion-signoff">
-              <p>{conclusion.signoff.note}</p>
-              <span>{conclusion.signoff.meta}</span>
-            </div>
-          ) : null}
-        </div>
-      </section>
-
-      {/* COMMUNITY DISCUSSION */}
-      <section className="mag-comments">
-        <div className="mag-wrap">
-          <div className="mag-head">
-            <h2 className="mag-title">Community <em>Discussion</em></h2>
-            <div className="mag-count">{comments.length} {comments.length === 1 ? 'comment' : 'comments'}</div>
+      {/* PULL QUOTE */}
+      {pullQuote ? (
+        <section className="pull-quote-section">
+          <div className="pull-quote-container">
+            <blockquote className="pull-quote">{pullQuote.text}</blockquote>
           </div>
-          {commentForm}
-          <div className="mag-list">
-            {comments.length === 0 ? (
-              <div className="do-empty">No comments yet. Be the first to share your thoughts.</div>
-            ) : commentCards}
-          </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       {/* SCROLLING BANNER */}
       <section

@@ -1,27 +1,14 @@
 import React from 'react';
-import JournalArticle, { JournalFigure, JournalList } from '../JournalArticle';
+import JournalArticle, { JournalFigure, JournalFlowerList } from '../JournalArticle';
 
 /* =================================================================
-   RESTPOINT JOURNAL — The Architecture of Blooms
+   RESTPOINT JOURNAL — The Architecture of Blooms.
+   Rendered exactly like the reference editorial design.
    ================================================================= */
 
-const FlowerTypes = () => (
-  <JournalList
-    items={[
-      'Casket Arrangements — Casket wreaths and sprays should be saved for the immediate family to purchase, resting directly atop the casket.',
-      'Wreaths & Crosses — Popular arrangement choices appropriate for family and close friends to send to either the home or the wake. The circular shape of a wreath represents eternal life, while crosses represent faith.',
-      'Tied Sheaves — Similar to bouquets but without plastic wrapping. Instead, they are tied with a suitable material, making an appropriate arrangement for mourners to send or bring.',
-      'Funeral Sprays — Standing sprays are typically purchased by the extended family of the deceased and displayed near the casket; they can be viewed from one side only and rest against an easel.',
-      'Baskets — Floral baskets make for a lovely display that comes in an array of sizes and is usually delivered to the church or the funeral home.',
-      'Hearts — A popular shape for funeral wreaths because they display a universal symbol of caring and love.',
-      'Pillows — Flower pillows are usually displayed in the casket, though they can also be used at the home of family members. Traditionally, they represent the young children or grandchildren of the deceased.',
-    ]}
-  />
-);
-
-const chapterOneContent = (
+const introContent = (
   <>
-    <p>There is a moment in the arrangement room, usually an hour into the consultation, when the conversation turns to flowers. It is a delicate pivot. The family has just finished discussing the weightiest matters the service, the transport, the legalities—and now they are asked to make a series of aesthetic choices that will define the visual memory of their loved one's farewell.</p>
+    <p>There is a moment in the arrangement room, usually an hour into the consultation, when the conversation turns to flowers. It is a delicate pivot. The family has just finished discussing the weightiest matters—the service, the transport, the legalities—and now they are asked to make a series of aesthetic choices that will define the visual memory of their loved one's farewell.</p>
 
     <p>Historically, this is where the friction began. A funeral director would slide a heavy, laminated catalog across the desk. The photos would be outdated, heavily watermarked stock images from 1998. The family would point to a picture, only to be told that specific arrangement wasn't available from the local florist that week. More flipping. More waiting. More phone calls.</p>
 
@@ -29,24 +16,36 @@ const chapterOneContent = (
   </>
 );
 
-const chapterTwoContent = (
+const gardenContent = (
   <>
     <p>With the Restpoint FrontDesk tablet, we introduced a curated floral marketplace. But we didn't just scan old catalogs into a PDF. We built a system where the funeral home pre-uploads high-resolution, true-to-life images of the exact arrangements they offer. When a family picks up the tablet, they aren't looking at a database; they are walking through a digital garden.</p>
 
-    <p>We drew inspiration from the most engaging consumer apps in the world. The interface is designed to feel like exploring Instagram Stories. Families can simply swipe or tap to view full screen, high resolution images of the arrangements. This immersive, visual first approach makes the interface incredibly easy to see and deeply engaging. By allowing families to truly visualize the flowers seeing the exact textures and colors fill the screen they aren't just picking a product; they are curating an atmosphere.</p>
+    <p>The interface is designed for touch. A simple swipe moves through cascading lilies, vibrant roses, and quiet, elegant orchids. The pricing is transparent. The descriptions are clear. If an item is out of season, it is gently marked, and suitable alternatives are suggested automatically by the system.</p>
+  </>
+);
 
-    <p>This visual clarity changes everything. When families can see exactly what they are buying, hesitation disappears. They no longer have to guess what a "Standing Spray" or a "Casket Wreath" looks like from a tiny, blurred thumbnail. They see the real thing, in full screen, and as a result, they book with confidence. It directly translates to higher floral bookings because the friction of imagination has been removed; they can finally see the beauty they are choosing.</p>
-
+const flowersContent = (
+  <>
     <p>More importantly, the tablet educates. It is important to note that the type of arrangement you choose is far less important than simply being present for your friend or family member in their time of loss. However, traditionally, condolence flowers come in a variety of styles, each carrying its own silent meaning. Within standard funeral etiquette, they are all equally acceptable. The tablet guides families through these choices:</p>
 
-    <FlowerTypes />
+    <JournalFlowerList
+      items={[
+        { name: 'Casket Arrangements', desc: 'Casket wreaths and sprays should be saved for the immediate family to purchase, resting directly atop the casket.' },
+        { name: 'Wreaths & Crosses', desc: 'Popular arrangement choices appropriate for family and close friends to send to either the home or the wake. The circular shape of a wreath represents eternal life, while crosses represent faith.' },
+        { name: 'Tied Sheaves', desc: 'Similar to bouquets but without plastic wrapping. Instead, they are tied with a suitable material, making an appropriate arrangement for mourners to send or bring.' },
+        { name: 'Funeral Sprays', desc: 'Standing sprays are typically purchased by the extended family of the deceased and displayed near the casket; they can be viewed from one side only and rest against an easel.' },
+        { name: 'Baskets', desc: 'Floral baskets make for a lovely display that comes in an array of sizes and is usually delivered to the church or the funeral home.' },
+        { name: 'Hearts', desc: 'A popular shape for funeral wreaths because they display a universal symbol of caring and love.' },
+        { name: 'Pillows', desc: 'Flower pillows are usually displayed in the casket, though they can also be used at the home of family members. Traditionally, they represent the young children or grandchildren of the deceased.' },
+      ]}
+    />
 
     <p>By allowing the family to browse these meanings independently, at their own pace, we return a small piece of agency to them. They can pass the tablet around the room. A sibling in another city can view the same catalog via the family portal and offer their input. The selection becomes a moment of connection, not a point of friction.</p>
 
     <JournalFigure
       src="https://bouqs.com/blog/wp-content/uploads/2018/08/flower-for-funeral.jpg"
       alt="A beautiful floral arrangement for a funeral"
-            caption="Fig 02 · The digital catalog brings the florist's artistry directly to the family's fingertips."
+      caption="Fig 02 · The digital catalog brings the florist's artistry directly to the family's fingertips."
     />
   </>
 );
@@ -72,11 +71,12 @@ const ArchitectureOfBlooms = () => (
       src: 'https://bouqs.com/blog/wp-content/uploads/2018/08/funeral-casket-arrangement.jpg',
       alt: 'Elegant funeral casket flower arrangement',
     }}
+    intro={introContent}
     chapterOne={{
       num: '01',
       title: 'The Digital',
       em: 'Garden',
-      children: chapterOneContent,
+      children: gardenContent,
     }}
     pullQuote={{
       text: "We didn't digitize flowers to make them cheaper. We digitized them to make the choosing peaceful.",
@@ -86,7 +86,7 @@ const ArchitectureOfBlooms = () => (
       num: '02',
       title: 'The Language of',
       em: 'Flowers',
-      children: chapterTwoContent,
+      children: flowersContent,
     }}
     conclusion={{
       num: '03',
