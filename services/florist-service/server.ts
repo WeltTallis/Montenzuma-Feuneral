@@ -348,6 +348,32 @@ async function ensureFloristTables(dbName: string) {
         try {
             await tenantKnex.raw('ALTER TABLE `flower_bookings` MODIFY COLUMN `date` DATE NULL');
             await tenantKnex.raw('ALTER TABLE `flower_bookings` MODIFY COLUMN `time` TIME NULL');
+
+        // Ensure booking extra columns exist on flower_bookings.
+        // The createBooking controller INSERTs ribbon_color and size (sent by
+        // the frontend via FlowerBookingsNew.jsx), and migration
+        // 20240625000001_add_booking_extras.js adds ribbon_color/quantity/
+        // arrangements/primary_color/accent_color. On tables created by
+        // ensureFloristTable (simplified schema) or on existing installs where
+        // that migration never ran, these columns are missing and the INSERT
+        // fails with "Unknown column 'ribbon_color' in 'INSERT INTO'".
+        // This guard is idempotent and mirrors the tenant_id column pattern above.
+        const bookingExtraColumns = [
+            { name: 'quantity',       sqlType: 'INT DEFAULT 1' },
+            { name: 'arrangements',   sqlType: 'TEXT' },
+            { name: 'primary_color',  sqlType: 'VARCHAR(100)' },
+            { name: 'accent_color',   sqlType: 'VARCHAR(100)' },
+            { name: 'ribbon_color',   sqlType: 'VARCHAR(100)' },
+            { name: 'size',           sqlType: 'VARCHAR(50)' },
+        ];
+        for (const col of bookingExtraColumns) {
+            if (!(await tenantKnex.schema.hasColumn('flower_bookings', col.name))) {
+                await tenantKnex.raw(
+                    `ALTER TABLE \`flower_bookings\` ADD COLUMN \`${col.name}\` ${col.sqlType} NULL`
+                );
+                console.log(`[FLORIST] Added missing column '${col.name}' to flower_bookings`);
+            }
+        }
         } catch (e) {
             console.warn('[FLORIST] Could not relax date/time columns:', (e as any).message);
         }

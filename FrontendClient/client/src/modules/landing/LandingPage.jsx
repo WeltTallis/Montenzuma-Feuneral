@@ -10,6 +10,7 @@ import Footer from '../../components/layout/Footer';
 import ModuleGridSection from './imageCard';
 import FloatingCTA from './FloatingCTA';
 import FaqSection from './FaqSection';
+import MissionSection from './Mission';
 import C from '../../utils/colors/index'
 
 
@@ -962,26 +963,8 @@ export default function App() {
         {/* ── Hardware Requirement (replaces the old uptime/audit-trail infrastructure block) ── */}
         <HardwareRequirementSection />
 
-        {/* ── About ── */}
-        <section className="about-section">
-          <div className="wrap about-grid">
-            {/* FIX: Added paddingRight to balance text column */}
-            <Reveal style={{ paddingRight: '2rem' }}>
-              <div className="label" style={{ marginBottom: '1rem' }}>Our Mission</div>
-              <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', marginBottom: '1.5rem', color: C.ink }}>To make it easier to care for people when it matters most.</h2>
-              <p style={{ color: C.gray, marginBottom: '2rem', lineHeight: 1.8 }}>We give funeral homes and funeral insurers the technology to simplify operations, protect every detail, and deliver a better experience for the families they serve.</p>
-              <p style={{ color: C.gray, marginBottom: '2rem', lineHeight: 1.8, fontFamily: "'Fraunces', serif", fontSize: '1.2rem', fontWeight: 600 }}>Less complexity. More care.</p>
-              <p style={{ color: C.verdigris, marginBottom: '2rem', lineHeight: 1.8, fontFamily: "'Fraunces', serif", fontSize: '1.2rem', fontWeight: 600 }}>Give Families a Digital Experience They'll Remember.</p>
-              <button className="btn btn-line" onClick={goAbout}>Learn more about us</button>
-            </Reveal>
-            {/* FIX: Added paddingLeft to balance visual column */}
-            <Reveal delay={100} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingLeft: '2rem' }}>
-              <div style={{ maxWidth: '280px', width: '100%' }}>
-                <img src="/familyportal.png" alt="Rest Point Family Portal" style={{ width: '100%', height: 'auto', display: 'block' }} />
-              </div>
-            </Reveal>
-          </div>
-        </section>
+                {/* ── Our Mission ── */}
+        <MissionSection />
 
         {/* ── Modules ── */}
         <section id="modules" className="modules-section">
