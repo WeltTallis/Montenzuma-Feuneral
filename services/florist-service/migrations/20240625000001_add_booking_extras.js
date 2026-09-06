@@ -12,6 +12,7 @@ export async function up(knex) {
     table.string('primary_color', 100);
     table.string('accent_color', 100);
     table.string('ribbon_color', 100);
+    table.string('size', 50); // <-- Missing: used by createBooking INSERT + frontend payload
   });
 }
 
@@ -22,5 +23,6 @@ export async function down(knex) {
     table.dropColumn('primary_color');
     table.dropColumn('accent_color');
     table.dropColumn('ribbon_color');
+    table.dropColumn('size');
   });
 }

@@ -91,9 +91,21 @@ CREATE TABLE IF NOT EXISTS delivery_zones (
 );
 
 -- Insert default delivery zones
-INSERT INTO delivery_zones (zone_name, areas, delivery_fee, estimated_minutes, is_active) VALUES
-('Local - Same Area', 'Within 5km radius', 500.00, 30, TRUE),
-('Local - Extended', '5-15km radius', 1000.00, 60, TRUE),
-('Regional', '15-30km radius', 2000.00, 90, TRUE),
-('National', 'Over 30km / Other cities', 5000.00, 240, TRUE)
-ON DUPLICATE KEY UPDATE updated_at = VALUES(updated_at);
+INSERT INTO delivery_zones (zone_name, areas, delivery_fee, estimated_minutes, is_active, created_at) VALUES
+('Local - Same Area', 'Within 5km radius', 500.00, 30, TRUE, NOW()),
+('Local - Extended', '5-15km radius', 1000.00, 60, TRUE, NOW()),
+('Regional', '15-30km radius', 2000.00, 90, TRUE, NOW()),
+('National', 'Over 30km / Other cities', 5000.00, 240, TRUE, NOW())
+ON DUPLICATE KEY UPDATE areas = VALUES(areas);
+
+-- ============================================
+-- Booking extra columns (added 2024-06-25)
+-- ribbon_color and size are sent by the frontend
+-- (FlowerBookingsNew.jsx) and INSERTed by createBooking.
+-- ============================================
+ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 1 AFTER amount;
+ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS arrangements TEXT AFTER quantity;
+ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS primary_color VARCHAR(100) AFTER arrangements;
+ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS accent_color VARCHAR(100) AFTER primary_color;
+ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS ribbon_color VARCHAR(100) AFTER accent_color;
+ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS size VARCHAR(50) AFTER ribbon_color;

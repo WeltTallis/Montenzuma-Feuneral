@@ -1150,11 +1150,17 @@ const FlowerBookingsNew = () => {
           <label style={lbl}>Ribbon Colour</label>
           <input
             type="text"
+            list="ribbon-color-options"
             style={{ ...inp, marginBottom: '22px' }}
             placeholder="e.g. ivory white, gold, deep red…"
             value={newBooking.ribbon}
             onChange={e => setNewBooking(prev => ({ ...prev, ribbon: e.target.value }))}
           />
+          <datalist id="ribbon-color-options">
+            {ribbonOptions.filter(o => o !== 'None').map(o => (
+              <option key={o} value={o} />
+            ))}
+          </datalist>
 
           {/* ── Flower Size ── */}
           <label style={lbl}>Flower Size</label>

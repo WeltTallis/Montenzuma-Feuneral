@@ -348,6 +348,9 @@ async function ensureFloristTables(dbName: string) {
         try {
             await tenantKnex.raw('ALTER TABLE `flower_bookings` MODIFY COLUMN `date` DATE NULL');
             await tenantKnex.raw('ALTER TABLE `flower_bookings` MODIFY COLUMN `time` TIME NULL');
+        } catch (e) {
+            console.warn('[FLORIST] Could not relax date/time columns:', (e as any).message);
+        }
 
         // Ensure booking extra columns exist on flower_bookings.
         // The createBooking controller INSERTs ribbon_color and size (sent by
@@ -373,9 +376,6 @@ async function ensureFloristTables(dbName: string) {
                 );
                 console.log(`[FLORIST] Added missing column '${col.name}' to flower_bookings`);
             }
-        }
-        } catch (e) {
-            console.warn('[FLORIST] Could not relax date/time columns:', (e as any).message);
         }
 
         console.log(`[FLORIST] ✓ Florist tables ready in: ${dbName}`);

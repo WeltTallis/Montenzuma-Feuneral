@@ -331,7 +331,8 @@ export const updateBooking = async (req: any, res: any) => {
         const allowedFields = [
             'flower_type', 'flower_description', 'customer',
             'customer_phone', 'customer_email', 'deceased_name', 'branch',
-            'arrangement_id', 'date', 'time', 'status', 'notes'
+            'arrangement_id', 'date', 'time', 'status', 'notes',
+            'ribbon_color', 'size'
         ];
 
         const setClauses: string[] = [];
