@@ -94,7 +94,7 @@ const DeceasedInfoSection = lazy(() => import('../components/deceased/deceasedIn
 const DeceasedAnalytics = lazy(() => import('../components/deceased/deceasedAnalytics'));
 
 const SettingsPage = lazy(() => import('../components/settings/SettingsPage'));
-const ReleaseFormPage = lazy(() => import('../components/releaseform/ReleaseFormPage'));
+const ReleaseFormPage = lazy(() => import('../components/deceased/register/deceasedRelease'));
 const PostmortemFormPage = lazy(() => import('../components/deceased/deceasedinfo/PostmortemFormPage'));
 const UserManagement = lazy(() => import('../components/modals/users'));
 
@@ -103,7 +103,7 @@ const UserManagement = lazy(() => import('../components/modals/users'));
 const LivePreviewHost = lazy(() => import('../components/common/LivePreviewHost'));
 const BodyIntakePreview = lazy(() => import('../components/deceased/register/deceasedIntake'));
 const FlowerBookingsPreview = lazy(() => import('../components/florists/FlowerBookingsNew'));
-const ReleaseFormPreview = lazy(() => import('../components/releaseform/ReleaseFormPage'));
+const ReleaseFormPreview = lazy(() => import('../components/deceased/register/deceasedRelease'));
 const ReceptionPortalPreview = lazy(() => import('../components/reception/ReceptionPortal'));
 const PublicMemorialPage = lazy(() => import('../components/memorial/PublicMemorialPage'));
 

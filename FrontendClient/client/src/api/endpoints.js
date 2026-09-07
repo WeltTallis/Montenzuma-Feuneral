@@ -156,7 +156,7 @@ export const ENDPOINTS = {
     DECEASED_DETAIL: (id) => `/body-release/deceased/${id}`,
     DECEASED_BY_ADMISSION: (admissionNumber) => `/body-release/deceased/by-admission/${admissionNumber}`,
   },
-  // Convenience alias — ReleaseFormPage calls ENDPOINTS.RELEASE_FORMS()
+    // Convenience alias — release form calls ENDPOINTS.RELEASE_FORMS()
   RELEASE_FORMS: () => '/body-release/checkout',
   EDOCUMENTS: {
     BASE: '/edocuments',
