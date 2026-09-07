@@ -204,13 +204,43 @@ api.interceptors.request.use((config) => {
   return config;
 }, (error) => Promise.reject(error));
 
+// ─── Connection-status bridge ───────────────────────────────────────────────
+// The browser's native `online`/`offline` events only fire when the network
+// interface itself changes. When the backend/proxy is unreachable (or a
+// service is down) the browser stays "online", so the ConnectionToast never
+// appeared. We bridge that gap here: any request that fails with a network /
+// proxy / timeout error dispatches `app:connection-lost`, and the first
+// successful request afterwards dispatches `app:connection-restored`.
+let connectionWasLost = false;
+
+const notifyConnectionLost = () => {
+  if (connectionWasLost) return;
+  connectionWasLost = true;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('app:connection-lost'));
+  }
+};
+
+const notifyConnectionRestored = () => {
+  if (!connectionWasLost) return;
+  connectionWasLost = false;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('app:connection-restored'));
+  }
+};
+
 // Response interceptor with auto-refresh on 401 and friendly service-down messages
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // A successful round-trip means the backend is reachable again.
+    notifyConnectionRestored();
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
     
     if (error.response?.status === 503) {
+      notifyConnectionLost();
       const serviceName = error.response?.data?.service || 'Service';
       const friendlyName = serviceName.charAt(0).toUpperCase() + serviceName.slice(1);
       error.friendlyMessage = error.response?.data?.message || `${friendlyName} is temporarily unavailable. Please try again later.`;
@@ -218,6 +248,7 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 504) {
+      notifyConnectionLost();
       const url = originalRequest?.url || '';
       const pathParts = url.split('/').filter(Boolean);
       const serviceHint = pathParts[2] || pathParts[0] || 'Service';
@@ -227,6 +258,7 @@ api.interceptors.response.use(
     }
     
     if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED') {
+      notifyConnectionLost();
       const url = originalRequest?.url || '';
       const pathParts = url.split('/').filter(Boolean);
       const serviceHint = pathParts[2] || pathParts[0] || 'Service';

@@ -57,7 +57,7 @@ const CHECK = (
 
 const ConnectionToast = () => {
   const [visible, setVisible] = useState(false);
-  const [online, setOnline] = useState(true);
+  const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const hideRef = useRef(null);
 
   useEffect(() => {
@@ -72,12 +72,21 @@ const ConnectionToast = () => {
 
     const handleOnline = () => show(true);
     const handleOffline = () => show(false);
+    // App-level events dispatched by the axios response interceptor when a
+    // request fails with a network / proxy / timeout error (browser stays
+    // "online", so the native events alone never fire).
+    const handleAppLost = () => show(false);
+    const handleAppRestored = () => show(true);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('app:connection-lost', handleAppLost);
+    window.addEventListener('app:connection-restored', handleAppRestored);
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('app:connection-lost', handleAppLost);
+      window.removeEventListener('app:connection-restored', handleAppRestored);
       if (hideRef.current) clearTimeout(hideRef.current);
     };
   }, []);

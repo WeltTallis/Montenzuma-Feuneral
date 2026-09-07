@@ -905,6 +905,14 @@ const ApplyLeave = () => {
             setForm({ type: '', priority: 'medium', reason: '' });
             setFile(null);
             setRange({ start: null, end: null });
+            // Optimistically show the new request immediately so the user sees
+            // it even if the follow-up fetch is slow or the network hiccups.
+            if (created && created.id) {
+                setMyLeaves((prev) => {
+                    const list = Array.isArray(prev) ? prev : [];
+                    return [created, ...list.filter((l) => l.id !== created.id)];
+                });
+            }
             await loadData();
         } catch (err) {
             console.error('[ApplyLeave] Submit failed:', {

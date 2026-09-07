@@ -390,6 +390,7 @@ const LeaveDashboard = () => {
   const [requests, setRequests] = useState([]);   // all PENDING requests needing HR action
   const [onLeaveUsers, setOnLeaveUsers] = useState([]);
   const [balance, setBalance] = useState(null);
+  const [employees, setEmployees] = useState([]);
   const [actingId, setActingId] = useState(null); // row id currently being actioned
 
   // ── Multi-tenant: leave data lives in the PARENT tenant's main DB ──
@@ -423,6 +424,15 @@ const LeaveDashboard = () => {
       } catch (e) {
         setBalance(null);
       }
+    }
+
+    // 3) All registered employees + their leave balances (tolerant of failure)
+    try {
+      const empRes = await api.get(ENDPOINTS.LEAVE.BALANCES, { ...tenantHeaders, signal: abortSignal });
+      const emps = empRes?.data?.data || empRes?.data || [];
+      setEmployees(Array.isArray(emps) ? emps : []);
+    } catch (e) {
+      setEmployees([]);
     }
     setLoading(false);
   }, [tenantHeaders, me]);
@@ -461,11 +471,21 @@ const LeaveDashboard = () => {
       (r.id === id ? { ...r, status: newStatus, rejection_reason: notes || r.rejection_reason } : r)
     ));
     try {
+      // The status update is the authoritative operation. If it succeeds, the
+      // row IS approved/rejected even if the follow-up refresh below fails, so
+      // we must not roll the optimistic update back in that case.
       await api.patch(ENDPOINTS.LEAVE.UPDATE_STATUS(id), { status: newStatus, rejection_reason: notes, approved_by: me }, tenantHeaders);
-      await refresh();
     } catch (e) {
       setRequests(prev);
       setError(e?.friendlyMessage || 'Could not update that request. It may have already been processed.');
+      setActingId(null);
+      return;
+    }
+    // Refresh is best-effort: a failure here must not undo a successful action.
+    try {
+      await refresh();
+    } catch (e) {
+      setError(e?.friendlyMessage || 'Request updated, but the dashboard could not be refreshed.');
     } finally {
       setActingId(null);
     }
@@ -680,6 +700,47 @@ const LeaveDashboard = () => {
               </Section>
             </div>
           </ContentGrid>
+
+          {/* All registered employees + their leave balances */}
+          <Section style={{ marginTop: '1.5rem' }}>
+            <SectionHead>
+              <SectionHeadLeft><Users size={18} />All employees ({employees.length})</SectionHeadLeft>
+            </SectionHead>
+            <SectionBody style={{ padding: 0 }}>
+              {employees.length === 0 ? (
+                <Center style={{ padding: '1.6rem 1rem' }}>
+                  No employees found yet. Employees registered in the system appear here with their leave balances.
+                </Center>
+              ) : (
+                <TableWrap>
+                  <Table>
+                    <thead>
+                      <tr>
+                        <th>Employee</th>
+                        <th>Email</th>
+                        <th>Entitlement</th>
+                        <th>Taken</th>
+                        <th>Pending</th>
+                        <th>Available</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {employees.map((e) => (
+                        <tr key={e.user_id || e.id || e.email || `emp-${e.name}`}>
+                          <td style={{ fontWeight: 600, color: COLORS.text }}>{e.name || e.full_name || '—'}</td>
+                          <td>{e.email || '—'}</td>
+                          <td>{safeNum(e.initial)} days</td>
+                          <td>{safeNum(e.leaveTaken)} days</td>
+                          <td>{safeNum(e.pendingDays)} days</td>
+                          <td style={{ fontWeight: 700, color: COLORS.primary }}>{safeNum(e.currentBalance)} days</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </TableWrap>
+              )}
+            </SectionBody>
+          </Section>
         </>
       )}
     </Page>
