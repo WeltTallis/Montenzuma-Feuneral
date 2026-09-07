@@ -472,18 +472,36 @@ export const updateDeceasedStatus = async (req: Request, res: Response): Promise
             });
         }
 
-        // Build dynamic update query
+        // Build dynamic update query.
+        // NOTE: the deceased table has NO `is_embalmed` column (embalming is
+        // tracked via admission_status). Writing is_embalmed used to throw
+        // "Unknown column" and silently cancel the whole status update, so
+        // released bodies never showed as Released on the deceased list.
         const updates: string[] = [];
         const values: any[] = [];
+
+        if (is_embalmed === true) {
+            // Promote 'admitted' -> 'embalmed' without ever downgrading a
+            // record that is already released/buried.
+            updates.push(`admission_status = IF(admission_status = 'admitted', 'embalmed', admission_status)`);
+        }
 
         if (body_status) {
             updates.push('body_status = ?');
             values.push(body_status);
-        }
 
-        if (is_embalmed !== undefined) {
-            updates.push('is_embalmed = ?');
-            values.push(is_embalmed ? 1 : 0);
+            const bs = String(body_status).toLowerCase();
+            if (bs === 'released') {
+                // Keep the derived status columns in sync so the deceased
+                // list, filters and dashboards reflect the release at once.
+                updates.push(`release_status = 'released'`);
+                updates.push(`admission_status = 'released'`);
+                updates.push('dispatch_date = COALESCE(dispatch_date, CURDATE())');
+            } else if (bs === 'buried') {
+                updates.push(`release_status = 'released'`);
+                updates.push(`admission_status = 'buried'`);
+                updates.push('dispatch_date = COALESCE(dispatch_date, CURDATE())');
+            }
         }
 
         updates.push('updated_at = NOW()');

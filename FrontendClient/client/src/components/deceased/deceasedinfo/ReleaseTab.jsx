@@ -191,54 +191,33 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
   useEffect(() => {
     const fetchReleaseData = async () => {
       if (!deceasedId) return;
-      
+
       setIsLoading(true);
       try {
-        const tenantSlug = localStorage.getItem('tenantSlug');
+        // getTenantHeaders() already carries the auth token + tenant slug.
+        // The backend matches releases saved under either the branch or the
+        // parent organisation slug, so no manual slug override is needed.
         const admissionNumber = d.admission_number || d.admission_no || deceasedId;
-        
+        const headers = { ...getTenantHeaders() };
+
         // Try 1: Fetch by admission number (most reliable)
         try {
-          const byAdmissionRes = await api.get(`/body-release/by-admission/${admissionNumber}`, {
-            headers: {
-              ...getTenantHeaders(),
-              'x-tenant-slug': tenantSlug
-            }
-          });
+          const byAdmissionRes = await api.get(
+            `/body-release/by-admission/${encodeURIComponent(admissionNumber)}`,
+            { headers }
+          );
           if (byAdmissionRes.data?.success && byAdmissionRes.data?.data) {
             setReleaseData(byAdmissionRes.data.data);
-            setIsLoading(false);
             return;
           }
         } catch (e) { /* not found by admission */ }
 
-        // Try 2: Fetch by deceased ID
-        try {
-          const directResponse = await api.get(`/body-release/checkout/${deceasedId}`, {
-            headers: {
-              ...getTenantHeaders(),
-              'x-tenant-slug': tenantSlug
-            }
-          });
-          if (directResponse.data?.success && directResponse.data?.data) {
-            setReleaseData(directResponse.data.data);
-            setIsLoading(false);
-            return;
-          }
-        } catch (e) { /* not found by id */ }
-
-        // Try 3: Fetch all releases and find by admission_number or name
-        const response = await api.get('/body-release/checkout', {
-          headers: {
-            ...getTenantHeaders(),
-            'x-tenant-slug': tenantSlug
-          }
-        });
-        
-        if (response.data?.success && response.data?.data) {
-          const deceasedRelease = response.data.data.find((release) => 
-            release.admission_number === admissionNumber || 
-            release.admission_number === deceasedId || 
+        // Try 2: List all releases and match by admission number or name
+        const response = await api.get('/body-release/checkout', { headers });
+        if (response.data?.success && Array.isArray(response.data?.data)) {
+          const deceasedRelease = response.data.data.find((release) =>
+            release.admission_number === admissionNumber ||
+            release.admission_number === deceasedId ||
             release.name_of_deceased === d.full_name ||
             release.name_of_deceased === d.name_of_deceased
           );
@@ -258,31 +237,92 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
 
   return (
     <>
+      {/* Status banner */}
+      {releaseData ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          padding: '12px 16px', marginBottom: 24, borderRadius: 8,
+          background: C.successBg || '#ecfdf5', border: `1px solid ${C.success || '#059669'}44`,
+        }}>
+          <i className="fas fa-check-circle" style={{ color: C.success || '#059669', fontSize: 18 }}></i>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontWeight: 700, color: C.success || '#059669', fontSize: 14 }}>
+              BODY RELEASED{releaseData.release_id ? ` — ${releaseData.release_id}` : ''}
+            </div>
+            <div style={{ fontSize: 12, color: C.gray }}>
+              {releaseData.created_at ? `Released on ${formatDate(releaseData.created_at)}` : ''}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          padding: '12px 16px', marginBottom: 24, borderRadius: 8,
+          background: C.bgField || '#f7f7f5', border: `1px solid ${C.borderLight || '#e0e0e0'}`,
+        }}>
+          <i className="fas fa-clock" style={{ color: C.gray, fontSize: 16 }}></i>
+          <div style={{ flex: 1, minWidth: 200, fontSize: 13, color: C.gray }}>
+            No body release has been recorded for this deceased yet.
+          </div>
+          <Btn $primary onClick={handleFinalizeRelease}>
+            <i className="fas fa-door-open" style={{ fontSize: 12 }}></i> Start Release
+          </Btn>
+        </div>
+      )}
+
       <TwoColGrid>
         <Col>
           <SectionHead $mt0 $primary><span>01</span> Release Details</SectionHead>
           <DetailGrid $cols>
+            <DetailItem><DetailLabel>Release ID</DetailLabel><DetailValue>{releaseData?.release_id || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Deceased</DetailLabel><DetailValue>{releaseData?.name_of_deceased || d.full_name || d.name_of_deceased || '—'}</DetailValue></DetailItem>
             <DetailItem><DetailLabel>Scheduled Release Date</DetailLabel><DetailValue>{releaseData?.date_of_removal ? formatDate(releaseData.date_of_removal) : 'Not scheduled'}</DetailValue></DetailItem>
             <DetailItem><DetailLabel>Scheduled Release Time</DetailLabel><DetailValue>{releaseData?.time_of_removal || '—'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Authorized By (NOK)</DetailLabel><DetailValue>{releaseData?.next_kin || nextOfKin?.full_name || nextOfKin?.name || '—'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Relationship to Deceased</DetailLabel><DetailValue>{releaseData?.relationship || nextOfKin?.relationship || '—'}</DetailValue></DetailItem>
           </DetailGrid>
         </Col>
 
         <Col>
-          <SectionHead $mt0><span>02</span> Transportation Details</SectionHead>
+          <SectionHead $mt0><span>02</span> Receiver / Next of Kin</SectionHead>
           <DetailGrid $cols>
-            <DetailItem><DetailLabel>Permit Number</DetailLabel><DetailValue>{releaseData?.permit_number || '—'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Mode of Transport</DetailLabel><DetailValue>{releaseData?.mode_of_transport || 'Hearse / Van'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Transport Carrier / Driver Name</DetailLabel><DetailValue>{releaseData?.transport_carrier || '—'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Final Destination</DetailLabel><DetailValue>{releaseData?.final_destination || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Authorized By (NOK)</DetailLabel><DetailValue>{releaseData?.next_kin || nextOfKin?.full_name || nextOfKin?.name || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Relationship to Deceased</DetailLabel><DetailValue>{releaseData?.relationship || nextOfKin?.relationship || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Receiver ID Number</DetailLabel><DetailValue>{releaseData?.id_number || nextOfKin?.id_number || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Receiver Phone</DetailLabel><DetailValue>{releaseData?.tell_number || nextOfKin?.contact || '—'}</DetailValue></DetailItem>
           </DetailGrid>
         </Col>
       </TwoColGrid>
 
+      <SectionHead $mt0><span>03</span> Transport &amp; Release Officer</SectionHead>
+      <DetailGrid>
+        <DetailItem><DetailLabel>Permit Number</DetailLabel><DetailValue>{releaseData?.permit_number || '—'}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Mode of Transport</DetailLabel><DetailValue>{releaseData?.mode_of_transport || '—'}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Released By (Staff)</DetailLabel><DetailValue>{releaseData?.received_by || releaseData?.staff_name || '—'}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Recorded On</DetailLabel><DetailValue>{releaseData?.created_at ? formatDate(releaseData.created_at) : '—'}</DetailValue></DetailItem>
+      </DetailGrid>
+
+      <SectionHead $mt0><span>04</span> Verification &amp; Handover Notes</SectionHead>
+      <DetailGrid>
+        <DetailItem>
+          <DetailLabel>Payments Cleared</DetailLabel>
+          <DetailValue>{releaseData ? (releaseData.everything_paid ? 'Yes — everything paid' : 'Not marked as fully paid') : '—'}</DetailValue>
+        </DetailItem>
+        <DetailItem>
+          <DetailLabel>Terms Accepted</DetailLabel>
+          <DetailValue>{releaseData ? (releaseData.terms_accepted ? 'Yes' : 'No') : '—'}</DetailValue>
+        </DetailItem>
+        <DetailItem $full>
+          <DetailLabel>Items Returned with Body</DetailLabel>
+          <DetailValue $muted>{releaseData?.items_returned || 'None recorded'}</DetailValue>
+        </DetailItem>
+        <DetailItem $full>
+          <DetailLabel>Notes</DetailLabel>
+          <DetailValue $muted>{releaseData?.notes || 'No notes recorded'}</DetailValue>
+        </DetailItem>
+      </DetailGrid>
+
       {(releaseData?.signature || releaseData?.staff_signature) && (
         <Col style={{ marginBottom: 24 }}>
-          <SectionHead $mt0><span>03</span> Authorizing Signature</SectionHead>
+          <SectionHead $mt0><span>05</span> Authorizing Signatures</SectionHead>
           <DetailGrid $cols>
             {releaseData?.signature && (
               <DetailItem>
@@ -290,7 +330,7 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
                 <img
                   src={/^(data:|https?:\/\/)/.test(releaseData.signature) ? releaseData.signature : `${env.API_GATEWAY_URL}${releaseData.signature.startsWith('/') ? '' : '/'}${releaseData.signature}`}
                   alt="Next of Kin Signature"
-                  style={{ maxHeight: 80, maxWidth: 260, objectFit: 'contain', background: 'white', border: `1px solid ${C.borderLight}`, borderRadius: 6, padding: 6 }}
+                  style={{ maxHeight: 170, maxWidth: 460, width: '100%', objectFit: 'contain', background: 'white', border: `1px solid ${C.borderLight}`, borderRadius: 6, padding: 8 }}
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               </DetailItem>
@@ -301,7 +341,7 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
                 <img
                   src={/^(data:|https?:\/\/)/.test(releaseData.staff_signature) ? releaseData.staff_signature : `${env.API_GATEWAY_URL}${releaseData.staff_signature.startsWith('/') ? '' : '/'}${releaseData.staff_signature}`}
                   alt="Staff Signature"
-                  style={{ maxHeight: 80, maxWidth: 260, objectFit: 'contain', background: 'white', border: `1px solid ${C.borderLight}`, borderRadius: 6, padding: 6 }}
+                  style={{ maxHeight: 170, maxWidth: 460, width: '100%', objectFit: 'contain', background: 'white', border: `1px solid ${C.borderLight}`, borderRadius: 6, padding: 8 }}
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               </DetailItem>

@@ -56,7 +56,12 @@ const STATUS_CONFIG = {
   'postmortem done': { label: 'Postmortem Done', color: '#b45309', bg: '#fffbeb' },
   pending: { label: 'Pending', color: '#b45309', bg: '#fffbeb' },
   released: { label: 'Released', color: '#047857', bg: '#ecfdf5' },
+  completed: { label: 'Released', color: '#047857', bg: '#ecfdf5' },
+  complete: { label: 'Released', color: '#047857', bg: '#ecfdf5' },
+  buried: { label: 'Buried', color: '#047857', bg: '#ecfdf5' },
   transferred: { label: 'Transferred', color: '#6b7280', bg: '#f3f4f6' },
+  'in care': { label: 'In Care', color: '#1e3a8a', bg: '#e0e7ff' },
+  embalmed: { label: 'In Care', color: '#1e3a8a', bg: '#e0e7ff' },
   default: { label: 'Unknown', color: '#6b7280', bg: '#f3f4f6' }
 };
 
@@ -97,6 +102,7 @@ const AppContainer = styled.div`
     overflow-x: hidden;
     overflow-x: clip;
   }
+
 
   @media (max-width: 900px) {
     padding: 16px;
@@ -950,7 +956,7 @@ const DeceasedListPage = () => {
       if (statusFilter === 'Active' && statusInfo.label !== 'Active' && statusInfo.label !== 'In Morgue') return false;
       if (statusFilter === 'Postmortem Requested' && statusInfo.label !== 'Postmortem Requested') return false;
       if (statusFilter === 'Postmortem Done' && statusInfo.label !== 'Postmortem Done' && statusInfo.label !== 'Pending Autopsy') return false;
-      if (statusFilter === 'Released' && statusInfo.label !== 'Released' && statusInfo.label !== 'Transferred') return false;
+      if (statusFilter === 'Released' && statusInfo.label !== 'Released' && statusInfo.label !== 'Transferred' && statusInfo.label !== 'Buried') return false;
     }
 
     if (genderFilter) {

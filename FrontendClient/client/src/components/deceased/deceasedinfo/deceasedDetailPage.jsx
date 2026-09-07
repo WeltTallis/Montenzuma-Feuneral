@@ -177,10 +177,12 @@ const DeceasedDetailPage = () => {
       };
 
       // 1) Deceased core info
+      let admissionNo = deceasedId;
       const decRes = await axios.get(`${BASE_URL}/${deceasedId}`, { headers });
       if (decRes.data?.data) {
         // Map backend fields to frontend field names
         const backendData = decRes.data.data;
+        admissionNo = backendData.admission_number || backendData.admission_no || deceasedId;
         const mappedData = {
           ...backendData,
           // Map admission fields
@@ -319,9 +321,15 @@ const DeceasedDetailPage = () => {
         }
       } catch (e) { /* charge settings optional */ }
 
-      // 7) Release data for audit log
+      // 7) Release data for audit log + Release tab.
+      // NOTE: the bodycheckout service mounts its router at /body-release and
+      // the gateway forwards paths verbatim, so the old /bodycheckout/release/
+      // ... path was always a 404. Fetch by admission number instead.
       try {
-        const relRes = await axios.get(`${env.FULL_API_URL}/bodycheckout/release/${deceasedId}`, { headers });
+        const relRes = await axios.get(
+          `${env.FULL_API_URL}/body-release/by-admission/${encodeURIComponent(admissionNo)}`,
+          { headers }
+        );
         if (relRes.data?.data) {
           setDeceased(prev => prev ? { ...prev, releaseData: relRes.data.data } : prev);
         }

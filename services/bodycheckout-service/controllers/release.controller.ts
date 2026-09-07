@@ -2,6 +2,19 @@ import { Request, Response, NextFunction } from 'express';
 import Logger from '../../../packages/shared-logger/dist/index';
 import { getTenantDB, resolveDatabase } from '../../../shared/dbConfig';
 
+/**
+ * Slug variants for release matching: releases may have been saved under the
+ * branch slug (`org-home-nairobi`) or the parent org slug (`org-home`).
+ * Accept either so the Release tab / list never miss saved records.
+ */
+const tenantSlugVariants = (slug: string): string[] => {
+  const s = String(slug || '').trim();
+  const variants = [s];
+  const lastDash = s.lastIndexOf('-');
+  if (lastDash > 0) variants.push(s.substring(0, lastDash));
+  return Array.from(new Set(variants.filter(Boolean)));
+};
+
 // GET /body-release/checkout/:id - Get specific release by ID
 export const getReleaseController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -26,11 +39,11 @@ export const getReleaseController = async (req: Request, res: Response, next: Ne
     const db = await getTenantDB(dbName);
     const query = `
       SELECT * FROM body_releases
-      WHERE release_id = ? AND tenant_slug = ?
+      WHERE release_id = ? AND tenant_slug IN (?)
       LIMIT 1
     `;
 
-    const [rows] = await db.execute(query, [id, tenantSlug]);
+    const [rows] = await db.execute(query, [id, tenantSlugVariants(tenantSlug)]);
     const results = rows as any[];
 
     if (!results || results.length === 0) {
@@ -81,8 +94,8 @@ export const getReleaseByAdmissionController = async (req: Request, res: Respons
       return;
     }
     const db = await getTenantDB(dbName);
-    const query = `SELECT * FROM body_releases WHERE admission_number = ? AND tenant_slug = ? LIMIT 1`;
-    const [rows] = await db.execute(query, [admissionNumber, tenantSlug]);
+    const query = `SELECT * FROM body_releases WHERE admission_number = ? AND tenant_slug IN (?) LIMIT 1`;
+    const [rows] = await db.execute(query, [admissionNumber, tenantSlugVariants(tenantSlug)]);
     const results = rows as any[];
 
     if (!results || results.length === 0) {
@@ -115,8 +128,8 @@ export const listReleasesController = async (req: Request, res: Response, next: 
     const limitNumber = Math.min(Math.max(Number(limit) || 50, 1), 100);
 
     const offset = (pageNumber - 1) * limitNumber;
-    let whereClause = `WHERE tenant_slug = ?`;
-    const params: any[] = [tenantSlug];
+    let whereClause = `WHERE tenant_slug IN (?)`;
+    const params: any[] = [tenantSlugVariants(tenantSlug)];
 
     if (search && typeof search === 'string' && search.trim()) {
       whereClause += ` AND (release_id LIKE ? OR name_of_deceased LIKE ? OR admission_number LIKE ?)`;
