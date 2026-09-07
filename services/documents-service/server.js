@@ -176,7 +176,19 @@ app.use(async (req, res, next) => {
 
   if (tenantSlug !== 'system_shared') {
     try {
-      const tenantStatus = await validateTenantActive(tenantSlug);
+      let tenantStatus = await validateTenantActive(tenantSlug);
+
+      // Branch slugs (`org-home-nairobi`) are not rows in the parent tenants
+      // table — the organisation that owns the database is the parent slug
+      // (`org-home`). Fall back to it before warning. Storage intentionally
+      // stays under the incoming (branch) slug so the frontend's /uploads/...
+      // URLs keep resolving to the same folders.
+      if (!tenantStatus.active && tenantSlug.includes('-')) {
+        const parentSlug = tenantSlug.substring(0, tenantSlug.lastIndexOf('-'));
+        const parentStatus = await validateTenantActive(parentSlug);
+        if (parentStatus.active) tenantStatus = parentStatus;
+      }
+
       if (!tenantStatus.active) {
         console.warn(`[DOCUMENTS] Tenant validation warning for "${tenantSlug}": ${tenantStatus.reason}. Proceeding anyway.`);
         // Store whatever info we have
