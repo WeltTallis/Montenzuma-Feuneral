@@ -4,7 +4,6 @@ import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 
 import { useParams, useNavigate } from 'react-router-dom';
-
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
 
@@ -324,7 +323,9 @@ const DeceasedDetailPage = () => {
       // 7) Release data for audit log + Release tab.
       // NOTE: the bodycheckout service mounts its router at /body-release and
       // the gateway forwards paths verbatim, so the old /bodycheckout/release/
-      // ... path was always a 404. Fetch by admission number instead.
+      // ... path was always a 404. Fetch by admission number first, then fall
+      // back to listing all releases and matching on admission number or name
+      // (case-insensitive) so a case mismatch never blanks the Release tab.
       try {
         const relRes = await axios.get(
           `${env.FULL_API_URL}/body-release/by-admission/${encodeURIComponent(admissionNo)}`,
@@ -332,8 +333,30 @@ const DeceasedDetailPage = () => {
         );
         if (relRes.data?.data) {
           setDeceased(prev => prev ? { ...prev, releaseData: relRes.data.data } : prev);
+        } else {
+          throw new Error('no release data by admission');
         }
-      } catch (e) { /* no release yet */ }
+      } catch (e) {
+        try {
+          const listRes = await axios.get(`${env.FULL_API_URL}/body-release/checkout`, { headers });
+          const list = Array.isArray(listRes.data?.data) ? listRes.data.data : [];
+          if (list.length > 0) {
+            const norm = (s) => String(s || '').trim().toLowerCase();
+            const adm = norm(admissionNo);
+            const did = norm(deceasedId);
+            const names = new Set([decRes.data?.data?.full_name, decRes.data?.data?.name,
+            decRes.data?.data?.name_of_deceased].filter(Boolean).map(norm));
+            const match = list.find((r) =>
+              (adm && norm(r.admission_number) === adm) ||
+              (did && norm(r.admission_number) === did) ||
+              names.has(norm(r.name_of_deceased))
+            );
+            if (match) {
+              setDeceased(prev => prev ? { ...prev, releaseData: match } : prev);
+            }
+          }
+        } catch (e2) { /* no release yet */ }
+      }
 
       // 7) Postmortem request lifecycle (Postmortem tab + Audit Log trail)
       try {

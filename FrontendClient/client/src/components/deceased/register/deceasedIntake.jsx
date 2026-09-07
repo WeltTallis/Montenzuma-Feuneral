@@ -1110,7 +1110,7 @@ const DeceasedRegistrationForm = () => {
         reference={vigilData?.reference}
         onDone={() => {
           const slug = (typeof getTenantSlug === 'function' && getTenantSlug()) || localStorage.getItem('tenantSlug') || '';
-          navigate(slug ? `/tenant/${slug}/dashboard` : '/dashboard');
+          navigate(slug ? `/tenant/${slug}/receptionist` : '/reception');
         }}
       />
     );

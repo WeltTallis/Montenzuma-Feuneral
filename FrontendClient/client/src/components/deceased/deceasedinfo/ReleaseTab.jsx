@@ -172,7 +172,12 @@ const ChecklistItem = styled.div`
 const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
   const navigate = useNavigate();
   const d = deceased || {};
-  const [releaseData, setReleaseData] = useState(null);
+  // Prefer the release already loaded by the deceased-detail page (it is fetched
+  // once into `deceased.releaseData`). We still re-fetch below as a fallback for
+  // direct/deep-link entry, but the parent-loaded record is the authoritative,
+  // always-appearing source — otherwise a slow/missed by-admission call showed
+  // "No body release recorded" even though the record existed.
+  const [releaseData, setReleaseData] = useState(d?.releaseData || null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleFinalizeRelease = () => {
@@ -191,6 +196,8 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
   useEffect(() => {
     const fetchReleaseData = async () => {
       if (!deceasedId) return;
+      // If the detail page already handed us the release record, nothing to do.
+      if (d?.releaseData) return;
 
       setIsLoading(true);
       try {
@@ -215,11 +222,14 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
         // Try 2: List all releases and match by admission number or name
         const response = await api.get('/body-release/checkout', { headers });
         if (response.data?.success && Array.isArray(response.data?.data)) {
+          const norm = (s) => String(s || '').trim().toLowerCase();
+          const adm = norm(admissionNumber);
+          const did = norm(deceasedId);
+          const names = new Set([d.full_name, d.name_of_deceased, d.name, d.fullname]
+            .filter(Boolean).map(norm));
           const deceasedRelease = response.data.data.find((release) =>
-            release.admission_number === admissionNumber ||
-            release.admission_number === deceasedId ||
-            release.name_of_deceased === d.full_name ||
-            release.name_of_deceased === d.name_of_deceased
+            adm && (norm(release.admission_number) === adm || norm(release.admission_number) === did) ||
+            names.has(norm(release.name_of_deceased))
           );
           if (deceasedRelease) {
             setReleaseData(deceasedRelease);
@@ -233,7 +243,7 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
     };
 
     fetchReleaseData();
-  }, [deceasedId, d.full_name, d.name_of_deceased, d.admission_number, d.admission_no]);
+  }, [deceasedId, d.full_name, d.name_of_deceased, d.admission_number, d.admission_no, d.releaseData]);
 
   return (
     <>
