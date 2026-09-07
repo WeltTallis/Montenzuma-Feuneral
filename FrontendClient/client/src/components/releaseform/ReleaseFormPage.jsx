@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
+import InOurCare from '../common/InOurCare';
 import 'react-toastify/dist/ReactToastify.css';
 import bwipjs from '@bwip-js/browser';
 import {
@@ -672,19 +673,11 @@ function ReleaseFormPage() {
   const [isLookupLoading, setIsLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [admissionNumber, setAdmissionNumber] = useState('');
-  const isNewMode = !id || id === 'new' || id === 'undefined';
 
-  // If the route is for creating a new release, render the dedicated Deceased Release component
-  // that matches the intake page styles. This lets the receptionist portal use the updated UI.
-  if (isNewMode) {
-    const DeceasedReleaseForm = React.lazy(() => import('../deceased/register/deceasedRelease'));
-    return (
-      <Suspense fallback={<Container style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}><Loader2 size={48} /></Container>}>
-        <DeceasedReleaseForm />
-      </Suspense>
-    );
-  }
-
+  // NOTE: the previous `new` mode rendered a separate, mismatched release
+  // component (deceasedRelease). Removed — `/release-form/new` now renders
+  // THIS form directly (blank, with the admission-number lookup below),
+  // exactly the styled form used for `/release-form/:id`.
 
   useEffect(() => {
     if (location.state?.viewMode) {
@@ -701,7 +694,7 @@ function ReleaseFormPage() {
   useEffect(() => {
     const fetchDeceasedData = async () => {
       try {
-        if (!id || isNewMode) {
+        if (!id) {
           setLoadingDeceased(false);
           return;
         }
@@ -842,21 +835,13 @@ function ReleaseFormPage() {
 
   if (submissionSuccess && releaseId) {
     return (
-      <Container>
-        <FormSheet>
-          <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-            <CheckCircle style={{ width: 64, height: 64, color: COLORS.success, marginBottom: '1rem' }} />
-            <h2 style={{ fontFamily: "'Saira', sans-serif", marginBottom: '0.5rem' }}>Form Submitted Successfully</h2>
-            <p style={{ color: COLORS.gray, marginBottom: '2rem' }}>
-              The release form has been recorded. Reference ID: <strong>{releaseId}</strong>
-            </p>
-            <ActionsContainer style={{ justifyContent: 'center' }}>
-              <PrimaryButton onClick={handlePrint}><FileText size={18} /> Print Form</PrimaryButton>
-              <SecondaryButton onClick={() => navigate('/dashboard')}><ArrowRight size={18} /> Back to Dashboard</SecondaryButton>
-            </ActionsContainer>
-          </div>
-        </FormSheet>
-      </Container>
+      <InOurCare
+        mode="release"
+        name={deceasedData?.full_name || 'The deceased'}
+        passed={deceasedData?.date_of_death || postmortemData?.date_of_death}
+        reference={releaseId}
+        onDone={() => navigate(slug ? `/tenant/${slug}/dashboard` : '/dashboard')}
+      />
     );
   }
   if (error) {
@@ -951,7 +936,7 @@ function ReleaseFormPage() {
                           (Admission: {deceasedData?.admission_number || admissionNumber || 'ï¿½'})
                         </span>
                       </div>
-                      {isNewMode && (
+                      {!id && (
                         <SecondaryButton type="button" onClick={() => { setDeceasedData(null); setLookupError(''); }} style={{ whiteSpace: 'nowrap' }}>
                           Change
                         </SecondaryButton>
