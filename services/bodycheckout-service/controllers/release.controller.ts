@@ -14,6 +14,14 @@ const tenantSlugVariants = (slug: string): string[] => {
   if (lastDash > 0) variants.push(s.substring(0, lastDash));
   return Array.from(new Set(variants.filter(Boolean)));
 };
+/**
+ * mysql2 `execute()` (prepared statements) does NOT expand a JS array bound to
+ * `IN (?)` — the array is bound as a single value and matches nothing. Build
+ * the placeholder list and spread the variants into params instead.
+ */
+const slugInClause = (variants: string[]): string => variants.map(() => '?').join(', ');
+
+// GET /body-release/checkout/:id - Get specific release by ID
 
 // GET /body-release/checkout/:id - Get specific release by ID
 export const getReleaseController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -37,13 +45,14 @@ export const getReleaseController = async (req: Request, res: Response, next: Ne
       return;
     }
     const db = await getTenantDB(dbName);
+    const variants = tenantSlugVariants(tenantSlug);
     const query = `
       SELECT * FROM body_releases
-      WHERE release_id = ? AND tenant_slug IN (?)
+      WHERE release_id = ? AND tenant_slug IN (${slugInClause(variants)})
       LIMIT 1
     `;
 
-    const [rows] = await db.execute(query, [id, tenantSlugVariants(tenantSlug)]);
+    const [rows] = await db.execute(query, [id, ...variants]);
     const results = rows as any[];
 
     if (!results || results.length === 0) {
@@ -94,8 +103,9 @@ export const getReleaseByAdmissionController = async (req: Request, res: Respons
       return;
     }
     const db = await getTenantDB(dbName);
-    const query = `SELECT * FROM body_releases WHERE admission_number = ? AND tenant_slug IN (?) LIMIT 1`;
-    const [rows] = await db.execute(query, [admissionNumber, tenantSlugVariants(tenantSlug)]);
+    const variants = tenantSlugVariants(tenantSlug);
+    const query = `SELECT * FROM body_releases WHERE admission_number = ? AND tenant_slug IN (${slugInClause(variants)}) LIMIT 1`;
+    const [rows] = await db.execute(query, [admissionNumber, ...variants]);
     const results = rows as any[];
 
     if (!results || results.length === 0) {
@@ -128,8 +138,9 @@ export const listReleasesController = async (req: Request, res: Response, next: 
     const limitNumber = Math.min(Math.max(Number(limit) || 50, 1), 100);
 
     const offset = (pageNumber - 1) * limitNumber;
-    let whereClause = `WHERE tenant_slug IN (?)`;
-    const params: any[] = [tenantSlugVariants(tenantSlug)];
+    const variants = tenantSlugVariants(tenantSlug);
+    let whereClause = `WHERE tenant_slug IN (${slugInClause(variants)})`;
+    const params: any[] = [...variants];
 
     if (search && typeof search === 'string' && search.trim()) {
       whereClause += ` AND (release_id LIKE ? OR name_of_deceased LIKE ? OR admission_number LIKE ?)`;
