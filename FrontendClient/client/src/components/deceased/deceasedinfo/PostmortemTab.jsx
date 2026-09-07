@@ -330,7 +330,7 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
   const signatureSrc = (() => {
     const sig = pm.signature || pm.signature_base64;
     if (!sig) return null;
-    if (String(sig).startsWith('data:image') || /^https?:\/\/./test(String(sig))) return String(sig);
+    if (String(sig).startsWith('data:image') || /^https?:\/\//.test(String(sig))) return String(sig);
     if (String(sig).startsWith('/')) return `${env.API_GATEWAY_URL}${sig}`;
     // Plain base64 (older rows) → render as PNG data-URL
     if (/^[A-Za-z0-9+/=\r\n]+$/.test(String(sig))) return `data:image/png;base64,${sig}`;

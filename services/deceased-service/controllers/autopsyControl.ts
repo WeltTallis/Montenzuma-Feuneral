@@ -546,179 +546,150 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         const MARGIN = 40;
         const CONTENT_WIDTH = PAGE_WIDTH - (MARGIN * 2); // 532
 
-        // ─── HELPER FUNCTIONS ──
-        const drawBarcode = (x: number, y: number, text: string, maxWidth: number = 150) => {
-            let currentX = x;
-            const barHeight = 25;
-            doc.save();
-            for (let i = 0; i < text.length; i++) {
-                const code = text.charCodeAt(i);
-                const barWidth = (code % 3) + 1;
-                const spaceWidth = ((code >> 2) % 2) + 1;
-                doc.rect(currentX, y, barWidth, barHeight).fillColor('#03071E').fill();
-                currentX += barWidth + spaceWidth;
-                if (currentX > x + maxWidth) break;
-            }
-            doc.restore();
-        };
+        // ─── HELPER FUNCTIONS ───
+        // Unified palette: ink text, slate muted labels, brand-teal accents.
+        const INK = '#111827';
+        const MUTED = '#6B7280';
+        const BRAND = '#0F3040';
+        const HAIRLINE = '#E5E7EB';
 
         const drawDataField = (label: string, value: string, x: number, y: number, width: number, isLarge: boolean = false) => {
-            doc.fillColor('#8B7355').font('Helvetica-Bold').fontSize(7).text(label.toUpperCase(), x, y, { width: width });
-            doc.fillColor('#03071E').font(isLarge ? 'Times-Bold' : 'Helvetica-Bold').fontSize(isLarge ? 11 : 9).text(value || 'N/A', x, y + 10, { width: width });
+            doc.fillColor(MUTED).font('Helvetica-Bold').fontSize(6.5).text(String(label).toUpperCase(), x, y, { width: width, characterSpacing: 0.5 });
+            doc.fillColor(INK).font(isLarge ? 'Times-Bold' : 'Helvetica-Bold').fontSize(isLarge ? 11.5 : 9).text(value || 'N/A', x, y + 10, { width: width });
         };
 
         const drawSectionHead = (num: string, title: string, yPos: number) => {
-            doc.fillColor('#03071E').rect(MARGIN, yPos, CONTENT_WIDTH, 20).fill();
-            doc.fillColor('#A9A9A9').font('Courier').fontSize(8).text(num, MARGIN + 10, yPos + 5);
-            doc.fillColor('#FAF8F4').font('Helvetica-Bold').fontSize(8).text(title, MARGIN + 25, yPos + 5);
-            return yPos + 30; // Return next Y position
+            // Sleek section label: brand accent tick + spaced caps + hairline rule.
+            doc.rect(MARGIN, yPos + 2, 3, 11).fillColor(BRAND).fill();
+            doc.fillColor(BRAND).font('Helvetica-Bold').fontSize(8.5)
+                .text(`${num}   ${String(title).toUpperCase()}`, MARGIN + 10, yPos, { characterSpacing: 1.2 });
+            doc.moveTo(MARGIN, yPos + 17).lineTo(PAGE_WIDTH - MARGIN, yPos + 17)
+                .strokeColor(HAIRLINE).lineWidth(0.75).stroke();
+            return yPos + 27;
         };
 
-        // ─── 1. WATERMARK ──
+        // ─── 1. SUBTLE WATERMARK ───
         doc.save();
         doc.translate(PAGE_WIDTH / 2, PAGE_HEIGHT / 2);
-        doc.rotate(-35);
-        doc.fillOpacity(0.025).fillColor('#03071E').font('Helvetica-Bold').fontSize(80).text('OFFICIAL RECORD', -250, -40, { align: 'center', width: 500 });
+        doc.rotate(-32);
+        doc.fillOpacity(0.03).fillColor(BRAND).font('Helvetica-Bold').fontSize(64)
+            .text('OFFICIAL RECORD', -240, -30, { align: 'center', width: 480 });
         doc.restore();
 
-        let y = 35;
+        // ─── 2. CLEAN CENTERED LETTERHEAD (no top bar, no barcode) ───
+        let y = 36;
+        doc.fillColor(INK).font('Times-Bold').fontSize(16).text(facilityName, MARGIN, y, { width: CONTENT_WIDTH, align: 'center' });
+        doc.fillColor(MUTED).font('Helvetica').fontSize(7.5)
+            .text('Forensic & Mortuary Services  ·  Nairobi, Kenya', MARGIN, y + 21, { width: CONTENT_WIDTH, align: 'center' });
 
-        // ─── 2. LETTERHEAD ──
-        doc.rect(0, 0, PAGE_WIDTH, 4).fillColor('#3D4F47').fill(); // Top Border
+        y += 40;
+        doc.fillColor(BRAND).font('Helvetica-Bold').fontSize(12).text('AUTOPSY REPORT', MARGIN, y, { width: CONTENT_WIDTH, align: 'center', characterSpacing: 3 });
+        y += 18;
+        doc.fillColor(MUTED).font('Courier').fontSize(7)
+            .text(`File ID ${reportRef}   ·   Issued ${reportDate}`, MARGIN, y, { width: CONTENT_WIDTH, align: 'center' });
 
-        // Facility Info
-        doc.fillColor('#03071E').font('Times-Bold').fontSize(15).text(facilityName, MARGIN, y);
-        doc.fillColor('#6B6862').font('Helvetica').fontSize(8).text('1234 Memorial Drive, Suite 500, Metro City, ST 12345, Kenya', MARGIN, y + 18);
-        doc.text('Phone: (555) 123-4567', MARGIN, y + 30);
+        y += 14;
+        doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).strokeColor(HAIRLINE).lineWidth(1).stroke();
+        y += 16;
 
-        // Right Header
-        const rightX = PAGE_WIDTH - MARGIN - 150;
-        doc.fillColor('#3D4F47').font('Courier-Bold').fontSize(8).text('AUTOPSY REPORT', rightX, y, { width: 150, align: 'right' });
-        drawBarcode(rightX, y + 15, reportRef, 150);
-        doc.fillColor('#6B6862').font('Courier').fontSize(7).text('File ID: ' + reportRef, rightX, y + 45, { width: 150, align: 'right' });
-
-        // Bottom Border for Letterhead (Pushed down to avoid overlap)
-        y += 75;
-        doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).strokeColor('#E3DDD0').lineWidth(1).stroke();
-        y += 20;
-
-        // ─── 3. SECTION 01: DECEDENT INFORMATION ──
+        // ─── 3. SECTION 01: DECEDENT INFORMATION ───
         y = drawSectionHead('01', 'DECEDENT INFORMATION', y);
 
         const colW = CONTENT_WIDTH / 3;
-        // Row 1
         drawDataField('Full Name', fullName, MARGIN, y, colW, true);
         drawDataField('Admission Number', admissionNumber, MARGIN + colW, y, colW);
         drawDataField('Age', `${age} Years`, MARGIN + colW * 2, y, colW);
-        y += 30;
-        // Row 2
+        y += 28;
         drawDataField('Gender', gender, MARGIN, y, colW);
-        drawDataField('Date of Death', dateOfDeath, MARGIN + colW, y, colW);
-        drawDataField('Place of Death', placeOfDeath, MARGIN + colW * 2, y, colW);
+        drawDataField('Date of Birth', dateOfBirth, MARGIN + colW, y, colW);
+        drawDataField('Date of Death', dateOfDeath, MARGIN + colW * 2, y, colW);
+        y += 28;
+        drawDataField('Place of Death', placeOfDeath, MARGIN, y, colW);
+        drawDataField('National ID', nationalId, MARGIN + colW, y, colW);
+        drawDataField('Next of Kin', kinName, MARGIN + colW * 2, y, colW);
+        y += 28;
+        drawDataField('Relationship', kinRelationship, MARGIN, y, colW);
         y += 30;
-        // Row 3
-        drawDataField('National ID', nationalId, MARGIN, y, colW);
-        drawDataField('Next of Kin', kinName, MARGIN + colW, y, colW);
-        drawDataField('Relationship', kinRelationship, MARGIN + colW * 2, y, colW);
-        y += 40;
 
-        // ─── 4. SECTION 02: OFFICIAL DETERMINATION OF DEATH (Conditional) ──
+        // ─── 4. SECTION 02: OFFICIAL DETERMINATION OF DEATH (conditional) ───
         const hasDeterminationData = postmortem.immediate_cause_of_death || postmortem.underlying_cause_of_death || postmortem.contributing_conditions;
 
         if (hasDeterminationData) {
             y = drawSectionHead('02', 'OFFICIAL DETERMINATION OF DEATH', y);
 
-            // Left Verdigris Border
-            const causeBlockHeight = 100;
-            doc.rect(MARGIN, y, 3, causeBlockHeight).fillColor('#3D4F47').fill();
+            const causeBlockHeight = 96;
+            doc.rect(MARGIN, y + 2, 3, causeBlockHeight - 12).fillColor(BRAND).fill();
             const textX = MARGIN + 15;
 
             drawDataField('Immediate Cause of Death', postmortem.immediate_cause_of_death || 'N/A', textX, y, CONTENT_WIDTH - 30, true);
-            doc.fillColor('#6B6862').font('Courier').fontSize(7).text('↓ Due to (or as a consequence of)', textX, y + 35);
-            drawDataField('Underlying Cause of Death', postmortem.underlying_cause_of_death || 'N/A', textX, y + 50, CONTENT_WIDTH - 30, true);
-            drawDataField('Contributing Conditions', postmortem.contributing_conditions || 'None identified', textX, y + 85, CONTENT_WIDTH - 30);
+            doc.fillColor(MUTED).font('Helvetica-Oblique').fontSize(7).text('Due to (or as a consequence of):', textX, y + 33);
+            drawDataField('Underlying Cause of Death', postmortem.underlying_cause_of_death || 'N/A', textX, y + 46, CONTENT_WIDTH - 30, true);
+            drawDataField('Contributing Conditions', postmortem.contributing_conditions || 'None identified', textX, y + 78, CONTENT_WIDTH - 30);
 
-            // Manner of Death Badge
-            y += causeBlockHeight + 10;
-            drawDataField('Manner of Death', '', MARGIN, y, 100);
+            // Manner of Death badge
+            y += causeBlockHeight + 6;
+            drawDataField('Manner of Death', '', MARGIN, y, 120);
             const mannerOfDeath = postmortem.manner_of_death || 'Natural';
-            doc.fillColor('#EBEFEF').rect(MARGIN, y + 12, 80, 16).fill();
-            doc.fillColor('#2E3F37').font('Helvetica-Bold').fontSize(9).text(mannerOfDeath.toUpperCase(), MARGIN, y + 16, { width: 80, align: 'center' });
-            y += 35;
+            doc.roundedRect(MARGIN, y + 12, 110, 18, 4).fillColor('#E8EEF0').fill();
+            doc.fillColor(BRAND).font('Helvetica-Bold').fontSize(9).text(mannerOfDeath.toUpperCase(), MARGIN, y + 18, { width: 110, align: 'center', characterSpacing: 1 });
+            y += 40;
         }
 
-        // ─── 5. SECTION 03: PATHOLOGIST STATEMENT (Conditional & Dynamic Sizing) ──
+        // ─── 5. SECTION 03: PATHOLOGIST STATEMENT (conditional, auto-fit) ───
         if (narrativeText) {
-            y = drawSectionHead('03', 'PATHOLOGIST STATEMENT & EXAMINATION SUMMARY', y);
-            doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).strokeColor('#E3DDD0').lineWidth(1).stroke();
-            y += 10;
+            y = drawSectionHead('03', 'PATHOLOGIST STATEMENT & EXAMINATION FINDINGS', y);
 
-            // Dynamic Font Sizing to force exactly 1 page fit
-            const SIG_SECTION_Y = 560; // Reserved Y position for signature block
-            let availableHeight = SIG_SECTION_Y - y - 10;
-            if (availableHeight < 50) availableHeight = 50; // Min height fallback
+            const SIG_SECTION_Y = 560; // Y reserved for the certification block
+            let availableHeight = SIG_SECTION_Y - y - 8;
+            if (availableHeight < 50) availableHeight = 50;
 
-            let nFont = 10;
-            // Set font and size on doc BEFORE measuring height to fix TS2353 error
+            let nFont = 9.5;
             doc.font('Times-Roman').fontSize(nFont);
-            let nHeight = doc.heightOfString(narrativeText, { width: CONTENT_WIDTH, lineGap: 3 });
+            let nHeight = doc.heightOfString(narrativeText, { width: CONTENT_WIDTH, lineGap: 2.5 });
 
-            // Shrink font size if text is too long for the available space on the page
             while (nHeight > availableHeight && nFont > 6) {
                 nFont -= 0.5;
                 doc.font('Times-Roman').fontSize(nFont);
-                nHeight = doc.heightOfString(narrativeText, { width: CONTENT_WIDTH, lineGap: 3 });
+                nHeight = doc.heightOfString(narrativeText, { width: CONTENT_WIDTH, lineGap: 2.5 });
             }
 
-            doc.fillColor('#03071E').font('Times-Roman').fontSize(nFont).text(narrativeText, MARGIN, y, { width: CONTENT_WIDTH, lineGap: 3, height: availableHeight, ellipsis: true });
-            y += nHeight + 10;
-
-            doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).strokeColor('#E3DDD0').lineWidth(1).stroke();
-            y += 20;
+            doc.fillColor(INK).font('Times-Roman').fontSize(nFont)
+                .text(narrativeText, MARGIN, y, { width: CONTENT_WIDTH, lineGap: 2.5, height: availableHeight, ellipsis: true });
+            y += nHeight + 8;
         }
 
-        // ─── 6. SECTION 04: VERIFICATION & CERTIFICATION ──
-        // Enforce minimum Y so signatures stay anchored cleanly near the bottom without overlapping footer
+        // ─── 6. SECTION 04: VERIFICATION & CERTIFICATION ───
+        // Anchor the certification block so it never collides with the footer.
         y = Math.max(y, 560);
         y = drawSectionHead('04', 'VERIFICATION & CERTIFICATION', y);
 
-        // Layout Configuration
-        const sigBoxY = y + 10;
-        const sigBoxHeight = 40;
+        const sigBoxY = y + 8;
+        const sigBoxHeight = 44;
         const sigWidth = 250;
 
-        // Left Side: Signature & Line
-        doc.fillColor('#8B7355').font('Helvetica-Bold').fontSize(7).text('CERTIFIED BY — FORENSIC PATHOLOGIST', MARGIN, sigBoxY);
+        doc.fillColor(MUTED).font('Helvetica-Bold').fontSize(6.5).text('CERTIFIED BY - FORENSIC PATHOLOGIST', MARGIN, sigBoxY, { characterSpacing: 0.5 });
 
-        // Draw Signature (or placeholder text)
         const sigImgY = sigBoxY + 12;
         if (signatureBuffer) {
             try {
-                // Force ink-blue normalization so the signature always renders
-                // as pure #0f33e7 on the PDF, even for signatures saved before
-                // normalization was introduced.
+                // Force ink-blue so the signature always renders as pure #0f33e7.
                 const inkSigBuffer = await toInkBlueBuffer(signatureBuffer);
-                // Constrained to 200x40 to prevent overlapping the stamp
-                doc.image(inkSigBuffer, MARGIN, sigImgY, { fit: [200, 35] });
+                doc.image(inkSigBuffer, MARGIN, sigImgY, { fit: [210, 34] });
             } catch (err) {
-                doc.fillColor('#0f33e7').font('Times-Italic').fontSize(18).text(examinerName, MARGIN, sigImgY, { width: sigWidth });
+                doc.fillColor('#0f33e7').font('Times-Italic').fontSize(17).text(examinerName, MARGIN, sigImgY, { width: sigWidth });
             }
         } else {
-            doc.fillColor('#0f33e7').font('Times-Italic').fontSize(18).text(examinerName, MARGIN, sigImgY, { width: sigWidth });
+            doc.fillColor('#0f33e7').font('Times-Italic').fontSize(17).text(examinerName, MARGIN, sigImgY, { width: sigWidth });
         }
 
-        // Signature Line
         const sigLineY = sigBoxY + sigBoxHeight;
-        doc.moveTo(MARGIN, sigLineY).lineTo(MARGIN + sigWidth, sigLineY).strokeColor('#03071E').lineWidth(1).stroke();
+        doc.moveTo(MARGIN, sigLineY).lineTo(MARGIN + sigWidth, sigLineY).strokeColor(INK).lineWidth(0.9).stroke();
+        doc.fillColor(MUTED).font('Helvetica-Bold').fontSize(6.5).text('NAME & CREDENTIALS', MARGIN, sigLineY + 5, { characterSpacing: 0.5 });
+        doc.fillColor(INK).font('Helvetica-Bold').fontSize(9).text(`${examinerName}, ${examinerTitle}`, MARGIN, sigLineY + 16);
 
-        // Credentials below line
-        doc.fillColor('#8B7355').font('Helvetica-Bold').fontSize(7).text('NAME & CREDENTIALS', MARGIN, sigLineY + 5);
-        doc.fillColor('#03071E').font('Helvetica-Bold').fontSize(9).text(`${examinerName}, ${examinerTitle}`, MARGIN, sigLineY + 17);
-
-        // Right Side: Official Stamp
-        const stampRadius = 38; // Slightly smaller to ensure it clears footer perfectly
+        // Official stamp (right side, aligned with the signature block)
+        const stampRadius = 38;
         const stampX = PAGE_WIDTH - MARGIN - 70;
-        // Vertically align stamp to sit nicely next to the signature block
         const stampY = sigLineY - 15;
 
         try {
@@ -738,28 +709,24 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
                 x: stampX,
                 y: stampY,
                 radius: stampRadius,
-                rotation: -12, // Sleek tilt
+                rotation: -12,
                 drawName: true,
                 name: examinerName,
                 color: '#0f33e7',
             });
         } catch (stampErr) {
-            console.error("[PDF] Stamp rendering failed", stampErr);
+            console.error('[PDF] Stamp rendering failed', stampErr);
         }
 
-        // ─── 7. FOOTER ──
-        // Pushed down further to ensure no overlap with the signature credentials above
-        const footerLineY = 725;
-        doc.moveTo(MARGIN, footerLineY).lineTo(PAGE_WIDTH - MARGIN, footerLineY).strokeColor('#E3DDD0').lineWidth(1).stroke();
+        // ─── 7. SLIM FOOTER (no barcode, no heavy bars) ───
+        const footerLineY = 742;
+        doc.moveTo(MARGIN, footerLineY).lineTo(PAGE_WIDTH - MARGIN, footerLineY).strokeColor(HAIRLINE).lineWidth(0.75).stroke();
+        doc.fillColor(MUTED).font('Helvetica').fontSize(7)
+            .text(`Generated ${reportDate} at ${fullTimestamp}  ·  RestPoint Mortuary Management System`, MARGIN, footerLineY + 8);
+        doc.fillColor(MUTED).font('Courier').fontSize(7).text(`File ID: ${reportRef}`, MARGIN, footerLineY + 19);
 
-        doc.fillColor('#6B6862').font('Courier').fontSize(7).text(`RestPoint Mortuary Generated ${reportDate} at ${fullTimestamp}`, MARGIN, footerLineY + 10);
-        doc.text('— Official Autopsy Report —', MARGIN, footerLineY + 20);
-
-        drawBarcode(PAGE_WIDTH - MARGIN - 150, footerLineY + 10, reportRef, 150);
-        doc.fillColor('#6B6862').font('Courier').fontSize(7).text('File ID: ' + reportRef, PAGE_WIDTH - MARGIN - 150, footerLineY + 40, { width: 150, align: 'right' });
-
-        // Thick Bottom Border
-        doc.rect(0, PAGE_HEIGHT - 15, PAGE_WIDTH, 15).fillColor('#03071E').fill();
+        // Thin brand accent at the very bottom edge
+        doc.rect(0, PAGE_HEIGHT - 3, PAGE_WIDTH, 3).fillColor(BRAND).fill();
 
         doc.end();
 

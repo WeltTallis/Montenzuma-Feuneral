@@ -94,7 +94,8 @@ const AppContainer = styled.div`
     margin: 0 auto;
     max-width: 1400px;
     padding: 32px;
-    overflow-x: visible;
+    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   @media (max-width: 900px) {
@@ -202,6 +203,9 @@ const CalendarContainer = styled.div`
   align-items: center;
   gap: 16px;
   box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 
   @media (max-width: 900px) {
     flex-direction: column;
@@ -226,6 +230,7 @@ const CalendarControls = styled.div`
   }
 `;
 
+
 const CalSelect = styled.select`
   border: 1px solid transparent;
   background: ${C.bgField};
@@ -241,6 +246,8 @@ const CalSelect = styled.select`
   &:focus { outline: none; border-color: ${C.gray}; }
 `;
 
+
+
 const CalendarDates = styled.div`
   display: flex;
   gap: 6px;
@@ -248,11 +255,14 @@ const CalendarDates = styled.div`
   padding: 4px 2px;
   scroll-behavior: smooth;
   flex: 1;
+  min-width: 0;
   align-items: center;
 
   &::-webkit-scrollbar { height: 4px; }
   &::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 10px; }
 `;
+
+
 
 const CalDateBtn = styled.div`
   min-width: 42px;
@@ -835,6 +845,7 @@ const DeceasedListPage = () => {
 
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
@@ -895,6 +906,20 @@ const DeceasedListPage = () => {
   useEffect(() => {
     fetchDeceased();
   }, [fetchDeceased]);
+
+  // ─── Manual Refresh (red header button) ─────────────────────────
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await fetchDeceased();
+      showToast('Deceased records refreshed', 'success');
+    } catch (err) {
+      showToast('Failed to refresh records. Please try again.', 'error');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchDeceased, refreshing]);
 
   useEffect(() => {
     return () => {
@@ -1190,6 +1215,10 @@ const DeceasedListPage = () => {
             <p>Manage and track all deceased records across your facility</p>
           </div>
           <Actions>
+            <Btn $danger onClick={handleRefresh} disabled={refreshing || loading} title="Reload deceased records">
+              <i className={`fas fa-sync-alt${refreshing ? ' fa-spin' : ''}`} style={{ fontSize: 12 }}></i>
+              {refreshing ? 'Refreshing...' : 'Refresh Records'}
+            </Btn>
             <Btn $export onClick={() => setShowExport(true)}>
               <i className="fas fa-file-export" style={{ fontSize: 12 }}></i> Export Data to Excel
             </Btn>
