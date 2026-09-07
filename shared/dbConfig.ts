@@ -365,6 +365,14 @@ export const getTenantDB = async (tenantDbName: string): Promise<mysql.Pool> => 
     LOGGER.info('Connected to tenant database', { dbName: tenantDbName });
   } catch (err: any) {
     LOGGER.error('Tenant database connection failed', { dbName: tenantDbName, error: err.message });
+    // A database that does not exist is a permanent, deterministic failure — every
+    // query against this pool would fail with the same error. Fail fast with a clear
+    // message instead of caching a poisoned pool whose error only surfaces later at
+    // the call site (e.g. "Unknown database" inside a controller).
+    if (err && (err.code === 'ER_BAD_DB_ERROR' || /Unknown database/i.test(err.message || ''))) {
+      await pool.end().catch(() => {});
+      throw new Error(`Unknown database '${tenantDbName}'. Did you mean to resolveDatabase(slug) first?`);
+    }
   }
 
   tenantPoolCache.set(tenantDbName, { pool, createdAt: Date.now(), lastUsed: Date.now() });

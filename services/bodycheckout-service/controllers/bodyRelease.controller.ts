@@ -3,7 +3,7 @@ import * as Zod from 'zod';
 import axios from 'axios';
 import Logger from '../../../packages/shared-logger/dist/index';
 import { generateDatedCheckoutId } from '../utilities/generateCheckoutId';
-import { getTenantDB } from '../../../shared/dbConfig';
+import { getTenantDB, resolveDatabase } from '../../../shared/dbConfig';
 import sharp from 'sharp';
 
 /**
@@ -231,8 +231,19 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
     Logger.info(`[RELEASE] Formatted time_of_removal: ${releaseData.time_of_removal}`);
     Logger.info(`[RELEASE] Formatted created_at: ${releaseData.created_at}`);
 
-    // Save to database - direct database lookup by slug
-    const db = await getTenantDB(tenantSlug);
+    // Save to database — resolve the slug the same way the deceased lookup flow does:
+    // resolveDatabase understands raw db names, main tenant slugs AND branch slugs
+    // (e.g. `org-home-nairobi`), then getTenantDB pools the resolved database name.
+    // NEVER pass the raw slug to getTenantDB — a branch slug is not a database name.
+    const dbName = await resolveDatabase(tenantSlug);
+    if (!dbName) {
+      res.status(400).json({
+        success: false,
+        message: 'No database configured for this tenant'
+      });
+      return;
+    }
+    const db = await getTenantDB(dbName);
     const query = `
       INSERT INTO body_releases (
         release_id, tenant_slug, admission_number, name_of_deceased,
@@ -269,7 +280,7 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
     ];
 
     await db.execute(query, params);
-    Logger.info(`[RELEASE] Successfully created release: ${releaseId} in database: ${tenantSlug}`);
+    Logger.info(`[RELEASE] Successfully created release: ${releaseId} in database: ${dbName}`);
 
     // Emit notification for body release
     try {

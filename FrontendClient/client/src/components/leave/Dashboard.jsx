@@ -1,7 +1,7 @@
-﻿import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { api, ENDPOINTS } from '../../api';
-import { getUserId } from '../../utils/globalAuth';
+import { getUserId, getTenantSlug, getParentTenantSlug } from '../../utils/globalAuth';
 import {
   Calendar, Clock, Users, FileText, CheckCircle, XCircle, AlertCircle,
   Loader2, RefreshCw, UserCheck, Check, Trash2,
@@ -9,13 +9,14 @@ import {
 
 /* ── Palette mirrors the other Leave pages ────────────────────────── */
 const COLORS = {
-  primary: '#0A2463',
   primaryLight: '#1A3A7A',
+  textSecondary: '#6B7280',
+  primary: '#0A2463',
   white: '#FFFFFF',
   bg: '#F5F7FA',
   border: '#E8ECF0',
   text: '#1A1D24',
-  textSecondary: '#6B7280',
+
   success: '#10B981',
   warning: '#F59E0B',
   danger: '#E74C3C',
@@ -391,30 +392,40 @@ const LeaveDashboard = () => {
   const [balance, setBalance] = useState(null);
   const [actingId, setActingId] = useState(null); // row id currently being actioned
 
+  // ── Multi-tenant: leave data lives in the PARENT tenant's main DB ──
+  // Send the parent slug explicitly (same pattern as ApplyLeave/MyLeaves) so
+  // that branch users see the right company-wide leave records.
+  const me = getUserId();
+  const parentSlug = getParentTenantSlug() || getTenantSlug();
+  const tenantHeaders = useMemo(() => {
+    const h = { 'x-tenant-slug': parentSlug };
+    if (me) h['x-user-id'] = me.toString();
+    return { headers: h };
+  }, [parentSlug, me]);
+
   const load = useCallback(async (abortSignal) => {
     setError('');
 
     // 1) Aggregate stats
-    const statsRes = await api.get(ENDPOINTS.LEAVE.STATS, { signal: abortSignal });
+    const statsRes = await api.get(ENDPOINTS.LEAVE.STATS, { ...tenantHeaders, signal: abortSignal });
     setStats(statsRes.data?.data || { total: 0, pending: 0, on_leave: 0, by_status: [], by_type: [] });
 
     // 2) Pending requests + on-leave staff + current user balance (parallel, tolerant of failure)
-    const pendingRes = await api.get(ENDPOINTS.LEAVE.ALL, { params: { status: 'pending' }, signal: abortSignal });
-    const onLeaveRes = await api.get(ENDPOINTS.LEAVE.USERS_ON_LEAVE, { signal: abortSignal });
+    const pendingRes = await api.get(ENDPOINTS.LEAVE.ALL, { ...tenantHeaders, params: { status: 'pending' }, signal: abortSignal });
+    const onLeaveRes = await api.get(ENDPOINTS.LEAVE.USERS_ON_LEAVE, { ...tenantHeaders, signal: abortSignal });
     setRequests(normList(pendingRes));
     setOnLeaveUsers(normList(onLeaveRes));
 
-    const me = getUserId();
     if (me) {
       try {
-        const balRes = await api.get(ENDPOINTS.LEAVE.BALANCE(me), { signal: abortSignal });
+        const balRes = await api.get(ENDPOINTS.LEAVE.BALANCE(me), { ...tenantHeaders, signal: abortSignal });
         setBalance(normObj(balRes));
       } catch (e) {
         setBalance(null);
       }
     }
     setLoading(false);
-  }, []);
+  }, [tenantHeaders, me]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -444,14 +455,13 @@ const LeaveDashboard = () => {
 
   // Approve / Reject a leave request (HR action) — optimistic + re-fetch after.
   const actionOn = useCallback(async (id, newStatus, notes) => {
-    const me = getUserId();
     setActingId(id);
     const prev = requests.slice();
     setRequests((prev2) => prev2.map((r) =>
       (r.id === id ? { ...r, status: newStatus, rejection_reason: notes || r.rejection_reason } : r)
     ));
     try {
-      await api.patch(ENDPOINTS.LEAVE.UPDATE_STATUS(id), { status: newStatus, rejection_reason: notes, approved_by: me });
+      await api.patch(ENDPOINTS.LEAVE.UPDATE_STATUS(id), { status: newStatus, rejection_reason: notes, approved_by: me }, tenantHeaders);
       await refresh();
     } catch (e) {
       setRequests(prev);
@@ -459,7 +469,7 @@ const LeaveDashboard = () => {
     } finally {
       setActingId(null);
     }
-  }, [requests, refresh]);
+  }, [requests, refresh, tenantHeaders]);
 
   const approve = (id) => actionOn(id, 'approved', null);
   const reject = (id) => {

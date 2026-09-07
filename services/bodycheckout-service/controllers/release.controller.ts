@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import Logger from '../../../packages/shared-logger/dist/index';
-import { getTenantDB } from '../../../shared/dbConfig';
+import { getTenantDB, resolveDatabase } from '../../../shared/dbConfig';
 
 // GET /body-release/checkout/:id - Get specific release by ID
 export const getReleaseController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -16,7 +16,14 @@ export const getReleaseController = async (req: Request, res: Response, next: Ne
       return;
     }
 
-    const db = await getTenantDB(tenantSlug);
+    // resolveDatabase understands raw db names, main tenant slugs AND branch
+    // slugs (e.g. `org-home-nairobi`) — never pass the raw slug to getTenantDB.
+    const dbName = await resolveDatabase(tenantSlug);
+    if (!dbName) {
+      res.status(400).json({ success: false, message: 'No database configured for this tenant' });
+      return;
+    }
+    const db = await getTenantDB(dbName);
     const query = `
       SELECT * FROM body_releases
       WHERE release_id = ? AND tenant_slug = ?
@@ -68,7 +75,12 @@ export const getReleaseByAdmissionController = async (req: Request, res: Respons
       return;
     }
 
-    const db = await getTenantDB(tenantSlug);
+    const dbName = await resolveDatabase(tenantSlug);
+    if (!dbName) {
+      res.status(400).json({ success: false, message: 'No database configured for this tenant' });
+      return;
+    }
+    const db = await getTenantDB(dbName);
     const query = `SELECT * FROM body_releases WHERE admission_number = ? AND tenant_slug = ? LIMIT 1`;
     const [rows] = await db.execute(query, [admissionNumber, tenantSlug]);
     const results = rows as any[];
@@ -112,7 +124,14 @@ export const listReleasesController = async (req: Request, res: Response, next: 
       params.push(keyword, keyword, keyword);
     }
 
-    const db = await getTenantDB(tenantSlug);
+    // resolveDatabase understands raw db names, main tenant slugs AND branch
+    // slugs (e.g. `org-home-nairobi`) — never pass the raw slug to getTenantDB.
+    const dbName = await resolveDatabase(tenantSlug);
+    if (!dbName) {
+      res.status(400).json({ success: false, message: 'No database configured for this tenant' });
+      return;
+    }
+    const db = await getTenantDB(dbName);
     
     const countQuery = `SELECT COUNT(*) as total FROM body_releases ${whereClause}`;
     const [countRows] = await db.execute(countQuery, params);
