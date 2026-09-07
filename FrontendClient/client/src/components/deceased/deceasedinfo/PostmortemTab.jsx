@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSocket } from '../../../utils/context/socketContext';
 import { getTenantSlug } from '../../../utils/globalAuth';
 import { getTenantHeaders } from '../../../api/endpoints';
@@ -10,6 +10,7 @@ import notify from '../../../utils/notify';
 import styled from 'styled-components';
 import { C, formatDate } from './theme';
 import axios from 'axios';
+import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 
 /* -- Minimized styling, matching OverviewTab -- */
 const SectionHead = styled.div`
@@ -242,6 +243,11 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
     notes: ''
   });
 
+  // Examiner-signature pad (same ReusableSignaturePad the deceased intake uses)
+  const sigPadRef = useRef(null);
+  const [newSignature, setNewSignature] = useState(null);
+  const [savingSignature, setSavingSignature] = useState(false);
+
   // Tenant-wide postmortem analytics (requested vs carried out)
   const [stats, setStats] = useState(null);
   const loadStats = useCallback(() => {
@@ -284,7 +290,7 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
     await Promise.all([loadRequests(), loadStats()]);
   };
 
-  const hasData = pm.immediate_cause_of_death || pm.manner_of_death || pm.examination_summary;
+  const hasData = pm.immediate_cause_of_death || pm.manner_of_death || pm.examination_summary || pm.findings || pm.signature || pm.toxicology_findings;
 
   const openForm = () => {
     navigate(`/tenant/${tenantSlug}/postmortem-form/${deceasedId}`);
@@ -316,6 +322,38 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
     } catch (error) {
       console.error('PDF generation error:', error);
       alert(`Failed to generate PDF: ${error.message}`);
+    }
+  };
+
+  // ─── Examiner signature — renders the saved one + lets the officer capture/
+  // update it right here, with the same signature pad the deceased intake uses.
+  const signatureSrc = (() => {
+    const sig = pm.signature || pm.signature_base64;
+    if (!sig) return null;
+    if (String(sig).startsWith('data:image') || /^https?:\/\/./test(String(sig))) return String(sig);
+    if (String(sig).startsWith('/')) return `${env.API_GATEWAY_URL}${sig}`;
+    // Plain base64 (older rows) → render as PNG data-URL
+    if (/^[A-Za-z0-9+/=\r\n]+$/.test(String(sig))) return `data:image/png;base64,${sig}`;
+    return String(sig);
+  })();
+
+  const saveSignature = async () => {
+    if (!pm?.id || !newSignature) { showToast.warning('Draw the examiner signature first.'); return; }
+    setSavingSignature(true);
+    try {
+      const res = await axios.put(`${env.FULL_API_URL}/postmortem/${pm.id}`, { signature: newSignature }, { headers: getTenantHeaders() });
+      if (res.data?.success) {
+        showToast.success('Examiner signature saved');
+        setNewSignature(null);
+        sigPadRef.current?.clear();
+        if (typeof onRequestsChanged === 'function') await onRequestsChanged();
+      } else {
+        throw new Error(res.data?.message || 'Failed to save signature');
+      }
+    } catch (err) {
+      showToast.error(err.response?.data?.message || err.message || 'Failed to save signature');
+    } finally {
+      setSavingSignature(false);
     }
   };
 
@@ -567,38 +605,120 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
         </div>
       )}
 
-      {/* 02 — Official Determination of Death */}
-      <SectionHead><span>02</span> Official Determination of Death</SectionHead>
-      <DetailGrid>
-        <DetailItem $full><DetailLabel>Immediate Cause of Death</DetailLabel><DetailValue>{pm.immediate_cause_of_death || '—'}</DetailValue></DetailItem>
-        <DetailItem $full><DetailLabel>Underlying Cause of Death</DetailLabel><DetailValue>{pm.underlying_cause_of_death || '—'}</DetailValue></DetailItem>
-        {pm.manner_of_death && (
-          <DetailItem><DetailLabel>Manner of Death</DetailLabel><DetailValue>{pm.manner_of_death}</DetailValue></DetailItem>
-        )}
-        {pm.contributing_conditions && (
-          <DetailItem><DetailLabel>Contributing Conditions</DetailLabel><DetailValue>{pm.contributing_conditions}</DetailValue></DetailItem>
-        )}
-      </DetailGrid>
+      {hasData ? (
+        <div style={{ marginTop: 16, border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: '18px 20px', background: C.bgSection }}>
+          {/* 02 — Official Determination of Death */}
+          <SectionHead $mt0><span>02</span> Official Determination of Death</SectionHead>
+          <DetailGrid>
+            <DetailItem $full><DetailLabel>Immediate Cause of Death</DetailLabel><DetailValue>{pm.immediate_cause_of_death || '—'}</DetailValue></DetailItem>
+            <DetailItem $full><DetailLabel>Underlying Cause of Death</DetailLabel><DetailValue>{pm.underlying_cause_of_death || '—'}</DetailValue></DetailItem>
+            {pm.manner_of_death && (
+              <DetailItem><DetailLabel>Manner of Death</DetailLabel><DetailValue>{pm.manner_of_death}</DetailValue></DetailItem>
+            )}
+            {pm.contributing_conditions && (
+              <DetailItem $full><DetailLabel>Contributing Conditions</DetailLabel><DetailValue>{pm.contributing_conditions}</DetailValue></DetailItem>
+            )}
+          </DetailGrid>
 
-      {/* 03 — Pathologist Statement */}
-      <SectionHead><span>03</span> Pathologist Statement</SectionHead>
-      <DetailGrid>
-        <DetailItem $full>
-          <DetailLabel>Examination Summary</DetailLabel>
-          <DetailValue $body>{pm.examination_summary || 'No statement provided.'}</DetailValue>
-        </DetailItem>
-      </DetailGrid>
+          {/* 03 — Assessment & Findings */}
+          <SectionHead><span>03</span> Assessment &amp; Findings</SectionHead>
+          <DetailGrid>
+            <DetailItem $full>
+              <DetailLabel>Examination Summary</DetailLabel>
+              <DetailValue $body>{pm.examination_summary || 'No statement provided.'}</DetailValue>
+            </DetailItem>
 
-      {/* 04 — Examiner Details */}
-      <SectionHead><span>04</span> Examiner Details</SectionHead>
-      <DetailGrid>
-        <DetailItem><DetailLabel>Examining Pathologist</DetailLabel><DetailValue>{pm.pathologist_name || pm.external_pathologist_name || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Date Completed</DetailLabel><DetailValue>{formatDate(pm.completed_at || pm.updated_at)}</DetailValue></DetailItem>
-      </DetailGrid>
+            {Array.isArray(pm.findings) && pm.findings.length > 0 && pm.findings.map((f, fi) => (
+              <DetailItem key={fi}>
+                <DetailLabel>{f.title || f.organ_system || `Finding ${fi + 1}`}</DetailLabel>
+                <DetailValue $body>{f.description || f.details || JSON.stringify(f)}</DetailValue>
+              </DetailItem>
+            ))}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-        <Btn onClick={generatePDF}>Download PDF Report</Btn>
-      </div>
+            {pm.head_findings && <DetailItem $full><DetailLabel>Head / CNS Findings</DetailLabel><DetailValue $body>{typeof pm.head_findings === 'string' ? pm.head_findings : JSON.stringify(pm.head_findings)}</DetailValue></DetailItem>}
+            {pm.chest_findings && <DetailItem $full><DetailLabel>Chest Findings</DetailLabel><DetailValue $body>{typeof pm.chest_findings === 'string' ? pm.chest_findings : JSON.stringify(pm.chest_findings)}</DetailValue></DetailItem>}
+            {pm.abdomen_findings && <DetailItem $full><DetailLabel>Abdominal Findings</DetailLabel><DetailValue $body>{typeof pm.abdomen_findings === 'string' ? pm.abdomen_findings : JSON.stringify(pm.abdomen_findings)}</DetailValue></DetailItem>}
+            {pm.extremities_findings && <DetailItem $full><DetailLabel>Extremities Findings</DetailLabel><DetailValue $body>{typeof pm.extremities_findings === 'string' ? pm.extremities_findings : JSON.stringify(pm.extremities_findings)}</DetailValue></DetailItem>}
+            {pm.toxicology_findings && <DetailItem $full><DetailLabel>Toxicology / Lab Findings</DetailLabel><DetailValue $body>{typeof pm.toxicology_findings === 'string' ? pm.toxicology_findings : JSON.stringify(pm.toxicology_findings)}</DetailValue></DetailItem>}
+            {pm.custom_findings && <DetailItem $full><DetailLabel>Other Findings</DetailLabel><DetailValue $body>{typeof pm.custom_findings === 'string' ? pm.custom_findings : JSON.stringify(pm.custom_findings)}</DetailValue></DetailItem>}
+          </DetailGrid>
+
+          {/* 04 — Examiner Details */}
+       <DetailGrid>
+  <DetailItem>
+    <DetailLabel>Examining Pathologist</DetailLabel>
+    <DetailValue>
+      {pm.pathologist_name || pm.external_pathologist_name || '—'}
+    </DetailValue>
+  </DetailItem>
+
+  <DetailItem>
+    <DetailLabel>Status</DetailLabel>
+    <DetailValue>
+      {pm.status
+        ? String(pm.status)
+            .replace(/_/g, ' ')
+            .replace(/^\w/, c => c.toUpperCase())
+        : 'Completed'}
+    </DetailValue>
+  </DetailItem>
+
+  <DetailItem>
+    <DetailLabel>Date Completed</DetailLabel>
+    <DetailValue>
+      {formatDate(pm.completed_at || pm.updated_at)}
+    </DetailValue>
+  </DetailItem>
+
+  {pm.requesting_authority && (
+    <DetailItem $full>
+      <DetailLabel>Requesting Authority</DetailLabel>
+      <DetailValue>{pm.requesting_authority}</DetailValue>
+    </DetailItem>
+  )}
+</DetailGrid>
+
+          {/* 05 — Examiner Signature (tab-style, like deceased intake) */}
+          <SectionHead><span>05</span> Examiner Signature</SectionHead>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 28, alignItems: 'flex-start' }}>
+            <div style={{ border: `1px solid ${C.black}`, borderRadius: 8, padding: 14, background: '#fff' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+                <span>Signature  Draw below</span>
+                {signatureSrc ? <span style={{ color: C.success }}>✓ Signed</span> : <span style={{ color: C.gray }}>Not signed</span>}
+              </div>
+              <ReusableSignaturePad
+                ref={sigPadRef}
+                penColor="#0f33e7"
+                placeholder="Draw examiner signature"
+                onChange={(val) => setNewSignature(typeof val === 'string' ? val : null)}
+                style={{ width: '100%' }}
+              />
+              <div style={{ display: 'flex', gap: 10, marginTop: 12, justifyContent: 'flex-end' }}>
+                <Btn $primary onClick={saveSignature} disabled={savingSignature || !newSignature}>
+                  {savingSignature ? 'Saving...' : 'Save Signature'}
+                </Btn>
+                <Btn onClick={() => { setNewSignature(null); sigPadRef.current?.clear(); }} disabled={!newSignature}>Clear</Btn>
+              </div>
+            </div>
+            <div style={{ border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: 14, background: '#fff' }}>
+              <DetailLabel>Current Signature on File</DetailLabel>
+              {signatureSrc ? (
+                <img src={signatureSrc} alt="Examiner Signature" style={{ maxWidth: '100%', maxHeight: 160, marginTop: 8, border: '1px dashed ' + C.borderLight, borderRadius: 8, padding: 6, background: '#fff', objectFit: 'contain' }} />
+              ) : (
+                <DetailValue style={{ color: '#999' }}>No signature captured yet.</DetailValue>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
+            <Btn onClick={generatePDF}>Download PDF Report</Btn>
+          </div>
+        </div>
+      ) : (
+        <EmptyNote style={{ marginTop: 16 }}>
+          No postmortem examination recorded yet.. Use «+ Fill Examination Form» to record the official assessment, or «+ Initiate Request» to track a pre-examination request.
+        </EmptyNote>
+      )}
     </>
   );
 };

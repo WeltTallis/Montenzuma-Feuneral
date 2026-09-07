@@ -1,0 +1,51 @@
+// -------------------------------------------------------------------------
+// Documents belong to the tenant's own database (same DB the deceased rows
+// live). Use resolveDatabase - NOT lookupTenantDatabase -because it also
+// handles slug-is-db and BRANCH slugs (e.g. org-home-nairobi -> parent
+// tenant DB), exactly like the deceased/bodycheckout services do. The old
+// lookup-only version returned null for branch slugs,and every query silently
+// fell back to the root restpoint_main - "documents is just calling wrong database".
+async function resolveTenantDb(tenantSlug) {
+  if (!tenantSlug || tenantSlug === 'system_shared') return null;
+  try {
+    const dbName = await resolveDatabase(tenantSlug);
+    return dbName || null;
+  } catch (e) {
+    console.warn('[DOCUMENTS] resolveDatabase failed:', e && e.message);
+   return null;
+  }
+}
+const DOCUMENTS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS documents (
+    document_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    deceased_id VARCHAR(100) NOT NULL,
+    original_name VARCHAR(255) NULL,
+    stored_name VARCHAR(255) NULL,
+    file_path VARCHAR(500) NULL,
+    mime_type VARCHAR(120) NULL,
+    file_size BIGINT DEFAULT 0,
+    category VARCHAR(100) DEFAULT 'General',
+    uploaded_by VARCHAR(120) NULL,
+    uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_docs_deceased (deceased_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+`;
+async function q(tenantSlug, sql, params = []) {
+  const dbName = await resolveTenantDb(tenantSlug);
+  if (dbName) {
+    // Auto-create the table on the FIRST read too - a fresh tenant DB has no
+    // documents table yet,and a bare SELECT would 500 ("doesn't exist").
+    try { await safeTenantExecute(dbName, DOCUMENTS_TABLE_SQL, []); } catch (e) { /* idempotent */ }
+    return safeTenantQuery(dbName, sql, params);
+  }
+  // No resolvable tenant DB -> root safety net (kept only for legacy single-tenant mode)
+  return safeQuery(sql, params);
+}
+async function ensureAndInsertDocument(tenantSlug, insertQuery, params) {
+  const dbName = await resolveTenantDb(tenantSlug);
+  if (dbName) {
+    await safeTenantExecute(dbName, DOCUMENTS_TABLE_SQL, []);
+    return safeTenantQuery(dbName, insertQuery, params);
+  }
+  return safeQuery(insertQuery, params);
+}

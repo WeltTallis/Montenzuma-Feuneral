@@ -297,7 +297,29 @@ const DeceasedDetailPage = () => {
         } catch (e2) { /* no charges */ }
       }
 
-      // 6) Release data for audit log
+      // 6) Charge settings (merged into deceased.charges so the sidebar's
+      // "Daily storage rate" + storage charge always reflect the saved values)
+      try {
+        const csRes = await axios.get(`${BASE_URL}/charge-settings/${deceasedId}`, { headers });
+        if (csRes.data?.data) {
+          const cs = csRes.data.data;
+          setDeceased(prev => prev ? {
+            ...prev,
+            charges: {
+              storage_rate: parseFloat(cs.dailyRate ?? cs.daily_rate ?? cs.storage_rate ?? cs.per_day ?? prev?.charges?.storage_rate ?? 500),
+              per_day: parseFloat(cs.dailyRate ?? cs.daily_rate ?? prev?.charges?.per_day ?? 500),
+              per_hour: parseFloat(cs.hourlyRate ?? cs.hourly_rate ?? prev?.charges?.per_hour ?? 125),
+              currency: cs.currency ?? prev?.charges?.currency ?? 'KES',
+              rate_profile: cs.rateProfile ?? cs.rate_profile ?? 'standard',
+              charge_type: cs.chargeType ?? cs.charge_type ?? 'daily',
+              usd_rate: parseFloat(cs.usdRate ?? cs.usd_rate ?? prev?.charges?.usd_rate ?? 130),
+              updated_at: cs.updatedAt ?? cs.updated_at ?? null
+            }
+          } : prev);
+        }
+      } catch (e) { /* charge settings optional */ }
+
+      // 7) Release data for audit log
       try {
         const relRes = await axios.get(`${env.FULL_API_URL}/bodycheckout/release/${deceasedId}`, { headers });
         if (relRes.data?.data) {

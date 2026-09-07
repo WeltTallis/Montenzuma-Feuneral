@@ -1,11 +1,15 @@
+
+
+const { resolveDatabase, safeTenantQuery, safeTenantExecute } = require('../../shared/dbConfig');
+const { validateTenantActive } = require('../../shared/tenancy');
+const { safeQuery } = require('../../shared/database');
 const express = require('express');
-const cors = require('cors');
 const helmet = require('helmet');
 const multer = require('multer');
+const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const { safeQuery } = require('../../shared/database');
-const { validateTenantActive } = require('../../shared/tenancy');
+
 
 const app = express();
 const PORT = process.env.PORT || 8112;
@@ -78,6 +82,59 @@ const tenantUploadDir = (tenantSlug, deceasedId) => {
   return path.join(GLOBAL_UPLOADS_DIR, sanitizeSlug(tenantSlug), 'documents', safeDead);
 };
 
+// ─── Tenant-aware DB helpers ────────────────────────────────────────────────
+// -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// Documents belong to the tenant's own database (same DB the deceased rows
+// live). Use resolveDatabase - NOT lookupTenantDatabase -because it also
+// handles slug-is-db and BRANCH slugs (e.g. org-home-nairobi -> parent
+// tenant DB), exactly like the deceased/bodycheckout services do. The old
+// lookup-only version returned null for branch slugs,and every query silently
+// fell back to the root restpoint_main - "documents is just calling wrong database".
+async function resolveTenantDb(tenantSlug) {
+  if (!tenantSlug || tenantSlug === 'system_shared') return null;
+  try {
+    const dbName = await resolveDatabase(tenantSlug);
+    return dbName || null;
+  } catch (e) {
+    console.warn('[DOCUMENTS] resolveDatabase failed:', e && e.message);
+    return null;
+  }
+}
+const DOCUMENTS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS documents (
+    document_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    deceased_id VARCHAR(100) NOT NULL,
+    original_name VARCHAR(255) NULL,
+    stored_name VARCHAR(255) NULL,
+    file_path VARCHAR(500) NULL,
+    mime_type VARCHAR(120) NULL,
+    file_size BIGINT DEFAULT 0,
+    category VARCHAR(100) DEFAULT 'General',
+    uploaded_by VARCHAR(120) NULL,
+    uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_docs_deceased (deceased_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+`;
+async function q(tenantSlug, sql, params = []) {
+  const dbName = await resolveTenantDb(tenantSlug);
+  if (dbName) {
+    // Auto-create the table on the FIRST read too - a fresh tenant DB has no
+    // documents table yet,and a bare SELECT would 500 ("doesn't exist").
+    try { await safeTenantExecute(dbName, DOCUMENTS_TABLE_SQL, []); } catch (e) { /* idempotent */ }
+    return safeTenantQuery(dbName, sql, params);
+  }
+  // No resolvable tenant DB -> root safety net (kept only for legacy single-tenant mode)
+  return safeQuery(sql, params);
+}
+async function ensureAndInsertDocument(tenantSlug, insertQuery, params) {
+  const dbName = await resolveTenantDb(tenantSlug);
+  if (dbName) {
+    await safeTenantExecute(dbName, DOCUMENTS_TABLE_SQL, []);
+    return safeTenantQuery(dbName, insertQuery, params);
+  }
+  return safeQuery(insertQuery, params);
+}
 const GLOBAL_UPLOADS_DIR = getGlobalUploadsDir();
 
 // ============ STORAGE CONFIGURATION ============
@@ -102,7 +159,7 @@ const upload = multer({
   storage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg',
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/bmp', 'application/octet-stream',
       'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -190,7 +247,7 @@ documentsRouter.get('/:deceasedId', async (req, res) => {
       ORDER BY uploaded_at DESC
     `;
 
-    const documents = await safeQuery(query, [deceasedId]);
+    const documents = await q(tenantSlug, query, [deceasedId]);
 
     // Format documents for frontend
     formattedDocs = documents.map(doc => ({
@@ -272,7 +329,7 @@ documentsRouter.post('/:deceasedId/upload', upload.single('document'), async (re
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `;
 
-      const result = await safeQuery(insertQuery, [
+      const result = await ensureAndInsertDocument(tenantSlug, insertQuery, [
         deceasedId,
         originalName,
         storedName,
@@ -324,7 +381,7 @@ documentsRouter.get('/download/:documentId', async (req, res) => {
       WHERE document_id = ?
     `;
 
-    const docs = await safeQuery(query, [documentId]);
+    const docs = await q(req.tenantSlug, query, [documentId]);
 
     if (!docs || docs.length === 0) {
       return res.status(404).json({ success: false, message: 'Document not found' });
@@ -361,7 +418,7 @@ documentsRouter.delete('/:deceasedId/:documentId', async (req, res) => {
 
     // Get document info before deleting
     const query = `SELECT stored_name FROM documents WHERE document_id = ? AND deceased_id = ?`;
-    const docs = await safeQuery(query, [documentId, deceasedId]);
+    const docs = await q(req.tenantSlug, query, [documentId, deceasedId]);
 
     if (!docs || docs.length === 0) {
       return res.status(404).json({ success: false, message: 'Document not found' });
@@ -377,7 +434,7 @@ documentsRouter.delete('/:deceasedId/:documentId', async (req, res) => {
 
     // Delete record from database
     const deleteQuery = `DELETE FROM documents WHERE document_id = ?`;
-    await safeQuery(deleteQuery, [documentId]);
+    await q(req.tenantSlug, deleteQuery, [documentId]);
 
     res.json({
       success: true,
@@ -426,6 +483,17 @@ app.use('/documents', documentsRouter);
 
 // ============ ERROR HANDLERS ============
 const { notFoundHandler, errorHandler } = require('../../services/app-global/middlewares/errorHandler');
+app.use((err, req, res, next) => {
+  // Multer upload errors + rejected file types → friendly 4xx (not a bare 500)
+  if (err && (err.code === 'LIMIT_FILE_SIZE' || err.code === 'LIMIT_UNEXPECTED_FILE' || err instanceof multer.MulterError)) {
+    const msg = err.code === 'LIMIT_FILE_SIZE' ? 'File exceeds the 50MB upload limit.' : (err.message || 'Invalid upload.');
+    return res.status(400).json({ success: false, message: msg });
+  }
+  if (err && err.statusCode) {
+    return res.status(err.statusCode).json({ success: false, message: err.message || 'Request failed' });
+  }
+  next(err);
+});
 app.use(notFoundHandler);
 app.use(errorHandler);
 
@@ -438,9 +506,8 @@ const startServer = async () => {
     }
 
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`\n📄 Documents Service running on port ${PORT}`);
-      console.log(`📁 Uploads directory: ${GLOBAL_UPLOADS_DIR}`);
-      console.log(`🌐 API Base: http://localhost:${PORT}/api/v1/restpoint\n`);
+
+
     });
   } catch (error) {
     console.error('Failed to start documents service:', error);

@@ -347,10 +347,10 @@ export const getPostmortemByDeceasedId = async (req: TenantRequest, res: Respons
 
         const selectQuery = `
             SELECT 
-                id, deceased_id, pathologist_name, external_pathologist_name, external_pathologist_mobile, external_pathologist_id,
+                id, deceased_id, status, pathologist_name, external_pathologist_name, external_pathologist_mobile, external_pathologist_id,
                 examination_summary, cause_of_death, immediate_cause_of_death, underlying_cause_of_death, contributing_conditions,
                 manner_of_death, requesting_authority, findings, head_findings, chest_findings, abdomen_findings, extremities_findings,
-                toxicology_findings, custom_findings, report_pdf_url, created_at, updated_at
+                toxicology_findings, custom_findings, signature, report_pdf_url, created_at, updated_at
             FROM postmortem WHERE deceased_id = ?
         `;
 
@@ -383,7 +383,8 @@ export const updatePostmortem = async (req: TenantRequest, res: Response): Promi
         const allowedFields = [
             'pathologist_name', 'external_pathologist_name', 'external_pathologist_mobile', 'external_pathologist_id',
             'examination_summary', 'cause_of_death', 'immediate_cause_of_death', 'underlying_cause_of_death',
-            'contributing_conditions', 'manner_of_death', 'requesting_authority', 'findings', 'report_pdf_url'
+            'contributing_conditions', 'manner_of_death', 'requesting_authority', 'findings', 'report_pdf_url',
+            'signature'
         ];
 
         const fields: string[] = [];
@@ -392,7 +393,15 @@ export const updatePostmortem = async (req: TenantRequest, res: Response): Promi
         for (const field of allowedFields) {
             if (updates[field] !== undefined) {
                 fields.push(`${field} = ?`);
-                values.push(field === 'findings' && typeof updates[field] === 'object' ? JSON.stringify(updates[field]) : updates[field]);
+                // Signatures are normalised to pure ink-blue (#0f33e7) so the stored value
+                // always renders consistently in UI + PDF — same as the other pipelines.
+
+                const value = field === 'findings' && typeof updates[field] === 'object'
+                    ? JSON.stringify(updates[field])
+                    : field === 'signature' && typeof updates[field] === 'string' && updates[field].startsWith('data:image')
+                        ? await normalizeSignatureToInkBlue(updates[field])
+                        : updates[field];
+                values.push(value);
             }
         }
 

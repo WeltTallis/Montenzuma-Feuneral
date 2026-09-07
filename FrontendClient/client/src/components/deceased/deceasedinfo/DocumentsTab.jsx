@@ -1,8 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { C, formatDate } from './theme';
 import RouteOptimizer from '../../hearse/RouteOptimizer';
 import api from '../../../api/axios';
+import { getTenantHeaders } from '../../../api/endpoints';
+import env from '../../../utils/config/env';
 
 const SectionHead = styled.div`
   font-size: 12px; 
@@ -114,8 +116,29 @@ const StatusTag = styled.span`
 const DocumentsTab = ({ documents, deceasedId }) => {
   const [showRouteOptimizer, setShowRouteOptimizer] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const docs = Array.isArray(documents) ? documents : [];
+  const [localDocs, setLocalDocs] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Documents live in the shared uploads folder (<upload>/<slug>/documents/<deceasedId>)
+  // and are served back by the documents-service — fetch the real list ourselves so
+  // freshly-uploaded files always appear (the parent's `deceased.documents` is often absent).
+  useEffect(() => {
+    if (!deceasedId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get(`/documents/${deceasedId}`, { headers: getTenantHeaders(), withCredentials: false });
+        if (!cancelled) {
+          const list = res.data?.files || res.data?.data || [];
+          setLocalDocs(Array.isArray(list) ? list : []);
+        }
+      } catch (e) { /* keep whatever the parent passed */ }
+    })();
+    return () => { cancelled = true; };
+  }, [deceasedId]);
+
+  const docs = localDocs ??
+    (Array.isArray(documents) ? documents : []);
 
   const handleUploadDocument = async (e) => {
     const file = e.target.files?.[0];
@@ -126,21 +149,21 @@ const DocumentsTab = ({ documents, deceasedId }) => {
 
     setIsUploading(true);
     try {
-      const tenantSlug = localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug');
-      
       const formData = new FormData();
       formData.append('document', file);
-      formData.append('deceasedId', deceasedId);
 
+      // NOTE: do NOT hand-set Content-Type — axios/XHR appends the
+      // multipart boundary itself. Setting it manually makes multer unable
+      // to parse the body (→ "No file uploaded" / 500).
       const response = await api.post(`/documents/${deceasedId}/upload`, formData, {
         headers: {
-          'x-tenant-slug': tenantSlug,
-          'Content-Type': 'multipart/form-data'
+          ...getTenantHeaders(),
+          'x-tenant-slug': localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug') || ''
         },
         withCredentials: false
       });
 
-      if (response.data?.success) {
+      if (response.data?.success || response.data?.document) {
         alert('Document uploaded successfully');
         window.location.reload();
       } else {
@@ -148,7 +171,15 @@ const DocumentsTab = ({ documents, deceasedId }) => {
       }
     } catch (error) {
       console.error('Error uploading document:', error);
-      alert(error.response?.data?.message || 'Failed to upload document');
+      const status = error.response?.status;
+      const msg = error.response?.data?.message;
+      if (status === 400 || status === 413) {
+        alert(msg || (status === 413 ? 'File is too large (max 50MB).' : 'Invalid file type. Only PDFs, images,and Word documents are allowed.'));
+      } else if (msg) {
+        alert(msg);
+      } else {
+        alert('Failed to upload document. Please try again later.');
+      }
     } finally {
       setIsUploading(false);
     }
@@ -202,7 +233,15 @@ const DocumentsTab = ({ documents, deceasedId }) => {
               <td><StatusTag $info>{doc.type || 'Document'}</StatusTag></td>
               <td>{formatDate(doc.created_at)}</td>
               <td style={{ textAlign: 'right' }}>
-                <Btn $sm>View</Btn>
+                <Btn
+                  $sm
+                  onClick={() => {
+                    const u = doc?.url || (doc?.stored_name ? `/uploads/${localStorage.getItem('tenantSlug') || ''}/documents/${deceasedId}/${doc.stored_name}` : null);
+                    if (u) window.open(`${env.UPLOADS_URL}${u.startsWith('/') ? '' : '/'}${u}`, '_blank', 'noopener');
+                  }}
+                >
+                  View
+                </Btn>
               </td>
             </tr>
           ))}

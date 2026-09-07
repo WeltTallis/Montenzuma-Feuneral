@@ -158,29 +158,40 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
             });
         }
 
-        // Try cache first
+        // Try cache first (raw record — charge settings are always re-attached
+        // fresh below so rate changes never end up serving stale 10-minute copies).
         const cacheKey = `deceased:detail:${id}`;
         const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);
 
+        let deceased: any = null;
         if (cached) {
+            deceased = cached;
             Logger.info({ message: `Deceased ${id} served from Redis` });
-            return res.status(200).json({
-                success: true,
-                source: "cache",
-                data: cached
-            });
         }
 
-        const isNumeric = /^\d+$/.test(id);
-        const query = `
-            SELECT *
-            FROM deceased
-            WHERE ${isNumeric ? 'id = ?' : 'deceased_id = ?'}
-            LIMIT 1
-        `;
+        if (!deceased) {
+            const isNumeric = /^\d+$/.test(id);
+            const query = `
+                SELECT *
+                FROM deceased
+                WHERE ${isNumeric ? 'id = ?' : 'deceased_id = ?'}
+                LIMIT 1
+            `;
 
-        const records = await safeTenantQuery(dbName, query, [isNumeric ? parseInt(id, 10) : id]);
-        const deceased = records && records.length > 0 ? records[0] : null;
+            const records = await safeTenantQuery(dbName, query, [isNumeric ? parseInt(id, 10) : id]);
+            deceased = records && records.length > 0 ? records[0] : null;
+
+            if (deceased) {
+                // Cache the raw record
+                await redisService.serviceSet(
+                    'deceased-service',
+                    tenantSlug,
+                    cacheKey,
+                    deceased,
+                    600 // 10 minutes TTL
+                );
+            }
+        }
 
         if (!deceased) {
             return res.status(404).json({
@@ -189,14 +200,41 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
             });
         }
 
-        // Cache the result
-        await redisService.serviceSet(
-            'deceased-service',
-            tenantSlug,
-            cacheKey,
-            deceased,
-            600 // 10 minutes TTL
-        );
+        // ─── LIVE CHARGE SETTINGS MERGE ──────────────────────────────────────
+        // The frontend sidebar/profile shows "daily storage rate" from
+        // deceased.charges.storage_rate. Without this merge it always falls
+        // back to the hard-coded KES 500/day no matter what was saved under
+        // Charge Settings — which is why "set new charges" never appeared..
+        try {
+            await safeTenantExecute(dbName, `
+                CREATE TABLE IF NOT EXISTS charge_settings (
+                    deceased_id VARCHAR(100) NOT NULL PRIMARY KEY,
+                    rate_profile VARCHAR(50) DEFAULT 'standard',
+                    currency ENUM('KES','USD') DEFAULT 'KES',
+                    charge_type ENUM('daily','hourly') DEFAULT 'daily',
+                    daily_rate DECIMAL(12,2) DEFAULT 3000.00,
+                    hourly_rate DECIMAL(12,2) DEFAULT 125.00,
+                    usd_rate DECIMAL(12,2) DEFAULT 130.00,
+                    updated_by VARCHAR(150) NULL,
+                    created_at VARCHAR(255) NULL,
+                    updated_at VARCHAR(255) NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            `, []);
+            const chargeRows: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
+            if (chargeRows && chargeRows.length > 0) {
+                const cs = chargeRows[0];
+                deceased.charges = {
+                    storage_rate: Number(cs.daily_rate ?? cs.storage_rate ?? 500),
+                    per_day: Number(cs.daily_rate ?? cs.storage_rate ?? 500),
+                    per_hour: Number(cs.hourly_rate ?? cs.per_hour ?? 125),
+                    currency: cs.currency ?? 'KES',
+                    rate_profile: cs.rate_profile ?? 'standard',
+                    charge_type: cs.charge_type ?? 'daily',
+                    usd_rate: Number(cs.usd_rate ?? 130),
+                    updated_at: cs.updated_at ?? null
+                };
+            }
+        } catch (e) { /* charge settings are optional — never block the profile */ }
 
         return res.status(200).json({
             success: true,

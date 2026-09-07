@@ -1,0 +1,17 @@
+fileFilter: (req, file, cb) => {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/bmp',
+      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    // Many phones / Windows report .pdf / .docx as "application/octet-stream"
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const OK_EXT = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.bmp', '.doc', '.docx'];
+    const mime = String(file.mimetype || '').toLowerCase();
+    const okMime = allowedTypes.includes(mime);
+    const okOctet = OK_EXT.includes(ext) && (!mime || mime === 'application/octet-stream');
+    if (okMime || okOctet) {
+      cb(null, true);
+    } else {
+      const err = new Error('Invalid file type. Only PDF, images,and Word documents are allowed.');
+      err.statusCode = 400; // friendly 400 (was a bare 500 via generic handler)
+      cb(err);
+    }
+  }
