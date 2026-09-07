@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter as Router } from 'react-router-dom';
 import AppRoutes from './routes/AppRouter';
+import ConnectionToast from './components/common/ConnectionToast';
 import { AuthProvider } from './utils/context/AuthContext';
 import { TenantProvider } from './utils/context/TenantContext';
 import { UserProvider } from './utils/context/userContext';
@@ -94,6 +95,7 @@ function App() {
   return (
     <ErrorBoundary>
       <GlobalLoaderStyles />
+      <ConnectionToast />
       <HelmetProvider>
         <Router>
           <AuthProvider>

@@ -11,6 +11,7 @@ import notify from '../../../utils/notify';
 import bwipjs from '@bwip-js/browser';
 import axios from 'axios';
 import api from '../../../api/axios';
+import InOurCare from '../../common/InOurCare';
 
 import {
   Check, Loader2, CheckCircle, X, FileText, User, RotateCcw, ShieldCheck,
@@ -824,6 +825,7 @@ const DeceasedRegistrationForm = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [showSuccess, setShowSuccess] = useState(false);
   const [registeredName, setRegisteredName] = useState('');
+  const [vigilData, setVigilData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [admissionId, setAdmissionId] = useState('');
   const [signedSignature, setSignedSignature] = useState('');
@@ -1035,6 +1037,11 @@ const DeceasedRegistrationForm = () => {
 
       setRegisteredName(formData.full_name);
       setLastSignedName(formData.full_name);
+      setVigilData({
+        name: formData.full_name,
+        passed: formData.date_of_death,
+        reference: admissionId || (result?.data?.admission_number ?? ''),
+      });
       setShowSuccess(true);
 
       notify.success(
@@ -1088,6 +1095,24 @@ const DeceasedRegistrationForm = () => {
           <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: COLORS.gray, fontFamily: 'Saira', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Processing Document...</p>
         </div>
       </Container>
+    );
+  }
+
+  // ── Vigil success view ──
+  // After a successful admission a candle is lit in the deceased's memory.
+  // "Done" returns the user to the portal dashboard.
+  if (showSuccess) {
+    return (
+      <InOurCare
+        mode="intake"
+        name={vigilData?.name || registeredName}
+        passed={vigilData?.passed}
+        reference={vigilData?.reference}
+        onDone={() => {
+          const slug = (typeof getTenantSlug === 'function' && getTenantSlug()) || localStorage.getItem('tenantSlug') || '';
+          navigate(slug ? `/tenant/${slug}/dashboard` : '/dashboard');
+        }}
+      />
     );
   }
 
