@@ -29,8 +29,15 @@ export class RedisCacheService {
     }
 
     try {
-      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-      
+      // REDIS_URL wins when provided; otherwise build the URL from
+      // REDIS_HOST/REDIS_PORT and include REDIS_PASSWORD — the Redis server runs
+      // with requirepass, so omitting it fails every command with NOAUTH.
+      const auth = process.env.REDIS_PASSWORD
+        ? `:${encodeURIComponent(process.env.REDIS_PASSWORD)}@`
+        : '';
+      const redisUrl = process.env.REDIS_URL
+        || `redis://${auth}${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
+
       this.client = new IORedis(redisUrl, {
         maxRetriesPerRequest: 1,
         retryStrategy: (times: number) => {

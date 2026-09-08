@@ -14,9 +14,15 @@ export interface PDFGenerationJob {
   priority?: 'low' | 'normal' | 'high' | 'urgent';
 }
 
+// BullMQ requires maxRetriesPerRequest: null on connections it shares, and the
+// Redis server runs with --requirepass: REDIS_PASSWORD MUST be sent or every
+// command fails with NOAUTH (this connection previously had no password, which
+// spammed "[ioredis] Unhandled error event: ReplyError: NOAUTH" forever).
 const connection = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD || undefined,
+  maxRetriesPerRequest: null,
 };
 
 let pdfQueue: Queue | null = null;
@@ -28,11 +34,31 @@ let pdfQueue: Queue | null = null;
 export async function getPDFQueue(): Promise<Queue | null> {
   if (pdfQueue) return pdfQueue;
 
+  let testConnection: Redis | null = null;
   try {
-    // Test connection first
-    const testConnection = new Redis(connection);
-    await testConnection.connect();
-    await testConnection.quit();
+    // Probe the connection first. Attach the error handler BEFORE connecting so
+    // probe failures (NOAUTH / ECONNREFUSED / timeout) never surface as
+    // "[ioredis] Unhandled error event" spam, hard-cap the probe so callers
+    // never hang, and PING so auth problems are caught — a bare TCP connect
+    // succeeds even when the password is wrong.
+    testConnection = new Redis({
+      ...connection,
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+      connectTimeout: 3000,
+      retryStrategy: (times: number) => (times > 2 ? null : Math.min(times * 500, 1500)),
+    });
+    testConnection.on('error', () => { /* probe failure handled below */ });
+
+    await Promise.race([
+      (async () => {
+        await testConnection!.connect();
+        await testConnection!.ping();
+      })(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Redis connect timeout (3s)')), 3000)
+      ),
+    ]);
 
     // If connection successful, create the queue
     pdfQueue = new Queue<PDFGenerationJob>(PDF_QUEUE_NAME, {
@@ -44,6 +70,9 @@ export async function getPDFQueue(): Promise<Queue | null> {
         removeOnFail: { age: 7 * 24 * 3600 },
       },
     });
+    pdfQueue.on('error', (err: Error) => {
+      Logger.warn(`[PDFQueue] Queue error: ${err.message}`);
+    });
 
     Logger.info('[PDFQueue] Queue initialized successfully');
     return pdfQueue;
@@ -51,6 +80,8 @@ export async function getPDFQueue(): Promise<Queue | null> {
     Logger.warn(`[PDFQueue] Redis not available - queue disabled (${error.message})`);
     pdfQueue = null;
     return null;
+  } finally {
+    try { testConnection?.disconnect(); } catch { /* already closed */ }
   }
 }
 
@@ -78,6 +109,9 @@ export function startPDFWorker(): void {
       const worker = new Worker<PDFGenerationJob>(PDF_QUEUE_NAME, processPDFGeneration, {
         connection,
         concurrency: 2,
+      });
+      worker.on('error', (err: Error) => {
+        console.warn(`[PDFWorker] Worker error: ${err.message}`);
       });
       console.log('PDF Worker started');
     } else {

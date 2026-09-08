@@ -14,6 +14,9 @@ const getRedisClient = (): Redis => {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     redisClient = new Redis(redisUrl, {
       maxRetriesPerRequest: 3,
+      // REDIS_URL carries the password in docker; REDIS_PASSWORD covers
+      // host-mode deployments where the URL has no credentials.
+      password: process.env.REDIS_PASSWORD || undefined,
       retryStrategy: (times: number) => {
         if (times > 3) {
 

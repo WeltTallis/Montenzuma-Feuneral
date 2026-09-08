@@ -288,6 +288,9 @@ try {
   const redisUrl = process.env.REDIS_URL || 'redis://restpoint_redis:6379';
   redisClient = new Redis(redisUrl, {
     lazyConnect: true,
+    // REDIS_URL already carries the password in docker; send REDIS_PASSWORD as a
+    // fallback for host-mode deployments where the URL has no credentials.
+    password: process.env.REDIS_PASSWORD || undefined,
     retryStrategy: (times) => (times > 20 ? null : Math.min(times * 500, 2000)),
   });
 

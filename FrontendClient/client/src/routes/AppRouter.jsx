@@ -2,8 +2,8 @@ import { Routes, Route, useParams, Navigate, useNavigate, useLocation } from 're
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 
 
-const  NotificationBell = lazy(()=> import('../components/notifications/NotificationBell'))
-const  FooterComponent   =  lazy(()=>import('../components/layout/globalFooter'))
+const NotificationBell = lazy(() => import('../components/notifications/NotificationBell'))
+const FooterComponent = lazy(() => import('../components/layout/globalFooter'))
 import { useTenantStore } from '../modules/seo/useTenantStore';
 import ModernSidebar from '../components/layout/ModernSidebar';
 import { useAuth } from '../utils/context/AuthContext';
@@ -113,8 +113,9 @@ const ChemicalInventoryAnalytics = lazy(() => import('../components/chemicals/ch
 const WorkshopDashboard = lazy(() => import('../components/workshop/pages/WorkshopDashboard'));
 // Flower Booking System
 const FlowerBookings = lazy(() => import('../components/florists/FlowerBookingsNew'));
-const FlowerBookingForm = lazy(() => import('../components/florists/FlowerBookingForm'));
+const FlowerBookingForm = lazy(() => import('../components/florists/arragemnts'));
 const FlowerOrderDetail = lazy(() => import('../components/florists/FlowerOrderDetail'));
+const FlowerSamples = lazy(() => import('../components/florists/Samples'));
 const RequestDetail = lazy(() => import('../components/analysis/RequestDetail'));
 
 const HearseBookings = lazy(() => import('../components/hearse/hearseBookings'));
@@ -510,6 +511,11 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           <Layout tenantData={tenantData} tenantSlug={slug}><FlowerOrderDetail /></Layout>
         } />
 
+        {/* Flower Samples - standalone user-facing gallery (Instagram-story style) */}
+        <Route path="flower-samples" element={
+          <FlowerSamples />
+        } />
+
         {/* Hearse - All authenticated users */}
         <Route path="hearse" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><HearseBookings /></Layout>
@@ -734,7 +740,7 @@ const AppRouter = () => (
       <Route path="/blog/funeral-welfare-management" element={<FuneralWelfareGuide />} />
       <Route path="/blog/bereavement-management" element={<BereavementManagementGuide />} />
       <Route path="/blog/member-contributions" element={<MemberContributionsGuide />} />
-            <Route path="/blog/future-of-death-care-software-restpoint" element={<FutureDeathCareGuide />} />
+      <Route path="/blog/future-of-death-care-software-restpoint" element={<FutureDeathCareGuide />} />
       <Route path="/blog/architecture-of-blooms" element={<ArchitectureOfBlooms />} />
 
       // Comparison Routes

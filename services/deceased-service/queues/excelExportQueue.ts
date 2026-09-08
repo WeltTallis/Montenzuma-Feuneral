@@ -25,16 +25,23 @@ export async function getExcelExportQueue(): Promise<Queue | null> {
       enableOfflineQueue: false,
     };
 
-    // Probe the connection with a hard ceiling so callers never hang
+    // Probe the connection with a hard ceiling so callers never hang.
+    // The error handler prevents "[ioredis] Unhandled error event" spam, and the
+    // PING catches auth problems (NOAUTH) that a bare TCP connect hides —
+    // without it the queue is created but every queue.add fails with NOAUTH.
     const testConnection = new Redis({
       ...connectionOptions,
       lazyConnect: true,
       maxRetriesPerRequest: 1,
       retryStrategy: (times: number) => (times > 2 ? null : Math.min(times * 500, 1500)),
     });
+    testConnection.on('error', () => { /* probe failure handled via catch below */ });
 
     await Promise.race([
-      testConnection.connect(),
+      (async () => {
+        await testConnection.connect();
+        await testConnection.ping();
+      })(),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Redis connect timeout (3s)')), 3000)
       ),

@@ -21,7 +21,7 @@ import os from 'os';
 // Fix __dirname for ES modules
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// ============================================
+
 // TENANT HELPERS
 //   Flower samples are scoped by TENANT ID ONLY (no branches). The tenant id
 //   comes from the `x-tenant-id` header sent by the UI (read from localStorage

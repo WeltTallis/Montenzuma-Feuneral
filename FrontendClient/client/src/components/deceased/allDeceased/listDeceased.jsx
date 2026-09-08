@@ -257,23 +257,31 @@ const CalSelect = styled.select`
 
 const CalendarDates = styled.div`
   display: flex;
-  flex-wrap: nowrap;
+  /* Big screens: wrap the days into tidy rows so EVERY date fits — no
+     horizontal overflow, nothing clipped by the card. Small screens keep
+     the classic single-line scroll strip. */
+  flex-wrap: wrap;
+  justify-content: flex-start;
   gap: 6px;
-  overflow-x: auto;
   padding: 4px 2px 6px;
-  scroll-behavior: smooth;
   flex: 1;
   width: 100%;
   min-width: 0;
   max-width: 100%;
   align-items: center;
-  scrollbar-width: thin;
-  scrollbar-color: ${C.border} transparent;
 
-  &::-webkit-scrollbar { height: 6px; }
-  &::-webkit-scrollbar-track { background: ${C.bgField}; border-radius: 10px; }
-  &::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 10px; }
-  &::-webkit-scrollbar-thumb:hover { background: ${C.gray}; }
+  @media (max-width: 900px) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: ${C.border} transparent;
+
+    &::-webkit-scrollbar { height: 6px; }
+    &::-webkit-scrollbar-track { background: ${C.bgField}; border-radius: 10px; }
+    &::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 10px; }
+    &::-webkit-scrollbar-thumb:hover { background: ${C.gray}; }
+  }
 `;
 
 
@@ -970,7 +978,20 @@ const DeceasedListPage = () => {
   }, [selectedDate, calMonth, calYear]);
 
   // ─── Filters ─────────────────────────────────────────────────────
-  const filteredRecords = records.filter(r => {
+  // Year scoping — belt & braces: the API filters server-side via ?year=,
+  // but an older deceased-service build may ignore that param. Filtering
+  // here as well guarantees the list + calendar dots ALWAYS reflect the
+  // selected year.
+  const yearRecords = useMemo(() => {
+    if (!calYear) return records;
+    return records.filter(r => {
+      const admitted = r.created_at || r.date_admitted || r.admission_date;
+      const d = new Date(admitted);
+      return !isNaN(d.getTime()) && d.getFullYear() === Number(calYear);
+    });
+  }, [records, calYear]);
+
+  const filteredRecords = yearRecords.filter(r => {
     const name = (r.full_name || r.name || '').toLowerCase();
     const id = (r.deceased_id || r.id || '').toLowerCase();
     const adm = (r.admission_number || r.admission_no || '').toLowerCase();
@@ -1258,13 +1279,13 @@ const DeceasedListPage = () => {
   // Map of 'YYYY-MM-DD' → admission count for that day (drives the red dots)
   const eventCountByDate = useMemo(() => {
     const map = {};
-    records.forEach(r => {
+    yearRecords.forEach(r => {
       const admitted = r.created_at || r.date_admitted || r.admission_date;
       const key = toDateString(admitted);
       if (key) map[key] = (map[key] || 0) + 1;
     });
     return map;
-  }, [records]);
+  }, [yearRecords]);
 
   const handleMonthChange = (e) => {
     setCalMonth(parseInt(e.target.value));

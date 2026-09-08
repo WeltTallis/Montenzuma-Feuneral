@@ -1,11 +1,10 @@
-import { Router, Request, Response } from 'express';
 import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware';
 import {
-    getAllDeceased,
-    getDeceasedById,
-    updateDeceased,
-    deleteDeceased,
+    getAllDeceased, getDeceasedById, updateDeceased, deleteDeceased,
 } from '../controllers/deceasedControl';
+
+import { Router, Request, Response } from 'express';
+
 
 import { registerNewDeceased } from '../controllers/registerDeceased'
 import { getAdmissionNumber } from '../utils/admissionNumberRoute'
@@ -97,7 +96,7 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
         }
 
         const deceased = (records as any[])[0];
-        
+
         // Get next of kin data if not already joined
         if (!deceased.next_of_kin_name) {
             try {
@@ -120,7 +119,7 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
                 console.error('[PUBLIC] Next of kin fetch error:', e);
             }
         }
-        
+
         // Get postmortem data if exists
         let postmortem = null;
         try {
@@ -204,9 +203,17 @@ router.get('/postmortem-requests/stats', getPostmortemStats);
 router.get('/postmortem-requests', getPostmortemRequests);
 
 // POST - Export Excel (must be BEFORE catch-all /:id route)
+// The gateway forwards the full path INCLUDING the '/deceased' service prefix
+// (e.g. POST /deceased/export-excel, GET /deceased/export-history), so the
+// prefixed aliases MUST be registered here — otherwise POST /deceased/export-excel
+// falls through to the global 404 handler and GET /deceased/export-history is
+// swallowed by the /deceased/:id catch-all below (treated as "get deceased by id").
 router.post('/export-excel', exportExcelWithCharts);
 router.get('/export-status/:jobId', checkExportStatus);
 router.get('/export-history', getExportHistory);
+router.post('/deceased/export-excel', exportExcelWithCharts);
+router.get('/deceased/export-status/:jobId', checkExportStatus);
+router.get('/deceased/export-history', getExportHistory);
 
 // GET - By ID - SUPPORT ALL PATTERN TYPES
 router.get('/deceased-id/:id', getDeceasedById);  // /deceased/deceased-id/:id
@@ -257,11 +264,5 @@ router.get('/autopsy/:deceased_id/pdf', generatePostmortemPDF);
 
 // POST - Update status (for cross-service calls)
 router.post('/update-status', updateDeceasedStatus);
-
-// GET - Stats
-// router.get('/stats', getDeceasedStats);
-
-// GET - Export
-// router.get('/export', exportDeceasedToExcel);
 
 export default router;

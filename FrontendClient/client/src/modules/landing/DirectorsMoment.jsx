@@ -242,8 +242,10 @@ function drawFrame(ctx, st, t, MOT) {
       ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(wTopX, WICK_TOP, er, 0, TAU); ctx.fill();
     }
     if (!st.RM && st.ig > .85 && Math.random() < .012 + Math.abs(st.wind) * .10 + st.pulse * .2 && st.embers.length < 26) {
-      st.embers.push({ x: tipX + (Math.random() - .5) * 6, y: tipY + 8, vx: (Math.random() - .5) * .3,
-        vy: -(.45 + Math.random() * .6), life: 1, dk: .006 + Math.random() * .008, seed: Math.random() * 10 });
+      st.embers.push({
+        x: tipX + (Math.random() - .5) * 6, y: tipY + 8, vx: (Math.random() - .5) * .3,
+        vy: -(.45 + Math.random() * .6), life: 1, dk: .006 + Math.random() * .008, seed: Math.random() * 10
+      });
     }
   }
   for (let i = st.embers.length - 1; i >= 0; i--) {
@@ -367,7 +369,7 @@ export default function DirectorsMoment() {
               <button type="button" className={`dm-segbtn${side === 'typical' ? ' on' : ''}`}
                 aria-pressed={side === 'typical'} onClick={() => showSide('typical')}>Typical software</button>
               <button type="button" className={`dm-segbtn${side === 'ours' ? ' on' : ''}`}
-                aria-pressed={side === 'ours'} onClick={() => showSide('ours')}>With your software</button>
+                aria-pressed={side === 'ours'} onClick={() => showSide('ours')}>With  RestPoint software</button>
             </div>
 
             <div className="dm-browser">
@@ -405,7 +407,7 @@ export default function DirectorsMoment() {
             </div>
 
             <div className="dm-under">
-              <p className="dm-note">This is the real thing — live code, running in your browser right now. Try moving your cursor near the flame.</p>
+              <p className="dm-note">This is the real thing live code, running in your browser right now. Try moving your cursor near the flame.</p>
               {side === 'ours' && (
                 <button type="button" className="dm-replay" onClick={() => setLitKey((k) => k + 1)}>
                   <svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 1.5v3h-3" /></svg>
@@ -420,8 +422,8 @@ export default function DirectorsMoment() {
           <Rv>
             <div className="dm-pt">
               <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5" /><path d="M7 10.2 9.2 12.4 13.2 7.6" /></svg>
-              <h5>Fully white-label</h5>
-              <p>Your firm's name, your colours, your words. The family only ever sees you — never us, never a vendor logo.</p>
+              <h5>Fully white label</h5>
+              <p>Your firm's name, your colours, your words. The family only ever sees you  never us, never a vendor logo.</p>
             </div>
           </Rv>
           <Rv delay={110}>
@@ -435,7 +437,7 @@ export default function DirectorsMoment() {
             <div className="dm-pt">
               <svg viewBox="0 0 20 20"><path d="M10 17S3.5 12.8 3.5 8.2C3.5 5.9 5.3 4 7.6 4c1 0 1.9.4 2.4 1.1C10.5 4.4 11.4 4 12.4 4c2.3 0 4.1 1.9 4.1 4.2C16.5 12.8 10 17 10 17z" /></svg>
               <h5>Nothing for families to do</h5>
-              <p>No buttons to find, no text to read, no next steps. The page simply keeps the light on — and that's the point.</p>
+              <p>No buttons to find, no text to read, no next steps. The page simply keeps the light on   and that's the point.</p>
             </div>
           </Rv>
         </div>

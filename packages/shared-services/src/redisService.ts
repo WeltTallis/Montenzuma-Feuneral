@@ -16,9 +16,17 @@ import Logger from '../../shared-logger/dist/index';
 
 type RedisClient = RedisClientType<RedisModules, RedisFunctions, RedisScripts>;
 
-const DEFAULT_REDIS_URL = process.env.REDIS_URL || process.env.REDIS_HOST
-  ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`
-  : 'redis://redis:6379';
+// NOTE: the previous expression (`process.env.REDIS_URL || process.env.REDIS_HOST
+// ? ... : ...`) had an operator-precedence bug — REDIS_URL was only used as a
+// boolean and the URL was always rebuilt from REDIS_HOST/REDIS_PORT WITHOUT the
+// password, so every command failed with NOAUTH against the requirepass server.
+const REDIS_AUTH_SEGMENT = process.env.REDIS_PASSWORD
+  ? `:${encodeURIComponent(process.env.REDIS_PASSWORD)}@`
+  : '';
+const DEFAULT_REDIS_URL = process.env.REDIS_URL
+  || (process.env.REDIS_HOST
+    ? `redis://${REDIS_AUTH_SEGMENT}${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`
+    : 'redis://redis:6379');
 
 // ─── Service Configuration ──────────────────────────────────────────────
 
