@@ -164,6 +164,25 @@ const DeceasedDetailPage = () => {
 
   const [showChargeModal, setShowChargeModal] = useState(false);
 
+  // ─── Deceased profiles must never be indexed by search engines ────
+  useEffect(() => {
+    const ROBOTS_CONTENT = 'noindex, nofollow, noarchive';
+    let meta = document.querySelector('meta[name="robots"]');
+    const previous = meta ? meta.getAttribute('content') : null;
+    if (meta) {
+      meta.setAttribute('content', ROBOTS_CONTENT);
+    } else {
+      meta = document.createElement('meta');
+      meta.name = 'robots';
+      meta.content = ROBOTS_CONTENT;
+      document.head.appendChild(meta);
+    }
+    return () => {
+      if (previous !== null) meta.setAttribute('content', previous);
+      else meta.remove();
+    };
+  }, []);
+
   const fetchData = useCallback(async () => {
     if (!deceasedId) return;
     setLoading(true);

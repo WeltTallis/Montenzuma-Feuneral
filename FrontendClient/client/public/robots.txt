@@ -1,3 +1,7 @@
+# restpoint.co.ke — robots
+# Sensitive tenant data (deceased records, dashboards, admin areas) must
+# never be crawled or indexed by search engines.
+
 User-agent: *
 Allow: /
 Disallow: /api/
@@ -5,8 +9,9 @@ Disallow: /dashboard/
 Disallow: /admin/
 Disallow: /tenant/
 Disallow: /deceased/
-Disallow: /*/deceased/
-Disallow: /*/deceased*
+Disallow: /*/deceased
+Disallow: /*/all-deceased
+Disallow: /*/postmortem-form
 Disallow: /coffins/
 Disallow: /hearse/
 
@@ -14,12 +19,3 @@ Sitemap: https://restpoint.co.ke/sitemap.xml
 
 # Crawl-delay for polite crawlers
 Crawl-delay: 1
-
-
-
-
-Next:
-Neema Gospel Choir - Nikurejeshee (Live Music Video)
-Mix - BEST SWAHILI GOSPEL MIX 2024 | LIVE PRAISE & WORSHIP_DJ Bing [The Kingdom Boy] NINA SIRI NENA IPYANA
-
-BEST SWAHILI GOSPEL MIX 2024 | LIVE PRAISE & WORSHIP_DJ Bing [The Kingdom Boy] NINA SIRI NEN

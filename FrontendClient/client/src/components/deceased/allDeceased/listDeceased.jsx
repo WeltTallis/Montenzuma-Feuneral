@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
 import axios from 'axios';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
@@ -865,18 +865,51 @@ const ProgressWidget = styled.div`
 // ─── Main Component ─────────────────────────────────────────────────
 const DeceasedListPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const today = new Date();
+
+  // ─── Deceased pages must never be indexed by search engines ──────
+  useEffect(() => {
+    const ROBOTS_CONTENT = 'noindex, nofollow, noarchive';
+    let meta = document.querySelector('meta[name="robots"]');
+    const previous = meta ? meta.getAttribute('content') : null;
+    if (meta) {
+      meta.setAttribute('content', ROBOTS_CONTENT);
+    } else {
+      meta = document.createElement('meta');
+      meta.name = 'robots';
+      meta.content = ROBOTS_CONTENT;
+      document.head.appendChild(meta);
+    }
+    return () => {
+      if (previous !== null) meta.setAttribute('content', previous);
+      else meta.remove();
+    };
+  }, []);
 
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => {
+    const s = searchParams.get('search');
+    return s ? String(s) : '';
+  });
   const [statusFilter, setStatusFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
 
   // Calendar State
   const [calMonth, setCalMonth] = useState(today.getMonth());
-  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calYear, setCalYear] = useState(() => {
+    // The URL is the source of truth for the year (?year=2026) so a
+    // shared/bookmarked link reopens the exact same view.
+    const y = Number(searchParams.get('year'));
+    return Number.isInteger(y) && y >= 1900 && y <= 2200 ? y : today.getFullYear();
+  });
+
+  // Stable handle for URL sync inside callbacks (prevents refetch loops —
+  // react-router's setSearchParams identity can change across navigations).
+  const setSearchParamsRef = useRef(null);
+  setSearchParamsRef.current = setSearchParams;
   const [selectedDate, setSelectedDate] = useState(null); // 'YYYY-MM-DD'
   const activeDateRef = useRef(null);
 
@@ -917,6 +950,16 @@ const DeceasedListPage = () => {
       while (pageNum <= totalPages && pageNum <= 12) {
         const params = { year: calYear, page: pageNum, limit: pageSize };
         if (search) params.search = search;
+
+        // Append the plain query to the browser URL (year/page/limit only —
+        // no search text, so no special characters for crawlers to choke on):
+        // /all-deceased?year=2026&page=1&limit=100
+        if (setSearchParamsRef.current) {
+          setSearchParamsRef.current(
+            { year: calYear, page: pageNum, limit: pageSize },
+            { replace: true }
+          );
+        }
 
         const res = await axios.get(`${BASE_URL}/deceased-all`, { params, headers });
         const data = res.data?.data || res.data || [];

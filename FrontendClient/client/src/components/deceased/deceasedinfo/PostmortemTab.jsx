@@ -10,7 +10,6 @@ import notify from '../../../utils/notify';
 import styled from 'styled-components';
 import { C, formatDate } from './theme';
 import axios from 'axios';
-import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 
 /* -- Minimized styling, matching OverviewTab -- */
 const SectionHead = styled.div`
@@ -243,11 +242,6 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
     notes: ''
   });
 
-  // Examiner-signature pad (same ReusableSignaturePad the deceased intake uses)
-  const sigPadRef = useRef(null);
-  const [newSignature, setNewSignature] = useState(null);
-  const [savingSignature, setSavingSignature] = useState(false);
-
   // Tenant-wide postmortem analytics (requested vs carried out)
   const [stats, setStats] = useState(null);
   const loadStats = useCallback(() => {
@@ -290,7 +284,7 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
     await Promise.all([loadRequests(), loadStats()]);
   };
 
-  const hasData = pm.immediate_cause_of_death || pm.manner_of_death || pm.examination_summary || pm.findings || pm.signature || pm.toxicology_findings;
+  const hasData = pm.immediate_cause_of_death || pm.manner_of_death || pm.examination_summary || pm.findings || pm.toxicology_findings;
 
   const openForm = () => {
     navigate(`/tenant/${tenantSlug}/postmortem-form/${deceasedId}`);
@@ -322,38 +316,6 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
     } catch (error) {
       console.error('PDF generation error:', error);
       alert(`Failed to generate PDF: ${error.message}`);
-    }
-  };
-
-  // ─── Examiner signature — renders the saved one + lets the officer capture/
-  // update it right here, with the same signature pad the deceased intake uses.
-  const signatureSrc = (() => {
-    const sig = pm.signature || pm.signature_base64;
-    if (!sig) return null;
-    if (String(sig).startsWith('data:image') || /^https?:\/\//.test(String(sig))) return String(sig);
-    if (String(sig).startsWith('/')) return `${env.API_GATEWAY_URL}${sig}`;
-    // Plain base64 (older rows) → render as PNG data-URL
-    if (/^[A-Za-z0-9+/=\r\n]+$/.test(String(sig))) return `data:image/png;base64,${sig}`;
-    return String(sig);
-  })();
-
-  const saveSignature = async () => {
-    if (!pm?.id || !newSignature) { showToast.warning('Draw the examiner signature first.'); return; }
-    setSavingSignature(true);
-    try {
-      const res = await axios.put(`${env.FULL_API_URL}/postmortem/${pm.id}`, { signature: newSignature }, { headers: getTenantHeaders() });
-      if (res.data?.success) {
-        showToast.success('Examiner signature saved');
-        setNewSignature(null);
-        sigPadRef.current?.clear();
-        if (typeof onRequestsChanged === 'function') await onRequestsChanged();
-      } else {
-        throw new Error(res.data?.message || 'Failed to save signature');
-      }
-    } catch (err) {
-      showToast.error(err.response?.data?.message || err.message || 'Failed to save signature');
-    } finally {
-      setSavingSignature(false);
     }
   };
 
@@ -677,38 +639,6 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
     </DetailItem>
   )}
 </DetailGrid>
-
-          {/* 05 — Examiner Signature (tab-style, like deceased intake) */}
-          <SectionHead><span>05</span> Examiner Signature</SectionHead>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 28, alignItems: 'flex-start' }}>
-            <div style={{ border: `1px solid ${C.black}`, borderRadius: 8, padding: 14, background: '#fff' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-                <span>Signature  Draw below</span>
-                {signatureSrc ? <span style={{ color: C.success }}>✓ Signed</span> : <span style={{ color: C.gray }}>Not signed</span>}
-              </div>
-              <ReusableSignaturePad
-                ref={sigPadRef}
-                penColor="#0f33e7"
-                placeholder="Draw examiner signature"
-                onChange={(val) => setNewSignature(typeof val === 'string' ? val : null)}
-                style={{ width: '100%' }}
-              />
-              <div style={{ display: 'flex', gap: 10, marginTop: 12, justifyContent: 'flex-end' }}>
-                <Btn $primary onClick={saveSignature} disabled={savingSignature || !newSignature}>
-                  {savingSignature ? 'Saving...' : 'Save Signature'}
-                </Btn>
-                <Btn onClick={() => { setNewSignature(null); sigPadRef.current?.clear(); }} disabled={!newSignature}>Clear</Btn>
-              </div>
-            </div>
-            <div style={{ border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: 14, background: '#fff' }}>
-              <DetailLabel>Current Signature on File</DetailLabel>
-              {signatureSrc ? (
-                <img src={signatureSrc} alt="Examiner Signature" style={{ maxWidth: '100%', maxHeight: 160, marginTop: 8, border: '1px dashed ' + C.borderLight, borderRadius: 8, padding: 6, background: '#fff', objectFit: 'contain' }} />
-              ) : (
-                <DetailValue style={{ color: '#999' }}>No signature captured yet.</DetailValue>
-              )}
-            </div>
-          </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
             <Btn onClick={generatePDF}>Download PDF Report</Btn>
