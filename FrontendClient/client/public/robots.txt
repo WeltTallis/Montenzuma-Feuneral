@@ -3,6 +3,12 @@ Allow: /
 Disallow: /api/
 Disallow: /dashboard/
 Disallow: /admin/
+Disallow: /tenant/
+Disallow: /deceased/
+Disallow: /*/deceased/
+Disallow: /*/deceased*
+Disallow: /coffins/
+Disallow: /hearse/
 
 Sitemap: https://restpoint.co.ke/sitemap.xml
 

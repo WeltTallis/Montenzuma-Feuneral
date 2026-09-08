@@ -201,9 +201,11 @@ const FlowerBookingsNew = () => {
   const { socket, connected } = useSocket()
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  // Deep-link support: the ReceptionPortal's "Flower Arrangements" tile links
-  // here with ?view=samples so receptionists land directly on the uploaded
-  // arrangements instead of the bookings dashboard.
+  // Deep-link support: ?view=samples opens this page straight on the uploaded
+  // arrangements grid. LEGACY — the ReceptionPortal's "Flower Arrangements" tile
+  // now links to the standalone user-facing gallery at
+  // /tenant/<slug>/flower-samples (florists/Samples.jsx). This param is kept
+  // only so older bookmarks / cached builds still land somewhere sensible.
   const [view, setView] = useState(() => {
     const v = new URLSearchParams(window.location.search).get('view');
     return v === 'samples' ? 'samples' : 'list';
@@ -831,7 +833,7 @@ const FlowerBookingsNew = () => {
             )}
             <div style={styles.metaRow}><User size={12} /> {b.deceased_name}</div>
             <div style={styles.metaRow}><User size={12} /> Booked by {b.booked_by || b.customer}</div>
-                        <div style={styles.metaRow}><Home size={12} /> Flowers from: {resolveBranchName(b.branch) || resolveBranchName(b.funeral_home) || 'Not specified'}</div>
+            <div style={styles.metaRow}><Home size={12} /> Flowers from: {resolveBranchName(b.branch) || resolveBranchName(b.funeral_home) || 'Not specified'}</div>
           </div>
         </div>
         <div className="flx-card-right" style={styles.bookingRight}>
@@ -1242,146 +1244,146 @@ const FlowerBookingsNew = () => {
               Back to Orders
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <span style={styles.detailCrumb}>{shortBookingCode(b)}</span>
+              <span style={styles.detailCrumb}>{shortBookingCode(b)}</span>
               <button onClick={backToList} aria-label="Close details" style={{ background: 'none', border: 'none', color: '#9C9389', fontSize: '26px', lineHeight: 1, cursor: 'pointer', padding: 0 }}>×</button>
             </div>
           </div>
           {hasImages && (
-          <div style={styles.detailHero}>
-            <div style={styles.carouselTrack}>
-              {product.images.map((img, idx) => (
-                <div key={idx} style={styles.carouselSlide}>
-                  <img src={img.url || img} alt={product.title} />
+            <div style={styles.detailHero}>
+              <div style={styles.carouselTrack}>
+                {product.images.map((img, idx) => (
+                  <div key={idx} style={styles.carouselSlide}>
+                    <img src={img.url || img} alt={product.title} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={styles.detailBody}>
+            <div style={styles.chipRow}>
+              <div style={styles.chipPrimary}>{shortBookingCode(b)}</div>
+              <span style={{ ...styles.priorityPill, fontSize: '12px', padding: '6px 12px' }}>{b.priority} Priority</span>
+            </div>
+
+            <h2 style={styles.detailTitle}>{product.title}</h2>
+            <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#9C9389' }}>
+              {asList(product.types).join(' · ') || 'Custom Arrangement'}
+            </p>
+
+            {/* Compact horizontal status tracker — replaces the tall vertical card */}
+            <div style={styles.trackRow}>
+              {STATUS_FLOW.map((status, idx) => {
+                const done = idx < currentStatusIdx;
+                const active = idx === currentStatusIdx;
+                return (
+                  <React.Fragment key={status}>
+                    {idx > 0 && <div style={styles.trackArrow}>›</div>}
+                    <div style={{
+                      ...styles.trackStep,
+                      background: active ? '#2F4F3E' : done ? '#EAF2EC' : '#FAF9F7',
+                      color: active ? '#fff' : done ? '#2F4F3E' : '#B9B2A8',
+                      borderColor: active ? '#2F4F3E' : done ? '#CBE0D4' : '#EAE7E2',
+                    }}>
+                      {done ? <Check size={11} strokeWidth={3} /> : <span style={styles.trackNum}>{idx + 1}</span>}
+                      {STATUS_LABELS[status]}
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            {/* ── Flower types in this order (line items) ── */}
+            <div style={{ background: '#fff', border: '1px solid #EAE7E2', borderRadius: '14px', padding: '14px 16px', marginBottom: '24px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9C9389', marginBottom: '10px' }}>
+                Flower Types in this Order ({lineItems.length})
+              </div>
+              {lineItems.map((li, i) => {
+                const s = arrangements.find(a => a.title === li.name);
+                return (
+                  <div
+                    key={`${li.name}-${i}`}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0',
+                      borderBottom: i < lineItems.length - 1 ? '1px solid #F3F1EC' : 'none'
+                    }}
+                  >
+                    <div style={{ ...styles.mediaThumb, width: '44px', height: '44px', borderRadius: '10px' }}>
+                      {s?.images?.length > 0 ? (
+                        <img src={s.images[0]?.url || s.images[0]} alt={li.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ ...styles.mediaThumbPlaceholder, fontSize: '16px' }}>{(li.name || 'F').charAt(0)}</div>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#1C1A17' }}>{li.name}</div>
+                      <div style={{ fontSize: '11px', color: '#9C9389' }}>
+                        {[asList(s?.colors).slice(0, 3).join(', '), asList(s?.sizes)[0] ? `${asList(s?.sizes)[0]} size` : ''].filter(Boolean).join(' · ') || 'Custom arrangement'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={styles.detailGrid}>
+              <div style={styles.detailItem}>
+                <div style={styles.detailItemIcon}><Flower2 size={22} /></div>
+                <div style={styles.detailItemInfo}>
+                  <div style={styles.detailLabel}>Colours / Ribbon</div>
+                  <div style={styles.detailValue}>{colourText || '—'}</div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-        <div style={styles.detailBody}>
-          <div style={styles.chipRow}>
-                        <div style={styles.chipPrimary}>{shortBookingCode(b)}</div>
-            <span style={{ ...styles.priorityPill, fontSize: '12px', padding: '6px 12px' }}>{b.priority} Priority</span>
-          </div>
-
-          <h2 style={styles.detailTitle}>{product.title}</h2>
-          <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#9C9389' }}>
-            {asList(product.types).join(' · ') || 'Custom Arrangement'}
-          </p>
-
-          {/* Compact horizontal status tracker — replaces the tall vertical card */}
-          <div style={styles.trackRow}>
-            {STATUS_FLOW.map((status, idx) => {
-              const done = idx < currentStatusIdx;
-              const active = idx === currentStatusIdx;
-              return (
-                <React.Fragment key={status}>
-                  {idx > 0 && <div style={styles.trackArrow}>›</div>}
-                  <div style={{
-                    ...styles.trackStep,
-                    background: active ? '#2F4F3E' : done ? '#EAF2EC' : '#FAF9F7',
-                    color: active ? '#fff' : done ? '#2F4F3E' : '#B9B2A8',
-                    borderColor: active ? '#2F4F3E' : done ? '#CBE0D4' : '#EAE7E2',
-                  }}>
-                    {done ? <Check size={11} strokeWidth={3} /> : <span style={styles.trackNum}>{idx + 1}</span>}
-                    {STATUS_LABELS[status]}
-                  </div>
-                </React.Fragment>
-              );
-            })}
-          </div>
-
-          {/* ── Flower types in this order (line items) ── */}
-          <div style={{ background: '#fff', border: '1px solid #EAE7E2', borderRadius: '14px', padding: '14px 16px', marginBottom: '24px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9C9389', marginBottom: '10px' }}>
-              Flower Types in this Order ({lineItems.length})
-            </div>
-            {lineItems.map((li, i) => {
-              const s = arrangements.find(a => a.title === li.name);
-              return (
-                <div
-                  key={`${li.name}-${i}`}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0',
-                    borderBottom: i < lineItems.length - 1 ? '1px solid #F3F1EC' : 'none'
-                  }}
-                >
-                  <div style={{ ...styles.mediaThumb, width: '44px', height: '44px', borderRadius: '10px' }}>
-                    {s?.images?.length > 0 ? (
-                      <img src={s.images[0]?.url || s.images[0]} alt={li.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ ...styles.mediaThumbPlaceholder, fontSize: '16px' }}>{(li.name || 'F').charAt(0)}</div>
-                    )}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#1C1A17' }}>{li.name}</div>
-                    <div style={{ fontSize: '11px', color: '#9C9389' }}>
-                      {[asList(s?.colors).slice(0, 3).join(', '), asList(s?.sizes)[0] ? `${asList(s?.sizes)[0]} size` : ''].filter(Boolean).join(' · ') || 'Custom arrangement'}
+              </div>
+              <div style={styles.detailItem}>
+                <div style={styles.detailItemIcon}><Package size={22} /></div>
+                <div style={styles.detailItemInfo}>
+                  <div style={styles.detailLabel}>Flower Size</div>
+                  <div style={styles.detailValue}>{b.size || asList(product.sizes).join(', ') || sizeNote || '—'}</div>
+                </div>
+              </div>
+              <div style={styles.detailItem}>
+                <div style={styles.detailItemIcon}><User size={22} /></div>
+                <div style={styles.detailItemInfo}>
+                  <div style={styles.detailLabel}>Deceased Name</div>
+                  <div style={styles.detailValue}>{b.deceased_name || '—'}</div>
+                </div>
+              </div>
+              <div style={styles.detailItem}>
+                <div style={styles.detailItemIcon}><Calendar size={22} /></div>
+                <div style={styles.detailItemInfo}>
+                  <div style={styles.detailLabel}>Expected By</div>
+                  <div style={styles.detailValue}>{dKey ? `${fmtDateOnly(dKey)}${tStr ? ' · ' + fmtTime(tStr) : ''}` : 'Awaiting scheduling'}</div>
+                </div>
+              </div>
+              <div style={styles.detailItem}>
+                <div style={styles.detailItemIcon}><MapPin size={22} /></div>
+                <div style={styles.detailItemInfo}>
+                  <div style={styles.detailLabel}>Flowers Coming From</div>
+                  <div style={styles.detailValue}>{resolveBranchName(b.branch) || resolveBranchName(b.funeral_home) || 'Not specified'}</div>
+                </div>
+              </div>
+              <div style={styles.detailItem}>
+                <div style={styles.detailItemIcon}><User size={22} /></div>
+                <div style={styles.detailItemInfo}>
+                  <div style={styles.detailLabel}>Booked By</div>
+                  <div style={styles.detailValue}>{b.booked_by || b.customer || '—'}</div>
+                </div>
+              </div>
+              {remarksList.length > 0 && (
+                <div style={{ ...styles.detailItem, gridColumn: '1 / -1', alignItems: 'flex-start' }}>
+                  <div style={styles.detailItemIcon}><Flower2 size={22} /></div>
+                  <div style={styles.detailItemInfo}>
+                    <div style={styles.detailLabel}>Special Remarks</div>
+                    <div style={{ ...styles.detailValue, fontWeight: 500, whiteSpace: 'pre-wrap' }}>
+                      {remarksList.join('\n')}
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </div>
 
-          <div style={styles.detailGrid}>
-            <div style={styles.detailItem}>
-              <div style={styles.detailItemIcon}><Flower2 size={22} /></div>
-              <div style={styles.detailItemInfo}>
-                <div style={styles.detailLabel}>Colours / Ribbon</div>
-                <div style={styles.detailValue}>{colourText || '—'}</div>
-              </div>
+            <div style={styles.detailActions}>
+              {actionBtnHtml}
             </div>
-            <div style={styles.detailItem}>
-              <div style={styles.detailItemIcon}><Package size={22} /></div>
-              <div style={styles.detailItemInfo}>
-                <div style={styles.detailLabel}>Flower Size</div>
-                <div style={styles.detailValue}>{b.size || asList(product.sizes).join(', ') || sizeNote || '—'}</div>
-              </div>
-            </div>
-            <div style={styles.detailItem}>
-              <div style={styles.detailItemIcon}><User size={22} /></div>
-              <div style={styles.detailItemInfo}>
-                <div style={styles.detailLabel}>Deceased Name</div>
-                <div style={styles.detailValue}>{b.deceased_name || '—'}</div>
-              </div>
-            </div>
-            <div style={styles.detailItem}>
-              <div style={styles.detailItemIcon}><Calendar size={22} /></div>
-              <div style={styles.detailItemInfo}>
-                <div style={styles.detailLabel}>Expected By</div>
-                <div style={styles.detailValue}>{dKey ? `${fmtDateOnly(dKey)}${tStr ? ' · ' + fmtTime(tStr) : ''}` : 'Awaiting scheduling'}</div>
-              </div>
-            </div>
-            <div style={styles.detailItem}>
-              <div style={styles.detailItemIcon}><MapPin size={22} /></div>
-              <div style={styles.detailItemInfo}>
-                <div style={styles.detailLabel}>Flowers Coming From</div>
-                                <div style={styles.detailValue}>{resolveBranchName(b.branch) || resolveBranchName(b.funeral_home) || 'Not specified'}</div>
-              </div>
-            </div>
-            <div style={styles.detailItem}>
-              <div style={styles.detailItemIcon}><User size={22} /></div>
-              <div style={styles.detailItemInfo}>
-                <div style={styles.detailLabel}>Booked By</div>
-                <div style={styles.detailValue}>{b.booked_by || b.customer || '—'}</div>
-              </div>
-            </div>
-            {remarksList.length > 0 && (
-              <div style={{ ...styles.detailItem, gridColumn: '1 / -1', alignItems: 'flex-start' }}>
-                <div style={styles.detailItemIcon}><Flower2 size={22} /></div>
-                <div style={styles.detailItemInfo}>
-                  <div style={styles.detailLabel}>Special Remarks</div>
-                  <div style={{ ...styles.detailValue, fontWeight: 500, whiteSpace: 'pre-wrap' }}>
-                    {remarksList.join('\n')}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div style={styles.detailActions}>
-            {actionBtnHtml}
-          </div>
           </div>
         </aside>
       </>
@@ -2469,9 +2471,11 @@ const styles = {
     color: '#2F4F3E',
     border: '1px solid #EAE7E2',
   },
+
   detailItemInfo: {
     flex: 1,
   },
+
   detailLabel: {
     fontSize: '11px',
     color: '#9C9389',
