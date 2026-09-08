@@ -1468,6 +1468,7 @@ const FlowerBookingsNew = () => {
       <style>{`
         @keyframes floristPanelIn { from { transform: translateX(48px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes floristFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes floristSpin { to { transform: rotate(360deg); } }
 
         /* ── Small-phone guards: kill every horizontal overflow source ── */
         .flx-toolbar { row-gap: 8px; }
@@ -1522,7 +1523,7 @@ const FlowerBookingsNew = () => {
             backdropFilter: 'blur(2px)',
             zIndex: 1000,
             animation: 'floristFadeIn .2s ease'
-          }} onClick={() => setShowCreateModal(false)} />
+          }} onClick={() => { if (!creating) setShowCreateModal(false); }} />
           <div style={{
             position: 'fixed',
             top: 0,
@@ -1550,13 +1551,14 @@ const FlowerBookingsNew = () => {
                 margin: 0
               }}>Create New Arrangement</h2>
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => { if (!creating) setShowCreateModal(false); }}
+                disabled={creating}
                 style={{
                   background: 'none',
                   border: 'none',
                   color: '#9C9389',
                   fontSize: '28px',
-                  cursor: 'pointer',
+                  cursor: creating ? 'not-allowed' : 'pointer',
                   padding: 0,
                   width: '36px',
                   height: '36px',
@@ -1568,6 +1570,34 @@ const FlowerBookingsNew = () => {
             </div>
 
             <form onSubmit={handleCreateArrangement} style={{ padding: '28px' }}>
+              {creating && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  background: '#F3F1EC',
+                  border: '1px solid #EAE7E2',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  marginBottom: '20px',
+                  fontSize: '12px',
+                  color: '#574F47',
+                  fontWeight: 600,
+                  fontFamily: "'DM Sans', system-ui, sans-serif"
+                }}>
+                  <span style={{
+                    width: '14px',
+                    height: '14px',
+                    border: '2px solid #D8D2C8',
+                    borderTopColor: '#475A43',
+                    borderRadius: '50%',
+                    display: 'inline-block',
+                    flexShrink: 0,
+                    animation: 'floristSpin 0.8s linear infinite'
+                  }} />
+                  Creating your arrangement at full quality — this can take a moment. Please keep this panel open…
+                </div>
+              )}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{
                   display: 'block',

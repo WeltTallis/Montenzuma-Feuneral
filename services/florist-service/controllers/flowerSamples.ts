@@ -524,7 +524,7 @@ export const updateFlowerArrangement = async (req: any, res: any): Promise<any> 
         WHERE arrangement_id = ? AND ${tenantScope.clause}
       `;
 
-      await safeExecute(sql, updateParams);
+      await safeExecuteWithRetry(sql, updateParams);
     }
 
     clearCache(tenantSlug);
@@ -573,7 +573,7 @@ export const deleteFlowerArrangement = async (req: any, res: any): Promise<any> 
 
     const tenantScope = buildTenantScope(req);
     const sql = `DELETE FROM flower_samples WHERE arrangement_id = ? AND ${tenantScope.clause}`;
-    await safeExecute(sql, [id, ...tenantScope.params]);
+    await safeExecuteWithRetry(sql, [id, ...tenantScope.params]);
 
     clearCache(tenantSlug);
 
