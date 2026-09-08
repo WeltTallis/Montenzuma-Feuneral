@@ -23,7 +23,7 @@ const COLORS = {
   ink: '#1A1A1A',
   bone: '#FAF8F4',
   bone2: '#FFFFFF', // Set to white for natural feel
-  brass: '#9B845F',
+  brass: '#6B4045',
   brassLight: '#A98F6E',
   verdigris: '#3D4F47',
   verdigrisDark: '#2E3F37',
@@ -37,6 +37,10 @@ const COLORS = {
   goldDark: '#A8851C',
   tickBlue: '#2564eb1b',
   green: '#22c55e',
+
+
+
+  
 };
 
 const spin = keyframes`
@@ -64,7 +68,7 @@ const Container = styled.div`
   justify-content: center;
   align-items: flex-start;
 
-  .Toastify__toast-container { width: 380px !important; max-width: 90vw !important; padding: 0 !important; }
+  .Toastify__toast-container { width: 380px !important; max-width: 100% !important; padding: 0 !important; }
   .Toastify__toast { border-radius: 8px !important; font-family: 'Saira', sans-serif !important; font-size: 0.85rem !important; padding: 10px 14px !important; min-height: 44px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; margin-bottom: 0.5rem !important; }
   .Toastify__toast-body { padding: 0 !important; margin: 0 !important; font-size: 0.85rem !important; }
 `;
@@ -747,33 +751,144 @@ const ClearSigButton = styled.button`
   }
 `;
 
-const FooterPanel = styled.div`
-  background: transparent;
-  padding: 2rem 3rem;
-  border-top: none;
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 2rem;
-  flex-wrap: wrap;
+/* ─── Woodland Elegance Footer ─────────────────────────────── */
+const ElegantFooter = styled.footer`
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Karla:wght@400;500;700&display=swap');
 
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-    text-align: left;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #2F3A32;
+  color: #E9EBDD;
+  text-align: center;
+  padding: 56px 20px 0;
+  border-top: none;
+  box-sizing: border-box;
+
+  /* soft ring watermark */
+  &::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -260px;
+    transform: translateX(-50%);
+    width: 520px;
+    height: 520px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(233, 235, 221, 0.1);
+    pointer-events: none;
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -320px;
+    transform: translateX(-50%);
+    width: 680px;
+    height: 680px;
+    border-radius: 50%;
+    border: 1px solid rgba(233, 235, 221, 0.06);
+    pointer-events: none;
+  }
+
+  @media (max-width: 560px) {
+    padding: 44px 20px 0;
   }
 `;
 
-const FooterText = styled.div`
+const LeafMark = styled.div`
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: rgba(237, 233, 219, 0.12);
+  border: 1px solid rgba(237, 233, 219, 0.25);
+  display: grid;
+  place-items: center;
+`;
+
+const FooterTagline = styled.p`
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  color: rgba(237, 233, 219, 0.82);
+  max-width: 44ch;
+  margin: 0 auto;
+`;
+
+const FooterValues = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 30px auto 0;
+  max-width: 420px;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(237, 233, 219, 0.16);
+  }
+`;
+
+const FooterValueLabel = styled.span`
+  font-family: 'Karla', 'Segoe UI', sans-serif;
+  font-weight: 700;
+  font-size: 0.64rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgba(205, 209, 191, 0.55);
+`;
+
+const FooterValueDot = styled.b`
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 600;
+  font-size: 1rem;
+  color: rgba(205, 209, 191, 0.85);
+`;
+
+const FooterBar = styled.div`
+  margin-top: 44px;
+  border-top: 1px solid rgba(237, 233, 219, 0.12);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 18px 32px;
+  font-family: 'Karla', 'Segoe UI', sans-serif;
+  font-weight: 500;
+  font-size: 0.76rem;
+  color: rgba(237, 233, 219, 0.42);
+
+  @media (max-width: 560px) {
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px 20px;
+    text-align: center;
+  }
+`;
+
+/* Timestamp strip — sits ABOVE the elegant footer, keeping the
+   official generation record visible without cluttering it. */
+const RecordInfoStrip = styled.div`
   font-size: 0.65rem;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   color: ${COLORS.gray};
   font-family: 'JetBrains Mono', monospace;
-  text-align: left;
-  line-height: 1.6;
-  
-  @media (max-width: 768px) {
-    text-align: left;
+  text-align: center;
+  line-height: 1.7;
+  margin: 2rem 3rem 0;
+  padding: 0.9rem 1rem 0.4rem;
+  border-top: 1px solid ${COLORS.line};
+
+  @media (max-width: 600px) {
+    margin: 1.5rem 1.25rem 0;
   }
 `;
 
@@ -1968,13 +2083,34 @@ const DeceasedReleaseForm = () => {
             </form>
           </FormBody>
 
-          {/* Footer Component */}
-          <FooterPanel>
-            <FooterText>
-              {tenantName} Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}<br />
-              - Official Release Record —
-            </FooterText>
-          </FooterPanel>
+          {/* Timestamp strip — the official generation record, kept ABOVE the new footer */}
+          <RecordInfoStrip>
+            {tenantName || 'This Funeral Home'} — Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+            <br />- Official Release Record -
+          </RecordInfoStrip>
+
+          {/* Footer — Woodland Elegance */}
+          <ElegantFooter>
+            <LeafMark>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#EDE9DB" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="21" height="21">
+                <path d="M4 20C4 10.5 10.5 4 20 4c0 9.5-6.5 16-16 16Z" />
+                <path d="M4 20c4-6.5 8.5-10 13-12.5" />
+              </svg>
+            </LeafMark>
+
+            <FooterTagline>Received with dignity. Cared for with respect. Remembered with love.</FooterTagline>
+
+            <FooterValues>
+              <FooterValueLabel>Dignity</FooterValueLabel><FooterValueDot>·</FooterValueDot>
+              <FooterValueLabel>Care</FooterValueLabel><FooterValueDot>·</FooterValueDot>
+              <FooterValueLabel>Respect</FooterValueLabel>
+            </FooterValues>
+
+            <FooterBar>
+              <span>© {new Date().getFullYear()} {tenantName || 'This Funeral Home'}</span>
+              <span>Official Release Record</span>
+            </FooterBar>
+          </ElegantFooter>
         </ContentWrapper>
       </FormSheet>
     </Container>

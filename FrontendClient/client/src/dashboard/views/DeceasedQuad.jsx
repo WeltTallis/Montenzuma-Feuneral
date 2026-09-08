@@ -303,6 +303,20 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
     return () => { alive = false; };
   }, []);
 
+  /* ── Real RELEASES (body-checkout body_releases feed) ──
+     The authoritative list of handovers. Legacy derivation below only matches
+     register rows flagged released (status / dispatch_date / release_date),
+     but released bodies are stored in the body_releases table — so without
+     this feed the Releases panel and the "Released today" KPI stayed empty. */
+  const [releaseFeed, setReleaseFeed] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    fetchReleasesFeed()
+      .then((rows) => { if (alive) setReleaseFeed(Array.isArray(rows) ? rows : []); })
+      .catch(() => { /* feed optional — legacy derivation still applies */ });
+    return () => { alive = false; };
+  }, []);
+
   /* Org-wide deceased across ALL branches — powers the multi-branch trend.
      The `deceased` prop is branch-scoped; the trend needs every branch. */
   const [allBranchDeceased, setAllBranchDeceased] = useState([]);
@@ -365,6 +379,37 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
 
   const pmReqNums = useMemo(() => new Set(pmReqItems.map((p) => String(p.meta)).filter(Boolean)), [pmReqItems]);
 
+  /* release feed → dashboard row shape (id `rel-<admission>` keeps the
+     ModuleDashboard onSelect lookup working) + admission-number dedupe index */
+  const relFeedItems = useMemo(() => releaseFeed.map((q) => {
+    const adm = q?.admission_number || q?.admission_no || "";
+    return {
+      id: adm ? `rel-${adm}` : `rel-feed-${q?.release_id || q?.id}`,
+      name: q?.name_of_deceased || q?.deceased_name || q?.full_name || q?.received_by || "Unknown",
+      meta: adm,
+      sub: q?.next_kin || q?.received_by || q?.mode_of_transport || "",
+      tag: "Released",
+      tagColor: "#10B981",
+      when: q?.time_of_removal || "",
+      branch: branchOf(q),
+      _key: keyOf(q?.date_of_removal || q?.release_date || q?.created_at),
+      ...(q || {}),
+    };
+  }), [releaseFeed]);
+  const relFeedNums = useMemo(() => new Set(relFeedItems.map((r) => String(r.meta)).filter(Boolean)), [relFeedItems]);
+
+  /* The `deceased` prop is already branch-scoped by ModuleDashboard's branch
+     filter; keep the release feed in the same scope so a single-branch view
+     doesn't show other branches' handovers. */
+  const scopeBranch = useMemo(() => {
+    const set = [...new Set(deceased.map((r) => branchOf(r)))].filter(Boolean);
+    return set.length === 1 ? set[0] : "";
+  }, [deceased]);
+  const relFeedScoped = useMemo(
+    () => (scopeBranch ? relFeedItems.filter((r) => branchOf(r) === scopeBranch) : relFeedItems),
+    [relFeedItems, scopeBranch]
+  );
+
   /* latest admission (most recent by date + time) */
   const latestIntake = useMemo(() => {
     const cands = deceased.filter((r) => admKeyOf(r));
@@ -384,11 +429,18 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
       id: `in-${r?.admission_number ?? r?.id ?? i}`, name: r?.full_name || "Unknown",
       meta: r?.admission_number || "", sub: branchOf(r), tag: String(r?.status || r?.admission_status || "Admitted"), branch: branchOf(r),
     }));
-    const releases = deceased.filter((r) => isReleased(r) && relKeyOf(r) === activeKey).map((r, i) => ({
-      id: `rel-${r?.admission_number ?? r?.id ?? i}`, name: r?.full_name || "Unknown",
-      meta: r?.admission_number || "", sub: r?.destination || r?.release_to || r?.next_kin || "",
-      tag: String(r?.status || r?.admission_status || "Released"), when: esc(r?.release_date || r?.dispatch_date || ""),
-    }));
+    const releases = [
+      /* real handovers from the body-checkout feed first (authoritative) */
+      ...relFeedScoped.filter((r) => r._key === activeKey).map(({ _key, ...rest }) => rest),
+      /* legacy derived rows (only where no feed row covers them) */
+      ...deceased
+        .filter((r) => isReleased(r) && relKeyOf(r) === activeKey && !relFeedNums.has(String(r?.admission_number || "")))
+        .map((r, i) => ({
+          id: `rel-${r?.admission_number ?? r?.id ?? i}`, name: r?.full_name || "Unknown",
+          meta: r?.admission_number || "", sub: r?.destination || r?.release_to || r?.next_kin || "",
+          tag: String(r?.status || r?.admission_status || "Released"), when: esc(r?.release_date || r?.dispatch_date || ""),
+        })),
+    ];
     const postmortems = [
       /* real tracked requests first — the authoritative feed */
       ...pmReqItems.filter((p) => p._key === activeKey).map(({ _key, ...rest }) => rest),
@@ -403,10 +455,12 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
         })),
     ];
     return { intakes, releases, postmortems };
-  }, [deceased, activeKey, pmReqItems, pmReqNums]);
+  }, [deceased, activeKey, pmReqItems, pmReqNums, relFeedScoped, relFeedNums]);
 
   const inCare = deceased.filter((r) => !isReleased(r)).length;
-  const relToday = deceased.filter((r) => isReleased(r) && relKeyOf(r) === todayKeyVal()).length;
+  const relToday =
+    relFeedScoped.filter((r) => r._key === todayKeyVal()).length +
+    deceased.filter((r) => isReleased(r) && relKeyOf(r) === todayKeyVal()).length;
   const pmPendingCount =
     pmReqItems.filter((p) => p.tag !== "Cancelled").length +
     deceased.filter((r) => { const pm = pmMetaOf(r); return pm && !pm.completed && !pmReqNums.has(String(r?.admission_number || "")); }).length;
@@ -421,7 +475,13 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
   /* ── gauge metrics for the top cards ── */
   const total = deceased.length;
   const inCarePct = total ? (inCare / total) * 100 : 0;
-  const relWeek = deceased.filter((r) => { if (!isReleased(r)) return false; const k = relKeyOf(r); return k && last7.some((d) => dk(d) === k); }).length;
+  const relWeek =
+    relFeedScoped.filter((r) => { const k = r?._key; return k && last7.some((d) => dk(d) === k); }).length +
+    deceased.filter((r) => {
+      if (!isReleased(r)) return false;
+      const k = relKeyOf(r);
+      return k && last7.some((d) => dk(d) === k);
+    }).length;
   const relPct = relWeek ? (relToday / relWeek) * 100 : relToday > 0 ? 100 : 0;
   const pmTotal = pmReqItems.length + deceased.filter((r) => pmMetaOf(r) && !pmReqNums.has(String(r?.admission_number || ""))).length;
   const pmPct = pmTotal ? (pmPendingCount / pmTotal) * 100 : 0;

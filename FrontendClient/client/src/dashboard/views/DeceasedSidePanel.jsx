@@ -188,7 +188,7 @@ export default function DeceasedSidePanel({ booking, onClose }) {
     contact: d.phone_number || d.tel_number || "",
   } : {});
 
-  const fullName    = d.full_name || d.name || d.deceased_name || "Unknown";
+  const fullName    = d.full_name || d.name || d.deceased_name || d.name_of_deceased || "Unknown";
   const admissionNo = d.admission_number || d.admission_no || "—";
   const status      = d.admission_status || d.status || "—";
 

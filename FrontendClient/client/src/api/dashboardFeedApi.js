@@ -24,10 +24,46 @@ const POSTMORTEMS_URL = "/deceased/postmortem-requests";
 const unwrap = (payload) => {
   if (Array.isArray(payload)) return payload;
   if (!payload) return [];
-  return payload.data || payload.rows || payload.releases || payload.requests || payload.items || [];
+  if (Array.isArray(payload.data)) return payload.data;
+  return payload.rows || payload.releases || payload.requests || payload.items || payload.data?.data || [];
 };
 
 export async function fetchReleasesFeed() {
+  const branches = await resolveBranchList();
+
+  /* Fetch (a few pages of) each branch's body_releases list with its slug as
+     x-tenant-slug and tag every row with the branch name, so the dashboard's
+     command-centre branch filter and the release panel work like the
+     postmortem feed. One branch failing must never blank the others. */
+  const fetchBranch = async (b) => {
+    const rows = [];
+    for (let p = 1; p <= 4; p++) {
+      let chunk = [];
+      try {
+        const res = await api.get(RELEASES_URL, {
+          headers: { "x-tenant-slug": b.slug },
+          params: { page: p, limit: 100 },
+        });
+        chunk = unwrap(res.data);
+      } catch {
+        break;
+      }
+      if (!Array.isArray(chunk) || !chunk.length) break;
+      rows.push(...chunk);
+      if (chunk.length < 100) break;
+    }
+    return (rows || []).map((r) => ({
+      ...r,
+      branch_name: r?.branch_name || b.name,
+      _branchSlug: r?._branchSlug || b.slug,
+    }));
+  };
+
+  if (branches.length > 1) {
+    const perBranch = await Promise.all(branches.map((b) => fetchBranch(b).catch(() => [])));
+    return perBranch.flat();
+  }
+  // single-branch tenant (or resolution failed) — plain fetch
   const res = await api.get(RELEASES_URL);
   return unwrap(res.data);
 }

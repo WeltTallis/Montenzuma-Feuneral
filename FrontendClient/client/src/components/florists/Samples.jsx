@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../../api/axios'
-
-
-const COLOR_ROLES = ['Primary flower', 'Accent flower', 'Ribbon color', 'Foliage']
+import Snowfall from './Snowfall'
+import FlowerSnowBookingForm from './FlowerSnowBookingForm'
+import ExpandedView from './FlowerDetail'
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;1,9..144,200;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;500;600;700&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; width: 100%; }
@@ -36,6 +37,22 @@ body {
   from { background-position: -200% center; }
   to { background-position: 200% center; }
 }
+
+/* ── Swipe hint (browse) ────────────────────────────────────────────────── */
+@keyframes hintPulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.85; }
+}
+.browse-swipe-hint {
+  position: absolute; top: 150px; left: 50%; transform: translateX(-50%);
+  z-index: 10; font-size: 8.5px; font-weight: 600; letter-spacing: 0.3em;
+  text-transform: uppercase; color: rgba(255,255,255,0.38); white-space: nowrap;
+  display: flex; align-items: center; gap: 10px; pointer-events: none;
+  animation: hintPulse 3.2s ease-in-out infinite;
+  text-shadow: 0 1px 10px rgba(0,0,0,0.7);
+}
+.done-page { position: relative; }
+.done-inner { position: relative; z-index: 6; }
 
 /* candle animations */
 @keyframes flicker {
@@ -263,241 +280,12 @@ body {
 }
 .sel-float-btn:hover { background: #556A50; transform: translateY(-1px); }
 
-/* ── Expanded / Detail ───────────────────────────────────────────────────── */
-.expanded {
-  position: fixed; inset: 0; z-index: 100;
-  background: #0a0b0c; display: flex;
-  animation: fadeIn 0.22s ease;
-}
-.detail-image-panel {
-  position: sticky; top: 0;
-  width: 52%; height: 100vh; flex-shrink: 0;
-  height: 100dvh; /* Dynamic viewport height for mobile */
-  overflow: hidden; background: #111;
-}
-.detail-image-panel img {
-  width: 100%; height: 100%; object-fit: cover; object-position: center;
-  display: block; animation: heroFade 0.7s ease forwards;
-  filter: brightness(0.88);
-}
-.detail-image-panel .img-overlay {
-  position: absolute; inset: 0;
-  background: linear-gradient(150deg, rgba(10,11,12,0.28) 0%, transparent 55%);
-  pointer-events: none;
-}
-.detail-image-badge {
-  position: absolute; bottom: 36px; left: 36px;
-  animation: fadeUp 0.6s ease 0.2s both;
-}
-.detail-image-badge-tag {
-  font-size: 9px; font-weight: 600; letter-spacing: 0.3em;
-  text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 8px;
-}
-.detail-image-badge-name {
-  font-family: 'Fraunces', serif; font-size: 24px; font-weight: 300;
-  color: #fff; line-height: 1.1; letter-spacing: -0.01em;
-}
-.detail-image-badge-name em { font-style: italic; font-weight: 200; }
+/* Expanded / Detail view moved to ./FlowerDetail.jsx */
 
-.detail-scroll-panel {
-  flex: 1; height: 100vh; overflow-y: auto;
-  height: 100dvh; /* Dynamic viewport height for mobile */
-  display: flex; flex-direction: column;
-}
-.detail-nav {
-  position: sticky; top: 0; z-index: 10;
-  padding: 22px 38px;
-  background: rgba(10,11,12,0.92); backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  display: flex; align-items: center; justify-content: space-between;
-}
-.back-btn {
-  background: none; border: none; cursor: pointer;
-  color: rgba(255,255,255,0.45); font-size: 12px; font-weight: 500;
-  font-family: 'Inter', sans-serif;
-  display: flex; align-items: center; gap: 8px;
-  transition: color 0.2s; padding: 0;
-}
-.back-btn:hover { color: #fff; }
-
-/* Story thumbnails in detail nav */
-.detail-stories { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; max-width: 320px; }
-.detail-stories::-webkit-scrollbar { display: none; }
-.detail-story-item {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  background: none; border: none; cursor: pointer; padding: 0; flex-shrink: 0;
-  animation: storyFloat 3.2s ease-in-out infinite;
-}
-.detail-story-ring {
-  border-radius: 50%; padding: 2px; transition: transform 0.25s;
-}
-.detail-story-ring.dsr-active {
-  background: conic-gradient(rgba(255,255,255,0.9) 0deg, rgba(200,200,200,0.4) 90deg, rgba(255,255,255,0.9) 180deg, rgba(200,200,200,0.4) 270deg, rgba(255,255,255,0.9) 360deg);
-  box-shadow: 0 0 10px rgba(255,255,255,0.2);
-}
-.detail-story-ring.dsr-selected { background: linear-gradient(135deg, #475A43, #6b8c64); }
-.detail-story-ring.dsr-normal { background: rgba(255,255,255,0.14); }
-.detail-story-inner {
-  border-radius: 50%; overflow: hidden; border: 2px solid #0a0b0c; background: #1a1b1c;
-}
-.detail-story-inner img { width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(0.85); }
-.detail-story-item:hover .detail-story-ring { transform: scale(1.08); }
-.detail-story-item:hover .detail-story-inner img { filter: brightness(1); }
-
-.detail-content { padding: 48px 38px 80px; flex: 1; }
-
-/* Overview hero image in detail */
-.detail-overview-img {
-  width: 100%; height: 220px; border-radius: 10px; overflow: hidden;
-  margin-bottom: 32px; background: #111;
-  display: none;
-}
-.detail-overview-img img {
-  width: 100%; height: 100%; object-fit: cover; display: block;
-  filter: brightness(0.88);
-}
-
-.detail-eyebrow {
-  font-size: 9px; font-weight: 600; letter-spacing: 0.3em;
-  text-transform: uppercase; color: rgba(255,255,255,0.28); margin-bottom: 14px;
-}
-.detail-title {
-  font-family: 'Fraunces', serif; font-size: clamp(28px, 3vw, 38px);
-  font-weight: 300; color: #fff; line-height: 1.1;
-  margin-bottom: 16px; letter-spacing: -0.01em;
-}
-.detail-title em { font-style: italic; font-weight: 200; color: rgba(255,255,255,0.7); }
-.detail-desc {
-  font-size: 13px; color: rgba(255,255,255,0.42); line-height: 1.9;
-  max-width: 480px; margin-bottom: 40px; font-weight: 300;
-}
-
-.tabs { display: flex; gap: 0; margin-bottom: 32px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-.tab {
-  padding: 11px 18px 11px 0; background: none; border: none; cursor: pointer;
-  font-size: 10px; font-weight: 600; letter-spacing: 0.16em;
-  text-transform: uppercase; color: rgba(255,255,255,0.22);
-  font-family: 'Inter', sans-serif;
-  border-bottom: 1px solid transparent; margin-bottom: -1px;
-  transition: all 0.2s;
-}
-.tab:hover { color: rgba(255,255,255,0.6); }
-.tab.active { color: #fff; border-bottom-color: rgba(255,255,255,0.65); }
-
-.info-list { display: flex; flex-direction: column; }
-.info-row {
-  display: flex; justify-content: space-between; align-items: baseline;
-  padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.04); gap: 24px;
-}
-.info-row:last-child { border-bottom: none; }
-.info-label {
-  font-size: 9px; font-weight: 600; letter-spacing: 0.16em;
-  text-transform: uppercase; color: rgba(255,255,255,0.28); flex-shrink: 0;
-}
-.info-val { font-size: 13px; color: rgba(255,255,255,0.78); font-weight: 400; text-align: right; }
-
-/* Colors tab — text inputs */
-.color-inputs { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
-.color-input-row { display: flex; flex-direction: column; gap: 6px; }
-.color-input-label {
-  font-size: 9px; font-weight: 600; letter-spacing: 0.18em;
-  text-transform: uppercase; color: rgba(255,255,255,0.3);
-}
-.color-input-field {
-  width: 100%; padding: 12px 14px;
-  border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
-  font-size: 13px; font-family: 'Fraunces', serif; font-style: italic;
-  background: rgba(255,255,255,0.02); color: #fff; outline: none;
-  transition: border-color 0.2s, background 0.2s;
-  font-weight: 300;
-}
-.color-input-field:focus { border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.03); }
-.color-input-field::placeholder { color: rgba(255,255,255,0.18); font-style: italic; }
-
-/* Dimensions */
-.dim-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: 1px; background: rgba(255,255,255,0.04);
-  margin-bottom: 24px; border-radius: 10px; overflow: hidden;
-}
-.dim-cell { padding: 18px 12px; background: #0a0b0c; text-align: center; }
-.dim-label { font-size: 9px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.28); margin-bottom: 8px; }
-.dim-val { font-size: 14px; color: #fff; font-weight: 300; font-family: 'Fraunces', serif; }
-.placement { padding: 20px 22px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.01); }
-.placement-label { font-size: 9px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 10px; }
-.placement-text { font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.9; margin: 0; font-weight: 300; }
-
-.detail-footer {
-  display: flex; gap: 10px; margin-top: 44px;
-  padding-top: 26px; border-top: 1px solid rgba(255,255,255,0.05);
-}
-.btn {
-  padding: 13px 24px; border-radius: 8px; cursor: pointer;
-  font-size: 10px; font-weight: 600; letter-spacing: 0.14em;
-  text-transform: uppercase; font-family: 'Inter', sans-serif;
-  transition: all 0.22s ease; border: 1px solid transparent;
-  white-space: nowrap;
-}
-.btn-primary { flex: 1; background: #475A43; color: #fff; border: none; }
-.btn-primary:hover { background: #556A50; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(71,90,67,0.4); }
-.btn-primary.is-sel { background: rgba(71,90,67,0.15); color: rgba(255,255,255,0.7); border: 1px solid rgba(71,90,67,0.4); }
-.btn-primary.is-sel:hover { border-color: rgba(71,90,67,0.7); background: rgba(71,90,67,0.2); box-shadow: none; }
-.btn-ghost { background: transparent; color: rgba(255,255,255,0.38); border: 1px solid rgba(255,255,255,0.08); }
-.btn-ghost:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+/* detail styles (tabs, info rows, colors, dimensions, buttons) moved to ./FlowerDetail.jsx */
 
 /* ── Form ────────────────────────────────────────────────────────────────── */
-.form-page {
-  min-height: 100vh; background: #0a0b0c; padding: 80px 24px;
-  min-height: 100dvh; /* Dynamic viewport height for mobile */
-  display: flex; justify-content: center; font-family: 'Inter', sans-serif;
-  animation: fadeIn 0.4s ease; overflow-y: auto;
-}
-.form-inner { max-width: 580px; width: 100%; }
-.form-back {
-  background: none; border: none; cursor: pointer; font-size: 12px;
-  color: rgba(255,255,255,0.32); margin-bottom: 44px; padding: 0;
-  display: flex; align-items: center; gap: 8px; font-weight: 500;
-  transition: color 0.2s; font-family: 'Inter', sans-serif;
-}
-.form-back:hover { color: #fff; }
-.form-title {
-  font-family: 'Fraunces', serif; font-size: 36px; font-weight: 300;
-  color: #fff; margin-bottom: 8px; line-height: 1.15; letter-spacing: -0.01em;
-}
-.form-title em { font-style: italic; font-weight: 200; color: rgba(255,255,255,0.6); }
-.form-sub { font-size: 13px; color: rgba(255,255,255,0.28); margin-bottom: 36px; font-weight: 300; }
-.form-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 40px; }
-.form-chip {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 12px 5px 5px;
-  border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
-  font-size: 11px; color: rgba(255,255,255,0.62);
-  background: rgba(255,255,255,0.02);
-}
-.form-chip img { width: 36px; height: 26px; border-radius: 5px; object-fit: cover; filter: brightness(0.9); }
-.form-label {
-  font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.28);
-  letter-spacing: 0.18em; text-transform: uppercase;
-  display: block; margin-bottom: 7px;
-}
-.form-input {
-  width: 100%; padding: 13px 15px;
-  border: 1px solid rgba(255,255,255,0.07); border-radius: 8px;
-  font-size: 13px; font-family: 'Inter', sans-serif;
-  background: rgba(255,255,255,0.02); color: #fff; outline: none;
-  transition: border-color 0.2s, background 0.2s;
-}
-.form-input:focus { border-color: rgba(255,255,255,0.22); background: rgba(255,255,255,0.03); }
-.form-input::placeholder { color: rgba(255,255,255,0.16); }
-.form-divider { height: 1px; background: rgba(255,255,255,0.05); margin: 26px 0; }
-.form-section-label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4); margin-bottom: 16px; letter-spacing: 0.1em; text-transform: uppercase; }
-.form-submit {
-  width: 100%; padding: 15px 0; border-radius: 8px; border: none;
-  background: #475A43; color: #fff; font-size: 11px; font-weight: 600;
-  cursor: pointer; letter-spacing: 0.14em; text-transform: uppercase;
-  font-family: 'Inter', sans-serif; transition: all 0.22s; margin-top: 16px;
-}
-.form-submit:hover { background: #556A50; transform: translateY(-2px); box-shadow: 0 10px 28px rgba(71,90,67,0.35); }
+/* booking form styles moved to ./FlowerSnowBookingForm.jsx */
 
 /* ── Done / Candle screen ──────────────────────────────────────────────── */
 .done-page {
@@ -591,17 +379,12 @@ body {
 .done-btn:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
 
 @media (max-width: 900px) {
-  .expanded { flex-direction: column; overflow-y: auto; }
-  .detail-image-panel { width: 100%; height: 60vw; min-height: 240px; position: relative; flex-shrink: 0; }
-  .detail-scroll-panel { height: auto; overflow-y: visible; }
-  .detail-nav { position: relative; padding: 16px 22px; }
-  .detail-content { padding: 32px 22px 60px; }
-  .detail-overview-img { display: block; }
   .story-strip { padding: 22px 22px 0; gap: 16px; }
   .browse-title-block { left: 24px; bottom: 32px; }
   .wordmark { right: 24px; bottom: 32px; }
   .home-preview { width: 100%; border-left: none; border-top-left-radius: 14px; border-top-right-radius: 14px; }
 }
+
 `
 
 // ── Candle ────────────────────────────────────────────────────────────────────
@@ -679,6 +462,7 @@ function HomePreview({ selectedIds, onRemove, onProceed, arrangements = [] }) {
 function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview, arrangements = [], loading = false }) {
   const [bgIdx, setBgIdx] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
+  const touchRef = useRef(null)
   const allArrangements = arrangements
 
   useEffect(() => {
@@ -694,10 +478,33 @@ function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview, arrangements =
 
   const bg = allArrangements[bgIdx] || allArrangements[0]
 
+  // ── Swipe: ← / → cycles the hero · swipe up opens the arrangement ──
+  const onTouchStart = (e) => {
+    touchRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      onUi: !!(e.target.closest && e.target.closest('.story-strip, .home-preview, .sel-float, button')),
+    }
+  }
+  const onTouchEnd = (e) => {
+    if (!touchRef.current || touchRef.current.onUi) { touchRef.current = null; return }
+    const dx = e.changedTouches[0].clientX - touchRef.current.x
+    const dy = e.changedTouches[0].clientY - touchRef.current.y
+    touchRef.current = null
+    const SWIPE = 70
+    if (allArrangements.length && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWIPE) {
+      setBgIdx(i => dx < 0 ? (i + 1) % allArrangements.length : (i - 1 + allArrangements.length) % allArrangements.length)
+    } else if (bg && dy < -SWIPE && Math.abs(dy) > Math.abs(dx)) {
+      onOpen(bg.id) // swipe up → view the arrangement on screen
+    }
+  }
+
   return (
-    <div className="browse">
+    <div className="browse" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {bg && <img key={bgIdx} className="browse-hero" src={bg.img || bg.portrait} alt={bg.name || bg.title} />}
       <div className="browse-overlay" />
+      <Snowfall count={14} opacity={0.5} />
+      <div className="browse-swipe-hint">‹ swipe ›&nbsp;&nbsp;·&nbsp;&nbsp;↑ to view</div>
 
       {loading && allArrangements.length === 0 && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.7)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
@@ -766,244 +573,14 @@ function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview, arrangements =
   )
 }
 
-// ── Color Inputs ──────────────────────────────────────────────────────────────
-function ColorInputs() {
-  const [colors, setColors] = useState({})
-
-  return (
-    <div className="color-inputs">
-      {COLOR_ROLES.map(role => (
-        <div key={role} className="color-input-row">
-          <div className="color-input-label">{role}</div>
-          <input
-            className="color-input-field"
-            value={colors[role] || ''}
-            placeholder={role === 'Ribbon color' ? 'e.g. ivory white' : role === 'Primary flower' ? 'e.g. white roses' : role === 'Accent flower' ? 'e.g. pink carnations' : 'e.g. silver eucalyptus'}
-            onChange={e => setColors(c => ({ ...c, [role]: e.target.value }))}
-          />
-        </div>
-      ))}
-      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)', lineHeight: 1.7, marginTop: 4, fontStyle: 'italic' }}>
-        Write in any color or flower name — our florist will match your request as closely as possible.
-      </p>
-    </div>
-  )
-}
-
-// ── Expanded / Detail ─────────────────────────────────────────────────────────
-function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, onPreview, arrangements = [] }) {
-  const [tab, setTab] = useState('overview')
-  const allArrangements = arrangements
-  const arr = allArrangements.find(a => a.id === activeId)
-  const isSel = selectedIds.includes(activeId)
-
-  useEffect(() => { setTab('overview') }, [activeId])
-
-  useEffect(() => {
-    const fn = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', fn)
-    return () => window.removeEventListener('keydown', fn)
-  }, [onClose])
-
-  if (!arr) return null
-
-  return (
-    <div className="expanded">
-      {/* Left: image */}
-      <div className="detail-image-panel">
-        <img key={activeId} src={arr.img || arr.portrait} alt={arr.name || arr.title} />
-        <div className="img-overlay" />
-        <div className="detail-image-badge">
-          <div className="detail-image-badge-tag">{arr.tag} · {arr.note}</div>
-          <div className="detail-image-badge-name">
-            {(arr.name || arr.title).split(' ').slice(0, -1).join(' ')} <em>{(arr.name || arr.title).split(' ').slice(-1)}</em>
-          </div>
-        </div>
-      </div>
-
-      {/* Right: scrollable info */}
-      <div className="detail-scroll-panel">
-        <div className="detail-nav">
-          <button className="back-btn" onClick={onClose}>← All arrangements</button>
-          <div className="detail-stories">
-            {allArrangements.map((a, i) => {
-              const ringCls = 'detail-story-ring ' + (a.id === activeId ? 'dsr-active' : selectedIds.includes(a.id) ? 'dsr-selected' : 'dsr-normal')
-              return (
-                <button
-                  key={a.id}
-                  className="detail-story-item"
-                  style={{ animationDelay: `${i * 0.15}s` }}
-                  onClick={() => onNavigate(a.id)}
-                  aria-label={a.name || a.title}
-                >
-                  <div className={ringCls} style={{ padding: 2 }}>
-                    <div className="detail-story-inner" style={{ width: 36, height: 36 }}>
-                      <img src={a.portrait || a.img} alt={a.name || a.title} />
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="detail-content" key={activeId}>
-          {/* Mobile-only overview image */}
-          <div className="detail-overview-img">
-            <img src={arr.img || arr.portrait} alt={arr.name || arr.title} />
-          </div>
-
-          <div className="detail-eyebrow">{arr.tag} · {arr.note}</div>
-          <h2 className="detail-title">{arr.name || arr.title}</h2>
-          <p className="detail-desc">{arr.desc}</p>
-
-          <div className="tabs">
-          {['overview', 'colors', 'dimensions'].map(t => (
-              <button key={t} className={'tab' + (tab === t ? ' active' : '')} onClick={() => setTab(t)}>
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {tab === 'overview' && (
-            <div className="info-list">
-              {[['Size', arr.size], ['Flowers', arr.flowers], ['Weight', arr.weight], ['Display', arr.display]].map(([l, v]) => (
-                <div key={l} className="info-row">
-                  <div className="info-label">{l}</div>
-                  <div className="info-val">{v}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {tab === 'colors' && <ColorInputs />}
-
-          {tab === 'dimensions' && (
-            <>
-              <div className="dim-grid">
-                {[['Width', arr.w], ['Height', arr.h], ['Depth', arr.d], ['Weight', arr.weight], ['Display', arr.display], ['Size', arr.size]].map(([l, v]) => (
-                  <div key={l} className="dim-cell">
-                    <div className="dim-label">{l}</div>
-                    <div className="dim-val">{v}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="placement">
-                <div className="placement-label">Placement Guide</div>
-                <p className="placement-text">{arr.placement}</p>
-              </div>
-            </>
-          )}
-
-          <div className="detail-footer">
-            <button className="btn btn-ghost" onClick={onClose}>← Back</button>
-            {selectedIds.length > 0 && (
-              <button className="btn btn-ghost" onClick={() => { onClose(); onPreview() }}>
-                Booking ({selectedIds.length})
-              </button>
-            )}
-            <button
-              className={'btn btn-primary' + (isSel ? ' is-sel' : '')}
-              onClick={() => onToggle(activeId)}
-            >
-              {isSel ? '✓ Remove' : '+ Add to Booking'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Booking Form ──────────────────────────────────────────────────────────────
-function BookingForm({ selected, quantities, onBack, onDone, arrangements = [] }) {
-  const [form, setForm] = useState({ deceased: '', date: '', location: '', yourName: '', phone: '', email: '', message: '', notes: '' })
-  const totalItems = selected.reduce((s, id) => s + (quantities[id] || 1), 0)
-  const allArrangements = arrangements
-
-  const field = (key, placeholder, type = 'text') => ({
-    className: 'form-input', type, value: form[key], placeholder,
-    onChange: (e) => setForm(f => ({ ...f, [key]: e.target.value })),
-  })
-
-  const submit = async (e) => {
-    e.preventDefault()
-    if (!selected.length) { alert('Please select at least one arrangement.'); return }
-    try {
-      const names = selected.map(id => {
-        const arr = allArrangements.find(a => a.id === id)
-        return (arr?.name || arr?.title || 'Arrangement') + ' ×' + (quantities[id] || 1)
-      }).join(', ')
-      await api.post('/florist/bookings', {
-        arrangement_name: names,
-        deceased_name: form.deceased || null,
-        booked_by: form.yourName || null,
-        funeral_home: form.location || null,
-        date: form.date || null,
-        phone: form.phone || null,
-        email: form.email || null,
-        card_message: form.message || null,
-        quantity: totalItems,
-        special_instructions: form.notes || null
-      })
-      onDone(form)
-    } catch (error) {
-      alert(error.friendlyMessage || 'Failed to submit. Please try again.')
-    }
-  }
-
-  return (
-    <div className="form-page">
-      <form className="form-inner" onSubmit={submit}>
-        <button type="button" className="form-back" onClick={onBack}>← Back to arrangements</button>
-        <h1 className="form-title">Complete Your <em>Booking</em></h1>
-        <p className="form-sub">{totalItems} arrangement{totalItems !== 1 ? 's' : ''} selected</p>
-
-        <div className="form-chips">
-          {selected.map(id => {
-            const a = allArrangements.find(x => x.id === id)
-            if (!a) return null
-            return (
-              <div key={id} className="form-chip">
-                <img src={a.img || a.portrait} alt="" />
-                {a.name || a.title} ×{quantities[id] || 1}
-              </div>
-            )
-          })}
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-          <div><label className="form-label">Name of Deceased</label><input {...field('deceased', 'Full name')} /></div>
-          <div><label className="form-label">Service Date</label><input {...field('date', '', 'date')} /></div>
-        </div>
-        <div style={{ marginBottom: 14 }}><label className="form-label">Funeral Home / Location</label><input {...field('location', 'Name and address of the venue')} /></div>
-        <div className="form-divider" />
-        <div className="form-section-label">Your Contact Information</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-          <div><label className="form-label">Your Name</label><input {...field('yourName', 'First and last name')} /></div>
-          <div><label className="form-label">Phone</label><input {...field('phone', '(555) 000-0000', 'tel')} /></div>
-        </div>
-        <div style={{ marginBottom: 14 }}><label className="form-label">Email</label><input {...field('email', 'your@email.com', 'email')} /></div>
-        <div style={{ marginBottom: 14 }}>
-          <label className="form-label">Card Message</label>
-          <textarea className="form-input" value={form.message} placeholder="Message for the sympathy card…" rows={3}
-            onChange={e => setForm(f => ({ ...f, message: e.target.value }))} style={{ resize: 'vertical', lineHeight: 1.65 }} />
-        </div>
-        <div style={{ marginBottom: 32 }}>
-          <label className="form-label">Special Instructions <span style={{ opacity: 0.4, fontStyle: 'italic', textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
-          <textarea className="form-input" value={form.notes} placeholder="Any special requests or delivery notes…" rows={3}
-            onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={{ resize: 'vertical', lineHeight: 1.65 }} />
-        </div>
-        <button type="submit" className="form-submit">Submit Booking — {totalItems} Arrangement{totalItems !== 1 ? 's' : ''}</button>
-      </form>
-    </div>
-  )
-}
+// ColorInputs, ExpandedView and the booking form now live in their own files:
+//   ./FlowerDetail.jsx  ·  ./FlowerSnowBookingForm.jsx  ·  ./Snowfall.jsx
 
 // ── Done Screen ───────────────────────────────────────────────────────────────
 function DoneScreen({ totalItems, deceased, onReset }) {
   return (
     <div className="done-page">
+      <Snowfall count={12} opacity={0.4} />
       <div className="done-inner">
         <Candle height={72} />
         <div className="done-label">Memorial Florals</div>
@@ -1129,11 +706,13 @@ export default function App() {
       )}
 
       {step === 'form' && (
-        <BookingForm
+        <FlowerSnowBookingForm
           selected={selected}
           quantities={quantities}
           arrangements={arrangements}
           onBack={() => setStep('browse')}
+          onRemove={remove}
+          onQtyChange={(id, q) => setQuantities(prev => ({ ...prev, [id]: Math.max(1, q) }))}
           onDone={f => { setDoneForm(f); setStep('done') }}
         />
       )}

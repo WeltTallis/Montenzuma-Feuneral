@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState } from "react";
-import { fetchPostmortemsFeed } from "../../api/dashboardFeedApi";
+import { fetchPostmortemsFeed, fetchReleasesFeed } from "../../api/dashboardFeedApi";
 
 /* ════════════════════════════════════════════════════════════════
    Day Breakdown Panel — rendered beside the Mini Activity Calendar
@@ -149,6 +149,33 @@ export default function DayBreakdownPanel({
     return () => { alive = false; };
   }, []);
 
+  /* ── Real RELEASES — same body-checkout feed as the quad / Releases panel.
+     Released bodies live in the body_releases table, so deriving handovers
+     only from register rows (status / dispatch_date / release_date) left the
+     section almost always empty. */
+  const [releaseFeed, setReleaseFeed] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    fetchReleasesFeed()
+      .then((rows) => { if (alive) setReleaseFeed(Array.isArray(rows) ? rows : []); })
+      .catch(() => { /* optional feed */ });
+    return () => { alive = false; };
+  }, []);
+
+  const relFeedItems = useMemo(() => releaseFeed.map((q) => {
+    const adm = q?.admission_number || q?.admission_no || "";
+    return {
+      id: adm ? `rel-${adm}` : `rel-feed-${q?.release_id || q?.id}`,
+      name: q?.name_of_deceased || q?.deceased_name || q?.full_name || q?.received_by || "Unknown",
+      meta: adm,
+      sub: q?.next_kin || q?.received_by || q?.mode_of_transport || "",
+      tag: "Released",
+      _key: keyOf(q?.date_of_removal || q?.release_date || q?.created_at),
+      ...(q || {}),
+    };
+  }), [releaseFeed]);
+  const relFeedNums = useMemo(() => new Set(relFeedItems.map((r) => String(r.meta)).filter(Boolean)), [relFeedItems]);
+
   const dIndex = useMemo(() => {
     const m = new Map();
     (Array.isArray(sources?.deceased) ? sources.deceased : []).forEach((r) => {
@@ -207,16 +234,22 @@ export default function DayBreakdownPanel({
         tag: String(r?.status || r?.admission_status || "Admitted"),
       }));
 
-    /* Releases — released / dispatched / buried on the selected day */
-    const releases = deceased
-      .filter((r) => isReleased(r) && relKeyOf(r) === activeKey)
-      .map((r, i) => ({
-        id: `rel-${r?.admission_number ?? r?.id ?? i}`,
-        name: r?.full_name || "Unknown",
-        meta: r?.admission_number || "",
-        sub: r?.destination || r?.release_to || r?.next_kin || "",
-        tag: String(r?.status || r?.admission_status || "Released"),
-      }));
+    /* Releases — real handovers from the body-checkout feed first, with
+       legacy derived rows only where no feed row covers them */
+    const releases = [
+      ...relFeedItems
+        .filter((r) => r._key === activeKey)
+        .map(({ _key, ...rest }) => rest),
+      ...deceased
+        .filter((r) => isReleased(r) && relKeyOf(r) === activeKey && !relFeedNums.has(String(r?.admission_number || "")))
+        .map((r, i) => ({
+          id: `rel-${r?.admission_number ?? r?.id ?? i}`,
+          name: r?.full_name || "Unknown",
+          meta: r?.admission_number || "",
+          sub: r?.destination || r?.release_to || r?.next_kin || "",
+          tag: String(r?.status || r?.admission_status || "Released"),
+        })),
+    ];
 
     /* Postmortem / Body requests — real tracked requests first,
        legacy derived rows only where no request covers them */
@@ -256,7 +289,7 @@ export default function DayBreakdownPanel({
       { key: "postmortems", title: "Postmortem / Body Requests", color: "#8b5cf6", items: postmortems },
       { key: "bookings", title: "Coffin Bookings", color: "#f59e0b", items: bookings },
     ];
-  }, [sources, activeKey, pmReqItems, pmReqNums]);
+  }, [sources, activeKey, pmReqItems, pmReqNums, relFeedItems, relFeedNums]);
 
   const total = sections.reduce((s, sec) => s + sec.items.length, 0);
 

@@ -4,8 +4,10 @@ import { useState, useMemo } from "react";
    Mini Activity Calendar — dashboard widget.
    Faithful React port of the "February Activity Calendar" prototype:
    dark ink accents (#1a1a2e), indigo selection, weekend headers in
-   red, animated event dots, Month ⇄ Week toggle and an expandable
-   events panel.
+   red, animated event dots, Month ⇄ Week toggle. The day-breakdown
+   lists (intakes / releases / postmortem requests) live in the
+   DayBreakdownPanel beside this widget — clicking a day only selects
+   it here and hands the chosen key to the parent via onPickDate.
 
    Props:
      events  { 'YYYY-MM-DD': [{ n: name, t: time, c: colorClass }] }
@@ -63,22 +65,11 @@ const CSS = `
   .mac .wk-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;animation:macpop .25s ease both}
   .mac .wk-cnt{font-size:10px;color:#a0a3b1;flex-shrink:0}
   .mac .today-row .wk-cnt{color:rgba(255,255,255,.45)}
-  .mac .events-panel{background:#fff;border:1px solid #e2e4ea;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-top:10px;max-height:0;overflow:hidden;opacity:0;transition:max-height .3s ease,opacity .25s ease,padding .3s ease;padding:0 16px;width:100%}
-  .mac .events-panel.open{max-height:280px;opacity:1;padding:14px 16px 16px}
-  .mac .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-  .mac .panel-head h3{font-size:12px;font-weight:700;margin:0}
-  .mac .panel-head .badge{font-size:10px;font-weight:600;background:#f4f5f7;color:#555;padding:2px 8px;border-radius:20px}
-  .mac .ev-item{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:7px;transition:background .12s}
-  .mac .ev-item:hover{background:#f9f9fb}
-  .mac .ev-bar{width:3px;height:20px;border-radius:3px;flex-shrink:0}
-  .mac .ev-info{display:flex;flex-direction:column}
-  .mac .ev-name{font-size:12px;font-weight:600}
-  .mac .ev-time{font-size:10px;color:#a0a3b1}
-  .mac .dot.red,.mac .ev-bar.red{background:#ef4444}
-  .mac .dot.blue,.mac .ev-bar.blue{background:#3b82f6}
-  .mac .dot.green,.mac .ev-bar.green{background:#22c55e}
-  .mac .dot.orange,.mac .ev-bar.orange{background:#f59e0b}
-  .mac .dot.purple,.mac .ev-bar.purple{background:#8b5cf6}
+  .mac .dot.red{background:#ef4444}
+  .mac .dot.blue{background:#3b82f6}
+  .mac .dot.green{background:#22c55e}
+  .mac .dot.orange{background:#f59e0b}
+  .mac .dot.purple{background:#8b5cf6}
   @keyframes macpop{0%{transform:scale(0)}100%{transform:scale(1)}}
 `;
 
@@ -193,9 +184,6 @@ export default function MiniActivityCalendar({ events = {}, loading = false, onP
     );
   }
 
-  const selEvs = sel ? gevs(sel) : [];
-  const [sy, sm, sd] = sel ? sel.split("-").map(Number) : [0, 1, 0];
-
   return (
     <div className="mac" style={{ opacity: loading ? 0.45 : 1, transition: "opacity .2s" }}>
       <style>{CSS}</style>
@@ -269,26 +257,6 @@ export default function MiniActivityCalendar({ events = {}, loading = false, onP
           ))}
         </div>
       )}
-
-      <div className={`events-panel${sel ? " open" : ""}`} role="region" aria-live="polite">
-        {sel && (
-          <>
-            <div className="panel-head">
-              <h3>{MO[sm - 1]} {sd}</h3>
-              <span className="badge">{selEvs.length} activit{selEvs.length !== 1 ? "ies" : "y"}</span>
-            </div>
-            {selEvs.map((ev, i) => (
-              <div key={i} className="ev-item">
-                <div className={`ev-bar ${ev.c}`} />
-                <div className="ev-info">
-                  <span className="ev-name">{ev.n}</span>
-                  <span className="ev-time">{ev.t}</span>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-      </div>
     </div>
   );
 }
