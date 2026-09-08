@@ -783,7 +783,11 @@ const addLeaveDays = async (req, res) => {
     const { user_id, days, reason, added_by } = req.body;
 
     try {
-        if (!user_id || !days || days < 1) {
+        // Number() so 'abc' can never sneak past validation (NaN comparisons are
+        // always false, so the old `days < 1` check alone let garbage through and
+        // MySQL silently coerced it to 0).
+        const daysNum = Number(days);
+        if (!user_id || !daysNum || daysNum < 1) {
             return res.status(400).json({
                 status: 'error',
                 message: 'User ID and valid days (>= 1) are required'
@@ -802,7 +806,7 @@ const addLeaveDays = async (req, res) => {
             dbName,
             `INSERT INTO leave_day_additions (user_id, tenant_slug, days, reason, added_by, created_at) 
        VALUES (?, ?, ?, ?, ?, CURDATE())`,
-            [user_id, tenantSlug, days, reason, added_by || 1]
+            [user_id, tenantSlug, daysNum, reason, added_by || req.headers['x-user-id'] || 'system']
         );
 
         const additionId = result.insertId;
@@ -883,6 +887,57 @@ const removeLeaveDays = async (req, res) => {
         return res.status(500).json({
             status: 'error',
             message: 'Failed to remove leave days',
+            error: error.message
+        });
+    }
+};
+
+// ============================================
+// GET USER DAY ADDITIONS (Admin)
+// Lists every manual leave-day addition recorded for ONE employee — used by
+// the HR employee leave panel so HR can see (and undo) each adjustment and
+// how it changed that person's balance.
+// ============================================
+const getUserDayAdditions = async (req, res) => {
+    const tenantSlug = getTenantSlug(req);
+    const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
+    const userId = req.params.user_id;
+
+    try {
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'User ID is required'
+            });
+        }
+
+        let query = `SELECT lda.*, u.full_name AS name, u.email
+       FROM leave_day_additions lda
+       LEFT JOIN users u ON lda.user_id = u.user_id
+       WHERE lda.user_id = ?`;
+        const params = [userId];
+
+        if (tenantSlug && tenantSlug !== 'system_shared') {
+            query += ' AND lda.tenant_slug = ?';
+            params.push(tenantSlug);
+        }
+
+        query += ' ORDER BY lda.created_at DESC, lda.id DESC';
+
+        const [rows] = await safeTenantQuery(dbName, query, params);
+        const additionsArray = Array.isArray(rows) ? rows : (rows ? [rows] : []);
+
+        return res.status(200).json({
+            status: 'success',
+            count: additionsArray.length,
+            data: additionsArray
+        });
+
+    } catch (error) {
+        console.error('Error fetching leave day additions:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch leave day additions',
             error: error.message
         });
     }
@@ -1142,6 +1197,7 @@ module.exports = {
     getUsersOnLeave,
     addLeaveDays,
     removeLeaveDays,
+    getUserDayAdditions,
     recordHolidayCompensation,
     addEmployee,
     getLeaveBalance,

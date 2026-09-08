@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
 import axios from 'axios';
@@ -209,6 +209,7 @@ const CalendarContainer = styled.div`
   align-items: center;
   gap: 16px;
   box-sizing: border-box;
+  width: 100%;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
@@ -256,21 +257,29 @@ const CalSelect = styled.select`
 
 const CalendarDates = styled.div`
   display: flex;
+  flex-wrap: nowrap;
   gap: 6px;
   overflow-x: auto;
-  padding: 4px 2px;
+  padding: 4px 2px 6px;
   scroll-behavior: smooth;
   flex: 1;
+  width: 100%;
   min-width: 0;
+  max-width: 100%;
   align-items: center;
+  scrollbar-width: thin;
+  scrollbar-color: ${C.border} transparent;
 
-  &::-webkit-scrollbar { height: 4px; }
+  &::-webkit-scrollbar { height: 6px; }
+  &::-webkit-scrollbar-track { background: ${C.bgField}; border-radius: 10px; }
   &::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 10px; }
+  &::-webkit-scrollbar-thumb:hover { background: ${C.gray}; }
 `;
 
 
 
 const CalDateBtn = styled.div`
+  flex: 0 0 auto;
   min-width: 42px;
   padding: 6px 4px;
   border-radius: 6px;
@@ -315,13 +324,14 @@ const CalDayNum = styled.div`
 `;
 
 const EventDot = styled.div`
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: ${p => p.$active ? 'white' : C.exportBtn};
+  background: ${p => p.$active ? '#fca5a5' : C.danger};
+  box-shadow: 0 0 5px rgba(220, 38, 38, 0.55);
   position: absolute;
   bottom: 3px;
-  opacity: 0.8;
+  opacity: 1;
 `;
 
 // ─── List Components ────────────────────────────────────────────────
@@ -876,27 +886,44 @@ const DeceasedListPage = () => {
 
   const exportCleanupRef = useRef(null);
 
-  // ─── Fetch Deceased ──────────────────────────────────────────────
+  // ─── Fetch Deceased (per selected calendar year) ─────────────────
   const fetchDeceased = useCallback(async () => {
     setLoading(true);
     setServiceUnavailable(false);
     setUnavailableMessage('');
     try {
       const tenantSlug = getTenantSlug();
-      const params = {};
-      if (search) params.search = search;
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'x-tenant-slug': tenantSlug,
+      };
 
-      const res = await axios.get(`${BASE_URL}/deceased-all`, {
-        params,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'x-tenant-slug': tenantSlug,
-        },
-      });
+      // Pull the whole selected year page by page so the calendar dots
+      // and the list reflect every record of that year (not just 50).
+      const collected = [];
+      let pageNum = 1;
+      const pageSize = 100;
+      let totalPages = 1;
 
-      const data = res.data?.data || res.data || [];
-      setRecords(Array.isArray(data) ? data : []);
+      while (pageNum <= totalPages && pageNum <= 12) {
+        const params = { year: calYear, page: pageNum, limit: pageSize };
+        if (search) params.search = search;
+
+        const res = await axios.get(`${BASE_URL}/deceased-all`, { params, headers });
+        const data = res.data?.data || res.data || [];
+        const rows = Array.isArray(data) ? data : [];
+        collected.push(...rows);
+
+        const pagination = res.data?.pagination;
+        if (pagination?.totalPages) {
+          totalPages = Math.min(Number(pagination.totalPages) || 1, 12);
+        }
+        if (rows.length < pageSize) break;
+        pageNum += 1;
+      }
+
+      setRecords(collected);
     } catch (err) {
       console.error('Error fetching deceased:', err);
       setRecords([]);
@@ -907,7 +934,7 @@ const DeceasedListPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, calYear]);
 
   useEffect(() => {
     fetchDeceased();
@@ -990,6 +1017,35 @@ const DeceasedListPage = () => {
   };
 
   // ─── Export Functions ───────────────────────────────────────────
+  const downloadExportBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const resetExportState = () => {
+    setExporting(false);
+    setShowExport(false);
+    setExportStatus('');
+    setExportProgress(0);
+    setExportJobId(null);
+  };
+
+  const isFileResponse = (contentType = '') =>
+    contentType.includes('spreadsheetml') ||
+    contentType.includes('zip') ||
+    contentType.includes('octet-stream');
+
+  const parseBlobJson = async (blob) => {
+    const text = await blob.text();
+    return JSON.parse(text);
+  };
+
   const handleExport = async () => {
     if (exportCleanupRef.current) {
       exportCleanupRef.current();
@@ -1015,27 +1071,49 @@ const DeceasedListPage = () => {
             'Authorization': `Bearer ${token}`,
             'x-tenant-slug': tenantSlug,
           },
+          responseType: 'blob',
+          timeout: 30000,
         }
       );
 
-      if (response.data?.success && response.data?.jobId) {
-        setExportJobId(response.data.jobId);
+      const contentType = (response.headers?.['content-type'] || '').toLowerCase();
+
+      // Fallback path: the server generated the file synchronously
+      if (isFileResponse(contentType)) {
+        setExportStatus('Download started...');
+        downloadExportBlob(response.data, `Deceased_Records_${todayKey()}.xlsx`);
+        showToast('Export completed successfully!', 'success');
+        setTimeout(resetExportState, 1500);
+        return;
+      }
+
+      // Normal path: JSON response with a job id to poll
+      const data = await parseBlobJson(response.data);
+
+      if (data?.success && data?.jobId) {
+        setExportJobId(data.jobId);
         setExportStatus('Processing export...');
-        pollExportStatus(response.data.jobId);
+        pollExportStatus(data.jobId);
       } else {
-        throw new Error('No job ID returned');
+        throw new Error(data?.message || 'No job ID returned');
       }
     } catch (err) {
       console.error('Export error:', err);
-      showToast('Failed to start export. Please try again.', 'error');
-      setExporting(false);
-      setExportStatus('');
-      setExportProgress(0);
+
+      let message = 'Failed to start export. Please try again.';
+      if (err?.response?.data && typeof err.response.data.text === 'function') {
+        try {
+          message = (await parseBlobJson(err.response.data))?.message || message;
+        } catch { /* keep default message */ }
+      }
+
+      showToast(message, 'error');
+      setTimeout(resetExportState, 1500);
     }
   };
 
   const pollExportStatus = async (jobId) => {
-    const maxAttempts = 60;
+    const maxAttempts = 90;
     const pollInterval = 2000;
     let attempts = 0;
     let timeoutId;
@@ -1045,6 +1123,13 @@ const DeceasedListPage = () => {
         clearTimeout(timeoutId);
         timeoutId = null;
       }
+    };
+
+    const fail = (msg) => {
+      showToast(msg, 'error');
+      setTimeout(() => {
+        resetExportState();
+      }, 2000);
     };
 
     const poll = async () => {
@@ -1060,97 +1145,73 @@ const DeceasedListPage = () => {
               'x-tenant-slug': tenantSlug,
             },
             responseType: 'blob',
-            timeout: 10000,
+            timeout: 15000,
           }
         );
 
-        const contentType = response.headers['content-type'];
-        if (contentType && (contentType.includes('spreadsheetml') || contentType.includes('zip'))) {
+        const contentType = (response.headers?.['content-type'] || '').toLowerCase();
+
+        // Completed: the server streams the generated file
+        if (isFileResponse(contentType)) {
           cleanup();
-
-          const blob = new Blob([response.data], { type: 'application/zip' });
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `Deceased_Records_${todayKey()}.zip`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
-
-          showToast('Export completed successfully! (Compressed ZIP file)', 'success');
-
-          setTimeout(() => {
-            setExporting(false);
-            setShowExport(false);
-            setExportStatus('');
-            setExportProgress(0);
-            setExportJobId(null);
-          }, 1500);
-
+          downloadExportBlob(response.data, `Deceased_Records_${todayKey()}.zip`);
+          showToast('Export completed successfully!', 'success');
+          setTimeout(resetExportState, 1500);
           return;
         }
 
-        const data = response.data;
+        // Still processing: the status JSON arrives wrapped in a blob — parse it
+        let data;
+        try {
+          data = await parseBlobJson(response.data);
+        } catch {
+          throw new Error('Unexpected status response');
+        }
+
         if (data?.success && data?.status) {
           setExportProgress(data.progress || 0);
-          setExportStatus(data.message || 'Processing...');
+          setExportStatus(data.message || `Processing export... (${data.status})`);
 
           attempts++;
           if (attempts < maxAttempts) {
             timeoutId = setTimeout(poll, pollInterval);
           } else {
             cleanup();
-            throw new Error('Export timeout - please try again or contact support');
+            fail('Export is taking longer than expected. Please try again later.');
           }
-        } else {
-          cleanup();
-          throw new Error(data?.message || 'Unknown status');
+          return;
         }
+
+        cleanup();
+        throw new Error(data?.message || 'Unknown status');
       } catch (err) {
         cleanup();
         console.error('Poll error:', err);
 
+        let serverMessage = '';
+        if (err?.response?.data && typeof err.response.data.text === 'function') {
+          try {
+            serverMessage = (await parseBlobJson(err.response.data))?.message || '';
+          } catch { /* ignore parse issues */ }
+        }
+
         if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
-          showToast('Request timeout - retrying...', 'warning');
           attempts++;
           if (attempts < maxAttempts) {
+            showToast('Connection hiccup - retrying...', 'warning');
             timeoutId = setTimeout(poll, pollInterval);
           } else {
-            showToast('Export timed out. Please try again.', 'error');
-            setTimeout(() => {
-              setExporting(false);
-              setShowExport(false);
-              setExportStatus('');
-              setExportProgress(0);
-            }, 2000);
+            fail('Export timed out. Please try again.');
           }
           return;
         }
 
-        if (err.response?.status === 202) {
-          attempts++;
-          if (attempts < maxAttempts) {
-            timeoutId = setTimeout(poll, pollInterval);
-          } else {
-            showToast('Export is taking longer than expected. Please try again.', 'error');
-            setTimeout(() => {
-              setExporting(false);
-              setShowExport(false);
-              setExportStatus('');
-              setExportProgress(0);
-            }, 2000);
-          }
+        if (err.response?.status === 404) {
+          fail('Export job expired or was not found. Please start a new export.');
           return;
         }
 
-        showToast('Export failed. Please try again.', 'error');
-        setTimeout(() => {
-          setExporting(false);
-          setShowExport(false);
-          setExportStatus('');
-          setExportProgress(0);
-        }, 2000);
+        fail(serverMessage || 'Export failed. Please try again.');
       }
     };
 
@@ -1191,8 +1252,19 @@ const DeceasedListPage = () => {
 
   // ─── Calendar Helpers ────────────────────────────────────────────
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  const years = [today.getFullYear() - 1, today.getFullYear(), today.getFullYear() + 1, today.getFullYear() + 2];
+  const years = Array.from({ length: 7 }, (_, i) => today.getFullYear() - 5 + i);
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  // Map of 'YYYY-MM-DD' → admission count for that day (drives the red dots)
+  const eventCountByDate = useMemo(() => {
+    const map = {};
+    records.forEach(r => {
+      const admitted = r.created_at || r.date_admitted || r.admission_date;
+      const key = toDateString(admitted);
+      if (key) map[key] = (map[key] || 0) + 1;
+    });
+    return map;
+  }, [records]);
 
   const handleMonthChange = (e) => {
     setCalMonth(parseInt(e.target.value));
@@ -1256,10 +1328,8 @@ const DeceasedListPage = () => {
               const loopDate = new Date(calYear, calMonth, day);
               const dateStr = toDateString(loopDate);
               const weekday = loopDate.toLocaleDateString('en-US', { weekday: 'short' });
-              const hasEvents = records.some(r => {
-                const admitted = r.created_at || r.date_admitted || r.admission_date;
-                return toDateString(admitted) === dateStr;
-              });
+              const eventCount = eventCountByDate[dateStr] || 0;
+              const hasEvents = eventCount > 0;
               const isActive = selectedDate === dateStr;
 
               return (
@@ -1268,6 +1338,7 @@ const DeceasedListPage = () => {
                   $active={isActive}
                   onClick={() => handleDateClick(dateStr)}
                   ref={isActive ? activeDateRef : null}
+                  title={hasEvents ? `${eventCount} record${eventCount > 1 ? 's' : ''} admitted on this day` : undefined}
                 >
                   <CalWeekday>{weekday}</CalWeekday>
                   <CalDayNum>{day}</CalDayNum>
@@ -1282,7 +1353,7 @@ const DeceasedListPage = () => {
         <ListCard>
           <ListHeader>
             <h2>
-              {selectedDate ? `Deceased for ${formatDate(selectedDate)}` : 'All Deceased'} ({filteredRecords.length})
+              {selectedDate ? `Deceased for ${formatDate(selectedDate)}` : `All Deceased · ${calYear}`} ({filteredRecords.length})
             </h2>
           </ListHeader>
 

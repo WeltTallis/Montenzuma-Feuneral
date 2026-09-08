@@ -260,6 +260,7 @@ export const ENDPOINTS = {
     USERS_ON_LEAVE: '/leaves/users/on-leave',
     ADD_DAYS: '/leaves/admin/add-days',
     REMOVE_DAYS: (id) => `/leaves/admin/add-days/${id}`,
+    ADDITIONS: (userId) => `/leaves/admin/additions/${userId}`,
     HOLIDAY_COMPENSATION: '/leaves/admin/holiday-compensation',
     ADD_EMPLOYEE: '/leaves/admin/employees',
     BALANCE: (userId) => `/leaves/balance/${userId}`,

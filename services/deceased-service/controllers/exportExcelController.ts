@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
+import ExcelJS from 'exceljs';
 import { getExcelExportQueue, isExcelExportQueueAvailable } from '../queues/excelExportQueue';
+import { safeTenantQuery } from '../../../shared/dbConfig';
 import Logger from '../../../packages/shared-logger/src/index';
 import { getKenyaTimeISO } from '../../../packages/shared-utils/dist/timestamps';
 
@@ -14,6 +16,79 @@ interface ExportRequest extends Request {
   tenantSlug?: string;
   user?: { email?: string; id?: number };
 }
+
+// ============================================
+// SYNCHRONOUS FALLBACK (no Redis required)
+// Generates the Excel file in-process and streams it back so the
+// user still gets their export when the queue is unavailable.
+// ============================================
+const generateSyncExcelExport = async (
+  req: ExportRequest,
+  res: Response,
+  startDate?: string,
+  endDate?: string
+): Promise<Response> => {
+  try {
+    const tenant = req.tenant;
+    const dbName = tenant?.db_name;
+    if (!dbName) {
+      return res.status(400).json({ success: false, message: 'Tenant information missing' });
+    }
+
+    let whereClause = '';
+    const params: any[] = [];
+    if (startDate && endDate) {
+      whereClause = 'WHERE created_at BETWEEN ? AND ?';
+      params.push(startDate, endDate);
+    }
+
+    const query = `
+      SELECT deceased_id, full_name, admission_number, date_of_birth, date_of_death,
+             next_of_kin, service_type, body_status, release_date, date_admitted, created_at
+      FROM deceased
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT 5000
+    `;
+    const records: any[] = await safeTenantQuery(dbName, query, params);
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Deceased Records');
+    sheet.columns = [
+      { header: 'Deceased ID', key: 'deceased_id', width: 18 },
+      { header: 'Full Name', key: 'full_name', width: 28 },
+      { header: 'Admission No.', key: 'admission_number', width: 16 },
+      { header: 'Date Admitted', key: 'date_admitted', width: 20 },
+      { header: 'Date of Birth', key: 'date_of_birth', width: 16 },
+      { header: 'Date of Death', key: 'date_of_death', width: 16 },
+      { header: 'Status', key: 'body_status', width: 18 },
+      { header: 'Next of Kin', key: 'next_of_kin', width: 24 },
+      { header: 'Service Type', key: 'service_type', width: 16 },
+      { header: 'Release Date', key: 'release_date', width: 18 },
+      { header: 'Registered', key: 'created_at', width: 20 },
+    ];
+    sheet.getRow(1).font = { bold: true, color: { argb: 'FF15171A' } };
+    sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3EFE6' } };
+
+    (records || []).forEach((r) => sheet.addRow(r));
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const fileName = `${tenant?.tenant_slug || 'tenant'}_Deceased_Records_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    Logger.info({ message: `Sync Excel export generated: ${records?.length || 0} records (queue unavailable)` });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+    return res.send(Buffer.from(buffer));
+  } catch (error: any) {
+    Logger.error({ message: 'Sync Excel export failed', error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to generate export',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
 
 // ============================================
 // EXPORT WITH CHARTS (QuickChart Workaround)
@@ -36,10 +111,8 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     // Get queue (may be null if Redis is not available)
     const queue = await getExcelExportQueue();
     if (!queue) {
-      return res.status(503).json({
-        success: false,
-        message: 'Export service temporarily unavailable - Redis connection required for background processing'
-      });
+      // No Redis → generate the file synchronously so the export still works
+      return await generateSyncExcelExport(req, res, startDate, endDate);
     }
 
     // Add job to queue

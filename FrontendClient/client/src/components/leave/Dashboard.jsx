@@ -4,7 +4,7 @@ import { api, ENDPOINTS } from '../../api';
 import { getUserId, getTenantSlug, getParentTenantSlug } from '../../utils/globalAuth';
 import {
   Calendar, Clock, Users, FileText, CheckCircle, XCircle, AlertCircle,
-  Loader2, RefreshCw, UserCheck, Check, Trash2,
+  Loader2, RefreshCw, UserCheck, Check, Trash2, Plus, X, ChevronRight,
 } from '../../utils/icons/icons';
 
 /* ── Palette mirrors the other Leave pages ────────────────────────── */
@@ -381,7 +381,166 @@ const ProgressBar = styled.div`height: 9px; background: ${COLORS.bg}; border-rad
 const ProgressUsed = styled.div`background: ${COLORS.primary}; width: ${(p) => `${p.$w}%`}; height: 100%;`;
 const ProgressPending = styled.div`background: ${COLORS.warning}; width: ${(p) => `${p.$p}%`}; height: 100%;`;
 const BalanceRow = styled.div`display: flex; justify-content: space-between; font-size: 0.82rem; color: ${COLORS.textSecondary}; margin-top: 0.4rem;`;
-const Note = styled.div`font-size: 0.78rem; color: ${COLORS.textSecondary}; margin-top: 0.6rem;`;/* ── Main component (HR Dashboard) ──────────────────────────────────── */
+const Note = styled.div`font-size: 0.78rem; color: ${COLORS.textSecondary}; margin-top: 0.6rem;`;
+
+/* ── Recent history rows + employee leave panel ────────────────────── */
+const ClickRow = styled.tr`
+  cursor: pointer;
+  &:hover td { background: rgba(10, 36, 99, 0.04); }
+`;
+const ViewCell = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid ${COLORS.border};
+  color: ${COLORS.primary};
+  background: ${COLORS.white};
+`;
+const Overlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+`;
+const Drawer = styled.div`
+  width: min(480px, 100%);
+  height: 100%;
+  background: ${COLORS.white};
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
+const DrawerHead = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid ${COLORS.border};
+  background: ${COLORS.bg};
+`;
+const DrawerTitle = styled.div`
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: ${COLORS.text};
+`;
+const DrawerSub = styled.div`
+  font-size: 0.78rem;
+  color: ${COLORS.textSecondary};
+`;
+const CloseBtn = styled.button`
+  background: ${COLORS.white};
+  border: 1px solid ${COLORS.border};
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: ${COLORS.textSecondary};
+  flex-shrink: 0;
+  &:hover { color: ${COLORS.danger}; border-color: ${COLORS.danger}; }
+`;
+const DrawerBody = styled.div`
+  padding: 1.1rem 1.25rem 2rem 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+`;
+const MiniGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+`;
+const MiniStat = styled.div`
+  border: 1px solid ${COLORS.border};
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+  background: ${(p) => (p.$hl ? 'rgba(10, 36, 99, 0.06)' : COLORS.white)};
+`;
+const MSLabel = styled.div`
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: ${COLORS.textSecondary};
+`;
+const MSValue = styled.div`
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: ${(p) => (p.$hl ? COLORS.primary : COLORS.text)};
+`;
+const PanelSubHead = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: ${COLORS.text};
+  margin: 1.2rem 0 0.6rem 0;
+`;
+const AddForm = styled.div`
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  gap: 0.5rem;
+  @media (max-width: 560px) { grid-template-columns: 1fr; }
+`;
+const AddInput = styled.input`
+  border: 1px solid ${COLORS.border};
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.82rem;
+  color: ${COLORS.text};
+  min-width: 0;
+  &:focus { outline: none; border-color: ${COLORS.primary}; }
+`;
+const AddBtn = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: ${COLORS.success};
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  &:hover { opacity: 0.9; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+`;
+const AdjRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid ${COLORS.border};
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.45rem;
+  background: ${COLORS.white};
+`;
+const HistItem = styled.div`
+  border: 1px solid ${COLORS.border};
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.45rem;
+  background: ${COLORS.white};
+`;
+const HistLine = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+`;
+
+/* ── Main component (HR Dashboard) ──────────────────────────────────── */
 const LeaveDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -392,6 +551,15 @@ const LeaveDashboard = () => {
   const [balance, setBalance] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [actingId, setActingId] = useState(null); // row id currently being actioned
+  const [recent, setRecent] = useState([]);       // latest requests across the tenant (every status)
+  // ── Employee leave panel (click a user to open their leave dashboard) ──
+  const [selectedUser, setSelectedUser] = useState(null);   // employee currently open in the panel
+  const [userDetail, setUserDetail] = useState(null);       // { balance, leaves, additions }
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [addDaysForm, setAddDaysForm] = useState({ days: '', reason: '' });
+  const [addSaving, setAddSaving] = useState(false);
+  const [removingId, setRemovingId] = useState(null);
+  const [detailActionId, setDetailActionId] = useState(null);
 
   // ── Multi-tenant: leave data lives in the PARENT tenant's main DB ──
   // Send the parent slug explicitly (same pattern as ApplyLeave/MyLeaves) so
@@ -411,10 +579,15 @@ const LeaveDashboard = () => {
     const statsRes = await api.get(ENDPOINTS.LEAVE.STATS, { ...tenantHeaders, signal: abortSignal });
     setStats(statsRes.data?.data || { total: 0, pending: 0, on_leave: 0, by_status: [], by_type: [] });
 
-    // 2) Pending requests + on-leave staff + current user balance (parallel, tolerant of failure)
-    const pendingRes = await api.get(ENDPOINTS.LEAVE.ALL, { ...tenantHeaders, params: { status: 'pending' }, signal: abortSignal });
-    const onLeaveRes = await api.get(ENDPOINTS.LEAVE.USERS_ON_LEAVE, { ...tenantHeaders, signal: abortSignal });
-    setRequests(normList(pendingRes));
+    // 2) FULL leave history (every status — feeds BOTH "Recent history" and the
+    //    pending approval queue) + on-leave staff (parallel, tolerant of failure)
+    const [allRes, onLeaveRes] = await Promise.all([
+      api.get(ENDPOINTS.LEAVE.ALL, { ...tenantHeaders, signal: abortSignal }),
+      api.get(ENDPOINTS.LEAVE.USERS_ON_LEAVE, { ...tenantHeaders, signal: abortSignal }),
+    ]);
+    const allLeaves = normList(allRes);
+    setRecent(allLeaves.slice(0, 12));
+    setRequests(allLeaves.filter((l) => String(l.status || '').toLowerCase() === 'pending'));
     setOnLeaveUsers(normList(onLeaveRes));
 
     if (me) {
@@ -496,6 +669,111 @@ const LeaveDashboard = () => {
     const notes = window.prompt('Rejection reason (optional):') ?? '';
     if (notes === null) return;
     actionOn(id, 'rejected', notes.trim() || 'Not specified');
+  };
+
+  // ── Employee leave panel: load one employee's balance + history + adjustments ──
+  const loadUserDetail = useCallback(async (user) => {
+    if (!user?.user_id) return;
+    setDetailLoading(true);
+    const [balRes, leavesRes, addRes] = await Promise.all([
+      api.get(ENDPOINTS.LEAVE.BALANCE(user.user_id), tenantHeaders).catch(() => null),
+      api.get(ENDPOINTS.LEAVE.ALL, { ...tenantHeaders, params: { user_id: user.user_id } }).catch(() => null),
+      api.get(ENDPOINTS.LEAVE.ADDITIONS(user.user_id), tenantHeaders).catch(() => null),
+    ]);
+    setUserDetail({
+      balance: normObj(balRes),
+      leaves: normList(leavesRes),
+      additions: normList(addRes),
+    });
+    setDetailLoading(false);
+  }, [tenantHeaders]);
+
+  const openUser = useCallback((emp) => {
+    setSelectedUser(emp);
+    setUserDetail(null);
+    setAddDaysForm({ days: '', reason: '' });
+    loadUserDetail(emp);
+  }, [loadUserDetail]);
+
+  const closeUser = () => {
+    setSelectedUser(null);
+    setUserDetail(null);
+  };
+
+  // HR adds extra annual leave days for this employee (carry-over, bonus days…)
+  const submitAddDays = async () => {
+    if (!selectedUser) return;
+    const n = Number(addDaysForm.days);
+    if (!n || n < 1) {
+      setError('Enter at least 1 day to add.');
+      return;
+    }
+    if (!String(addDaysForm.reason).trim()) {
+      setError('A reason is required when adding leave days.');
+      return;
+    }
+    setAddSaving(true);
+    try {
+      await api.post(
+        ENDPOINTS.LEAVE.ADD_DAYS,
+        {
+          user_id: selectedUser.user_id,
+          days: n,
+          reason: String(addDaysForm.reason).trim(),
+          added_by: me || undefined,
+        },
+        tenantHeaders
+      );
+      setAddDaysForm({ days: '', reason: '' });
+      setError('');
+      await Promise.all([loadUserDetail(selectedUser), refresh()]);
+    } catch (e) {
+      setError(e?.friendlyMessage || 'Could not add leave days. Please try again.');
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
+  // Undo a manual day adjustment (deletes the addition record, balance recalculates)
+  const removeAddition = async (id) => {
+    setRemovingId(id);
+    try {
+      await api.delete(ENDPOINTS.LEAVE.REMOVE_DAYS(id), tenantHeaders);
+      setError('');
+      if (selectedUser) await Promise.all([loadUserDetail(selectedUser), refresh()]);
+    } catch (e) {
+      setError(e?.friendlyMessage || 'Could not remove that adjustment.');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  // Approve / reject from inside the employee panel (same endpoint as the queue)
+  const decideInPanel = async (id, newStatus, notes) => {
+    setDetailActionId(id);
+    try {
+      await api.patch(
+        ENDPOINTS.LEAVE.UPDATE_STATUS(id),
+        { status: newStatus, rejection_reason: notes, approved_by: me },
+        tenantHeaders
+      );
+    } catch (e) {
+      setError(e?.friendlyMessage || 'Could not update that request.');
+      setDetailActionId(null);
+      return;
+    }
+    try {
+      await refresh();
+      if (selectedUser) await loadUserDetail(selectedUser);
+    } finally {
+      setDetailActionId(null);
+    }
+  };
+
+  const rejectInPanel = (id) => {
+    const notes = window.prompt('Rejection reason (optional):');
+    if (notes === null) return;
+    decideInPanel(id, 'rejected', notes.trim() || 'Not specified');
   };
 
   // Derived
@@ -701,10 +979,83 @@ const LeaveDashboard = () => {
             </div>
           </ContentGrid>
 
+          {/* Recent history — newest requests across the company, every status */}
+          <Section>
+            <SectionHead>
+              <SectionHeadLeft><Clock size={18} />Recent history</SectionHeadLeft>
+              <Pill>Latest {recent.length} requests — approve or reject pending ones right here</Pill>
+            </SectionHead>
+            <SectionBody style={{ padding: 0 }}>
+              {recent.length === 0 ? (
+                <Center style={{ padding: '1.6rem 1rem' }}>No leave requests submitted yet.</Center>
+              ) : (
+                <TableWrap>
+                  <Table>
+                    <thead>
+                      <tr>
+                        <th>Employee</th>
+                        <th>Type</th>
+                        <th>Dates</th>
+                        <th>Days</th>
+                        <th>Reason</th>
+                        <th>Submitted</th>
+                        <th>Status</th>
+                        <th style={{ width: 160 }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recent.map((l) => {
+                        const st = String(l.status || '').toLowerCase();
+                        return (
+                          <tr key={l.id}>
+                            <td>
+                              <Row style={{ padding: 0, borderBottom: 0 }}>
+                                <Avatar>{l.name ? String(l.name)[0] : '?'}</Avatar>
+                                <div>
+                                  <div style={{ fontWeight: 600, color: COLORS.text }}>{l.name || '—'}</div>
+                                  <div style={{ fontSize: 0.72, color: COLORS.textSecondary }}>{l.email || ''}</div>
+                                </div>
+                              </Row>
+                            </td>
+                            <td>{LEAVE_TYPE_LABELS[l.leave_type] || l.leave_type || '—'}</td>
+                            <td>{fmtDate(l.start_date)} → {fmtDate(l.end_date)}</td>
+                            <td>{safeNum(l.days)}</td>
+                            <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.reason || ''}>
+                              {l.reason || <Pill>No reason</Pill>}
+                            </td>
+                            <td>{fmtDate(l.created_at)}</td>
+                            <td><StatusPill $status={st}>{STATUS_LABEL[st] || st}</StatusPill></td>
+                            <td>
+                              {st === 'pending' ? (
+                                <ActionCell>
+                                  <SmallBtn className="approve" onClick={() => approve(l.id)} disabled={actingId === l.id}>
+                                    {actingId === l.id ? <Loader2 size={12} /> : <Check size={14} />} Approve
+                                  </SmallBtn>
+                                  <SmallBtn className="reject" onClick={() => reject(l.id)} disabled={actingId === l.id}>
+                                    {actingId === l.id ? <Loader2 size={12} /> : <XCircle size={14} />} Reject
+                                  </SmallBtn>
+                                </ActionCell>
+                              ) : (
+                                <GhostBtn onClick={() => openUser({ user_id: l.user_id, name: l.name, email: l.email })}>
+                                  View <ChevronRight size={13} />
+                                </GhostBtn>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </Table>
+                </TableWrap>
+              )}
+            </SectionBody>
+          </Section>
+
           {/* All registered employees + their leave balances */}
           <Section style={{ marginTop: '1.5rem' }}>
             <SectionHead>
               <SectionHeadLeft><Users size={18} />All employees ({employees.length})</SectionHeadLeft>
+              <Pill>Click an employee to open their leave dashboard &amp; add days</Pill>
             </SectionHead>
             <SectionBody style={{ padding: 0 }}>
               {employees.length === 0 ? (
@@ -722,18 +1073,24 @@ const LeaveDashboard = () => {
                         <th>Taken</th>
                         <th>Pending</th>
                         <th>Available</th>
+                        <th style={{ width: 60 }} aria-label="Open" />
                       </tr>
                     </thead>
                     <tbody>
                       {employees.map((e) => (
-                        <tr key={e.user_id || e.id || e.email || `emp-${e.name}`}>
+                        <ClickRow
+                          key={e.user_id || e.id || e.email || `emp-${e.name}`}
+                          onClick={() => openUser(e)}
+                          title="Open this employee's leave dashboard"
+                        >
                           <td style={{ fontWeight: 600, color: COLORS.text }}>{e.name || e.full_name || '—'}</td>
                           <td>{e.email || '—'}</td>
                           <td>{safeNum(e.initial)} days</td>
                           <td>{safeNum(e.leaveTaken)} days</td>
                           <td>{safeNum(e.pendingDays)} days</td>
                           <td style={{ fontWeight: 700, color: COLORS.primary }}>{safeNum(e.currentBalance)} days</td>
-                        </tr>
+                          <td><ViewCell><ChevronRight size={14} /></ViewCell></td>
+                        </ClickRow>
                       ))}
                     </tbody>
                   </Table>
@@ -742,6 +1099,132 @@ const LeaveDashboard = () => {
             </SectionBody>
           </Section>
         </>
+      )}
+
+      {/* ── Employee leave panel (slide-in): balance, history, add days ── */}
+      {selectedUser && (
+        <Overlay onClick={closeUser}>
+          <Drawer onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Employee leave dashboard">
+            <DrawerHead>
+              <Avatar style={{ width: 42, height: 42, fontSize: '1rem' }}>
+                {(selectedUser.name || selectedUser.full_name || '?').charAt(0)}
+              </Avatar>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <DrawerTitle>{selectedUser.name || selectedUser.full_name || 'Employee'}</DrawerTitle>
+                <DrawerSub>{selectedUser.email || '—'}</DrawerSub>
+              </div>
+              <CloseBtn onClick={closeUser} aria-label="Close panel"><X size={16} /></CloseBtn>
+            </DrawerHead>
+
+            <DrawerBody>
+              {detailLoading || !userDetail ? (
+                <Center style={{ padding: '2.2rem 0' }}>
+                  <Loader2 size={22} />
+                  <span>Loading leave dashboard…</span>
+                </Center>
+              ) : (
+                <>
+                  {/* Balance snapshot */}
+                  <MiniGrid>
+                    <MiniStat><MSLabel>Entitlement</MSLabel><MSValue>{safeNum(userDetail.balance?.initial)}</MSValue></MiniStat>
+                    <MiniStat><MSLabel>Manual adds</MSLabel><MSValue>{safeNum(userDetail.balance?.manualAdditions)}</MSValue></MiniStat>
+                    <MiniStat><MSLabel>Holiday credit</MSLabel><MSValue>{safeNum(userDetail.balance?.holidayCompensations)}</MSValue></MiniStat>
+                    <MiniStat><MSLabel>Taken</MSLabel><MSValue>{safeNum(userDetail.balance?.leaveTaken)}</MSValue></MiniStat>
+                    <MiniStat><MSLabel>Pending</MSLabel><MSValue>{safeNum(userDetail.balance?.pendingDays)}</MSValue></MiniStat>
+                    <MiniStat $hl><MSLabel>Available</MSLabel><MSValue>{safeNum(userDetail.balance?.currentBalance)}</MSValue></MiniStat>
+                  </MiniGrid>
+
+                  {/* Add leave days */}
+                  <PanelSubHead><Plus size={15} /> Add leave days</PanelSubHead>
+                  <AddForm>
+                    <AddInput
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder="Days"
+                      value={addDaysForm.days}
+                      onChange={(e) => setAddDaysForm((f) => ({ ...f, days: e.target.value }))}
+                    />
+                    <AddInput
+                      type="text"
+                      placeholder="Reason (e.g. 2025 carry-over)"
+                      value={addDaysForm.reason}
+                      onChange={(e) => setAddDaysForm((f) => ({ ...f, reason: e.target.value }))}
+                    />
+                    <AddBtn onClick={submitAddDays} disabled={addSaving}>
+                      {addSaving ? <Loader2 size={14} /> : <Plus size={14} />} Add days
+                    </AddBtn>
+                  </AddForm>
+
+                  {/* Manual day adjustments (undoable) */}
+                  <PanelSubHead><Clock size={15} /> Day adjustments ({userDetail.additions.length})</PanelSubHead>
+                  {userDetail.additions.length === 0 ? (
+                    <Note>No manual day adjustments for this employee yet.</Note>
+                  ) : (
+                    userDetail.additions.map((a) => (
+                      <AdjRow key={a.id}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, color: COLORS.success }}>+{safeNum(a.days)} days</div>
+                          <div style={{ fontSize: 0.75, color: COLORS.textSecondary }}>
+                            {fmtDate(a.created_at)} &middot; {a.reason || 'No reason recorded'}
+                          </div>
+                        </div>
+                        <SmallBtn className="reject" onClick={() => removeAddition(a.id)} disabled={removingId === a.id}>
+                          {removingId === a.id ? <Loader2 size={12} /> : <Trash2 size={13} />} Undo
+                        </SmallBtn>
+                      </AdjRow>
+                    ))
+                  )}
+
+                  {/* Their full leave history */}
+                  <PanelSubHead><FileText size={15} /> Leave history ({userDetail.leaves.length})</PanelSubHead>
+                  {userDetail.leaves.length === 0 ? (
+                    <Note>This employee has not applied for leave yet.</Note>
+                  ) : (
+                    userDetail.leaves.map((l) => {
+                      const st = String(l.status || '').toLowerCase();
+                      return (
+                        <HistItem key={l.id}>
+                          <HistLine>
+                            <span style={{ fontWeight: 700, color: COLORS.text }}>
+                              {LEAVE_TYPE_LABELS[l.leave_type] || l.leave_type || 'Leave'}
+                            </span>
+                            <StatusPill $status={st}>{STATUS_LABEL[st] || st}</StatusPill>
+                          </HistLine>
+                          <div style={{ fontSize: 0.76, color: COLORS.textSecondary, marginTop: 2 }}>
+                            {fmtDate(l.start_date)} → {fmtDate(l.end_date)} &middot; {safeNum(l.days)} day(s)
+                          </div>
+                          {l.reason && (
+                            <div style={{ fontSize: 0.76, color: COLORS.textSecondary, marginTop: 4 }}>{l.reason}</div>
+                          )}
+                          {st === 'rejected' && l.rejection_reason && (
+                            <div style={{ fontSize: 0.74, color: COLORS.danger, marginTop: 4 }}>
+                              Rejected: {l.rejection_reason}
+                            </div>
+                          )}
+                          {st === 'pending' && (
+                            <ActionCell style={{ justifyContent: 'flex-start', marginTop: 6 }}>
+                              <SmallBtn
+                                className="approve"
+                                onClick={() => decideInPanel(l.id, 'approved', null)}
+                                disabled={detailActionId === l.id}
+                              >
+                                {detailActionId === l.id ? <Loader2 size={12} /> : <Check size={13} />} Approve
+                              </SmallBtn>
+                              <SmallBtn className="reject" onClick={() => rejectInPanel(l.id)} disabled={detailActionId === l.id}>
+                                {detailActionId === l.id ? <Loader2 size={12} /> : <XCircle size={13} />} Reject
+                              </SmallBtn>
+                            </ActionCell>
+                          )}
+                        </HistItem>
+                      );
+                    })
+                  )}
+                </>
+              )}
+            </DrawerBody>
+          </Drawer>
+        </Overlay>
       )}
     </Page>
   );

@@ -11,6 +11,7 @@ const {
   getUsersOnLeave,
   addLeaveDays,
   removeLeaveDays,
+  getUserDayAdditions,
   recordHolidayCompensation,
   addEmployee,
   getLeaveBalance,
@@ -77,6 +78,9 @@ router.post('/admin/add-days', addLeaveDays);
 
 // Remove leave days addition
 router.delete('/admin/add-days/:id', removeLeaveDays);
+
+// List an employee's manual leave-day additions (HR employee leave panel)
+router.get('/admin/additions/:user_id', getUserDayAdditions);
 
 // Record holiday compensation
 router.post('/admin/holiday-compensation', recordHolidayCompensation);

@@ -1079,7 +1079,7 @@ return (
       <section
         className="blog-banner"
         style={{ cursor: 'pointer' }}
-        onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/blog'); }}
+        onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/blog/stories'); }}
       >
         <div className="banner-track">
           {bannerItem(false)}

@@ -1,0 +1,36 @@
+diff --git a/services/florist-service/controllers/flowerSamples.ts b/services/florist-service/controllers/flowerSamples.ts
+index fa60d34d..e087d70c 100644
+--- a/services/florist-service/controllers/flowerSamples.ts
++++ b/services/florist-service/controllers/flowerSamples.ts
+@@ -96,14 +96,26 @@ const generateArrangementId = (): string => {
+ //   → browser URL  /uploads/<tenant-slug>/flowers/<file>.webp
+ // Each tenant gets its OWN folder; legacy layouts are tried as fallbacks so
+ // existing deployments keep working during the transition.
++// Sanitize the slug exactly like generateSlug() so the on-disk folder and the
++// /uploads/... URL always match and tenant files can never mix.
++const sanitizeSlug = (name: string): string => {
++  const cleaned = String(name || '')
++    .toLowerCase()
++    .replace(/[^a-z0-9._-]+/g, '-')
++    .replace(/-+/g, '-')
++    .replace(/^-|-$/g, '');
++  return cleaned || 'system_shared';
++};
++
+ const getUploadDirs = (tenantSlug: string): { dir: string; urlPrefix: string }[] => {
++  const slug = sanitizeSlug(tenantSlug);
+   const globalDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+   return [
+-    { dir: path.join(globalDir, tenantSlug, 'flowers'), urlPrefix: `/uploads/${tenantSlug}/flowers` },
+-    { dir: path.join(globalDir, 'FlowerSamples', tenantSlug), urlPrefix: `/uploads/FlowerSamples/${tenantSlug}` },
+-    { dir: path.join(__dirname, '../../uploads/FlowerSamples', tenantSlug), urlPrefix: `/uploads/FlowerSamples/${tenantSlug}` },
+-    { dir: path.join(process.cwd(), 'uploads/FlowerSamples', tenantSlug), urlPrefix: `/uploads/FlowerSamples/${tenantSlug}` },
+-    { dir: path.join('/app/uploads/FlowerSamples', tenantSlug), urlPrefix: `/uploads/FlowerSamples/${tenantSlug}` },
++    { dir: path.join(globalDir, slug, 'flowers'), urlPrefix: `/uploads/${slug}/flowers` },
++    { dir: path.join(globalDir, 'FlowerSamples', slug), urlPrefix: `/uploads/FlowerSamples/${slug}` },
++    { dir: path.join(__dirname, '../../uploads/FlowerSamples', slug), urlPrefix: `/uploads/FlowerSamples/${slug}` },
++    { dir: path.join(process.cwd(), 'uploads/FlowerSamples', slug), urlPrefix: `/uploads/FlowerSamples/${slug}` },
++    { dir: path.join('/app/uploads/FlowerSamples', slug), urlPrefix: `/uploads/FlowerSamples/${slug}` },
+   ];
+ };
+ 

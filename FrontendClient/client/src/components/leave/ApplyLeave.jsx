@@ -770,6 +770,110 @@ function LeaveCalendar({ myLeaves, rangeStart, rangeEnd, onRangeChange }) {
   );
 }
 
+// ─── ALL MY APPLICATIONS (full history + status) ─────────────────────────────
+
+const HistoryCard = styled.div`
+  margin-top: 1.5rem;
+  background: ${COLORS.white};
+  border: 1px solid ${COLORS.border};
+  border-radius: 16px;
+  padding: 1.2rem 1.4rem 1.4rem 1.4rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+`;
+
+const HistoryHead = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid ${COLORS.border};
+`;
+
+const FilterRow = styled.div`
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+`;
+
+const FilterChip = styled.button`
+  border: 1px solid ${(p) => (p.$active ? COLORS.primary : COLORS.border)};
+  background: ${(p) => (p.$active ? COLORS.primary : COLORS.white)};
+  color: ${(p) => (p.$active ? COLORS.white : COLORS.textSecondary)};
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover { border-color: ${COLORS.primary}; }
+`;
+
+const HistRow = styled.div`
+  border: 1px solid ${COLORS.border};
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  margin-top: 0.6rem;
+  background: ${COLORS.white};
+`;
+
+const HistTop = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+`;
+
+const HistType = styled.span`
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: ${COLORS.text};
+  text-transform: capitalize;
+`;
+
+const RefCode = styled.span`
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-family: monospace;
+  color: ${COLORS.textSecondary};
+  background: ${COLORS.bg};
+  padding: 0.12rem 0.45rem;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+`;
+
+const HistMeta = styled.div`
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: ${COLORS.textSecondary};
+`;
+
+const HistReason = styled.div`
+  margin-top: 0.45rem;
+  font-size: 0.8rem;
+  color: ${COLORS.text};
+  background: ${COLORS.bg};
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+`;
+
+const RejectBox = styled.div`
+  margin-top: 0.45rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: #B91C1C;
+  background: rgba(231, 76, 60, 0.08);
+  border: 1px solid rgba(231, 76, 60, 0.25);
+  border-radius: 8px;
+  padding: 0.45rem 0.65rem;
+`;
+
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 
 const ApplyLeave = () => {
@@ -803,6 +907,8 @@ const ApplyLeave = () => {
     const [form, setForm] = useState({ type: '', priority: 'medium', reason: '' });
     const [file, setFile] = useState(null);
     const [drag, setDrag] = useState(false);
+    // Filter for the "My leave applications" section below (all | pending | approved | rejected | cancelled)
+    const [historyFilter, setHistoryFilter] = useState('all');
 
     // ── Data loading (own leaves + balance, via parent/main database) ──
     const loadData = useCallback(async () => {
@@ -845,6 +951,23 @@ const ApplyLeave = () => {
         [myLeaves]
     );
     const recentRequests = useMemo(() => myLeaves.slice(0, 6), [myLeaves]);
+
+    // ── Full application history (ALL my applications + their status) ──
+    const historyCounts = useMemo(() => {
+        const c = { all: myLeaves.length, pending: 0, approved: 0, rejected: 0, cancelled: 0 };
+        myLeaves.forEach((l) => {
+            const s = String(l.status || '').toLowerCase();
+            if (c[s] !== undefined) c[s] += 1;
+        });
+        return c;
+    }, [myLeaves]);
+
+    const filteredRequests = useMemo(
+        () => (historyFilter === 'all'
+            ? myLeaves
+            : myLeaves.filter((l) => String(l.status || '').toLowerCase() === historyFilter)),
+        [myLeaves, historyFilter]
+    );
 
     const canSubmit = Boolean(userId && form.type && range.start && range.end && form.reason.trim() && !submitting);
 
@@ -1119,7 +1242,8 @@ const ApplyLeave = () => {
 
                     <Card>
                         <CardTitle>
-                            My requests
+                            Recent requests
+                            <DaysBadge>{myLeaves.length} total</DaysBadge>
                             {pendingRequests.length > 0 && <DaysBadge>{pendingRequests.length} pending</DaysBadge>}
                         </CardTitle>
                         {loading ? (
@@ -1148,6 +1272,59 @@ const ApplyLeave = () => {
                     </Card>
                 </div>
             </Layout>
+
+            {/* ── ALL my leave applications & their status ── */}
+            <HistoryCard>
+                <HistoryHead>
+                    <CardTitle style={{ margin: 0 }}><FileText size={16} /> My leave applications</CardTitle>
+                    <FilterRow>
+                        {['all', 'pending', 'approved', 'rejected', 'cancelled'].map((s) => (
+                            <FilterChip key={s} $active={historyFilter === s} onClick={() => setHistoryFilter(s)}>
+                                {s} ({historyCounts[s] ?? 0})
+                            </FilterChip>
+                        ))}
+                    </FilterRow>
+                </HistoryHead>
+
+                {loading ? (
+                    <LoadingRow><Loader2 size={14} /> Loading your applications...</LoadingRow>
+                ) : filteredRequests.length === 0 ? (
+                    <Empty>
+                        {historyFilter === 'all'
+                            ? 'No leave applications yet — select your dates above and submit your first request.'
+                            : `No ${historyFilter} applications.`}
+                    </Empty>
+                ) : (
+                    filteredRequests.map((l) => {
+                        const st = String(l.status || 'pending').toLowerCase();
+                        return (
+                            <HistRow key={l.id || `${l.start_date}-${l.end_date}-${l.created_at}`}>
+                                <HistTop>
+                                    <HistType>
+                                        {String(l.leave_type || 'leave').replace('_', ' ')}
+                                        {l.is_half_day ? ' · half day' : ''}
+                                    </HistType>
+                                    {l.reference_code && <RefCode>{l.reference_code}</RefCode>}
+                                    <StatusBadge $status={st}>{st}</StatusBadge>
+                                    {st === 'pending' && (
+                                        <CancelBtn onClick={() => handleCancel(l.id)}>Cancel request</CancelBtn>
+                                    )}
+                                </HistTop>
+                                <HistMeta>
+                                    {formatDate(l.start_date)} &rarr; {formatDate(l.end_date)}
+                                    {' '}&middot;{' '}{l.days ?? countBusinessDays(l.start_date, l.end_date)} day(s)
+                                    {' '}&middot;{' '}applied {formatDate(l.created_at)}
+                                    {l.approved_at ? ` · decided ${formatDate(l.approved_at)}` : ''}
+                                </HistMeta>
+                                {l.reason && <HistReason>{l.reason}</HistReason>}
+                                {st === 'rejected' && l.rejection_reason && (
+                                    <RejectBox><AlertCircle size={13} /> {l.rejection_reason}</RejectBox>
+                                )}
+                            </HistRow>
+                        );
+                    })
+                )}
+            </HistoryCard>
         </Container>
     );
 };

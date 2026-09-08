@@ -729,7 +729,8 @@ const AppRouter = () => (
       <Route path="/pricing" element={<PricingPage />} />
 
       // Blog and Resource Routes
-      <Route path="/blog" element={<BlogIndex />} />
+      <Route path="/blog" element={<Navigate to="/blog/architecture-of-blooms" replace />} />
+      <Route path="/blog/stories" element={<BlogIndex />} />
       <Route path="/blog/funeral-welfare-management" element={<FuneralWelfareGuide />} />
       <Route path="/blog/bereavement-management" element={<BereavementManagementGuide />} />
       <Route path="/blog/member-contributions" element={<MemberContributionsGuide />} />

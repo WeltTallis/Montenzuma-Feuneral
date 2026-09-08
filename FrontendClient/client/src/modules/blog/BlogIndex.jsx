@@ -1,11 +1,26 @@
-﻿import { Helmet } from 'react-helmet-async';
+﻿import { useEffect, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
+import api from '../../api/axios';
 import { JOURNAL_CSS } from './JournalArticle';
 
 /* =================================================================
    RESTPOINT JOURNAL — /blog index
    Lists every Restpoint Journal story in the editorial design.
+   NOTE: /blog redirects to the flagship article; this index now
+   lives at /blog/stories.
    ================================================================= */
+
+// 14300 -> "14k", 612 -> "612"
+const fmtCount = (n) => {
+  const v = Number(n) || 0;
+  if (v >= 1000) return `${(v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, '')}k`;
+  return String(v);
+};
+
+const slugFrom = (to) => String(to || '').replace(/^\/blog\//, '');
+const statsLabel = (s) =>
+  s ? `${fmtCount(s.views)} Reads · ${fmtCount(s.likes)} Likes · ${fmtCount(s.commentCount || 0)} Comments` : null;
 
 const POSTS = [
   {
@@ -79,7 +94,8 @@ const INDEX_CSS = `
   .ji-card h3{font-family:'Fraunces',serif;font-size:1.65rem;font-weight:400;line-height:1.05;letter-spacing:-0.02em;color:var(--ink)}
   .ji-card h3 em{font-style:italic;color:var(--accent)}
   .ji-card p{font-size:0.95rem;line-height:1.65;color:var(--grayLight)}
-  .ji-meta{font-family:'JetBrains Mono',monospace;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--gray);display:flex;gap:1.2rem;margin-top:auto}
+  .ji-meta{font-family:'JetBrains Mono',monospace;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--gray);display:flex;gap:1.2rem;margin-top:auto;flex-wrap:wrap}
+  .ji-stats{font-family:'JetBrains Mono',monospace;font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent)}
   @media (max-width:920px){.ji-featured{grid-template-columns:1fr}.ji-featured-img{min-height:260px}.ji-grid{grid-template-columns:1fr}}
 `;
 
@@ -88,13 +104,29 @@ const BlogIndex = () => {
   const open = (to) => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate(to); };
   const featured = POSTS[0];
   const rest = POSTS.slice(1);
+  // Engagement summary (views / likes / comments per story) from the
+  // tenant-service blog-engagement API. Fails soft: offline -> cards simply
+  // render without the stats row.
+  const [stats, setStats] = useState({});
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/blog-engagement')
+      .then((r) => {
+        if (!cancelled && r.data && r.data.data && typeof r.data.data === 'object') {
+          setStats(r.data.data);
+        }
+      })
+      .catch(() => { /* counts unavailable -> hide the stats rows */ });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <>
       <Helmet>
         <title>Restpoint Journal — Field Notes on Death Care Technology | RestPoint</title>
         <meta name="description" content="Field notes and deep dives on death care technology: fully automated funeral homes, bereavement management, member contributions and funeral welfare — from the Restpoint team." />
-        <link rel="canonical" href="https://restpoint.co.ke/blog" />
+        <link rel="canonical" href="https://restpoint.co.ke/blog/stories" />
       </Helmet>
 
       <style>{JOURNAL_CSS}</style>
@@ -151,23 +183,34 @@ const BlogIndex = () => {
             <div className="ji-cat">{featured.category} · Featured</div>
             <h2>{featured.title}<br /><em>{featured.accent}</em></h2>
             <p>{featured.excerpt}</p>
+            {statsLabel(stats[slugFrom(featured.to)]) && (
+              <div className="ji-stats">{statsLabel(stats[slugFrom(featured.to)])}</div>
+            )}
             <div className="ji-read">Read the story →</div>
           </div>
         </button>
 
         <div className="ji-grid">
-          {rest.map((p) => (
-            <button key={p.to} className="ji-card" onClick={() => open(p.to)}>
-              <div className="ji-cat">{p.category}</div>
-              <h3>{p.title}<br /><em>{p.accent}</em></h3>
-              <p>{p.excerpt}</p>
-              <div className="ji-meta">
-                <span>{p.read}</span>
-                <span>{p.date}</span>
-                <span>{p.author}</span>
-              </div>
-            </button>
-          ))}
+          {rest.map((p) => {
+            const st = stats[slugFrom(p.to)];
+            return (
+              <button key={p.to} className="ji-card" onClick={() => open(p.to)}>
+                <div className="ji-cat">{p.category}</div>
+                <h3>{p.title}<br /><em>{p.accent}</em></h3>
+                <p>{p.excerpt}</p>
+                <div className="ji-meta">
+                  <span>{p.read}</span>
+                  <span>{p.date}</span>
+                  <span>{p.author}</span>
+                  {st && (
+                    <span className="ji-stat">
+                      {fmtCount(st.views)} reads · {fmtCount(st.likes)} likes · {fmtCount(st.commentCount || 0)} comments
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 

@@ -1,0 +1,4 @@
+(node:22136) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+THROUGH-GATEWAY STATUS: 200
+THROUGH-GATEWAY BODY: {"receivedBody":{"title":"White Rose Wreath","description":"A beautiful white rose wreath","types":"Wreath, Spray","colors":"White, Red","sizes":"Small, Medium, Large"},"fileCount":1}

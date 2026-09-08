@@ -40,8 +40,14 @@ export const getAllDeceased = async (
             search = "",
             q = "",
             page = "1",
-            limit = "50"
+            limit = "50",
+            year = "",
+            month = ""
         } = req.query;
+
+        // Optional calendar scoping (horizontal calendar fetches per year)
+        const yearParam = year && Number.isFinite(Number(year)) ? Number(year) : null;
+        const monthParam = month && Number.isFinite(Number(month)) ? Number(month) : null;
 
         const pageNumber = Math.max(Number(page) || 1, 1);
         const limitNumber = Math.min(Math.max(Number(limit) || 50, 1), 100);
@@ -53,7 +59,7 @@ export const getAllDeceased = async (
 
         // REDIS CACHE KEY
    
-        const cacheKey = `deceased:list:${tenantId}:page:${pageNumber}:limit:${limitNumber}:search:${searchTerm}`;
+        const cacheKey = `deceased:list:${tenantId}:page:${pageNumber}:limit:${limitNumber}:search:${searchTerm}:year:${yearParam}:month:${monthParam}`;
 
         // Try to get from cache
         const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);
@@ -75,6 +81,20 @@ export const getAllDeceased = async (
             whereClause = `WHERE (full_name LIKE ? OR deceased_id LIKE ?)`;
             const keyword = `%${searchTerm}%`;
             params.push(keyword, keyword);
+        }
+
+        // Calendar scoping: /deceased-all?year=2025&month=3
+        if (yearParam) {
+            whereClause += whereClause
+                ? ` AND YEAR(COALESCE(date_admitted, created_at)) = ?`
+                : `WHERE YEAR(COALESCE(date_admitted, created_at)) = ?`;
+            params.push(yearParam);
+        }
+        if (monthParam) {
+            whereClause += whereClause
+                ? ` AND MONTH(COALESCE(date_admitted, created_at)) = ?`
+                : `WHERE MONTH(COALESCE(date_admitted, created_at)) = ?`;
+            params.push(monthParam);
         }
 
         const countQuery = `SELECT COUNT(*) total FROM deceased ${whereClause}`;

@@ -9,6 +9,8 @@ import LandingPageSEO from '../seo/LandingPageSEO';
 import Footer from '../../components/layout/Footer';
 import ModuleGridSection from './imageCard';
 import FloatingCTA from './FloatingCTA';
+import SiteNav from './nav';
+import Hero from './hero';
 import FaqSection from './FaqSection';
 import MissionSection from './Mission';
 import C from '../../utils/colors/index'
@@ -95,13 +97,6 @@ const AnimatedNumber = ({ end, suffix = '', duration = 2000 }) => {
 /* ═══════════════════════════════════════
    SHARED COMPONENTS
    ═══════════════════════════════════════ */
-const Mark = ({ size = 28, color = C.verdigris }) => (
-  <svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
-    <circle cx="16" cy="16" r="15" stroke={color} strokeWidth="1.5" />
-    <path d="M16 8V24M8 16H24" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-    <circle cx="16" cy="16" r="3.5" fill={color} />
-  </svg>
-);
 
 const AppWindow = ({ title, children, dark = false }) => (
   <div className={`app-window ${dark ? 'dark' : 'light'}`}>
@@ -129,85 +124,6 @@ const Marquee = ({ items, speed = 35 }) => (
     </div>
   </div>
 );
-
-/* ═══════════════════════════════════════
-   NAVIGATION (FIXED DROPDOWN)
-   ═══════════════════════════════════════ */
-const PolicyDropdown = ({ navigate, goTerms }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useOutsideClick(ref, () => setOpen(false));
-
-  const policies = [
-    { label: 'Terms of Service', onClick: goTerms, icon: FileText },
-    { label: 'Privacy Policy', onClick: () => navigate('/privacy'), icon: Lock },
-    { label: 'Security Policy', onClick: () => navigate('/security'), icon: ShieldCheck },
-    { label: 'Data Migration Policy', onClick: () => navigate('/data-migration'), icon: Server },
-    { label: 'SLA Policy', onClick: () => navigate('/sla'), icon: Zap },
-    { label: 'Release Notes', onClick: () => navigate('/releases'), icon: Newspaper },
-    { label: 'Account Deletion', onClick: () => navigate('/account-deletion'), icon: X },
-  ];
-
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button onClick={() => setOpen(!open)} className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-        Policies<ChevronDown size={14} style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }} />
-      </button>
-      <div className="policy-dropdown" style={{
-        opacity: open ? 1 : 0,
-        transform: open ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(0.97)',
-        pointerEvents: open ? 'auto' : 'none',
-      }}>
-        <div className="policy-dropdown-inner">
-          {policies.map((p, i) => (
-            <button key={i} onClick={() => { p.onClick(); setOpen(false); }} className="policy-dropdown-item">
-              <p.icon size={15} className="policy-item-icon" />
-              <span>{p.label}</span>
-              <ArrowRight size={13} className="policy-item-arrow" />
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useOutsideClick(ref, () => setOpen(false));
-  const policies = [
-    { label: 'Terms of Service', onClick: goTerms },
-    { label: 'Privacy Policy', onClick: () => navigate('/privacy') },
-    { label: 'Data Migration Policy', onClick: () => navigate('/data-migration') },
-    { label: 'SLA Policy', onClick: () => navigate('/sla') },
-    { label: 'Release Notes', onClick: () => navigate('/releases') },
-    { label: 'Account Deletion', onClick: () => navigate('/account-deletion') },
-  ];
-  return (
-    <div ref={ref} style={{ position: 'relative' }} className="mobile-nav">
-      <button onClick={() => setOpen(!open)} className="nav-link" style={{ display: 'flex', alignItems: 'center', padding: '0.5rem' }}>
-        {open ? <X size={22} /> : <Menu size={22} />}
-      </button>
-      {open && (
-        <div className="mobile-menu-container">
-          <a href="#features" onClick={() => setOpen(false)} className="mobile-link">Features</a>
-          <a href="#modules" onClick={() => setOpen(false)} className="mobile-link">Modules</a>
-          <button onClick={() => { navigate('/about'); setOpen(false); }} className="mobile-link">About</button>
-          <button onClick={() => { navigate('/blog'); setOpen(false); }} className="mobile-link">Blog</button>
-          <div className="mobile-policies-header">
-            <div className="mono-label" style={{ color: C.brass, padding: '0.6rem 1.2rem' }}>Policies</div>
-            {policies.map((p, i) => (
-              <button key={i} onClick={() => { p.onClick(); setOpen(false); }} className="mobile-link" style={{ paddingLeft: '2rem', fontSize: '0.82rem' }}>{p.label}</button>
-            ))}
-          </div>
-          <button onClick={() => { goLogin(); setOpen(false); }} className="mobile-link">Log in</button>
-          <button onClick={() => { goStart(); setOpen(false); }} className="mobile-link" style={{ color: C.verdigris, fontWeight: 600 }}>Request access</button>
-        </div>
-      )}
-    </div>
-  );
-};
 
 /* ═══════════════════════════════════════
    MOCK COMPONENTS
@@ -395,9 +311,6 @@ const MockSupport = () => (
 
 /* ── Floral Preview ── */
 const FLP_FONTS_ID = 'flp-fraunces-font';
-const FLP_DEFAULT_TITLE = (
-  <>Choose your<br /><em>floral tribute</em></>
-);
 const FLP_FLOWERS = [
   {
     img: 'https://www.purpink.co.ke/cdn/shop/products/mixed-rose-and-baby-breath-funeral-heart-flowers-15918094876735.jpg?v=1611511543&width=1240',
@@ -423,16 +336,16 @@ const FLP_FLOWERS = [
 
 const FloralPreview = () => {
   const [index, setIndex] = useState(0);
-  const [title, setTitle] = useState(FLP_DEFAULT_TITLE);
   const [fading, setFading] = useState(false);
   const fadeTimer = useRef(null);
+  const indexRef = useRef(0);
 
   useEffect(() => {
     if (!document.getElementById(FLP_FONTS_ID)) {
       const link = document.createElement('link');
       link.id = FLP_FONTS_ID;
       link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;1,9..144,200;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap';
+      link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap';
       document.head.appendChild(link);
     }
     FLP_FLOWERS.forEach((f) => { const im = document.createElement('img'); im.src = f.img; });
@@ -443,41 +356,55 @@ const FloralPreview = () => {
     let i = next;
     if (i < 0) i = FLP_FLOWERS.length - 1;
     if (i >= FLP_FLOWERS.length) i = 0;
-    if (i === index && title !== FLP_DEFAULT_TITLE) return;
+    if (i === indexRef.current) return;
+    indexRef.current = i;
     setFading(true);
     if (fadeTimer.current) clearTimeout(fadeTimer.current);
     fadeTimer.current = setTimeout(() => {
       setIndex(i);
-      setTitle(FLP_FLOWERS[i].title);
       setFading(false);
-    }, 300);
+    }, 400);
   };
 
+  /* Auto-rotate the tribute every 4 seconds */
+  useEffect(() => {
+    const t = setInterval(() => setFlower(indexRef.current + 1), 4000);
+    return () => clearInterval(t);
+  }, []);
+
+  const current = FLP_FLOWERS[index];
+
   return (
-    <div className="flp-root">
-      <img className="flp-hero" src={FLP_FLOWERS[index].img} alt={FLP_FLOWERS[index].alt} style={{ opacity: fading ? 0 : 1 }} />
-      <div className="flp-overlay" />
-      <div className="flp-zone flp-prev" onClick={() => setFlower(index - 1)} />
-      <div className="flp-zone flp-next" onClick={() => setFlower(index + 1)} />
-      <div className="flp-strip">
-        {FLP_FLOWERS.map((f, i) => (
-          <button key={f.label} className="flp-story" style={{ animationDelay: `${i * 0.18}s` }} onClick={(e) => { e.stopPropagation(); setFlower(i); }}>
-            <div className={`flp-ring ${i === index ? 'flp-unseen' : 'flp-seen'}`} style={{ width: 78, height: 78 }}>
-              <div className="flp-ring-inner" style={{ width: 72, height: 72 }}>
-                <img src={f.img} alt={f.alt} />
+    <div className="flp-tablet-wrapper">
+      <div className="flp-tablet-scale">
+        <div className="flp-tablet-scale-inner">
+          <div className="flp-tablet-frame">
+            <div className="flp-tablet-screen">
+              <img className="flp-hero" src={current.img} alt={current.alt} style={{ opacity: fading ? 0 : 1 }} />
+              <div className="flp-overlay" />
+              <div className="flp-strip">
+                {FLP_FLOWERS.map((f, i) => (
+                  <button key={f.label} className="flp-story" onClick={() => setFlower(i)}>
+                    <div className={`flp-ring ${i === index ? 'flp-unseen' : 'flp-seen'}`}>
+                      <div className="flp-ring-inner">
+                        <img src={f.img} alt={f.alt} />
+                      </div>
+                    </div>
+                    <span className="flp-story-label">{f.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flp-title-block">
+                <div className="flp-name-tag">Floral Tributes</div>
+                <h2 className="flp-headline" style={{ opacity: fading ? 0 : 1, transform: fading ? 'translateY(15px)' : 'translateY(0)' }}>{current.title}</h2>
+              </div>
+              <div className="flp-wordmark">
+                <div className="flp-wordmark-name">Memorial Florals</div>
+                <div className="flp-wordmark-sub">Est. since care began</div>
               </div>
             </div>
-            <span className="flp-story-label">{f.label}</span>
-          </button>
-        ))}
-      </div>
-      <div className="flp-title-block">
-        <div className="flp-name-tag">Floral Tributes</div>
-        <h2 className="flp-headline" style={{ opacity: fading ? 0 : 1 }}>{title}</h2>
-      </div>
-      <div className="flp-wordmark">
-        <div className="flp-wordmark-name">Memorial Florals</div>
-        <div className="flp-wordmark-sub">Est. since care began</div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -498,17 +425,13 @@ const Showcase = ({ no, title, desc, reverse, children }) => (
    MAIN APP
    ═══════════════════════════════════════ */
 export default function App() {
-  const [loaded, setLoaded] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
 
-  const goLogin = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/login'); };
-  const goStart = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/register'); };
-  const goTerms = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/terms'); };
-  const goAbout = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/about'); };
-
-  useEffect(() => { const t = setTimeout(() => setLoaded(true), 60); return () => clearTimeout(t); }, []);
-  useEffect(() => { const onScroll = () => setScrolled(window.scrollY > 50); window.addEventListener('scroll', onScroll, { passive: true }); return () => window.removeEventListener('scroll', onScroll); }, []);
+  const goStart = () => { window.scrollTo({ top: 0, behavior: 
+'smooth'
+ }); navigate(
+'/register'
+); };
 
   const landingModules = [
     { dark: true, to: true, category: 'NEW · INTEGRATED', accent: C.brass, title: 'Leave Management', excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve and track time off in real time — no spreadsheets, no external HR tools.', status: 'NOW LIVE' },
@@ -525,7 +448,7 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; overflow-x: hidden; }
-        body { font-family: 'Inter', sans-serif; color: ${C.gray}; background: ${C.bone}; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+        body { font-family: 'Inter', sans-serif; color: ${C.gray}; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
         h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; color: ${C.ink}; }
         h1 { font-size: clamp(2rem, 6.5vw, 4.6rem); line-height: 1.05; margin-bottom: 1.4rem; }
         h2 { font-size: clamp(1.9rem, 4vw, 2.5rem); line-height: 1.2; }
@@ -544,49 +467,6 @@ export default function App() {
         
         /* FIX: Massively increased outer padding for balance */
         .wrap { max-width: 1200px; margin: 0 auto; width: 100%; padding-left: clamp(2rem, 7vw, 5rem) !important; padding-right: clamp(2rem, 7vw, 5rem) !important; }
-        nav .wrap { overflow: visible !important; }
-
-        /* ── Nav ── */
-        nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: rgba(250,248,244,0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid ${C.line}; padding: 1.2rem 0; transition: all 0.4s ease; }
-        nav.scrolled { background: rgba(250,248,244,0.96); box-shadow: 0 1px 12px rgba(21,23,26,0.06); }
-        .nav-wrap { display: flex; justify-content: space-between; align-items: center; }
-        .logo { display: flex; align-items: center; gap: 0.7rem; font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 500; color: ${C.ink}; cursor: pointer; transition: opacity 0.3s; }
-        .logo:hover { opacity: 0.8; }
-        .nav-links { display: flex; gap: 2.5rem; align-items: center; }
-        .nav-link { font-size: 0.85rem; color: ${C.gray}; text-decoration: none; cursor: pointer; transition: color 0.2s; background: transparent; border: none; font-family: 'Inter', sans-serif; padding: 0.5rem 0; position: relative; }
-        .nav-link::after { content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 1.5px; background: ${C.verdigris}; transition: width 0.3s ease; }
-        .nav-link:hover { color: ${C.verdigris}; }
-        .nav-link:hover::after { width: 100%; }
-        .nav-cta { display: flex; gap: 0.75rem; }
-        .mobile-nav { display: none; }
-
-        .policy-dropdown { position: absolute; top: calc(100% + 8px); right: 0; background: ${C.bone}; border: 1px solid ${C.line}; border-radius: 12px; min-width: 280px; z-index: 1000; box-shadow: 0 24px 48px rgba(21,23,26,0.12), 0 0 0 1px rgba(21,23,26,0.03); overflow: hidden; transition: all 0.3s cubic-bezier(0.16,1,0.3,1); transform-origin: top right; }
-        .policy-dropdown-inner { padding: 0.4rem; }
-        .policy-dropdown-item { width: 100%; padding: 0.75rem 1rem; background: none; border: none; text-align: left; cursor: pointer; font-size: 0.84rem; color: ${C.gray}; border-radius: 8px; transition: all 0.2s; font-family: 'Inter', sans-serif; display: flex; align-items: center; gap: 0.75rem; }
-        .policy-dropdown-item:hover { background: ${C.bone2}; color: ${C.ink}; }
-        .policy-item-icon { flex-shrink: 0; color: ${C.grayDark}; transition: color 0.2s; }
-        .policy-dropdown-item:hover .policy-item-icon { color: ${C.verdigris}; }
-        .policy-item-arrow { margin-left: auto; flex-shrink: 0; color: ${C.gray}; opacity: 0; transform: translateX(-4px); transition: all 0.2s; }
-        .policy-dropdown-item:hover .policy-item-arrow { opacity: 1; transform: translateX(0); color: ${C.verdigris}; }
-
-        .mobile-menu-container { position: absolute; top: 100%; right: 0; background: ${C.bone}; border: 1px solid ${C.line}; border-radius: 8px; min-width: 280px; margin-top: 0.75rem; z-index: 1000; box-shadow: 0 20px 40px rgba(21,23,26,0.08); overflow: hidden; }
-        .mobile-link { display: block; width: 100%; padding: 0.9rem 1.2rem; background: none; border: none; text-align: left; cursor: pointer; font-size: 0.88rem; color: ${C.gray}; text-decoration: none; border-bottom: 1px solid ${C.line}; font-family: 'Inter', sans-serif; transition: background 0.2s; }
-        .mobile-link:hover { background: ${C.bone2}; }
-        .mobile-policies-header { padding: 0.5rem 0; border-bottom: 1px solid ${C.line}; background: ${C.bone2}; }
-
-        /* ── Hero ── */
-        .hero { padding-top: 140px; padding-bottom: 0; position: relative; overflow: hidden; }
-        .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 20% 50%,rgba(61,79,71,0.06) 0%,transparent 50%),radial-gradient(circle at 80% 80%,rgba(139,115,85,0.05) 0%,transparent 50%); pointer-events: none; }
-        .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; position: relative; z-index: 1; }
-        .hero-desc { font-size: 1.1rem; max-width: 100%; margin-bottom: 2rem; color: ${C.gray}; line-height: 1.8; }
-        .hero-buttons { display: flex; gap: 1rem; flex-wrap: wrap; }
-
-        .sales-banner { position: relative; border-radius: 16px; overflow: hidden; margin-top: 3rem; box-shadow: 0 30px 60px -15px rgba(21,23,26,0.2); border: 1px solid ${C.line}; animation: subtle-float 6s ease-in-out infinite; }
-        .sales-banner-img { width: 100%; height: clamp(250px,35vw,420px); object-fit: cover; display: block; transition: transform 8s ease; }
-        .sales-banner:hover .sales-banner-img { transform: scale(1.03); }
-        .sales-banner-overlay { position: absolute; inset: 0; background: linear-gradient(90deg,rgba(21,23,26,0.88) 0%,rgba(21,23,26,0.45) 50%,rgba(21,23,26,0.1) 100%); pointer-events: none; }
-        .sales-banner-shine { position: absolute; top: 0; left: -100%; width: 60%; height: 100%; background: linear-gradient(90deg,transparent,rgba(250,248,244,0.07),transparent); animation: shine 5s ease-in-out infinite 3s; pointer-events: none; }
-        .sales-banner-content { position: absolute; bottom: clamp(1.5rem,4vw,3rem); left: clamp(1.5rem,4vw,3rem); z-index: 2; max-width: 480px; }
 
         .marquee-strip { overflow: hidden; border-top: 1px solid ${C.line}; border-bottom: 1px solid ${C.line}; padding: 0.9rem 0; background: #000000; }
         .marquee-track { display: flex; width: max-content; animation: marquee 35s linear infinite; }
@@ -658,37 +538,42 @@ export default function App() {
         .app-window.dark .window-title { color: ${C.grayLight}; }
         .mock-inner { padding: 0.5rem; }
 
-        /* ── Floral Preview ── */
-        .flp-bleed { margin: -2rem; }
-        .flp-root { position: relative; height: clamp(360px,44vw,540px); overflow: hidden; background: #0a0b0c; cursor: pointer; font-family: 'Inter',sans-serif; user-select: none; }
+        /* ── Floral Tablet Preview ── */
+        .flp-tablet-wrapper { display: flex; justify-content: center; width: 100%; animation: flpTabletFloat 6s ease-in-out infinite; }
+        .flp-tablet-scale { --s: 1; width: calc(400px * var(--s)); height: calc(560px * var(--s)); flex-shrink: 0; }
+        .flp-tablet-scale-inner { width: 400px; height: 560px; transform: scale(var(--s)); transform-origin: top left; }
+        .flp-tablet-frame { width: 400px; height: 560px; background: #0a0b0c; border-radius: 32px; padding: 12px; box-shadow: 0 50px 100px -20px rgba(21,23,26,0.4),0 30px 60px -30px rgba(0,0,0,0.3),inset 0 0 0 2px rgba(255,255,255,0.05); position: relative; }
+        .flp-tablet-frame::before { content: ''; position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; background: #1a1b1c; border-radius: 50%; z-index: 10; }
+        .flp-tablet-screen { width: 100%; height: 100%; background: #0a0b0c; border-radius: 22px; overflow: hidden; position: relative; font-family: 'Inter',sans-serif; user-select: none; }
         .flp-hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.75) saturate(0.95); transition: opacity .6s ease-in-out; }
-        .flp-overlay { position: absolute; inset: 0; background: linear-gradient(180deg,rgba(10,11,12,0.5) 0%,rgba(10,11,12,0.02) 30%,rgba(10,11,12,0.02) 55%,rgba(10,11,12,0.85) 100%); pointer-events: none; z-index: 5; }
-        .flp-zone { position: absolute; top: 0; bottom: 0; width: 35%; z-index: 2; }
-        .flp-prev { left: 0; }
-        .flp-next { right: 0; }
-        .flp-strip { position: absolute; top: 0; left: 0; right: 0; z-index: 20; padding: 22px 30px 0; display: flex; align-items: flex-start; gap: 16px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .flp-overlay { position: absolute; inset: 0; background: linear-gradient(180deg,rgba(10,11,12,0.4) 0%,rgba(10,11,12,0.02) 30%,rgba(10,11,12,0.02) 55%,rgba(10,11,12,0.85) 100%); pointer-events: none; z-index: 5; }
+        .flp-strip { position: absolute; top: 0; left: 0; right: 0; z-index: 20; padding: 25px 25px 0; display: flex; align-items: flex-start; gap: 14px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
         .flp-strip::-webkit-scrollbar { display: none; }
-        .flp-story { display: flex; flex-direction: column; align-items: center; gap: 9px; background: none; border: none; cursor: pointer; padding: 0; flex-shrink: 0; animation: flpFloat 3.2s ease-in-out infinite; position: relative; z-index: 25; }
+        .flp-story { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 0; flex-shrink: 0; position: relative; z-index: 25; }
         .flp-ring { border-radius: 50%; padding: 2.5px; transition: transform .3s cubic-bezier(0.16,1,0.3,1); position: relative; }
-        .flp-ring.flp-unseen { background: conic-gradient(rgba(255,255,255,0.85) 0deg,rgba(200,200,200,0.5) 90deg,rgba(255,255,255,0.85) 180deg,rgba(200,200,200,0.5) 270deg,rgba(255,255,255,0.85) 360deg); box-shadow: 0 0 14px rgba(255,255,255,0.15),0 8px 24px rgba(0,0,0,0.6); animation: flpFloat 3.2s ease-in-out infinite,flpPulse 2.8s ease-in-out infinite; }
+        .flp-ring.flp-unseen { background: conic-gradient(rgba(255,255,255,0.85) 0deg,rgba(200,200,200,0.5) 90deg,rgba(255,255,255,0.85) 180deg,rgba(200,200,200,0.5) 270deg,rgba(255,255,255,0.85) 360deg); box-shadow: 0 0 14px rgba(255,255,255,0.15),0 8px 24px rgba(0,0,0,0.6); animation: flpPulse 2.8s ease-in-out infinite,flpFloat 3.2s ease-in-out infinite; }
         .flp-ring.flp-seen { background: rgba(255,255,255,0.18); box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
         .flp-story:hover .flp-ring { transform: scale(1.06); }
-        .flp-ring-inner { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; border: 2.5px solid #0a0b0c; background: #1a1b1c; }
-        .flp-ring-inner img { width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(0.88); transition: filter .3s,transform .4s cubic-bezier(0.16,1,0.3,1); }
+        .flp-ring-inner { width: 60px; height: 60px; border-radius: 50%; overflow: hidden; border: 2.5px solid #0a0b0c; background: #1a1b1c; }
+        .flp-ring-inner img { width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(0.88); transition: filter .3s, transform .4s; }
         .flp-story:hover .flp-ring-inner img { filter: brightness(1.05); transform: scale(1.1); }
-        .flp-story-label { font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,0.6); text-align: center; transition: color .2s; max-width: 70px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .flp-story-label { font-size: 8px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,0.6); text-align: center; transition: color .2s; max-width: 65px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .flp-story:hover .flp-story-label { color: rgba(255,255,255,0.95); }
-        .flp-title-block { position: absolute; bottom: 34px; left: 30px; z-index: 10; animation: flpFadeUp 1.2s cubic-bezier(0.16,1,0.3,1); pointer-events: none; }
+        .flp-title-block { position: absolute; bottom: 40px; left: 25px; z-index: 10; animation: flpFadeUp 1.2s cubic-bezier(0.16,1,0.3,1); pointer-events: none; }
         .flp-name-tag { font-size: 9px; font-weight: 600; letter-spacing: .35em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 10px; }
-        .flp-headline { font-family: 'Fraunces',serif; font-weight: 200; font-size: clamp(26px,3.4vw,44px); line-height: 1.05; color: #fff; letter-spacing: -0.02em; margin: 0; transition: opacity .3s ease; }
-        .flp-headline em { font-style: italic; font-weight: 200; color: rgba(255,255,255,0.65); }
-        .flp-wordmark { position: absolute; bottom: 34px; right: 30px; z-index: 10; text-align: right; animation: flpFadeUp 1.4s cubic-bezier(0.16,1,0.3,1); pointer-events: none; }
+        .flp-headline { font-family: 'Fraunces',serif; font-weight: 300; font-size: 32px; line-height: 1.05; color: #fff; letter-spacing: -0.02em; margin: 0; transition: opacity .4s ease, transform .4s ease; }
+        .flp-headline em { font-style: italic; font-weight: 300; color: rgba(255,255,255,0.65); }
+        .flp-wordmark { position: absolute; bottom: 40px; right: 25px; z-index: 10; text-align: right; animation: flpFadeUp 1.4s cubic-bezier(0.16,1,0.3,1); pointer-events: none; }
         .flp-wordmark-name { font-family: 'Fraunces',serif; font-size: 14px; font-weight: 300; color: rgba(255,255,255,0.4); letter-spacing: .04em; }
         .flp-wordmark-sub { font-size: 8px; font-weight: 500; letter-spacing: .28em; color: rgba(255,255,255,0.2); text-transform: uppercase; margin-top: 4px; }
         @keyframes flpFadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes flpFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
         @keyframes flpPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0),0 8px 32px rgba(0,0,0,0.5); } 50% { box-shadow: 0 0 0 4px rgba(255,255,255,0.12),0 8px 32px rgba(0,0,0,0.5); } }
-        @media (max-width:768px) { .flp-strip { padding: 16px 18px 0; gap: 12px; } .flp-title-block { left: 18px; bottom: 22px; } .flp-wordmark { right: 18px; bottom: 22px; } .flp-root { height: 340px; } }
+        @keyframes flpTabletFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        /* Responsive: keep the 400×560 design intact and scale it down proportionally */
+        @media (max-width:500px) { .flp-tablet-scale { --s: 0.85; } }
+        @media (max-width:380px) { .flp-tablet-scale { --s: 0.72; } }
+        @media (max-width:330px) { .flp-tablet-scale { --s: 0.62; } }
 
         .mock-list-header { display: flex; justify-content: space-between; font-size: 0.7rem; font-family: 'JetBrains Mono',monospace; color: ${C.gray}; padding-bottom: 0.5rem; border-bottom: 1px solid ${C.line}; margin-bottom: 0.5rem; }
         .mock-row { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid ${C.line}; font-size: 0.9rem; }
@@ -773,22 +658,16 @@ export default function App() {
         @keyframes gradient-text { 0% { background-position: 0% center; } 50% { background-position: 100% center; } 100% { background-position: 0% center; } }
         @keyframes truckMove { from { left: 30%; } to { left: 60%; } }
 
-        @media(max-width:800px) { .nav-links { display: none; } .nav-cta { display: none; } .mobile-nav { display: flex; gap: 0.5rem; align-items: center; } }
         @media(max-width:768px) {
           html { font-size: 17px; }
-          .hero-grid { grid-template-columns: 1fr; gap: 2.5rem; }
           .showcase-mobile { grid-template-columns: 1fr !important; gap: 2rem !important; margin-bottom: 4rem !important; }
           .showcase-mobile .showcase-text { order: 2 !important; padding: 0 !important; }
           .showcase-mobile .showcase-visual { order: 1 !important; justify-content: center !important; }
           .insurance-content { max-width: 100%; }
           .modules-grid { grid-template-columns: 1fr; }
           .about-grid { grid-template-columns: 1fr; gap: 2rem; }
-          .hero-buttons { flex-direction: column; width: 100%; }
-          .hero-buttons .btn { width: 100%; justify-content: center; }
           .window-body { padding: 1.5rem; }
           .quickfind-grid { grid-template-columns: 1fr; }
-          .sales-banner-content { position: relative; bottom: auto; left: auto; padding: 1.5rem; background: ${C.ink}; }
-          .sales-banner-overlay { display: none; }
           .unified-bento { grid-template-columns: 1fr !important; }
           .unified-bento-card { grid-column: span 1 !important; }
           .unified-heading { font-size: clamp(1.8rem,6vw,3rem); }
@@ -798,11 +677,8 @@ export default function App() {
         }
         @media(max-width:480px) {
           html { font-size: 17.5px; }
-          .hero { padding-top: 100px; }
           .wrap { padding-left: 1.2rem !important; padding-right: 1.2rem !important; }
           .btn { padding: 0.85rem 1.3rem !important; font-size: 0.92rem !important; }
-          .nav-link { font-size: 1rem; }
-          .hero-desc { font-size: 1.25rem; line-height: 1.7; }
           .mono-label { font-size: 0.8rem; }
           .module-title { font-size: 1.25rem; }
           .module-excerpt { font-size: 1rem; }
@@ -810,81 +686,11 @@ export default function App() {
       `}</style>
 
       <main>
-        {/* ── Navigation ── */}
-        <nav className={scrolled ? 'scrolled' : ''}>
-          <div className="wrap nav-wrap">
-            <div className="logo" onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/'); }}>
-              <Mark size={24} />Rest Point
-            </div>
-            <div className="nav-links">
-              <a href="#features" className="nav-link">Features</a>
-              <a href="#modules" className="nav-link">Modules</a>
-              <button onClick={goAbout} className="nav-link">About</button>
-              <button onClick={() => navigate('/blog')} className="nav-link">Blog</button>
-              <PolicyDropdown navigate={navigate} goTerms={goTerms} />
-            </div>
-            <div className="nav-cta">
-              <button className="btn btn-line" onClick={goLogin} style={{ padding: '0.7rem 1.2rem' }}>Log in</button>
-              <button className="btn btn-dark" onClick={goStart} style={{ padding: '0.7rem 1.2rem' }}>Request access</button>
-            </div>
-            <MobileMenu navigate={navigate} goTerms={goTerms} goLogin={goLogin} goStart={goStart} />
-          </div>
-        </nav>
+        {/* ── Navigation (new global header) ── */}
+        <SiteNav />
 
-        {/* ── Hero ── */}
-        <section className="hero">
-          <div className="wrap">
-            <div style={{ opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(20px)', transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1)' }}>
-              <div style={{ display: 'inline-block', marginBottom: '2rem', padding: '0.7rem 1.2rem', background: 'rgba(61,79,71,0.08)', borderRadius: '4px', border: `1px solid ${C.line}` }}>
-                <span className="label" style={{ color: C.verdigris }}>Funeral Home OS & Welfare Platform</span>
-              </div>
-              <h1 style={{ fontSize: 'clamp(2.5rem,7vw,5rem)', lineHeight: 1.08, maxWidth: '900px' }}>A record worthy of the families you serve.</h1>
-            </div>
-            <div className="hero-grid">
-              {/* FIX: Added paddingRight to balance the text column */}
-              <div style={{ opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(20px)', transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 100ms, transform 0.8s cubic-bezier(0.16,1,0.3,1) 100ms', paddingRight: '2rem' }}>
-                <p className="hero-desc">Rest Point is the complete platform for funeral homes and welfare organizations. Manage cases, coordinate funeral insurance claims, track member contributions, and serve families with the same care you bring to every service.</p>
-                <div className="hero-buttons">
-                  <button className="btn btn-dark" onClick={goStart}>Request access <ArrowRight size={16} /></button>
-                  <button className="btn btn-line" onClick={goLogin}>See how it works</button>
-                </div>
-              </div>
-              {/* FIX: Added paddingLeft to balance the visual column */}
-              <div style={{ opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(20px)', transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 200ms, transform 0.8s cubic-bezier(0.16,1,0.3,1) 200ms', width: '100%', paddingLeft: '2rem' }}>
-                <AppWindow title="restpoint.app/dashboard" dark>
-                  <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                    <div className="mono-label" style={{ color: C.brass, marginBottom: '1rem' }}>DASHBOARD PREVIEW</div>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '2.5rem', flexWrap: 'wrap' }}>
-                      <div><div style={{ fontSize: '1.8rem', fontFamily: "'Fraunces', serif", color: C.bone, fontWeight: 600 }}>24</div><div className="mono-label" style={{ color: C.grayLight, fontSize: '0.68rem' }}>ACTIVE CASES</div></div>
-                      <div><div style={{ fontSize: '1.8rem', fontFamily: "'Fraunces', serif", color: C.bone, fontWeight: 600 }}>84K</div><div className="mono-label" style={{ color: C.grayLight, fontSize: '0.68rem' }}>PENDING BILL</div></div>
-                      <div><div style={{ fontSize: '1.8rem', fontFamily: "'Fraunces', serif", color: C.bone, fontWeight: 600 }}>7</div><div className="mono-label" style={{ color: C.grayLight, fontSize: '0.68rem' }}>NEW TODAY</div></div>
-                    </div>
-                  </div>
-                  <div style={{ borderTop: `1px solid ${C.lineDark}`, paddingTop: '1.5rem' }}>
-                    {[{ name: 'Otieno Family', status: 'In Progress', dot: C.verdigrisLight }, { name: 'Mwangi Family', status: 'Documents Pending', dot: C.brass }, { name: 'Kamau Family', status: 'KES 120,000', dot: C.accent }].map((item, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.8rem 0', borderBottom: i < 2 ? `1px solid ${C.lineDark}` : 'none', fontSize: '0.85rem', color: C.grayLight }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: item.dot, display: 'inline-block' }} />{item.name}</span>
-                        <span style={{ color: C.brass }}>{item.status}</span>
-                      </div>
-                    ))}
-                  </div>
-                </AppWindow>
-              </div>
-            </div>
-            <div style={{ opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(30px)', transition: 'opacity 0.9s cubic-bezier(0.16,1,0.3,1) 350ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) 350ms' }}>
-              <div className="sales-banner" style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', marginTop: '3rem', boxShadow: '0 30px 60px -15px rgba(21,23,26,0.2)', border: `1px solid ${C.line}` }}>
-                <img src="/sales-export-img.jpg" alt="Rest Point - Complete Software Solution" style={{ width: '100%', height: 'clamp(250px,35vw,420px)', objectFit: 'cover', display: 'block', transition: 'transform 8s ease' }} />
-                <div style={{ position: 'absolute', inset: 0, background: 'transparent', pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', top: 0, left: '-100%', width: '60%', height: '100%', background: 'linear-gradient(90deg, transparent, rgba(250,248,244,0.08), transparent)', animation: 'shine 5s ease-in-out infinite 3s', pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', bottom: 'clamp(1.5rem,4vw,3rem)', left: 'clamp(1.5rem,4vw,3rem)', zIndex: 2, maxWidth: '550px' }}>
-                  <div className="label" style={{ color: C.brass, marginBottom: '0.8rem', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>Software Solution</div>
-                  <h3 style={{ color: C.bone, fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', marginBottom: '0.8rem', maxWidth: '550px', lineHeight: 1.3, fontWeight: 600, textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>Everything your funeral home needs, in one powerful platform</h3>
-                  <button className="btn btn-brass" onClick={goStart} style={{ padding: '0.9rem 2rem', fontSize: '0.9rem', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>Explore the solution <ArrowRight size={16} /></button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* ── Hero (new) ── */}
+        <Hero />
 
         <Marquee items={marqueeItems} />
 
@@ -931,9 +737,7 @@ export default function App() {
 
 </>
             }>
-              <AppWindow title="restpoint.app/floral" dark>
-                <div className="flp-bleed"><FloralPreview /></div>
-              </AppWindow>
+              <FloralPreview />
             </Showcase>
           </div>
         </section>
