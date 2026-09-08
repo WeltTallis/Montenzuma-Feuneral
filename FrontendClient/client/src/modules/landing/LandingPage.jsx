@@ -13,6 +13,7 @@ import SiteNav from './nav';
 import Hero from './hero';
 import FaqSection from './FaqSection';
 import MissionSection from './Mission';
+import DirectorsMoment from './DirectorsMoment';
 import C from '../../utils/colors/index'
 
 
@@ -769,6 +770,9 @@ export default function App() {
 
                 {/* ── Our Mission ── */}
         <MissionSection />
+
+        {/* ── For Funeral Directors — the confirmation moment (live candle demo) ── */}
+        <DirectorsMoment />
 
         {/* ── Modules ── */}
         <section id="modules" className="modules-section">
