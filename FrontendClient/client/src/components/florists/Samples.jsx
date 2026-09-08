@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import api from '../../api/axios'
 import Snowfall from './Snowfall'
 import FlowerSnowBookingForm from './FlowerSnowBookingForm'
@@ -165,6 +165,33 @@ body {
 }
 .story-item:hover .story-label { color: rgba(255,255,255,0.95); }
 .story-item.is-sel .story-label { color: rgba(255,255,255,0.9); }
+
+/* ── Story action chips — quick ＋add & TikTok-style love ────────────────── */
+* { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, [role="button"]:focus-visible { outline: 2px solid #B98480; outline-offset: 2px; }
+@keyframes lovePop { 0% { transform: scale(0.4); } 60% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.story-add {
+  position: absolute; top: -5px; right: -5px; z-index: 3;
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid #0a0b0c; background: #475A43; color: #fff;
+  font: 700 15px/1 'Inter', sans-serif; display: grid; place-items: center;
+  cursor: pointer; padding: 0; transition: transform 0.2s, background 0.2s;
+}
+.story-add:hover { transform: scale(1.12); }
+.story-add.is-added { background: #C8A262; }
+.story-love {
+  position: absolute; bottom: -7px; right: -7px; z-index: 3;
+  height: 22px; padding: 0 8px 0 6px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.16); background: rgba(10,11,12,0.72);
+  color: #fff; font: 600 10px 'Inter', sans-serif;
+  display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.story-love svg { width: 11px; height: 11px; flex: none; }
+.story-love:hover { transform: scale(1.08); }
+.story-love.is-liked { background: #C8264A; border-color: transparent; }
+.story-love.is-liked svg { animation: lovePop 0.35s cubic-bezier(0.16,1,0.3,1); }
+.love-count { font-variant-numeric: tabular-nums; }
 
 /* ── Browse title — bottom left ──────────────────────────────────────────── */
 .browse-title-block {
@@ -404,24 +431,41 @@ function Candle({ height = 68 }) {
   )
 }
 
-// ── Story Item ────────────────────────────────────────────────────────────────
-function StoryItem({ arrangement, isActive, isSelected, size, animDelay, onClick }) {
+// ── Story Item — tap to view · ＋ adds to booking · ♥ loves ───────────────────
+function StoryItem({ arrangement, isActive, isSelected, isLiked, likeCount, size, animDelay, onClick, onAdd, onLike }) {
   const ringCls = 'story-ring-wrap ' + (isActive ? 'sr-unseen' : isSelected ? 'sr-selected' : 'sr-seen')
   return (
-    <button
+    <div
       className={'story-item' + (isSelected ? ' is-sel' : '')}
       onClick={onClick}
       style={{ animationDelay: `${animDelay}s` }}
-      aria-label={arrangement.name || arrangement.title}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick() }}
+      aria-label={(arrangement.name || arrangement.title) + ' — view details'}
     >
       <div className={ringCls} style={{ width: size + 6, height: size + 6, position: 'relative' }}>
         <div className="story-inner" style={{ width: size, height: size }}>
           <img src={arrangement.portrait || arrangement.img} alt={arrangement.name || arrangement.title} />
         </div>
-        {isSelected && <div className="story-check">✓</div>}
+        <button
+          className={'story-add' + (isSelected ? ' is-added' : '')}
+          onClick={(e) => { e.stopPropagation(); onAdd() }}
+          aria-label={isSelected ? 'Remove from booking' : 'Add to booking'}
+        >
+          {isSelected ? '✓' : '+'}
+        </button>
+        <button
+          className={'story-love' + (isLiked ? ' is-liked' : '')}
+          onClick={(e) => { e.stopPropagation(); onLike() }}
+          aria-label="Love this arrangement"
+        >
+          <svg viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20.5S4.9 16 3.2 11.6C2 8.6 3.7 5.5 6.8 5.5c2 0 3.6 1.2 4.4 2.9L12 10l.8-1.6c.8-1.7 2.4-2.9 4.4-2.9 3.1 0 4.8 3.1 3.6 6.1C19.1 16 12 20.5 12 20.5Z" /></svg>
+          {likeCount > 0 && <span className="love-count">{likeCount > 999 ? (likeCount / 1000).toFixed(1) + 'k' : likeCount}</span>}
+        </button>
       </div>
       <span className="story-label">{arrangement.tag}</span>
-    </button>
+    </div>
   )
 }
 
@@ -459,7 +503,7 @@ function HomePreview({ selectedIds, onRemove, onProceed, arrangements = [] }) {
 }
 
 // ── Browse Screen ─────────────────────────────────────────────────────────────
-function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview, arrangements = [], loading = false }) {
+function BrowseScreen({ selectedIds, onOpen, onAdd, onLike, likes = {}, likedIds = [], onPreview, arrangements = [], loading = false }) {
   const [bgIdx, setBgIdx] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
   const touchRef = useRef(null)
@@ -494,9 +538,8 @@ function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview, arrangements =
     const SWIPE = 70
     if (allArrangements.length && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWIPE) {
       setBgIdx(i => dx < 0 ? (i + 1) % allArrangements.length : (i - 1 + allArrangements.length) % allArrangements.length)
-    } else if (bg && dy < -SWIPE && Math.abs(dy) > Math.abs(dx)) {
-      onOpen(bg.id) // swipe up → view the arrangement on screen
     }
+    // (vertical swipes belong to page scroll — never hijack them)
   }
 
   return (
@@ -504,7 +547,7 @@ function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview, arrangements =
       {bg && <img key={bgIdx} className="browse-hero" src={bg.img || bg.portrait} alt={bg.name || bg.title} />}
       <div className="browse-overlay" />
       <Snowfall count={14} opacity={0.5} />
-      <div className="browse-swipe-hint">‹ swipe ›&nbsp;&nbsp;·&nbsp;&nbsp;↑ to view</div>
+      <div className="browse-swipe-hint">‹ swipe ›</div>
 
       {loading && allArrangements.length === 0 && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.7)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
@@ -528,9 +571,13 @@ function BrowseScreen({ selectedIds, onOpen, onRemove, onPreview, arrangements =
             arrangement={a}
             isActive={i === bgIdx}
             isSelected={selectedIds.includes(a.id)}
+            isLiked={likedIds.includes(a.id)}
+            likeCount={likes[a.id] ?? 0}
             size={72}
             animDelay={i * 0.18}
             onClick={() => onOpen(a.id)}
+            onAdd={() => onAdd(a.id)}
+            onLike={() => onLike(a.id)}
           />
         ))}
       </div>
@@ -605,13 +652,33 @@ function DoneScreen({ totalItems, deceased, onReset }) {
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
-  const [step, setStep] = useState('browse')
   const [expandedId, setExpandedId] = useState(null)
   const [selected, setSelected] = useState([])
   const [quantities, setQuantities] = useState({})
-  const [doneForm, setDoneForm] = useState({})
   const [arrangements, setArrangements] = useState([])
   const [loading, setLoading] = useState(true)
+  const [bookingOpen, setBookingOpen] = useState(false)
+
+  // ── Loves — TikTok-style hearts ──
+  const [likes, setLikes] = useState({})
+  const [likedIds, setLikedIds] = useState([])
+  const baseLikesRef = useRef({})
+  baseLikesRef.current = useMemo(() => {
+    const m = {}
+    arrangements.forEach(a => {
+      const seed = String(a.id).split('').reduce((s, ch) => s + ch.charCodeAt(0), 0)
+      m[a.id] = 48 + (seed * 37) % 420
+    })
+    return m
+  }, [arrangements])
+
+  const toggleLike = useCallback((id) => {
+    setLikedIds(prev => {
+      const has = prev.includes(id)
+      setLikes(m => ({ ...m, [id]: Math.max(0, (m[id] ?? baseLikesRef.current[id] ?? 0) + (has ? -1 : 1)) }))
+      return has ? prev.filter(x => x !== id) : [...prev, id]
+    })
+  }, [])
 
   // Fetch flower arrangements from backend API
   useEffect(() => {
@@ -675,55 +742,51 @@ export default function App() {
     setQuantities(q => { const n = { ...q }; delete n[id]; return n })
   }
 
-  const totalItems = selected.reduce((s, id) => s + (quantities[id] || 1), 0)
+  const openBooking = useCallback(() => setBookingOpen(true), [])
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
-      {step === 'browse' && (
-        <>
-          <BrowseScreen
-            selectedIds={selected}
-            onOpen={id => setExpandedId(id)}
-            onRemove={remove}
-            onPreview={() => setStep('form')}
-            arrangements={arrangements}
-            loading={loading}
-          />
-          {expandedId && (
-            <ExpandedView
-              activeId={expandedId}
-              selectedIds={selected}
-              onNavigate={setExpandedId}
-              onClose={() => setExpandedId(null)}
-              onToggle={toggle}
-              onPreview={() => setStep('form')}
-              arrangements={arrangements}
-            />
-          )}
-        </>
-      )}
+      <BrowseScreen
+        selectedIds={selected}
+        onOpen={id => setExpandedId(id)}
+        onAdd={toggle}
+        onLike={toggleLike}
+        likes={likes}
+        likedIds={likedIds}
+        onRemove={remove}
+        onPreview={openBooking}
+        arrangements={arrangements}
+        loading={loading}
+      />
 
-      {step === 'form' && (
-        <FlowerSnowBookingForm
-          selected={selected}
-          quantities={quantities}
+      {expandedId && (
+        <ExpandedView
+          activeId={expandedId}
+          selectedIds={selected}
+          onNavigate={setExpandedId}
+          onClose={() => setExpandedId(null)}
+          onToggle={toggle}
+          onLike={toggleLike}
+          likes={likes}
+          likedIds={likedIds}
+          onPreview={openBooking}
           arrangements={arrangements}
-          onBack={() => setStep('browse')}
-          onRemove={remove}
-          onQtyChange={(id, q) => setQuantities(prev => ({ ...prev, [id]: Math.max(1, q) }))}
-          onDone={f => { setDoneForm(f); setStep('done') }}
         />
       )}
 
-      {step === 'done' && (
-        <DoneScreen
-          totalItems={totalItems}
-          deceased={doneForm.deceased || ''}
-          onReset={() => { setStep('browse'); setSelected([]); setQuantities({}); setExpandedId(null) }}
-        />
-      )}
+      {/* Booking slides in as a side panel over the current view */}
+      <FlowerSnowBookingForm
+        open={bookingOpen}
+        selected={selected}
+        quantities={quantities}
+        arrangements={arrangements}
+        onQtyChange={(id, q) => setQuantities(prev => ({ ...prev, [id]: Math.max(1, q) }))}
+        onRemove={remove}
+        onBooked={() => { setSelected([]); setQuantities({}) }}
+        onClose={() => setBookingOpen(false)}
+      />
     </>
   )
 }

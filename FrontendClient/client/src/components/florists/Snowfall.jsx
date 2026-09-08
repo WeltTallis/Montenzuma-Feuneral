@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 
 const SNOWFALL_CSS = `
 .snowfall { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+.snowfall--bounded { position: absolute; }
 .snowflake {
   position: absolute; top: -6vh; left: var(--x, 50%);
   width: var(--s, 12px); height: var(--s, 12px);
@@ -30,7 +31,7 @@ const SNOWFALL_CSS = `
 
 const PETAL_COLORS = ['#FDF6EE', '#F3D9C8', '#E9C9C9', '#FFFFFF', '#DCE8D8']
 
-export default function Snowfall({ count = 14, opacity = 0.5, colors = PETAL_COLORS }) {
+export default function Snowfall({ count = 14, opacity = 0.5, colors = PETAL_COLORS, bounded = false }) {
   const flakes = useMemo(() => Array.from({ length: count }, (_, i) => ({
     id: i,
     x: (Math.random() * 100).toFixed(2) + '%',
@@ -44,7 +45,7 @@ export default function Snowfall({ count = 14, opacity = 0.5, colors = PETAL_COL
   })), [count, opacity, colors])
 
   return (
-    <div className="snowfall" aria-hidden="true">
+    <div className={'snowfall' + (bounded ? ' snowfall--bounded' : '')} aria-hidden="true">
       <style dangerouslySetInnerHTML={{ __html: SNOWFALL_CSS }} />
       {flakes.map(f => (
         <span

@@ -111,6 +111,25 @@ const DETAIL_CSS = `
   pointer-events: none; animation: hintPulse 2.6s ease-in-out infinite;
   text-shadow: 0 1px 8px rgba(74,59,60,0.65);
 }
+* { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, [role="button"]:focus-visible { outline: 2px solid #B98480; outline-offset: 2px; }
+@keyframes lovePop { 0% { transform: scale(0.4); } 60% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.love-col {
+  position: absolute; right: 16px; bottom: 130px; z-index: 15;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.love-btn {
+  width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.28); background: rgba(74,59,60,0.45);
+  backdrop-filter: blur(8px); color: #fff;
+  display: grid; place-items: center; cursor: pointer;
+  transition: transform 0.2s, background 0.2s; padding: 0;
+}
+.love-btn svg { width: 19px; height: 19px; }
+.love-btn:hover { transform: scale(1.08); }
+.love-btn.is-liked { background: #C8264A; border-color: transparent; }
+.love-btn.is-liked svg { animation: lovePop 0.35s cubic-bezier(0.16,1,0.3,1); }
+.love-num { font: 600 11px 'Karla', sans-serif; color: #fff; text-shadow: 0 1px 6px rgba(74,59,60,0.6); }
 
 /* content */
 .detail-content { padding: 48px 38px 80px; flex: 1; }
@@ -255,7 +274,7 @@ function ColorInputs() {
 }
 
 // ── Expanded / Detail view ────────────────────────────────────────────────────
-export default function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, onPreview, arrangements = [] }) {
+export default function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, onPreview, arrangements = [], likes = {}, likedIds = [], onToggleLike }) {
   const [tab, setTab] = useState('overview')
   const allArrangements = arrangements
   const arr = allArrangements.find(a => a.id === activeId)
@@ -293,20 +312,22 @@ export default function ExpandedView({ activeId, selectedIds, onNavigate, onClos
   }
   const onTouchMove = (e) => {
     if (!touchRef.current) return
-    const d = { x: e.touches[0].clientX - touchRef.current.sx, y: e.touches[0].clientY - touchRef.current.sy }
-    touchRef.current.last = d
-    setDrag({ ...d, active: true })
+    const dx = e.touches[0].clientX - touchRef.current.sx
+    const dy = e.touches[0].clientY - touchRef.current.sy
+    touchRef.current.last = { x: dx, y: dy }
+    // Visual drag follows HORIZONTAL movement only — vertical swipes belong to
+    // page scroll, so the layout never scatters while scrolling up/down.
+    if (Math.abs(dx) > Math.abs(dy) + 6) setDrag({ x: dx, y: 0, active: true })
+    else if (Math.abs(dy) > Math.abs(dx)) setDrag({ x: 0, y: 0, active: false })
   }
   const onTouchEnd = () => {
     const last = (touchRef.current && touchRef.current.last) || { x: 0, y: 0 }
     touchRef.current = null
     setDrag({ x: 0, y: 0, active: false })
     const SWIPE = 60
-    if (Math.abs(last.x) > Math.abs(last.y)) {
+    if (Math.abs(last.x) > Math.abs(last.y) && Math.abs(last.x) > SWIPE) {
       if (last.x < -SWIPE) goNext()      // swipe left → next arrangement
       else if (last.x > SWIPE) goPrev()  // swipe right → previous arrangement
-    } else if (last.y > SWIPE + 30) {
-      onClose()                          // swipe down → close
     }
   }
 
@@ -324,7 +345,7 @@ export default function ExpandedView({ activeId, selectedIds, onNavigate, onClos
         <div
           className="detail-image-drag"
           style={{
-            transform: `translate3d(${drag.x * 0.35}px, ${drag.y * 0.25}px, 0)`,
+            transform: `translate3d(${drag.x * 0.35}px, 0, 0)`,
             transition: drag.active ? 'none' : 'transform 0.4s cubic-bezier(0.16,1,0.3,1)',
           }}
         >
@@ -338,7 +359,17 @@ export default function ExpandedView({ activeId, selectedIds, onNavigate, onClos
             <div className="swipe-counter">{idx + 1} / {count}</div>
           </>
         )}
-        <div className="swipe-down-hint"><span>‹ ›</span><span>swipe to browse</span><span>·</span><span>↓ close</span></div>
+        <div className="swipe-down-hint"><span>‹ ›</span><span>swipe to browse</span></div>
+        <div className="love-col">
+          <button
+            className={'love-btn' + (likedIds.includes(activeId) ? ' is-liked' : '')}
+            onClick={() => onToggleLike(activeId)}
+            aria-label="Love this arrangement"
+          >
+            <svg viewBox="0 0 24 24" fill={likedIds.includes(activeId) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20.5S4.9 16 3.2 11.6C2 8.6 3.7 5.5 6.8 5.5c2 0 3.6 1.2 4.4 2.9L12 10l.8-1.6c.8-1.7 2.4-2.9 4.4-2.9 3.1 0 4.8 3.1 3.6 6.1C19.1 16 12 20.5 12 20.5Z" /></svg>
+          </button>
+          <span className="love-num">{likes[activeId] ?? 0}</span>
+        </div>
         <div className="detail-image-badge">
           <div className="detail-image-badge-tag">{arr.tag} · {arr.note}</div>
           <div className="detail-image-badge-name">

@@ -944,8 +944,8 @@ const DeceasedListPage = () => {
       // and the list reflect every record of that year (not just 50).
       const collected = [];
       let pageNum = 1;
-      const pageSize = 100;
-      let totalPages = 1;
+      const pageSize = 200;
+      let totalPages = 2;
 
       while (pageNum <= totalPages && pageNum <= 12) {
         const params = { year: calYear, page: pageNum, limit: pageSize };
