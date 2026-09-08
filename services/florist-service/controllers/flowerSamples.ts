@@ -11,15 +11,12 @@ import type {
 
 // Import your local database utilities (direct restpoint_operations pool)
 import { safeQuery, safeExecute } from '../database.ts';
-import { fileURLToPath } from 'url';
 import crypto from 'crypto';
-import path from 'path';
-import fs from 'fs/promises';
-import sharp from 'sharp';
-import os from 'os';
-
-// Fix __dirname for ES modules
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Global uploader — the SAME centralized upload service the deceased, coffin,
+// invoice and tenant services use. It writes directly into the one shared
+// uploads folder (GLOBAL_UPLOADS_DIR / UPLOADS_BASE_DIR) that is bind-mounted
+// in production and served to browsers at /uploads/... by the tenant-service.
+import { centralizedUploadService } from '@montezuma/shared-services/dist/centralizedUploadService.js';
 
 // TENANT HELPERS
 const tenantIdOf = (req: any): string | null =>
@@ -83,100 +80,35 @@ const generateArrangementId = (): string => {
   return `ARR-${timestamp}-${random}`;
 };
 
-// ─── Upload path resolution ───
-const sanitizeSlug = (name: string): string => {
-  const cleaned = String(name || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-  return cleaned || 'system_shared';
-};
-
-const getUploadDirs = (tenantSlug: string): { dir: string; urlPrefix: string }[] => {
-  const slug = sanitizeSlug(tenantSlug);
-  const globalDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
-  return [
-    { dir: path.join(globalDir, slug, 'flowers'), urlPrefix: `/uploads/${slug}/flowers` },
-    { dir: path.join(globalDir, 'FlowerSamples', slug), urlPrefix: `/uploads/FlowerSamples/${slug}` },
-    { dir: path.join(__dirname, '../../uploads/FlowerSamples', slug), urlPrefix: `/uploads/FlowerSamples/${slug}` },
-    { dir: path.join(process.cwd(), 'uploads/FlowerSamples', slug), urlPrefix: `/uploads/FlowerSamples/${slug}` },
-    { dir: path.join('/app/uploads/FlowerSamples', slug), urlPrefix: `/uploads/FlowerSamples/${slug}` },
-  ];
-};
-
-const ensureUploadDir = async (tenantSlug: string): Promise<{ dir: string; urlPrefix: string }> => {
-  for (const candidate of getUploadDirs(tenantSlug)) {
-    try {
-      await fs.mkdir(candidate.dir, { recursive: true });
-      const testFile = path.join(candidate.dir, '.write-test');
-      await fs.writeFile(testFile, 'test');
-      await fs.unlink(testFile);
-      console.log(`[FLOWER] Upload dir set: ${candidate.dir}`);
-      return candidate;
-    } catch (e: any) {
-      console.warn(`[FLOWER] Cannot use upload path: ${candidate.dir} - ${e.message}`);
-    }
-  }
-
-  if (process.env.NODE_ENV === 'production') {
-    const globalDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
-    throw new Error(
-      '[FLOWER] No writable upload directory. The shared uploads folder (' + globalDir + ') must be ' +
-      'writable by the container user (uid 1001). On the server run: ' +
-      'bash /opt/restpoint/scripts/setup-production-storage.sh'
-    );
-  }
-
-  const dir = path.join(os.tmpdir(), 'flower-uploads', tenantSlug);
-  await fs.mkdir(dir, { recursive: true });
-  console.warn(`[FLOWER] DEV fallback temp upload dir: ${dir} — images will NOT be served (dev only)`);
-  return { dir, urlPrefix: `/uploads/${tenantSlug}/flowers` };
-};
-
-// ─── Image compression ───
-const compressAndSaveImage = async (
+// ─── Global uploader ───
+// Flower-sample images are stored through the SAME centralized upload service
+// the deceased / coffin / invoice services use. It writes directly into the
+// one shared uploads folder (GLOBAL_UPLOADS_DIR / UPLOADS_BASE_DIR) that is
+// bind-mounted in production and served to browsers at /uploads/... by the
+// tenant-service — no fragile per-service directory guessing and no
+// container-local folders that vanish on rebuild. A failed upload only skips
+// that image (kept in the logs) instead of failing the whole sample creation.
+const saveFlowerImage = async (
   buffer: Buffer,
   filename: string,
   tenantSlug: string
-): Promise<string> => {
-  const { dir, urlPrefix } = await ensureUploadDir(tenantSlug);
-
-  const safeName = filename
-    .replace(/[^a-zA-Z0-9._-]/g, '_')
-    .replace(/\.[^.]+$/, '')
-    .slice(0, 50);
-
-  const webpName = `${safeName}-${Date.now()}.webp`;
-  const outputPath = path.join(dir, webpName);
-
+): Promise<string | null> => {
   try {
-    const metadata = await sharp(buffer).metadata();
-    console.log(`[FLOWER] Image metadata: ${metadata.width}x${metadata.height}, format: ${metadata.format}`);
-
-    await sharp(buffer)
-      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-      .sharpen({
-        sigma: 2.5
-      })
-      .modulate({
-        brightness: 1.05,
-        saturation: 1.1
-      })
-      .webp({
-        quality: 92,
-        effort: 6,
-        lossless: false
-      })
-      .toFile(outputPath);
-
-    const stats = await fs.stat(outputPath);
-    console.log(`[FLOWER] Image saved: ${webpName} (${(stats.size / 1024).toFixed(1)}KB)`);
-
-    return `${urlPrefix}/${webpName}`;
-  } catch (err) {
-    console.error(`[FLOWER] Image processing error:`, err);
-    throw err;
+    const result = await centralizedUploadService.uploadImage(
+      buffer,
+      filename,
+      tenantSlug,
+      'flowers'
+    );
+    if (result && result.success && result.urlPath) {
+      console.log(`[FLOWER] Image stored via global uploader: ${result.urlPath} (${(result.size / 1024).toFixed(1)}KB)`);
+      return result.urlPath;
+    }
+    console.warn(`[FLOWER] Image upload failed: ${result?.error || 'unknown error'}`);
+    return null;
+  } catch (error: any) {
+    console.warn(`[FLOWER] Image upload error: ${error?.message || error}`);
+    return null;
   }
 };
 
@@ -298,7 +230,8 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
       const uploadedFiles = req.files as Express.Multer.File[];
       for (let i = 0; i < uploadedFiles.length; i++) {
         const file = uploadedFiles[i];
-        const imageUrl = await compressAndSaveImage(file.buffer, file.originalname, tenantSlug);
+        const imageUrl = await saveFlowerImage(file.buffer, file.originalname, tenantSlug);
+        if (!imageUrl) continue;
         images.push({
           url: imageUrl,
           alt_text: `${cleanTitle} - image ${i + 1}`,
@@ -490,7 +423,8 @@ export const updateFlowerArrangement = async (req: any, res: any): Promise<any> 
       const newFiles = req.files as Express.Multer.File[];
       for (let i = 0; i < newFiles.length; i++) {
         const file = newFiles[i];
-        const imageUrl = await compressAndSaveImage(file.buffer, file.originalname, tenantSlug);
+        const imageUrl = await saveFlowerImage(file.buffer, file.originalname, tenantSlug);
+        if (!imageUrl) continue;
         images.push({
           url: imageUrl,
           alt_text: `${existingArrangement.title} - new image ${i + 1}`,
@@ -550,18 +484,13 @@ export const deleteFlowerArrangement = async (req: any, res: any): Promise<any> 
       });
     }
 
-    const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+    // Remove the stored files from the shared uploads folder through the same
+    // centralized upload service (safe: it resolves only inside the base dir).
     for (const image of existingArrangement.images) {
       try {
-        const rel = String(image.url || '').replace(/^\/uploads\//, '');
-        if (!rel) continue;
-        const candidates = [
-          path.join(globalUploadsDir, rel),
-          path.join(globalUploadsDir, 'FlowerSamples', rel.split('/').pop() || ''),
-        ];
-        for (const p of candidates) {
-          await fs.unlink(p).catch(() => { });
-        }
+        const url = String(image.url || '').trim();
+        if (!url) continue;
+        await centralizedUploadService.deleteFile(url);
       } catch (err) {
         console.warn(`[FLOWER] Could not delete image: ${image.url}`);
       }

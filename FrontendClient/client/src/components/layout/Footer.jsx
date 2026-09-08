@@ -603,7 +603,11 @@ const Footer = ({ goTerms }) => {
                         <h4>Legal & Policies</h4>
                         <PolicyDropdown goTerms={goTerms} />
                         <FooterLink onClick={() => handleNav('/security')}>Security Overview</FooterLink>
-                        <FooterLink onClick={() => handleNav('/cookies')}>Cookie Settings</FooterLink>
+                        <FooterLink onClick={() => {
+                              const el = typeof window !== 'undefined' && window.rpOpenCookieSettings;
+                              if (el) { el(); return; }
+                              handleNav('/cookies');
+                            }}>Cookie Settings</FooterLink>
                         <FooterLink onClick={() => handleNav('/gdpr')}>GDPR Compliance</FooterLink>
                     </div>
                 </div>

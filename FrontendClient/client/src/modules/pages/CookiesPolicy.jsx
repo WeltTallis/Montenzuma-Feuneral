@@ -83,6 +83,10 @@ export default function CookiesPolicy() {
         .cookie-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }
         .cookie-table th { text-align: left; padding: 0.75rem; background: ${C.bone2}; border: 1px solid ${C.line}; font-weight: 600; color: ${C.ink}; }
         .cookie-table td { padding: 0.75rem; border: 1px solid ${C.line}; }
+        .badge { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.2rem 0.5rem; color: ${C.brass}; background: ${C.bone2}; border: 1px solid ${C.line}; border-radius: 2px; vertical-align: middle; }
+        .badge-security { color: ${C.verdigrisDark}; background: #EDF2F0; border-color: #C9D8D3; }
+        .cookie-group { margin-bottom: 1.2rem; }
+        .cookie-group + .cookie-group { margin-top: 0.75rem; }
       `}</style>
 
             <nav>
@@ -123,38 +127,125 @@ export default function CookiesPolicy() {
                     </Reveal>
 
                     <Reveal delay={200}>
-                        <h2>Types of Cookies We Use</h2>
-                        <table className="cookie-table">
-                            <thead>
-                                <tr>
-                                    <th>Cookie Type</th>
-                                    <th>Purpose</th>
-                                    <th>Duration</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>Essential</strong></td>
-                                    <td>Required for the website to function properly. Cannot be disabled.</td>
-                                    <td>Session</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Functional</strong></td>
-                                    <td>Remember your preferences and settings for a personalized experience.</td>
-                                    <td>30 days</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Analytics</strong></td>
-                                    <td>Help us understand how visitors interact with our website.</td>
-                                    <td>90 days</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Marketing</strong></td>
-                                    <td>Used to deliver relevant advertisements and track campaign performance.</td>
-                                    <td>90 days</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <h2>Cookie Declaration</h2>
+                        <p>Below is an overview of the technologies currently used by RestPoint. Some items are cookies while others are stored locally in your browser for application functionality.</p>
+
+                        <div className="cookie-group">
+                            <h3 style={{ fontSize: '1rem', marginTop: '1.4rem', marginBottom: '0.4rem' }}>
+                                Strictly necessary &amp; security
+                                <span className="badge badge-security" style={{ marginLeft: '0.6rem' }}>Always active</span>
+                            </h3>
+                            <p style={{ fontSize: '0.9rem', color: C.gray, marginBottom: '0.75rem' }}>
+                                These technologies are required to operate and protect the website. Cloudflare may use security
+                                cookies such as <strong>cf_clearance</strong> to help verify legitimate visitors.
+                            </p>
+                            <table className="cookie-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Provider / Domain</th>
+                                        <th>Expiration</th>
+                                        <th>Purpose</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>cf_clearance</strong></td>
+                                        <td>Cloudflare<br /><span style={{ color: C.gray }}>.restpoint.co.ke</span></td>
+                                        <td>Security-dependent</td>
+                                        <td>Used by Cloudflare to help distinguish legitimate visitors and protect the website from malicious traffic.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Authentication / application storage</strong></td>
+                                        <td>RestPoint<br /><span style={{ color: C.gray }}>restpoint.co.ke</span></td>
+                                        <td>Application-dependent</td>
+                                        <td>Supports secure login, account sessions, tenant information and essential application functionality.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="cookie-group">
+                            <h3 style={{ fontSize: '1rem', marginTop: '1.4rem', marginBottom: '0.4rem' }}>
+                                Analytics
+                                <span className="badge" style={{ marginLeft: '0.6rem' }}>Optional</span>
+                            </h3>
+                            <p style={{ fontSize: '0.9rem', color: C.gray, marginBottom: '0.75rem' }}>
+                                Google Analytics cookies help RestPoint understand website traffic and usage.
+                                They are optional and can be disabled through the cookie banner preferences.
+                            </p>
+                            <table className="cookie-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Provider / Domain</th>
+                                        <th>Expiration</th>
+                                        <th>Purpose</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>_ga</strong></td>
+                                        <td>Google Analytics<br /><span style={{ color: C.gray }}>.restpoint.co.ke</span></td>
+                                        <td>Approximately 2 years</td>
+                                        <td>Used to distinguish visitors for analytics measurement.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>_ga_MTXE9PKZDC</strong></td>
+                                        <td>Google Analytics<br /><span style={{ color: C.gray }}>.restpoint.co.ke</span></td>
+                                        <td>Approximately 2 years</td>
+                                        <td>Used by Google Analytics to maintain session and measurement information.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="cookie-group">
+                            <h3 style={{ fontSize: '1rem', marginTop: '1.4rem', marginBottom: '0.4rem' }}>
+                                Application storage
+                                <span className="badge" style={{ marginLeft: '0.6rem' }}>Functional</span>
+                            </h3>
+                            <p style={{ fontSize: '0.9rem', color: C.gray, marginBottom: '0.75rem' }}>
+                                RestPoint uses browser local storage for application functionality such as inventory
+                                information, onboarding preferences and interface state.
+                            </p>
+                            <table className="cookie-table">
+                                <thead>
+                                    <tr>
+                                        <th>Storage key</th>
+                                        <th>Provider</th>
+                                        <th>Type</th>
+                                        <th>Purpose</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>miniStore_*</strong></td>
+                                        <td>RestPoint</td>
+                                        <td>Local storage</td>
+                                        <td>Supports mini-store inventory and transaction functionality.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>onboarding*</strong></td>
+                                        <td>RestPoint</td>
+                                        <td>Local storage</td>
+                                        <td>Stores onboarding and setup preferences.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>tenant* / user*</strong></td>
+                                        <td>RestPoint</td>
+                                        <td>Local storage</td>
+                                        <td>Supports application identity, tenant context and interface functionality.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>sidebarOpen</strong></td>
+                                        <td>RestPoint</td>
+                                        <td>Local storage</td>
+                                        <td>Remembers the user's interface preference.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </Reveal>
 
                     <Reveal delay={250}>

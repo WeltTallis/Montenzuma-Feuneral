@@ -122,104 +122,102 @@
       transition: width 0.25s ease;
     }
 
-    /* ── Cookie Banner: auto-show 3s then auto-dismiss, pure CSS ── */
-    .cookie-banner {
+    /* ── RestPoint Cookie Banner ────────────────────────────
+       Sleek bottom consent bar. The full cookie declaration
+       lives on the /cookies policy page. Consent is saved to
+       localStorage under "restpoint_cookie_consent".       */
+
+    .rp-cookie-banner {
       position: fixed;
-      bottom: 20px;
-      left: 50%;
+      left: 0;
+      right: 0;
+      bottom: 0;
       z-index: 9999;
-      background: #1a1a1a;
-      border-radius: 14px;
-      padding: 14px 22px;
+      background: #15171a;
+      color: #faf8f4;
+      border-top: 1px solid rgba(250, 248, 244, 0.14);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
       display: flex;
       align-items: center;
-      gap: 14px;
-      max-width: 420px;
-      width: calc(100% - 28px);
-      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
-      pointer-events: none;
-      /* 0s hidden → 0.4s fade in → 3s hold → 0.35s fade out → gone */
-      animation: cookieAuto 3.75s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 16px clamp(16px, 4vw, 48px);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
-    @keyframes cookieAuto {
-      0% {
-        opacity: 0;
-        transform: translateX(-50%) translateY(18px);
-        pointer-events: none;
-      }
-
-      10% {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-        pointer-events: auto;
-      }
-
-      90% {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-        pointer-events: auto;
-      }
-
-      100% {
-        opacity: 0;
-        transform: translateX(-50%) translateY(14px);
-        pointer-events: none;
-      }
+    .rp-cookie-banner .rp-cookie-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
     }
 
-    .cookie-banner .c-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 9px;
-      background: linear-gradient(135deg, #e8c9a0, #d4a574);
-      flex-shrink: 0;
-      position: relative;
-      overflow: hidden;
+    .rp-cookie-banner .rp-cookie-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #faf8f4;
     }
 
-    .cookie-banner .c-icon::before {
-      content: '';
-      width: 13px;
-      height: 13px;
-      background: rgba(255, 255, 255, 0.35);
-      border-radius: 50%;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-
-    .cookie-banner .c-icon::after {
-      content: '';
-      position: absolute;
-      width: 3px;
-      height: 3px;
-      background: rgba(139, 90, 43, 0.5);
-      border-radius: 50%;
-      top: 8px;
-      left: 9px;
-      box-shadow:
-        8px 0 0 0 rgba(139, 90, 43, 0.4),
-        2px 8px 0 0 rgba(139, 90, 43, 0.35),
-        10px 9px 0 0 rgba(139, 90, 43, 0.3);
-    }
-
-    .cookie-banner .c-text {
-      flex: 1;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-
-    .cookie-banner .c-text p {
-      margin: 0;
-      font-size: 12.5px;
+    .rp-cookie-banner .rp-cookie-message {
+      font-size: 12px;
       line-height: 1.5;
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(250, 248, 244, 0.68);
     }
 
-    .cookie-banner .c-text strong {
-      color: rgba(255, 255, 255, 0.9);
-      font-weight: 500;
+    .rp-cookie-banner .rp-cookie-message a {
+      color: rgba(250, 248, 244, 0.9);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .rp-cookie-banner .rp-cookie-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .rp-cookie-btn {
+      border: 1px solid rgba(250, 248, 244, 0.22);
+      background: transparent;
+      color: #faf8f4;
+      padding: 9px 15px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      border-radius: 7px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .rp-cookie-btn:hover {
+      background: rgba(250, 248, 244, 0.08);
+    }
+
+    .rp-cookie-btn.primary {
+      background: #8b7355;
+      border-color: #8b7355;
+      color: #ffffff;
+    }
+
+    .rp-cookie-btn.primary:hover {
+      background: #715c42;
+      border-color: #715c42;
+    }
+
+    @media (max-width: 720px) {
+      .rp-cookie-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 16px;
+      }
+      .rp-cookie-actions {
+        width: 100%;
+        justify-content: flex-end;
+      }
     }
   </style>
 
@@ -700,11 +698,22 @@
     </div>
   </div>
 
-  <!-- Cookie banner: appears after 0.6s, visible for 3s, then auto-gone. Pure CSS. -->
-  <div class="cookie-banner" role="status" aria-label="Cookie notice">
-    <div class="c-icon" aria-hidden="true"></div>
-    <div class="c-text">
-      <p>This website uses <strong>cookies</strong></p>
+  <!-- RestPoint Cookie Consent Banner: shown once until the visitor
+       chooses. Full declaration lives on /cookies. Consent is stored
+       in localStorage as "restpoint_cookie_consent"; the banner stays
+       hidden when consent has already been saved. -->
+  <div class="rp-cookie-banner" id="rpCookieBanner" role="dialog" aria-label="Cookie consent" style="display:none;">
+    <div class="rp-cookie-text">
+      <div class="rp-cookie-title">Cookies on RestPoint</div>
+      <div class="rp-cookie-message">
+        We use cookies and similar technologies to keep RestPoint secure,
+        remember your preferences and understand how visitors use our website.
+        Read our <a href="/cookies">Cookie Policy</a> for the full declaration.
+      </div>
+    </div>
+    <div class="rp-cookie-actions">
+      <button type="button" class="rp-cookie-btn" onclick="rpDeclineOptional()">Decline optional</button>
+      <button type="button" class="rp-cookie-btn primary" onclick="rpAcceptAll()">Accept all</button>
     </div>
   </div>
 
@@ -885,6 +894,121 @@
       // Production: register normally once the page has loaded.
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/sw.js').catch(function () { });
+      });
+    })();
+  </script>
+
+  <!-- RestPoint Cookie Consent (sleek banner)
+       ────────────────────────────────────────────────────────────
+       • Stores consent in localStorage under
+         "restpoint_cookie_consent" and only shows the banner once.
+       • Google Analytics is currently loaded in <head>; keep it
+         consent-aware here and never double-load the gtag script.
+         When the <head> script is removed later, rpEnableAnalytics()
+         will inject it here instead (single source of consent). -->
+  <script>
+    (function () {
+      var RP_CONSENT_KEY = 'restpoint_cookie_consent';
+      var RP_GA_ID = 'G-MTXE9PKZDC';
+
+      /* ── Consent storage ─────────────────────────────────── */
+
+      function rpGetConsent() {
+        try { return localStorage.getItem(RP_CONSENT_KEY); }
+        catch (e) { return null; }
+      }
+
+      function rpSaveConsent(analytics, application) {
+        var consent = {
+          necessary: true,
+          security: true,
+          analytics: Boolean(analytics),
+          application: Boolean(application),
+          updatedAt: new Date().toISOString()
+        };
+        try { localStorage.setItem(RP_CONSENT_KEY, JSON.stringify(consent)); }
+        catch (e) { /* storage unavailable — consent stays in memory */ }
+      }
+
+      /* ── Banner visibility ────────────────────────────────── */
+
+      function rpBanner() { return document.getElementById('rpCookieBanner'); }
+
+      function rpShowBanner() {
+        var banner = rpBanner();
+        if (banner) banner.style.display = 'flex';
+      }
+
+      function rpCloseBanner() {
+        var banner = rpBanner();
+        if (banner) banner.style.display = 'none';
+      }
+
+      /* ── Google Analytics (consent-aware) ─────────────────── */
+
+      function rpEnableAnalytics() {
+        window.rpAnalyticsAllowed = true;
+        // GA is pre-loaded from <head> for now, so just reuse it.
+        if (typeof window.gtag === 'function') return;
+        // Fallback when the <head> script is removed: inject once.
+        var script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=' + RP_GA_ID;
+        document.head.appendChild(script);
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () { window.dataLayer.push(arguments); };
+        window.gtag('js', new Date());
+        window.gtag('config', RP_GA_ID, { anonymize_ip: true });
+      }
+
+      function rpDisableAnalytics() {
+        window.rpAnalyticsAllowed = false;
+        window['ga-disable-' + RP_GA_ID] = true;
+      }
+
+      /* ── Application storage ──────────────────────────────── */
+
+      function rpEnableApplicationStorage() {
+        window.rpApplicationStorageAllowed = true;
+      }
+
+      function rpDisableOptionalStorage() {
+        window.rpApplicationStorageAllowed = false;
+      }
+
+      /* ── Public actions ───────────────────────────────────── */
+
+      window.rpAcceptAll = function () {
+        rpSaveConsent(true, true);
+        rpEnableAnalytics();
+        rpEnableApplicationStorage();
+        rpCloseBanner();
+      };
+
+      window.rpDeclineOptional = function () {
+        rpSaveConsent(false, false);
+        rpDisableAnalytics();
+        rpDisableOptionalStorage();
+        rpCloseBanner();
+      };
+
+      window.rpOpenCookieSettings = function () {
+        var banner = rpBanner();
+        if (banner) banner.style.display = 'flex';
+      };
+
+      /* ── Initialize ───────────────────────────────────────── */
+
+      document.addEventListener('DOMContentLoaded', function () {
+        var saved = rpGetConsent();
+        if (!saved) { rpShowBanner(); return; }
+        try {
+          var consent = JSON.parse(saved);
+          if (consent.analytics === true) rpEnableAnalytics();
+          if (consent.application === true) rpEnableApplicationStorage();
+        } catch (e) {
+          rpShowBanner();
+        }
       });
     })();
   </script>

@@ -11,29 +11,40 @@ RUN addgroup -g 1001 -S nodejs && \
 WORKDIR /usr/src/app
 
 # Copy root workspace config
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json tsconfig.base.json ./
+
+# Copy shared package.json files (workspace deps for @montezuma/shared-services)
+COPY packages/shared-config/package.json ./packages/shared-config/
+COPY packages/shared-logger/package.json ./packages/shared-logger/
+COPY packages/shared-services/package.json ./packages/shared-services/
+COPY packages/shared-utils/package.json ./packages/shared-utils/
+COPY shared/package.json ./shared/
 
 # Copy service package.json
 COPY services/florist-service/package.json ./services/florist-service/
 
-# Install ALL dependencies (root deps incl. knex/jsonwebtoken + florist deps)
+# Install ALL dependencies (root deps incl. knex/jsonwebtoken/multer/sharp + florist deps)
 # Do NOT use `--omit=optional`: it prunes sharp's platform binaries
 # (@img/sharp-linuxmusl-x64 / @img/sharp-libvips-linuxmusl-x64) on Alpine,
 # causing "Could not load the sharp module using the linuxmusl-x64 runtime".
 RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && NODE_OPTIONS=--max-old-space-size=2048 npm install --no-audit --no-fund --include=optional
 
-# GUARD: the florist service hard-requires mysql2 + knex (migrations) + express.
-# Fail the build here instead of shipping a broken image.
-RUN cd services/florist-service && node -e "require('mysql2'); require('knex'); require('express'); require('jsonwebtoken'); require('sharp'); console.log('[GUARD] mysql2 + knex + express + jsonwebtoken + sharp OK')"
-
-# Copy source code (app-global is imported by the florist auth middleware)
+# Copy source code (packages + app-global are imported by the florist controller/auth middleware)
+COPY packages/ ./packages/
+COPY shared/ ./shared/
 COPY services/app-global/ ./services/app-global/
 COPY services/florist-service/ ./services/florist-service/
+
+# Build shared packages (critical for TypeScript imports of centralizedUploadService)
+RUN cd packages/shared-config && npm run build
+RUN cd packages/shared-logger && npm run build
+RUN cd packages/shared-services && npm run build
+RUN cd packages/shared-utils && npm run build
 
 # Install tsx for running TypeScript directly (server.ts + dynamic .ts imports)
 RUN npm install -g tsx
 
-RUN mkdir -p /usr/src/app/data && chown -R nodejs:nodejs /usr/src/app
+RUN mkdir -p /usr/src/app/data /opt/storage/uploads && chown -R nodejs:nodejs /usr/src/app /opt/storage/uploads
 
 USER nodejs
 
