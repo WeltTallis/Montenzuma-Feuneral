@@ -40,18 +40,6 @@ const HeroGrid = styled.div`
 /* ══════════ TEXT SIDE — redesigned ══════════ */
 const HeroText = styled.div`animation: ${slideUpFade} 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0;`;
 
-const Eyebrow = styled.div`
-  display: inline-flex; align-items: center; gap: 0.65rem;
-  padding: 0.55rem 1.1rem; border: 1px solid ${line}; border-radius: 999px;
-  background: #FFFFFF; margin-bottom: 2.25rem;
-  font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.16em;
-  text-transform: uppercase; color: ${brass}; font-weight: 500;
-  box-shadow: 0 2px 10px rgba(21,23,26,0.05);
-`;
-const EyebrowDot = styled.div`width: 6px; height: 6px; background: ${accent}; border-radius: 50%; animation: ${pulseAccent} 2s infinite; flex-shrink: 0;`;
-const EyebrowDivider = styled.span`width: 1px; height: 12px; background: ${line};`;
-const EyebrowStatus = styled.span`color: ${accent}; font-weight: 600;`;
-
 const HeroTitle = styled.h1`
   font-family: 'Fraunces', serif; font-size: clamp(2.3rem, 4vw, 3.4rem);
   line-height: 1.12; letter-spacing: -0.025em; font-weight: 300; color: ${gray}; margin: 0 0 1.5rem; max-width: 560px;
@@ -294,12 +282,6 @@ export default function Hero() {
 
             {/* ── TEXT ── */}
             <HeroText>
-              <Eyebrow>
-                <EyebrowDot />
-                Death Care OS &mdash; v2.0
-                <EyebrowDivider />
-                <EyebrowStatus>System Online</EyebrowStatus>
-              </Eyebrow>
 
               <HeroTitle>
                 The modern standard

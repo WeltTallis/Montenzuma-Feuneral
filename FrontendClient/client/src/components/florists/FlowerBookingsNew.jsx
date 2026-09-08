@@ -213,9 +213,7 @@ const FlowerBookingsNew = () => {
   const [activeBookingId, setActiveBookingId] = useState(null);
   const [detailImageIndex, setDetailImageIndex] = useState(0);
   const [newBooking, setNewBooking] = useState({
-    arrangements: [],       // MULTI-SELECT: one order can book many flower types
-    custom_input: '',       // typing buffer for adding a free-text flower type
-    custom_types: [],       // committed list of free-text types (e.g. CASKET SPRAY)
+    flower_details: '',     // EVERY detail typed by hand — no preset selections
     ribbon: '',             // ribbon colour chosen for this order
     size: '',               // flower size chosen for this order
     remarks: '',            // special remarks / instructions
@@ -227,7 +225,6 @@ const FlowerBookingsNew = () => {
   });
   const [toasts, setToasts] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showArrangementPicker, setShowArrangementPicker] = useState(false);
   const [arrangements, setArrangements] = useState([]);
   // Guards against double-click / double-submit creating duplicate orders
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -404,12 +401,14 @@ const FlowerBookingsNew = () => {
     placingRef.current = true;
     setPlacingOrder(true);
 
-    // Build the order's flower-type line items: selected arrangements + typed types
-    const items = [
-      ...newBooking.arrangements.map(a => ({ arrangement_id: a.arrangement_id, name: a.title })),
-      ...newBooking.custom_types.map(t => ({ arrangement_id: null, name: t }))
-    ];
-    if (items.length === 0) return showToast('Select an arrangement or add at least one flower type', 'error');
+    // Everything is typed by hand — split the details into individual flower
+    // types on commas / new lines. No picking from preset arrangements.
+    const typedTypes = String(newBooking.flower_details || '')
+      .split(/[\n,]+/)
+      .map(s => s.trim())
+      .filter(Boolean);
+    if (typedTypes.length === 0) return showToast('Please type the flower details (e.g. CASKET SPRAY, MUM WREATH)', 'error');
+    const items = typedTypes.map(name => ({ arrangement_id: null, name }));
 
     try {
       // ONE row = ONE order containing ALL its flower types. The full list is
@@ -420,16 +419,18 @@ const FlowerBookingsNew = () => {
       const notesValue = [
         `[TYPES:${items.map(i => clean(i.name)).join('|')}]`,
         `[WHEN:${newBooking.date} ${newBooking.time}]`,
-        newBooking.size ? `Size: ${newBooking.size}` : '',
+        newBooking.size?.trim() ? `Size: ${newBooking.size.trim()}` : '',
+        newBooking.priority?.trim() ? `Priority: ${newBooking.priority.trim()}` : '',
         newBooking.remarks?.trim() || ''
       ].filter(Boolean).join(' ');
       await api.post('/florist/bookings', {
-        arrangement_name: items[0].name,
-        arrangement_id: items[0].arrangement_id,
-        flower_type: items[0].name,
+        arrangement_name: items[0].name.slice(0, 255),
+        arrangement_id: null,
+        flower_type: items[0].name.slice(0, 255),
+        flower_description: String(newBooking.flower_details || '').trim(),
         arrangements: items,
-        ribbon_color: newBooking.ribbon && newBooking.ribbon !== 'None' ? newBooking.ribbon : null,
-        size: newBooking.size || null,
+        ribbon_color: newBooking.ribbon?.trim() || null,
+        size: newBooking.size?.trim() || null,
         deceased_name: newBooking.deceased_name.trim(),
         booked_by: newBooking.booked_by || getLocalUserName() || 'System',
         branch: resolveBranchName() || undefined,
@@ -444,9 +445,7 @@ const FlowerBookingsNew = () => {
       await loadBookings();
       setView('list');
       setNewBooking({
-        arrangements: [],
-        custom_input: '',
-        custom_types: [],
+        flower_details: '',
         ribbon: '',
         size: '',
         remarks: '',
@@ -465,37 +464,6 @@ const FlowerBookingsNew = () => {
     }
   }, [newBooking, showToast, loadBookings]);
 
-  // Toggle an arrangement in/out of the multi-select list
-  const toggleArrangement = useCallback((arrangement) => {
-    setNewBooking(prev => {
-      const exists = prev.arrangements.some(a => a.arrangement_id === arrangement.arrangement_id);
-      return {
-        ...prev,
-        arrangements: exists
-          ? prev.arrangements.filter(a => a.arrangement_id !== arrangement.arrangement_id)
-          : [...prev.arrangements, { arrangement_id: arrangement.arrangement_id, title: arrangement.title }]
-      };
-    });
-  }, []);
-
-  // Commit the typed flower type into the order list (Enter or "+ Add")
-  const addCustomType = useCallback(() => {
-    const v = newBooking.custom_input?.trim();
-    if (!v) return;
-    if (newBooking.custom_types.some(t => t.toLowerCase() === v.toLowerCase())) {
-      showToast('That type is already in the list', 'error');
-      return;
-    }
-    setNewBooking(prev => ({
-      ...prev,
-      custom_types: [...prev.custom_types, v],
-      custom_input: ''
-    }));
-  }, [newBooking, showToast]);
-
-  const removeCustomType = useCallback((t) => {
-    setNewBooking(prev => ({ ...prev, custom_types: prev.custom_types.filter(x => x !== t) }));
-  }, []);
 
   const updateStatus = useCallback(async (id, nextStatus) => {
     const url = `/florist/bookings/${id}/status`;
@@ -1025,12 +993,8 @@ const FlowerBookingsNew = () => {
                 </div>
                 <button
                   onClick={() => {
-                    // Pre-select this arrangement (adds to the multi-select list)
-                    setNewBooking(prev => prev.arrangements.some(a => a.arrangement_id === arrangement.arrangement_id)
-                      ? prev
-                      : { ...prev, arrangements: [...prev.arrangements, { arrangement_id: arrangement.arrangement_id, title: arrangement.title }] });
+                    // Booking is always free-text — open the blank order form
                     setView('new');
-                    setShowArrangementPicker(true);
                   }}
                   style={{
                     width: '100%',
@@ -1058,7 +1022,6 @@ const FlowerBookingsNew = () => {
     // Shared styling tokens — mirror the Create Arrangement panel exactly
     const lbl = { display: 'block', fontSize: '9px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#9C9389', marginBottom: '8px' };
     const inp = { width: '100%', padding: '12px 14px', border: '1px solid #EAE7E2', borderRadius: '8px', fontSize: '13px', fontFamily: "'DM Sans', system-ui, sans-serif", background: '#FAF9F7', color: '#1C1A17', outline: 'none' };
-    const ribbonOptions = ['None', 'Red', 'White', 'Cream', 'Gold', 'Blue', 'Purple', 'Pink', 'Green'];
 
     return (
       <div style={styles.formContainer}>
@@ -1074,149 +1037,35 @@ const FlowerBookingsNew = () => {
 
         <form onSubmit={submitBooking} style={{ padding: '24px 28px 40px' }}>
           {/* ── 1 · Flower Types ── */}
-          <label style={{ ...lbl, marginBottom: '12px' }}>Flower Types *</label>
-          {arrangements.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: '#9C9389', fontSize: '13px', border: '1px dashed #EAE7E2', borderRadius: '8px', marginBottom: '16px' }}>
-              No arrangements available yet — click "Create Arrangement" first.
-            </div>
-          ) : (
-            <div style={{ ...styles.productGrid, marginBottom: '14px' }}>
-              {arrangements.map(arrangement => {
-                const selected = newBooking.arrangements.some(a => a.arrangement_id === arrangement.arrangement_id);
-                return (
-                  <div
-                    key={arrangement.arrangement_id}
-                    style={{ ...styles.productCard, border: selected ? '2px solid #2F4F3E' : '1px solid #EAE7E2', background: selected ? '#f0f7f4' : '#fff' }}
-                    onClick={() => toggleArrangement(arrangement)}
-                  >
-                    {selected && (<div style={styles.productCheck}><Check size={14} /></div>)}
-                    <div style={styles.productMedia}>
-                      {arrangement.images?.length > 0 ? (
-                        <img
-                          src={arrangement.images[0]?.url || arrangement.images[0]}
-                          alt={arrangement.title}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <div style={styles.productMediaPlaceholder}>{arrangement.title?.charAt(0) || 'F'}</div>
-                      )}
-                    </div>
-                    <div style={styles.productName}>{arrangement.title}</div>
-                    <div style={styles.productPrice}>
-                      {[asList(arrangement.colors)[0], asList(arrangement.sizes)[0]].filter(Boolean).join(' · ') || 'Custom'}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* ── Free-text flower-type list — book ANY types by name, many at once ── */}
-          <label style={lbl}>Or Add Your Own Types — book many at once</label>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <input
-              type="text"
-              style={{ ...inp, flex: 1 }}
-              placeholder="e.g., CASKET SPRAY, MUM WREATH, HAND HELD FLOWER…"
-              value={newBooking.custom_input}
-              onChange={e => setNewBooking(prev => ({ ...prev, custom_input: e.target.value }))}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomType(); } }}
-            />
-            <button
-              type="button"
-              onClick={addCustomType}
-              style={{
-                padding: '0 18px',
-                borderRadius: '8px',
-                background: '#2F4F3E',
-                color: '#fff',
-                border: 'none',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              + Add
-            </button>
-          </div>
-
-          {newBooking.custom_types.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '22px' }}>
-              {newBooking.custom_types.map(t => (
-                <span
-                  key={t}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '7px 8px 7px 14px',
-                    borderRadius: '99px',
-                    background: '#f0f7f4',
-                    border: '1px solid #CBE0D4',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    color: '#2F4F3E',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.03em'
-                  }}
-                >
-                  {t}
-                  <button
-                    type="button"
-                    onClick={() => removeCustomType(t)}
-                    title={`Remove ${t}`}
-                    style={{ width: 20, height: 20, borderRadius: '50%', border: 'none', background: '#2F4F3E', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-                  >
-                    <X size={11} strokeWidth={3} />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
+          <label style={{ ...lbl, marginBottom: '12px' }}>Flower Details *</label>
+          <textarea
+            rows={3}
+            required
+            style={{ ...inp, resize: 'vertical', marginBottom: '22px' }}
+            placeholder="Type every detail yourself, one flower type per line or comma-separated. e.g. CASKET SPRAY, MUM WREATH, HAND HELD FLOWER"
+            value={newBooking.flower_details}
+            onChange={e => setNewBooking(prev => ({ ...prev, flower_details: e.target.value }))}
+          />
 
           {/* ── 2 · Ribbon Colour ── */}
           <label style={lbl}>Ribbon Colour</label>
           <input
             type="text"
-            list="ribbon-color-options"
             style={{ ...inp, marginBottom: '22px' }}
-            placeholder="e.g. ivory white, gold, deep red…"
+            placeholder="Type the ribbon colour — e.g. ivory white, gold, deep red"
             value={newBooking.ribbon}
             onChange={e => setNewBooking(prev => ({ ...prev, ribbon: e.target.value }))}
           />
-          <datalist id="ribbon-color-options">
-            {ribbonOptions.filter(o => o !== 'None').map(o => (
-              <option key={o} value={o} />
-            ))}
-          </datalist>
 
           {/* ── Flower Size ── */}
           <label style={lbl}>Flower Size</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '22px' }}>
-            {['Small', 'Medium', 'Large'].map(sz => {
-              const active = newBooking.size === sz;
-              return (
-                <button
-                  key={sz}
-                  type="button"
-                  onClick={() => setNewBooking(prev => ({ ...prev, size: active ? '' : sz }))}
-                  style={{
-                    padding: '8px 14px',
-                    borderRadius: '99px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    background: active ? '#2F4F3E' : '#fff',
-                    color: active ? '#fff' : '#574F47',
-                    border: `1px solid ${active ? '#2F4F3E' : '#EAE7E2'}`
-                  }}
-                >
-                  {sz}
-                </button>
-              );
-            })}
-          </div>
+          <input
+            type="text"
+            style={{ ...inp, marginBottom: '22px' }}
+            placeholder="Type the size — e.g. Large wreath, 60cm spray, table centrepiece"
+            value={newBooking.size}
+            onChange={e => setNewBooking(prev => ({ ...prev, size: e.target.value }))}
+          />
 
           {/* ── 3 · Special Remarks ── */}
           <label style={lbl}>Special Remarks</label>
@@ -1261,24 +1110,13 @@ const FlowerBookingsNew = () => {
 
           {/* ── 5 · Priority Level ── */}
           <label style={lbl}>Priority Level</label>
-          <div style={styles.priorityGroup}>
-            {['High', 'Normal', 'Low'].map(p => (
-              <button
-                key={p}
-                type="button"
-                style={{
-                  ...styles.priorityBtn,
-                  background: newBooking.priority === p ? '#2F4F3E' : '#fff',
-                  color: newBooking.priority === p ? '#fff' : '#574F47',
-                  border: `1px solid ${newBooking.priority === p ? '#2F4F3E' : '#EAE7E2'}`
-                }}
-                onClick={() => setNewBooking(prev => ({ ...prev, priority: p }))}
-              >
-                {p === 'High' && <AlertTriangle size={14} />}
-                {p}
-              </button>
-            ))}
-          </div>
+          <input
+            type="text"
+            style={{ ...inp, marginBottom: '22px' }}
+            placeholder="Type it — e.g. Normal, Urgent, needed by 10am"
+            value={newBooking.priority}
+            onChange={e => setNewBooking(prev => ({ ...prev, priority: e.target.value }))}
+          />
 
           {/* Footer actions — mirrors Create Arrangement */}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', paddingTop: '20px', marginTop: '24px', borderTop: '1px solid #EAE7E2' }}>

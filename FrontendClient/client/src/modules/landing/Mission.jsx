@@ -6,6 +6,8 @@ import { Link } from 'react-router-dom';
  * Renders the full "Restpoint · Our Mission" design exactly as specified.
  * Self-contained: ships its own :root palette + styles so it is portable
  * to any page (landing page, dedicated /our-mission route, etc.).
+ * 
+ * Background: White (#FFFFFF)
  */
 
 const MissionGlobalStyle = createGlobalStyle`
@@ -35,7 +37,7 @@ html { scroll-behavior: smooth; }
 .mission-section {
   position: relative;
   padding: clamp(4rem, 8vw, 8rem) 0;
-  background: var(--bone2);
+  background: #FFFFFF;
   overflow: hidden;
 }
 
@@ -45,7 +47,7 @@ html { scroll-behavior: smooth; }
   position: absolute;
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  opacity: 0.04;
+  opacity: 0.03;
   pointer-events: none;
   mix-blend-mode: multiply;
   z-index: 1;
@@ -148,7 +150,7 @@ html { scroll-behavior: smooth; }
   height: 100%;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 40px 80px -20px rgba(0,0,0,0.2);
+  box-shadow: 0 40px 80px -20px rgba(0,0,0,0.18);
 }
 
 .mission-image {
@@ -183,7 +185,7 @@ html { scroll-behavior: smooth; }
   border: 1px solid var(--line-dark-strong);
   border-radius: 16px;
   padding: 2rem;
-  box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.35);
   z-index: 5;
 }
 
@@ -316,4 +318,3 @@ export default function MissionSection() {
     </>
   );
 }
-
