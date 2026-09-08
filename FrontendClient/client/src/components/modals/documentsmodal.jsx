@@ -264,7 +264,7 @@ const DocumentsModal = ({ isOpen, onClose, documents, deceasedId, onUpdate }) =>
 
       const response = await axios.post(`${env.API_URL}/upload-document`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': null,
         },
       });
 

@@ -508,8 +508,15 @@ const FlowerBookingsNew = () => {
     files.forEach(f => payload.append('images', f));
 
     try {
+      // NOTE: explicitly null the Content-Type so the BROWSER generates the
+      // multipart boundary itself. Hand-setting 'multipart/form-data' (the
+      // old code) sent the body WITHOUT a boundary= parameter → multer failed
+      // with 400 "Multipart: Boundary not found" every single time. Passing
+      // null also overrides the api instance's default 'application/json',
+      // which would otherwise make axios JSON-serialize the FormData (files
+      // lost, no multipart at all).
       const res = await api.post('/florist/flower-samples', payload, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': null }
       });
 
       const data = res.data;

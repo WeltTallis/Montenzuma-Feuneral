@@ -1701,8 +1701,10 @@ const DocumentsPage = () => {
         ENDPOINTS.DOCUMENTS.UPLOAD,
         formData,
         {
+          // Content-Type: null lets the browser add the multipart boundary (hand-setting
+          // 'multipart/form-data' omitted it -> multer 400 "Boundary not found").
           headers: {
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': null
           }
         }
       );

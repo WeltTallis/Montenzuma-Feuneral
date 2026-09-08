@@ -12,6 +12,7 @@ const mysql = require('mysql2/promise');
 // .env file contained a JWT_SECRET. Deferring the read fixes that whole class
 // of import-order bugs while still failing loudly (same message) if a secret
 // was genuinely never configured.
+
 let GLOBAL_JWT_SECRET = null;
 let JWT_SECRET_RESOLVED = false;
 
@@ -49,7 +50,9 @@ const getRootPool = () => {
       queueLimit: 0,
     });
   }
+
   return rootPool;
+
 };
 
 /**
@@ -103,6 +106,7 @@ const verifyTokenWithFallback = async (token) => {
  * Tries global JWT_SECRET first, then per-tenant secrets
  * Attaches user payload to req.user
  */
+
 const protect = async (req, res, next) => {
   let token;
 

@@ -1124,8 +1124,10 @@ const CoffinDashboard = () => {
         Array.from(data.images).forEach((file) => formData.append('images', file));
       }
 
+      // Content-Type: null lets the browser add the multipart boundary (hand-setting
+      // 'multipart/form-data' omitted it -> multer 400 "Boundary not found").
       const res = await api.post('/coffins/create', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 'Content-Type': null },
       });
       if (res.data?.success) {
         toast.success('Coffin created successfully');

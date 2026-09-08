@@ -60,9 +60,11 @@ export const initiateScan = async (scanParams) => {
 
 // Document Upload APIs
 export const uploadScannedDocument = async (formData) => {
+  // Content-Type: null lets the browser add the multipart boundary (hand-setting
+  // 'multipart/form-data' omitted it -> multer 400 "Boundary not found").
   const response = await scannerApi.post('/scans/upload', formData, {
     headers: {
-      'Content-Type': 'multipart/form-data',
+      'Content-Type': null,
     },
   });
   return response.data;

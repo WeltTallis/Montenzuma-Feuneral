@@ -1017,7 +1017,7 @@ const ApplyLeave = () => {
                     fd.append('document', file);
                     await api.post(ENDPOINTS.LEAVE.UPLOAD_DOCUMENT(created.id), fd, {
                         ...tenantHeaders,
-                        headers: { ...tenantHeaders.headers, 'Content-Type': 'multipart/form-data' },
+                        headers: { ...tenantHeaders.headers, 'Content-Type': null },
                     });
                 } catch (upErr) {
                     console.warn('Document upload failed (leave was submitted):', upErr);

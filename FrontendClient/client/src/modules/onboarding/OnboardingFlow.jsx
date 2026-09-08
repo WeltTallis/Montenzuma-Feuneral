@@ -349,7 +349,7 @@ export default function OnboardingFlow() {
       }
 
       const response = await api.post('/onboarding/organization', submitData, {
-        headers: { 'Content-Type': 'multipart/form-data', 'x-tenant-slug': '' },
+        headers: { 'Content-Type': null, 'x-tenant-slug': '' },
         timeout: 300000,
       });
 
