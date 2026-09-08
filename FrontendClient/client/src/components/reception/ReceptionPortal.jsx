@@ -401,7 +401,7 @@ export default function App() {
       let redirectPath = "/"
       if (serviceName === "Body Admission") redirectPath = `/tenant/${tenantSlug}/deceased/register`
       else if (serviceName === "Body Release") redirectPath = `/tenant/${tenantSlug}/release-form/new`
-      else if (serviceName === "Flower Arrangements") redirectPath = `/tenant/${tenantSlug}/flowers`
+      else if (serviceName === "Flower Arrangements") redirectPath = `/tenant/${tenantSlug}/flowers?view=samples`
       else if (serviceName === "Postmortem Records") redirectPath = `/tenant/${tenantSlug}/postmortem-qr`
       navigate(redirectPath)
       setShowOverlay(false)

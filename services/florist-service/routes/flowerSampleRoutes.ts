@@ -24,7 +24,7 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 15 * 1024 * 1024 // 15MB — phone photos routinely exceed 5MB
   },
     fileFilter: (req, file, cb) => {
     // Accept only image files
@@ -99,5 +99,25 @@ router.delete(
   '/:id',
   deleteFlowerArrangement as any
 );
+
+// Map multer failures (file too large / non-image / unexpected field) to a
+// clean 400 with a human-readable message instead of Express's default 500.
+router.use((err: any, req: any, res: any, next: any) => {
+  if (!err) return next();
+  console.warn('[FLOWERS] Upload rejected:', err?.code || err?.message);
+  const MESSAGES: Record<string, string> = {
+    LIMIT_FILE_SIZE: 'Image is too large — maximum size is 15MB',
+    LIMIT_UNEXPECTED_FILE: `Unexpected file field "${err.field || ''}" — please upload images using the Images field`,
+    LIMIT_FILE_COUNT: 'Too many images — maximum is 10 per arrangement'
+  };
+  const code = err?.code || '';
+  if (code && MESSAGES[code]) {
+    return res.status(400).json({ success: false, message: MESSAGES[code] });
+  }
+  if (/only image files are allowed/i.test(err?.message || '')) {
+    return res.status(400).json({ success: false, message: 'Only image files are allowed' });
+  }
+  return res.status(400).json({ success: false, message: err?.message || 'Upload failed' });
+});
 
 export default router;

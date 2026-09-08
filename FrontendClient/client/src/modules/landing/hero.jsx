@@ -2,17 +2,18 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled, { keyframes, createGlobalStyle } from "styled-components";
 
-/* ── Global Fonts & Background ── */
+/* ── Global Fonts ── */
 const GlobalFonts = createGlobalStyle`
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 `;
 
 /* ── Colors ── */
-const ink = "#15171A", bone = "#FAF8F4", bone2 = "#F3EFE6", brass = "#8B7355", brassLight = "#A98F6E", line = "#E3DDD0", gray = "#6B6862", accent = "#C77B5E", portalCyan = "#00d9ff", portalMagenta = "#ff006e";
+const ink = "#15171A", bone = "#FAF8F4", brass = "#8B7355", line = "#E3DDD0", gray = "#6B6862", accent = "#C77B5E", portalCyan = "#00d9ff", portalMagenta = "#ff006e";
 
 /* ── Keyframes ── */
 const slideUpFade = keyframes`from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); }`;
 const slideRightFade = keyframes`from { opacity: 0; transform: translateX(60px); } to { opacity: 1; transform: translateX(0); }`;
+const wordIn = keyframes`from { opacity: 0; transform: translateY(14px); filter: blur(4px); } to { opacity: 1; transform: translateY(0); filter: blur(0); }`;
 const floatTablet = keyframes`0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); }`;
 const pulseAccent = keyframes`0% { box-shadow: 0 0 0 0 rgba(199, 123, 94, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(199, 123, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(199, 123, 94, 0); }`;
 const portalPulse = keyframes`0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,217,255,0.5); } 50% { opacity: .5; box-shadow: 0 0 0 4px rgba(0,217,255,0); }`;
@@ -20,7 +21,7 @@ const flpFadeUp = keyframes`from { opacity: 0; transform: translateY(18px); } to
 const flpFloat = keyframes`0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); }`;
 const flpPulse = keyframes`0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0),0 8px 32px rgba(0,0,0,0.5); } 50% { box-shadow: 0 0 0 4px rgba(255,255,255,0.12),0 8px 32px rgba(0,0,0,0.5); }`;
 
-/* ── Styled Components ── */
+/* ── Layout ── */
 const HeroSection = styled.section`
   padding-top: 160px; padding-bottom: 80px; position: relative; overflow: hidden; background: #FFFFFF;
   @media (max-width: 900px) { padding-top: 120px; }
@@ -29,45 +30,86 @@ const HeroSection = styled.section`
 const Glow1 = styled.div`position: absolute; border-radius: 50%; filter: blur(100px); pointer-events: none; z-index: 0; opacity: 0.4; width: 500px; height: 500px; background: rgba(199, 123, 94, 0.12); top: -100px; left: -100px;`;
 const Glow2 = styled.div`position: absolute; border-radius: 50%; filter: blur(100px); pointer-events: none; z-index: 0; opacity: 0.4; width: 450px; height: 450px; background: rgba(139, 115, 85, 0.1); bottom: -100px; right: -100px;`;
 
-const Wrap = styled.div`max-width: 1280px; margin: 0 auto; width: 100%; padding-left: clamp(2rem, 5vw, 5rem); padding-right: clamp(2rem, 5vw, 5rem);`;
+const Wrap = styled.div`max-width: 1280px; margin: 0 auto; width: 100%; padding-left: clamp(1.5rem, 5vw, 5rem); padding-right: clamp(1.5rem, 5vw, 5rem);`;
 
 const HeroGrid = styled.div`
   position: relative; z-index: 2; display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 4rem; align-items: center;
-  @media (max-width: 900px) { grid-template-columns: 1fr; gap: 3rem; }
+  @media (max-width: 900px) { grid-template-columns: 1fr; gap: 3.5rem; }
 `;
 
+/* ══════════ TEXT SIDE — redesigned ══════════ */
 const HeroText = styled.div`animation: ${slideUpFade} 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0;`;
 
-const ArchTop = styled.div`display: flex; justify-content: space-between; align-items: center; padding-bottom: 1.5rem; border-bottom: 1px solid ${line}; margin-bottom: 2rem; @media (max-width: 480px) { flex-wrap: wrap; gap: 0.5rem; }`;
-const ArchLabel = styled.div`font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; color: ${brass}; font-weight: 500;`;
-const ArchStatus = styled.div`display: flex; align-items: center; gap: 0.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: ${accent}; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;`;
-const StatusDot = styled.div`width: 6px; height: 6px; background: ${accent}; border-radius: 50%; animation: ${pulseAccent} 2s infinite;`;
+const Eyebrow = styled.div`
+  display: inline-flex; align-items: center; gap: 0.65rem;
+  padding: 0.55rem 1.1rem; border: 1px solid ${line}; border-radius: 999px;
+  background: #FFFFFF; margin-bottom: 2.25rem;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.16em;
+  text-transform: uppercase; color: ${brass}; font-weight: 500;
+  box-shadow: 0 2px 10px rgba(21,23,26,0.05);
+`;
+const EyebrowDot = styled.div`width: 6px; height: 6px; background: ${accent}; border-radius: 50%; animation: ${pulseAccent} 2s infinite; flex-shrink: 0;`;
+const EyebrowDivider = styled.span`width: 1px; height: 12px; background: ${line};`;
+const EyebrowStatus = styled.span`color: ${accent}; font-weight: 600;`;
 
-const HeroTitle = styled.h1`font-size: clamp(2.1rem, 3.8vw, 3.1rem); line-height: 1.1; margin-bottom: 1.5rem; color: ${ink}; font-weight: 400; font-family: 'Fraunces', serif; letter-spacing: -0.02em; @media (max-width: 900px) { text-align: center; }`;
-const TitleLight = styled.span`font-family: 'Fraunces', serif; font-weight: 300; color: ${gray}; display: block;`;
-const TitleBold = styled.span`font-family: 'Fraunces', serif; font-weight: 600; color: ${ink};`;
+const HeroTitle = styled.h1`
+  font-family: 'Fraunces', serif; font-size: clamp(2.3rem, 4vw, 3.4rem);
+  line-height: 1.12; letter-spacing: -0.025em; font-weight: 300; color: ${gray}; margin: 0 0 1.5rem; max-width: 560px;
+`;
+const TitleBold = styled.span`display: block; color: ${ink}; font-weight: 600;`;
 
-const RotatingWrapper = styled.span`display: inline-block; position: relative; min-width: 250px; height: 1.2em; vertical-align: bottom; @media (max-width: 480px) { min-width: 185px; }`;
-const RotatingText = styled.span`position: absolute; left: 0; top: 0; opacity: 0; transform: translateY(10px); transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); font-style: italic; color: ${accent}; font-weight: 500; white-space: nowrap; &.active { opacity: 1; transform: translateY(0); }`;
+/* Rotating word — natural inline width, re-animates on change */
+const RotWord = styled.span`
+  display: inline-block; font-style: italic; font-weight: 500; color: ${accent};
+  animation: ${wordIn} 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+`;
 
-const TextAccent = styled.div`width: 40px; height: 2px; background: ${accent}; margin: 1.5rem 0; @media (max-width: 900px) { margin-left: auto; margin-right: auto; }`;
+const HeroDesc = styled.p`
+  font-size: 1.02rem; max-width: 470px; margin: 0 0 2.5rem; color: ${gray};
+  line-height: 1.75; font-family: 'Space Grotesk', sans-serif; font-weight: 400;
+`;
 
-const HeroDesc = styled.p`font-size: 1rem; max-width: 420px; margin-bottom: 2.5rem; color: ${gray}; line-height: 1.7; font-family: 'Space Grotesk', sans-serif; font-weight: 400; @media (max-width: 900px) { text-align: center; margin-left: auto; margin-right: auto; }`;
+const HeroActions = styled.div`display: flex; gap: 0.9rem; margin-bottom: 3rem; flex-wrap: wrap;`;
 
-const HeroActions = styled.div`display: flex; gap: 1rem; margin-bottom: 3.5rem; @media (max-width: 900px) { justify-content: center; } @media (max-width: 480px) { flex-direction: column; width: 100%; }`;
+const Btn = styled.button`
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem;
+  padding: 1.05rem 2rem; font-size: 0.78rem; font-weight: 600; font-family: 'Space Grotesk', sans-serif;
+  border: 1px solid transparent; border-radius: 8px; cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); white-space: nowrap;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  @media (max-width: 480px) { flex: 1 1 100%; }
+`;
+const BtnArrow = styled.span`display: inline-flex; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);`;
+const BtnBlack = styled(Btn)`
+  background: ${ink}; color: #FFFFFF;
+  &:hover { background: #000000; transform: translateY(-2px); box-shadow: 0 12px 28px rgba(21,23,26,0.25); & ${BtnArrow} { transform: translateX(4px); } }
+`;
+const BtnGhost = styled(Btn)`
+  background: transparent; color: ${ink}; border-color: ${line};
+  &:hover { background: ${ink}; color: #FFFFFF; border-color: ${ink}; transform: translateY(-2px); }
+`;
 
-const Btn = styled.button`display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 2rem; font-size: 0.8rem; font-weight: 600; font-family: 'Space Grotesk', sans-serif; border: 1px solid transparent; border-radius: 6px; cursor: pointer; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); white-space: nowrap; letter-spacing: 0.05em; text-transform: uppercase; @media (max-width: 480px) { width: 100%; }`;
-const BtnAccent = styled(Btn)`background: ${accent}; color: #FFFFFF; &:hover { background: ${brass}; transform: translateY(-2px); box-shadow: 0 10px 30px rgba(199,123,94,0.2); }`;
-const BtnGhost = styled(Btn)`background: transparent; color: ${ink}; border-color: ${line}; &:hover { background: ${ink}; color: #FFFFFF; border-color: ${ink}; }`;
+const HeroStats = styled.div`
+  display: flex; border-top: 1px solid ${line}; padding-top: 1.6rem; max-width: 470px;
+`;
+const StatItem = styled.div`
+  flex: 1; padding-right: 1rem;
+  &:nth-child(2) { border-left: 1px solid ${line}; padding-left: 1.1rem; }
+  &:last-child { border-left: 1px solid ${line}; padding-left: 1.1rem; padding-right: 0; }
+  @media (max-width: 380px) { &:nth-child(2), &:last-child { padding-left: 0.7rem; } }
+`;
+const StatNum = styled.span`
+  display: block; font-family: 'Fraunces', serif; font-size: 1.55rem; font-weight: 600;
+  color: ${ink}; line-height: 1; margin-bottom: 0.45rem;
+`;
+const StatLabel = styled.span`
+  font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: ${gray};
+  text-transform: uppercase; letter-spacing: 0.1em; line-height: 1.5; display: block;
+`;
 
-const HeroStats = styled.div`display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid ${line}; padding-top: 1.5rem;`;
-const StatCol = styled.div`padding-right: 1rem; border-right: 1px solid ${line}; &:last-child { border-right: none; padding-left: 1rem; padding-right: 0; } &:nth-child(2) { padding-left: 1rem; }`;
-const StatNum = styled.span`font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 600; color: ${ink}; line-height: 1; margin-bottom: 0.3rem; display: block; @media (max-width: 480px) { font-size: 1.15rem; }`;
-const StatLabel = styled.span`font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: ${gray}; text-transform: uppercase; letter-spacing: 0.1em; @media (max-width: 480px) { font-size: 0.55rem; letter-spacing: 0.05em; }`;
-
+/* ══════════ VISUAL SIDE — tablet exactly as it was ══════════ */
 const HeroVisual = styled.div`
   position: relative; display: flex; justify-content: center; align-items: center; height: 100%; perspective: 1600px;
-  @media (max-width: 900px) { order: -1; height: auto; }
 `;
 
 /* Responsive scaler: reserves the correct layout box for the scaled tablet
@@ -82,8 +124,6 @@ const TabletScale = styled.div`
   @media (max-width: 350px) { --s: 0.65; }
 `;
 
-/* Scales the fixed 380×540 tablet design down into the reserved box. It lives
-   on its own element because TabletFloatWrapper's transform is animated. */
 const TabletScaleInner = styled.div`
   width: 380px;
   height: 540px;
@@ -129,7 +169,13 @@ const PSvcTitle = styled.div`font-family: 'Space Grotesk', sans-serif; font-size
 const PSvcSub = styled.div`font-size: 7px; letter-spacing: 2px; text-transform: uppercase; color: #5a5a65; font-weight: 600; margin-bottom: 2px;`;
 
 const PGrid = styled.div`display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1;`;
-const PCard = styled.div`position: relative; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; cursor: pointer; overflow: hidden; background: linear-gradient(145deg, #0f1820 0%, #050709 100%); border: 1px solid rgba(0,217,255,0.25); transition: all 0.3s ease; &:hover { border-color: ${portalCyan}; box-shadow: 0 0 15px rgba(0,217,255,0.2); transform: translateY(-2px); } &.magenta { background: linear-gradient(145deg, #1f0a15 0%, #0a0305 100%); border-color: rgba(255,0,110,0.25); } &.magenta:hover { border-color: ${portalMagenta}; box-shadow: 0 0 15px rgba(255,0,110,0.2); } }`;
+const PCard = styled.div`
+  position: relative; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; cursor: pointer; overflow: hidden;
+  background: linear-gradient(145deg, #0f1820 0%, #050709 100%); border: 1px solid rgba(0,217,255,0.25); transition: all 0.3s ease;
+  &:hover { border-color: ${portalCyan}; box-shadow: 0 0 15px rgba(0,217,255,0.2); transform: translateY(-2px); }
+  &.magenta { background: linear-gradient(145deg, #1f0a15 0%, #0a0305 100%); border-color: rgba(255,0,110,0.25); }
+  &.magenta:hover { border-color: ${portalMagenta}; box-shadow: 0 0 15px rgba(255,0,110,0.2); }
+`;
 const PCorner = styled.div`position: absolute; width: 8px; height: 8px; border: 1.5px solid ${portalCyan}; &.magenta { border-color: ${portalMagenta}; } &.tl { top: 3px; left: 3px; border-right: 0; border-bottom: 0; } &.tr { top: 3px; right: 3px; border-left: 0; border-bottom: 0; } &.bl { bottom: 3px; left: 3px; border-right: 0; border-top: 0; } &.br { bottom: 3px; right: 3px; border-left: 0; border-top: 0; }`;
 const PIconBox = styled.div`width: 28px; height: 28px; border-radius: 5px; background: rgba(0,217,255,0.1); border: 1px solid rgba(0,217,255,0.3); display: flex; align-items: center; justify-content: center; margin-bottom: 10px; color: ${portalCyan}; &.magenta { background: rgba(255,0,110,0.1); border-color: rgba(255,0,110,0.3); color: ${portalMagenta}; }`;
 const PNum = styled.div`position: absolute; bottom: -5px; right: 2px; font-family: 'Space Grotesk', sans-serif; font-size: 40px; font-style: italic; font-weight: 700; color: rgba(255,255,255,0.03); line-height: 1; pointer-events: none;`;
@@ -179,6 +225,12 @@ const FloralData = [
   { img: "https://www.purpink.co.ke/cdn/shop/files/Eternal_Embrace.png?v=1773229345&width=1240", title: (<>The Eternal<br /><em>Embrace</em></>), label: "Embrace" }
 ];
 
+const statsData = [
+  { value: "100%", label: "Paperless workflow" },
+  { value: "24/7", label: "Uptime & support" },
+  { value: "100%", label: "Encrypted & secure" }
+];
+
 export default function Hero() {
   const [textIndex, setTextIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -188,8 +240,17 @@ export default function Hero() {
 
   const rotatingTexts = ["families", "memories", "legacies", "communities"];
 
-  /* Headline rotation and tablet flip run independently so the flip timer
-     is never reset by the flower rotation. */
+  /* Cross-fade helper */
+  const selectFlower = (i) => {
+    if (i === currentFlower) return;
+    setFading(true);
+    setTimeout(() => {
+      setCurrentFlower(i);
+      setFading(false);
+    }, 380);
+  };
+
+  /* Headline rotation and tablet flip run independently */
   useEffect(() => {
     const textInterval = setInterval(() => {
       setTextIndex((prev) => (prev + 1) % rotatingTexts.length);
@@ -205,27 +266,21 @@ export default function Hero() {
     };
   }, []);
 
-  /* Auto-advance the floral tributes on the tablet's back face */
+  /* Auto-advance floral tributes with proper cleanup */
   useEffect(() => {
+    let fadeTimer;
     const flowerInterval = setInterval(() => {
-      setFlower((currentFlower + 1) % FloralData.length);
-    }, 3500);
-
-    return () => clearInterval(flowerInterval);
-  }, [currentFlower]);
-
-  const setFlower = (next) => {
-    let i = next;
-    if (i < 0) i = FloralData.length - 1;
-    if (i >= FloralData.length) i = 0;
-    if (i === currentFlower) return;
-
-    setFading(true);
-    setTimeout(() => {
-      setCurrentFlower(i);
-      setFading(false);
-    }, 400);
-  };
+      setFading(true);
+      fadeTimer = setTimeout(() => {
+        setCurrentFlower((prev) => (prev + 1) % FloralData.length);
+        setFading(false);
+      }, 380);
+    }, 4000);
+    return () => {
+      clearInterval(flowerInterval);
+      clearTimeout(fadeTimer);
+    };
+  }, []);
 
   return (
     <>
@@ -236,158 +291,148 @@ export default function Hero() {
 
         <Wrap>
           <HeroGrid>
-            
-            {/* Left Side: High-End Architectural Text */}
+
+            {/* ── TEXT ── */}
             <HeroText>
-              <ArchTop>
-                <ArchLabel>Death Care OS &mdash; v2.0</ArchLabel>
-                <ArchStatus>
-                  <StatusDot /> System Online
-                </ArchStatus>
-              </ArchTop>
-              
+              <Eyebrow>
+                <EyebrowDot />
+                Death Care OS &mdash; v2.0
+                <EyebrowDivider />
+                <EyebrowStatus>System Online</EyebrowStatus>
+              </Eyebrow>
+
               <HeroTitle>
-                <TitleLight>The premium standard</TitleLight>
+                The modern standard
                 <TitleBold>
-                  for managing the{" "}
-                  <RotatingWrapper>
-                    {rotatingTexts.map((text, i) => (
-                      <RotatingText key={i} className={i === textIndex ? "active" : ""}>
-                        {text}
-                      </RotatingText>
-                    ))}
-                  </RotatingWrapper>
+                  for the <RotWord key={textIndex}>{rotatingTexts[textIndex]}</RotWord>
                 </TitleBold>
-                <TitleLight>you serve.</TitleLight>
+                you serve.
               </HeroTitle>
-              
-              <TextAccent />
-              
+
               <HeroDesc>
-                Rest Point brings high-end technology to the death care industry. Give families a tablet at the front desk to manage body admissions, coordinate releases, and arrange documents—with everything instantly syncing to your dashboard.
+                Rest Point brings high end technology to the death care industry. Hand families a tablet at the front desk to manage admissions, releases, and florals  everything syncing instantly to your dashboard.
               </HeroDesc>
-              
+
               <HeroActions>
-                <BtnAccent onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/register'); }}>Request Access &rarr;</BtnAccent>
+                <BtnBlack onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/register'); }}>
+                  Request Access
+                  <BtnArrow>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                  </BtnArrow>
+                </BtnBlack>
                 <BtnGhost onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/login'); }}>View Portal</BtnGhost>
               </HeroActions>
 
               <HeroStats>
-                <StatCol>
-                  <StatNum>01.</StatNum>
-                  <StatLabel>Paperless Workflow</StatLabel>
-                </StatCol>
-                <StatCol>
-                  <StatNum>24/7</StatNum>
-                  <StatLabel>Uptime & Support</StatLabel>
-                </StatCol>
-                <StatCol>
-                  <StatNum>100%</StatNum>
-                  <StatLabel>Encrypted & Secure</StatLabel>
-                </StatCol>
+                {statsData.map((s, i) => (
+                  <StatItem key={i}>
+                    <StatNum>{s.value}</StatNum>
+                    <StatLabel>{s.label}</StatLabel>
+                  </StatItem>
+                ))}
               </HeroStats>
             </HeroText>
 
-            {/* Right Side: 3D Flipping Tablet */}
+            {/* ── TABLET — exactly as it was, text comes first on mobile ── */}
             <HeroVisual>
               <TabletScale>
                 <TabletScaleInner>
                   <TabletFloatWrapper>
-                <Tablet3DFlipper isFlipped={isFlipped}>
-                  
-                  {/* FRONT FACE: RECEPTION PORTAL */}
-                  <TabletFace className="front">
-                    <TabletFrame>
-                      <TabletScreen>
-                        <PortalUI>
-                          <PTop>
-                            <div style={{ width: "40px" }}></div>
-                            <PWordmark>
-                              <PName>Rest Point</PName>
-                              <PLine />
-                              <PTag>Reception Portal</PTag>
-                            </PWordmark>
-                            <PStatus>
-                              <PStatusDot />
-                              <PStatusTxt>Online</PStatusTxt>
-                            </PStatus>
-                          </PTop>
+                    <Tablet3DFlipper isFlipped={isFlipped}>
 
-                          <PWelcome>
-                            <PGreet>Good morning</PGreet>
-                            <PH1>Welcome back.</PH1>
-                          </PWelcome>
+                      {/* FRONT FACE: RECEPTION PORTAL */}
+                      <TabletFace className="front">
+                        <TabletFrame>
+                          <TabletScreen>
+                            <PortalUI>
+                              <PTop>
+                                <div style={{ width: "40px" }}></div>
+                                <PWordmark>
+                                  <PName>Rest Point</PName>
+                                  <PLine />
+                                  <PTag>Reception Portal</PTag>
+                                </PWordmark>
+                                <PStatus>
+                                  <PStatusDot />
+                                  <PStatusTxt>Online</PStatusTxt>
+                                </PStatus>
+                              </PTop>
 
-                          <PSvcHead>
-                            <div>
-                              <PSvcSub>Services</PSvcSub>
-                              <PSvcTitle>Select to Begin</PSvcTitle>
-                            </div>
-                            <PSvcSub style={{ display: "flex", alignItems: "center", gap: "4px", color: portalCyan }}>
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /></svg>
-                              4 Available
-                            </PSvcSub>
-                          </PSvcHead>
+                              <PWelcome>
+                                <PGreet>Good morning</PGreet>
+                                <PH1>Welcome back.</PH1>
+                              </PWelcome>
 
-                          <PGrid>
-                            {PortalCardsData.map((c, i) => (
-                              <PCard key={i} className={c.magenta ? "magenta" : ""}>
-                                <PCorner className={`${c.magenta ? "magenta" : ""} tl`} />
-                                <PCorner className={`${c.magenta ? "magenta" : ""} tr`} />
-                                <PCorner className={`${c.magenta ? "magenta" : ""} bl`} />
-                                <PCorner className={`${c.magenta ? "magenta" : ""} br`} />
-                                <PNum>{c.num}</PNum>
-                                <PIconBox className={c.magenta ? "magenta" : ""}>{c.icon}</PIconBox>
-                                <PCardTitle>{c.title}</PCardTitle>
-                                <PCardDesc>{c.desc}</PCardDesc>
-                                <PCont className={c.magenta ? "magenta" : ""}>
-                                  Continue 
-                                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M7 7h10v10M7 17L17 7" /></svg>
-                                </PCont>
-                              </PCard>
-                            ))}
-                          </PGrid>
-                        </PortalUI>
-                      </TabletScreen>
-                    </TabletFrame>
-                  </TabletFace>
+                              <PSvcHead>
+                                <div>
+                                  <PSvcSub>Services</PSvcSub>
+                                  <PSvcTitle>Select to Begin</PSvcTitle>
+                                </div>
+                                <PSvcSub style={{ display: "flex", alignItems: "center", gap: "4px", color: portalCyan }}>
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /></svg>
+                                  4 Available
+                                </PSvcSub>
+                              </PSvcHead>
 
-                  {/* BACK FACE: FLORAL ARRANGEMENTS */}
-                  <TabletFace className="back">
-                    <TabletFrame>
-                      <TabletScreen>
-                        <FloralUI>
-                          <FlpHero src={FloralData[currentFlower].img} alt="Floral Tribute" fading={fading ? 1 : 0} />
-                          <FlpOverlay />
-                          
-                          <FlpStrip>
-                            {FloralData.map((f, i) => (
-                              <FlpStory key={i} onClick={() => setFlower(i)}>
-                                <FlpRing className={i === currentFlower ? "unseen" : "seen"}>
-                                  <FlpRingInner>
-                                    <img src={f.img} alt={f.label} />
-                                  </FlpRingInner>
-                                </FlpRing>
-                                <FlpStoryLabel>{f.label}</FlpStoryLabel>
-                              </FlpStory>
-                            ))}
-                          </FlpStrip>
+                              <PGrid>
+                                {PortalCardsData.map((c, i) => (
+                                  <PCard key={i} className={c.magenta ? "magenta" : ""}>
+                                    <PCorner className={`${c.magenta ? "magenta" : ""} tl`} />
+                                    <PCorner className={`${c.magenta ? "magenta" : ""} tr`} />
+                                    <PCorner className={`${c.magenta ? "magenta" : ""} bl`} />
+                                    <PCorner className={`${c.magenta ? "magenta" : ""} br`} />
+                                    <PNum>{c.num}</PNum>
+                                    <PIconBox className={c.magenta ? "magenta" : ""}>{c.icon}</PIconBox>
+                                    <PCardTitle>{c.title}</PCardTitle>
+                                    <PCardDesc>{c.desc}</PCardDesc>
+                                    <PCont className={c.magenta ? "magenta" : ""}>
+                                      Continue
+                                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M7 7h10v10M7 17L17 7" /></svg>
+                                    </PCont>
+                                  </PCard>
+                                ))}
+                              </PGrid>
+                            </PortalUI>
+                          </TabletScreen>
+                        </TabletFrame>
+                      </TabletFace>
 
-                          <FlpTitleBlock>
-                            <FlpNameTag>Floral Tributes</FlpNameTag>
-                            <FlpHeadline fading={fading ? 1 : 0}>{FloralData[currentFlower].title}</FlpHeadline>
-                          </FlpTitleBlock>
+                      {/* BACK FACE: FLORAL ARRANGEMENTS */}
+                      <TabletFace className="back">
+                        <TabletFrame>
+                          <TabletScreen>
+                            <FloralUI>
+                              <FlpHero src={FloralData[currentFlower].img} alt="Floral Tribute" fading={fading ? 1 : 0} />
+                              <FlpOverlay />
 
-                          <FlpWordmark>
-                            <FlpWordmarkName>Memorial Florals</FlpWordmarkName>
-                            <FlpWordmarkSub>Est. since care began</FlpWordmarkSub>
-                          </FlpWordmark>
-                        </FloralUI>
-                      </TabletScreen>
-                    </TabletFrame>
-                  </TabletFace>
+                              <FlpStrip>
+                                {FloralData.map((f, i) => (
+                                  <FlpStory key={i} onClick={() => selectFlower(i)}>
+                                    <FlpRing className={i === currentFlower ? "unseen" : "seen"}>
+                                      <FlpRingInner>
+                                        <img src={f.img} alt={f.label} />
+                                      </FlpRingInner>
+                                    </FlpRing>
+                                    <FlpStoryLabel>{f.label}</FlpStoryLabel>
+                                  </FlpStory>
+                                ))}
+                              </FlpStrip>
 
-                </Tablet3DFlipper>
+                              <FlpTitleBlock>
+                                <FlpNameTag>Floral Tributes</FlpNameTag>
+                                <FlpHeadline fading={fading ? 1 : 0}>{FloralData[currentFlower].title}</FlpHeadline>
+                              </FlpTitleBlock>
+
+                              <FlpWordmark>
+                                <FlpWordmarkName>Memorial Florals</FlpWordmarkName>
+                                <FlpWordmarkSub>Est. since care began</FlpWordmarkSub>
+                              </FlpWordmark>
+                            </FloralUI>
+                          </TabletScreen>
+                        </TabletFrame>
+                      </TabletFace>
+
+                    </Tablet3DFlipper>
                   </TabletFloatWrapper>
                 </TabletScaleInner>
               </TabletScale>

@@ -201,7 +201,13 @@ const FlowerBookingsNew = () => {
   const { socket, connected } = useSocket()
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('list');
+  // Deep-link support: the ReceptionPortal's "Flower Arrangements" tile links
+  // here with ?view=samples so receptionists land directly on the uploaded
+  // arrangements instead of the bookings dashboard.
+  const [view, setView] = useState(() => {
+    const v = new URLSearchParams(window.location.search).get('view');
+    return v === 'samples' ? 'samples' : 'list';
+  });
   const [calDate, setCalDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [activeBookingId, setActiveBookingId] = useState(null);
@@ -520,10 +526,21 @@ const FlowerBookingsNew = () => {
   const handleCreateArrangement = async (e) => {
     e.preventDefault();
     const form = e.target;
-    const formData = new FormData(form);
+    const fd = new FormData(form);
+
+    // Build the payload explicitly with trimmed values so a spaces-only input
+    // can't slip past HTML validation and trip the server's non-empty checks.
+    const payload = new FormData();
+    payload.append('title', String(fd.get('title') || '').trim());
+    payload.append('description', String(fd.get('description') || '').trim());
+    payload.append('types', String(fd.get('types') || '').trim());
+    payload.append('colors', String(fd.get('colors') || '').trim());
+    payload.append('sizes', String(fd.get('sizes') || '').trim());
+    const files = fd.getAll('images').filter(f => f && f.size > 0);
+    files.forEach(f => payload.append('images', f));
 
     try {
-      const res = await api.post('/florist/flower-samples', formData, {
+      const res = await api.post('/florist/flower-samples', payload, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
@@ -532,11 +549,23 @@ const FlowerBookingsNew = () => {
         showToast('Arrangement created successfully!');
         setShowCreateModal(false);
         form.reset();
+        // Refresh so the new sample appears immediately without a page reload
+        await loadArrangements();
       } else {
         showToast(data.message || 'Failed to create arrangement', 'error');
       }
     } catch (err) {
-      showToast(err.friendlyMessage || 'Failed to create arrangement', 'error');
+      console.error('[FlowerBookings] Create arrangement FAILED:', {
+        status: err?.response?.status,
+        serverSaid: err?.response?.data,
+        message: err?.message
+      });
+      showToast(
+        err.response?.data?.message ||
+        err.friendlyMessage ||
+        'Failed to create arrangement',
+        'error'
+      );
     }
   };
 

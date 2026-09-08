@@ -310,23 +310,29 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
     const colors = toArray(req.body.colors);
     const sizes = toArray(req.body.sizes);
 
-    // Validate required fields
-    if (!title || !description || !types || !colors || !sizes) {
+    // Trim text inputs — spaces-only values would slip past the client and
+    // fail the non-empty checks below.
+    const cleanTitle = String(title || '').trim();
+    const cleanDescription = String(description || '').trim();
+
+    // Validate required fields. Log what actually arrived so a rejected POST
+    // is diagnosable from docker logs (this 400 used to be completely silent).
+    if (!cleanTitle || !cleanDescription || types.length === 0 || colors.length === 0 || sizes.length === 0) {
+      const missing: string[] = [];
+      if (!cleanTitle) missing.push('title');
+      if (!cleanDescription) missing.push('description');
+      if (types.length === 0) missing.push('types');
+      if (colors.length === 0) missing.push('colors');
+      if (sizes.length === 0) missing.push('sizes');
+      console.warn('[FLOWERS] Create rejected — missing/empty fields:', JSON.stringify({
+        missing,
+        body_keys: Object.keys(req.body || {}),
+        files: Array.isArray(req.files) ? req.files.length : 0
+      }));
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: title, description, types, colors, sizes'
+        message: `Missing required fields: ${missing.join(', ')}`
       });
-    }
-
-    // Validate arrays
-    if (!Array.isArray(types) || types.length === 0) {
-      return res.status(400).json({ success: false, message: 'Types must be a non-empty array' });
-    }
-    if (!Array.isArray(colors) || colors.length === 0) {
-      return res.status(400).json({ success: false, message: 'Colors must be a non-empty array' });
-    }
-    if (!Array.isArray(sizes) || sizes.length === 0) {
-      return res.status(400).json({ success: false, message: 'Sizes must be a non-empty array' });
     }
 
     // Generate unique arrangement ID
@@ -343,7 +349,7 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
         const imageUrl = await compressAndSaveImage(file.buffer, file.originalname, tenantSlug);
         images.push({
           url: imageUrl,
-          alt_text: `${title} - image ${i + 1}`,
+          alt_text: `${cleanTitle} - image ${i + 1}`,
           is_primary: i === 0,
           order: i
         });
@@ -356,7 +362,7 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
         if (img.url) {
           images.push({
             url: img.url,
-            alt_text: img.alt_text || `${title} - image ${index + 1}`,
+            alt_text: img.alt_text || `${cleanTitle} - image ${index + 1}`,
             is_primary: img.is_primary || index === 0,
             order: img.order || index
           });
@@ -366,8 +372,8 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
 
     // Prepare data for insertion
     const data = stringifyJSONFields({
-      title,
-      description,
+      title: cleanTitle,
+      description: cleanDescription,
       types,
       colors,
       sizes,
@@ -382,8 +388,8 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
 
     await safeExecute(sql, [
       arrangementId,
-      title,
-      description,
+      cleanTitle,
+      cleanDescription,
       data.types,
       data.colors,
       data.sizes,
