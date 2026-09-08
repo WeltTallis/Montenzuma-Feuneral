@@ -79,6 +79,45 @@ const generateArrangementId = (): string => {
   const random = crypto.randomBytes(3).toString('hex').toUpperCase();
   return `ARR-${timestamp}-${random}`;
 };
+// ─── Transient DB error retry ───
+// Pool warm-up / network hiccups occasionally surface transient driver errors
+// (ECONNRESET, PROTOCOL_CONNECTION_LOST, lock waits…). The INSERT is retried
+// so a first-click failure never turns into a phantom error that makes the
+// user submit again and create duplicates.
+const TRANSIENT_DB_ERRORS = new Set([
+  'ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EPIPE',
+  'PROTOCOL_CONNECTION_LOST', 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR',
+  'ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT',
+]);
+
+const isTransientDbError = (err: any): boolean => {
+  const code = err?.code || '';
+  if (typeof code === 'string' && TRANSIENT_DB_ERRORS.has(code)) return true;
+  return /connection lost|deadlock|lock wait timeout|connection reset/i.test(err?.message || '');
+};
+
+const safeExecuteWithRetry = async (
+  sql: string,
+  params: any[],
+  attempts = 3
+): Promise<ResultSetHeader> => {
+  let lastErr: any;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await safeExecute(sql, params);
+    } catch (err: any) {
+      lastErr = err;
+      if (i < attempts - 1 && isTransientDbError(err)) {
+        const backoff = 250 * (i + 1);
+        console.warn(`[FLOWERS] Transient DB error (${err?.code || err?.message}) — retry ${i + 1}/${attempts - 1} in ${backoff}ms`);
+        await new Promise((r) => setTimeout(r, backoff));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
+};
 
 // ─── Global uploader ───
 // Flower-sample images are stored through the SAME centralized upload service
@@ -93,23 +132,35 @@ const saveFlowerImage = async (
   filename: string,
   tenantSlug: string
 ): Promise<string | null> => {
-  try {
-    const result = await centralizedUploadService.uploadImage(
-      buffer,
-      filename,
-      tenantSlug,
-      'flowers'
-    );
-    if (result && result.success && result.urlPath) {
-      console.log(`[FLOWER] Image stored via global uploader: ${result.urlPath} (${(result.size / 1024).toFixed(1)}KB)`);
-      return result.urlPath;
+  // QUALITY GUARANTEE: flower-sample images are persisted BYTE-FOR-BYTE as
+  // uploaded — the centralized uploader's writeBuffer writes the original
+  // buffer untouched: no resize, no re-compression, no format conversion,
+  // no sharp pass. Whatever resolution/quality the florist uploads is
+  // exactly what users see in the gallery, so samples stay crisp.
+  //
+  // Reliability: a transient disk hiccup (network mount, EBUSY, momentary
+  // EACCES) is retried a couple of times with backoff before the image is
+  // skipped, so a flaky first write doesn't silently drop a photo.
+  const attempts = 3;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const result = await centralizedUploadService.uploadImage(
+        buffer,
+        filename,
+        tenantSlug,
+        'flowers'
+      );
+      if (result && result.success && result.urlPath) {
+        console.log(`[FLOWER] Image stored via global uploader (original quality, no re-compression): ${result.urlPath} (${(result.size / 1024).toFixed(1)}KB)`);
+        return result.urlPath;
+      }
+      console.warn(`[FLOWER] Image upload failed (attempt ${i + 1}/${attempts})${i < attempts - 1 ? ' — retrying' : ''}: ${result?.error || 'unknown error'}`);
+    } catch (error: any) {
+      console.warn(`[FLOWER] Image upload error (attempt ${i + 1}/${attempts})${i < attempts - 1 ? ' — retrying' : ''}: ${error?.message || error}`);
     }
-    console.warn(`[FLOWER] Image upload failed: ${result?.error || 'unknown error'}`);
-    return null;
-  } catch (error: any) {
-    console.warn(`[FLOWER] Image upload error: ${error?.message || error}`);
-    return null;
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250 * (i + 1)));
   }
+  return null;
 };
 
 // ─── Helper to parse JSON strings from DB ───
@@ -277,7 +328,8 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
 
     console.log('[FLOWERS CREATE] Executing SQL insertion for arrangement ID:', arrangementId);
 
-    await safeExecute(sql, [
+    // Retry transient DB hiccups so the FIRST attempt doesn't fail spuriously.
+    await safeExecuteWithRetry(sql, [
       arrangementId,
       cleanTitle,
       cleanDescription,
@@ -292,8 +344,31 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
     // Clear cache
     clearCache(tenantSlug);
 
-    // Fetch the newly created record
-    const createdArrangement = await getFlowerArrangementByIdInternal(req, arrangementId, tenantSlug);
+    // Fetch the newly created record. If this post-insert read hiccups, DO
+    // NOT fail the request — the row is already committed, and a 500 here
+    // would make the user submit again and create a duplicate.
+    let createdArrangement: any = null;
+    try {
+      createdArrangement = await getFlowerArrangementByIdInternal(req, arrangementId, tenantSlug);
+    } catch (fetchErr: any) {
+      console.warn('[FLOWERS CREATE] Post-insert read failed, returning inserted payload:', fetchErr?.message);
+    }
+    if (!createdArrangement) {
+      createdArrangement = {
+        id: null,
+        arrangement_id: arrangementId,
+        title: cleanTitle,
+        description: cleanDescription,
+        types,
+        colors,
+        sizes,
+        images,
+        tenant_slug: tenantSlug,
+        tenant_id: tenantId,
+        created_at: new Date(),
+        updated_at: new Date()
+      };
+    }
 
     console.log('[FLOWERS CREATE] Success! Arrangement Created:', arrangementId);
 

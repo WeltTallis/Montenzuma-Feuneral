@@ -1,15 +1,6 @@
-// ============================================
+
 // FLORIST SERVICE - Local Database Configuration
-// ============================================
-// Self-contained within the florist service - no external DB helper imports.
-// Connects DIRECTLY to the shared `restpoint_operations` database, exactly
-// like the hearse-service's `database.ts`. Tenant isolation is handled by
-// the `tenant_slug` column inside that database.
-//
-// Loads the service .env first, then the repo-root .env. These paths resolve
-// for BOTH source (`services/florist-service`) and compiled
-// (`services/florist-service/dist`) layouts, so the DB credentials from the
-// repo root .env are always available.
+
 
 import mysql from 'mysql2/promise';
 import type {
@@ -34,9 +25,7 @@ for (const envPath of [
   dotenv.config({ path: envPath });
 }
 
-// ============================================
 // Type Definitions
-// ============================================
 
 export interface FloristDbConfig {
   host: string;
@@ -47,6 +36,10 @@ export interface FloristDbConfig {
   waitForConnections: boolean;
   connectionLimit: number;
   queueLimit: number;
+  maxIdle: number;
+  idleTimeout: number;
+  enableKeepAlive: boolean;
+  keepAliveInitialDelay: number;
 }
 
 // ============================================
@@ -62,6 +55,17 @@ const FLORIST_DB_CONFIG: FloristDbConfig = {
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  // ── Connection-resilience (fixes "create fails twice then works") ──
+  // Idle pooled sockets get killed by MySQL's wait_timeout / Docker NAT.
+  // The next query then grabs a dead socket and fails with ECONNRESET or
+  // PROTOCOL_CONNECTION_LOST. TCP keep-alive stops NAT/firewalls from
+  // dropping idle sockets, and the short idleTimeout recycles sockets
+  // BEFORE they rot. safeQuery/safeExecute additionally retry once on
+  // those transient errors with a freshly opened connection.
+  maxIdle: 5,                      // close surplus idle sockets quickly
+  idleTimeout: 60000,              // recycle idle connections after 60s
+  enableKeepAlive: true,           // TCP keep-alive on every socket
+  keepAliveInitialDelay: 10000,
 };
 
 // ============================================
@@ -89,12 +93,60 @@ export const getFloristConnection = async (): Promise<PoolConnection> => {
 };
 
 /**
+ * Transient connection errors — the dead-pooled-socket class. When one of
+ * these happens the connection is beyond saving, but the query itself is
+ * perfectly retryable on a fresh socket.
+ */
+const TRANSIENT_DB_ERRORS = [
+  'ECONNRESET', 'EPIPE', 'ETIMEDOUT',
+  'PROTOCOL_CONNECTION_LOST',
+  'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR',
+  'ER_BAD_PACKET', 'ER_CONNECTION_KILLED', 'ER_SERVER_LOST',
+  'ER_CLIENT_INTERACTION_TIMEOUT',
+];
+
+const isTransientDbError = (err: any): boolean =>
+  !!err && TRANSIENT_DB_ERRORS.some(
+    (code) => err.code === code || String(err?.message || '').includes(code)
+  );
+
+/**
+ * Run a query on a pool connection, retrying ONCE on a transient (dead
+ * socket) error. The broken connection is destroyed — which removes it from
+ * the pool — before opening a fresh one for the retry. This is what turns
+ * the "create fails, fails again, then works" pattern into
+ * "create works every time": the retry is invisible to the caller.
+ */
+const runWithHealthyConnection = async <T>(
+  query: (conn: PoolConnection) => Promise<T>
+): Promise<T> => {
+  const pool = await getFloristPool();
+  let conn = await pool.getConnection();
+  try {
+    try {
+      return await query(conn);
+    } catch (err: any) {
+      if (!isTransientDbError(err)) throw err;
+      console.warn(`[FLORIST DB] Transient connection error (${err.code || err.message}) — retrying once on a fresh connection`);
+      try { conn.destroy(); } catch { /* already dead */ }
+      conn = await pool.getConnection();
+      return await query(conn);
+    }
+  } finally {
+    if (conn) {
+      try { conn.release(); } catch { /* socket was destroyed above */ }
+    }
+  }
+};
+
+/**
  * Execute a safe SELECT query with parameters and return the rows
  */
 export const safeQuery = async (sql: string, params: any[] = []): Promise<any[]> => {
-  const pool = await getFloristPool();
-  const [rows] = await pool.query(sql, params);
-  return rows as any[];
+  return runWithHealthyConnection(async (conn) => {
+    const [rows] = await conn.query(sql, params);
+    return rows as any[];
+  });
 };
 
 /**
@@ -104,9 +156,10 @@ export const safeQueryRows = async <T extends RowDataPacket>(
   sql: string,
   params: any[] = []
 ): Promise<T[]> => {
-  const pool = await getFloristPool();
-  const [rows] = await pool.query(sql, params);
-  return rows as T[];
+  return runWithHealthyConnection(async (conn) => {
+    const [rows] = await conn.query(sql, params);
+    return rows as T[];
+  });
 };
 
 /**
@@ -116,9 +169,10 @@ export const safeExecute = async (
   sql: string,
   params: any[] = []
 ): Promise<ResultSetHeader> => {
-  const pool = await getFloristPool();
-  const [result] = await pool.query(sql, params);
-  return result as ResultSetHeader;
+  return runWithHealthyConnection(async (conn) => {
+    const [result] = await conn.query(sql, params);
+    return result as ResultSetHeader;
+  });
 };
 
 /**
@@ -144,7 +198,7 @@ export const transaction = async <T>(
     await conn.commit();
     return result;
   } catch (err) {
-    await conn.rollback().catch(() => {});
+    await conn.rollback().catch(() => { });
     throw err;
   } finally {
     conn.release();

@@ -227,6 +227,11 @@ const FlowerBookingsNew = () => {
   });
   const [toasts, setToasts] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  // Upload-in-flight flag — multi-image phone photos can take a while; without
+  // this the Create button looks idle, users click again, and the parallel
+  // requests race (or the aborted first request still lands as a duplicate).
+  const [creating, setCreating] = useState(false);
+  const creatingRef = useRef(false);
   const [arrangements, setArrangements] = useState([]);
   // Guards against double-click / double-submit creating duplicate orders
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -495,6 +500,8 @@ const FlowerBookingsNew = () => {
 
   const handleCreateArrangement = async (e) => {
     e.preventDefault();
+    // Guard against double clicks while an upload is in flight
+    if (creatingRef.current) return;
     const form = e.target;
     const fd = new FormData(form);
 
@@ -509,6 +516,8 @@ const FlowerBookingsNew = () => {
     const files = fd.getAll('images').filter(f => f && f.size > 0);
     files.forEach(f => payload.append('images', f));
 
+    creatingRef.current = true;
+    setCreating(true);
     try {
       // NOTE: explicitly null the Content-Type so the BROWSER generates the
       // multipart boundary itself. Hand-setting 'multipart/form-data' (the
@@ -517,8 +526,16 @@ const FlowerBookingsNew = () => {
       // null also overrides the api instance's default 'application/json',
       // which would otherwise make axios JSON-serialize the FormData (files
       // lost, no multipart at all).
+      //
+      // The per-request timeout override matters just as much: the global
+      // axios timeout is 30s, and a set of full-quality phone photos on a slow
+      // uplink routinely takes longer. Without this, axios aborted the request
+      // client-side (error toast) while the server still finished creating the
+      // record — the classic "first try fails, retry works" + duplicates bug.
+      // Images are uploaded at ORIGINAL quality — no client-side compression.
       const res = await api.post('/florist/flower-samples', payload, {
-        headers: { 'Content-Type': null }
+        headers: { 'Content-Type': null },
+        timeout: 180000,
       });
 
       const data = res.data;
@@ -526,7 +543,8 @@ const FlowerBookingsNew = () => {
         showToast('Arrangement created successfully!');
         setShowCreateModal(false);
         form.reset();
-        // Refresh so the new sample appears immediately without a page reload
+        // Refresh the list IN PLACE — no page reload. The new sample appears
+        // immediately in whichever view (bookings/samples) is active.
         await loadArrangements();
       } else {
         showToast(data.message || 'Failed to create arrangement', 'error');
@@ -543,6 +561,9 @@ const FlowerBookingsNew = () => {
         'Failed to create arrangement',
         'error'
       );
+    } finally {
+      creatingRef.current = false;
+      setCreating(false);
     }
   };
 
@@ -1734,6 +1755,7 @@ const FlowerBookingsNew = () => {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
+                  disabled={creating}
                   style={{
                     padding: '11px 20px',
                     borderRadius: '8px',
@@ -1744,7 +1766,8 @@ const FlowerBookingsNew = () => {
                     letterSpacing: '0.12em',
                     textTransform: 'uppercase',
                     border: '1px solid #EAE7E2',
-                    cursor: 'pointer',
+                    cursor: creating ? 'not-allowed' : 'pointer',
+                    opacity: creating ? 0.5 : 1,
                     fontFamily: "'DM Sans', system-ui, sans-serif"
                   }}
                 >
@@ -1752,6 +1775,7 @@ const FlowerBookingsNew = () => {
                 </button>
                 <button
                   type="submit"
+                  disabled={creating}
                   style={{
                     padding: '11px 24px',
                     borderRadius: '8px',
@@ -1762,11 +1786,28 @@ const FlowerBookingsNew = () => {
                     letterSpacing: '0.12em',
                     textTransform: 'uppercase',
                     border: 'none',
-                    cursor: 'pointer',
-                    fontFamily: "'DM Sans', system-ui, sans-serif"
+                    cursor: creating ? 'not-allowed' : 'pointer',
+                    opacity: creating ? 0.75 : 1,
+                    fontFamily: "'DM Sans', system-ui, sans-serif",
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
                   }}
                 >
-                  Create Arrangement
+                  {creating && (
+                    <span
+                      style={{
+                        width: '12px',
+                        height: '12px',
+                        border: '2px solid rgba(255,255,255,0.35)',
+                        borderTopColor: '#fff',
+                        borderRadius: '50%',
+                        display: 'inline-block',
+                        animation: 'floristSpin 0.8s linear infinite'
+                      }}
+                    />
+                  )}
+                  {creating ? 'Creating…' : 'Create Arrangement'}
                 </button>
               </div>
             </form>
