@@ -113,7 +113,7 @@ const ChemicalInventoryAnalytics = lazy(() => import('../components/chemicals/ch
 const WorkshopDashboard = lazy(() => import('../components/workshop/pages/WorkshopDashboard'));
 // Flower Booking System
 const FlowerBookings = lazy(() => import('../components/florists/FlowerBookingsNew'));
-const FlowerBookingForm = lazy(() => import('../components/florists/arragemnts'));
+const FlowerBookingForm = lazy(() => import('../components/florists/Samples'));
 const FlowerOrderDetail = lazy(() => import('../components/florists/FlowerOrderDetail'));
 const FlowerSamples = lazy(() => import('../components/florists/Samples'));
 const RequestDetail = lazy(() => import('../components/analysis/RequestDetail'));
