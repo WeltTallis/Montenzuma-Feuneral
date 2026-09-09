@@ -1,5 +1,5 @@
 // Service Worker for Rest Point PWA
-const CACHE_VERSION = 'v5'; // Increment this to force cache refresh
+const CACHE_VERSION = 'v1'; // Increment this to force cache refresh
 const STATIC_CACHE = `restpoint-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `restpoint-dynamic-${CACHE_VERSION}`;
 const CACHE_NAME = `restpoint-${CACHE_VERSION}`;
@@ -10,7 +10,10 @@ const STATIC_ASSETS = [
     '/manifest.json',
     '/favicon.ico',
     '/logo.png',
-    '/apple-touch-icon.png'
+    '/apple-touch-icon.png',
+    '/tab.jpg',
+    '/Funeral_Plan_hero.webp',
+    '/Funeral-Insurance-scaled.jpg'
 ];
 
 // Install event - cache static assets

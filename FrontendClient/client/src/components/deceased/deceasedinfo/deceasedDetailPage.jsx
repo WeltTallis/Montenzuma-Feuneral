@@ -433,6 +433,7 @@ const DeceasedDetailPage = () => {
           onBack={() => { const slug = getTenantSlug(); navigate(`/tenant/${slug}/all-deceased`); }}
           onTabSwitch={switchTab}
           onChargeSettingsClick={() => setShowChargeModal(true)}
+          onRefresh={fetchData}
         />
 
         <ProfileLayout>

@@ -1,0 +1,56 @@
+[33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.js:29:25). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+[36mvite v8.2.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 3046 modules transformed.
+[31m✗[39m Build failed in 28.01s
+dist-check/src/input.html.gz                  0.80 kB
+dist-check/sw.js.gz                           2.39 kB
+dist-check/src/svg/Back.svg.gz                0.58 kB
+dist-check/src/svg/Back.svg.br                0.51 kB
+dist-check/src/js/jquery.js.gz                32.88 kB
+dist-check/src/svg/customers.svg.gz           0.67 kB
+dist-check/sw.js.br                           2.01 kB
+dist-check/src/input.html.br                  0.58 kB
+dist-check/src/svg/logout.svg.gz              1.17 kB
+dist-check/src/svg/search.svg.gz              0.56 kB
+dist-check/src/svg/customers.svg.br           0.59 kB
+dist-check/src/svg/search.svg.br              0.49 kB
+dist-check/src/svg/logout.svg.br              1.10 kB
+dist-check/src/js/jquery.js.br                29.38 kB
+dist-check/sw.js.gz                           2.39 kB
+dist-check/src/input.html.gz                  0.80 kB
+dist-check/src/input.html.br                  0.58 kB
+dist-check/src/svg/Back.svg.gz                0.58 kB
+dist-check/src/svg/customers.svg.gz           0.67 kB
+dist-check/src/svg/Back.svg.br                0.51 kB
+dist-check/src/js/jquery.js.gz                32.88 kB
+dist-check/src/svg/logout.svg.gz              1.17 kB
+dist-check/src/svg/customers.svg.br           0.59 kB
+dist-check/src/svg/search.svg.br              0.49 kB
+dist-check/src/svg/search.svg.gz              0.56 kB
+dist-check/sw.js.br                           2.01 kB
+dist-check/src/svg/logout.svg.br              1.10 kB
+dist-check/src/js/jquery.js.br                29.38 kB
+[31merror during build:
+[31mBuild failed with 1 error:
+
+[plugin vite:prepare-out-dir]
+Error: EPERM, Permission denied: \\?\D:\new\restpoint\FrontendClient\client\dist-check\src '\\?\D:\new\restpoint\FrontendClient\client\dist-check\src'
+    at Object.rmSync (node:fs:1222:18)
+    at emptyDir (file:///D:/new/restpoint/FrontendClient/client/node_modules/vite/dist/node/chunks/node.js:2425:11)
+    at prepareOutDir (file:///D:/new/restpoint/FrontendClient/client/node_modules/vite/dist/node/chunks/node.js:33413:55)
+    at PluginContextImpl.handler (file:///D:/new/restpoint/FrontendClient/client/node_modules/vite/dist/node/chunks/node.js:33402:6)
+    at PluginContextImpl.handler (file:///D:/new/restpoint/FrontendClient/client/node_modules/vite/dist/node/chunks/node.js:33929:13)
+    at plugin (file:///D:/new/restpoint/FrontendClient/client/node_modules/rolldown/dist/shared/bindingify-input-options-CMab5gbt.mjs:1607:17)
+    at file:///D:/new/restpoint/FrontendClient/client/node_modules/rolldown/dist/shared/bindingify-input-options-CMab5gbt.mjs:1928:21
+    at plugin.<computed> (file:///D:/new/restpoint/FrontendClient/client/node_modules/rolldown/dist/shared/bindingify-input-options-CMab5gbt.mjs:2125:18)[31m
+    at aggregateBindingErrorsIntoJsError (file:///D:/new/restpoint/FrontendClient/client/node_modules/rolldown/dist/shared/error-BzLGqhSQ.mjs:48:18)
+    at unwrapBindingResult (file:///D:/new/restpoint/FrontendClient/client/node_modules/rolldown/dist/shared/error-BzLGqhSQ.mjs:18:128)
+    at #build (file:///D:/new/restpoint/FrontendClient/client/node_modules/rolldown/dist/shared/rolldown-I5b6h5Km.mjs:132:34)
+    at async buildEnvironment (file:///D:/new/restpoint/FrontendClient/client/node_modules/vite/dist/node/chunks/node.js:33669:66)
+    at async Object.build (file:///D:/new/restpoint/FrontendClient/client/node_modules/vite/dist/node/chunks/node.js:34091:19)
+    at async Object.buildApp (file:///D:/new/restpoint/FrontendClient/client/node_modules/vite/dist/node/chunks/node.js:34088:153)
+    at async CAC.<anonymous> (file:///D:/new/restpoint/FrontendClient/client/node_modules/vite/dist/node/cli.js:776:3) {
+  errors: [Getter/Setter]
+}[39m

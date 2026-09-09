@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <!-- Google Tag Manager -->
+  <script>(function (w, d, s, l, i) {
+      w[l] = w[l] || []; w[l].push({
+        'gtm.start':
+          new Date().getTime(), event: 'gtm.js'
+      }); var f = d.getElementsByTagName(s)[0],
+        j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+          'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+    })(window, document, 'script', 'dataLayer', 'GTM-MC4BL3SB');</script>
+  <!-- End Google Tag Manager -->
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-MTXE9PKZDC"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-MTXE9PKZDC');
+  </script>
+
+  <!-- Prevents White Flash: Instantly applies brand background -->
+  <style>
+    html {
+      background-color: #F9FAFB;
+    }
+
+    body {
+      background: #F9FAFB;
+      margin: 0;
+    }
+
+    /* ── Boot loader: shows instantly before React mounts ── */
+    #boot-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 36px;
+      background: #F9FAFB;
+      font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+    }
+
+    #boot-loader .spinner {
+      width: 52px;
+      height: 52px;
+      position: relative;
+    }
+
+    #boot-loader .spinner::before {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1.5px solid transparent;
+      border-bottom-color: rgba(14, 51, 69, 0.15);
+      animation: bootspin-reverse 2.4s linear infinite;
+    }
+
+    #boot-loader .spinner::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 3px solid rgba(14, 51, 69, 0.08);
+      border-top-color: #0e3345;
+      animation: bootspin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    @keyframes bootspin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes bootspin-reverse {
+      to {
+        transform: rotate(-360deg);
+      }
+    }
+
+    #boot-loader .info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    #boot-loader .text {
+      font-size: 13px;
+      font-weight: 300;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #0e3345;
+      opacity: 0.5;
+    }
+
+    #boot-loader .pct {
+      font-size: 11px;
+      font-weight: 500;
+      color: #0e3345;
+      opacity: 0.35;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 1px;
+    }
+
+    #boot-loader .bar {
+      width: 120px;
+      height: 2px;
+      background: rgba(14, 51, 69, 0.08);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    #boot-loader .bar-fill {
+      width: 0%;
+      height: 100%;
+      background: #0e3345;
+      border-radius: 2px;
+      transition: width 0.25s ease;
+    }
+
+    /* ── RestPoint Cookie Banner ────────────────────────────
+       Sleek bottom consent bar. The full cookie declaration
+       lives on the /cookies policy page. Consent is saved to
+       localStorage under "restpoint_cookie_consent".       */
+
+    .rp-cookie-banner {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 9999;
+      background: #15171a;
+      color: #faf8f4;
+      border-top: 1px solid rgba(250, 248, 244, 0.14);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 16px clamp(16px, 4vw, 48px);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .rp-cookie-banner .rp-cookie-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .rp-cookie-banner .rp-cookie-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #faf8f4;
+    }
+
+    .rp-cookie-banner .rp-cookie-message {
+      font-size: 12px;
+      line-height: 1.5;
+      color: rgba(250, 248, 244, 0.68);
+    }
+
+    .rp-cookie-banner .rp-cookie-message a {
+      color: rgba(250, 248, 244, 0.9);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .rp-cookie-banner .rp-cookie-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .rp-cookie-btn {
+      border: 1px solid rgba(250, 248, 244, 0.22);
+      background: transparent;
+      color: #faf8f4;
+      padding: 9px 15px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      border-radius: 7px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .rp-cookie-btn:hover {
+      background: rgba(250, 248, 244, 0.08);
+    }
+
+    .rp-cookie-btn.primary {
+      background: #8b7355;
+      border-color: #8b7355;
+      color: #ffffff;
+    }
+
+    .rp-cookie-btn.primary:hover {
+      background: #715c42;
+      border-color: #715c42;
+    }
+
+    @media (max-width: 720px) {
+      .rp-cookie-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 16px;
+      }
+
+      .rp-cookie-actions {
+        width: 100%;
+        justify-content: flex-end;
+      }
+    }
+  </style>
+
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/logo.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/logo.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+
+  <!-- Fonts: preconnect + ONE combined stylesheet. Previously 6 separate
+       @import rules inside index.css forced SIX sequential round-trips to
+       Google Fonts before first paint (a major production load-time cost,
+       worst on mobile networks). A single <link> here loads in parallel
+       with the app CSS instead of serially after it. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Fraunces:opsz,wght@9..144,400;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Saira:ital,wght@0,100..900;1,100..900&family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap" />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+
+  <meta name="theme-color" content="#15171A" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Rest Point" />
+  <meta name="format-detection" content="telephone=no" />
+
+  <!-- Primary SEO Meta -->
+  <!-- Primary SEO Meta -->
+  <!-- Primary SEO Meta -->
+  <meta name="description"
+    content="Rest Point is a secure funeral home and mortuary management platform for modern funeral directors in Kenya. Manage deceased records, next of kin, mortuary intake and release, funeral insurance, funeral operations, hearses, coffins, documents, branches, and staff workflows in one connected system." />
+
+
+  <meta name="keywords"
+    content="funeral home management software Kenya, mortuary management system, funeral directors software, mortuary information management system, Peter Mumo software engineer, Welt Tallis, funeral home operating system, mortuary technology Kenya, hearse management software, funeral insurance management software, welfare management software Kenya, SACCO funeral software, church welfare management, chama management software, funeral claims management, mortuary case management, funeral home ERP, best funeral software Kenya, free funeral home management software, funeral home software free download, mortuary science app, funeral management system Kenya, life insurance funeral software, mortuary transport software, chemical management system, member contribution tracking, M-Pesa funeral payments, smart dispatch hearse, online memorials Kenya, family portal funeral, funeral home billing software" />
+  <meta name="author" content="Peter Mumo, Welt Tallis Technologies" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <link rel="canonical" href="https://restpoint.co.ke/" />
+
+  <!-- Geo-targeting for Kenya -->
+  <meta name="geo.region" content="KE-NBO" />
+  <meta name="geo.placename" content="Nairobi" />
+  <meta name="geo.position" content="-1.2921;36.8219" />
+  <meta name="ICBM" content="-1.2921, 36.8219" />
+  <meta name="language" content="en-KE" />
+
+  <!-- Resource hints for performance -->
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+  <link rel="dns-prefetch" href="https://static.cloudflareinsights.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <!-- Preload critical fonts -->
+  <link rel="preload" as="style"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="https://fonts.gstatic.com/s/inter/v13/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa1ZL7.woff2" />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet" />
+  </noscript>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous" />
+
+  <!-- DM Sans + PT Serif -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=PT+Serif:ital,wght@0,400;0,500;1,400;1,500&display=swap"
+    rel="stylesheet" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://restpoint.co.ke/" />
+  <meta property="og:title" content="Rest Point | Funeral Home Operating System & Welfare Management Software Kenya" />
+  <meta property="og:description"
+    content="Kenya's #1 funeral home management software by Peter Mumo at Welt Tallis. Manage cases, insurance claims, hearse dispatch, and member contributions for churches, SACCOs, and chamas." />
+  <meta property="og:image" content="https://restpoint.co.ke/og-image.png" />
+  <meta property="og:locale" content="en_KE" />
+  <meta property="og:site_name" content="Rest Point" />
+
+  <!-- Twitter Card -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://restpoint.co.ke/" />
+  <meta property="twitter:title"
+    content="Rest Point | Funeral Home Operating System & Welfare Management Software Kenya" />
+  <meta property="twitter:description"
+    content="Kenya's #1 funeral home management software by Peter Mumo at Welt Tallis. Manage cases, insurance claims, and member contributions." />
+  <meta property="twitter:image" content="https://restpoint.co.ke/og-image.png" />
+
+
+  <!-- SCHEMA: Organization — Welt Tallis Technologies       -->
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Welt Tallis Technologies",
+      "alternateName": ["Welt Tallis", "Welt Tallis Inc"],
+      "url": "https://restpoint.co.ke",
+      "logo": "https://restpoint.co.ke/logo.png",
+      "description": "Welt Tallis Technologies is a Kenyan software company specializing in funeral home management systems, mortuary operating systems, welfare management software, and insurance technology solutions for African organizations.",
+      "foundingDate": "2025",
+      "founder": {
+        "@type": "Person",
+        "name": "Peter Mumo",
+        "jobTitle": "Software Engineer & Founder",
+        "url": "https://restpoint.co.ke/about"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Nairobi",
+        "addressRegion": "Nairobi County",
+        "addressCountry": "KE"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "+254-004-535-5",
+        "contactType": "sales",
+        "availableLanguage": ["English", "Swahili"]
+      },
+      "sameAs": [
+        "https://www.facebook.com/profile.php?id=61577985974955",
+        "https://ke.linkedin.com/in/welt-tallis-inc-631566203",
+        "https://twitter.com/restpoint"
+      ],
+      "knowsAbout": [
+        "Funeral Home Management Software",
+        "Mortuary Information Management System",
+        "Funeral Insurance Management",
+        "Welfare Management Software",
+        "SACCO Management Software",
+        "Hearse Management System",
+        "Chemical Management System",
+        "Church Welfare Software",
+        "Chama Management Software",
+        "Member Contribution Tracking",
+        "M-Pesa Integration",
+        "Funeral Claims Processing",
+        "Case Management Software",
+        "ERP for Funeral Homes"
+      ]
+    }
+  </script>
+
+
+  <!-- SCHEMA: Person — Peter Mumo, Software Engineer        -->
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "Peter Mumo",
+      "jobTitle": "Software Engineer",
+      "description": "Peter Mumo is a Kenyan software engineer and the founder of Welt Tallis Technologies. He is the lead developer and architect of Rest Point, Kenya's leading funeral home management software and mortuary operating system. Peter specializes in building enterprise-grade SaaS platforms for the African market, including funeral insurance integration, welfare management systems, and M-Pesa payment solutions for churches, SACCOs, chamas, and funeral homes across Kenya.",
+      "url": "https://restpoint.co.ke/about",
+      "image": "https://restpoint.co.ke/peter-mumo.jpg",
+      "nationality": {
+        "@type": "Country",
+        "name": "Kenya"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Nairobi",
+        "addressCountry": "KE"
+      },
+      "worksFor": {
+        "@type": "Organization",
+        "name": "Welt Tallis Technologies",
+        "url": "https://restpoint.co.ke"
+      },
+      "alumniOf": {
+        "@type": "EducationalOrganization",
+        "name": "FINLAND   CHURCH  AID"
+      },
+      "knowsAbout": [
+        "Software Engineering",
+        "Funeral Home Management Software",
+        "Mortuary Operating Systems",
+        "SaaS Platform Development",
+        "React.js",
+        "Node.js",
+        "Cloud Architecture",
+        "M-Pesa API Integration",
+        "Insurance Technology",
+        "Welfare Management Systems",
+        "Database Design",
+        "API Development",
+        "System Architecture"
+      ],
+      "sameAs": [
+        "https://ke.linkedin.com/in/welt-tallis-inc-631566203",
+        "https://github.com/petermumo"
+      ]
+    }
+  </script>
+
+
+  <!-- SCHEMA: SoftwareApplication — Rest Point              -->
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Rest Point",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Funeral Home Management Software",
+      "operatingSystem": "Web-based, Cloud",
+      "description": "Rest Point is Kenya's #1 cloud-based funeral home operating system and welfare management platform. Built by software engineer Peter Mumo at Welt Tallis Technologies, it serves funeral homes, churches, SACCOs, chamas, and insurance companies across Kenya with case management, hearse dispatch, M-Pesa payments, claims processing, and mortuary information management.",
+      "url": "https://restpoint.co.ke",
+      "downloadUrl": "https://restpoint.co.ke/register",
+      "author": {
+        "@type": "Person",
+        "name": "Peter Mumo",
+        "jobTitle": "Software Engineer",
+        "worksFor": {
+          "@type": "Organization",
+          "name": "Welt Tallis Technologies"
+        }
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Welt Tallis Technologies",
+        "url": "https://restpoint.co.ke"
+      },
+      "featureList": [
+        "Funeral Insurance Management",
+        "Funeral Welfare Management",
+        "Mortuary Case Management",
+        "Member Registration",
+        "Beneficiary Management",
+        "Claims Management",
+        "M-Pesa Integration",
+        "Payment Reminders",
+        "Reports and Analytics",
+        "SMS Notifications",
+        "Multi-Branch Support",
+        "Family Portal",
+        "Online Memorials",
+        "Smart Hearse Dispatch",
+        "Chemical Inventory Management",
+        "Hearse Fleet Management",
+        "Funeral Home Billing",
+        "Mortuary Information Management System"
+      ],
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Single Tenant",
+          "price": "15,000",
+          "priceCurrency": "KES",
+          "description": "For small funeral homes and welfare organizations in Kenya"
+        },
+        {
+          "@type": "Offer",
+          "name": "Multi-Tenant",
+          "price": "40,000",
+          "priceCurrency": "KES",
+          "description": "For large organizations with multiple branches across Kenya"
+        }
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "150",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "areaServed": {
+        "@type": "Country",
+        "name": "Kenya"
+      }
+    }
+  </script>
+
+
+  <!-- SCHEMA: WebSite — with search action                  -->
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Rest Point",
+      "url": "https://restpoint.co.ke",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Welt Tallis Technologies"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://restpoint.co.ke/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+  </script>
+
+
+  <!-- SCHEMA: LocalBusiness — for Nairobi SEO               -->
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "Rest Point by Welt Tallis Technologies",
+      "description": "Kenya's leading funeral home management software and mortuary operating system. Developed by Peter Mumo, Software Engineer.",
+      "url": "https://restpoint.co.ke",
+      "telephone": "+254-004-535-5",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Nairobi",
+        "addressLocality": "Nairobi",
+        "addressRegion": "Nairobi County",
+        "postalCode": "00100",
+        "addressCountry": "KE"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": -1.2921,
+        "longitude": 36.8219
+      },
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        "opens": "08:00",
+        "closes": "17:00"
+      },
+      "priceRange": "KES 9,200 - KES 18,900/month",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Kenya"
+      }
+    }
+  </script>
+
+
+  <!-- SCHEMA: FAQPage — keyword-rich Q&A for long-tail SEO  -->
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is the best funeral home management software in Kenya?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Rest Point is Kenya's #1 funeral home management software and mortuary operating system. Built by software engineer Peter Mumo at Welt Tallis Technologies, it provides complete funeral home case management, mortuary information management, hearse dispatch, M-Pesa payment integration, insurance claims processing, and welfare management for churches, SACCOs, and chamas across Kenya."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who developed Rest Point funeral management software?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Rest Point was developed by Peter Mumo, a Kenyan software engineer and founder of Welt Tallis Technologies. Peter Mumo designed and architected the entire platform including the mortuary operating system, funeral insurance integration, welfare management modules, and M-Pesa payment processing."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is a mortuary information management system?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A mortuary information management system (MIMS) is software that helps funeral homes track deceased persons, manage case files, record admission and release details, track chemical and embalming supplies, manage billing, and handle family communications. Rest Point provides a complete MIMS solution for Kenyan funeral homes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does funeral home management software cost in Kenya?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Rest Point funeral home management software starts from KES 15,000 per month for single tenant plans suitable for small funeral homes, and KES 18,900 per month for multi-tenant plans for large organizations with multiple branches. All plans include M-Pesa integration, SMS notifications, and dedicated support."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Rest Point integrate with M-Pesa for funeral payments?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, Rest Point fully integrates with M-Pesa for seamless contribution collection, premium payments, funeral cover payments, and benefit disbursements. Members can pay via M-Pesa and receive instant SMS notifications. This makes it ideal for SACCOs, churches, and chamas managing funeral welfare funds in Kenya."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can churches and SACCOs use funeral welfare management software?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Absolutely. Rest Point is specifically designed for churches, SACCOs, chamas, companies, and NGOs in Kenya. It includes member registration, beneficiary management, monthly contribution tracking, arrears management, claims processing, M-Pesa collection, and financial reporting tailored for funeral welfare programs."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is Welt Tallis Technologies?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Welt Tallis Technologies is a Kenyan software company founded by Peter Mumo, Software Engineer. The company specializes in building enterprise-grade management software for the African market, including Rest Point (funeral home operating system), welfare management platforms, and insurance technology solutions. Based in Nairobi, Kenya."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How long does it take to implement funeral management software?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Rest Point implementation typically takes 1-2 weeks for small funeral homes and welfare organizations, and 2-4 weeks for larger organizations with multiple branches. Welt Tallis provides dedicated onboarding support, data migration assistance, and staff training at no extra cost."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is funeral home software data secure in Kenya?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, Rest Point uses AES-256 encryption for data at rest, TLS 1.3 for data in transit, role-based access controls, and regular security audits. The platform maintains 99.9% uptime SLA and all data is hosted in secure cloud infrastructure with automated backups."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Rest Point handle funeral insurance claims management?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, Rest Point includes a complete funeral insurance claims management module. It automates claim submission, verification, approval workflows, beneficiary verification, and benefit disbursement via M-Pesa. It integrates with life insurance providers and welfare organizations to streamline the entire claims process."
+          }
+        }
+      ]
+    }
+  </script>
+
+
+  <!-- SCHEMA: BreadcrumbList — for site structure SEO       -->
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://restpoint.co.ke/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Funeral Home Software",
+          "item": "https://restpoint.co.ke/features"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "About Welt Tallis",
+          "item": "https://restpoint.co.ke/about"
+        }
+      ]
+    }
+  </script>
+
+  <title>Rest Point | Funeral Home Management Software Kenya | Built by Peter Mumo, Welt Tallis</title>
+  <script type="module" crossorigin src="/assets/index-D6gguvjv.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/chunk-CXHxssQy.js">
+  <link rel="modulepreload" crossorigin href="/assets/chunk-CXAmgOhv.js">
+  <link rel="modulepreload" crossorigin href="/assets/chunk-gJ4P60Tf.js">
+  <link rel="modulepreload" crossorigin href="/assets/chunk-DWc5g_hH.js">
+  <link rel="modulepreload" crossorigin href="/assets/chunk-BY9AVXEY.js">
+  <link rel="modulepreload" crossorigin href="/assets/chunk-DJYPtS2Y.js">
+  <link rel="modulepreload" crossorigin href="/assets/chunk-CwzAxjA3.js">
+  <link rel="modulepreload" crossorigin href="/assets/chunk-eZ3__Fgx.js">
+  <link rel="modulepreload" crossorigin href="/assets/chunk-C935kdjU.js">
+  <link rel="modulepreload" crossorigin href="/assets/chunk-BUeZRQuQ.js">
+  <link rel="modulepreload" crossorigin href="/assets/chunk-DyQAXL3m.js">
+  <link rel="stylesheet" crossorigin href="/assets/css/ui-vendor-CqLr8KVv.css">
+  <link rel="stylesheet" crossorigin href="/assets/css/vendor-BUIIgUU-.css">
+  <link rel="stylesheet" crossorigin href="/assets/css/index-adoesr9Q.css">
+</head>
+
+<body>
+
+  <!-- Boot loader: instant before React mounts -->
+  <div id="boot-loader">
+    <div class="spinner"></div>
+    <div class="info">
+      <span class="text">Loading</span>
+      <div class="bar">
+        <div class="bar-fill" id="boot-fill"></div>
+      </div>
+      <span class="pct" id="boot-pct">0%</span>
+    </div>
+  </div>
+
+  <!-- RestPoint Cookie Consent Banner: shown once until the visitor
+       chooses. Full declaration lives on /cookies. Consent is stored
+       in localStorage as "restpoint_cookie_consent"; the banner stays
+       hidden when consent has already been saved. -->
+  <div class="rp-cookie-banner" id="rpCookieBanner" role="dialog" aria-label="Cookie consent" style="display:none;">
+    <div class="rp-cookie-text">
+      <div class="rp-cookie-title">Cookies on RestPoint</div>
+      <div class="rp-cookie-message">
+        We use cookies and similar technologies to keep RestPoint secure,
+        remember your preferences and understand how visitors use our website.
+        Read our <a href="/cookies">Cookie Policy</a> for the full declaration.
+      </div>
+    </div>
+    <div class="rp-cookie-actions">
+      <button type="button" class="rp-cookie-btn" onclick="rpDeclineOptional()">Decline optional</button>
+      <button type="button" class="rp-cookie-btn primary" onclick="rpAcceptAll()">Accept all</button>
+    </div>
+  </div>
+
+  <div id="root"></div>
+
+  <!-- Boot loader progress (removed once React mounts) -->
+  <script>
+    (function () {
+      var fill = document.getElementById('boot-fill');
+      var pct = document.getElementById('boot-pct');
+      var p = 0;
+
+      function tick() {
+        var speed = p < 20 ? 0.6 : p < 60 ? 1.2 : p < 85 ? 0.7 : 0.3;
+        p = Math.min(100, p + speed + Math.random() * 0.4);
+        var r = Math.round(p);
+        if (fill) fill.style.width = r + '%';
+        if (pct) pct.textContent = r + '%';
+        if (p < 100) {
+          requestAnimationFrame(tick);
+        } else {
+          setTimeout(function () { p = 0; requestAnimationFrame(tick); }, 1400);
+        }
+      }
+      setTimeout(tick, 400);
+    })();
+  </script>
+
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MC4BL3SB" height="0" width="0"
+      style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+  <!--  Full SEO content for crawlers     -->
+
+  <noscript>
+    <div
+      style="padding:2rem;font-family:sans-serif;max-width:860px;margin:0 auto;background:#15171A;color:#FAF8F4;min-height:100vh;line-height:1.7;">
+
+      <h1 style="font-size:1.8rem;margin-bottom:0.5rem;">Rest Point: Funeral Home Management Software Kenya</h1>
+      <p style="color:#A98F6E;font-size:0.9rem;margin-bottom:2rem;">Built by Peter Mumo, Software Engineer at Welt
+        Tallis Technologies, Nairobi, Kenya</p>
+
+      <p>
+        Rest Point is Kenya's leading cloud-based funeral home operating system and mortuary management software.
+        Developed by <strong style="color:#fff;">Peter Mumo</strong>, a Kenyan software engineer and founder of
+        <strong style="color:#fff;">Welt Tallis Technologies</strong>, the platform serves funeral homes, mortuaries,
+        churches, SACCOs, chamas, insurance companies, and welfare organizations across Kenya with enterprise-grade
+        management tools.
+      </p>
+
+      <h2 style="font-size:1.3rem;margin:2rem 0 0.8rem;">Funeral Home Operating System</h2>
+      <p>
+        A complete mortuary operating system that handles case management from admission to release. Track deceased
+        persons, manage mortuary capacity, record body preservation details, handle chemical inventory, manage billing
+        and receipts, and provide family portals for real-time updates.
+      </p>
+
+      <h2 style="font-size:1.3rem;margin:2rem 0 0.8rem;">Mortuary Information Management System (MIMS)</h2>
+      <p>
+        Rest Point provides a full mortuary information management system for Kenyan funeral homes. Manage body
+        admissions, tagging, storage location tracking, identification verification, post-mortem scheduling, release
+        documentation, and complete audit trails for regulatory compliance.
+      </p>
+
+      <h2 style="font-size:1.3rem;margin:2rem 0 0.8rem;">Funeral Insurance &amp; Claims Management</h2>
+      <p>
+        End-to-end funeral insurance management software that automates claim submission, beneficiary verification,
+        approval workflows, and benefit disbursement via M-Pesa. Integrates with life insurance providers to process
+        funeral cover claims efficiently for members across Kenya.
+      </p>
+
+      <h2 style="font-size:1.3rem;margin:2rem 0 0.8rem;">Welfare Management Software for Churches, SACCOs &amp; Chamas
+      </h2>
+      <p>
+        Purpose-built welfare management platform for Kenyan organizations. Manage member registration, monthly
+        contribution tracking via M-Pesa, arrears management, beneficiary updates, claims processing, and transparent
+        financial reporting. Ideal for church welfare groups, SACCO funeral schemes, chama burial funds, and corporate
+        welfare programs.
+      </p>
+
+      <h2 style="font-size:1.3rem;margin:2rem 0 0.8rem;">Hearse &amp; Fleet Management</h2>
+      <p>
+        Smart hearse dispatch software with scheduling, route optimization, driver assignment, and real-time tracking.
+        Manage your entire funeral transport fleet from a single dashboard. Automatic coordination between the funeral
+        home, family, and dispatch team.
+      </p>
+
+      <h2 style="font-size:1.3rem;margin:2rem 0 0.8rem;">Why Funeral Homes in Kenya Choose Rest Point</h2>
+      <ul style="padding-left:1.5rem;margin-bottom:1.5rem;">
+        <li>Complete funeral home ERP cases, billing, chemicals, fleet, and reporting</li>
+        <li>M-Pesa integration for payments, contributions, and disbursements</li>
+        <li>SMS notifications for families, members, and stakeholders</li>
+        <li>Multi-branch support for organizations operating across Kenya</li>
+        <li>Bank-grade security with AES-256 encryption and 99.9% uptime</li>
+        <li>Mobile-responsive works on any device</li>
+        <li>Affordable pricing from KES 9,200/month</li>
+        <li>Free onboarding, training, and data migration support</li>
+      </ul>
+
+      <h2 style="font-size:1.3rem;margin:2rem 0 0.8rem;">About the Developer: Peter Mumo</h2>
+      <p>
+        <strong style="color:#fff;">Peter Mumo</strong> is a Kenyan software engineer and the founder of
+        <strong style="color:#fff;">Welt Tallis Technologies</strong>. He designed, developed, and architected Rest
+        Point
+        as Kenya's first purpose-built funeral home operating system. Peter specializes in enterprise SaaS platforms,
+        cloud architecture, M-Pesa API integration, and management systems for the African market. His work serves over
+        500 organizations across Kenya's funeral, insurance, and welfare sectors.
+      </p>
+
+      <h2 style="font-size:1.3rem;margin:2rem 0 0.8rem;">About Welt Tallis Technologies</h2>
+      <p>
+        <strong style="color:#fff;">Welt Tallis Technologies</strong> is a Nairobi-based software company building
+        management solutions for African organizations. Founded by Peter Mumo, the company focuses on funeral home
+        technology, welfare management systems, insurance technology, and enterprise software for the Kenyan market.
+        Welt Tallis is committed to digitizing and streamlining operations for funeral homes, churches, SACCOs, and
+        insurance providers across Kenya and East Africa.
+      </p>
+
+      <p style="margin-top:2rem;">
+        <a href="/register" style="color:#A98F6E;text-decoration:underline;">Request a Free Demo</a>
+        &nbsp;&middot;&nbsp;
+        <a href="/contact" style="color:#A98F6E;text-decoration:underline;">Contact Our Sales Team</a>
+        &nbsp;&middot;&nbsp;
+        <a href="/about" style="color:#A98F6E;text-decoration:underline;">About Peter Mumo &amp; Welt Tallis</a>
+      </p>
+    </div>
+  </noscript>
+
+  <!-- Chunk-load recovery: if a hashed JS/CSS chunk fails to load (e.g. this tab
+       was open across a deploy and its chunks were replaced), Vite dispatches
+       "vite:preloadError". We do NOT call preventDefault() — that would make
+       Vite resolve the import promise to `undefined` instead of rejecting it,
+       which React.lazy surfaces as the misleading crash:
+         TypeError: Cannot read properties of undefined (reading 'default')
+       Instead we let Vite reject so the real error (stale chunk / module-eval
+       error) reaches the error boundary, and we reload once to pick up fresh
+       index.html + assets. The 30s guard prevents reload loops if the site is
+       genuinely unreachable. -->
+  <script>
+    (function () {
+      window.addEventListener('vite:preloadError', function (e) {
+        /* NOTE: we intentionally do NOT call e.preventDefault() here.
+           Vite resolves a swallowed preload error to undefined (see handlePreloadError
+           in the Vite client runtime: if(!e.defaultPrevented) throw err. Calling
+           preventDefault makes Vite resolve the import promise with undefined instead
+           of rejecting it). React.lazy then reads .default from undefined and crashes
+           with TypeError: Cannot read properties of undefined (reading default).
+           By NOT preventing default, Vite throws the real error so the actual
+           cause (stale chunk / module-eval error) surfaces in the error boundary
+           instead of a misleading undefined crash. We still reload below to pick up
+           fresh chunks after a deploy. */
+        try {
+          var KEY = 'rp_preload_reloaded_at';
+          var last = Number(sessionStorage.getItem(KEY) || 0);
+          if (Date.now() - last > 30000) {
+            sessionStorage.setItem(KEY, String(Date.now()));
+            window.location.reload();
+          }
+        } catch (_) { /* sessionStorage unavailable — still swallow the error */ }
+      });
+    })();
+  </script>
+
+  <!-- PWA Service Worker: registered HERE ONLY (never inside React code).     -->
+  <!-- A cached service worker must never run against the Vite dev server: it  -->
+  <!-- serves stale /src/* and /node_modules/.vite/deps/* modules, which mixes -->
+  <!-- two dependency snapshots (two React copies) and crashes every page with -->
+  <!-- "TypeError: Cannot read properties of null (reading 'useState')".       -->
+  <script>
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+
+      var isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+      if (isLocal) {
+        // Dev server: unregister any leftover service workers from previous
+        // sessions and wipe their caches so modules always load fresh.
+        navigator.serviceWorker.getRegistrations()
+          .then(function (regs) {
+            regs.forEach(function (reg) { reg.unregister(); });
+          })
+          .catch(function () { });
+
+        if (window.caches && caches.keys) {
+          caches.keys()
+            .then(function (keys) {
+              keys.forEach(function (key) { caches.delete(key); });
+            })
+            .catch(function () { });
+        }
+        return;
+      }
+
+      // Production: register normally once the page has loaded.
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').catch(function () { });
+      });
+    })();
+  </script>
+
+  <!-- RestPoint Cookie Consent (sleek banner)
+       ────────────────────────────────────────────────────────────
+       • Stores consent in localStorage under
+         "restpoint_cookie_consent" and only shows the banner once.
+       • Google Analytics is currently loaded in <head>; keep it
+         consent-aware here and never double-load the gtag script.
+         When the <head> script is removed later, rpEnableAnalytics()
+         will inject it here instead (single source of consent). -->
+  <script>
+    (function () {
+      var RP_CONSENT_KEY = 'restpoint_cookie_consent';
+      var RP_GA_ID = 'G-MTXE9PKZDC';
+
+      /* ── Consent storage ─────────────────────────────────── */
+
+      function rpGetConsent() {
+        try { return localStorage.getItem(RP_CONSENT_KEY); }
+        catch (e) { return null; }
+      }
+
+      function rpSaveConsent(analytics, application) {
+        var consent = {
+          necessary: true,
+          security: true,
+          analytics: Boolean(analytics),
+          application: Boolean(application),
+          updatedAt: new Date().toISOString()
+        };
+        try { localStorage.setItem(RP_CONSENT_KEY, JSON.stringify(consent)); }
+        catch (e) { /* storage unavailable — consent stays in memory */ }
+      }
+
+      /* ── Banner visibility ────────────────────────────────── */
+
+      function rpBanner() { return document.getElementById('rpCookieBanner'); }
+
+      function rpShowBanner() {
+        var banner = rpBanner();
+        if (banner) banner.style.display = 'flex';
+      }
+
+      function rpCloseBanner() {
+        var banner = rpBanner();
+        if (banner) banner.style.display = 'none';
+      }
+
+      /* ── Google Analytics (consent-aware) ─────────────────── */
+
+      function rpEnableAnalytics() {
+        window.rpAnalyticsAllowed = true;
+        // GA is pre-loaded from <head> for now, so just reuse it.
+        if (typeof window.gtag === 'function') return;
+        // Fallback when the <head> script is removed: inject once.
+        var script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=' + RP_GA_ID;
+        document.head.appendChild(script);
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () { window.dataLayer.push(arguments); };
+        window.gtag('js', new Date());
+        window.gtag('config', RP_GA_ID, { anonymize_ip: true });
+      }
+
+      function rpDisableAnalytics() {
+        window.rpAnalyticsAllowed = false;
+        window['ga-disable-' + RP_GA_ID] = true;
+      }
+
+      /* ── Application storage ──────────────────────────────── */
+
+      function rpEnableApplicationStorage() {
+        window.rpApplicationStorageAllowed = true;
+      }
+
+      function rpDisableOptionalStorage() {
+        window.rpApplicationStorageAllowed = false;
+      }
+
+      /* ── Public actions ───────────────────────────────────── */
+
+      window.rpAcceptAll = function () {
+        rpSaveConsent(true, true);
+        rpEnableAnalytics();
+        rpEnableApplicationStorage();
+        rpCloseBanner();
+      };
+
+      window.rpDeclineOptional = function () {
+        rpSaveConsent(false, false);
+        rpDisableAnalytics();
+        rpDisableOptionalStorage();
+        rpCloseBanner();
+      };
+
+      window.rpOpenCookieSettings = function () {
+        var banner = rpBanner();
+        if (banner) banner.style.display = 'flex';
+      };
+
+      /* ── Initialize ───────────────────────────────────────── */
+
+      document.addEventListener('DOMContentLoaded', function () {
+        var saved = rpGetConsent();
+        if (!saved) { rpShowBanner(); return; }
+        try {
+          var consent = JSON.parse(saved);
+          if (consent.analytics === true) rpEnableAnalytics();
+          if (consent.application === true) rpEnableApplicationStorage();
+        } catch (e) {
+          rpShowBanner();
+        }
+      });
+    })();
+  </script>
+
+</body>
+
+</html>
