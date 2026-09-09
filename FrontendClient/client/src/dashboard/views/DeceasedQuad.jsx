@@ -4,7 +4,7 @@ import HorizontalCalendar from "../../components/views/horizontalCalender";
 import { fetchReleasesFeed, fetchPostmortemsFeed } from "../../api/dashboardFeedApi";
 import { fetchAllBranchDeceased } from "../../api/dashboardDataApi";
 
-/* ════════════════════════════════════════════════════════════════
+/* 
    Deceased dashboard — "Havenwood" style.
 
    Same props contract as before (events, loading, dateKey, deceased,
@@ -15,7 +15,8 @@ import { fetchAllBranchDeceased } from "../../api/dashboardDataApi";
    Visual = Havenwood reference: glow KPI tiles + a 2x2 card grid with
    a smooth multi-branch SVG trend, per-branch bar charts, filter
    chips and a clean ledger.
-   ════════════════════════════════════════════════════════════════ */
+    */
+
 
 /* ── constants & helpers ── */
 const MO = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -36,17 +37,21 @@ const keyOf = (v) => {
   }
   return "";
 };
+
+
 const todayKeyVal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const dk = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const admKeyOf = (r) => keyOf(r?.date_key || r?.adm_date || r?.date_admitted || r?.created_at);
 
 const timeOf = (r) => {
+
   const s = String(r?.time_key || r?.time_admitted || r?.adm_time || r?.created_at || "");
   if (!/:\d{2}/.test(s)) return "";
   const m = s.match(/(\d{1,2}):(\d{2})/);
   if (!m) return "";
   return `${String(Math.min(23, +m[1])).padStart(2, "0")}:${m[2]}`;
 };
+
 
 const relKeyOf = (r) => keyOf(r?.dispatch_date || r?.release_date || r?.date_released);
 const isReleased = (r) => RELEASED_RE.test(String(r?.status || r?.admission_status || "").toLowerCase());
@@ -297,8 +302,8 @@ const smoothPath = (pts) => {
 export default function DeceasedQuad({ events = {}, loading = false, dateKey = null, deceased = [], onPickDate, onSelect }) {
   const activeKey = dateKey || todayKeyVal();
   const pd = prettyDate(activeKey);
-  const onPick = typeof onPickDate === "function" ? onPickDate : () => {};
-  const onOpen = typeof onSelect === "function" ? onSelect : () => {};
+  const onPick = typeof onPickDate === "function" ? onPickDate : () => { };
+  const onOpen = typeof onSelect === "function" ? onSelect : () => { };
 
   /* back to the normal All-Deceased list page (/tenant/:slug/deceased) */
   const navigate = useNavigate();
@@ -435,8 +440,8 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
   const latestItem = latestIntake ? { ...latestIntake, id: `in-${latestIntake?.admission_number ?? latestIntake?.id ?? 0}` } : null;
   const latestWhen = latestIntake
     ? (admKeyOf(latestIntake) === todayKeyVal()
-        ? (timeOf(latestIntake) || "today")
-        : `${prettyDate(admKeyOf(latestIntake)).short}${timeOf(latestIntake) ? ` · ${timeOf(latestIntake)}` : ""}`)
+      ? (timeOf(latestIntake) || "today")
+      : `${prettyDate(admKeyOf(latestIntake)).short}${timeOf(latestIntake) ? ` · ${timeOf(latestIntake)}` : ""}`)
     : "";
 
   /* items for the selected day */
@@ -691,6 +696,56 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
         </div>
       </div>
 
+      {/* ── Top tab analytics — 7-day trend + per-branch bars ── */}
+      <div className="hw-trend">
+        <div className="hw-trend-head">
+          <span className="hw-trend-title">7-day trend · All branches ({branches.length})</span>
+          <div className="hw-trend-legend">
+            {branches.map((b, i) => (
+              <span key={b}><i style={{ background: branchColor(b, i) }} />{esc(b)}</span>
+            ))}
+          </div>
+        </div>
+        <div className="hw-trend-svg" dangerouslySetInnerHTML={{ __html: buildTrend() }} />
+        <div className="hw-trend-x">
+          {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
+        </div>
+      </div>
+
+      <div className="hw-charts">
+        {branches.map((b, bi) => {
+          const data = series[bi]; const max = Math.max(3, ...data); const col = branchColor(b, bi);
+          const dim = fbranch !== "ALL" && fbranch !== b;
+          const wk = data.reduce((a, x) => a + x, 0);
+          return (
+            <div key={b} className={"hw-chart-wrap" + (dim ? " dim" : "")} style={{ "--c": col }}>
+              <div className="hw-chart-top">
+                <button className="hw-chart-branch" onClick={() => setFbranch(fbranch === b ? "ALL" : b)} title="Filter ledger by this branch">
+                  <i className="hw-cdot" />{esc(b)}
+                </button>
+                <span className="hw-chart-week">{wk} this week</span>
+              </div>
+              <div className="hw-chart-body">
+                <i className="hw-gridline hw-g1" /><i className="hw-gridline hw-g2" />
+                <div className="hw-bars">
+                  {data.map((v, i) => (
+                    <div key={i}
+                      className={"hw-bar" + (i === 6 ? " today" : "") + (v === 0 ? " zero" : "")}
+                      style={{ background: col, height: v === 0 ? 2 : Math.max(6, (v / max) * 80) + "%" }}
+                      title={`${WD[last7[i].getDay()]} ${last7[i].getDate()} ${MO[last7[i].getMonth()]} — ${v} ${v === 1 ? "admission" : "admissions"}`}>
+                      <span className="v">{v || ""}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="hw-chart-x">
+                {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <div className="hw-grid">
 
         {/* ── 01 · Calendar ── */}
@@ -707,56 +762,6 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
                 selectedDate={selDate}
                 onDateSelect={onHorizPick}
               />
-
-              {/* Analytics — 7-day multi-branch trend + per-branch bars */}
-              <div className="hw-trend">
-                <div className="hw-trend-head">
-                  <span className="hw-trend-title">7-day trend · all branches</span>
-                  <div className="hw-trend-legend">
-                    {branches.map((b, i) => (
-                      <span key={b}><i style={{ background: branchColor(b, i) }} />{esc(b)}</span>
-                    ))}
-                  </div>
-                </div>
-                <div className="hw-trend-svg" dangerouslySetInnerHTML={{ __html: buildTrend() }} />
-                <div className="hw-trend-x">
-                  {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
-                </div>
-              </div>
-
-              <div className="hw-charts">
-                {branches.map((b, bi) => {
-                  const data = series[bi]; const max = Math.max(3, ...data); const col = branchColor(b, bi);
-                  const dim = fbranch !== "ALL" && fbranch !== b;
-                  const wk = data.reduce((a, x) => a + x, 0);
-                  return (
-                    <div key={b} className={"hw-chart-wrap" + (dim ? " dim" : "")} style={{ "--c": col }}>
-                      <div className="hw-chart-top">
-                        <button className="hw-chart-branch" onClick={() => setFbranch(fbranch === b ? "ALL" : b)} title="Filter ledger by this branch">
-                          <i className="hw-cdot" />{esc(b)}
-                        </button>
-                        <span className="hw-chart-week">{wk} this week</span>
-                      </div>
-                      <div className="hw-chart-body">
-                        <i className="hw-gridline hw-g1" /><i className="hw-gridline hw-g2" />
-                        <div className="hw-bars">
-                          {data.map((v, i) => (
-                            <div key={i}
-                              className={"hw-bar" + (i === 6 ? " today" : "") + (v === 0 ? " zero" : "")}
-                              style={{ background: col, height: v === 0 ? 2 : Math.max(6, (v / max) * 80) + "%" }}
-                              title={`${WD[last7[i].getDay()]} ${last7[i].getDate()} ${MO[last7[i].getMonth()]} — ${v} ${v === 1 ? "admission" : "admissions"}`}>
-                              <span className="v">{v || ""}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="hw-chart-x">
-                        {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           </div>
         </section>
