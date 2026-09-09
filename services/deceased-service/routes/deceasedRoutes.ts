@@ -165,6 +165,16 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
 router.get('/public/postmortem/search', handlePublicPostmortemSearch);
 router.get('/deceased/public/postmortem/search', handlePublicPostmortemSearch);
 
+// Public postmortem REQUEST — no auth required (family / reception portal)
+// Same controller as the authenticated version. The controller itself does not
+// check req.user; it only needs x-tenant-slug + body fields.
+router.post('/public/postmortem/request', requestPostmortem);
+router.post('/deceased/public/postmortem/request', requestPostmortem);
+
+// POST - Update status (for cross-service calls, no auth required)
+router.post('/update-status', updateDeceasedStatus);
+router.post('/deceased/update-status', updateDeceasedStatus);
+
 // Apply authentication to all other routes
 router.use(protect);
 router.use(authorizeAny);
@@ -261,8 +271,5 @@ router.get('/deceased/public/postmortem/:deceased_id/pdf', generatePostmortemPDF
 // GET - Generate PDF report (authenticated)
 router.get('/postmortem/:deceased_id/pdf', generatePostmortemPDF);
 router.get('/autopsy/:deceased_id/pdf', generatePostmortemPDF);
-
-// POST - Update status (for cross-service calls)
-router.post('/update-status', updateDeceasedStatus);
 
 export default router;

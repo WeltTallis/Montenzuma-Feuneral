@@ -71,6 +71,7 @@ const PortalLoginPage = lazy(() => import('../components/auth/PortalLogin'));
 const ReceptionPortal = lazy(() => import('../components/reception/ReceptionPortal'));
 const PostmortemResults = lazy(() => import('../components/reception/PostmortemResults'));
 const PostmortemQRPage = lazy(() => import('../components/reception/PostmortemQRPage'));
+const PostmortemRequestForm = lazy(() => import('../components/reception/PostmortemRequestForm'));
 const PostmortemPortal = lazy(() => import('../components/deceased/postmortem/postmortem-portal'));
 import PostmortemVerifyPage from '../components/reception/PostmortemVerifyPage';
 import PostmortemResultsPage from '../components/reception/PostmortemResultsPage';
@@ -794,10 +795,12 @@ const AppRouter = () => (
 
       {/* Public Postmortem Routes */}
       <Route path="/tenant/:slug/postmortem-qr" element={<PostmortemQRPage />} />
+      <Route path="/tenant/:slug/postmortem-request" element={<PostmortemRequestForm />} />
       <Route path="/tenant/:slug/postmortem-verify" element={<PostmortemVerifyPage />} />
       <Route path="/tenant/:slug/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
       <Route path="/tenant/:slug/release-form/:id" element={<ReleaseFormPage />} />
       <Route path="/postmortem/verify" element={<PostmortemVerifyPage />} />
+      <Route path="/postmortem/request" element={<PostmortemRequestForm />} />
       <Route path="/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
 
       {/* Main Tenant Route - All authenticated routes */}

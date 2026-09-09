@@ -68,6 +68,15 @@ const NavWrapper = styled.div`
     background: rgba(255, 255, 255, 0.98);
     box-shadow: 0 10px 30px -10px rgba(21, 23, 26, 0.08);
   }
+
+  /* Mobile: fully opaque so animated hero text never bleeds
+     through the fixed bar (backdrop blur on mobile makes the
+     hero title appear to blink behind the nav). */
+  @media (max-width: 900px) {
+    background: #FFFFFF;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 `;
 
 const NavContainer = styled.div`
@@ -81,7 +90,8 @@ const NavContainer = styled.div`
 
   @media (max-width: 900px) {
     grid-template-columns: 1fr auto;
-    padding: 1rem 1.5rem;
+    padding: 0.65rem 1.25rem;
+    gap: 1rem;
   }
 `;
 
@@ -92,6 +102,11 @@ const LogoWrap = styled.a`
   gap: 0.6rem;
   cursor: pointer;
   text-decoration: none;
+
+  /* Mobile: logo removed — the slim bar shows only Client Login + hamburger */
+  @media (max-width: 900px) {
+    display: none;
+  }
 `;
 
 const LogoMark = styled.div`
@@ -339,6 +354,12 @@ const BtnLogin = styled.a`
   &:hover::before {
     transform: translateY(0);
   }
+
+  /* Mobile: compact login button for the slim bar */
+  @media (max-width: 900px) {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.68rem;
+  }
 `;
 
 /* ── Mobile Menu ── */
@@ -397,7 +418,7 @@ const MobilePanel = styled.div`
   }
 
   &.open {
-    max-height: calc(100vh - 76px);
+    max-height: calc(100vh - 56px);
     overflow-y: auto;
     box-shadow: 0 30px 40px rgba(21, 23, 26, 0.15);
   }

@@ -1,439 +1,603 @@
 import React, { useState, useEffect } from 'react';
-import styled, { keyframes } from 'styled-components';
-import { X, DollarSign, Settings, Save, RefreshCw, Clock, Calendar, AlertCircle, CheckCircle, ChevronDown, ChevronUp, History } from '../../utils/icons/icons';
+import styled, { createGlobalStyle, keyframes } from 'styled-components';
+import {
+  DollarSign, Save, ArrowLeft, Tag, Clock, Calendar, RefreshCw,
+  X, Check, FlaskConical, CreditCard, FileText, Settings
+} from '../../utils/icons/icons';
+import { toast } from 'react-toastify';
 import api from '../../api/axios';
 import { ENDPOINTS } from '../../api/endpoints';
+import env from '../../utils/config/env';
 
-// Colors
-const Colors = {
-  primaryDark: '#0f172a',
-  accentBlue: '#3b82f6',
-  accentPurple: '#8b5cf6',
-  successGreen: '#10b981',
-  dangerRed: '#ef4444',
-  warningYellow: '#f59e0b',
-  lightGray: '#f8fafc',
-  mediumGray: '#e2e8f0',
-  darkGray: '#1e293b',
-  textMuted: '#64748b',
-  white: '#ffffff',
-  borderGray: '#e2e8f0',
-};
+// Base API URL (kept for parity with the standalone page)
+const BASE_API = env.API_URL || 'https://restpoint.co.ke/api/v1/restpoint';
 
-// Animations
-const fadeIn = keyframes`
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
+// Inject Google Fonts for the refreshed look
+const GlobalStyle = createGlobalStyle`
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@300;400;500;600&display=swap');
 `;
+
+// Restpoint Color Palette
+const Colors = {
+  ink: "#16211E",
+  pine: "#1F3D33",
+  moss: "#3E6257",
+  gold: "#C6A15B",
+  goldSoft: "#F3EBD9",
+  cream: "#F6F4EE",
+  paper: "#FFFFFF",
+  line: "#E6E1D5",
+  lineSoft: "#EFECE3",
+  muted: "#8B8677",
+  text: "#232A27",
+  textLight: "#C4BFAF",
+  ease: "cubic-bezier(.32, .72, .24, 1)"
+};
 
 const spin = keyframes`
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 `;
 
+// ===============================
 // Styled Components
-const ModalOverlay = styled.div`
+// ===============================
+const Scrim = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 33, 30, .45);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .35s ${Colors.ease}, visibility .35s;
+  z-index: 90;
+
+  &.show {
+    opacity: 1;
+    visibility: visible;
+  }
+`;
+
+const Panel = styled.aside`
   position: fixed;
   top: 0;
-  left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  padding: 1rem;
-  animation: ${fadeIn} 0.2s ease-out;
-`;
-
-const ModalContainer = styled.div`
-  background: ${Colors.white};
-  border-radius: 1rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  width: 100%;
-  max-width: 700px;
-  max-height: 90vh;
+  width: min(420px, 100vw);
+  background: ${Colors.paper};
+  box-shadow: -24px 0 60px -18px rgba(22, 33, 30, .35);
+  border-radius: 16px 0 0 16px;
+  transform: translateX(calc(100% + 40px));
+  transition: transform .45s ${Colors.ease};
+  z-index: 100;
   display: flex;
   flex-direction: column;
-  animation: ${fadeIn} 0.3s ease-out;
-  overflow: hidden;
+
+  &.open {
+    transform: translateX(0);
+  }
+
+  @media (max-width: 480px) {
+    border-radius: 0;
+  }
 `;
 
-const ModalHeader = styled.div`
+const PanelHead = styled.header`
+  padding: 18px 22px 15px;
+  border-bottom: 1px solid ${Colors.lineSoft};
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid ${Colors.borderGray};
-  background: linear-gradient(135deg, ${Colors.primaryDark} 0%, ${Colors.accentPurple} 100%);
-  
-  h2 {
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: ${Colors.white};
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
+  flex-shrink: 0;
 `;
 
-const CloseButton = styled.button`
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
+const IconBtn = styled.button`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid ${Colors.line};
+  background: ${Colors.paper};
+  color: ${Colors.muted};
+  display: grid;
+  place-items: center;
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  color: ${Colors.white};
-  transition: all 0.2s;
-  
+  transition: all .25s;
+
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: rotate(90deg);
+    border-color: ${Colors.pine};
+    color: ${Colors.pine};
   }
 `;
 
-const ModalBody = styled.div`
+const PanelBody = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  padding: 18px 22px;
+  scrollbar-width: thin;
+  scrollbar-color: ${Colors.line} transparent;
 `;
 
-const ModalFooter = styled.div`
+const ModalFooter = styled.footer`
+  padding: 13px 22px 16px;
+  border-top: 1px solid ${Colors.lineSoft};
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid ${Colors.borderGray};
-  background-color: ${Colors.lightGray};
+  gap: 8px;
+  flex-shrink: 0;
+  background: ${Colors.paper};
 `;
 
-const Section = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-`;
-
-const SectionTitle = styled.h3`
-  margin: 0;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: ${Colors.primaryDark};
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+// ===============================
+// Styled Components (rate config form)
+// ===============================
+const PanelKicker = styled.div`
+  font-size: 9.5px;
+  letter-spacing: .2em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid ${Colors.borderGray};
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: ${({ cols }) => cols || '1fr 1fr'};
-  gap: 1rem;
-  
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const Label = styled.label`
-  font-size: 0.8rem;
+  color: ${Colors.gold};
   font-weight: 600;
-  color: ${Colors.darkGray};
+  margin-bottom: 3px;
 `;
 
-const Select = styled.select`
-  padding: 0.625rem 1rem;
-  border: 1px solid ${Colors.borderGray};
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  background-color: ${Colors.white};
-  cursor: pointer;
-  transition: all 0.2s;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  
-  &:focus {
-    outline: none;
-    border-color: ${Colors.accentBlue};
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+const PanelTitle = styled.h2`
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: ${Colors.ink};
+`;
+
+const Group = styled.div`
+  margin-bottom: 18px;
+`;
+
+const GroupLabel = styled.div`
+  font-size: 9.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: ${Colors.muted};
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: ${Colors.lineSoft};
   }
 `;
 
-const Input = styled.input`
-  padding: 0.625rem 1rem;
-  border: 1px solid ${Colors.borderGray};
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  transition: all 0.2s;
-  
-  &:focus {
-    outline: none;
-    border-color: ${Colors.accentBlue};
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
+const Segment = styled.div`
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: ${Colors.cream};
+  border: 1px solid ${Colors.line};
+  border-radius: 10px;
+  padding: 3px;
 `;
 
-const Button = styled.button`
-  display: inline-flex;
+const SegmentIndicator = styled.div`
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  background: ${Colors.pine};
+  border-radius: 8px;
+  transition: transform .3s ${Colors.ease};
+  transform: ${props => props.$isHourly ? 'translateX(100%)' : 'translateX(0)'};
+`;
+
+const SegmentBtn = styled.button`
+  position: relative;
+  z-index: 1;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
+  gap: 7px;
+  padding: 9px 6px;
   border: none;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
+  background: none;
   cursor: pointer;
-  transition: all 0.2s;
-  
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
+  font: 600 12.5px 'Outfit', sans-serif;
+  color: ${props => props.$active ? '#F3EFE4' : Colors.muted};
+  transition: color .25s;
+  border-radius: 8px;
 `;
 
-const PrimaryButton = styled(Button)`
-  background: linear-gradient(135deg, ${Colors.accentBlue} 0%, ${Colors.accentPurple} 100%);
-  color: ${Colors.white};
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-  
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-  }
+const CurrencyGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 `;
 
-const SecondaryButton = styled(Button)`
-  background-color: ${Colors.mediumGray};
-  color: ${Colors.darkGray};
-  
-  &:hover:not(:disabled) {
-    background-color: #d1d5db;
-  }
-`;
-
-const OutlineButton = styled(Button)`
-  background: transparent;
-  border: 1px solid ${Colors.borderGray};
-  color: ${Colors.darkGray};
-  padding: 0.5rem 1rem;
-  font-size: 0.8rem;
-  
-  &:hover:not(:disabled) {
-    border-color: ${Colors.accentBlue};
-    color: ${Colors.accentBlue};
-    background-color: #eff6ff;
-  }
-`;
-
-const StatCard = styled.div`
-  background: ${Colors.white};
-  border-radius: 0.75rem;
-  padding: 1rem;
-  border: 1px solid ${Colors.borderGray};
-  text-align: center;
-`;
-
-const StatValue = styled.div`
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: ${Colors.primaryDark};
-`;
-
-const StatLabel = styled.div`
-  font-size: 0.75rem;
-  color: ${Colors.textMuted};
-  margin-top: 0.25rem;
-`;
-
-const HistoryPanel = styled.div`
-  border: 1px solid ${Colors.borderGray};
-  border-radius: 0.75rem;
-  overflow: hidden;
-`;
-
-const HistoryHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.875rem 1rem;
-  background-color: ${Colors.lightGray};
+const CurrencyCard = styled.label`
+  position: relative;
+  border: 1px solid ${props => props.$selected ? Colors.pine : Colors.line};
+  border-radius: 10px;
+  padding: 11px 12px;
   cursor: pointer;
-  transition: all 0.2s;
-  
+  transition: all .2s ${Colors.ease};
+  background: ${props => props.$selected ? `linear-gradient(150deg, #fff 55%, ${Colors.goldSoft})` : Colors.paper};
+
   &:hover {
-    background-color: ${Colors.mediumGray};
+    border-color: ${Colors.moss};
   }
-  
-  h4 {
-    margin: 0;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: ${Colors.primaryDark};
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
   }
 `;
 
-const HistoryList = styled.div`
-  max-height: ${({ isOpen }) => (isOpen ? '300px' : '0')};
-  overflow-y: auto;
-  transition: max-height 0.3s ease;
+const CurCode = styled.span`
+  font-family: 'Fraunces', serif;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: ${Colors.ink};
+  display: block;
 `;
 
-const HistoryItem = styled.div`
+const CurName = styled.span`
+  font-size: 10.5px;
+  color: ${Colors.muted};
+  display: block;
+  margin-top: 1px;
+`;
+
+const CurCheck = styled.span`
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: ${Colors.pine};
+  color: ${Colors.gold};
+  display: grid;
+  place-items: center;
+  opacity: ${props => props.$selected ? 1 : 0};
+  transform: ${props => props.$selected ? 'scale(1)' : 'scale(.5)'};
+  transition: all .2s ${Colors.ease};
+`;
+
+const Control = styled.div`
   display: flex;
   align-items: center;
+  background: ${Colors.cream};
+  border: 1px solid ${Colors.line};
+  border-radius: 10px;
+  transition: all .2s;
+
+  &:focus-within {
+    border-color: ${Colors.pine};
+    background: ${Colors.paper};
+    box-shadow: 0 0 0 3px rgba(31, 61, 51, .06);
+  }
+`;
+
+const ControlPrefix = styled.span`
+  padding: 10px 3px 10px 13px;
+  font: 600 12.5px 'Outfit', sans-serif;
+  color: ${Colors.muted};
+  flex-shrink: 0;
+`;
+
+const ControlInput = styled.input`
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font: 500 14.5px 'Outfit', sans-serif;
+  color: ${Colors.ink};
+  padding: 10px 4px;
+  font-variant-numeric: tabular-nums;
+
+  &::placeholder {
+    color: ${Colors.textLight};
+    font-weight: 300;
+  }
+`;
+
+const ControlSuffix = styled.span`
+  padding: 10px 13px 10px 3px;
+  font-size: 11.5px;
+  color: ${Colors.muted};
+  flex-shrink: 0;
+`;
+
+const Hint = styled.p`
+  font-size: 11px;
+  color: ${Colors.muted};
+  margin-top: 6px;
+  padding-left: 2px;
+  font-weight: 300;
+`;
+
+const Summary = styled.div`
+  background: ${Colors.pine};
+  border-radius: 12px;
+  padding: 16px 18px;
+  color: #EDEAE0;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: -50px;
+    bottom: -50px;
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    border: 1px solid rgba(198, 161, 91, .28);
+  }
+`;
+
+const SummaryKicker = styled.div`
+  font-size: 9.5px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: ${Colors.gold};
+  font-weight: 600;
+  margin-bottom: 7px;
+`;
+
+const SummaryRate = styled.div`
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+
+  small {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    color: rgba(237, 234, 224, .6);
+    font-weight: 400;
+  }
+`;
+
+const SummaryNote = styled.div`
+  font-size: 11.5px;
+  color: rgba(237, 234, 224, .55);
+  font-weight: 300;
+  margin: 3px 0 12px;
+`;
+
+const SummaryRows = styled.div`
+  border-top: 1px solid rgba(237, 234, 224, .14);
+`;
+
+const SummaryRow = styled.div`
+  display: flex;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid ${Colors.borderGray};
-  transition: background-color 0.2s;
-  
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(237, 234, 224, .14);
+  font-size: 12px;
+
   &:last-child {
     border-bottom: none;
   }
-  
-  &:hover {
-    background-color: ${Colors.lightGray};
+
+  span:first-child {
+    color: rgba(237, 234, 224, .6);
+    font-weight: 300;
+  }
+
+  span:last-child {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
 `;
 
-const HistoryItemInfo = styled.div`
+const PanelFoot = styled.footer`
+  padding: 13px 22px 16px;
+  border-top: 1px solid ${Colors.lineSoft};
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  gap: 8px;
+  flex-shrink: 0;
+  background: ${Colors.paper};
+`;
+
+const Btn = styled.button`
   flex: 1;
+  padding: 10px 10px;
+  border-radius: 10px;
+  font: 600 13px 'Outfit', sans-serif;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: all .2s ${Colors.ease};
 `;
 
-const HistoryItemTitle = styled.span`
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: ${Colors.primaryDark};
+const GhostBtn = styled(Btn)`
+  background: none;
+  border: 1px solid ${Colors.line};
+  color: ${Colors.muted};
+
+  &:hover {
+    border-color: ${Colors.pine};
+    color: ${Colors.pine};
+  }
 `;
 
-const HistoryItemMeta = styled.span`
-  font-size: 0.7rem;
-  color: ${Colors.textMuted};
+const SaveBtn = styled(Btn)`
+  background: ${Colors.ink};
+  color: #F3EFE4;
+  border: none;
+
+  &:hover:not(:disabled) {
+    background: #24332e;
+  }
+
+  &:disabled {
+    opacity: .55;
+    cursor: wait;
+  }
+
+  svg {
+    color: ${Colors.gold};
+  }
 `;
 
-const AnimatedLoader = styled(RefreshCw)`
-  animation: ${spin} 1s linear infinite;
+const Spin = styled.div`
+  animation: spin .9s linear infinite;
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
 `;
 
-const AlertBox = styled.div`
+const Strip = styled.div`
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  background-color: ${(props) => props.type === 'warning' ? '#fef3c7' : props.type === 'success' ? '#d1fae5' : '#dbeafe'};
-  border: 1px solid ${(props) => props.type === 'warning' ? '#f59e0b' : props.type === 'success' ? '#10b981' : '#3b82f6'};
-  color: ${(props) => props.type === 'warning' ? '#92400e' : props.type === 'success' ? '#065f46' : '#1e40af'};
-  font-size: 0.8rem;
+  align-items: center;
+  gap: 11px;
+  border-bottom: 1px solid ${Colors.lineSoft};
+  padding-bottom: 16px;
+  margin-bottom: 18px;
 `;
 
-// Get tenant slug
-const getTenantSlug = () => {
-  return localStorage.getItem('tenantSlug') ||
-    localStorage.getItem('tenant_slug') ||
-    (() => {
-      try {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        return user.tenantSlug || user.tenant?.slug || 'default';
-      } catch {
-        return 'default';
-      }
-    })();
-};
+const StripAvatar = styled.div`
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: ${Colors.pine};
+  color: ${Colors.gold};
+  display: grid;
+  place-items: center;
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+`;
+
+const StripName = styled.div`
+  font-weight: 600;
+  font-size: 13.5px;
+  color: ${Colors.ink};
+`;
+
+const StripMeta = styled.div`
+  font-size: 11.5px;
+  color: ${Colors.muted};
+`;
 
 // Main Component
 const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpdate }) => {
-  // Form State
-  const [rateProfile, setRateProfile] = useState('standard');
-  const [currency, setCurrency] = useState('KES');
-  const [chargeType, setChargeType] = useState('daily');
-  const [dailyRate, setDailyRate] = useState(3000);
-  const [hourlyRate, setHourlyRate] = useState(125);
-  const [usdRate, setUsdRate] = useState(130);
+  // Form state
+  const [chargeSettings, setChargeSettings] = useState({
+    rateProfile: 'standard',
+    currency: 'KES',
+    chargeType: 'daily',
+    dailyRate: '',
+    hourlyRate: '',
+    usdRate: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
-  // Loading States
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isRecalculating, setIsRecalculating] = useState(false);
+  // Load existing charge settings when the modal opens
+  useEffect(() => {
+    if (!isOpen || !deceasedId) return;
 
-  // History State
-  const [showHistory, setShowHistory] = useState(false);
-  const [chargeHistory, setChargeHistory] = useState([]);
-  const [billingSummary, setBillingSummary] = useState(null);
-
-  // Load charge settings
-  const loadChargeSettings = async () => {
-    if (!deceasedId) return;
-
-    setIsLoading(true);
-    try {
-      const response = await api.get(ENDPOINTS.DECEASED.CHARGE_SETTINGS(deceasedId), {
-        headers: { 'x-tenant-slug': getTenantSlug() }
-      });
-      if (response.data.success) {
-        const data = response.data.data;
-        setRateProfile(data.rateProfile || 'standard');
-        setCurrency(data.currency || 'KES');
-        setChargeType(data.chargeType || 'daily');
-        setDailyRate(data.dailyRate || 3000);
-        setHourlyRate(data.hourlyRate || 125);
-        setUsdRate(data.usdRate || 130);
+    const fetchData = async () => {
+      setIsLoadingData(true);
+      try {
+        const response = await api.get(ENDPOINTS.DECEASED.CHARGE_SETTINGS(deceasedId));
+        if (response.data?.success) {
+          const data = response.data.data;
+          setChargeSettings({
+            rateProfile: data.rateProfile || 'standard',
+            currency: data.currency || 'KES',
+            chargeType: data.chargeType || 'daily',
+            dailyRate: data.dailyRate || '',
+            hourlyRate: data.hourlyRate || '',
+            usdRate: data.usdRate || '130',
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching charge settings:', error);
+        toast.error(error.response?.data?.message || 'Failed to load charge settings');
+      } finally {
+        setIsLoadingData(false);
       }
-    } catch (error) {
-      console.error('Error loading charge settings:', error);
-    } finally {
-      setIsLoading(false);
+    };
+
+    fetchData();
+  }, [isOpen, deceasedId]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name === 'dailyRate' || name === 'hourlyRate' || name === 'usdRate') {
+      // numeric-only, no leading zeros
+      let cleanValue = value.replace(/[^\d]/g, '').replace(/^0+/, '');
+      cleanValue = cleanValue === '' ? '' : parseInt(cleanValue, 10);
+      setChargeSettings((prev) => ({ ...prev, [name]: cleanValue }));
+    } else {
+      setChargeSettings((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  useEffect(() => {
-    if (isOpen && deceasedId) {
-      loadChargeSettings();
-    }
-  }, [isOpen, deceasedId]);
+  const setFreq = (freq) => {
+    setChargeSettings((prev) => ({ ...prev, chargeType: freq }));
+  };
 
-  // Handle save
-  const handleSave = async () => {
+  const setCurrency = (cur) => {
+    setChargeSettings((prev) => ({ ...prev, currency: cur }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!deceasedId) return;
 
-    setIsSaving(true);
+    setLoading(true);
     try {
-      const response = await api.put(ENDPOINTS.DECEASED.UPDATE_CHARGE_SETTINGS(deceasedId), {
-        rateProfile, currency, chargeType, dailyRate, hourlyRate, usdRate,
-      }, {
-        headers: { 'x-tenant-slug': getTenantSlug() }
-      });
+      const dailyRate = chargeSettings.dailyRate === '' ? 0 : parseInt(chargeSettings.dailyRate, 10);
+      const hourlyRate = chargeSettings.hourlyRate === '' ? 0 : parseInt(chargeSettings.hourlyRate, 10);
+      const usdRate = chargeSettings.usdRate === '' ? 0 : parseInt(chargeSettings.usdRate, 10);
 
-      if (response.data.success) {
+      // Basic validation
+      if (chargeSettings.chargeType === 'daily' && (!dailyRate || dailyRate <= 0)) {
+        throw new Error('Please enter a valid daily rate.');
+      }
+      if (chargeSettings.chargeType === 'hourly' && (!hourlyRate || hourlyRate <= 0)) {
+        throw new Error('Please enter a valid hourly rate.');
+      }
+      if (chargeSettings.currency === 'USD' && (!usdRate || usdRate <= 0)) {
+        throw new Error('Please enter a valid USD exchange rate.');
+      }
+
+      const apiData = {
+        rateProfile: chargeSettings.rateProfile,
+        currency: chargeSettings.currency,
+        chargeType: chargeSettings.chargeType,
+        dailyRate,
+        hourlyRate,
+        usdRate,
+      };
+
+      const response = await api.put(ENDPOINTS.DECEASED.UPDATE_CHARGE_SETTINGS(deceasedId), apiData);
+
+      if (response.data?.success) {
+        toast.success('Charge configuration saved.');
         if (onUpdate) onUpdate();
         onClose();
+      } else {
+        throw new Error(response.data?.message || 'Failed to update charge settings');
       }
     } catch (error) {
-      console.error('Error saving charge settings:', error);
+      console.error('Update error:', error);
+      toast.error(error.response?.data?.message || error.message || 'Failed to update settings');
     } finally {
-      setIsSaving(false);
+      setLoading(false);
     }
   };
 
@@ -441,114 +605,193 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
     if (!deceasedData?.date_admitted) return 0;
     const admissionDate = new Date(deceasedData.date_admitted);
     if (isNaN(admissionDate.getTime())) return 0;
-    // Calendar-day difference, clamped at 0 — same-day admission = 0 days,
-    // never -1 (raw hour math goes negative across timezones).
     const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     const days = Math.floor((startOfDay(new Date()) - startOfDay(admissionDate)) / (1000 * 60 * 60 * 24));
     return Math.max(0, days);
   };
 
+  const symbols = { KES: 'KSh', USD: '$' };
+  const formatVal = (val) => (val ? parseInt(val, 10).toLocaleString('en-US') : '');
+  const fmt = (n) => (n ? `${symbols[chargeSettings.currency]} ${parseInt(n, 10).toLocaleString('en-US')}` : 'Not set');
+
+  const currentRate = chargeSettings.chargeType === 'daily' ? chargeSettings.dailyRate : chargeSettings.hourlyRate;
+  const projection = currentRate
+    ? (chargeSettings.chargeType === 'daily' ? currentRate * 30 : currentRate * 24 * 30)
+    : 0;
+
   if (!isOpen) return null;
 
   return (
-    <ModalOverlay onClick={onClose}>
-      <ModalContainer onClick={(e) => e.stopPropagation()}>
-        <ModalHeader>
-          <h2>
-            <Settings size={20} />
-            Charge Settings - {deceasedData?.full_name}
-          </h2>
-          <CloseButton onClick={onClose}>
-            <X size={18} />
-          </CloseButton>
-        </ModalHeader>
+    <>
+      <GlobalStyle />
+      <Scrim onClick={onClose} />
 
-        <ModalBody>
-          {/* Summary Stats */}
-          <Grid cols="1fr 1fr">
-            <StatCard>
-              <StatValue>{deceasedData?.total_mortuary_charge || 0} {currency}</StatValue>
-              <StatLabel>Current Balance</StatLabel>
-            </StatCard>
-            <StatCard>
-              <StatValue>{getDaysInMorgue()} days</StatValue>
-              <StatLabel>Days in Morgue</StatLabel>
-            </StatCard>
-          </Grid>
+      <Panel className="open" role="dialog" aria-modal="true" aria-label="Charge configuration">
+        <PanelHead>
+          <div>
+            <PanelKicker>{deceasedId} · Billing</PanelKicker>
+            <PanelTitle>Charge configuration</PanelTitle>
+          </div>
+          <IconBtn onClick={onClose} aria-label="Close">
+            <X size={13} />
+          </IconBtn>
+        </PanelHead>
 
-          {/* Rate Settings */}
-          <Section>
-            <SectionTitle>
-              <DollarSign size={16} />
-              Rate Configuration
-            </SectionTitle>
-
-            <Grid cols="1fr 1fr">
-              <FormGroup>
-                <Label>Rate Profile</Label>
-                <Select value={rateProfile} onChange={(e) => setRateProfile(e.target.value)}>
-                  <option value="standard">Standard (KES 3,000/day)</option>
-                  <option value="premium">Premium (KES 5,000/day)</option>
-                  <option value="custom">Custom</option>
-                </Select>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Currency</Label>
-                <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                  <option value="KES">KES (Kenyan Shilling)</option>
-                  <option value="USD">USD (US Dollar)</option>
-                </Select>
-              </FormGroup>
-            </Grid>
-
-            <Grid cols="1fr 1fr">
-              <FormGroup>
-                <Label>Billing Type</Label>
-                <Select value={chargeType} onChange={(e) => setChargeType(e.target.value)}>
-                  <option value="daily">Daily Rate</option>
-                  <option value="hourly">Hourly Rate</option>
-                </Select>
-              </FormGroup>
-
-              {chargeType === 'daily' ? (
-                <FormGroup>
-                  <Label>Daily Rate ({currency})</Label>
-                  <Input type="number" value={dailyRate} onChange={(e) => setDailyRate(parseFloat(e.target.value) || 0)} min="0" step="100" />
-                </FormGroup>
-              ) : (
-                <FormGroup>
-                  <Label>Hourly Rate ({currency})</Label>
-                  <Input type="number" value={hourlyRate} onChange={(e) => setHourlyRate(parseFloat(e.target.value) || 0)} min="0" step="10" />
-                </FormGroup>
-              )}
-            </Grid>
-
-            {currency === 'USD' && (
-              <FormGroup>
-                <Label>USD to KES Exchange Rate</Label>
-                <Input type="number" value={usdRate} onChange={(e) => setUsdRate(parseFloat(e.target.value) || 130)} min="1" step="1" />
-              </FormGroup>
-            )}
-          </Section>
-
-          <AlertBox type="warning">
-            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+        <PanelBody>
+          {/* Client strip */}
+          <Strip>
+            <StripAvatar>{deceasedData?.full_name?.charAt(0) || 'C'}</StripAvatar>
             <div>
-              <strong>Note:</strong> Changing these settings will apply the new rate to future charges.
-              Existing charges will remain unchanged.
+              <StripName>{deceasedData?.full_name || 'Client'}</StripName>
+              <StripMeta>
+                Admitted {deceasedData?.date_admitted ? new Date(deceasedData.date_admitted).toLocaleDateString() : '—'} · {getDaysInMorgue()} days in morgue
+              </StripMeta>
             </div>
-          </AlertBox>
-        </ModalBody>
+          </Strip>
 
-        <ModalFooter>
-          <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
-          <PrimaryButton onClick={handleSave} disabled={isSaving || isLoading}>
-            {isSaving ? <><AnimatedLoader size={18} /> Saving...</> : <><Save size={18} /> Save Changes</>}
-          </PrimaryButton>
-        </ModalFooter>
-      </ModalContainer>
-    </ModalOverlay>
+          <form onSubmit={handleSubmit}>
+            {/* Frequency */}
+            <Group>
+              <GroupLabel>Charge frequency</GroupLabel>
+              <Segment>
+                <SegmentIndicator $isHourly={chargeSettings.chargeType === 'hourly'} />
+                <SegmentBtn
+                  type="button"
+                  $active={chargeSettings.chargeType === 'daily'}
+                  onClick={() => setFreq('daily')}
+                >
+                  <Calendar size={13} />
+                  Per day
+                </SegmentBtn>
+                <SegmentBtn
+                  type="button"
+                  $active={chargeSettings.chargeType === 'hourly'}
+                  onClick={() => setFreq('hourly')}
+                >
+                  <Clock size={13} />
+                  Per hour
+                </SegmentBtn>
+              </Segment>
+            </Group>
+
+            {/* Currency */}
+            <Group>
+              <GroupLabel>Currency</GroupLabel>
+              <CurrencyGrid>
+                <CurrencyCard
+                  $selected={chargeSettings.currency === 'KES'}
+                  onClick={() => setCurrency('KES')}
+                >
+                  <input type="radio" name="currency" value="KES" checked={chargeSettings.currency === 'KES'} onChange={() => setCurrency('KES')} />
+                  <CurCode>KES</CurCode>
+                  <CurName>Kenyan Shilling</CurName>
+                  <CurCheck $selected={chargeSettings.currency === 'KES'}><Check size={9} /></CurCheck>
+                </CurrencyCard>
+                <CurrencyCard
+                  $selected={chargeSettings.currency === 'USD'}
+                  onClick={() => setCurrency('USD')}
+                >
+                  <input type="radio" name="currency" value="USD" checked={chargeSettings.currency === 'USD'} onChange={() => setCurrency('USD')} />
+                  <CurCode>USD</CurCode>
+                  <CurName>US Dollar</CurName>
+                  <CurCheck $selected={chargeSettings.currency === 'USD'}><Check size={9} /></CurCheck>
+                </CurrencyCard>
+              </CurrencyGrid>
+            </Group>
+
+            {/* Rate */}
+            <Group>
+              <GroupLabel>{chargeSettings.chargeType === 'daily' ? 'Daily rate' : 'Hourly rate'}</GroupLabel>
+              <Control>
+                <ControlPrefix>{symbols[chargeSettings.currency]}</ControlPrefix>
+                <ControlInput
+                  type="text"
+                  inputMode="numeric"
+                  name={chargeSettings.chargeType === 'daily' ? 'dailyRate' : 'hourlyRate'}
+                  value={formatVal(currentRate)}
+                  onChange={handleInputChange}
+                  placeholder={chargeSettings.chargeType === 'daily' ? '4,000' : '200'}
+                />
+                <ControlSuffix>/ {chargeSettings.chargeType === 'daily' ? 'day' : 'hour'}</ControlSuffix>
+              </Control>
+              <Hint>
+                {chargeSettings.chargeType === 'daily'
+                  ? 'Charged once for each day in care.'
+                  : 'Charged for every hour in care.'}
+              </Hint>
+            </Group>
+
+            {/* FX (USD only) */}
+            {chargeSettings.currency === 'USD' && (
+              <Group>
+                <GroupLabel>Exchange rate</GroupLabel>
+                <Control>
+                  <ControlPrefix>1 USD =</ControlPrefix>
+                  <ControlInput
+                    type="text"
+                    inputMode="numeric"
+                    name="usdRate"
+                    value={formatVal(chargeSettings.usdRate)}
+                    onChange={handleInputChange}
+                    placeholder="130"
+                  />
+                  <ControlSuffix>KES</ControlSuffix>
+                </Control>
+                <Hint>Converts USD charges for local statements.</Hint>
+              </Group>
+            )}
+
+            {/* Summary */}
+            <Summary>
+              <SummaryKicker>Billing summary</SummaryKicker>
+              <SummaryRate>
+                {currentRate ? `${fmt(currentRate)}` : 'Not set'} <small>/ {chargeSettings.chargeType === 'daily' ? 'day' : 'hour'}</small>
+              </SummaryRate>
+              <SummaryNote>
+                {currentRate
+                  ? `Estimated 30-day charge · ${fmt(projection)}`
+                  : 'Enter a rate to see a projection.'}
+              </SummaryNote>
+              <SummaryRows>
+                <SummaryRow>
+                  <span>Frequency</span>
+                  <span>{chargeSettings.chargeType === 'daily' ? 'Daily' : 'Hourly'}</span>
+                </SummaryRow>
+                <SummaryRow>
+                  <span>Currency</span>
+                  <span>{chargeSettings.currency}</span>
+                </SummaryRow>
+                {chargeSettings.currency === 'USD' && chargeSettings.usdRate && (
+                  <SummaryRow>
+                    <span>Exchange rate</span>
+                    <span>{formatVal(chargeSettings.usdRate)} KES</span>
+                  </SummaryRow>
+                )}
+              </SummaryRows>
+            </Summary>
+
+            <PanelFoot>
+              <GhostBtn type="button" onClick={onClose}>
+                Discard
+              </GhostBtn>
+              <SaveBtn type="submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Spin><RefreshCw size={14} /></Spin>
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} />
+                    Save configuration
+                  </>
+                )}
+              </SaveBtn>
+            </PanelFoot>
+          </form>
+        </PanelBody>
+      </Panel>
+    </>
   );
 };
 

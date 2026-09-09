@@ -402,7 +402,7 @@ export default function App() {
       if (serviceName === "Body Admission") redirectPath = `/tenant/${tenantSlug}/deceased/register`
       else if (serviceName === "Body Release") redirectPath = `/tenant/${tenantSlug}/release-form/new`
       else if (serviceName === "Flower Arrangements") redirectPath = `/tenant/${tenantSlug}/flower-samples`
-      else if (serviceName === "Postmortem Records") redirectPath = `/tenant/${tenantSlug}/postmortem-qr`
+      else if (serviceName === "Postmortem Records") redirectPath = `/tenant/${tenantSlug}/postmortem-request`
       navigate(redirectPath)
       setShowOverlay(false)
       setSelectedService(null)
