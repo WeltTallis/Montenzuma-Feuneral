@@ -424,7 +424,7 @@ export default function BookNewHearseModal({
 
             <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
               <BtnGhost type="button" onClick={onClose}>Cancel</BtnGhost>
-              <BtnPrimary type="submit" disabled={loading}>{loading ? <><SS />Creating...</> : 'Create Booking'}</BtnPrimary>
+              <BtnPrimary type="submit" disabled={loading}>{loading ? <><SS />Booking...</> : 'Make Booking'}</BtnPrimary>
             </div>
           </form>
         </PanelBody>
@@ -441,9 +441,9 @@ export default function BookNewHearseModal({
               <div style={{ fontSize: '.72rem', fontWeight: 600, color: C.primary, marginBottom: '.35rem' }}>{tmpDates.length} date{tmpDates.length !== 1 ? 's' : ''} selected</div>
               {tmpDates.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.2rem', marginBottom: '.6rem' }}>{tmpDates.map(d => { const dt = new Date(d + 'T00:00:00'); return <Chip key={d}>{dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Chip> })}</div>}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.55rem' }}>
-                <PkNav type="button" onClick={() => { if (pkM === 0) { setPkM(11); setPkY(p => p - 1) } else setPkM(p => p - 1) }}>‹</PkNav>
+                <PkNav type="button" onClick={() => { if (pkM === 0) { setPkM(11); setPkY(p => p - 1) } else setPkM(p => p - 1) }}></PkNav>
                 <div style={{ fontSize: '.85rem', fontWeight: 700, color: C.text }}>{['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][pkM]} {pkY}</div>
-                <PkNav type="button" onClick={() => { if (pkM === 11) { setPkM(0); setPkY(p => p + 1) } else setPkM(p => p + 1) }}>›</PkNav>
+                <PkNav type="button" onClick={() => { if (pkM === 11) { setPkM(0); setPkY(p => p + 1) } else setPkM(p => p + 1) }}></PkNav>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '2px' }}>
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(w => <div key={w} style={{ textAlign: 'center', fontSize: '.6rem', fontWeight: 700, color: C.textMuted, padding: '.3rem 0' }}>{w}</div>)}
