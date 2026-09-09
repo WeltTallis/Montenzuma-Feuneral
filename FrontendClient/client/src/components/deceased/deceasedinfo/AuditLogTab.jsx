@@ -83,7 +83,7 @@ const AuditLogTab = ({ deceased, postmortem, charges, payments, releaseData, req
     ...(releaseData
       ? [{
           action: `Body Released to: ${releaseData.released_to || releaseData.receiver_name || 'Unknown'}`,
-          user: releaseData.released_by || releaseData.authorized_by || 'System',
+          user: releaseData.released_by || releaseData.staff_name || releaseData.authorized_by || 'System',
           role: 'Authorized Officer',
           timestamp: releaseData.released_at || releaseData.created_at,
         }]

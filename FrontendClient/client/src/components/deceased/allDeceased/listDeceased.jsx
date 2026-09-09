@@ -867,26 +867,6 @@ const DeceasedListPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const today = new Date();
-
-  // ─── Deceased pages must never be indexed by search engines ──────
-  useEffect(() => {
-    const ROBOTS_CONTENT = 'noindex, nofollow, noarchive';
-    let meta = document.querySelector('meta[name="robots"]');
-    const previous = meta ? meta.getAttribute('content') : null;
-    if (meta) {
-      meta.setAttribute('content', ROBOTS_CONTENT);
-    } else {
-      meta = document.createElement('meta');
-      meta.name = 'robots';
-      meta.content = ROBOTS_CONTENT;
-      document.head.appendChild(meta);
-    }
-    return () => {
-      if (previous !== null) meta.setAttribute('content', previous);
-      else meta.remove();
-    };
-  }, []);
-
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1044,7 +1024,7 @@ const DeceasedListPage = () => {
 
     if (statusFilter) {
       const statusInfo = getStatusInfo(r.body_status || r.status);
-      if (statusFilter === 'Active' && statusInfo.label !== 'Active' && statusInfo.label !== 'In Morgue') return false;
+      if (statusFilter === 'active' && statusInfo.label !== 'active' && statusInfo.label !== 'pending') return false;
       if (statusFilter === 'Postmortem Requested' && statusInfo.label !== 'Postmortem Requested') return false;
       if (statusFilter === 'Postmortem Done' && statusInfo.label !== 'Postmortem Done' && statusInfo.label !== 'Pending Autopsy') return false;
       if (statusFilter === 'Released' && statusInfo.label !== 'Released' && statusInfo.label !== 'Transferred' && statusInfo.label !== 'Buried') return false;

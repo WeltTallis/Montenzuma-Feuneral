@@ -306,7 +306,7 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
       <DetailGrid>
         <DetailItem><DetailLabel>Permit Number</DetailLabel><DetailValue>{releaseData?.permit_number || '—'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Mode of Transport</DetailLabel><DetailValue>{releaseData?.mode_of_transport || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Released By (Staff)</DetailLabel><DetailValue>{releaseData?.received_by || releaseData?.staff_name || '—'}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Released By (Staff)</DetailLabel><DetailValue>{releaseData?.staff_name || releaseData?.received_by || releaseData?.released_by || '—'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Recorded On</DetailLabel><DetailValue>{releaseData?.created_at ? formatDate(releaseData.created_at) : '—'}</DetailValue></DetailItem>
       </DetailGrid>
 

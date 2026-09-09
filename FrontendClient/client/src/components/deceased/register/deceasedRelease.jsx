@@ -1010,6 +1010,16 @@ const DeceasedReleaseForm = () => {
     }
   };
 
+  const getLoggedInUserName = () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      // Prefer full_name, fall back to name, then email as last resort
+      return user.full_name || user.name || user.userName || user.email || '';
+    } catch {
+      return '';
+    }
+  };
+
   const getCurrentTime = () => {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
@@ -1044,7 +1054,7 @@ const DeceasedReleaseForm = () => {
     tel_number: '',
     release_date: new Date().toISOString().split('T')[0],
     release_time: getCurrentTime(),
-    released_by: '',
+    released_by: getLoggedInUserName(),
     permit_number: '',
     mode_of_transport: 'hearse',
     terms_accepted: false,

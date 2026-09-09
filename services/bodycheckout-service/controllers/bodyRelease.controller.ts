@@ -113,7 +113,8 @@ const releaseBodySchema = Zod.z.object({
   staff_signature: Zod.z.string().optional(),
   received_by: Zod.z.string().optional(),
   items_returned: Zod.z.string().optional(),
-  notes: Zod.z.string().optional()
+  notes: Zod.z.string().optional(),
+  released_by: Zod.z.string().optional(),
 });
 
 // Helper function to format date for MySQL (YYYY-MM-DD)
@@ -202,6 +203,10 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
     }
 
     // Prepare data for insertion with properly formatted dates
+    // Map frontend's "released_by" to the DB "staff_name" column.
+    // If staff_name is also supplied, prefer it; otherwise use released_by.
+    const officerName = validatedData.staff_name || validatedData.released_by || null;
+
     const releaseData = {
       release_id: releaseId,
       tenant_slug: tenantSlug,
@@ -218,9 +223,9 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
       terms_accepted: validatedData.terms_accepted ? 1 : 0,
       everything_paid: validatedData.everything_paid ? 1 : 0,
       signature: processedSignature,
-      staff_name: validatedData.staff_name || null,
+      staff_name: officerName,
       staff_signature: processedStaffSignature,
-      received_by: validatedData.received_by || null,
+      received_by: validatedData.received_by || officerName || null,
       items_returned: validatedData.items_returned || null,
       notes: validatedData.notes || null,
       created_at: currentDateTime
