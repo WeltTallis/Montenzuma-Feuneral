@@ -1,401 +1,555 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { toast } from 'react-toastify';
-import api from '../../../api/axios';
+import React, { useState, useEffect } from 'react';
+import styled, { keyframes } from 'styled-components';
+import { X, DollarSign, Settings, Save, RefreshCw, Clock, Calendar, AlertCircle, CheckCircle, ChevronDown, ChevronUp, History } from '../../utils/icons/icons';
+import api from '../../api/axios';
+import { ENDPOINTS } from '../../api/endpoints';
 
-const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
-    const [loading, setLoading] = useState(false);
-    const [chargeType, setChargeType] = useState('daily');
-    const [currency, setCurrency] = useState('KES');
-    const [dailyRate, setDailyRate] = useState('');
-    const [hourlyRate, setHourlyRate] = useState('');
-    const [usdRate, setUsdRate] = useState('');
-    const [storageRate, setStorageRate] = useState('');
-    const [embalmingRate, setEmbalmingRate] = useState('');
-    const [taxRate, setTaxRate] = useState('');
-    const [notes, setNotes] = useState('');
-
-    const symbols = { KES: 'KSh', USD: '$' };
-
-
-    useEffect(() => {
-        if (deceased && isOpen) {
-            setChargeType(deceased.charges?.chargeType || 'daily');
-            setCurrency(deceased.charges?.currency || 'KES');
-            setDailyRate(deceased.charges?.per_day?.toString() || '');
-            setHourlyRate(deceased.charges?.per_hour?.toString() || '');
-            setUsdRate(deceased.charges?.usdRate?.toString() || '');
-            setStorageRate(deceased.charges?.storage_rate?.toString() || '');
-            setEmbalmingRate(deceased.charges?.embalming_rate?.toString() || '');
-            setTaxRate(deceased.charges?.tax_rate?.toString() || '');
-            setNotes(deceased.charges?.notes || '');
-        }
-    }, [deceased, isOpen]);
-
-    useEffect(() => {
-        const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
-        if (isOpen) {
-            document.addEventListener('keydown', handleKey);
-            document.body.style.overflow = 'hidden';
-        }
-        return () => {
-            document.removeEventListener('keydown', handleKey);
-            document.body.style.overflow = '';
-        };
-    }, [isOpen, onClose]);
-
-    const commas = (v) => {
-        if (!v) return '';
-        const d = v.replace(/[^\d]/g, '').replace(/^0+/, '');
-        return d ? parseInt(d, 10).toLocaleString('en-US') : '';
-    };
-
-    const digits = (v) => v.replace(/[^\d]/g, '').replace(/^0+/, '');
-
-    const currentRate = chargeType === 'daily' ? dailyRate : hourlyRate;
-    const setCurrentRate = chargeType === 'daily' ? setDailyRate : setHourlyRate;
-
-    const fmt = (n, cur = currency) => symbols[cur] + ' ' + Number(n).toLocaleString('en-US');
-
-    const getProjection = useCallback(() => {
-        const rate = parseInt(currentRate || '0', 10);
-        if (!rate) return null;
-        if (chargeType === 'daily') {
-            return { label: 'Estimated 30-day charge', total: rate * 30 };
-        }
-        return { label: 'Estimated 30-day charge', total: rate * 24 * 30 };
-    }, [currentRate, chargeType]);
-
-    const handleRateInput = (value) => {
-        const clean = digits(value);
-        setCurrentRate(clean);
-    };
-
-    const handleSave = async () => {
-        const rate = parseInt(currentRate || '0', 10);
-        if (!rate || rate <= 0) {
-            toast.error(`Please enter a valid ${chargeType} rate.`);
-            return;
-        }
-        if (currency === 'USD' && (!usdRate || parseInt(usdRate, 10) <= 0)) {
-            toast.error('Please enter a valid USD exchange rate.');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const payload = {
-                deceased_id: deceased?.id || deceased?.deceased_id,
-                chargeType,
-                currency,
-                per_day: chargeType === 'daily' ? rate : 0,
-                per_hour: chargeType === 'hourly' ? rate : 0,
-                usdRate: currency === 'USD' ? parseInt(usdRate, 10) : null,
-                storage_rate: parseInt(storageRate || '0', 10) || 0,
-                embalming_rate: parseInt(embalmingRate || '0', 10) || 0,
-                tax_rate: parseInt(taxRate || '0', 10) || 0,
-                notes,
-            };
-
-            await api.post(`/deceased/update-charge-settings/${deceased?.id || deceased?.deceased_id}`, payload);
-
-            if (onSave) await onSave(payload);
-            toast.success('Charge configuration saved.');
-            onClose();
-        } catch (error) {
-            console.error('Error saving charge settings:', error);
-            toast.error('Failed to save charge settings. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (!isOpen) return null;
-
-    const projection = getProjection();
-    const per = chargeType === 'daily' ? 'day' : 'hour';
-
-    return (
-        <div style={styles.overlay} onClick={onClose}>
-            <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-                <div style={styles.header}>
-                    <h2 style={styles.title}>Charge Settings</h2>
-                    <button style={styles.closeBtn} onClick={onClose}>×</button>
-                </div>
-
-                <form onSubmit={handleSubmit}>
-                    <div style={styles.body}>
-                        <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>Pricing</h3>
-
-                            <div style={styles.row}>
-                                <div style={styles.field}>
-                                    <label style={styles.label}>Daily Rate (Ksh)</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={charges.per_day}
-                                        onChange={(e) => setCharges({ ...charges, per_day: parseFloat(e.target.value) || 0 })}
-                                        style={styles.input}
-                                        placeholder="1500"
-                                    />
-                                </div>
-
-                                <div style={styles.field}>
-                                    <label style={styles.label}>Embalming Rate (Ksh)</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={charges.embalming_rate}
-                                        onChange={(e) => setCharges({ ...charges, embalming_rate: parseFloat(e.target.value) || 0 })}
-                                        style={styles.input}
-                                        placeholder="3000"
-                                    />
-                                </div>
-                            </div>
-
-                            <div style={styles.row}>
-                                <div style={styles.field}>
-                                    <label style={styles.label}>Storage Rate (Ksh/day)</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={charges.storage_rate}
-                                        onChange={(e) => setCharges({ ...charges, storage_rate: parseFloat(e.target.value) || 0 })}
-                                        style={styles.input}
-                                        placeholder="500"
-                                    />
-                                </div>
-
-                                <div style={styles.field}>
-                                    <label style={styles.label}>Tax Rate (%)</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        max="100"
-                                        value={charges.tax_rate}
-                                        onChange={(e) => setCharges({ ...charges, tax_rate: parseFloat(e.target.value) || 0 })}
-                                        style={styles.input}
-                                        placeholder="0"
-                                    />
-                                </div>
-                            </div>
-
-                            <div style={styles.field}>
-                                <label style={styles.label}>Currency</label>
-                                <select
-                                    value={charges.currency}
-                                    onChange={(e) => setCharges({ ...charges, currency: e.target.value })}
-                                    style={styles.select}
-                                >
-                                    <option value="KES">KES - Kenyan Shilling (Ksh)</option>
-                                    <option value="USD">USD (US Dollar)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>Storage Type</h3>
-                            <div style={styles.field}>
-                                <select
-                                    value={charges.storage_type}
-                                    onChange={(e) => setCharges({ ...charges, storage_type: e.target.value })}
-                                    style={styles.select}
-                                >
-                                    <option value="standard">Standard Storage</option>
-                                    <option value="cold">Cold Storage</option>
-                                    <option value="premium">Premium Storage</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>Notes</h3>
-                            <div style={styles.field}>
-                                <textarea
-                                    value={charges.notes}
-                                    onChange={(e) => setCharges({ ...charges, notes: e.target.value })}
-                                    style={styles.textarea}
-                                    rows="4"
-                                    placeholder="Add any additional notes about charges..."
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style={styles.footer}>
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            style={styles.cancelBtn}
-                            disabled={loading}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            style={styles.saveBtn}
-                            disabled={loading}
-                        >
-                            {loading ? 'Saving...' : 'Save Charges'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
+// Colors
+const Colors = {
+  primaryDark: '#0f172a',
+  accentBlue: '#3b82f6',
+  accentPurple: '#8b5cf6',
+  successGreen: '#10b981',
+  dangerRed: '#ef4444',
+  warningYellow: '#f59e0b',
+  lightGray: '#f8fafc',
+  mediumGray: '#e2e8f0',
+  darkGray: '#1e293b',
+  textMuted: '#64748b',
+  white: '#ffffff',
+  borderGray: '#e2e8f0',
 };
 
-const styles = {
-    overlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        padding: '20px'
-    },
-    modal: {
-        background: '#ffffff',
-        borderRadius: '16px',
-        width: '100%',
-        maxWidth: '600px',
-        maxHeight: '90vh',
-        overflow: 'hidden',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-        display: 'flex',
-        flexDirection: 'column'
-    },
-    header: {
-        padding: '24px',
-        borderBottom: '1px solid #e5e7eb',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        background: '#f9fafb'
-    },
-    title: {
-        fontSize: '20px',
-        fontWeight: 700,
-        color: '#111827',
-        margin: 0
-    },
-    closeBtn: {
-        background: 'none',
-        border: 'none',
-        fontSize: '28px',
-        color: '#6b7280',
-        cursor: 'pointer',
-        padding: '0',
-        width: '32px',
-        height: '32px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: '8px',
-        transition: 'all 0.2s'
-    },
-    body: {
-        padding: '24px',
-        overflowY: 'auto',
-        flex: 1
-    },
-    section: {
-        marginBottom: '24px'
-    },
-    sectionTitle: {
-        fontSize: '14px',
-        fontWeight: 600,
-        color: '#374151',
-        marginBottom: '12px',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px'
-    },
-    row: {
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '16px',
-        marginBottom: '16px'
-    },
-    field: {
-        marginBottom: '16px'
-    },
-    label: {
-        display: 'block',
-        fontSize: '13px',
-        fontWeight: 600,
-        color: '#4b5563',
-        marginBottom: '6px'
-    },
-    input: {
-        width: '100%',
-        padding: '10px 12px',
-        border: '1px solid #d1d5db',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontFamily: 'Inter, sans-serif',
-        transition: 'border-color 0.2s',
-        boxSizing: 'border-box'
-    },
-    select: {
-        width: '100%',
-        padding: '10px 12px',
-        border: '1px solid #d1d5db',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontFamily: 'Inter, sans-serif',
-        background: '#ffffff',
-        cursor: 'pointer',
-        boxSizing: 'border-box'
-    },
-    textarea: {
-        width: '100%',
-        padding: '10px 12px',
-        border: '1px solid #d1d5db',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontFamily: 'Inter, sans-serif',
-        resize: 'vertical',
-        boxSizing: 'border-box'
-    },
-    footer: {
-        padding: '16px 24px',
-        borderTop: '1px solid #e5e7eb',
-        display: 'flex',
-        gap: '12px',
-        justifyContent: 'flex-end',
-        background: '#f9fafb'
-    },
-    cancelBtn: {
-        padding: '10px 20px',
-        border: '1px solid #d1d5db',
-        background: '#ffffff',
-        color: '#374151',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: 600,
-        cursor: 'pointer',
-        transition: 'all 0.2s'
-    },
-    saveBtn: {
-        padding: '10px 20px',
-        border: 'none',
-        background: '#000000',
-        color: '#ffffff',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: 600,
-        cursor: 'pointer',
-        transition: 'all 0.2s'
+// Animations
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
+const spin = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+`;
+
+// Styled Components
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+  animation: ${fadeIn} 0.2s ease-out;
+`;
+
+const ModalContainer = styled.div`
+  background: ${Colors.white};
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 700px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: ${fadeIn} 0.3s ease-out;
+  overflow: hidden;
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid ${Colors.borderGray};
+  background: linear-gradient(135deg, ${Colors.primaryDark} 0%, ${Colors.accentPurple} 100%);
+  
+  h2 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: ${Colors.white};
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+`;
+
+const CloseButton = styled.button`
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  color: ${Colors.white};
+  transition: all 0.2s;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+  }
+`;
+
+const ModalBody = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+`;
+
+const ModalFooter = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid ${Colors.borderGray};
+  background-color: ${Colors.lightGray};
+`;
+
+const Section = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`;
+
+const SectionTitle = styled.h3`
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: ${Colors.primaryDark};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid ${Colors.borderGray};
+`;
+
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: ${({ cols }) => cols || '1fr 1fr'};
+  gap: 1rem;
+  
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const FormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const Label = styled.label`
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: ${Colors.darkGray};
+`;
+
+const Select = styled.select`
+  padding: 0.625rem 1rem;
+  border: 1px solid ${Colors.borderGray};
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  background-color: ${Colors.white};
+  cursor: pointer;
+  transition: all 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  
+  &:focus {
+    outline: none;
+    border-color: ${Colors.accentBlue};
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+`;
+
+const Input = styled.input`
+  padding: 0.625rem 1rem;
+  border: 1px solid ${Colors.borderGray};
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  
+  &:focus {
+    outline: none;
+    border-color: ${Colors.accentBlue};
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+`;
+
+const Button = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const PrimaryButton = styled(Button)`
+  background: linear-gradient(135deg, ${Colors.accentBlue} 0%, ${Colors.accentPurple} 100%);
+  color: ${Colors.white};
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  }
+`;
+
+const SecondaryButton = styled(Button)`
+  background-color: ${Colors.mediumGray};
+  color: ${Colors.darkGray};
+  
+  &:hover:not(:disabled) {
+    background-color: #d1d5db;
+  }
+`;
+
+const OutlineButton = styled(Button)`
+  background: transparent;
+  border: 1px solid ${Colors.borderGray};
+  color: ${Colors.darkGray};
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  
+  &:hover:not(:disabled) {
+    border-color: ${Colors.accentBlue};
+    color: ${Colors.accentBlue};
+    background-color: #eff6ff;
+  }
+`;
+
+const StatCard = styled.div`
+  background: ${Colors.white};
+  border-radius: 0.75rem;
+  padding: 1rem;
+  border: 1px solid ${Colors.borderGray};
+  text-align: center;
+`;
+
+const StatValue = styled.div`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${Colors.primaryDark};
+`;
+
+const StatLabel = styled.div`
+  font-size: 0.75rem;
+  color: ${Colors.textMuted};
+  margin-top: 0.25rem;
+`;
+
+const HistoryPanel = styled.div`
+  border: 1px solid ${Colors.borderGray};
+  border-radius: 0.75rem;
+  overflow: hidden;
+`;
+
+const HistoryHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  background-color: ${Colors.lightGray};
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background-color: ${Colors.mediumGray};
+  }
+  
+  h4 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: ${Colors.primaryDark};
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+`;
+
+const HistoryList = styled.div`
+  max-height: ${({ isOpen }) => (isOpen ? '300px' : '0')};
+  overflow-y: auto;
+  transition: max-height 0.3s ease;
+`;
+
+const HistoryItem = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid ${Colors.borderGray};
+  transition: background-color 0.2s;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+  
+  &:hover {
+    background-color: ${Colors.lightGray};
+  }
+`;
+
+const HistoryItemInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+`;
+
+const HistoryItemTitle = styled.span`
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: ${Colors.primaryDark};
+`;
+
+const HistoryItemMeta = styled.span`
+  font-size: 0.7rem;
+  color: ${Colors.textMuted};
+`;
+
+const AnimatedLoader = styled(RefreshCw)`
+  animation: ${spin} 1s linear infinite;
+`;
+
+const AlertBox = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background-color: ${(props) => props.type === 'warning' ? '#fef3c7' : props.type === 'success' ? '#d1fae5' : '#dbeafe'};
+  border: 1px solid ${(props) => props.type === 'warning' ? '#f59e0b' : props.type === 'success' ? '#10b981' : '#3b82f6'};
+  color: ${(props) => props.type === 'warning' ? '#92400e' : props.type === 'success' ? '#065f46' : '#1e40af'};
+  font-size: 0.8rem;
+`;
+
+// Get tenant slug
+const getTenantSlug = () => {
+  return localStorage.getItem('tenantSlug') ||
+    localStorage.getItem('tenant_slug') ||
+    (() => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        return user.tenantSlug || user.tenant?.slug || 'default';
+      } catch {
+        return 'default';
+      }
+    })();
+};
+
+// Main Component
+const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpdate }) => {
+  // Form State
+  const [rateProfile, setRateProfile] = useState('standard');
+  const [currency, setCurrency] = useState('KES');
+  const [chargeType, setChargeType] = useState('daily');
+  const [dailyRate, setDailyRate] = useState(3000);
+  const [hourlyRate, setHourlyRate] = useState(125);
+  const [usdRate, setUsdRate] = useState(130);
+
+  // Loading States
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
+
+  // History State
+  const [showHistory, setShowHistory] = useState(false);
+  const [chargeHistory, setChargeHistory] = useState([]);
+  const [billingSummary, setBillingSummary] = useState(null);
+
+  // Load charge settings
+  const loadChargeSettings = async () => {
+    if (!deceasedId) return;
+
+    setIsLoading(true);
+    try {
+      const response = await api.get(ENDPOINTS.DECEASED.CHARGE_SETTINGS(deceasedId), {
+        headers: { 'x-tenant-slug': getTenantSlug() }
+      });
+      if (response.data.success) {
+        const data = response.data.data;
+        setRateProfile(data.rateProfile || 'standard');
+        setCurrency(data.currency || 'KES');
+        setChargeType(data.chargeType || 'daily');
+        setDailyRate(data.dailyRate || 3000);
+        setHourlyRate(data.hourlyRate || 125);
+        setUsdRate(data.usdRate || 130);
+      }
+    } catch (error) {
+      console.error('Error loading charge settings:', error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (isOpen && deceasedId) {
+      loadChargeSettings();
+    }
+  }, [isOpen, deceasedId]);
+
+  // Handle save
+  const handleSave = async () => {
+    if (!deceasedId) return;
+
+    setIsSaving(true);
+    try {
+      const response = await api.put(ENDPOINTS.DECEASED.UPDATE_CHARGE_SETTINGS(deceasedId), {
+        rateProfile, currency, chargeType, dailyRate, hourlyRate, usdRate,
+      }, {
+        headers: { 'x-tenant-slug': getTenantSlug() }
+      });
+
+      if (response.data.success) {
+        if (onUpdate) onUpdate();
+        onClose();
+      }
+    } catch (error) {
+      console.error('Error saving charge settings:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const getDaysInMorgue = () => {
+    if (!deceasedData?.date_admitted) return 0;
+    const admissionDate = new Date(deceasedData.date_admitted);
+    if (isNaN(admissionDate.getTime())) return 0;
+    // Calendar-day difference, clamped at 0 — same-day admission = 0 days,
+    // never -1 (raw hour math goes negative across timezones).
+    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const days = Math.floor((startOfDay(new Date()) - startOfDay(admissionDate)) / (1000 * 60 * 60 * 24));
+    return Math.max(0, days);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <ModalOverlay onClick={onClose}>
+      <ModalContainer onClick={(e) => e.stopPropagation()}>
+        <ModalHeader>
+          <h2>
+            <Settings size={20} />
+            Charge Settings - {deceasedData?.full_name}
+          </h2>
+          <CloseButton onClick={onClose}>
+            <X size={18} />
+          </CloseButton>
+        </ModalHeader>
+
+        <ModalBody>
+          {/* Summary Stats */}
+          <Grid cols="1fr 1fr">
+            <StatCard>
+              <StatValue>{deceasedData?.total_mortuary_charge || 0} {currency}</StatValue>
+              <StatLabel>Current Balance</StatLabel>
+            </StatCard>
+            <StatCard>
+              <StatValue>{getDaysInMorgue()} days</StatValue>
+              <StatLabel>Days in Morgue</StatLabel>
+            </StatCard>
+          </Grid>
+
+          {/* Rate Settings */}
+          <Section>
+            <SectionTitle>
+              <DollarSign size={16} />
+              Rate Configuration
+            </SectionTitle>
+
+            <Grid cols="1fr 1fr">
+              <FormGroup>
+                <Label>Rate Profile</Label>
+                <Select value={rateProfile} onChange={(e) => setRateProfile(e.target.value)}>
+                  <option value="standard">Standard (KES 3,000/day)</option>
+                  <option value="premium">Premium (KES 5,000/day)</option>
+                  <option value="custom">Custom</option>
+                </Select>
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Currency</Label>
+                <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                  <option value="KES">KES (Kenyan Shilling)</option>
+                  <option value="USD">USD (US Dollar)</option>
+                </Select>
+              </FormGroup>
+            </Grid>
+
+            <Grid cols="1fr 1fr">
+              <FormGroup>
+                <Label>Billing Type</Label>
+                <Select value={chargeType} onChange={(e) => setChargeType(e.target.value)}>
+                  <option value="daily">Daily Rate</option>
+                  <option value="hourly">Hourly Rate</option>
+                </Select>
+              </FormGroup>
+
+              {chargeType === 'daily' ? (
+                <FormGroup>
+                  <Label>Daily Rate ({currency})</Label>
+                  <Input type="number" value={dailyRate} onChange={(e) => setDailyRate(parseFloat(e.target.value) || 0)} min="0" step="100" />
+                </FormGroup>
+              ) : (
+                <FormGroup>
+                  <Label>Hourly Rate ({currency})</Label>
+                  <Input type="number" value={hourlyRate} onChange={(e) => setHourlyRate(parseFloat(e.target.value) || 0)} min="0" step="10" />
+                </FormGroup>
+              )}
+            </Grid>
+
+            {currency === 'USD' && (
+              <FormGroup>
+                <Label>USD to KES Exchange Rate</Label>
+                <Input type="number" value={usdRate} onChange={(e) => setUsdRate(parseFloat(e.target.value) || 130)} min="1" step="1" />
+              </FormGroup>
+            )}
+          </Section>
+
+          <AlertBox type="warning">
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <div>
+              <strong>Note:</strong> Changing these settings will apply the new rate to future charges.
+              Existing charges will remain unchanged.
+            </div>
+          </AlertBox>
+        </ModalBody>
+
+        <ModalFooter>
+          <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+          <PrimaryButton onClick={handleSave} disabled={isSaving || isLoading}>
+            {isSaving ? <><AnimatedLoader size={18} /> Saving...</> : <><Save size={18} /> Save Changes</>}
+          </PrimaryButton>
+        </ModalFooter>
+      </ModalContainer>
+    </ModalOverlay>
+  );
 };
 
 export default ChargeSettingsModal;
