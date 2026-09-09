@@ -20,7 +20,7 @@ const CSS = `
   .ioc-grain{position:fixed;inset:0;pointer-events:none;z-index:5;opacity:.45;mix-blend-mode:soft-light;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E")}
   .ioc-vigil{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    text-align:center;padding:48px 24px 44px}
+    text-align:center;padding:10px 14px 10px}
   .ioc-candle{width:min(300px,74vw);aspect-ratio:300/430;display:block;margin-bottom:-14px;cursor:pointer;
     touch-action:pan-y;user-select:none;-webkit-user-select:none}
   .ioc-eyebrow{font:700 11px/1 'Karla',sans-serif;letter-spacing:.36em;color:#e6a24e;margin:20px 0 0}
@@ -30,7 +30,7 @@ const CSS = `
   .ioc-message{margin:30px 0 0;font:italic 500 clamp(21px,4vw,29px)/1.35 'Cormorant Garamond',Georgia,serif;color:#f2c98c;max-width:20ch}
   .ioc-foot{margin:52px 0 0;font:italic 500 16px/1.75 'Cormorant Garamond',Georgia,serif;color:#a2937c}
   .ioc-done{margin-top:32px;font:700 12px/1 'Karla',sans-serif;letter-spacing:.32em;text-transform:uppercase;
-    color:#e6a24e;background:transparent;border:1px solid rgba(230,162,78,.55);border-radius:999px;
+    color:#e6a24e;background:transparent;border:1px solid rgba(230,162,78,.55);border-radius:9px;
     padding:16px 58px;cursor:pointer;transition:background .35s ease,color .35s ease,box-shadow .35s ease,transform .35s ease}
   .ioc-done:hover{background:#e6a24e;color:#0f0d0a;box-shadow:0 0 34px rgba(230,162,78,.35);transform:translateY(-1px)}
   .ioc-done:active{transform:translateY(0)}
@@ -42,8 +42,8 @@ const CSS = `
 
 // ─── Word helpers (years spelled out, possessives, ages) ───
 const TAU = Math.PI * 2;
-const ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
-const TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+const ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
 
 const firstName = (full) => String(full || '').trim().split(/\s+/)[0] || 'The Deceased';
 const possessive = (n) => { const t = String(n).trim(); return /s$/i.test(t) ? t + '’' : t + '’s'; };
@@ -348,7 +348,7 @@ const InOurCare = ({ mode = 'intake', name, born, passed, reference, onDone }) =
   const label = mode === 'release' ? 'THE JOURNEY HOME BEGINS' : 'THE REGISTER IS SIGNED';
   const message = mode === 'release'
     ? `${possessive(first)} journey home has begun.`
-    : `${possessive(first)} story is now in our care.`;
+    : `${possessive(first)}  memory is now held with care.`;
   const by = yearOf(born);
   const py = yearOf(passed);
   const dateLine = (by || '') + (by && py ? ' — ' : '') + (py || '') + ageWords(born, passed);

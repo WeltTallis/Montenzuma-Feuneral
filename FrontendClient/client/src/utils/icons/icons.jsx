@@ -375,7 +375,7 @@ export const Hash = (p) => (
 
 
 
-export    const  FileCheck  = (p) => (
+export const FileCheck = (p) => (
   <Icon {...p}><line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /><line x1="10" y1="3" x2="8" y2="21" /><line x1="14" y1="3" x2="16" y2="21" /></Icon>
 );
 
@@ -649,7 +649,7 @@ export const Brain = (p) => (
 
 
 
-export   const     GraduationCap   = (p) => (
+export const GraduationCap = (p) => (
   <Icon {...p}>
     <rect x="4" y="4" width="16" height="16" rx="2" />
     <rect x="9" y="9" width="6" height="6" />
@@ -660,7 +660,7 @@ export   const     GraduationCap   = (p) => (
     <path d="M20 15h2" />
     <path d="M20 9h2" />
     <path d="M9 2v2" />
-        <path d="M9 20v2" />
+    <path d="M9 20v2" />
   </Icon>
 );
 
@@ -676,7 +676,7 @@ export const Cpu = (p) => (
     <path d="M20 15h2" />
     <path d="M20 9h2" />
     <path d="M9 2v2" />
-        <path d="M9 20v2" />
+    <path d="M9 20v2" />
   </Icon>
 );
 
@@ -995,13 +995,19 @@ export const Warehouse = (p) => (
   <Icon {...p}><path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35z" /><path d="M6 18h2" /><path d="M10 18h2" /><path d="M6 14h2" /><path d="M10 14h2" /><path d="M14 18h2" /><path d="M18 14h2" /><path d="M14 14h2" /><path d="M18 18h2" /></Icon>
 );
 
+
+
+
+
+
+
 // ─── Aggregate Object (convenience) ──────────────────────────────────────────
 export const Icons = {
   // Navigation & Layout
-  FileBarChart, Hammer, MessageSquare, Target,  Wrench  ,     ClipboardCheck  ,   LifeBuoy, Home, Menu, ArrowLeft, ArrowRight, ArrowUp, ArrowDown,
+  FileBarChart, Hammer, MessageSquare, Target, Wrench, ClipboardCheck, LifeBuoy, Home, Menu, ArrowLeft, ArrowRight, ArrowUp, ArrowDown,
   ChevronDown, ChevronRight, ChevronUp, ChevronLeft, ChevronFirst, ChevronLast,
   Grid, List, Columns, Maximize2, Minimize2, ExternalLink,
-  LayoutDashboard, Layers, Mark,  CalendarClock   , 
+  LayoutDashboard, Layers, Mark, CalendarClock,
   // User & People
   User, Users, Users2, UserPlus, UserCheck, UserMinus,
   // Status & Alerts
@@ -1012,7 +1018,7 @@ export const Icons = {
   FileText, FileImage, FileSpreadsheet, ClipboardList, FileArchive, FilePlus, FileDigit, FileUp,
   // News & Media
   Newspaper,
-    GraduationCap ,
+  GraduationCap,
   // Location & Map
   MapPin, Globe, Navigation, Route,
   // Money & Finance
@@ -1025,7 +1031,7 @@ export const Icons = {
   Phone, Mail, Bell, MessageCircle, MessageSquare, Quote,
   // Security
   Shield, ShieldCheck, Lock, KeyRound, Eye, EyeOff,
-    // Server & Infrastructure
+  // Server & Infrastructure
   Server, Cloud,
   // Vehicles & Transport
   Truck, Car, Fuel, Gauge,
@@ -1033,16 +1039,16 @@ export const Icons = {
   Beaker, FlaskConical, Syringe, Stethoscope, TestTube2,
   // Analytics & Charts
   TrendingUp, BarChart3, BarChart2, Activity, PieChartIcon, PieChart, TrendingDown,
-    // Objects & Items
+  // Objects & Items
   Box, Package, ShoppingCart, ShoppingBag, Trophy, Star, Flower2, HardDrive, Type, Award,
   // Targets & Goals
   Target, GitCompareArrows,
   // Buildings & Places
   Building, Building2, Warehouse,
-    // Misc
-  Heart, Zap, Settings, LogOut,  FileCheck    , 
+  // Misc
+  Heart, Zap, Settings, LogOut, FileCheck,
   Sun, Moon, CloudSun, Play, Pause, Smartphone, MonitorSmartphone, Camera, Music, Mic, Wifi, WifiOff, Github, Linkedin, Twitter, Brain, Cpu,
-    // Additional
+  // Additional
   ArrowUpRight, Code2, Paintbrush, Bug, Lightbulb, HelpCircle, Crown, BookText, Eraser, HardHat, TrafficCone, Flame, Video, Percent, Badge, Scale, UploadCloud, Hourglass, CheckSquare, PlusSquare, CheckCircle2,
 };
 
