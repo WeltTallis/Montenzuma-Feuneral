@@ -77,8 +77,8 @@ body {
 }
 .browse-hero {
   position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; animation: heroFade 1.4s ease forwards;
-  filter: brightness(0.82) saturate(0.95);
+  object-fit: cover; transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.16,1,0.3,1);
+  filter: brightness(0.82) saturate(0.95); opacity: 1;
 }
 .browse-overlay {
   position: absolute; inset: 0;
@@ -171,7 +171,7 @@ body {
 button:focus-visible, [role="button"]:focus-visible { outline: 2px solid #B98480; outline-offset: 2px; }
 @keyframes lovePop { 0% { transform: scale(0.4); } 60% { transform: scale(1.35); } 100% { transform: scale(1); } }
 .story-add {
-  position: absolute; top: -5px; right: -5px; z-index: 3;
+  position: absolute; top: -8px; right: -9px; z-index: 3;
   width: 26px; height: 26px; border-radius: 50%;
   border: 2px solid #0a0b0c; background: #475A43; color: #fff;
   font: 700 15px/1 'Inter', sans-serif; display: grid; place-items: center;
@@ -179,19 +179,47 @@ button:focus-visible, [role="button"]:focus-visible { outline: 2px solid #B98480
 }
 .story-add:hover { transform: scale(1.12); }
 .story-add.is-added { background: #C8A262; }
+
+/* ── TikTok-style love pill: big, red, hanging on the right side ── */
 .story-love {
-  position: absolute; bottom: -7px; right: -7px; z-index: 3;
-  height: 22px; padding: 0 8px 0 6px; border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.16); background: rgba(10,11,12,0.72);
-  color: #fff; font: 600 10px 'Inter', sans-serif;
-  display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  position: absolute; right: -11px; bottom: -11px; z-index: 3;
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 2px solid #0a0b0c;
+  background: rgba(10,11,12,0.65); color: #fff;
+  display: grid; place-items: center;
+  font: 600 11px/1 'Inter', sans-serif;
+  cursor: pointer; padding: 0;
+  transition: all 0.22s cubic-bezier(0.16,1,0.3,1);
+  backdrop-filter: blur(4px);
 }
-.story-love svg { width: 11px; height: 11px; flex: none; }
-.story-love:hover { transform: scale(1.08); }
-.story-love.is-liked { background: #C8264A; border-color: transparent; }
+.story-love:hover { transform: scale(1.12); }
+.story-love.is-liked {
+  background: #C8264A; border-color: transparent;
+  box-shadow: 0 6px 22px rgba(200,38,74,0.45);
+}
 .story-love.is-liked svg { animation: lovePop 0.35s cubic-bezier(0.16,1,0.3,1); }
+.story-love svg { width: 21px; height: 21px; }
 .love-count { font-variant-numeric: tabular-nums; }
+
+/* ── Like snowfall — a burst of petals + hearts rains down on ♥ ────────────── */
+@keyframes likeSnowFall {
+  0% { transform: translate3d(0, -6vh, 0) rotate(0deg); opacity: 0; }
+  8% { opacity: var(--lso, 0.9); }
+  85% { opacity: var(--lso, 0.9); }
+  100% { transform: translate3d(var(--lsx, 30px), 108vh, 0) rotate(var(--lsr, 220deg)); opacity: 0; }
+}
+.like-snow {
+  position: fixed; inset: 0; overflow: hidden;
+  pointer-events: none; z-index: 120;
+}
+.like-snow-flake {
+  position: absolute; top: -6vh; left: var(--lsx0, 50%);
+  width: var(--lss, 16px); height: var(--lss, 16px);
+  animation: likeSnowFall var(--lsd, 2.6s) cubic-bezier(0.3,0.4,0.6,1) forwards;
+  animation-delay: var(--lsdl, 0s);
+}
+.like-snow-flake svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 6px rgba(200,38,74,0.35)); }
+@media (prefers-reduced-motion: reduce) { .like-snow { display: none; } }
 
 /* ── Browse title — bottom left ──────────────────────────────────────────── */
 .browse-title-block {
@@ -431,6 +459,27 @@ function Candle({ height = 68 }) {
   )
 }
 
+// 14300 -> "14.3k", 1250000 -> "1.2M", 612 -> "612" — same style as the blog counts
+const fmtCount = (n) => {
+  const v = Number(n) || 0
+  if (v >= 1000000) return `${(v / 1000000).toFixed(v >= 10000000 ? 0 : 1).replace(/\.0$/, '')}M`
+  if (v >= 1000) return `${(v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, '')}k`
+  return String(v)
+}
+
+// One stable anonymous id per browser so the backend can remember which
+// ♥ taps belong to this client (survives reloads, no login needed)
+const getClientKey = () => {
+  try {
+    let k = localStorage.getItem('flower-client-key')
+    if (!k) {
+      k = (crypto?.randomUUID && crypto.randomUUID()) || `ck-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      localStorage.setItem('flower-client-key', k)
+    }
+    return k
+  } catch { return `ck-${Date.now()}` }
+}
+
 // ── Story Item — tap to view · ＋ adds to booking · ♥ loves ───────────────────
 function StoryItem({ arrangement, isActive, isSelected, isLiked, likeCount, size, animDelay, onClick, onAdd, onLike }) {
   const ringCls = 'story-ring-wrap ' + (isActive ? 'sr-unseen' : isSelected ? 'sr-selected' : 'sr-seen')
@@ -461,7 +510,6 @@ function StoryItem({ arrangement, isActive, isSelected, isLiked, likeCount, size
           aria-label="Love this arrangement"
         >
           <svg viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20.5S4.9 16 3.2 11.6C2 8.6 3.7 5.5 6.8 5.5c2 0 3.6 1.2 4.4 2.9L12 10l.8-1.6c.8-1.7 2.4-2.9 4.4-2.9 3.1 0 4.8 3.1 3.6 6.1C19.1 16 12 20.5 12 20.5Z" /></svg>
-          {likeCount > 0 && <span className="love-count">{likeCount > 999 ? (likeCount / 1000).toFixed(1) + 'k' : likeCount}</span>}
         </button>
       </div>
       <span className="story-label">{arrangement.tag}</span>
@@ -535,7 +583,7 @@ function BrowseScreen({ selectedIds, onOpen, onAdd, onLike, likes = {}, likedIds
     const dx = e.changedTouches[0].clientX - touchRef.current.x
     const dy = e.changedTouches[0].clientY - touchRef.current.y
     touchRef.current = null
-    const SWIPE = 70
+    const SWIPE = 100
     if (allArrangements.length && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWIPE) {
       setBgIdx(i => dx < 0 ? (i + 1) % allArrangements.length : (i - 1 + allArrangements.length) % allArrangements.length)
     }
@@ -659,29 +707,43 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [bookingOpen, setBookingOpen] = useState(false)
 
-  // ── Loves — TikTok-style hearts ──
+  // ── Loves — TikTok-style hearts, persisted in the backend ──
+  // Backend owns the counts (flower_samples.like_count); this device remembers
+  // its own taps via a stable client key so hearts survive reloads.
   const [likes, setLikes] = useState({})
   const [likedIds, setLikedIds] = useState([])
-  const baseLikesRef = useRef({})
-  baseLikesRef.current = useMemo(() => {
-    const m = {}
-    arrangements.forEach(a => {
-      const seed = String(a.id).split('').reduce((s, ch) => s + ch.charCodeAt(0), 0)
-      m[a.id] = 48 + (seed * 37) % 420
-    })
-    return m
-  }, [arrangements])
+  const clientKeyRef = useRef(null)
+  if (!clientKeyRef.current) clientKeyRef.current = getClientKey()
 
   const toggleLike = useCallback((id) => {
+    const sid = String(id)
     setLikedIds(prev => {
-      const has = prev.includes(id)
-      setLikes(m => ({ ...m, [id]: Math.max(0, (m[id] ?? baseLikesRef.current[id] ?? 0) + (has ? -1 : 1)) }))
-      return has ? prev.filter(x => x !== id) : [...prev, id]
+      const has = prev.includes(sid)
+      // Optimistic UI — instant heart pop, then confirmed by the server below
+      setLikes(m => ({ ...m, [sid]: Math.max(0, (Number(m[sid]) || 0) + (has ? -1 : 1)) }))
+      const clientKey = clientKeyRef.current || getClientKey()
+      api.post(
+        `/florist/flower-samples/${encodeURIComponent(sid)}/${has ? 'unlike' : 'like'}`,
+        { client_key: clientKey }
+      ).then(r => {
+        const serverCount = r?.data?.like_count
+        const serverLiked = r?.data?.liked
+        if (serverCount != null) setLikes(m => ({ ...m, [sid]: Number(serverCount) || 0 }))
+        if (serverLiked === true && !has) setLikedIds(p => (p.includes(sid) ? p : [...p, sid]))
+        if (serverLiked === false && has) setLikedIds(p => p.filter(x => x !== sid))
+      }).catch(() => {
+        // Offline / backend down — roll the optimistic tap back
+        setLikedIds(p => (has ? [...p, sid] : p.filter(x => x !== sid)))
+        setLikes(m => ({ ...m, [sid]: Math.max(0, (Number(m[sid]) || 0) + (has ? 1 : -1)) }))
+      })
+      return has ? prev.filter(x => x !== sid) : [...prev, sid]
     })
   }, [])
 
-  // Fetch flower arrangements from backend API
+  // Fetch flower arrangements from backend API — counts + this device's ♥ come
+  // straight from the server, so clients see live totals (1k-style via fmtCount)
   useEffect(() => {
+    let cancelled = false
     const loadArrangements = async () => {
       try {
         const tenantSlug = localStorage.getItem('tenantSlug') || 'system_shared';
@@ -689,13 +751,14 @@ export default function App() {
           params: { tenant_slug: tenantSlug }
         });
         const data = res.data;
-        if (data.success && Array.isArray(data.data)) {
+        if (!cancelled && data.success && Array.isArray(data.data)) {
           const transformed = data.data.map((sample, index) => {
             const firstImage = sample.images && sample.images.length > 0
               ? (typeof sample.images[0] === 'string' ? sample.images[0] : sample.images[0].url)
               : null;
+            const sid = String(sample.sample_id || `arr-${index}`)
             return {
-              id: sample.sample_id || `arr-${index}`,
+              id: sid,
               name: sample.title,
               img: firstImage || 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=1600&h=1000',
               portrait: firstImage || 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=900&h=1200',
@@ -711,19 +774,50 @@ export default function App() {
               d: '12–18"',
               placement: 'Place at the memorial service.',
               price: sample.price != null ? Number(sample.price) : null,
+              likeCount: Number(sample.like_count ?? sample.likes ?? 0) || 0,
             };
           });
           setArrangements(transformed);
-        } else {
+          // Seed the visible counts from the backend — no more fake local seeds
+          setLikes(() => {
+            const m = {}
+            transformed.forEach(a => { m[a.id] = a.likeCount })
+            return m
+          })
+          // Hydrate this device's own ♥ state so hearts survive reloads
+          try {
+            const mine = await api.get('/florist/flower-samples/likes/mine', {
+              params: { tenant_slug: tenantSlug, client_key: clientKeyRef.current || getClientKey() },
+            })
+            if (cancelled) return
+            const md = mine?.data
+            if (md && md.success) {
+              if (Array.isArray(md.liked)) {
+                setLikedIds(md.liked.map(String))
+              }
+              if (md.counts && typeof md.counts === 'object') {
+                setLikes(() => {
+                  const m = {}
+                  transformed.forEach(a => {
+                    const key = String(a.id)
+                    m[a.id] = Number(md.counts[key] ?? a.likeCount) || 0
+                  })
+                  return m
+                })
+              }
+            }
+          } catch { /* offline — optimistic taps still work */ }
+        } else if (!cancelled) {
           setArrangements([]);
         }
       } catch (e) {
         console.error('Failed to load flower samples:', e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     loadArrangements();
+    return () => { cancelled = true }
   }, []);
 
   const toggle = (id) => {

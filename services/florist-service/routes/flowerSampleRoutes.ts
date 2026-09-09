@@ -6,7 +6,10 @@ import {
     getFlowerArrangementById,
     updateFlowerArrangement,
     deleteFlowerArrangement,
-    getAllFlowerArrangements
+    getAllFlowerArrangements,
+    getMySampleLikes,
+    likeFlowerSample,
+    unlikeFlowerSample
 } from '../controllers/flowerSamples.ts';
 
 // Import authentication middleware
@@ -16,8 +19,8 @@ const { protect, authorizeAny } = authMiddleware;
 const router = Router();
 
 // All routes are protected with JWT authentication
-router.use(protect);
-router.use(authorizeAny as any);
+// NOTE: public like routes (likes/mine, :id/like, :id/unlike) were moved
+// ABOVE this guard so browsing clients can tap ♥ with no staff login.
 
 // Configure multer for file uploads (memory storage)
 const storage = multer.memoryStorage();
@@ -66,6 +69,34 @@ router.post(
   uploadMiddleware,
   createFlowerArrangement as any
 );
+
+/**
+ * LIKES (public-friendly: clients tap ♥ with no login)
+ * GET  /likes/mine          → which samples this device liked + live counts
+ * POST /:id/like            → like a sample (idempotent)
+ * POST /:id/unlike          → unlike a sample (idempotent)
+ * NOTE: these MUST sit BEFORE `/:id` so "likes/mine" isn't read as an id.
+ * NOTE: protect/authorizeAny run AFTER these, so browsing clients can love
+ * samples without a staff login. CREATE/UPDATE/DELETE stay locked down.
+ */
+router.get(
+  '/likes/mine',
+  getMySampleLikes as any
+);
+
+router.post(
+  '/:id/like',
+  likeFlowerSample as any
+);
+
+router.post(
+  '/:id/unlike',
+  unlikeFlowerSample as any
+);
+
+// All management routes below are protected with JWT authentication
+router.use(protect);
+router.use(authorizeAny as any);
 
 /**
  * GET BY ID - Get a flower arrangement by ID

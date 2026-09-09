@@ -304,6 +304,14 @@ const FLORIST_SERVICE_MIGRATIONS = [
         name: '164_add_price_to_flower_samples',
         sql: 'ALTER TABLE flower_samples ADD COLUMN IF NOT EXISTS price DECIMAL(12,2) DEFAULT NULL AFTER sizes',
     },
+    {
+        name: '165_add_likes_to_flower_samples',
+        sql: 'ALTER TABLE flower_samples ADD COLUMN IF NOT EXISTS like_count INT NOT NULL DEFAULT 0 AFTER price, ADD INDEX IF NOT EXISTS idx_flower_samples_likes (like_count)',
+    },
+    {
+        name: '166_create_flower_sample_likes_table',
+        sql: `CREATE TABLE IF NOT EXISTS flower_sample_likes (id INT AUTO_INCREMENT PRIMARY KEY, arrangement_id VARCHAR(100) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, client_key VARCHAR(128) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_flower_like (arrangement_id, tenant_slug, client_key), INDEX idx_flower_like_arr (arrangement_id, tenant_slug)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    },
 ];
 // ─── Extra Services Migrations ───────────────────────────────────────────────
 const EXTRA_SERVICES_MIGRATIONS = [

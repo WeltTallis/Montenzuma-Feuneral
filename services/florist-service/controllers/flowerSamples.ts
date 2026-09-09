@@ -181,10 +181,12 @@ const parseValue = (value: any): any => {
 const parseJSONFields = (record: any): any => {
   return {
     id: record.id,
+    sample_id: record.arrangement_id ?? record.id,
     arrangement_id: record.arrangement_id,
     title: record.title,
     description: record.description,
     price: record.price ?? null,
+    like_count: Number(record.like_count ?? 0) || 0,
     types: parseValue(record.types),
     colors: parseValue(record.colors),
     sizes: parseValue(record.sizes),
@@ -228,14 +230,71 @@ const toArray = (value: any): any[] => {
 // CONTROLLER FUNCTIONS
 // ============================================
 
+/**
+ * Self-healing guard so older installs never 500 on the like endpoint.
+ * Creates `like_count` on flower_samples and the flower_sample_likes ledger
+ * if the global migrations haven't applied yet. Idempotent — safe to run
+ * on every like/list request.
+ */
+const ensureLikeSchema = async (): Promise<void> => {
+  try {
+    await safeExecute(
+      'ALTER TABLE flower_samples ADD COLUMN IF NOT EXISTS like_count INT NOT NULL DEFAULT 0 AFTER price',
+      []
+    );
+  } catch (err: any) {
+    if (err?.code !== 'ER_DUP_FIELDNAME' && !/duplicate/i.test(err?.message || '')) {
+      console.warn('[FLOWERS] like_count guard skipped:', err?.message);
+    }
+  }
+  try {
+    await safeExecute(
+      `CREATE TABLE IF NOT EXISTS flower_sample_likes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        arrangement_id VARCHAR(100) NOT NULL,
+        tenant_slug VARCHAR(100) NOT NULL,
+        client_key VARCHAR(128) NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_flower_like (arrangement_id, tenant_slug, client_key),
+        INDEX idx_flower_like_arr (arrangement_id, tenant_slug)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      []
+    );
+  } catch (err: any) {
+        console.warn('[FLOWERS] flower_sample_likes guard skipped:', err?.message);
+  }
+};
+
+/**
+ * Self-healing guard so older installs never 500 on the UPDATE endpoint when a
+ * price is supplied. Adds the `price` column to flower_samples if the global
+ * migration 164 hasn't applied yet. Idempotent — safe to run on every update.
+ * Takes `req` for call-site symmetry with ensureLikeSchema, but the ALTER is a
+ * table-level DDL operation that doesn't depend on tenant context.
+ */
 const ensurePriceColumn = async (req: any): Promise<void> => {
   try {
-    await safeExecute('ALTER TABLE flower_samples ADD COLUMN IF NOT EXISTS price DECIMAL(12,2) DEFAULT NULL AFTER sizes', []);
+    await safeExecute(
+      'ALTER TABLE flower_samples ADD COLUMN IF NOT EXISTS price DECIMAL(12,2) DEFAULT NULL AFTER sizes',
+      []
+    );
   } catch (err: any) {
+    // Column already exists on some MySQL variants, or the table was
+    // created via a different path — both are fine, swallow them.
     if (err?.code !== 'ER_DUP_FIELDNAME' && !/duplicate/i.test(err?.message || '')) {
       console.warn('[FLOWERS] price column guard skipped:', err?.message);
     }
   }
+};
+
+const lightFingerprintOf = (req: any): string => {
+  const ip =
+    (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+    req.ip ||
+    req.socket?.remoteAddress ||
+    'unknown';
+  const ua = String(req.headers?.['user-agent'] || '').slice(0, 80);
+  return crypto.createHash('sha256').update(`${ip}|${ua}`).digest('hex').slice(0, 48);
 };
 
 /**
@@ -412,6 +471,17 @@ export const getFlowerArrangementById = async (req: any, res: any): Promise<any>
   }
 };
 
+// ─── Column list shared by get-by-id / create / update / delete reads ───
+// Kept in sync with the SELECT in getAllFlowerArrangements so every
+// arrangement shape is identical across endpoints. JSON columns are CAST to
+// CHAR so mysql2 returns them as strings, which parseValue handles below.
+const columns = `id, arrangement_id, title, description, price,
+  COALESCE(like_count, 0) AS like_count,
+  CAST(types AS CHAR) AS types,
+  CAST(colors AS CHAR) AS colors,
+  CAST(sizes AS CHAR) AS sizes,
+  CAST(images AS CHAR) AS images`;
+
 // Internal helper to get arrangement by ID
 const getFlowerArrangementByIdInternal = async (
   req: any,
@@ -427,11 +497,7 @@ const getFlowerArrangementByIdInternal = async (
 
   const tenantScope = buildTenantScope(req);
   const sql = `
-    SELECT id, arrangement_id, title, description,
-           CAST(types  AS CHAR) AS types,
-           CAST(colors AS CHAR) AS colors,
-           CAST(sizes  AS CHAR) AS sizes,
-           CAST(images AS CHAR) AS images,
+    SELECT ${columns},
            tenant_slug, tenant_id, created_at, updated_at
     FROM flower_samples WHERE arrangement_id = ? AND ${tenantScope.clause} LIMIT 1`;
   const records = await safeQuery(sql, [id, ...tenantScope.params]);
@@ -588,6 +654,124 @@ export const deleteFlowerArrangement = async (req: any, res: any): Promise<any> 
   }
 };
 
+// ─── Likes — one tap per client, TikTok-style ────────────────────────────────
+// GET  /florist/flower-samples/likes/mine   → { liked: [arrangement_id] }
+// POST /florist/flower-samples/:id/like     → { liked, like_count }
+// POST /florist/flower-samples/:id/unlike   → { liked: false, like_count }
+const clientKeyOf = (req: any): string => {
+  const fromBody = String(req.body?.client_key || '').trim();
+  const fromQuery = String(req.query?.client_key || '').trim();
+  const fromHeader = String(req.headers?.['x-client-key'] || '').trim();
+  return fromBody || fromQuery || fromHeader || lightFingerprintOf(req);
+};
+
+const readLikedIds = async (tenantSlug: string, clientKey: string): Promise<string[]> => {
+  const rows = await safeQuery(
+    'SELECT arrangement_id FROM flower_sample_likes WHERE tenant_slug = ? AND client_key = ?',
+    [tenantSlug, clientKey]
+  );
+  return (rows || []).map((r: any) => String(r.arrangement_id));
+};
+
+const readLikeCounts = async (tenantSlug: string): Promise<Record<string, number>> => {
+  const rows = await safeQuery(
+    'SELECT arrangement_id, like_count FROM flower_samples WHERE tenant_slug = ?',
+    [tenantSlug]
+  );
+  const m: Record<string, number> = {};
+  for (const r of rows || []) m[String(r.arrangement_id)] = Number(r.like_count ?? 0) || 0;
+  return m;
+};
+
+export const getMySampleLikes = async (req: any, res: any): Promise<any> => {
+  try {
+    await ensureLikeSchema();
+    const tenantSlug = tenantSlugOf(req) || String(req.query?.tenant_slug || 'default');
+    const clientKey = clientKeyOf(req);
+    return res.status(200).json({
+      success: true,
+      liked: await readLikedIds(tenantSlug, clientKey),
+      counts: await readLikeCounts(tenantSlug),
+    });
+  } catch (error: any) {
+    console.error('Get flower sample likes error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const likeFlowerSample = async (req: any, res: any): Promise<any> => {
+  const tenantSlug = tenantSlugOf(req) || String(req.body?.tenant_slug || req.query?.tenant_slug || 'default');
+  const { id } = req.params;
+  try {
+    await ensureLikeSchema();
+    const tenantScope = buildTenantScope(req);
+    const found = await safeQuery(
+      `SELECT arrangement_id FROM flower_samples WHERE arrangement_id = ? AND ${tenantScope.clause} LIMIT 1`,
+      [id, ...tenantScope.params]
+    );
+    if (!found || found.length === 0) {
+      return res.status(404).json({ success: false, message: `Flower arrangement with ID ${id} not found` });
+    }
+    const clientKey = clientKeyOf(req);
+    const inserted = await safeExecute(
+      `INSERT IGNORE INTO flower_sample_likes (arrangement_id, tenant_slug, client_key) VALUES (?, ?, ?)`,
+      [id, tenantSlug, clientKey]
+    );
+    if ((inserted as any)?.affectedRows > 0) {
+      await safeExecute(
+        `UPDATE flower_samples SET like_count = like_count + 1 WHERE arrangement_id = ? AND ${tenantScope.clause}`,
+        [id, ...tenantScope.params]
+      );
+      clearCache(tenantSlug);
+    }
+    const rows = await safeQuery(
+      `SELECT like_count FROM flower_samples WHERE arrangement_id = ? AND ${tenantScope.clause} LIMIT 1`,
+      [id, ...tenantScope.params]
+    );
+    return res.status(200).json({
+      success: true,
+      liked: true,
+      like_count: Number(rows?.[0]?.like_count ?? 0) || 0,
+    });
+  } catch (error: any) {
+    console.error('Like flower sample error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const unlikeFlowerSample = async (req: any, res: any): Promise<any> => {
+  const tenantSlug = tenantSlugOf(req) || String(req.body?.tenant_slug || req.query?.tenant_slug || 'default');
+  const { id } = req.params;
+  try {
+    await ensureLikeSchema();
+    const tenantScope = buildTenantScope(req);
+    const clientKey = clientKeyOf(req);
+    const deleted = await safeExecute(
+      `DELETE FROM flower_sample_likes WHERE arrangement_id = ? AND tenant_slug = ? AND client_key = ?`,
+      [id, tenantSlug, clientKey]
+    );
+    if ((deleted as any)?.affectedRows > 0) {
+      await safeExecute(
+        `UPDATE flower_samples SET like_count = GREATEST(like_count - 1, 0) WHERE arrangement_id = ? AND ${tenantScope.clause}`,
+        [id, ...tenantScope.params]
+      );
+      clearCache(tenantSlug);
+    }
+    const rows = await safeQuery(
+      `SELECT like_count FROM flower_samples WHERE arrangement_id = ? AND ${tenantScope.clause} LIMIT 1`,
+      [id, ...tenantScope.params]
+    );
+    return res.status(200).json({
+      success: true,
+      liked: false,
+      like_count: Number(rows?.[0]?.like_count ?? 0) || 0,
+    });
+  } catch (error: any) {
+    console.error('Unlike flower sample error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 /**
  * GET ALL - Get all flower arrangements with optional filtering
  */
@@ -595,6 +779,7 @@ export const getAllFlowerArrangements = async (req: any, res: any): Promise<any>
   const tenantSlug = tenantSlugOf(req) || 'default';
 
   try {
+    await ensureLikeSchema();
     const { color, type, size } = req.query;
 
     const cacheKey = `all_arrangements_${tenantSlug}_${color || 'all'}_${type || 'all'}_${size || 'all'}`;
@@ -614,6 +799,8 @@ export const getAllFlowerArrangements = async (req: any, res: any): Promise<any>
            CAST(colors AS CHAR) AS colors,
            CAST(sizes  AS CHAR) AS sizes,
            CAST(images AS CHAR) AS images,
+           price,
+           COALESCE(like_count, 0) AS like_count,
            tenant_slug, tenant_id, created_at, updated_at
     FROM flower_samples WHERE ${tenantScope.clause}`;
     const params: any[] = [...tenantScope.params];

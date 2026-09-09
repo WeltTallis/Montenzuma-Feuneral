@@ -266,7 +266,7 @@ export default function ReservationDashboard(props) {
     '@keyframes cbOvIn{from{opacity:0}to{opacity:1}}',
     '@keyframes cellIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}',
 
-    '.cb-side{width:300px;background:' + CARD + ';border-right:1px solid ' + BRD + ';display:flex;flex-direction:column;flex-shrink:0;z-index:20}',
+    '.cb-side{width:300px;background:' + CARD + ';border-right:1px solid ' + BRD + ';display:flex;flex-direction:column;flex-shrink:0;z-index:20;min-height:0;overflow-y:hidden}',
     '.cb-side-scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column}',
 
     '.cb-mc{padding:14px 20px 12px;border-bottom:1px solid ' + BRDL + '}',
@@ -302,7 +302,7 @@ export default function ReservationDashboard(props) {
     '.cb-an-leg-val{font-size:11px;font-weight:700;color:' + TX + '}',
     '.cb-an-leg-pct{font-size:9px;color:' + TX4 + ';width:32px;text-align:right}',
 
-    '.cb-main{flex:1;display:flex;flex-direction:column;min-width:0;background:' + CARD + ';position:relative}',
+    '.cb-main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:' + CARD + ';position:relative;overflow-y:auto}',
 
     '.cb-tb{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;border-bottom:1px solid ' + BRD + ';background:' + CARD + ';flex-shrink:0;gap:8px}',
     '.cb-tb-left{display:flex;align-items:center;gap:8px}',
@@ -404,7 +404,7 @@ export default function ReservationDashboard(props) {
   ].join('\n');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', width: '100%', overflow: 'visible', background: BG, color: TX, fontFamily: FONT, WebkitFontSmoothing: 'antialiased' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', background: BG, color: TX, fontFamily: FONT, WebkitFontSmoothing: 'antialiased' }}>
       <style dangerouslySetInnerHTML={{ __html: css }} />
 
       {/* Toolbar */}
@@ -593,7 +593,7 @@ export default function ReservationDashboard(props) {
               })}
             </div>
 
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
               {visible.length === 0 ? (
                 <div className="cb-empty">
                   <div className="cb-empty-ico">{IC.cal}</div>

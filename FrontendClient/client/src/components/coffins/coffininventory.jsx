@@ -1867,7 +1867,11 @@ const CoffinDashboard = () => {
       setModal({
         open: true,
         type: 'booking',
-        data: { coffin_id: coffinId, service_date: todayKey() },
+        data: {
+          coffin_id: coffinId,
+          service_date: todayKey(),
+          service_time: String(new Date().getHours()).padStart(2, '0') + ':' + String(new Date().getMinutes()).padStart(2, '0'),
+        },
       });
     };
     window.__openFindStock = (query) => {
@@ -2314,7 +2318,11 @@ const CoffinDashboard = () => {
                                 setModal({
                                   open: true,
                                   type: 'booking',
-                                  data: { coffin_id: id, service_date: todayKey() },
+                                  data: {
+                                    coffin_id: id,
+                                    service_date: todayKey(),
+                                    service_time: String(new Date().getHours()).padStart(2, '0') + ':' + String(new Date().getMinutes()).padStart(2, '0'),
+                                  },
                                 })
                               }
                             >
@@ -2443,9 +2451,12 @@ const CoffinDashboard = () => {
           coffins={coffins}
           branches={branches}
           formatPrice={formatKES}
-          onNewReservation={() =>
-            setModal({ open: true, type: 'booking', data: { service_date: todayKey() } })
-          }
+          onNewReservation={() => {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            setModal({ open: true, type: 'booking', data: { service_date: todayKey(), service_time: hh + ':' + mm } });
+          }}
           onViewBooking={(id) => viewBooking(id)}
           navTabs={[
             { key: 'inventory', icon: 'fa-boxes-stacked', label: 'Inventory' },

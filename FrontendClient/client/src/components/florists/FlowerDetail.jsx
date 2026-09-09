@@ -129,7 +129,22 @@ button:focus-visible, [role="button"]:focus-visible { outline: 2px solid #B98480
 .love-btn:hover { transform: scale(1.08); }
 .love-btn.is-liked { background: #C8264A; border-color: transparent; }
 .love-btn.is-liked svg { animation: lovePop 0.35s cubic-bezier(0.16,1,0.3,1); }
-.love-num { font: 600 11px 'Karla', sans-serif; color: #fff; text-shadow: 0 1px 6px rgba(74,59,60,0.6); }
+.love-num { font: 600 11px 'Karla', sans-serif; color: #fff; text-shadow: 0 1px 6px rgba(74,59,60,0.6); font-variant-numeric: tabular-nums; }
+
+/* TikTok-style floating hearts — rise + fade from the ♥ button on every tap */
+@keyframes floatHeart {
+  0% { transform: translate3d(0, 0, 0) scale(0.5) rotate(0deg); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translate3d(var(--fhx, 14px), -120px, 0) scale(1.15) rotate(var(--fhr, 18deg)); opacity: 0; }
+}
+.float-heart {
+  position: absolute; right: 6px; bottom: 44px; z-index: 16;
+  width: var(--fhs, 18px); height: var(--fhs, 18px);
+  color: #C8264A; pointer-events: none;
+  animation: floatHeart var(--fhd, 1.1s) cubic-bezier(0.2,0.6,0.4,1) forwards;
+}
+.float-heart svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 5px rgba(200,38,74,0.45)); }
+@media (prefers-reduced-motion: reduce) { .float-heart { display: none; } }
 
 /* content */
 .detail-content { padding: 48px 38px 80px; flex: 1; }
@@ -274,6 +289,14 @@ function ColorInputs() {
 }
 
 // ── Expanded / Detail view ────────────────────────────────────────────────────
+// Compact count formatter — 999 → "999" · 1000 → "1k" · 14500 → "14.5k" · 2M → "2M"
+const fmtDetailCount = (n) => {
+  const v = Number(n) || 0
+  if (v >= 1000000) return `${(v / 1000000).toFixed(v >= 10000000 ? 0 : 1).replace(/\.0$/, '')}M`
+  if (v >= 1000) return `${(v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, '')}k`
+  return String(v)
+}
+
 export default function ExpandedView({ activeId, selectedIds, onNavigate, onClose, onToggle, onPreview, arrangements = [], likes = {}, likedIds = [], onToggleLike }) {
   const [tab, setTab] = useState('overview')
   const allArrangements = arrangements
@@ -345,8 +368,8 @@ export default function ExpandedView({ activeId, selectedIds, onNavigate, onClos
         <div
           className="detail-image-drag"
           style={{
-            transform: `translate3d(${drag.x * 0.35}px, 0, 0)`,
-            transition: drag.active ? 'none' : 'transform 0.4s cubic-bezier(0.16,1,0.3,1)',
+            transform: `translate3d(${drag.x * 0.18}px, 0, 0)`,
+            transition: drag.active ? 'none' : 'transform 0.35s cubic-bezier(0.16,1,0.3,1)',
           }}
         >
           <img key={activeId} src={arr.img || arr.portrait} alt={arr.name || arr.title} />
@@ -368,7 +391,7 @@ export default function ExpandedView({ activeId, selectedIds, onNavigate, onClos
           >
             <svg viewBox="0 0 24 24" fill={likedIds.includes(activeId) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20.5S4.9 16 3.2 11.6C2 8.6 3.7 5.5 6.8 5.5c2 0 3.6 1.2 4.4 2.9L12 10l.8-1.6c.8-1.7 2.4-2.9 4.4-2.9 3.1 0 4.8 3.1 3.6 6.1C19.1 16 12 20.5 12 20.5Z" /></svg>
           </button>
-          <span className="love-num">{likes[activeId] ?? 0}</span>
+                    <span className="love-num">{fmtDetailCount(likes[activeId] ?? 0)}</span>
         </div>
         <div className="detail-image-badge">
           <div className="detail-image-badge-tag">{arr.tag} · {arr.note}</div>
