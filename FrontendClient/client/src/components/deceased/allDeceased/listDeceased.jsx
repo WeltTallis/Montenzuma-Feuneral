@@ -15,15 +15,23 @@ import 'react-toastify/dist/ReactToastify.css';
 const API_GATEWAY_URL = import.meta.env.VITE_API_URL || '/api/v1/restpoint';
 const BASE_URL = `${API_GATEWAY_URL}/deceased`;
 
-// ─── Global Font Styles ─────────────────────────────────────────────
+// ─── Global Font Styles & Body Reset ────────────────────────────────
 const GlobalFonts = createGlobalStyle`
   @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+  
   *, *::before, *::after {
     box-sizing: border-box;
   }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; /* Prevents global horizontal scroll */
+    background-color: #ececec;
+  }
 `;
 
-const fadeIn = keyframes`from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }`;
+const fadeIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
 
 // ─── Color Variables ────────────────────────────────────────────────
 const C = {
@@ -99,26 +107,15 @@ const AppContainer = styled.div`
   font-size: 14px;
   line-height: 1.5;
   min-height: 100dvh;
-  margin: 0;
-  padding: 0;
+  margin: 0 auto;
+  padding: 24px;
+  width: 100%;
+  max-width: 1400px;
   animation: ${fadeIn} 0.25s ease-out;
   box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
 
-  @media (min-width: 901px) {
-    margin: 0 auto;
-    max-width: 1400px;
-    padding: 32px;
-    overflow-x: hidden; 
-  }
-
-  @media (max-width: 900px) {
+  @media (max-width: 768px) {
     padding: 16px;
-    width: 100%;
-    max-width: 100vw;
-    overflow-x: hidden;
   }
 `;
 
@@ -152,7 +149,8 @@ const Toolbar = styled.div`
   gap: 16px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.04);
   flex-wrap: wrap;
-  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 `;
 
 const ToolbarLeft = styled.div`
@@ -160,20 +158,37 @@ const ToolbarLeft = styled.div`
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  flex: 1;
+  flex: 1 1 100%;
+  
+  @media (min-width: 992px) {
+    flex: 1;
+  }
 `;
 
 const ToolbarRight = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: auto;
+  flex: 1 1 100%;
+  
+  @media (min-width: 992px) {
+    flex: 0 0 auto;
+    margin-left: auto;
+    justify-content: flex-end;
+  }
 `;
 
 const SearchWrapper = styled.div`
   position: relative;
   display: flex;
   align-items: center;
+  flex: 1 1 200px;
+  min-width: 150px;
+  
+  @media (min-width: 992px) {
+    flex: 0 1 280px;
+    max-width: 280px;
+  }
 `;
 
 const SearchIcon = styled.i`
@@ -188,7 +203,6 @@ const SearchIcon = styled.i`
 const SearchInput = styled.input`
   height: 42px;
   width: 100%;
-  max-width: 280px;
   border-radius: 10px;
   border: 1px solid ${C.border};
   background: ${C.bgField};
@@ -198,6 +212,7 @@ const SearchInput = styled.input`
   color: ${C.dark};
   transition: all 0.25s ease;
   outline: none;
+  box-sizing: border-box;
 
   &::placeholder { color: #aaa; }
 
@@ -216,12 +231,18 @@ const FilterWrapper = styled.div`
   position: relative;
   display: flex;
   align-items: center;
+  flex: 1 1 150px;
+  min-width: 120px;
+  
+  @media (min-width: 992px) {
+    flex: 0 1 170px;
+    max-width: 170px;
+  }
 `;
 
 const FilterSelect = styled.select`
   height: 42px;
   width: 100%;
-  max-width: 170px;
   border-radius: 10px;
   border: 1px solid ${C.border};
   background: ${C.bgField};
@@ -235,6 +256,7 @@ const FilterSelect = styled.select`
   appearance: none;
   -webkit-appearance: none;
   transition: all 0.25s ease;
+  box-sizing: border-box;
 
   &:focus {
     background: white;
@@ -272,6 +294,7 @@ const Btn = styled.button`
   gap: 8px;
   font-family: 'Source Sans 3', sans-serif;
   white-space: nowrap;
+  box-sizing: border-box;
 
   &:disabled {
     opacity: 0.6;
@@ -311,10 +334,6 @@ const Btn = styled.button`
     font-size: 13px;
     border-radius: 8px;
   `}
-
-  @media (max-width: 992px) {
-    width: 100%;
-  }
 `;
 
 // ─── Calendar Strip ─────────────────────────────────────────────────
@@ -328,11 +347,12 @@ const CalendarContainer = styled.div`
   display: flex;
   align-items: center;
   gap: 24px;
-  overflow: hidden; /* Crucial: prevents container from expanding */
+  width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  overflow: hidden; /* Crucial: keeps it inside the box */
 
-  @media (max-width: 900px) {
+  @media (max-width: 768px) {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
@@ -348,7 +368,7 @@ const CalendarControls = styled.div`
   padding-right: 24px;
   flex-shrink: 0;
 
-  @media (max-width: 900px) {
+  @media (max-width: 768px) {
     border-right: none;
     padding-right: 0;
     padding-bottom: 12px;
@@ -377,7 +397,7 @@ const CalendarDates = styled.div`
   justify-content: flex-start;
   gap: 8px;
   padding: 4px 2px 8px;
-  flex: 1;
+  flex: 1 1 auto;
   width: 100%;
   min-width: 0; /* Crucial: allows flex child to shrink and scroll */
   max-width: 100%;
@@ -452,6 +472,7 @@ const ListCard = styled.div`
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 `;
@@ -469,25 +490,25 @@ const ListHeader = styled.div`
     margin: 0; 
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 768px) {
     padding: 16px;
   }
 `;
 
 const TableWrap = styled.div`
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   width: 100%;
+  overflow-x: auto; /* Allows table to scroll internally */
+  -webkit-overflow-scrolling: touch;
   
-  @media (max-width: 900px) {
-    display: none;
+  @media (max-width: 768px) {
+    display: none; /* Hide table on mobile, show cards instead */
   }
 `;
 
 const StyledTable = styled.table`
   width: 100%; 
   border-collapse: collapse; 
-  min-width: 800px;
+  min-width: 900px; /* Ensures it doesn't squish too much, scrolls instead */
   
   thead th {
     text-align: left; 
@@ -595,11 +616,12 @@ const LoadingState = styled.div`
 const MobileCardContainer = styled.div`
   display: none;
   
-  @media (max-width: 900px) {
+  @media (max-width: 768px) {
     display: flex;
     flex-direction: column;
     gap: 16px;
     padding: 16px;
+    width: 100%;
   }
 `;
 
@@ -691,7 +713,7 @@ const ModalOverlay = styled.div`
   align-items: center; 
   padding: 20px;
 
-  @media (max-width: 900px) {
+  @media (max-width: 768px) {
     padding: 0;
     align-items: flex-end;
   }
@@ -707,7 +729,7 @@ const ModalContent = styled.div`
   -webkit-overflow-scrolling: touch;
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 
-  @media (max-width: 900px) {
+  @media (max-width: 768px) {
     max-width: 100%;
     max-height: 90dvh;
     border-radius: 16px 16px 0 0;
@@ -749,7 +771,7 @@ const ModalFooter = styled.div`
   bottom: 0;
   background: white;
 
-  @media (max-width: 900px) {
+  @media (max-width: 768px) {
     flex-direction: column-reverse;
     
     button {
@@ -793,7 +815,7 @@ const FormRow = styled.div`
   margin-bottom: 16px; 
   flex-wrap: wrap;
 
-  @media (max-width: 900px) {
+  @media (max-width: 768px) {
     flex-direction: column;
     gap: 12px;
     margin-bottom: 12px;
@@ -879,7 +901,7 @@ const ProgressWidget = styled.div`
   min-width: 320px;
   animation: ${fadeIn} 0.3s ease-out;
 
-  @media (max-width: 900px) {
+  @media (max-width: 768px) {
     left: 16px;
     right: 16px;
     bottom: 16px;

@@ -249,11 +249,12 @@ export const registerNewDeceased = async (
         Logger.info({ message: `Deceased registered ${deceased_id} - Admission: ${admission_number}` });
 
         // ==============================
-        // INVALIDATE CACHE
+        // INVALIDATE CACHE — wipe every deceased key for this tenant (the old
+        // exact-key deletes could never match the real `deceased:list:<tid>:page:...`
+        // keys, leaving stale lists served for up to 5 minutes).
         // ==============================
         if (tenantSlug && tenantId) {
-            await redisService.serviceDel('deceased-service', tenantSlug, `deceased:detail:${deceased_id}`);
-            await redisService.serviceDel('deceased-service', tenantSlug, `deceased:list:${tenantId}`);
+            await redisService.clearServiceCache('deceased-service', tenantSlug);
             Logger.info(`[Cache] Deceased cache invalidated for ${tenantSlug}`);
         }
 
