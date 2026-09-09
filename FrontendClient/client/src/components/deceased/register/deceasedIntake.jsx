@@ -697,6 +697,23 @@ const BlackButton = styled.button`
   }
 `;
 
+const ClearSigButton = styled.button`
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: ${COLORS.gray};
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Saira', sans-serif;
+
+  &:hover {
+    color: ${COLORS.red};
+  }
+`;
 
 /* ─── Woodland Elegance Footer ─────────────────────────────── */
 const ElegantFooter = styled.footer`
