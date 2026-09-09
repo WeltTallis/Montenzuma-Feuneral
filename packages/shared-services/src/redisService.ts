@@ -158,56 +158,76 @@ export function getServiceConfig(serviceName: string): ServiceConfig {
 
 let client: RedisClient | null = null;
 let isConnected = false;
-let connectionAttempted = false;
-let redisDisabled = false;
+let connecting: Promise<RedisClient | null> | null = null;
+let lastConnectAttempt = 0;
+
+// After a failure we wait this long (ms) before allowing another connect attempt.
+// WITHOUT this back-off, a short Redis blip at startup would permanently disable
+// caching for the whole process lifetime (previous `connectionAttempted` flag).
+const RETRY_AFTER_MS = 5_000;
 
 export async function getRedisClient(): Promise<RedisClient | null> {
-  if (redisDisabled) return null;
   if (client && isConnected) return client;
-  if (connectionAttempted) {
-    // If we already tried and failed, don't try again
-    redisDisabled = true;
-    return null;
-  }
 
-  connectionAttempted = true;
+  const now = Date.now();
+  if (now - lastConnectAttempt < RETRY_AFTER_MS) return null;
 
-  try {
-    client = createClient({
-      url: DEFAULT_REDIS_URL,
-      socket: {
-        reconnectStrategy: (retries: number) => Math.min(retries * 50, 2000),
-        connectTimeout: 3000,
-      },
-    });
+  // Only ever run ONE connect attempt at a time — concurrent callers share it.
+  if (!connecting) {
+    lastConnectAttempt = now;
+    connecting = (async (): Promise<RedisClient | null> => {
+      try {
+        const c = createClient({
+          url: DEFAULT_REDIS_URL,
+          socket: {
+            reconnectStrategy: (retries: number) => Math.min(retries * 50, 2000),
+            connectTimeout: 3000,
+          },
+        });
 
-    client.on('connect', () => {
-      Logger.info('[Redis]  Connected');
-      isConnected = true;
-    });
+        c.on('connect', () => {
+          Logger.info('[Redis]  Connected');
+        });
 
-    client.on('error', (err) => {
-      if (isConnected) {
-        Logger.error(`[Redis]  Error: ${err.message}`);
+        c.on('error', (err) => {
+          if (isConnected) {
+            Logger.error(`[Redis]  Error: ${err.message}`);
+          }
+          isConnected = false;
+        });
+
+        c.on('end', () => {
+          Logger.info('[Redis]  Connection closed');
+          isConnected = false;
+        });
+
+        await c.connect();
+
+        // AUTH probe — the redis:// URL must embed the password. If the server
+        // requires a password (requirepass) and the URL lacks it, every command
+        // (GET/SET) fails with NOAUTH and the cache silently never works while the
+        // app keeps hitting the database. Fail the connect attempt NOW so the
+        // error surfaces in the logs instead of NOAUTH-ing on every request.
+        const pong = await c.ping();
+        if (pong !== 'PONG') {
+          throw new Error(`Redis AUTH/ping failed (got: ${String(pong).slice(0, 40)})`);
+        }
+
+        client = c;
+        isConnected = true;
+        return c;
+      } catch (error: any) {
+        Logger.warn(`[Redis] Connection failed (will retry in ${RETRY_AFTER_MS / 1000}s): ${error.message}`);
+        client = null;
+        isConnected = false;
+        return null;
+      } finally {
+        connecting = null;
       }
-      isConnected = false;
-    });
-
-    client.on('end', () => {
-      Logger.info('[Redis]  Connection closed');
-      isConnected = false;
-    });
-
-    await client.connect();
-    isConnected = true;
-    return client;
-  } catch (error: any) {
-    Logger.warn(`[Redis] Not available - running without Redis (${error.message})`);
-    redisDisabled = true;
-    client = null;
-    isConnected = false;
-    return null;
+    })();
   }
+
+  return connecting;
 }
 
 // ─── Key Namespacing ──────────────────────────────────────────────

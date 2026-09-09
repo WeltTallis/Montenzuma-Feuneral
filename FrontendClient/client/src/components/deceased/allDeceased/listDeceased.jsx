@@ -107,12 +107,12 @@ const AppContainer = styled.div`
   @media (min-width: 901px) {
     margin: 0 auto;
     max-width: 1400px;
-    padding: 32px;
+    padding: 10px;
     overflow-x: clip;
   }
 
   @media (max-width: 900px) {
-    padding: 16px;
+    padding: 0px;
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
@@ -141,8 +141,8 @@ const Toolbar = styled.div`
   background: white;
   border: 1px solid ${C.borderLight};
   border-radius: 16px;
-  padding: 12px;
-  margin-bottom: 24px;
+  padding: 10px;
+  margin-bottom: 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -184,7 +184,7 @@ const SearchIcon = styled.i`
 const SearchInput = styled.input`
   height: 42px;
   width: 100%;
-  max-width: 280px;
+  max-width: 260px;
   border-radius: 10px;
   border: 1px solid ${C.border};
   background: ${C.bgField};
@@ -340,6 +340,7 @@ const CalendarControls = styled.div`
   align-items: center;
   border-right: 1px solid ${C.border};
   padding-right: 24px;
+  flex-shrink: 0;
 
   @media (max-width: 900px) {
     border-right: none;
@@ -366,31 +367,27 @@ const CalSelect = styled.select`
 
 const CalendarDates = styled.div`
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap; /* Prevent wrapping on all screen sizes */
   justify-content: flex-start;
   gap: 8px;
-  padding: 4px 2px 8px;
+  padding: 4px 2px 8px; /* Bottom padding for scrollbar */
   flex: 1;
   width: 100%;
   min-width: 0;
   align-items: center;
   scroll-behavior: smooth;
+  overflow-x: auto; /* Enable horizontal scroll everywhere */
+  scrollbar-width: thin;
+  scrollbar-color: ${C.accent} ${C.bgField};
 
-  @media (max-width: 900px) {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    scrollbar-color: ${C.accent} ${C.bgField};
-
-    &::-webkit-scrollbar { height: 6px; }
-    &::-webkit-scrollbar-track { background: ${C.bgField}; border-radius: 10px; }
-    &::-webkit-scrollbar-thumb { background: ${C.accent}; border-radius: 10px; }
-    &::-webkit-scrollbar-thumb:hover { background: #b71f38; }
-  }
+  &::-webkit-scrollbar { height: 6px; }
+  &::-webkit-scrollbar-track { background: ${C.bgField}; border-radius: 10px; }
+  &::-webkit-scrollbar-thumb { background: ${C.accent}; border-radius: 10px; }
+  &::-webkit-scrollbar-thumb:hover { background: #b71f38; }
 `;
 
 const CalDateBtn = styled.div`
-  flex: 0 0 auto;
+  flex: 0 0 auto; /* Prevent shrinking */
   min-width: 52px;
   padding: 8px 6px;
   border-radius: 8px;
