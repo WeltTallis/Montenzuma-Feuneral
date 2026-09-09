@@ -1,0 +1,21 @@
+# restpoint.co.ke — robots
+# Sensitive tenant data (deceased records, dashboards, admin areas) must
+# never be crawled or indexed by search engines.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /tenant/
+Disallow: /deceased/
+Disallow: /*/deceased
+Disallow: /*/all-deceased
+Disallow: /*/postmortem-form
+Disallow: /coffins/
+Disallow: /hearse/
+
+Sitemap: https://restpoint.co.ke/sitemap.xml
+
+# Crawl-delay for polite crawlers
+Crawl-delay: 1

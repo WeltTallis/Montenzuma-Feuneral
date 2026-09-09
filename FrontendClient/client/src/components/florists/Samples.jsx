@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useMemo, useCallback, useNavigate } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import Snowfall from './Snowfall'
 import FlowerSnowBookingForm from './FlowerSnowBookingForm'
@@ -663,6 +664,7 @@ function DoneScreen({ totalItems, deceased, onReset }) {
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
+  const navigate = useNavigate()
   const [expandedId, setExpandedId] = useState(null)
   const [selected, setSelected] = useState([])
   const [quantities, setQuantities] = useState({})

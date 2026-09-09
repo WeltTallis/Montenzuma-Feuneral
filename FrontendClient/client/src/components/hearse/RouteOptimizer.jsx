@@ -357,3 +357,5 @@ export default function AdvancedHearseRouter({ onClose }) {
     </Overlay>
   );
 }
+
+export default RouteOptimizer;

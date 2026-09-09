@@ -73,7 +73,7 @@ crontab -l
   cron job running status  ===   systemctl is-active cron
 
 verify    ls -lh /opt/backups/db/hourly/
-backups   blogs   =   tail -20 /var/log/restpoint-db-backup.log
+backups   logs   =   tail -20 /var/log/restpoint-db-backup.log
 
 
 remove backups  =  rm -f /opt/backups/db/hourly/restpoint_full_20260909_112016.sql.gz
