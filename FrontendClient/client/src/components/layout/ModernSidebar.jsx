@@ -730,6 +730,13 @@ const ModernSidebar = ({
           </SidebarNav>
 
           <SidebarFooter $isOpen={true}>
+            <SwitchTabButton $collapsed={false} onClick={handleSwitchToTab}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v6M9 5h6M5 8l-3 4 3 4M19 8l3 4-3 4M9 22h6"></path>
+                <rect x="7" y="12" width="10" height="6" rx="1" />
+              </svg>
+              <span>Switch to Tab</span>
+            </SwitchTabButton>
             <LogoutButton $collapsed={false} onClick={handleLogout}>
               <LogOut size={18} />
               <span>Sign Out</span>
@@ -769,6 +776,13 @@ const ModernSidebar = ({
           </SidebarNav>
 
           <SidebarFooter $isOpen={true}>
+            <SwitchTabButton $collapsed={false} onClick={handleSwitchToTab}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v6M9 5h6M5 8l-3 4 3 4M19 8l3 4-3 4M9 22h6"></path>
+                <rect x="7" y="12" width="10" height="6" rx="1" />
+              </svg>
+              <span>Switch to Tab</span>
+            </SwitchTabButton>
             <LogoutButton $collapsed={false} onClick={handleLogout}>
               <LogOut size={18} />
               <span>Sign Out</span>

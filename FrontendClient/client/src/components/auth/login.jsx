@@ -55,7 +55,7 @@ export default function LoginPage() {
     slug = slug || localStorage.getItem('tenantSlug');
     if (token && token !== 'undefined' && token !== 'null' && slug && slug !== 'default' && slug !== 'dashboard') {
       // Drivers ONLY ever land on the driver portal dashboard.
-      const dest = storedUser.role === 'driver' ? 'driver-portal' : 'dashboard';
+      const dest = storedUser.role === 'driver' ? 'driver-portal' : 'deceased';
       navigate(`/tenant/${slug}/${dest}`);
     } else if (!token || token === 'undefined' || token === 'null') {
       localStorage.removeItem('authToken');
@@ -127,8 +127,8 @@ export default function LoginPage() {
 
           setTimeout(() => {
             // Drivers ONLY ever land on the driver portal dashboard — never the
-            // general admin dashboard. All other roles go to the tenant dashboard.
-            const dest = userData.role === 'driver' ? 'driver-portal' : 'dashboard';
+            // general admin dashboard. All other roles go straight to deceased records.
+            const dest = userData.role === 'driver' ? 'driver-portal' : 'deceased';
             navigate(`/tenant/${navSlug}/${dest}`, { replace: true });
           }, 400);
         } else {
@@ -435,7 +435,7 @@ export default function LoginPage() {
               <CheckCircle size={28} />
             </div>
             <h3 className="modal-title">Welcome, {successName}</h3>
-            <p className="modal-text">Redirecting to your dashboard...</p>
+            <p className="modal-text">Redirecting to deceased records...</p>
             <div className="modal-progress">
               <div className="modal-progress-bar"></div>
             </div>
