@@ -1,53 +1,118 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-toastify';
+import api from '../../../api/axios';
 
 const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
-  const [charges, setCharges] = useState({
-    per_hour: 0,
-    per_day: 0,
-    currency: 'KES',
-    storage_type: 'standard',
-    storage_rate: 500,
-    embalming_rate: 3000,
-    tax_rate: 0,
-    notes: ''
-  });
-
-  
   const [loading, setLoading] = useState(false);
+  const [chargeType, setChargeType] = useState('daily');
+  const [currency, setCurrency] = useState('KES');
+  const [dailyRate, setDailyRate] = useState('');
+  const [hourlyRate, setHourlyRate] = useState('');
+  const [usdRate, setUsdRate] = useState('');
+  const [storageRate, setStorageRate] = useState('');
+  const [embalmingRate, setEmbalmingRate] = useState('');
+  const [taxRate, setTaxRate] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const symbols = { KES: 'KSh', USD: '$' };
+
 
   useEffect(() => {
-    if (deceased && deceased.charges) {
-      setCharges({
-        per_hour: deceased.charges.per_hour || 0,
-        per_day: deceased.charges.per_day || 0,
-        currency: deceased.charges.currency || 'KES',
-        storage_type: deceased.charges.storage_type || 'standard',
-        storage_rate: deceased.charges.storage_rate || 500,
-        embalming_rate: deceased.charges.embalming_rate || 3000,
-        tax_rate: deceased.charges.tax_rate || 0,
-        notes: deceased.charges.notes || ''
-      });
+    if (deceased && isOpen) {
+      setChargeType(deceased.charges?.chargeType || 'daily');
+      setCurrency(deceased.charges?.currency || 'KES');
+      setDailyRate(deceased.charges?.per_day?.toString() || '');
+      setHourlyRate(deceased.charges?.per_hour?.toString() || '');
+      setUsdRate(deceased.charges?.usdRate?.toString() || '');
+      setStorageRate(deceased.charges?.storage_rate?.toString() || '');
+      setEmbalmingRate(deceased.charges?.embalming_rate?.toString() || '');
+      setTaxRate(deceased.charges?.tax_rate?.toString() || '');
+      setNotes(deceased.charges?.notes || '');
     }
-  }, [deceased]);
+  }, [deceased, isOpen]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKey);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose]);
+
+  const commas = (v) => {
+    if (!v) return '';
+    const d = v.replace(/[^\d]/g, '').replace(/^0+/, '');
+    return d ? parseInt(d, 10).toLocaleString('en-US') : '';
+  };
+
+  const digits = (v) => v.replace(/[^\d]/g, '').replace(/^0+/, '');
+
+  const currentRate = chargeType === 'daily' ? dailyRate : hourlyRate;
+  const setCurrentRate = chargeType === 'daily' ? setDailyRate : setHourlyRate;
+
+  const fmt = (n, cur = currency) => symbols[cur] + ' ' + Number(n).toLocaleString('en-US');
+
+  const getProjection = useCallback(() => {
+    const rate = parseInt(currentRate || '0', 10);
+    if (!rate) return null;
+    if (chargeType === 'daily') {
+      return { label: 'Estimated 30-day charge', total: rate * 30 };
+    }
+    return { label: 'Estimated 30-day charge', total: rate * 24 * 30 };
+  }, [currentRate, chargeType]);
+
+  const handleRateInput = (value) => {
+    const clean = digits(value);
+    setCurrentRate(clean);
+  };
+
+  const handleSave = async () => {
+    const rate = parseInt(currentRate || '0', 10);
+    if (!rate || rate <= 0) {
+      toast.error(`Please enter a valid ${chargeType} rate.`);
+      return;
+    }
+    if (currency === 'USD' && (!usdRate || parseInt(usdRate, 10) <= 0)) {
+      toast.error('Please enter a valid USD exchange rate.');
+      return;
+    }
+
     setLoading(true);
-    
     try {
-      await onSave({
-        ...charges,
-        deceased_id: deceased.id
-      });
+      const payload = {
+        deceased_id: deceased?.id || deceased?.deceased_id,
+        chargeType,
+        currency,
+        per_day: chargeType === 'daily' ? rate : 0,
+        per_hour: chargeType === 'hourly' ? rate : 0,
+        usdRate: currency === 'USD' ? parseInt(usdRate, 10) : null,
+        storage_rate: parseInt(storageRate || '0', 10) || 0,
+        embalming_rate: parseInt(embalmingRate || '0', 10) || 0,
+        tax_rate: parseInt(taxRate || '0', 10) || 0,
+        notes,
+      };
+
+      await api.post(`/deceased/update-charge-settings/${deceased?.id || deceased?.deceased_id}`, payload);
+
+      if (onSave) await onSave(payload);
+      toast.success('Charge configuration saved.');
       onClose();
     } catch (error) {
-      console.error('Error saving charges:', error);
+      console.error('Error saving charge settings:', error);
+      toast.error('Failed to save charge settings. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   if (!isOpen) return null;
+
+  const projection = getProjection();
+  const per = chargeType === 'daily' ? 'day' : 'hour';
 
   return (
     <div style={styles.overlay} onClick={onClose}>
@@ -61,7 +126,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
           <div style={styles.body}>
             <div style={styles.section}>
               <h3 style={styles.sectionTitle}>Pricing</h3>
-              
+
               <div style={styles.row}>
                 <div style={styles.field}>
                   <label style={styles.label}>Daily Rate (Ksh)</label>
@@ -70,7 +135,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
                     step="0.01"
                     min="0"
                     value={charges.per_day}
-                    onChange={(e) => setCharges({...charges, per_day: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setCharges({ ...charges, per_day: parseFloat(e.target.value) || 0 })}
                     style={styles.input}
                     placeholder="1500"
                   />
@@ -83,7 +148,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
                     step="0.01"
                     min="0"
                     value={charges.embalming_rate}
-                    onChange={(e) => setCharges({...charges, embalming_rate: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setCharges({ ...charges, embalming_rate: parseFloat(e.target.value) || 0 })}
                     style={styles.input}
                     placeholder="3000"
                   />
@@ -98,7 +163,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
                     step="0.01"
                     min="0"
                     value={charges.storage_rate}
-                    onChange={(e) => setCharges({...charges, storage_rate: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setCharges({ ...charges, storage_rate: parseFloat(e.target.value) || 0 })}
                     style={styles.input}
                     placeholder="500"
                   />
@@ -112,7 +177,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
                     min="0"
                     max="100"
                     value={charges.tax_rate}
-                    onChange={(e) => setCharges({...charges, tax_rate: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setCharges({ ...charges, tax_rate: parseFloat(e.target.value) || 0 })}
                     style={styles.input}
                     placeholder="0"
                   />
@@ -123,7 +188,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
                 <label style={styles.label}>Currency</label>
                 <select
                   value={charges.currency}
-                  onChange={(e) => setCharges({...charges, currency: e.target.value})}
+                  onChange={(e) => setCharges({ ...charges, currency: e.target.value })}
                   style={styles.select}
                 >
                   <option value="KES">KES - Kenyan Shilling (Ksh)</option>
@@ -137,7 +202,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
               <div style={styles.field}>
                 <select
                   value={charges.storage_type}
-                  onChange={(e) => setCharges({...charges, storage_type: e.target.value})}
+                  onChange={(e) => setCharges({ ...charges, storage_type: e.target.value })}
                   style={styles.select}
                 >
                   <option value="standard">Standard Storage</option>
@@ -152,7 +217,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceased, onSave }) => {
               <div style={styles.field}>
                 <textarea
                   value={charges.notes}
-                  onChange={(e) => setCharges({...charges, notes: e.target.value})}
+                  onChange={(e) => setCharges({ ...charges, notes: e.target.value })}
                   style={styles.textarea}
                   rows="4"
                   placeholder="Add any additional notes about charges..."

@@ -137,7 +137,7 @@ const EditHighlight = styled.div`
   Input { height: 32px; width: 80px; text-align: center; font-weight: bold; font-size: 15px; color: #4fc3f7; border-color: #4fc3f7; background: #1a1a1a; }
 `;
 
-export default function AdvancedHearseRouter({ onClose }) {
+function AdvancedHearseRouter({ onClose }) {
   const [origin, setOrigin] = useState(FUNERAL_HOMES[0]);
   const [destinationStr, setDestinationStr] = useState('');
   const [destName, setDestName] = useState('');
@@ -358,4 +358,4 @@ export default function AdvancedHearseRouter({ onClose }) {
   );
 }
 
-export default RouteOptimizer;
+export default AdvancedHearseRouter;

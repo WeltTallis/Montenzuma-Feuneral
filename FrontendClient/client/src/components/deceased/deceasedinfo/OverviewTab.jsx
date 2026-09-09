@@ -76,7 +76,7 @@ const SignatureDisplay = ({ path }) => {
 
   return failed
     ? <a href={src} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#1a73e8' }}>Click to view signature ↗</a>
-    : <img src={src} alt="Next of Kin Signature" onError={() => setFailed(true)} style={{ maxWidth: '100%', maxHeight: 120, marginTop: 6, background: '#fff', border: '1px solid #E3DDD0', borderRadius: 6, padding: 6, objectFit: 'contain' }} />;
+    : <img src={src} alt="Next of Kin Signature" onError={() => setFailed(true)} style={{ maxWidth: '100%', maxHeight: 200, marginTop: 6, background: '#fff', padding: 6, objectFit: 'contain' }} />;
 };
 
 const OverviewTab = ({ deceased, nextOfKin }) => {

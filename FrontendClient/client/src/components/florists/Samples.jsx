@@ -671,7 +671,6 @@ export default function App() {
   const [arrangements, setArrangements] = useState([])
   const [loading, setLoading] = useState(true)
   const [bookingOpen, setBookingOpen] = useState(false)
-  const navigate = useNavigate()
 
 
   // Fetch flower arrangements from the backend API

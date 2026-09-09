@@ -340,7 +340,7 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
                 <img
                   src={/^(data:|https?:\/\/)/.test(releaseData.signature) ? releaseData.signature : `${env.API_GATEWAY_URL}${releaseData.signature.startsWith('/') ? '' : '/'}${releaseData.signature}`}
                   alt="Next of Kin Signature"
-                  style={{ maxHeight: 170, maxWidth: 460, width: '100%', objectFit: 'contain', background: 'white', border: `1px solid ${C.borderLight}`, borderRadius: 6, padding: 8 }}
+                  style={{ maxHeight: 200, maxWidth: 2200, width: '100%', objectFit: 'contain', background: 'white', padding: 8 }}
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               </DetailItem>
