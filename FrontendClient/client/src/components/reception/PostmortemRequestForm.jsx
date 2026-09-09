@@ -51,7 +51,7 @@ const Shell = styled.div`
 `;
 
 const Card = styled.div`
-    max-width: 700px;
+    max-width: 2200px;
     width: 100%;
     background: ${C.paper};
     border-radius: 10px;
