@@ -22,10 +22,15 @@ interface ExportRequest extends Request {
 // ============================================
 export const exportExcelWithCharts = async (req: ExportRequest, res: Response): Promise<Response> => {
   try {
-    const tenant = req.tenant;
+    // The tenant middleware stores tenant data via (req as any).tenant — not
+    // the typed req.tenant field. Reading req.tenant directly always returns
+    // undefined at runtime (TypeScript compiles it as a plain property access
+    // that the middleware never writes to), which caused every export to fail
+    // with "Tenant information missing" even when the tenant was valid.
+    const tenant = (req as any).tenant;
     const dbName = tenant?.db_name;
-    const tenantSlug = req.tenantSlug || tenant?.tenant_slug || 'unknown';
-    const userEmail = req.user?.email || 'System Admin';
+    const tenantSlug = (req as any).tenantSlug || tenant?.tenant_slug || 'unknown';
+    const userEmail = (req as any).user?.email || 'System Admin';
 
     if (!dbName) {
       return res.status(400).json({ success: false, message: 'Tenant information missing' });

@@ -9,6 +9,10 @@ import * as crypto from 'crypto';
 
 const SERVICE_NAME = 'deceased-service';
 
+// One-time guard: tracks which tenant DBs have already had charge_settings
+// created this process lifetime — avoids a DDL roundtrip on every profile load.
+const chargeSettingsInitialized = new Set<string>();
+
 // TYPES
 
 interface TenantRequest extends Request {
@@ -180,7 +184,11 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
 
         // Try cache first — the FULL merged payload (record + current charges) is
         // cached so repeated profile views are served straight from Redis.
-        const cacheKey = `deceased:detail:${id}`;
+        // KEY MUST include tenantSlug so it lives under the
+        // service:deceased-service:tenant:<slug>:* namespace that
+        // clearServiceCache() scans. Without it the key is never invalidated
+        // on update/delete and never matches a cache hit after a clear.
+        const cacheKey = `deceased:detail:${tenantSlug}:${id}`;
         const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);
 
         let deceased: any = null;
@@ -213,34 +221,45 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
         // The frontend sidebar/profile shows "daily storage rate" from
         // deceased.charges.storage_rate. Without this merge it always falls
         // back to the hard-coded KES 500/day no matter what was saved under
-        // Charge Settings — which is why "set new charges" never appeared.
-        // Previously a `CREATE TABLE IF NOT EXISTS` ran on EVERY profile view
-        // (a full DDL roundtrip that takes a metadata lock + binlog write even
-        // when the table already exists). Now the table is only created once —
-        // the SELECT just fails with ER_NO_SUCH_TABLE (1146) the very first time.
+        // Charge Settings.
+        //
+        // PERFORMANCE FIX: `CREATE TABLE IF NOT EXISTS` is a DDL statement that
+        // acquires a metadata lock and writes to the binary log EVEN when the
+        // table already exists. Running it on every profile load caused severe
+        // latency (100-300ms per request). We now use a per-process Set to
+        // remember which tenant DBs have had the table created, so the CREATE
+        // only fires once per process lifetime (i.e., once after a cold deploy).
         try {
             let chargeRows: any[];
-            try {
-                chargeRows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
-            } catch (chargeErr: any) {
-                const tableMissing = /doesn't exist|ER_NO_SUCH_TABLE|1146/i.test(
-                    String(chargeErr?.message || chargeErr?.sqlMessage || '')
-                );
-                if (!tableMissing) throw chargeErr;
-                await safeTenantExecute(dbName, `
-                    CREATE TABLE IF NOT EXISTS charge_settings (
-                        deceased_id VARCHAR(100) NOT NULL PRIMARY KEY,
-                        rate_profile VARCHAR(50) DEFAULT 'standard',
-                        currency ENUM('KES','USD') DEFAULT 'KES',
-                        charge_type ENUM('daily','hourly') DEFAULT 'daily',
-                        daily_rate DECIMAL(12,2) DEFAULT 3000.00,
-                        hourly_rate DECIMAL(12,2) DEFAULT 125.00,
-                        usd_rate DECIMAL(12,2) DEFAULT 130.00,
-                        updated_by VARCHAR(150) NULL,
-                        created_at VARCHAR(255) NULL,
-                        updated_at VARCHAR(255) NULL
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                `, []);
+            if (!chargeSettingsInitialized.has(dbName)) {
+                // First access for this DB in this process — ensure table exists.
+                try {
+                    chargeRows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
+                    chargeSettingsInitialized.add(dbName); // table exists, mark as done
+                } catch (chargeErr: any) {
+                    const tableMissing = /doesn't exist|ER_NO_SUCH_TABLE|1146/i.test(
+                        String(chargeErr?.message || chargeErr?.sqlMessage || '')
+                    );
+                    if (!tableMissing) throw chargeErr;
+                    await safeTenantExecute(dbName, `
+                        CREATE TABLE IF NOT EXISTS charge_settings (
+                            deceased_id VARCHAR(100) NOT NULL PRIMARY KEY,
+                            rate_profile VARCHAR(50) DEFAULT 'standard',
+                            currency ENUM('KES','USD') DEFAULT 'KES',
+                            charge_type ENUM('daily','hourly') DEFAULT 'daily',
+                            daily_rate DECIMAL(12,2) DEFAULT 3000.00,
+                            hourly_rate DECIMAL(12,2) DEFAULT 125.00,
+                            usd_rate DECIMAL(12,2) DEFAULT 130.00,
+                            updated_by VARCHAR(150) NULL,
+                            created_at VARCHAR(255) NULL,
+                            updated_at VARCHAR(255) NULL
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    `, []);
+                    chargeSettingsInitialized.add(dbName);
+                    chargeRows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
+                }
+            } else {
+                // Table is known to exist — just query, no DDL overhead.
                 chargeRows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
             }
             if (chargeRows && chargeRows.length > 0) {
@@ -260,6 +279,9 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
 
         // Cache the FINAL merged payload (10-minute TTL). Updates/deletes call
         // clearServiceCache() which wipes this key together with every list key.
+        // The key already includes tenantSlug so serviceSet stores it as:
+        //   service:deceased-service:tenant:<slug>:deceased:detail:<slug>:<id>
+        // which is matched by the clearServiceCache SCAN pattern.
         await redisService.serviceSet(
             'deceased-service',
             tenantSlug,

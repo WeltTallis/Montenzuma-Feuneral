@@ -407,8 +407,14 @@ app.use(hpp({
   whitelist: ['page', 'limit', 'status', 'search'],
 }));
 
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+// IMPORTANT: For multipart/form-data (file uploads) the body parsers below
+// must NOT consume the raw stream — once consumed it cannot be re-read by
+// the upstream service (multer/busboy). We guard both parsers to only run on
+// non-multipart requests. The raw stream then flows straight through the
+// proxy to the documents-service (or any other service that handles uploads).
+const isMultipart = (req) => (req.headers['content-type'] || '').startsWith('multipart/form-data');
+app.use((req, res, next) => isMultipart(req) ? next() : express.json({ limit: '50mb' })(req, res, next));
+app.use((req, res, next) => isMultipart(req) ? next() : express.urlencoded({ extended: true, limit: '50mb' })(req, res, next));
 app.use(cookieParser(process.env.JWT_SECRET));
 
 const apiLimiter = rateLimit({
@@ -566,18 +572,17 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
           if (req.headers['x-user-id']) proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
           if (req.headers['x-branch-slug']) proxyReq.setHeader('x-branch-slug', req.headers['x-branch-slug']);
           if (req.headers['x-branch-id']) proxyReq.setHeader('x-branch-id', req.headers['x-branch-id']);
-          // Re-stream the already-consumed body safely. A manual
-          // JSON.stringify + proxyReq.write() here is a known-fragile
-          // pattern with http-proxy-middleware: it can throw "write after
-          // end" or leave the proxied socket in a bad state for certain
-          // payloads, which surfaces to the client as a 502/500 (the
-          // gateway process resets the connection mid-request).
-          // fixRequestBody is the library's own helper for this exact
-          // problem.
-          try {
-            fixRequestBody(proxyReq, req);
-          } catch (bodyErr) {
-            Logger.error(`[PROXY] Failed to re-stream body for ${req.method} ${req.originalUrl}: ${bodyErr.message}`);
+          // fixRequestBody re-streams the body that express.json() parsed.
+          // For multipart/form-data (file uploads) we intentionally skipped the
+          // body parser above so the raw stream is still intact — calling
+          // fixRequestBody here would write nothing (or corrupt the boundary).
+          // Only call it for non-multipart requests.
+          if (!isMultipart(req)) {
+            try {
+              fixRequestBody(proxyReq, req);
+            } catch (bodyErr) {
+              Logger.error(`[PROXY] Failed to re-stream body for ${req.method} ${req.originalUrl}: ${bodyErr.message}`);
+            }
           }
         },
         proxyRes: (proxyRes, req, res) => {
@@ -619,7 +624,9 @@ for (const targetUrl of Object.values(SERVICE_ROUTES)) {
                     if (req.headers['x-user-id']) proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
                     if (req.headers['x-branch-slug']) proxyReq.setHeader('x-branch-slug', req.headers['x-branch-slug']);
                     if (req.headers['x-branch-id']) proxyReq.setHeader('x-branch-id', req.headers['x-branch-id']);
-                    try { fixRequestBody(proxyReq, req); } catch (e) { /* ignore */ }
+                    try { 
+                      if (!isMultipart(req)) fixRequestBody(proxyReq, req); 
+                    } catch (e) { /* ignore */ }
                   },
                   error: (fallbackErr, req, res) => {
                     Logger.error(`[PROXY FALLBACK ERROR] Fallback ${fallbackUrl} also failed for ${req.method} ${req.originalUrl}: ${fallbackErr.message}`);
