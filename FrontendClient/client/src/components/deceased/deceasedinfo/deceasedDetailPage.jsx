@@ -156,11 +156,9 @@ const DeceasedDetailPage = () => {
   const [searchParams] = useSearchParams();
   const pathParams = useParams();
   let deceasedId = searchParams.get('id') || pathParams.id;
-  // Sanitize: strip any trailing query-string junk like "=2026" that can
-  // get concatenated onto the ID by malformed links or URL rebuilding.
-  if (typeof deceasedId === 'string' && deceasedId.includes('=')) {
-    deceasedId = deceasedId.split('=')[0].trim();
-  }
+  // NOTE: Do NOT strip '=' from the ID — deceased_id values like
+  // 'MON-NYAFHJEW39J6FURJG6H=2026' contain '=' as part of the identifier.
+  // The URL-encoded form is '%3D' and searchParams.get() already decodes it.
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
