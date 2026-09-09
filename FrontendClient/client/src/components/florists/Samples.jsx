@@ -166,60 +166,27 @@ body {
 .story-item:hover .story-label { color: rgba(255,255,255,0.95); }
 .story-item.is-sel .story-label { color: rgba(255,255,255,0.9); }
 
-/* ── Story action chips — quick ＋add & TikTok-style love ────────────────── */
+/* ── Story items ──────────────────────────────────────────────────────────── */
 * { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, [role="button"]:focus-visible { outline: 2px solid #B98480; outline-offset: 2px; }
-@keyframes lovePop { 0% { transform: scale(0.4); } 60% { transform: scale(1.35); } 100% { transform: scale(1); } }
-.story-add {
-  position: absolute; top: -8px; right: -9px; z-index: 3;
-  width: 26px; height: 26px; border-radius: 50%;
-  border: 2px solid #0a0b0c; background: #475A43; color: #fff;
-  font: 700 15px/1 'Inter', sans-serif; display: grid; place-items: center;
-  cursor: pointer; padding: 0; transition: transform 0.2s, background 0.2s;
-}
-.story-add:hover { transform: scale(1.12); }
-.story-add.is-added { background: #C8A262; }
 
-/* ── TikTok-style love pill: big, red, hanging on the right side ── */
-.story-love {
-  position: absolute; right: -11px; bottom: -11px; z-index: 3;
-  width: 46px; height: 46px; border-radius: 50%;
-  border: 2px solid #0a0b0c;
-  background: rgba(10,11,12,0.65); color: #fff;
-  display: grid; place-items: center;
-  font: 600 11px/1 'Inter', sans-serif;
-  cursor: pointer; padding: 0;
-  transition: all 0.22s cubic-bezier(0.16,1,0.3,1);
-  backdrop-filter: blur(4px);
+/* ── Floating add-to-booking button (left side, knows current view) ────────── */
+.add-float {
+  position: fixed; bottom: 28px; left: 28px; z-index: 200;
+  display: flex; align-items: center; gap: 12px;
+  animation: fadeIn 0.3s ease;
 }
-.story-love:hover { transform: scale(1.12); }
-.story-love.is-liked {
-  background: #C8264A; border-color: transparent;
-  box-shadow: 0 6px 22px rgba(200,38,74,0.45);
+.add-float-btn {
+  padding: 12px 22px; border-radius: 8px;
+  background: #475A43; color: #fff;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.12em;
+  text-transform: uppercase; border: none; cursor: pointer;
+  box-shadow: 0 8px 28px rgba(71,90,67,0.4);
+  transition: all 0.2s; display: flex; align-items: center; gap: 8px;
 }
-.story-love.is-liked svg { animation: lovePop 0.35s cubic-bezier(0.16,1,0.3,1); }
-.story-love svg { width: 21px; height: 21px; }
-.love-count { font-variant-numeric: tabular-nums; }
-
-/* ── Like snowfall — a burst of petals + hearts rains down on ♥ ────────────── */
-@keyframes likeSnowFall {
-  0% { transform: translate3d(0, -6vh, 0) rotate(0deg); opacity: 0; }
-  8% { opacity: var(--lso, 0.9); }
-  85% { opacity: var(--lso, 0.9); }
-  100% { transform: translate3d(var(--lsx, 30px), 108vh, 0) rotate(var(--lsr, 220deg)); opacity: 0; }
-}
-.like-snow {
-  position: fixed; inset: 0; overflow: hidden;
-  pointer-events: none; z-index: 120;
-}
-.like-snow-flake {
-  position: absolute; top: -6vh; left: var(--lsx0, 50%);
-  width: var(--lss, 16px); height: var(--lss, 16px);
-  animation: likeSnowFall var(--lsd, 2.6s) cubic-bezier(0.3,0.4,0.6,1) forwards;
-  animation-delay: var(--lsdl, 0s);
-}
-.like-snow-flake svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 6px rgba(200,38,74,0.35)); }
-@media (prefers-reduced-motion: reduce) { .like-snow { display: none; } }
+.add-float-btn:hover { background: #556A50; transform: translateY(-1px); }
+.add-float-btn.is-added { background: #C8A262; }
+.add-float-btn .add-icon { font-size: 14px; font-weight: 700; line-height: 1; }
 
 /* ── Browse title — bottom left ──────────────────────────────────────────── */
 .browse-title-block {
@@ -480,8 +447,8 @@ const getClientKey = () => {
   } catch { return `ck-${Date.now()}` }
 }
 
-// ── Story Item — tap to view · ＋ adds to booking · ♥ loves ───────────────────
-function StoryItem({ arrangement, isActive, isSelected, isLiked, likeCount, size, animDelay, onClick, onAdd, onLike }) {
+// ── Story Item — tap to view · single add button on left ───────────────────
+function StoryItem({ arrangement, isActive, isSelected, size, animDelay, onClick }) {
   const ringCls = 'story-ring-wrap ' + (isActive ? 'sr-unseen' : isSelected ? 'sr-selected' : 'sr-seen')
   return (
     <div
@@ -494,23 +461,8 @@ function StoryItem({ arrangement, isActive, isSelected, isLiked, likeCount, size
       aria-label={(arrangement.name || arrangement.title) + ' — view details'}
     >
       <div className={ringCls} style={{ width: size + 6, height: size + 6, position: 'relative' }}>
-        <div className="story-inner" style={{ width: size, height: size }}>
-          <img src={arrangement.portrait || arrangement.img} alt={arrangement.name || arrangement.title} />
+        <div className="story-inner" style={{ width: size, height: size }}>          <img src={arrangement.portrait || arrangement.img} alt={arrangement.name || arrangement.title} />
         </div>
-        <button
-          className={'story-add' + (isSelected ? ' is-added' : '')}
-          onClick={(e) => { e.stopPropagation(); onAdd() }}
-          aria-label={isSelected ? 'Remove from booking' : 'Add to booking'}
-        >
-          {isSelected ? '✓' : '+'}
-        </button>
-        <button
-          className={'story-love' + (isLiked ? ' is-liked' : '')}
-          onClick={(e) => { e.stopPropagation(); onLike() }}
-          aria-label="Love this arrangement"
-        >
-          <svg viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20.5S4.9 16 3.2 11.6C2 8.6 3.7 5.5 6.8 5.5c2 0 3.6 1.2 4.4 2.9L12 10l.8-1.6c.8-1.7 2.4-2.9 4.4-2.9 3.1 0 4.8 3.1 3.6 6.1C19.1 16 12 20.5 12 20.5Z" /></svg>
-        </button>
       </div>
       <span className="story-label">{arrangement.tag}</span>
     </div>
@@ -551,7 +503,7 @@ function HomePreview({ selectedIds, onRemove, onProceed, arrangements = [] }) {
 }
 
 // ── Browse Screen ─────────────────────────────────────────────────────────────
-function BrowseScreen({ selectedIds, onOpen, onAdd, onLike, likes = {}, likedIds = [], onPreview, arrangements = [], loading = false }) {
+function BrowseScreen({ selectedIds, onOpen, onAdd, onRemove, onPreview, arrangements = [], loading = false }) {
   const [bgIdx, setBgIdx] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
   const touchRef = useRef(null)
@@ -569,6 +521,7 @@ function BrowseScreen({ selectedIds, onOpen, onAdd, onLike, likes = {}, likedIds
   }, [selectedIds.length])
 
   const bg = allArrangements[bgIdx] || allArrangements[0]
+  const currentId = bg?.id
 
   // ── Swipe: ← / → cycles the hero · swipe up opens the arrangement ──
   const onTouchStart = (e) => {
