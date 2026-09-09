@@ -18,6 +18,9 @@ const BASE_URL = `${API_GATEWAY_URL}/deceased`;
 // ─── Global Font Styles ─────────────────────────────────────────────
 const GlobalFonts = createGlobalStyle`
   @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
 `;
 
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }`;
@@ -107,12 +110,12 @@ const AppContainer = styled.div`
   @media (min-width: 901px) {
     margin: 0 auto;
     max-width: 1400px;
-    padding: 10px;
-    overflow-x: clip;
+    padding: 32px;
+    overflow-x: hidden; 
   }
 
   @media (max-width: 900px) {
-    padding: 0px;
+    padding: 16px;
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
@@ -141,14 +144,15 @@ const Toolbar = styled.div`
   background: white;
   border: 1px solid ${C.borderLight};
   border-radius: 16px;
-  padding: 10px;
-  margin-bottom: 10px;
+  padding: 12px;
+  margin-bottom: 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.04);
   flex-wrap: wrap;
+  max-width: 100%;
 `;
 
 const ToolbarLeft = styled.div`
@@ -184,7 +188,7 @@ const SearchIcon = styled.i`
 const SearchInput = styled.input`
   height: 42px;
   width: 100%;
-  max-width: 260px;
+  max-width: 280px;
   border-radius: 10px;
   border: 1px solid ${C.border};
   background: ${C.bgField};
@@ -324,7 +328,9 @@ const CalendarContainer = styled.div`
   display: flex;
   align-items: center;
   gap: 24px;
-  overflow: hidden;
+  overflow: hidden; /* Crucial: prevents container from expanding */
+  max-width: 100%;
+  box-sizing: border-box;
 
   @media (max-width: 900px) {
     flex-direction: column;
@@ -367,16 +373,17 @@ const CalSelect = styled.select`
 
 const CalendarDates = styled.div`
   display: flex;
-  flex-wrap: nowrap; /* Prevent wrapping on all screen sizes */
+  flex-wrap: nowrap;
   justify-content: flex-start;
   gap: 8px;
-  padding: 4px 2px 8px; /* Bottom padding for scrollbar */
+  padding: 4px 2px 8px;
   flex: 1;
   width: 100%;
-  min-width: 0;
+  min-width: 0; /* Crucial: allows flex child to shrink and scroll */
+  max-width: 100%;
   align-items: center;
   scroll-behavior: smooth;
-  overflow-x: auto; /* Enable horizontal scroll everywhere */
+  overflow-x: auto;
   scrollbar-width: thin;
   scrollbar-color: ${C.accent} ${C.bgField};
 
@@ -387,7 +394,7 @@ const CalendarDates = styled.div`
 `;
 
 const CalDateBtn = styled.div`
-  flex: 0 0 auto; /* Prevent shrinking */
+  flex: 0 0 auto;
   min-width: 52px;
   padding: 8px 6px;
   border-radius: 8px;
@@ -445,6 +452,8 @@ const ListCard = styled.div`
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  max-width: 100%;
+  box-sizing: border-box;
 `;
 
 const ListHeader = styled.div`
@@ -468,6 +477,7 @@ const ListHeader = styled.div`
 const TableWrap = styled.div`
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  width: 100%;
   
   @media (max-width: 900px) {
     display: none;
@@ -601,6 +611,8 @@ const MobileCard = styled.div`
   box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   cursor: pointer;
   transition: 0.2s;
+  width: 100%;
+  box-sizing: border-box;
 
   &:active {
     transform: scale(0.98);
@@ -621,6 +633,7 @@ const MobileCardNameWrap = styled.div`
   align-items: center;
   gap: 12px;
   flex: 1;
+  min-width: 0;
   
   div div:first-child {
     font-size: 16px;
@@ -1094,7 +1107,7 @@ const DeceasedListPage = () => {
     }
 
     setExporting(true);
-    setShowExport(false); // Close modal immediately, rely on ProgressWidget
+    setShowExport(false); 
     setExportProgress(0);
     setExportStatus('Queuing export job...');
 

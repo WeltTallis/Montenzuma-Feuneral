@@ -58,7 +58,7 @@ export const getAllDeceased = async (
             : (typeof q === "string" ? q : "");
 
         // REDIS CACHE KEY
-   
+
         const cacheKey = `deceased:list:${tenantId}:page:${pageNumber}:limit:${limitNumber}:search:${searchTerm}:year:${yearParam}:month:${monthParam}`;
 
         // Try to get from cache
@@ -124,7 +124,7 @@ export const getAllDeceased = async (
         };
 
         // SAVE TO REDIS
-     
+
         await redisService.serviceSet(
             'deceased-service',
             tenantSlug,
@@ -178,8 +178,8 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
             });
         }
 
-        // Try cache first (raw record — charge settings are always re-attached
-        // fresh below so rate changes never end up serving stale 10-minute copies).
+        // Try cache first — the FULL merged payload (record + current charges) is
+        // cached so repeated profile views are served straight from Redis.
         const cacheKey = `deceased:detail:${id}`;
         const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);
 
@@ -200,17 +200,6 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
 
             const records = await safeTenantQuery(dbName, query, [isNumeric ? parseInt(id, 10) : id]);
             deceased = records && records.length > 0 ? records[0] : null;
-
-            if (deceased) {
-                // Cache the raw record
-                await redisService.serviceSet(
-                    'deceased-service',
-                    tenantSlug,
-                    cacheKey,
-                    deceased,
-                    600 // 10 minutes TTL
-                );
-            }
         }
 
         if (!deceased) {
@@ -224,23 +213,36 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
         // The frontend sidebar/profile shows "daily storage rate" from
         // deceased.charges.storage_rate. Without this merge it always falls
         // back to the hard-coded KES 500/day no matter what was saved under
-        // Charge Settings — which is why "set new charges" never appeared..
+        // Charge Settings — which is why "set new charges" never appeared.
+        // Previously a `CREATE TABLE IF NOT EXISTS` ran on EVERY profile view
+        // (a full DDL roundtrip that takes a metadata lock + binlog write even
+        // when the table already exists). Now the table is only created once —
+        // the SELECT just fails with ER_NO_SUCH_TABLE (1146) the very first time.
         try {
-            await safeTenantExecute(dbName, `
-                CREATE TABLE IF NOT EXISTS charge_settings (
-                    deceased_id VARCHAR(100) NOT NULL PRIMARY KEY,
-                    rate_profile VARCHAR(50) DEFAULT 'standard',
-                    currency ENUM('KES','USD') DEFAULT 'KES',
-                    charge_type ENUM('daily','hourly') DEFAULT 'daily',
-                    daily_rate DECIMAL(12,2) DEFAULT 3000.00,
-                    hourly_rate DECIMAL(12,2) DEFAULT 125.00,
-                    usd_rate DECIMAL(12,2) DEFAULT 130.00,
-                    updated_by VARCHAR(150) NULL,
-                    created_at VARCHAR(255) NULL,
-                    updated_at VARCHAR(255) NULL
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            `, []);
-            const chargeRows: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
+            let chargeRows: any[];
+            try {
+                chargeRows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
+            } catch (chargeErr: any) {
+                const tableMissing = /doesn't exist|ER_NO_SUCH_TABLE|1146/i.test(
+                    String(chargeErr?.message || chargeErr?.sqlMessage || '')
+                );
+                if (!tableMissing) throw chargeErr;
+                await safeTenantExecute(dbName, `
+                    CREATE TABLE IF NOT EXISTS charge_settings (
+                        deceased_id VARCHAR(100) NOT NULL PRIMARY KEY,
+                        rate_profile VARCHAR(50) DEFAULT 'standard',
+                        currency ENUM('KES','USD') DEFAULT 'KES',
+                        charge_type ENUM('daily','hourly') DEFAULT 'daily',
+                        daily_rate DECIMAL(12,2) DEFAULT 3000.00,
+                        hourly_rate DECIMAL(12,2) DEFAULT 125.00,
+                        usd_rate DECIMAL(12,2) DEFAULT 130.00,
+                        updated_by VARCHAR(150) NULL,
+                        created_at VARCHAR(255) NULL,
+                        updated_at VARCHAR(255) NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                `, []);
+                chargeRows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
+            }
             if (chargeRows && chargeRows.length > 0) {
                 const cs = chargeRows[0];
                 deceased.charges = {
@@ -255,6 +257,16 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
                 };
             }
         } catch (e) { /* charge settings are optional — never block the profile */ }
+
+        // Cache the FINAL merged payload (10-minute TTL). Updates/deletes call
+        // clearServiceCache() which wipes this key together with every list key.
+        await redisService.serviceSet(
+            'deceased-service',
+            tenantSlug,
+            cacheKey,
+            deceased,
+            600 // 10 minutes TTL
+        );
 
         return res.status(200).json({
             success: true,
@@ -353,10 +365,10 @@ export const updateDeceased = async (req: Request, res: Response): Promise<Respo
         `;
         await safeTenantExecute(dbName, updateQuery, values);
 
-        // Invalidate cache
-        await redisService.serviceDel('deceased-service', tenantSlug, `deceased:detail:${id}`);
-        await redisService.serviceDel('deceased-service', tenantSlug, `deceased:list:${tenantId}`);
-        await redisService.serviceDel('deceased-service', tenantSlug, `deceased:stats:${tenantId}`);
+        // Invalidate cache — wipe EVERY key for this service+tenant (detail,
+        // list, stats). The old exact-key deletes could never match the real
+        // list keys (`deceased:list:<tid>:page:...`), so stale rows lingered.
+        await redisService.clearServiceCache('deceased-service', tenantSlug);
 
         return res.status(200).json({
             success: true,
@@ -409,7 +421,7 @@ export const deleteDeceased = async (req: Request, res: Response): Promise<Respo
         }
 
         const isNumeric = /^\d+$/.test(id);
-        
+
         // Get deceased details before deletion for notification
         const checkQuery = `
             SELECT deceased_id, full_name FROM deceased 
@@ -417,7 +429,7 @@ export const deleteDeceased = async (req: Request, res: Response): Promise<Respo
         `;
         const checkResult = await safeTenantQuery(dbName, checkQuery, [isNumeric ? parseInt(id, 10) : id]);
         const deceasedRecord = (checkResult as any[])[0];
-        
+
         const deleteQuery = `
             DELETE FROM deceased
             WHERE ${isNumeric ? 'id = ?' : 'deceased_id = ?'} 
@@ -425,10 +437,8 @@ export const deleteDeceased = async (req: Request, res: Response): Promise<Respo
         `;
         const result = await safeTenantExecute(dbName, deleteQuery, [isNumeric ? parseInt(id, 10) : id]);
 
-        // Invalidate cache
-        await redisService.serviceDel('deceased-service', tenantSlug, `deceased:detail:${id}`);
-        await redisService.serviceDel('deceased-service', tenantSlug, `deceased:list:${tenantId}`);
-        await redisService.serviceDel('deceased-service', tenantSlug, `deceased:stats:${tenantId}`);
+        // Invalidate cache — wipe EVERY key for this service+tenant.
+        await redisService.clearServiceCache('deceased-service', tenantSlug);
 
         // Emit notification for deceased removal
         try {
@@ -543,11 +553,9 @@ export const updateDeceasedStatus = async (req: Request, res: Response): Promise
 
         const result = await safeTenantExecute(dbName, updateQuery, values);
 
-        // Invalidate cache
+        // Invalidate cache — wipe every deceased key for this tenant.
         const tenantSlug = (req as any).tenantSlug || "unknown";
-        const tenantId = (req as any).tenant?.id;
-        await redisService.serviceDel('deceased-service', tenantSlug, `deceased:list:${tenantId}`);
-        await redisService.serviceDel('deceased-service', tenantSlug, `deceased:stats:${tenantId}`);
+        await redisService.clearServiceCache('deceased-service', tenantSlug);
 
         return res.status(200).json({
             success: true,
