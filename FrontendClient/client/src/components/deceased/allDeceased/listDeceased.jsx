@@ -336,192 +336,6 @@ const Btn = styled.button`
   `}
 `;
 
-// ─── Calendar Strip ─────────────────────────────────────────────────
-const CalendarContainer = styled.div`
-  background: white;
-  border: 1px solid ${C.borderLight};
-  border-radius: 12px;
-  padding: 14px 16px;
-  margin-bottom: 24px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  overflow: hidden; /* Prevents the entire card from expanding */
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    padding: 12px;
-  }
-`;
-
-const CalendarControls = styled.div`
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  border-right: 1px solid ${C.border};
-  padding-right: 16px;
-  flex-shrink: 0;
-
-  @media (max-width: 768px) {
-    border-right: none;
-    padding-right: 0;
-    padding-bottom: 10px;
-    border-bottom: 1px solid ${C.borderLight};
-  }
-`;
-
-const CalSelect = styled.select`
-  border: 1px solid transparent;
-  background: ${C.bgField};
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: ${C.black};
-  cursor: pointer;
-  border-radius: 6px;
-  padding: 8px 12px;
-  transition: 0.2s;
-  &:hover { background: #eaeae6; }
-  &:focus { outline: none; border-color: ${C.gray}; }
-`;
-
-const StripWrap = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-  flex: 1 1 0%;          /* take all remaining space, shrink below content */
-  min-width: 0;          /* allow flex‑shrink below content width */
-  max-width: 100%;
-  overflow: hidden;      /* clip the absolutely positioned edges */
-`;
-
-const CalendarDates = styled.div`
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: stretch;
-  gap: 6px;
-  padding: 4px 2px 8px;
-  flex: 1 1 0%;          /* fill the StripWrap, but can shrink */
-  min-width: 0;          /* critical – allows the flex item to be narrower than its content */
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-behavior: smooth;
-  scroll-snap-type: x proximity;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;          /* hide scrollbar for Firefox */
-  -ms-overflow-style: none;       /* hide scrollbar for IE/Edge */
-  &::-webkit-scrollbar { display: none; }
-`;
-
-const StripEdge = styled.div`
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 44px;
-  pointer-events: none;
-  z-index: 1;
-  opacity: ${p => (p.$show ? 1 : 0)};
-  transition: opacity 0.2s;
-  ${p => p.$left
-    ? 'left: -2px; background: linear-gradient(to right, #ffffff 25%, rgba(255,255,255,0));'
-    : 'right: -2px; background: linear-gradient(to left, #ffffff 25%, rgba(255,255,255,0));'}
-`;
-
-const StripNav = styled.button`
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: 1px solid ${C.border};
-  background: #ffffff;
-  color: ${C.dark};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-  font-size: 11px;
-  line-height: 1;
-  padding: 0;
-  transition: all 0.15s;
-  opacity: ${p => (p.$show ? 1 : 0)};
-  pointer-events: ${p => (p.$show ? 'auto' : 'none')};
-  ${p => (p.$left ? 'left: -4px;' : 'right: -4px;')}
-  &:hover { background: ${C.accent}; border-color: ${C.accent}; color: #ffffff; }
-  &:active { transform: translateY(-50%) scale(0.94); }
-`;
-
-const CalDateBtn = styled.div`
-  flex: 0 0 auto;
-  width: 54px;
-  padding: 8px 4px 11px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  scroll-snap-align: center;
-  user-select: none;
-
-  &:hover { background: ${C.bgField}; }
-
-  ${p => p.$active && `
-    background: ${C.accent};
-    color: white;
-    box-shadow: 0 4px 12px rgba(221, 45, 74, 0.4);
-  `}
-
-  @media (max-width: 480px) {
-    width: 47px;
-    padding: 6px 3px 10px;
-  }
-`;
-
-const CalWeekday = styled.div`
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  opacity: 0.6;
-  line-height: 1;
-`;
-
-const CalDayNum = styled.div`
-  font-size: 18px;
-  font-weight: 700;
-  font-family: 'Merriweather', serif;
-  line-height: 1;
-`;
-
-const EventDot = styled.div`
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: ${p => p.$active ? 'white' : p.$color || C.gray};
-  box-shadow: 0 0 6px ${p => p.$active ? 'rgba(255,255,255,0.8)' : `rgba(${p.$rgb || '0,0,0'}, 0.6)`};
-  position: absolute;
-  bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-`;
-
 // ─── List Components ────────────────────────────────────────────────
 const ListCard = styled.div`
   background: white;
@@ -967,6 +781,303 @@ const ProgressWidget = styled.div`
   }
 `;
 
+// ─── HorizontalCalendar Component (copied and adapted) ─────────────
+// Simple helpers
+function addDays(d, n) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+function toMonday(d) {
+  const r = new Date(d);
+  const day = r.getDay();
+  r.setDate(r.getDate() - ((day + 6) % 7));
+  return r;
+}
+
+function dk(y, m, d) {
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+const DOWS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const MOS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function HorizontalCalendar({ eventsData = [], selectedDate, onDateSelect }) {
+  const [viewStart, setViewStart] = useState(() => toMonday(new Date()));
+  const stripRef = useRef(null);
+  const [visibleCount, setVisibleCount] = useState(7);
+
+  const eventCounts = useMemo(() => {
+    const map = {};
+    eventsData.forEach((ev) => {
+      const date = new Date(ev.date);
+      const key = dk(date.getFullYear(), date.getMonth(), date.getDate());
+      map[key] = (map[key] || 0) + 1;
+    });
+    return map;
+  }, [eventsData]);
+
+  const todayKey = dk(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+
+  const days = useMemo(() => {
+    const arr = [];
+    for (let i = 0; i < 30; i++) {
+      const d = addDays(viewStart, i);
+      const key = dk(d.getFullYear(), d.getMonth(), d.getDate());
+      arr.push({
+        date: d,
+        key,
+        dayName: DOWS[(d.getDay() + 6) % 7],
+        dayNum: d.getDate(),
+        count: eventCounts[key] || 0,
+        isToday: key === todayKey,
+        isSelected: selectedDate != null && key === dk(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()),
+      });
+    }
+    return arr;
+  }, [viewStart, eventCounts, todayKey, selectedDate]);
+
+  useEffect(() => {
+    const targetKey = selectedDate
+      ? dk(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
+      : todayKey;
+    const el = document.getElementById(`dc-${targetKey}`);
+    if (el) {
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }), 50);
+    }
+  }, [selectedDate, viewStart, todayKey]);
+
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el) return;
+    const measure = () => {
+      const available = Math.max(el.clientWidth - 28, 40);
+      const count = Math.max(1, Math.floor(available / 44));
+      setVisibleCount(Math.min(count, 30));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const title = useMemo(() => {
+    const s = addDays(viewStart, 0);
+    const e = addDays(viewStart, 29);
+    const sm = s.getMonth(), sy = s.getFullYear();
+    const em = e.getMonth(), ey = e.getFullYear();
+    if (sm === em && sy === ey) return `${MOS_SHORT[sm]} ${sy}`;
+    if (sy === ey) return `${MOS_SHORT[sm]}–${MOS_SHORT[em]} ${sy}`;
+    return `${MOS_SHORT[sm]} ${sy}–${MOS_SHORT[em]} ${ey}`;
+  }, [viewStart]);
+
+  const prevWeek = () => setViewStart((v) => addDays(v, -7));
+  const nextWeek = () => setViewStart((v) => addDays(v, 7));
+  const goToday = () => {
+    const now = new Date();
+    setViewStart(toMonday(now));
+    if (onDateSelect) onDateSelect(now);
+  };
+
+  const pickDate = (date) => {
+    if (onDateSelect) onDateSelect(date);
+  };
+
+  return (
+    <div style={{
+      background: 'transparent',
+      borderRadius: 10,
+      border: 'none',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      width: '100%',
+      maxWidth: 2200,
+      margin: '0 auto',
+    }}>
+      {/* Sleek Nav */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 0 6px 0',
+      }}>
+        <button
+          onClick={prevWeek}
+          style={{
+            width: 26,
+            height: 26,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '1px solid #e5e7eb',
+            borderRadius: 7,
+            background: '#fff',
+            color: '#374151',
+            cursor: 'pointer',
+            fontSize: '12px',
+            lineHeight: 1,
+            transition: 'all 0.15s',
+            outline: 'none',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+          title="Previous week"
+        >
+          ←
+        </button>
+
+        <span style={{
+          fontSize: '11px',
+          fontWeight: 600,
+          color: '#6b7280',
+          letterSpacing: '0.3px',
+        }}>
+          {title}
+        </span>
+
+        <button
+          onClick={nextWeek}
+          style={{
+            width: 26,
+            height: 26,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '1px solid #e5e7eb',
+            borderRadius: 7,
+            background: '#fff',
+            color: '#374151',
+            cursor: 'pointer',
+            fontSize: '12px',
+            lineHeight: 1,
+            transition: 'all 0.15s',
+            outline: 'none',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+          title="Next week"
+        >
+          →
+        </button>
+      </div>
+
+      {/* Compact Scrollable Strip */}
+      <div
+        ref={stripRef}
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-start',
+          overflowX: 'hidden',
+          overflowY: 'hidden',
+          padding: '2px 0',
+          gap: 3,
+          scrollBehavior: 'smooth',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          minHeight: 70,
+        }}
+        className="ds-scroll-hide"
+      >
+        {days.slice(0, visibleCount).map((day) => {
+          const { isToday, isSelected } = day;
+
+          let bg = 'transparent';
+          let border = '1.5px solid transparent';
+          let shadow = 'none';
+          let textColor = '#111827';
+          let dayNameColor = '#9ca3af';
+          let badgeBg = '#e5e7eb';
+          let badgeColor = '#6b7280';
+
+          if (isToday && !isSelected) {
+            border = '1.5px solid #d80505';
+            bg = 'transparent';
+          }
+          if (isSelected) {
+            bg = 'rgb(244, 0, 0)';
+            textColor = '#fff';
+            dayNameColor = 'rgba(255,255,255,0.8)';
+            badgeBg = 'rgba(255,255,255,0.2)';
+            badgeColor = '#fff';
+          }
+
+          return (
+            <button
+              key={day.key}
+              id={`dc-${day.key}`}
+              onClick={() => pickDate(day.date)}
+              style={{
+                flex: '1 0 36px',
+                padding: '4px 2px 3px',
+                borderRadius: 7,
+                border,
+                background: bg,
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                boxShadow: shadow,
+                outline: 'none',
+                position: 'relative',
+                minWidth: 30,
+              }}
+              onMouseEnter={(e) => {
+                if (!isSelected && !isToday) {
+                  e.currentTarget.style.background = '#f3f4f6';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSelected) {
+                  e.currentTarget.style.background = isToday ? 'transparent' : 'transparent';
+                  e.currentTarget.style.transform = 'none';
+                }
+              }}
+            >
+              <div style={{
+                fontSize: '9px',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: dayNameColor,
+                marginBottom: 1,
+                opacity: isSelected ? 1 : 0.7,
+              }}>
+                {day.dayName}
+              </div>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: isSelected ? 700 : 600,
+                color: textColor,
+                lineHeight: 1.2,
+              }}>
+                {day.dayNum}
+              </div>
+              {day.count > 0 && (
+                <div style={{
+                  display: 'inline-block',
+                  marginTop: 1,
+                  fontSize: '7px',
+                  fontWeight: 700,
+                  padding: '0px 4px',
+                  borderRadius: 3,
+                  background: badgeBg,
+                  color: badgeColor,
+                  lineHeight: 1.5,
+                  letterSpacing: '0.02em',
+                }}>
+                  {day.count}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <style>{`.ds-scroll-hide::-webkit-scrollbar{display:none}`}</style>
+    </div>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────
 const DeceasedListPage = () => {
   const navigate = useNavigate();
@@ -982,61 +1093,17 @@ const DeceasedListPage = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
 
-  // Calendar State
-  const [calMonth, setCalMonth] = useState(today.getMonth());
+  // Year filter for fetching
   const [calYear, setCalYear] = useState(() => {
     const y = Number(searchParams.get('year'));
     return Number.isInteger(y) && y >= 1900 && y <= 2200 ? y : today.getFullYear();
   });
 
+  // Selected date for filtering
+  const [selectedDate, setSelectedDate] = useState(null);
+
   const setSearchParamsRef = useRef(null);
   setSearchParamsRef.current = setSearchParams;
-  const [selectedDate, setSelectedDate] = useState(null);
-  const activeDateRef = useRef(null);
-
-  const stripRef = useRef(null);
-  const [stripEdges, setStripEdges] = useState({ atStart: true, atEnd: false });
-
-  const updateStripEdges = useCallback(() => {
-    const el = stripRef.current;
-    if (!el) return;
-    setStripEdges({
-      atStart: el.scrollLeft <= 2,
-      atEnd: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2,
-    });
-  }, []);
-
-  const scrollStripBy = (dir) => {
-    const el = stripRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * Math.max(260, el.clientWidth * 0.65), behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    const el = stripRef.current;
-    if (!el) return undefined;
-    const onWheel = (e) => {
-      if (el.scrollWidth <= el.clientWidth + 1) return;
-      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      if (!delta) return;
-      e.preventDefault();
-      el.scrollLeft += delta;
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, []);
-
-  useEffect(() => {
-    const el = stripRef.current;
-    if (!el) return undefined;
-    updateStripEdges();
-    el.addEventListener('scroll', updateStripEdges, { passive: true });
-    window.addEventListener('resize', updateStripEdges);
-    return () => {
-      el.removeEventListener('scroll', updateStripEdges);
-      window.removeEventListener('resize', updateStripEdges);
-    };
-  }, [updateStripEdges, calMonth, calYear]);
 
   const [showExport, setShowExport] = useState(false);
   const [exportStart, setExportStart] = useState('');
@@ -1130,12 +1197,6 @@ const DeceasedListPage = () => {
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (activeDateRef.current) {
-      activeDateRef.current.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    }
-  }, [selectedDate, calMonth, calYear]);
 
   // ─── Filters ─────────────────────────────────────────────────────
   const yearRecords = useMemo(() => {
@@ -1425,47 +1486,23 @@ const DeceasedListPage = () => {
     }
   }, [showExport]);
 
-  // ─── Calendar Helpers ────────────────────────────────────────────
-  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  const years = Array.from({ length: 7 }, (_, i) => today.getFullYear() - 5 + i);
-  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-
-  const hexToRgb = (hex) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `${r}, ${g}, ${b}`;
-  };
-
-  const eventColorByDate = useMemo(() => {
-    const map = {};
-    yearRecords.forEach(r => {
+  // ─── Calendar event data ────────────────────────────────────────
+  // Build events from yearRecords (only admission dates)
+  const eventsData = useMemo(() => {
+    return yearRecords.map(r => {
       const admitted = r.created_at || r.date_admitted || r.admission_date;
-      const key = toDateString(admitted);
-      if (key) {
-        const statusInfo = getStatusInfo(r.body_status || r.status);
-        map[key] = { color: statusInfo.color, rgb: hexToRgb(statusInfo.color) };
-      }
-    });
-    return map;
+      if (!admitted) return null;
+      const date = new Date(admitted);
+      if (isNaN(date.getTime())) return null;
+      return {
+        date: date,
+        // Optionally add title for tooltip (we don't display titles)
+        title: r.full_name || r.name || 'Deceased',
+      };
+    }).filter(Boolean);
   }, [yearRecords]);
 
-  const handleMonthChange = (e) => {
-    setCalMonth(parseInt(e.target.value));
-    setSelectedDate(null);
-    if (stripRef.current) stripRef.current.scrollLeft = 0;
-  };
-
-  const handleYearChange = (e) => {
-    setCalYear(parseInt(e.target.value));
-    setSelectedDate(null);
-    if (stripRef.current) stripRef.current.scrollLeft = 0;
-  };
-
-  const handleDateClick = (dateStr) => {
-    setSelectedDate(prev => prev === dateStr ? null : dateStr);
-  };
-
+  // ─── Render ──────────────────────────────────────────────────────
   return (
     <>
       <GlobalFonts />
@@ -1514,6 +1551,16 @@ const DeceasedListPage = () => {
               </FilterSelect>
               <SelectArrow className="fas fa-chevron-down" />
             </FilterWrapper>
+
+            {/* Year filter */}
+            <FilterWrapper style={{ maxWidth: '120px' }}>
+              <FilterSelect value={calYear} onChange={e => setCalYear(Number(e.target.value))}>
+                {Array.from({ length: 7 }, (_, i) => today.getFullYear() - 3 + i).map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </FilterSelect>
+              <SelectArrow className="fas fa-chevron-down" />
+            </FilterWrapper>
           </ToolbarLeft>
 
           <ToolbarRight>
@@ -1523,69 +1570,21 @@ const DeceasedListPage = () => {
           </ToolbarRight>
         </Toolbar>
 
-        {/* Calendar */}
-        <CalendarContainer>
-          <CalendarControls>
-            <CalSelect value={calMonth} onChange={handleMonthChange}>
-              {monthNames.map((m, i) => <option key={i} value={i}>{m}</option>)}
-            </CalSelect>
-            <CalSelect value={calYear} onChange={handleYearChange}>
-              {years.map(y => <option key={y} value={y}>{y}</option>)}
-            </CalSelect>
-          </CalendarControls>
-          <StripWrap>
-            <CalendarDates ref={stripRef}>
-              <CalDateBtn
-                $active={!selectedDate}
-                onClick={() => setSelectedDate(null)}
-                style={{ width: 'auto', minWidth: '56px', alignSelf: 'center' }}
-              >
-                <CalWeekday>View</CalWeekday>
-                <CalDayNum style={{ fontSize: '13px', fontFamily: 'Source Sans 3, sans-serif' }}>All</CalDayNum>
-              </CalDateBtn>
-
-              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
-                const loopDate = new Date(calYear, calMonth, day);
-                const dateStr = toDateString(loopDate);
-                const weekday = loopDate.toLocaleDateString('en-US', { weekday: 'short' });
-                const eventData = eventColorByDate[dateStr];
-                const isActive = selectedDate === dateStr;
-
-                return (
-                  <CalDateBtn
-                    key={day}
-                    $active={isActive}
-                    onClick={() => handleDateClick(dateStr)}
-                    ref={isActive ? activeDateRef : null}
-                    title={eventData ? `Records admitted on this day` : undefined}
-                  >
-                    <CalWeekday>{weekday}</CalWeekday>
-                    <CalDayNum>{day}</CalDayNum>
-                    {eventData && <EventDot $active={isActive} $color={eventData.color} $rgb={eventData.rgb} />}
-                  </CalDateBtn>
-                );
-              })}
-            </CalendarDates>
-
-            {/* Edge fades + arrows — only appear when there is overflow */}
-            <StripEdge $left $show={!stripEdges.atStart} />
-            <StripEdge $right $show={!stripEdges.atEnd} />
-            <StripNav
-              $left
-              $show={!stripEdges.atStart}
-              onClick={() => scrollStripBy(-1)}
-              aria-label="Scroll dates left"
-              type="button"
-            >‹</StripNav>
-            <StripNav
-              $right
-              $show={!stripEdges.atEnd}
-              onClick={() => scrollStripBy(1)}
-              aria-label="Scroll dates right"
-              type="button"
-            >›</StripNav>
-          </StripWrap>
-        </CalendarContainer>
+        {/* Calendar – HorizontalCalendar */}
+        <div style={{ marginBottom: '24px' }}>
+          <HorizontalCalendar
+            eventsData={eventsData}
+            selectedDate={selectedDate}
+            onDateSelect={(date) => {
+              // If the same date is clicked again, deselect it
+              if (selectedDate && toDateString(date) === toDateString(selectedDate)) {
+                setSelectedDate(null);
+              } else {
+                setSelectedDate(date);
+              }
+            }}
+          />
+        </div>
 
         {/* List Card */}
         <ListCard>

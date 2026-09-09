@@ -734,63 +734,60 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
                 onDateSelect={onHorizPick}
               />
 
-              {/* Analytics — fills the space under the horizontal strip */}
-              <div className="hw-analytics">
-                <div className="hw-ana-head"><span className="pulse" />Analytics<span style={{ marginLeft: "auto", color: "var(--faint)" }}>live</span></div>
-                <div className="hw-ana-grid">
-                  {/* Admissions & Releases */}
-                  <div className="hw-ana-card">
-                    <div className="hw-ana-title">Admissions &amp; Releases<b>7d</b></div>
-                    <div className="hw-ana-bars" dangerouslySetInnerHTML={{ __html: buildAnaBars() }} />
-                    <div className="hw-ana-x">
-                      <span><i style={{ background: "#2563EB" }} />Adm {admSeries7.reduce((a, b) => a + b, 0)}</span>
-                      <span><i style={{ background: "#10B981" }} />Rel {relSeries7.reduce((a, b) => a + b, 0)}</span>
-                    </div>
-                  </div>
-
-                  {/* Body status */}
-                  <div className="hw-ana-card">
-                    <div className="hw-ana-title">Body status<b>{bodySeg.care + bodySeg.pmHold + bodySeg.rel}</b></div>
-                    <div className="hw-seg">
-                      <b style={{ width: `${(bodySeg.care / bodyTotal) * 100}%`, background: "#2563EB" }} />
-                      <b style={{ width: `${(bodySeg.pmHold / bodyTotal) * 100}%`, background: "#D97706" }} />
-                      <b style={{ width: `${(bodySeg.rel / bodyTotal) * 100}%`, background: "#16A34A" }} />
-                    </div>
-                    <div className="hw-seg-legend">
-                      <span><i style={{ background: "#2563EB" }} />Care {bodySeg.care}</span>
-                      <span><i style={{ background: "#D97706" }} />PM {bodySeg.pmHold}</span>
-                      <span><i style={{ background: "#16A34A" }} />Released {bodySeg.rel}</span>
-                    </div>
-                  </div>
-
-                  {/* Postmortem tracking */}
-                  <div className="hw-ana-card">
-                    <div className="hw-ana-title">Postmortem<b>{pmTotal}</b></div>
-                    <div className="hw-ana-pm">
-                      <div className="row"><span>Pending</span><span className="bar"><i className="pend" style={{ width: `${pmPendPct}%` }} /></span><b>{pmPendingCount}</b></div>
-                      <div className="row"><span>Done</span><span className="bar"><i className="done" style={{ width: `${pmDonePct}%` }} /></span><b>{pmDone}</b></div>
-                    </div>
-                  </div>
-
-                  {/* Gender */}
-                  <div className="hw-ana-card">
-                    <div className="hw-ana-title">Gender<b>{genderStats.m + genderStats.f + genderStats.o}</b></div>
-                    <div className="hw-ana-donut">
-                      <div dangerouslySetInnerHTML={{ __html: buildGenderDonut() }} />
-                      <div className="dl">
-                        <span><i style={{ background: "#2563EB" }} />Male<b>{genderStats.m}</b></span>
-                        <span><i style={{ background: "#EC4899" }} />Female<b>{genderStats.f}</b></span>
-                        <span><i style={{ background: "#94A3B8" }} />Other<b>{genderStats.o}</b></span>
-                      </div>
-                    </div>
+              {/* Analytics — 7-day trend + per-branch bars (moved from the Intake panel) */}
+              <div className="hw-trend">
+                <div className="hw-trend-head">
+                  <span className="hw-trend-title">7-day trend · all branches</span>
+                  <div className="hw-trend-legend">
+                    {branches.map((b, i) => (
+                      <span key={b}><i style={{ background: branchColor(b, i) }} />{esc(b)}</span>
+                    ))}
                   </div>
                 </div>
+                <div className="hw-trend-svg" dangerouslySetInnerHTML={{ __html: buildTrend() }} />
+                <div className="hw-trend-x">
+                  {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
+                </div>
+              </div>
+
+              <div className="hw-charts">
+                {branches.map((b, bi) => {
+                  const data = series[bi]; const max = Math.max(3, ...data); const col = branchColor(b, bi);
+                  const dim = fbranch !== "ALL" && fbranch !== b;
+                  const wk = data.reduce((a, x) => a + x, 0);
+                  return (
+                    <div key={b} className={"hw-chart-wrap" + (dim ? " dim" : "")} style={{ "--c": col }}>
+                      <div className="hw-chart-top">
+                        <button className="hw-chart-branch" onClick={() => setFbranch(fbranch === b ? "ALL" : b)} title="Filter ledger by this branch">
+                          <i className="hw-cdot" />{esc(b)}
+                        </button>
+                        <span className="hw-chart-week">{wk} this week</span>
+                      </div>
+                      <div className="hw-chart-body">
+                        <i className="hw-gridline hw-g1" /><i className="hw-gridline hw-g2" />
+                        <div className="hw-bars">
+                          {data.map((v, i) => (
+                            <div key={i}
+                              className={"hw-bar" + (i === 6 ? " today" : "") + (v === 0 ? " zero" : "")}
+                              style={{ background: col, height: v === 0 ? 2 : Math.max(6, (v / max) * 80) + "%" }}
+                              title={`${WD[last7[i].getDay()]} ${last7[i].getDate()} ${MO[last7[i].getMonth()]} — ${v} ${v === 1 ? "admission" : "admissions"}`}>
+                              <span className="v">{v || ""}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="hw-chart-x">
+                        {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
         </section>
 
-        {/* ── 02 · Intake : trend line + bright bars ── */}
+        {/* ── 02 · Intake : analytics cards + intake ledger ── */}
         <section className="hw-panel">
           <div className="hw-p-head">
             <span className="hw-p-ic hw-i-violet"><Ic d={ICO.intake.d} s={15} /></span>
@@ -798,52 +795,57 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
             <span className="hw-p-meta">7 days <b>{seriesAll.reduce((a, b) => a + b, 0)}</b></span>
           </div>
           <div className="hw-p-body">
-            <div className="hw-trend">
-              <div className="hw-trend-head">
-                <span className="hw-trend-title">7-day trend · all branches</span>
-                <div className="hw-trend-legend">
-                  {branches.map((b, i) => (
-                    <span key={b}><i style={{ background: branchColor(b, i) }} />{esc(b)}</span>
-                  ))}
+            {/* Analytics — live stat cards (moved from the Calendar panel) */}
+            <div className="hw-analytics">
+              <div className="hw-ana-head"><span className="pulse" />Analytics<span style={{ marginLeft: "auto", color: "var(--faint)" }}>live</span></div>
+              <div className="hw-ana-grid">
+                {/* Admissions & Releases */}
+                <div className="hw-ana-card">
+                  <div className="hw-ana-title">Admissions &amp; Releases<b>7d</b></div>
+                  <div className="hw-ana-bars" dangerouslySetInnerHTML={{ __html: buildAnaBars() }} />
+                  <div className="hw-ana-x">
+                    <span><i style={{ background: "#2563EB" }} />Adm {admSeries7.reduce((a, b) => a + b, 0)}</span>
+                    <span><i style={{ background: "#10B981" }} />Rel {relSeries7.reduce((a, b) => a + b, 0)}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="hw-trend-svg" dangerouslySetInnerHTML={{ __html: buildTrend() }} />
-              <div className="hw-trend-x">
-                {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
-              </div>
-            </div>
-            <div className="hw-charts">
-              {branches.map((b, bi) => {
-                const data = series[bi]; const max = Math.max(3, ...data); const col = branchColor(b, bi);
-                const dim = fbranch !== "ALL" && fbranch !== b;
-                const wk = data.reduce((a, x) => a + x, 0);
-                return (
-                  <div key={b} className={"hw-chart-wrap" + (dim ? " dim" : "")} style={{ "--c": col }}>
-                    <div className="hw-chart-top">
-                      <button className="hw-chart-branch" onClick={() => setFbranch(fbranch === b ? "ALL" : b)} title="Filter ledger by this branch">
-                        <i className="hw-cdot" />{esc(b)}
-                      </button>
-                      <span className="hw-chart-week">{wk} this week</span>
-                    </div>
-                    <div className="hw-chart-body">
-                      <i className="hw-gridline hw-g1" /><i className="hw-gridline hw-g2" />
-                      <div className="hw-bars">
-                        {data.map((v, i) => (
-                          <div key={i}
-                            className={"hw-bar" + (i === 6 ? " today" : "") + (v === 0 ? " zero" : "")}
-                            style={{ background: col, height: v === 0 ? 2 : Math.max(6, (v / max) * 80) + "%" }}
-                            title={`${WD[last7[i].getDay()]} ${last7[i].getDate()} ${MO[last7[i].getMonth()]} — ${v} ${v === 1 ? "admission" : "admissions"}`}>
-                            <span className="v">{v || ""}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="hw-chart-x">
-                      {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
+
+                {/* Body status */}
+                <div className="hw-ana-card">
+                  <div className="hw-ana-title">Body status<b>{bodySeg.care + bodySeg.pmHold + bodySeg.rel}</b></div>
+                  <div className="hw-seg">
+                    <b style={{ width: `${(bodySeg.care / bodyTotal) * 100}%`, background: "#2563EB" }} />
+                    <b style={{ width: `${(bodySeg.pmHold / bodyTotal) * 100}%`, background: "#D97706" }} />
+                    <b style={{ width: `${(bodySeg.rel / bodyTotal) * 100}%`, background: "#16A34A" }} />
+                  </div>
+                  <div className="hw-seg-legend">
+                    <span><i style={{ background: "#2563EB" }} />Care {bodySeg.care}</span>
+                    <span><i style={{ background: "#D97706" }} />PM {bodySeg.pmHold}</span>
+                    <span><i style={{ background: "#16A34A" }} />Released {bodySeg.rel}</span>
+                  </div>
+                </div>
+
+                {/* Postmortem tracking */}
+                <div className="hw-ana-card">
+                  <div className="hw-ana-title">Postmortem<b>{pmTotal}</b></div>
+                  <div className="hw-ana-pm">
+                    <div className="row"><span>Pending</span><span className="bar"><i className="pend" style={{ width: `${pmPendPct}%` }} /></span><b>{pmPendingCount}</b></div>
+                    <div className="row"><span>Done</span><span className="bar"><i className="done" style={{ width: `${pmDonePct}%` }} /></span><b>{pmDone}</b></div>
+                  </div>
+                </div>
+
+                {/* Gender */}
+                <div className="hw-ana-card">
+                  <div className="hw-ana-title">Gender<b>{genderStats.m + genderStats.f + genderStats.o}</b></div>
+                  <div className="hw-ana-donut">
+                    <div dangerouslySetInnerHTML={{ __html: buildGenderDonut() }} />
+                    <div className="dl">
+                      <span><i style={{ background: "#2563EB" }} />Male<b>{genderStats.m}</b></span>
+                      <span><i style={{ background: "#EC4899" }} />Female<b>{genderStats.f}</b></span>
+                      <span><i style={{ background: "#94A3B8" }} />Other<b>{genderStats.o}</b></span>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              </div>
             </div>
 
             <div className="hw-filters">
