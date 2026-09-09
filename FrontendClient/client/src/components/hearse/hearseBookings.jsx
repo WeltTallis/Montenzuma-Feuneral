@@ -230,9 +230,9 @@ const Container = styled.div`
 `;
 
 const MainContent = styled.div`
-  max-width: 1400px;
+  max-width: 2200px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 0rem;
   @media (max-width: 900px) { padding: 0.75rem; }
 `;
 
@@ -661,7 +661,7 @@ const HearseBookings = () => {
 
   const handleDateFilter = useCallback((f) => { setDateFilter(f); setCurrentPage(1); }, []);
 
-    const loadData = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [bks, brs, hrs] = await Promise.all([api.getBookings(), api.getBranches(), api.getAllHearses()]);
@@ -1124,7 +1124,7 @@ const HearseBookings = () => {
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                               {dates.map((d, idx) => {
                                 const dt = new Date(d + 'T00:00:00');
-                                const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
+                                const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dt.getDay()];
                                 return (
                                   <span key={d} style={{
                                     background: color,

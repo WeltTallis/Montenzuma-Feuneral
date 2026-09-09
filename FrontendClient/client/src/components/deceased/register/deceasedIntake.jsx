@@ -697,23 +697,6 @@ const BlackButton = styled.button`
   }
 `;
 
-const ClearSigButton = styled.button`
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: ${COLORS.gray};
-  background: none;
-  border: none;
-  padding: 0.25rem 0;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: 'Saira', sans-serif;
-
-  &:hover {
-    color: ${COLORS.red};
-  }
-`;
 
 /* ─── Woodland Elegance Footer ─────────────────────────────── */
 const ElegantFooter = styled.footer`
@@ -1235,7 +1218,7 @@ const DeceasedRegistrationForm = () => {
           {/* ──── NATURAL BORDERLESS HEADER ──── */}
           <HeaderWrapper>
             <HeaderMain>
-              
+
               {/* Left Column: Greeting & Info */}
               <ColLeft>
                 <GreetingBlock>
@@ -1250,7 +1233,7 @@ const DeceasedRegistrationForm = () => {
                   </TextSlider>
                   <GreetingTime>{getGreetingTime()}</GreetingTime>
                 </GreetingBlock>
-                
+
                 <FacilityInfo>
                   <SectionLabel>Facility Information</SectionLabel>
                   <ContactItem>
@@ -1672,10 +1655,10 @@ const DeceasedRegistrationForm = () => {
                       </div>
                       {/* The Signature Pad now ALWAYS renders and stays open */}
                       <SigCanvasWrap>
-                        <ReusableSignaturePad 
-                          ref={sigPadRef1} 
-                          penColor={COLORS.inkBlue} 
-                          onChange={(data) => setSignedSignature(data || '')} 
+                        <ReusableSignaturePad
+                          ref={sigPadRef1}
+                          penColor={COLORS.inkBlue}
+                          onChange={(data) => setSignedSignature(data || '')}
                         />
                         <SigGuideText>Sign within boundaries</SigGuideText>
                       </SigCanvasWrap>
@@ -1730,9 +1713,7 @@ const DeceasedRegistrationForm = () => {
 
               {/* Three Action Buttons */}
               <ActionsContainer>
-                <ClearSigButton type="button" onClick={handleClear} style={{ marginRight: 'auto' }}>
-                  <RotateCcw size={14} style={{ marginRight: '4px' }} /> Clear Form
-                </ClearSigButton>
+
 
                 <GoldButton type="button" onClick={handleClear} disabled={isSubmitting}>
                   Reset Inputs

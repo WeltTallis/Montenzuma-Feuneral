@@ -40,7 +40,7 @@ const COLORS = {
 
 
 
-  
+
 };
 
 const spin = keyframes`
@@ -733,25 +733,7 @@ const BlackButton = styled.button`
   }
 `;
 
-const ClearSigButton = styled.button`
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: ${COLORS.gray};
-  background: none;
-  border: none;
-  padding: 0.25rem 0;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: 'Saira', sans-serif;
-
-  &:hover {
-    color: ${COLORS.red};
-  }
-`;
-
-/* ─── Woodland Elegance Footer ─────────────────────────────── */
+/* ─── Woodland Elegance Footer ───── */
 const ElegantFooter = styled.footer`
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Karla:wght@400;500;700&display=swap');
 
@@ -964,7 +946,7 @@ const DeceasedReleaseForm = () => {
         }
       })();
   };
-  
+
   const sigPadRef1 = useRef(null);
   const searchTimer = useRef(null);
   const lastSearchedRef = useRef('');
@@ -1145,22 +1127,22 @@ const DeceasedReleaseForm = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     let processedValue = value;
     if (name === 'admission_number') {
       processedValue = value.toUpperCase();
     }
-    
+
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : processedValue,
     }));
-    
+
     if (name === 'admission_number') {
       setIsFound(false);
       clearDeceasedInfo();
     }
-    
+
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -1205,7 +1187,7 @@ const DeceasedReleaseForm = () => {
     setErrors(prev => ({ ...prev, admission_number: '', full_name: '', gender: '' }));
     setIsFound(true);
     setIsSearching(false);
-    
+
     const foundAdmissionNumber = String(deceased.admission_number || '').trim().toUpperCase();
     lastSearchedRef.current = foundAdmissionNumber;
 
@@ -1259,7 +1241,7 @@ const DeceasedReleaseForm = () => {
 
       const result = response.data;
       if (!result.success) throw new Error(result.message || 'Failed to fetch');
-      
+
       const deceased = result.data;
 
       if (!deceased) {
@@ -1276,7 +1258,7 @@ const DeceasedReleaseForm = () => {
           ? `No deceased record found for admission number "${admissionNumber}".`
           : apiError,
       }));
-      
+
       clearDeceasedInfo();
     } finally {
       setIsSearching(false);
@@ -1310,7 +1292,7 @@ const DeceasedReleaseForm = () => {
   const handleSubmit = async (e) => {
     e?.preventDefault();
     const validationErrors = validateForm();
-    
+
     if (Object.keys(validationErrors).length > 0) {
       const missingFields = Object.values(validationErrors);
       notify.info('Missing required details', `Please complete the following: ${missingFields.join(', ')}`);
@@ -1491,7 +1473,7 @@ const DeceasedReleaseForm = () => {
           {/* ──── NATURAL BORDERLESS HEADER ──── */}
           <HeaderWrapper>
             <HeaderMain>
-              
+
               {/* Left Column: Greeting & Info */}
               <ColLeft>
                 <GreetingBlock>
@@ -1506,7 +1488,7 @@ const DeceasedReleaseForm = () => {
                   </TextSlider>
                   <GreetingTime>{getGreetingTime()}</GreetingTime>
                 </GreetingBlock>
-                
+
                 <FacilityInfo>
                   <SectionLabel>Facility Information</SectionLabel>
                   <ContactItem>
@@ -1547,7 +1529,7 @@ const DeceasedReleaseForm = () => {
             <form onSubmit={handleSubmit} noValidate>
               {/* Section 1 */}
               <Section>
-                <SectionHead>      
+                <SectionHead>
                   <SectionNum>01</SectionNum>
                   <SectionTitle>Release & Facility Information</SectionTitle>
                 </SectionHead>
@@ -2056,9 +2038,7 @@ const DeceasedReleaseForm = () => {
 
               {/* Three Action Buttons */}
               <ActionsContainer>
-                <ClearSigButton type="button" onClick={handleClear} style={{ marginRight: 'auto' }}>
-                  <RotateCcw size={14} style={{ marginRight: '4px' }} /> Clear Form
-                </ClearSigButton>
+
 
                 <GoldButton type="button" onClick={handleClear} disabled={isSubmitting}>
                   Reset Inputs

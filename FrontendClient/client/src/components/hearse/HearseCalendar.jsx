@@ -102,7 +102,7 @@ const Shell = styled.div`
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 24px 32px;
+
   overflow: hidden;
 
   @media (max-width: 640px) {
@@ -131,7 +131,7 @@ const Shell = styled.div`
   }
 
   .fc .fc-button {
-    background: #FFFFFF;
+    background: #342c2c;
     border: 1px solid #EEEEEE;
     color: #000000;
     font-weight: 600;
