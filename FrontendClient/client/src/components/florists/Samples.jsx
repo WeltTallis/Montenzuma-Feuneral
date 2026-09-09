@@ -426,27 +426,6 @@ function Candle({ height = 68 }) {
   )
 }
 
-// 14300 -> "14.3k", 1250000 -> "1.2M", 612 -> "612" — same style as the blog counts
-const fmtCount = (n) => {
-  const v = Number(n) || 0
-  if (v >= 1000000) return `${(v / 1000000).toFixed(v >= 10000000 ? 0 : 1).replace(/\.0$/, '')}M`
-  if (v >= 1000) return `${(v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, '')}k`
-  return String(v)
-}
-
-// One stable anonymous id per browser so the backend can remember which
-// ♥ taps belong to this client (survives reloads, no login needed)
-const getClientKey = () => {
-  try {
-    let k = localStorage.getItem('flower-client-key')
-    if (!k) {
-      k = (crypto?.randomUUID && crypto.randomUUID()) || `ck-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-      localStorage.setItem('flower-client-key', k)
-    }
-    return k
-  } catch { return `ck-${Date.now()}` }
-}
-
 // ── Story Item — tap to view · single add button on left ───────────────────
 function StoryItem({ arrangement, isActive, isSelected, size, animDelay, onClick }) {
   const ringCls = 'story-ring-wrap ' + (isActive ? 'sr-unseen' : isSelected ? 'sr-selected' : 'sr-seen')
@@ -572,13 +551,10 @@ function BrowseScreen({ selectedIds, onOpen, onAdd, onRemove, onPreview, arrange
             arrangement={a}
             isActive={i === bgIdx}
             isSelected={selectedIds.includes(a.id)}
-            isLiked={likedIds.includes(a.id)}
-            likeCount={likes[a.id] ?? 0}
             size={72}
             animDelay={i * 0.18}
             onClick={() => onOpen(a.id)}
             onAdd={() => onAdd(a.id)}
-            onLike={() => onLike(a.id)}
           />
         ))}
       </div>
@@ -660,41 +636,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [bookingOpen, setBookingOpen] = useState(false)
 
-  // ── Loves — TikTok-style hearts, persisted in the backend ──
-  // Backend owns the counts (flower_samples.like_count); this device remembers
-  // its own taps via a stable client key so hearts survive reloads.
-  const [likes, setLikes] = useState({})
-  const [likedIds, setLikedIds] = useState([])
-  const clientKeyRef = useRef(null)
-  if (!clientKeyRef.current) clientKeyRef.current = getClientKey()
-
-  const toggleLike = useCallback((id) => {
-    const sid = String(id)
-    setLikedIds(prev => {
-      const has = prev.includes(sid)
-      // Optimistic UI — instant heart pop, then confirmed by the server below
-      setLikes(m => ({ ...m, [sid]: Math.max(0, (Number(m[sid]) || 0) + (has ? -1 : 1)) }))
-      const clientKey = clientKeyRef.current || getClientKey()
-      api.post(
-        `/florist/flower-samples/${encodeURIComponent(sid)}/${has ? 'unlike' : 'like'}`,
-        { client_key: clientKey }
-      ).then(r => {
-        const serverCount = r?.data?.like_count
-        const serverLiked = r?.data?.liked
-        if (serverCount != null) setLikes(m => ({ ...m, [sid]: Number(serverCount) || 0 }))
-        if (serverLiked === true && !has) setLikedIds(p => (p.includes(sid) ? p : [...p, sid]))
-        if (serverLiked === false && has) setLikedIds(p => p.filter(x => x !== sid))
-      }).catch(() => {
-        // Offline / backend down — roll the optimistic tap back
-        setLikedIds(p => (has ? [...p, sid] : p.filter(x => x !== sid)))
-        setLikes(m => ({ ...m, [sid]: Math.max(0, (Number(m[sid]) || 0) + (has ? 1 : -1)) }))
-      })
-      return has ? prev.filter(x => x !== sid) : [...prev, sid]
-    })
-  }, [])
-
-  // Fetch flower arrangements from backend API — counts + this device's ♥ come
-  // straight from the server, so clients see live totals (1k-style via fmtCount)
+  // Fetch flower arrangements from the backend API
   useEffect(() => {
     let cancelled = false
     const loadArrangements = async () => {
@@ -727,39 +669,9 @@ export default function App() {
               d: '12–18"',
               placement: 'Place at the memorial service.',
               price: sample.price != null ? Number(sample.price) : null,
-              likeCount: Number(sample.like_count ?? sample.likes ?? 0) || 0,
             };
           });
           setArrangements(transformed);
-          // Seed the visible counts from the backend — no more fake local seeds
-          setLikes(() => {
-            const m = {}
-            transformed.forEach(a => { m[a.id] = a.likeCount })
-            return m
-          })
-          // Hydrate this device's own ♥ state so hearts survive reloads
-          try {
-            const mine = await api.get('/florist/flower-samples/likes/mine', {
-              params: { tenant_slug: tenantSlug, client_key: clientKeyRef.current || getClientKey() },
-            })
-            if (cancelled) return
-            const md = mine?.data
-            if (md && md.success) {
-              if (Array.isArray(md.liked)) {
-                setLikedIds(md.liked.map(String))
-              }
-              if (md.counts && typeof md.counts === 'object') {
-                setLikes(() => {
-                  const m = {}
-                  transformed.forEach(a => {
-                    const key = String(a.id)
-                    m[a.id] = Number(md.counts[key] ?? a.likeCount) || 0
-                  })
-                  return m
-                })
-              }
-            }
-          } catch { /* offline — optimistic taps still work */ }
         } else if (!cancelled) {
           setArrangements([]);
         }
@@ -799,9 +711,6 @@ export default function App() {
         selectedIds={selected}
         onOpen={id => setExpandedId(id)}
         onAdd={toggle}
-        onLike={toggleLike}
-        likes={likes}
-        likedIds={likedIds}
         onRemove={remove}
         onPreview={openBooking}
         arrangements={arrangements}
@@ -815,9 +724,6 @@ export default function App() {
           onNavigate={setExpandedId}
           onClose={() => setExpandedId(null)}
           onToggle={toggle}
-          onLike={toggleLike}
-          likes={likes}
-          likedIds={likedIds}
           onPreview={openBooking}
           arrangements={arrangements}
         />

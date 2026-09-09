@@ -1,24 +1,19 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import api from '../../api/axios';
-import { ENDPOINTS } from '../../api/endpoints';
-import env from '../../utils/config/env';
-import {
-  getTenantSlug,
-  getParentTenantSlug,
-  getTenantId,
-  getBranchId,
-  getBranches,
-} from '../../utils/globalAuth';
+﻿import { formatDate, toDateKey, todayKey } from '../../utils/dates/parseDates';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import HorizontalCalendar from '../views/horizontalCalender';
-import WeeklyView from '../views/weeklyView';
-import DailyView from '../views/dailyView';
-import { formatDate, toDateKey, todayKey } from '../../utils/dates/parseDates';
 import { useSocket } from '../../utils/context/socketContext';
 import ReservationDashboard from './ReservationDashboard';
-
+import { toast, ToastContainer } from 'react-toastify';
 import CoffinTransfers from './coffinTransfers';
+import { ENDPOINTS } from '../../api/endpoints';
+import 'react-toastify/dist/ReactToastify.css';
+import WeeklyView from '../views/weeklyView';
+import DailyView from '../views/dailyView';
+import api from '../../api/axios';
+import env from '../../utils/config/env';
+import {
+  getTenantSlug, getParentTenantSlug, getTenantId, getBranchId, getBranches,
+} from '../../utils/globalAuth';
 
 const API = env.FULL_API_URL;
 
@@ -2475,13 +2470,13 @@ const CoffinDashboard = () => {
           branchSelector={
             branches.length > 1
               ? {
-                  value: currentBranch || '',
-                  onChange: (e) => {
-                    // Branch ids are strings/UUIDs - do NOT parseInt() (that yields NaN).
-                    setCurrentBranch(e.target.value);
-                  },
-                  options: branches.map((b) => ({ value: b.id, label: b.name })),
-                }
+                value: currentBranch || '',
+                onChange: (e) => {
+                  // Branch ids are strings/UUIDs - do NOT parseInt() (that yields NaN).
+                  setCurrentBranch(e.target.value);
+                },
+                options: branches.map((b) => ({ value: b.id, label: b.name })),
+              }
               : null
           }
           headerActions={
@@ -2542,7 +2537,7 @@ const CoffinDashboard = () => {
       </div>
 
 
-    
+
 
       {/* Add Coffin Modal */}
       <div
