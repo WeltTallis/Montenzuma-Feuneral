@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { MODULES, DASH_NAV } from "./config";
 import ModuleDashboard from "./ModuleDashboard";
 import DashboardNav from "./DashboardNav";
-import ReservationDashboard from "../components/coffins/ReservationDashboard";
+import CoffinInventoryDashboard from "../components/dashboard/CoffinInventoryDashboard";
 
 /* ─── Design tokens (matches workshop palette) ─────────────────── */
 const T = {
@@ -172,7 +172,7 @@ export default function Dashboard({ tenantSlug = "", tenantData }) {
           activeTab === "coffin"
             ? (
               <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-                <ReservationDashboard />
+                <CoffinInventoryDashboard />
               </div>
             )
             : <ModuleDashboard key={activeTab} mod={mod} />

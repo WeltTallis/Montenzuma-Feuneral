@@ -66,7 +66,7 @@ export default function CoffinInventoryDashboard() {
   if (error) return <ErrorState error={error} onRetry={fetchData} />;
 
   return (
-    <div style={{ padding: 24, background: S.bg, minHeight: '100vh' }}>
+    <div style={{ padding: 24, background: S.bg, minHeight: '100%', overflowY: 'auto' }}>
       <ToastContainer position="top-right" />
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: S.text }}>Coffin Inventory Dashboard</h1>
