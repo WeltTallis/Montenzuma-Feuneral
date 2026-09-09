@@ -171,7 +171,7 @@ export default function Dashboard({ tenantSlug = "", tenantData }) {
         {mod && (
           activeTab === "coffin"
             ? (
-              <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
+              <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
                 <ReservationDashboard />
               </div>
             )

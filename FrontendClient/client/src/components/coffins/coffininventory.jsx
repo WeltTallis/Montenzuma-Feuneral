@@ -858,7 +858,8 @@ const Tag = ({ cls, children }) => {
 //  Main Component 
 const CoffinDashboard = () => {
   const { socket } = useSocket();
-  const [tab, setTab] = useState('inventory');
+  // Reservations ("bookings") is always the landing tab when Coffins opens.
+  const [tab, setTab] = useState('bookings');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -2435,10 +2436,11 @@ const CoffinDashboard = () => {
 
 
       {/* Tab content: ReservationDashboard IS the page shell - its hoisted toolbar hosts the top navigation */}
+      {/* Full-height, uncapped: the shell always fills the entire screen and scrolls internally. */}
       <div
         style={{
-          height: 'calc(100vh - 200px)',
-          minHeight: 560,
+          height: '100vh',
+          minHeight: 0,
           borderRadius: 16,
           overflow: 'hidden',
           border: `1px solid ${S.border}`,
@@ -2459,8 +2461,8 @@ const CoffinDashboard = () => {
           }}
           onViewBooking={(id) => viewBooking(id)}
           navTabs={[
-            { key: 'inventory', icon: 'fa-boxes-stacked', label: 'Inventory' },
             { key: 'bookings', icon: 'fa-calendar-check', label: 'Reservations' },
+            { key: 'inventory', icon: 'fa-boxes-stacked', label: 'Inventory' },
             {
               key: 'transfers',
               icon: 'fa-right-left',

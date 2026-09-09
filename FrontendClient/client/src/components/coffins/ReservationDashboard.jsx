@@ -302,7 +302,7 @@ export default function ReservationDashboard(props) {
     '.cb-an-leg-val{font-size:11px;font-weight:700;color:' + TX + '}',
     '.cb-an-leg-pct{font-size:9px;color:' + TX4 + ';width:32px;text-align:right}',
 
-    '.cb-main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:' + CARD + ';position:relative;overflow-y:auto}',
+    '.cb-main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:' + CARD + ';position:relative;overflow:hidden}',
 
     '.cb-tb{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;border-bottom:1px solid ' + BRD + ';background:' + CARD + ';flex-shrink:0;gap:8px}',
     '.cb-tb-left{display:flex;align-items:center;gap:8px}',
@@ -593,7 +593,7 @@ export default function ReservationDashboard(props) {
               })}
             </div>
 
-            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain' }}>
               {visible.length === 0 ? (
                 <div className="cb-empty">
                   <div className="cb-empty-ico">{IC.cal}</div>
