@@ -707,6 +707,56 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
                 selectedDate={selDate}
                 onDateSelect={onHorizPick}
               />
+
+              {/* Analytics — 7-day multi-branch trend + per-branch bars */}
+              <div className="hw-trend">
+                <div className="hw-trend-head">
+                  <span className="hw-trend-title">7-day trend · all branches</span>
+                  <div className="hw-trend-legend">
+                    {branches.map((b, i) => (
+                      <span key={b}><i style={{ background: branchColor(b, i) }} />{esc(b)}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="hw-trend-svg" dangerouslySetInnerHTML={{ __html: buildTrend() }} />
+                <div className="hw-trend-x">
+                  {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
+                </div>
+              </div>
+
+              <div className="hw-charts">
+                {branches.map((b, bi) => {
+                  const data = series[bi]; const max = Math.max(3, ...data); const col = branchColor(b, bi);
+                  const dim = fbranch !== "ALL" && fbranch !== b;
+                  const wk = data.reduce((a, x) => a + x, 0);
+                  return (
+                    <div key={b} className={"hw-chart-wrap" + (dim ? " dim" : "")} style={{ "--c": col }}>
+                      <div className="hw-chart-top">
+                        <button className="hw-chart-branch" onClick={() => setFbranch(fbranch === b ? "ALL" : b)} title="Filter ledger by this branch">
+                          <i className="hw-cdot" />{esc(b)}
+                        </button>
+                        <span className="hw-chart-week">{wk} this week</span>
+                      </div>
+                      <div className="hw-chart-body">
+                        <i className="hw-gridline hw-g1" /><i className="hw-gridline hw-g2" />
+                        <div className="hw-bars">
+                          {data.map((v, i) => (
+                            <div key={i}
+                              className={"hw-bar" + (i === 6 ? " today" : "") + (v === 0 ? " zero" : "")}
+                              style={{ background: col, height: v === 0 ? 2 : Math.max(6, (v / max) * 80) + "%" }}
+                              title={`${WD[last7[i].getDay()]} ${last7[i].getDate()} ${MO[last7[i].getMonth()]} — ${v} ${v === 1 ? "admission" : "admissions"}`}>
+                              <span className="v">{v || ""}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="hw-chart-x">
+                        {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>

@@ -622,7 +622,9 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
   if (!isOpen) return null;
 
   return (
+
     <>
+
       <GlobalStyle />
       <Scrim onClick={onClose} />
 
@@ -791,8 +793,11 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
           </form>
         </PanelBody>
       </Panel>
+
     </>
+
   );
+
 };
 
 export default ChargeSettingsModal;
