@@ -1077,7 +1077,7 @@ const DeceasedListPage = () => {
 
   const openProfile = (id) => {
     const tenantSlug = getTenantSlug();
-    navigate(`/tenant/${tenantSlug}/deceased?id=${id}`);
+    navigate(`/tenant/${tenantSlug}/deceased?id=${encodeURIComponent(id)}`);
   };
 
   // ─── Export Functions ───────────────────────────────────────────

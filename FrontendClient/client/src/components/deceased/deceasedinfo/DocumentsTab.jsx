@@ -3,8 +3,8 @@ import styled from 'styled-components';
 import { C, formatDate } from './theme';
 import RouteOptimizer from '../../hearse/RouteOptimizer';
 import api from '../../../api/axios';
-import { getTenantHeaders } from '../../../api/endpoints';
 import env from '../../../utils/config/env';
+import { notify } from '../../../utils/notify';
 
 const SectionHead = styled.div`
   font-size: 12px; 
@@ -143,7 +143,7 @@ const DocumentsTab = ({ documents, deceasedId }) => {
   const handleUploadDocument = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !deceasedId) {
-      alert('Missing file or deceased ID');
+      notify.error('Upload failed', 'Missing file or deceased ID');
       return;
     }
 
@@ -152,34 +152,49 @@ const DocumentsTab = ({ documents, deceasedId }) => {
       const formData = new FormData();
       formData.append('document', file);
 
-      // NOTE: do NOT hand-set Content-Type — axios/XHR appends the
-      // multipart boundary itself. Setting it manually makes multer unable
-      // to parse the body (→ "No file uploaded" / 500).
+      // IMPORTANT: Do not set Content-Type header — axios will automatically
+      // set multipart/form-data with the correct boundary. The global api
+      // instance defaults to application/json which breaks multer parsing.
+      const headers = {
+        'x-tenant-slug': localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug') || ''
+      };
+      // Only add auth headers if available (don't spread getTenantHeaders to avoid
+      // inheriting the application/json Content-Type from the api instance)
+      try {
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('authToken');
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const slug = localStorage.getItem('tenantSlug');
+        if (slug) headers['x-tenant-slug'] = slug;
+      } catch (e) { /* localStorage may not be available */ }
+
       const response = await api.post(`/documents/${deceasedId}/upload`, formData, {
-        headers: {
-          ...getTenantHeaders(),
-          'x-tenant-slug': localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug') || ''
-        },
+        headers,
         withCredentials: false
       });
 
       if (response.data?.success || response.data?.document) {
-        alert('Document uploaded successfully');
+        notify.success('Document uploaded', response.data?.message || 'Document uploaded successfully');
+        // Refresh the documents list instead of full page reload
         window.location.reload();
       } else {
-        alert(response.data?.message || 'Failed to upload document');
+        notify.error('Upload failed', response.data?.message || 'Failed to upload document');
       }
     } catch (error) {
       console.error('Error uploading document:', error);
       const status = error.response?.status;
       const msg = error.response?.data?.message;
-      if (status === 400 || status === 413) {
-        alert(msg || (status === 413 ? 'File is too large (max 50MB).' : 'Invalid file type. Only PDFs, images,and Word documents are allowed.'));
+      let title = 'Upload failed';
+      let detail = 'Failed to upload document. Please try again later.';
+      if (status === 400) {
+        detail = msg || 'Invalid file type. Only PDFs, images, and Word documents are allowed.';
+      } else if (status === 413) {
+        detail = 'File is too large (max 50MB).';
+      } else if (status === 404) {
+        detail = 'Deceased record not found.';
       } else if (msg) {
-        alert(msg);
-      } else {
-        alert('Failed to upload document. Please try again later.');
+        detail = msg;
       }
+      notify.error(title, detail);
     } finally {
       setIsUploading(false);
     }

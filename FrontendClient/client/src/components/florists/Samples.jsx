@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, useNavigate } from 'react'
 import api from '../../api/axios'
 import Snowfall from './Snowfall'
 import FlowerSnowBookingForm from './FlowerSnowBookingForm'
@@ -176,6 +176,22 @@ button:focus-visible, [role="button"]:focus-visible { outline: 2px solid #B98480
   display: flex; align-items: center; gap: 12px;
   animation: fadeIn 0.3s ease;
 }
+  .float-add {
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    z-index: 20; width: 52px; height: 52px; border-radius: 50%;
+    background: #6B4045; color: #FBF3EE; border: none; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(107,64,69,0.4); display: flex; align-items: center;
+    justify-content: center; transition: transform .2s, box-shadow .2s;
+    animation: fadeIn 0.4s ease;
+  }
+  .float-add:hover { transform: translateY(-50%) scale(1.06); box-shadow: 0 6px 28px rgba(107,64,69,0.55); }
+  .float-add:active { transform: translateY(-50%) scale(0.94); }
+  .float-add svg { width: 22px; height: 22px; }
+  .float-add-label {
+    position: absolute; right: 12px; top: calc(50% + 30px);
+    font: 500 10px 'Karla', sans-serif; color: rgba(255,255,255,0.7);
+    letter-spacing: 0.05em; white-space: nowrap; pointer-events: none;
+  }
 .add-float-btn {
   padding: 12px 22px; border-radius: 8px;
   background: #475A43; color: #fff;
@@ -557,7 +573,25 @@ function BrowseScreen({ selectedIds, onOpen, onAdd, onRemove, onPreview, arrange
             onAdd={() => onAdd(a.id)}
           />
         ))}
-      </div>
+      
+        {/* Floating Add button — selects current hero sample */}
+        {allArrangements.length > 0 && (
+          <>
+            <button
+              className="float-add"
+              onClick={() => { const a = allArrangements[bgIdx]; if (a) onAdd(a.id) }}
+              aria-label="Add current flower to booking"
+              title={allArrangements[bgIdx] ? 'Add ' + allArrangements[bgIdx].name : 'Add current flower'}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+            <span className="float-add-label">Add</span>
+          </>
+        )}
+</div>
 
       <div className="browse-title-block">
         <div className="browse-name-tag">Floral Tributes</div>
@@ -635,6 +669,8 @@ export default function App() {
   const [arrangements, setArrangements] = useState([])
   const [loading, setLoading] = useState(true)
   const [bookingOpen, setBookingOpen] = useState(false)
+  const navigate = useNavigate()
+
 
   // Fetch flower arrangements from the backend API
   useEffect(() => {
@@ -737,7 +773,7 @@ export default function App() {
         arrangements={arrangements}
         onQtyChange={(id, q) => setQuantities(prev => ({ ...prev, [id]: Math.max(1, q) }))}
         onRemove={remove}
-        onBooked={() => { setSelected([]); setQuantities({}) }}
+        onBooked={() => { setSelected([]); setQuantities({}); navigate('/flower-samples') }}
         onClose={() => setBookingOpen(false)}
       />
     </>

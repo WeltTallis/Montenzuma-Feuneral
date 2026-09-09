@@ -98,8 +98,8 @@ const uploadDocument = async (req, res) => {
     if (!dbName) {
       return res.status(404).json({ message: 'Tenant database not found' });
     }
-    // FIX: Use deceased_idd instead of deceasedId to match your database
-    const { deceased_idd } = req.params;
+    // FIX: Use deceasedId to match the route parameter name
+    const { deceasedId } = req.params;
     const { type } = req.body;
     const file = req.file;
 
@@ -113,8 +113,8 @@ const uploadDocument = async (req, res) => {
     // Check if deceased exists in tenant database
     const deceasedCheck = await safeTenantQuery(
       dbName,
-      'SELECT id FROM deceased WHERE deceased_idd = ?',
-      [deceased_idd],
+      'SELECT id FROM deceased WHERE deceased_id = ?',
+      [deceasedId],
     );
 
     if (deceasedCheck.length === 0) {
@@ -133,13 +133,12 @@ const uploadDocument = async (req, res) => {
         message: 'Invalid file type. Only PDF and image files are allowed.',
       });
     }
-    // Multi-tenant folder structure: {GLOBAL_UPLOADS_DIR}/documents/{tenantSlug}/{deceased_idd}/
-    const uploadDir = documentsDir(tenantSlug, deceased_idd);
+    // Multi-tenant folder structure: {GLOBAL_UPLOADS_DIR}/documents/{tenantSlug}/{deceasedId}/
+    const uploadDir = documentsDir(tenantSlug, deceasedId);
     await ensureFolderExists(uploadDir);
 
     const uniqueName = `${Date.now()}-${Math.floor(Math.random() * 10000)}${path.extname(file.originalname)}`;
     const finalPath = path.join(uploadDir, uniqueName);
-    fs.renameSync(file.path, finalPath);
 
     const uploadedAt = getKenyaTimeISO();
     const createdAt = getKenyaTimeISO();
@@ -152,7 +151,7 @@ const uploadDocument = async (req, res) => {
         (deceased_id, document_type, file_name, file_path, mime_type, uploaded_at, created_at, tenant_slug) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        deceased_idd, // Use deceased_idd here
+        deceasedId,
         type,
         file.originalname,
         relativePath,
@@ -189,7 +188,7 @@ const uploadDocument = async (req, res) => {
 const getDocuments = async (req, res) => {
   try {
     const tenantSlug = getTenantSlug(req);
-    const { deceased_idd } = req.params;
+    const { deceasedId } = req.params;
 
     // Resolve tenant database
     const dbName = await lookupTenantDatabase(tenantSlug);
@@ -211,7 +210,7 @@ const getDocuments = async (req, res) => {
        FROM documents 
        WHERE deceased_id = ? AND (tenant_slug = ? OR tenant_slug IS NULL)
        ORDER BY uploaded_at DESC`,
-      [deceased_idd, tenantSlug],
+      [deceasedId, tenantSlug],
     );
 
     return res.status(200).json({

@@ -193,9 +193,8 @@ const FbSymbols = () => (
 
 // __COMP__
 
-const BLANK = { date: '', dep: '', svc: '', loc: '', addr: '', budget: '', notes: '', msg: '', name: '', phone: '', email: '' }
+const BLANK = { date: '', dep: '', svc: '', notes: '', msg: '', name: '', phone: '', email: '' }
 const SERVICES = [['Funeral service', 'Funeral'], ['Memorial', 'Memorial'], ['Celebration of life', 'Celebration of life'], ['Graveside', 'Graveside']]
-const LOCATIONS = ['Our Chapel of Rest', 'Family residence', 'Place of worship', 'Cemetery or crematorium']
 
 export default function FlowerSnowBookingForm({ open, selected = [], quantities = {}, arrangements = [], onQtyChange, onRemove, onBooked, onClose }) {
   const [form, setForm] = useState(BLANK)
@@ -210,7 +209,6 @@ export default function FlowerSnowBookingForm({ open, selected = [], quantities 
 
   const d0 = new Date()
   const minDate = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, '0')}-${String(d0.getDate()).padStart(2, '0')}`
-  const needAddr = !!form.loc && form.loc !== 'Our Chapel of Rest'
 
   const set = (k) => ({
     value: form[k],
@@ -224,8 +222,6 @@ export default function FlowerSnowBookingForm({ open, selected = [], quantities 
     const b = {}
     if (!form.date || form.date < minDate) b.date = true
     if (!form.svc) b.svc = true
-    if (!form.loc) b.loc = true
-    if (needAddr && !form.addr.trim()) b.addr = true
     if (form.name.trim().length < 2) b.name = true
     if (!/^[+\d][\d\s().-]{6,}$/.test(form.phone.trim())) b.phone = true
     if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) b.email = true
@@ -247,12 +243,11 @@ export default function FlowerSnowBookingForm({ open, selected = [], quantities 
         const arr = arrangements.find(a => a.id === id)
         return (arr?.name || arr?.title || 'Arrangement') + ' ×' + (quantities[id] || 1)
       }).join(', ')
-      const instructions = [form.svc && `Service type: ${form.svc}`, form.budget && `Budget: ${form.budget}`, form.notes && `Flower notes: ${form.notes}`].filter(Boolean).join(' | ')
+      const instructions = [form.svc && `Service type: ${form.svc}`, form.notes && `Flower notes: ${form.notes}`].filter(Boolean).join(' | ')
       await api.post('/florist/bookings', {
         arrangement_name: names,
         deceased_name: form.dep || null,
         booked_by: form.name || null,
-        funeral_home: form.loc ? (needAddr ? `${form.loc} — ${form.addr}` : form.loc) : null,
         date: form.date || null,
         phone: form.phone || null,
         email: form.email || null,
@@ -262,7 +257,7 @@ export default function FlowerSnowBookingForm({ open, selected = [], quantities 
       })
       const ref = 'MH-' + Math.random().toString(36).slice(2, 6).toUpperCase()
       const dateStr = form.date ? new Date(form.date + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : ''
-      setConfirm({ ref, dateStr, loc: form.loc || '' })
+      setConfirm({ ref, dateStr })
     } catch (error) {
       alert(error.friendlyMessage || 'Failed to submit. Please try again.')
     } finally {
@@ -312,7 +307,6 @@ export default function FlowerSnowBookingForm({ open, selected = [], quantities 
                     <div className="cref">
                       {confirm.ref && <span>Ref {confirm.ref}</span>}
                       {confirm.dateStr && <span>{confirm.dateStr}</span>}
-                      {confirm.loc && <span>{confirm.loc}</span>}
                     </div>
                     <div className="cactions">
                       <button type="button" className="btn-ghost" style={{ marginTop: 0 }} onClick={resetAll}>Make another booking</button>
@@ -377,47 +371,15 @@ export default function FlowerSnowBookingForm({ open, selected = [], quantities 
                         </div>
                         <p className="err">Required</p>
                       </div>
-                      <div className={'field' + (bad.loc ? ' bad' : '')}>
-                        <label htmlFor="fLoc">Delivery location</label>
-                        <div className="selectwrap">
-                          <div className="inp">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-5.8-7-11a7 7 0 0 1 14 0c0 5.2-7 11-7 11Z" /><circle cx="12" cy="10" r="2.4" /></svg>
-                            <select id="fLoc" {...set('loc')}>
-                              <option value="">Select…</option>
-                              {LOCATIONS.map(l => <option key={l}>{l}</option>)}
-                            </select>
-                          </div>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-                        </div>
-                        <p className="err">Required</p>
-                      </div>
-                      <div className={'reveal' + (needAddr ? ' open' : '')}><div>
-                        <div className={'field' + (bad.addr ? ' bad' : '')}>
-                          <label htmlFor="fAddr">Address</label>
-                          <div className="inp">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-5.8-7-11a7 7 0 0 1 14 0c0 5.2-7 11-7 11Z" /><circle cx="12" cy="10" r="2.4" /></svg>
-                            <input type="text" id="fAddr" {...set('addr')} />
-                          </div>
-                          <p className="err">Required</p>
-                        </div>
-                      </div></div>
                     </fieldset>
 
                     <fieldset>
                       <div className="fs-title"><svg className="b"><use href="#bloom" /></svg>Arrangement</div>
-                      <div className="frow">
-                        <div className="field">
-                          <label htmlFor="fBudget">Budget <span className="opt">(optional)</span></label>
-                          <div className="inp">
-                            <input type="text" id="fBudget" inputMode="decimal" placeholder="$" {...set('budget')} />
-                          </div>
-                        </div>
-                        <div className="field">
-                          <label htmlFor="fNotes">Flower notes <span className="opt">(optional)</span></label>
-                          <div className="tareawrap">
-                            <textarea id="fNotes" maxLength={300} placeholder="Favourite blooms, colours…" {...set('notes')} />
-                            <span className="counter">{form.notes.length} / 300</span>
-                          </div>
+                      <div className="field">
+                        <label htmlFor="fNotes">Flower notes <span className="opt">(optional)</span></label>
+                        <div className="tareawrap">
+                          <textarea id="fNotes" maxLength={300} placeholder="Favourite blooms, colours…" {...set('notes')} />
+                          <span className="counter">{form.notes.length} / 300</span>
                         </div>
                       </div>
                     </fieldset>

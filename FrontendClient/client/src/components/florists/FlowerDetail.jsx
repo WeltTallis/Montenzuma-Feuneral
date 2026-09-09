@@ -115,13 +115,7 @@ const DETAIL_CSS = `
 button:focus-visible, [role="button"]:focus-visible { outline: 2px solid #B98480; outline-offset: 2px; }
 
 /* content */
-.detail-content { padding: 48px 38px 80px; flex: 1; }
-.detail-overview-img {
-  width: 100%; height: 220px; border-radius: 10px; overflow: hidden;
-  margin-bottom: 32px; background: #F0E3DC; display: none;
-}
-.detail-overview-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.detail-eyebrow {
+.detail-content { padding: 48px 38px 80px; flex: 1; }.detail-eyebrow {
   font: 600 9px 'Karla', sans-serif; letter-spacing: 0.3em;
   text-transform: uppercase; color: #B98480; margin-bottom: 14px;
 }
@@ -225,7 +219,6 @@ button:focus-visible, [role="button"]:focus-visible { outline: 2px solid #B98480
   .detail-scroll-panel { height: auto; overflow-y: visible; }
   .detail-nav { position: relative; padding: 16px 22px; }
   .detail-content { padding: 32px 22px 60px; }
-  .detail-overview-img { display: block; }
   .fs-cart { bottom: 18px; right: 18px; }
 }
 `
@@ -378,11 +371,6 @@ export default function ExpandedView({ activeId, selectedIds, onNavigate, onClos
         </div>
 
         <div className="detail-content" key={activeId}>
-          {/* Mobile-only overview image */}
-          <div className="detail-overview-img">
-            <img src={arr.img || arr.portrait} alt={arr.name || arr.title} />
-          </div>
-
           <div className="detail-eyebrow">{arr.tag} · {arr.note}</div>
           <h2 className="detail-title">{arr.name || arr.title}</h2>
           <p className="detail-desc">{arr.desc}</p>

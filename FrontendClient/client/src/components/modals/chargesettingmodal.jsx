@@ -13,7 +13,7 @@ const BASE_API = env.API_URL;
 // Configure axios
 axios.defaults.baseURL = BASE_API;
 
-// 🎨 Modern Color Palette
+//  Modern Color Palette
 const Colors = {
   primary: "#6B46C1",
   primaryDark: "#553C9A",
@@ -24,15 +24,15 @@ const Colors = {
   warning: "#F59E0B",
   danger: "#EF4444",
   info: "#06B6D4",
-  
+
   background: "#F8FAFC",
   surface: "#FFFFFF",
   surfaceHover: "#F9FBFC",
-  
+
   textPrimary: "#1F2937",
   textSecondary: "#6B7280",
   textLight: "#9CA3AF",
-  
+
   border: "#E5E7EB",
   borderLight: "#F3F4F6",
   shadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
@@ -494,7 +494,7 @@ const rateProfiles = [
 const ChargeSettingsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   const [chargeSettings, setChargeSettings] = useState({
     rateProfile: "standard",
     currency: "KES",
@@ -514,7 +514,7 @@ const ChargeSettingsPage = () => {
     const fetchData = async () => {
       try {
         setIsLoadingData(true);
-        
+
         // Fetch deceased data
         const [deceasedResponse, billingResponse] = await Promise.all([
           axios.get(`/charge-settings?id=${id}`),
@@ -524,7 +524,7 @@ const ChargeSettingsPage = () => {
         if (deceasedResponse.data.success) {
           const data = deceasedResponse.data.data;
           setDeceasedData(data);
-          
+
           // Set charge settings from API response
           setChargeSettings({
             rateProfile: data.rateProfile || "standard",
@@ -556,18 +556,18 @@ const ChargeSettingsPage = () => {
   // Handle input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     // For number inputs, remove any non-digit characters
     if (name === 'dailyRate' || name === 'hourlyRate' || name === 'usdRate') {
       // Remove any non-digit characters
       let cleanValue = value.replace(/[^\d]/g, '');
-      
+
       // Remove leading zeros
       cleanValue = cleanValue.replace(/^0+/, '');
-      
+
       // If empty after cleaning, set to empty string
       cleanValue = cleanValue === '' ? '' : parseInt(cleanValue, 10);
-      
+
       setChargeSettings((prev) => ({
         ...prev,
         [name]: cleanValue,
@@ -636,11 +636,11 @@ const ChargeSettingsPage = () => {
           axios.get(`/charge-settings?id=${id}`),
           axios.get(`/billing-summary/${id}`)
         ]);
-        
+
         if (deceasedResponse.data.success) {
           setDeceasedData(deceasedResponse.data.data);
         }
-        
+
         if (billingResponse.data.success) {
           setBillingSummary(billingResponse.data.data);
         }
@@ -663,10 +663,10 @@ const ChargeSettingsPage = () => {
   if (isLoadingData) {
     return (
       <PageContainer>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
           height: '50vh',
           flexDirection: 'column',
           gap: '1rem'
@@ -681,13 +681,13 @@ const ChargeSettingsPage = () => {
   }
 
   const currentProfile = rateProfiles.find(profile => profile.id === chargeSettings.rateProfile);
-  
+
   // Format currency
   const formatCurrency = (amount, currency) => {
     if (!amount || amount === "") return '0';
     const number = parseInt(amount, 10);
     if (isNaN(number)) return '0';
-    
+
     if (currency === 'USD') {
       return `$${number.toLocaleString()}`;
     } else {
@@ -696,8 +696,8 @@ const ChargeSettingsPage = () => {
   };
 
   // Calculate display rate
-  const displayRate = chargeSettings.chargeType === "daily" 
-    ? chargeSettings.dailyRate 
+  const displayRate = chargeSettings.chargeType === "daily"
+    ? chargeSettings.dailyRate
     : chargeSettings.hourlyRate;
 
   return (
@@ -739,7 +739,7 @@ const ChargeSettingsPage = () => {
               </StatValue>
             </StatInfo>
           </StatCard>
-          
+
           <StatCard>
             <StatIcon color={Colors.primary}>
               <DollarSign size={20} />
@@ -751,7 +751,7 @@ const ChargeSettingsPage = () => {
               </StatValue>
             </StatInfo>
           </StatCard>
-          
+
           <StatCard>
             <StatIcon color={Colors.info}>
               <BarChart size={20} />
@@ -773,7 +773,7 @@ const ChargeSettingsPage = () => {
                 </SectionIcon>
                 <SectionTitle>Client Profile</SectionTitle>
               </SectionHeader>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {rateProfiles.map((profile) => (
                   <RateProfileCard
@@ -900,8 +900,8 @@ const ChargeSettingsPage = () => {
 
           {/* Summary Section */}
           <SummaryBox>
-            <h4 style={{ 
-              margin: "0 0 1.5rem 0", 
+            <h4 style={{
+              margin: "0 0 1.5rem 0",
               color: Colors.primary,
               fontWeight: 800,
               fontSize: '1.5rem',
@@ -911,14 +911,14 @@ const ChargeSettingsPage = () => {
             }}>
               <Shield size={28} /> Billing Summary
             </h4>
-            
+
             <SummaryItem>
               <SummaryLabel>
                 <Crown size={18} /> Client Profile
               </SummaryLabel>
               <SummaryValue>{currentProfile?.name}</SummaryValue>
             </SummaryItem>
-            
+
             <SummaryItem>
               <SummaryLabel>
                 <DollarSign size={18} /> Billing Rate
@@ -927,7 +927,7 @@ const ChargeSettingsPage = () => {
                 {displayRate ? formatCurrency(displayRate, chargeSettings.currency) : 'Not Set'} / {chargeSettings.chargeType === 'daily' ? 'Day' : 'Hour'}
               </SummaryValue>
             </SummaryItem>
-            
+
             <SummaryItem>
               <SummaryLabel>
                 <Tag size={18} /> Currency
@@ -949,7 +949,7 @@ const ChargeSettingsPage = () => {
             <SecondaryButton type="button" onClick={handleViewBillingSummary}>
               <FileText size={20} /> View Billing Summary
             </SecondaryButton>
-            
+
             <PrimaryButton type="submit" disabled={loading}>
               {loading ? (
                 <>

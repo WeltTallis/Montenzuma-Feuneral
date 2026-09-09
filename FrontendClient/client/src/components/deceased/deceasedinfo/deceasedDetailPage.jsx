@@ -155,7 +155,12 @@ const DeceasedDetailPage = () => {
   // the path param so legacy /deceased/XXX links keep working.
   const [searchParams] = useSearchParams();
   const pathParams = useParams();
-  const deceasedId = searchParams.get('id') || pathParams.id;
+  let deceasedId = searchParams.get('id') || pathParams.id;
+  // Sanitize: strip any trailing query-string junk like "=2026" that can
+  // get concatenated onto the ID by malformed links or URL rebuilding.
+  if (typeof deceasedId === 'string' && deceasedId.includes('=')) {
+    deceasedId = deceasedId.split('=')[0].trim();
+  }
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);

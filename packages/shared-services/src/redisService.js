@@ -38,9 +38,13 @@ exports.redisHealth = redisHealth;
 exports.initRedis = initRedis;
 const redis_1 = require("redis");
 const index_1 = __importDefault(require("../../shared-logger/dist/index"));
-const DEFAULT_REDIS_URL = process.env.REDIS_URL || process.env.REDIS_HOST
-    ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`
-    : 'redis://redis:6379';
+const REDIS_AUTH_SEGMENT = process.env.REDIS_PASSWORD
+    ? `:${encodeURIComponent(process.env.REDIS_PASSWORD)}@`
+    : '';
+const DEFAULT_REDIS_URL = process.env.REDIS_URL
+    || (process.env.REDIS_HOST
+        ? `redis://${REDIS_AUTH_SEGMENT}${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`
+        : 'redis://redis:6379');
 // ─── Notification Types ──────────────────────────────────────────────────
 var NotificationType;
 (function (NotificationType) {
@@ -132,7 +136,7 @@ async function getRedisClient() {
         client = (0, redis_1.createClient)({
             url: DEFAULT_REDIS_URL,
             socket: {
-                reconnectStrategy: () => false,
+                reconnectStrategy: (retries) => Math.min(retries * 50, 2000),
                 connectTimeout: 3000,
             },
         });
