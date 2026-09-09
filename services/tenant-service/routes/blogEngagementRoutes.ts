@@ -1,15 +1,18 @@
-﻿import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 
 /* =================================================================
-   Blog Engagement API - views / likes / comments for Restpoint Journal
-   Persisted in a simple JSON file so no extra database is needed.
-   Default storage: /opt/storage/blog-data (the shared host bind mount,
-   uid-1001 writable). Falls back to ./data, then the OS temp dir.
-   ================================================================= */
+    Blog Engagement API - views / likes / comments for Restpoint Journal
+    Persisted in a simple JSON file so no extra database is needed.
+    Default storage: /opt/storage/blog-data (the shared host bind mount,
+    uid-1001 writable). Falls back to ./data, then the OS temp dir.
+
+    ENDPOINTS ARE PUBLICLY ACCESSIBLE - No authentication required.
+    New clients without tokens can access all blog endpoints.
+    ================================================================= */
 
 const router = Router();
 
@@ -27,8 +30,21 @@ interface BlogPostData {
     comments: BlogComment[];
 }
 
+interface RequestCounts {
+    totalRequests: number;
+    getRequests: number;
+    postRequests: number;
+    viewRequests: number;
+    likeRequests: number;
+    commentRequests: number;
+    resonateRequests: number;
+    uniqueClients: string[];
+    lastRequestAt: string;
+}
+
 interface BlogStore {
     posts: Record<string, BlogPostData>;
+    requestCounts: RequestCounts;
 }
 
 const isoDaysAgo = (days: number): string => new Date(Date.now() - days * 86400000).toISOString();
@@ -59,6 +75,20 @@ function seedPost(slug: string): BlogPostData {
         };
     }
     return { views: 0, likes: 0, comments: [] };
+}
+
+function seedRequestCounts(): RequestCounts {
+    return {
+        totalRequests: 0,
+        getRequests: 0,
+        postRequests: 0,
+        viewRequests: 0,
+        likeRequests: 0,
+        commentRequests: 0,
+        resonateRequests: 0,
+        uniqueClients: [],
+        lastRequestAt: new Date().toISOString(),
+    };
 }
 
 // ---- JSON-file storage -------------------------------------------------
@@ -94,29 +124,21 @@ function loadStore(): BlogStore {
         if (fs.existsSync(DATA_FILE)) {
             const parsed = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) as BlogStore;
             if (parsed && typeof parsed === 'object' && parsed.posts) {
+                // Ensure requestCounts exists (migration for existing data)
+                if (!parsed.requestCounts) {
+                    parsed.requestCounts = seedRequestCounts();
+                }
+                // Ensure uniqueClients array exists
+                if (!Array.isArray(parsed.requestCounts.uniqueClients)) {
+                    parsed.requestCounts.uniqueClients = [];
+                }
                 return parsed;
             }
         }
     } catch {
-        // corrupted file -> reseed below
+        // File missing or corrupt -> start fresh
     }
-    const store: BlogStore = { posts: {} };
-    // Seed every known Journal post so first reads are never empty.
-    const knownSlugs = [
-        'future-of-death-care-software-restpoint',
-        'bereavement-management',
-        'member-contributions',
-        'funeral-welfare-management',
-    ];
-    for (const slug of knownSlugs) {
-        store.posts[slug] = seedPost(slug);
-    }
-    try {
-        saveStore(store);
-    } catch {
-        // read-only filesystem -> serve from memory only
-    }
-    return store;
+    return { posts: {}, requestCounts: seedRequestCounts() };
 }
 
 function getPost(store: BlogStore, slug: string): BlogPostData {
@@ -126,10 +148,92 @@ function getPost(store: BlogStore, slug: string): BlogPostData {
     return store.posts[slug];
 }
 
+// ---- Request Counting Middleware -----------------------------------------
+// Tracks all requests to blog endpoints for analytics
+// Works for ALL clients - including new clients without tokens
+
 const slugOf = (req: Request): string =>
     String(req.params.slug || '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-|-$/g, '') || 'unknown';
 
+function getClientIdentifier(req: Request): string {
+    // Use IP address + User-Agent as client identifier
+    // This works for new clients without tokens
+    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    return `${ip}_${userAgent.slice(0, 50)}`;
+}
+
+function countRequest(req: Request, res: Response, next: NextFunction): void {
+    const store = loadStore();
+    const method = req.method.toUpperCase();
+    const urlPath = req.path;
+
+    // Update request counts
+    store.requestCounts.totalRequests += 1;
+    store.requestCounts.lastRequestAt = new Date().toISOString();
+
+    if (method === 'GET') {
+        store.requestCounts.getRequests += 1;
+    } else if (method === 'POST') {
+        store.requestCounts.postRequests += 1;
+    }
+
+    // Track specific endpoint types
+    if (urlPath.includes('/view')) {
+        store.requestCounts.viewRequests += 1;
+    } else if (urlPath.includes('/like')) {
+        store.requestCounts.likeRequests += 1;
+    } else if (urlPath.includes('/comments') && !urlPath.includes('/resonate')) {
+        store.requestCounts.commentRequests += 1;
+    } else if (urlPath.includes('/resonate')) {
+        store.requestCounts.resonateRequests += 1;
+    }
+
+    // Track unique clients (new clients without tokens included)
+    const clientId = getClientIdentifier(req);
+    if (!store.requestCounts.uniqueClients.includes(clientId)) {
+        store.requestCounts.uniqueClients.push(clientId);
+        // Keep only last 1000 unique clients to prevent file bloat
+        if (store.requestCounts.uniqueClients.length > 1000) {
+            store.requestCounts.uniqueClients = store.requestCounts.uniqueClients.slice(-1000);
+        }
+    }
+
+    try {
+        saveStore(store);
+    } catch {
+        // Storage unavailable - continue without counting
+    }
+
+    next();
+}
+
+// Apply request counting middleware to ALL routes
+// No authentication required - endpoints are open for everyone
+router.use(countRequest);
+
 // ---- Endpoints ---------------------------------------------------------
+
+// GET request counts (admin/analytics endpoint)
+router.get('/stats', (_req: Request, res: Response) => {
+    const store = loadStore();
+    res.json({
+        success: true,
+        data: {
+            requestCounts: {
+                totalRequests: store.requestCounts.totalRequests,
+                getRequests: store.requestCounts.getRequests,
+                postRequests: store.requestCounts.postRequests,
+                viewRequests: store.requestCounts.viewRequests,
+                likeRequests: store.requestCounts.likeRequests,
+                commentRequests: store.requestCounts.commentRequests,
+                resonateRequests: store.requestCounts.resonateRequests,
+                uniqueClientCount: store.requestCounts.uniqueClients.length,
+                lastRequestAt: store.requestCounts.lastRequestAt,
+            },
+        },
+    });
+});
 
 // Aggregate summary for every known post (used by the /blog index).
 router.get('/', (_req: Request, res: Response) => {

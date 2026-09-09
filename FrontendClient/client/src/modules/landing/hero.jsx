@@ -242,7 +242,7 @@ export default function Hero() {
   useEffect(() => {
     const textInterval = setInterval(() => {
       setTextIndex((prev) => (prev + 1) % rotatingTexts.length);
-    }, 2500);
+    }, 3500);
 
     const flipInterval = setInterval(() => {
       setIsFlipped((prev) => !prev);
