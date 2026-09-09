@@ -341,21 +341,22 @@ const CalendarContainer = styled.div`
   background: white;
   border: 1px solid ${C.borderLight};
   border-radius: 12px;
-  padding: 16px 24px;
+  padding: 14px 16px;
   margin-bottom: 24px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.03);
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
-  overflow: hidden; /* Crucial: keeps it inside the box */
+  overflow: hidden; /* the strip can never push this card (or the page) wider */
 
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
+    gap: 10px;
     padding: 12px;
   }
 `;
@@ -365,13 +366,13 @@ const CalendarControls = styled.div`
   gap: 8px;
   align-items: center;
   border-right: 1px solid ${C.border};
-  padding-right: 24px;
+  padding-right: 16px;
   flex-shrink: 0;
 
   @media (max-width: 768px) {
     border-right: none;
     padding-right: 0;
-    padding-bottom: 12px;
+    padding-bottom: 10px;
     border-bottom: 1px solid ${C.borderLight};
   }
 `;
@@ -391,32 +392,83 @@ const CalSelect = styled.select`
   &:focus { outline: none; border-color: ${C.gray}; }
 `;
 
+/* Wrapper that owns the leftover width. flex-basis 0% (NOT `width: 100%`
+   like before — that resolved to a basis as wide as the whole card and was
+   what pushed the row past its edges) so it can never overflow. */
+const StripWrap = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 0%;
+  min-width: 0;
+  max-width: 100%;
+`;
+
 const CalendarDates = styled.div`
   display: flex;
   flex-wrap: nowrap;
-  justify-content: flex-start;
-  gap: 8px;
+  align-items: stretch;
+  gap: 6px;
   padding: 4px 2px 8px;
-  flex: 1 1 auto;
-  width: 100%;
-  min-width: 0; /* Crucial: allows flex child to shrink and scroll */
+  flex: 1 1 0%;
+  min-width: 0;
   max-width: 100%;
-  align-items: center;
-  scroll-behavior: smooth;
+  box-sizing: border-box;
   overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: ${C.accent} ${C.bgField};
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain; /* strip scrolling never hijacks the page */
+  scrollbar-width: none;          /* sleek: scrollbar hidden, arrows instead */
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+`;
 
-  &::-webkit-scrollbar { height: 6px; }
-  &::-webkit-scrollbar-track { background: ${C.bgField}; border-radius: 10px; }
-  &::-webkit-scrollbar-thumb { background: ${C.accent}; border-radius: 10px; }
-  &::-webkit-scrollbar-thumb:hover { background: #b71f38; }
+const StripEdge = styled.div`
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: ${p => (p.$show ? 1 : 0)};
+  transition: opacity 0.2s;
+  ${p => p.$left
+    ? 'left: -2px; background: linear-gradient(to right, #ffffff 25%, rgba(255,255,255,0));'
+    : 'right: -2px; background: linear-gradient(to left, #ffffff 25%, rgba(255,255,255,0));'}
+`;
+
+const StripNav = styled.button`
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid ${C.border};
+  background: #ffffff;
+  color: ${C.dark};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  transition: all 0.15s;
+  opacity: ${p => (p.$show ? 1 : 0)};
+  pointer-events: ${p => (p.$show ? 'auto' : 'none')};
+  ${p => (p.$left ? 'left: -4px;' : 'right: -4px;')}
+  &:hover { background: ${C.accent}; border-color: ${C.accent}; color: #ffffff; }
+  &:active { transform: translateY(-50%) scale(0.94); }
 `;
 
 const CalDateBtn = styled.div`
   flex: 0 0 auto;
-  min-width: 52px;
-  padding: 8px 6px;
+  width: 54px;
+  padding: 8px 4px 11px;
   border-radius: 8px;
   border: 1px solid transparent;
   background: transparent;
@@ -428,6 +480,8 @@ const CalDateBtn = styled.div`
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  scroll-snap-align: center;
+  user-select: none;
 
   &:hover { background: ${C.bgField}; }
 
@@ -436,6 +490,11 @@ const CalDateBtn = styled.div`
     color: white;
     box-shadow: 0 4px 12px rgba(221, 45, 74, 0.4);
   `}
+
+  @media (max-width: 480px) {
+    width: 47px;
+    padding: 6px 3px 10px;
+  }
 `;
 
 const CalWeekday = styled.div`
@@ -569,10 +628,11 @@ const StatusBadge = styled.span`
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  width: 25px;
   padding: 5px 12px;
-  border-radius: 20px;
+  border-radius: 5px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: capitalize;
   white-space: nowrap;
   background: ${p => p.$bg};
@@ -582,7 +642,7 @@ const StatusBadge = styled.span`
     content: '';
     width: 6px;
     height: 6px;
-    border-radius: 50%;
+  
     background: ${p => p.$color};
   }
 `;
@@ -937,6 +997,57 @@ const DeceasedListPage = () => {
   setSearchParamsRef.current = setSearchParams;
   const [selectedDate, setSelectedDate] = useState(null);
   const activeDateRef = useRef(null);
+
+  /* Horizontal date-strip scrolling — only the dates that fit the width are
+     shown; the rest are reachable via arrows / wheel / touch without ever
+     stretching the card or the page. */
+  const stripRef = useRef(null);
+  const [stripEdges, setStripEdges] = useState({ atStart: true, atEnd: false });
+
+  const updateStripEdges = useCallback(() => {
+    const el = stripRef.current;
+    if (!el) return;
+    setStripEdges({
+      atStart: el.scrollLeft <= 2,
+      atEnd: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2,
+    });
+  }, []);
+
+  const scrollStripBy = (dir) => {
+    const el = stripRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(260, el.clientWidth * 0.65), behavior: 'smooth' });
+  };
+
+  /* Desktop nicety: vertical wheel scrolls the strip horizontally (only when
+     it actually overflows) so the page doesn't jerk around. */
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el) return undefined;
+    const onWheel = (e) => {
+      if (el.scrollWidth <= el.clientWidth + 1) return;
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (!delta) return;
+      e.preventDefault();
+      el.scrollLeft += delta;
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  /* Track scroll position to show/hide the edge fades + arrows. Re-measures
+     whenever the month/year (day count) changes. */
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el) return undefined;
+    updateStripEdges();
+    el.addEventListener('scroll', updateStripEdges, { passive: true });
+    window.addEventListener('resize', updateStripEdges);
+    return () => {
+      el.removeEventListener('scroll', updateStripEdges);
+      window.removeEventListener('resize', updateStripEdges);
+    };
+  }, [updateStripEdges, calMonth, calYear]);
 
   const [showExport, setShowExport] = useState(false);
   const [exportStart, setExportStart] = useState('');
@@ -1356,11 +1467,13 @@ const DeceasedListPage = () => {
   const handleMonthChange = (e) => {
     setCalMonth(parseInt(e.target.value));
     setSelectedDate(null);
+    if (stripRef.current) stripRef.current.scrollLeft = 0;
   };
 
   const handleYearChange = (e) => {
     setCalYear(parseInt(e.target.value));
     setSelectedDate(null);
+    if (stripRef.current) stripRef.current.scrollLeft = 0;
   };
 
   const handleDateClick = (dateStr) => {
@@ -1434,38 +1547,58 @@ const DeceasedListPage = () => {
               {years.map(y => <option key={y} value={y}>{y}</option>)}
             </CalSelect>
           </CalendarControls>
-          <CalendarDates>
-            <CalDateBtn
-              $active={!selectedDate}
-              onClick={() => setSelectedDate(null)}
-              style={{ minWidth: '40px', alignSelf: 'center' }}
-            >
-              <CalWeekday>View</CalWeekday>
-              <CalDayNum style={{ fontSize: '13px', fontFamily: 'Source Sans 3, sans-serif' }}>All</CalDayNum>
-            </CalDateBtn>
+          <StripWrap>
+            <CalendarDates ref={stripRef}>
+              <CalDateBtn
+                $active={!selectedDate}
+                onClick={() => setSelectedDate(null)}
+                style={{ width: 'auto', minWidth: '56px', alignSelf: 'center' }}
+              >
+                <CalWeekday>View</CalWeekday>
+                <CalDayNum style={{ fontSize: '13px', fontFamily: 'Source Sans 3, sans-serif' }}>All</CalDayNum>
+              </CalDateBtn>
 
-            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
-              const loopDate = new Date(calYear, calMonth, day);
-              const dateStr = toDateString(loopDate);
-              const weekday = loopDate.toLocaleDateString('en-US', { weekday: 'short' });
-              const eventData = eventColorByDate[dateStr];
-              const isActive = selectedDate === dateStr;
+              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                const loopDate = new Date(calYear, calMonth, day);
+                const dateStr = toDateString(loopDate);
+                const weekday = loopDate.toLocaleDateString('en-US', { weekday: 'short' });
+                const eventData = eventColorByDate[dateStr];
+                const isActive = selectedDate === dateStr;
 
-              return (
-                <CalDateBtn
-                  key={day}
-                  $active={isActive}
-                  onClick={() => handleDateClick(dateStr)}
-                  ref={isActive ? activeDateRef : null}
-                  title={eventData ? `Records admitted on this day` : undefined}
-                >
-                  <CalWeekday>{weekday}</CalWeekday>
-                  <CalDayNum>{day}</CalDayNum>
-                  {eventData && <EventDot $active={isActive} $color={eventData.color} $rgb={eventData.rgb} />}
-                </CalDateBtn>
-              );
-            })}
-          </CalendarDates>
+                return (
+                  <CalDateBtn
+                    key={day}
+                    $active={isActive}
+                    onClick={() => handleDateClick(dateStr)}
+                    ref={isActive ? activeDateRef : null}
+                    title={eventData ? `Records admitted on this day` : undefined}
+                  >
+                    <CalWeekday>{weekday}</CalWeekday>
+                    <CalDayNum>{day}</CalDayNum>
+                    {eventData && <EventDot $active={isActive} $color={eventData.color} $rgb={eventData.rgb} />}
+                  </CalDateBtn>
+                );
+              })}
+            </CalendarDates>
+
+            {/* Edge fades + arrows — only appear when there is overflow */}
+            <StripEdge $left $show={!stripEdges.atStart} />
+            <StripEdge $right $show={!stripEdges.atEnd} />
+            <StripNav
+              $left
+              $show={!stripEdges.atStart}
+              onClick={() => scrollStripBy(-1)}
+              aria-label="Scroll dates left"
+              type="button"
+            >‹</StripNav>
+            <StripNav
+              $right
+              $show={!stripEdges.atEnd}
+              onClick={() => scrollStripBy(1)}
+              aria-label="Scroll dates right"
+              type="button"
+            >›</StripNav>
+          </StripWrap>
         </CalendarContainer>
 
         {/* List Card */}
