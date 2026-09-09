@@ -1,4 +1,3 @@
-
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import React, { useState, useEffect, useCallback } from 'react';
@@ -36,19 +35,24 @@ const AppContainer = styled.div`
   line-height: 1.5;
   max-width: 1400px; 
   margin: 0 auto; 
- 
   background: rgb(255, 255, 255);
   animation: ${fadeIn} 0.25s ease-out;
+  padding: 1rem; /* Base padding for mobile */
+  
+  @media (min-width: 900px) {
+    padding: 2rem; /* Desktop padding */
+  }
 `;
 
 const ProfileLayout = styled.div`
   display: grid; 
-  grid-template-columns: 1fr 320px; 
-  gap: 4rem; 
+  grid-template-columns: 1fr; /* Mobile first: single column */
+  gap: 2rem; 
   align-items: flex-start;
-  @media (max-width: 900px) { 
-    grid-template-columns: 1fr; 
-    gap: 2rem;
+  
+  @media (min-width: 900px) { 
+    grid-template-columns: 1fr 320px; 
+    gap: 4rem;
   }
 `;
 
@@ -56,19 +60,34 @@ const MainContent = styled.div`
   min-width: 0;
   display: flex;
   flex-direction: column;
-   padding: 3rem 2rem;
+  padding: 0; /* Remove fixed padding for mobile, rely on AppContainer */
+  
+  @media (min-width: 900px) {
+    padding: 2rem 1rem; /* Add some breathing room on desktop */
+  }
 `;
 
 const Tabs = styled.div`
   display: flex; 
   border-bottom: 2px solid #f0f0f0;
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.5rem;
   overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+  
+  &::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Safari and Chrome */
+  }
+
+  @media (min-width: 900px) {
+    margin-bottom: 2.5rem;
+  }
 `;
 
 const TabBtn = styled.button`
-  padding: 1rem 0; 
-  margin-right: 2.5rem;
+  padding: 0.75rem 0; 
+  margin-right: 1.5rem;
   background: none; 
   border: none; 
   cursor: pointer;
@@ -88,22 +107,35 @@ const TabBtn = styled.button`
     color: #0a0a0a; 
     border-bottom-color: #0a0a0a; 
   `}
+
+  @media (min-width: 900px) {
+    padding: 1rem 0;
+    margin-right: 2.5rem;
+  }
 `;
 
 const TabContent = styled.div`
   display: grid;
-  gap: 2.5rem;
+  gap: 1.5rem;
+
+  @media (min-width: 900px) {
+    gap: 2.5rem;
+  }
 `;
 
 const TabPane = styled.div`
   display: ${p => p.$active ? 'grid' : 'none'}; 
-  gap: 2.5rem;
+  gap: 1.5rem;
   animation: ${fadeIn} 0.2s ease;
+
+  @media (min-width: 900px) {
+    gap: 2.5rem;
+  }
 `;
 
 const LoadingState = styled.div`
   text-align: center; 
-  padding: 10rem 0; 
+  padding: 5rem 0; 
   color: #777777;
   display: flex; 
   flex-direction: column; 
@@ -119,6 +151,10 @@ const LoadingState = styled.div`
     animation: spin 0.6s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  
+  @media (min-width: 900px) {
+    padding: 10rem 0;
+  }
 `;
 
 const ChargeSettingsButton = styled.button`

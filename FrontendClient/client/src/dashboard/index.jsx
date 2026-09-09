@@ -134,7 +134,7 @@ function ActivityDrawer({ mod, onClose }) {
 export default function Dashboard({ tenantSlug = "", tenantData }) {
 
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("hearse");
+  const [activeTab, setActiveTab] = useState("deceased");
   const [navOpen, setNavOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
   const mod = MODULES.find((m) => m.id === activeTab);

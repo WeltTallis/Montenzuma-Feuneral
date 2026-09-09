@@ -75,8 +75,8 @@ const SignatureDisplay = ({ path }) => {
   if (!path) return null;
 
   return failed
-    ? <a href={src} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#1a73e8' }}>Click to view signature ↗</a>
-    : <img src={src} alt="Next of Kin Signature" onError={() => setFailed(true)} style={{ maxWidth: '100%', maxHeight: 200, marginTop: 6, background: '#fff', padding: 6, objectFit: 'contain' }} />;
+    ? <a href={src} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: '#1a73e8' }}>Click to view signature ↗</a>
+    : <img src={src} alt="Next of Kin Signature" onError={() => setFailed(true)} style={{ maxWidth: '100%', maxHeight: 220, marginTop: 6, background: '#fff', padding: 6, objectFit: 'contain' }} />;
 };
 
 const OverviewTab = ({ deceased, nextOfKin }) => {

@@ -1,492 +1,665 @@
 // Updated ChargeSettingsPage.js
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import styled from "styled-components";
-import { DollarSign, Save, ArrowLeft, Tag, Clock, Calendar, Zap, Crown, RefreshCw, Percent, TrendingUp, Shield, UserCheck, Badge, FileText, CreditCard, BarChart2 } from '../../utils/icons/icons';
+import styled, { createGlobalStyle } from "styled-components";
+import { 
+  DollarSign, Save, ArrowLeft, Tag, Clock, Calendar, RefreshCw, 
+  X, Check, FlaskConical, CreditCard, FileText 
+} from '../../utils/icons/icons';
 import { toast } from "react-toastify";
 import { useParams, useNavigate } from "react-router-dom";
-import env from "../../utils/config/env";
+import env from "../../utils/config/config";
 
-// Base API URL — resolves to https://restpoint.co.ke/api/v1/restpoint in production
-const BASE_API = env.API_URL;
+// Base API URL
+const BASE_API = env.API_URL || "https://restpoint.co.ke/api/v1/restpoint";
 
 // Configure axios
 axios.defaults.baseURL = BASE_API;
 
-//  Modern Color Palette
+// Inject Google Fonts
+const GlobalStyle = createGlobalStyle`
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@300;400;500;600&display=swap');
+`;
+
+// Restpoint Color Palette
 const Colors = {
-  primary: "#6B46C1",
-  primaryDark: "#553C9A",
-  primaryLight: "#9F7AEA",
-  secondary: "#4C327A",
-  accent: "#ED64A6",
-  success: "#10B981",
-  warning: "#F59E0B",
-  danger: "#EF4444",
-  info: "#06B6D4",
-
-  background: "#F8FAFC",
-  surface: "#FFFFFF",
-  surfaceHover: "#F9FBFC",
-
-  textPrimary: "#1F2937",
-  textSecondary: "#6B7280",
-  textLight: "#9CA3AF",
-
-  border: "#E5E7EB",
-  borderLight: "#F3F4F6",
-  shadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-  shadowHover: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+  ink: "#16211E",
+  pine: "#1F3D33",
+  moss: "#3E6257",
+  gold: "#C6A15B",
+  goldSoft: "#F3EBD9",
+  cream: "#F6F4EE",
+  paper: "#FFFFFF",
+  line: "#E6E1D5",
+  lineSoft: "#EFECE3",
+  muted: "#8B8677",
+  text: "#232A27",
+  textLight: "#C4BFAF",
+  ease: "cubic-bezier(.32, .72, .24, 1)"
 };
 
 // ===============================
-// Enhanced Styled Components
+// Styled Components
 // ===============================
-const PageContainer = styled.div`
+const PageWrapper = styled.div`
+  font-family: 'Outfit', sans-serif;
+  background: ${Colors.cream};
+  color: ${Colors.text};
   min-height: 100vh;
-  background: linear-gradient(135deg, ${Colors.background} 0%, #F1F5F9 100%);
-  padding: 1rem;
-  
-  @media (min-width: 768px) {
-    padding: 2rem;
-  }
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
 `;
 
-const PageHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px solid ${Colors.borderLight};
-`;
-
-const BackButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: ${Colors.surface};
-  border: 2px solid ${Colors.border};
-  color: ${Colors.primary};
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0.75rem 1.25rem;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  box-shadow: ${Colors.shadow};
-  
-  &:hover {
-    background: ${Colors.primary};
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: ${Colors.shadowHover};
-  }
-`;
-
-const PageTitle = styled.h1`
-  font-weight: 800;
-  color: ${Colors.textPrimary};
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 0;
-  font-size: 1.75rem;
-  
-  @media (min-width: 768px) {
-    font-size: 2rem;
-  }
-`;
-
-const PageContent = styled.div`
-  background: ${Colors.surface};
-  border-radius: 20px;
-  padding: 2rem;
-  max-width: 900px;
+const Page = styled.main`
+  max-width: 860px;
   margin: 0 auto;
-  box-shadow: ${Colors.shadowHover};
-  border: 1px solid ${Colors.borderLight};
+  padding: clamp(18px, 3vw, 36px);
 `;
 
-const ClientInfoCard = styled.div`
-  background: linear-gradient(135deg, ${Colors.primary} 0%, ${Colors.secondary} 100%);
-  color: white;
-  padding: 1.5rem;
-  border-radius: 16px;
-  margin-bottom: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  box-shadow: 0 10px 25px rgba(107, 70, 193, 0.3);
-`;
-
-const ClientAvatar = styled.div`
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: bold;
-`;
-
-const ClientInfo = styled.div`
-  flex: 1;
-`;
-
-const ClientName = styled.h2`
-  margin: 0 0 0.25rem 0;
-  font-weight: 700;
-  font-size: 1.5rem;
-`;
-
-const ClientDetails = styled.p`
-  margin: 0;
-  opacity: 0.9;
-  font-size: 0.95rem;
-`;
-
-const QuickStats = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-bottom: 2rem;
-`;
-
-const StatCard = styled.div`
-  background: ${Colors.surface};
-  border-radius: 12px;
-  padding: 1rem;
-  border: 2px solid ${Colors.borderLight};
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-`;
-
-const StatIcon = styled.div`
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: ${props => props.color || Colors.primaryLight};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-`;
-
-const StatInfo = styled.div`
-  flex: 1;
-`;
-
-const StatLabel = styled.div`
-  font-size: 0.85rem;
-  color: ${Colors.textSecondary};
-  font-weight: 500;
-`;
-
-const StatValue = styled.div`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: ${Colors.textPrimary};
-`;
-
-const FormGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-  
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-`;
-
-const FormSection = styled.div`
-  background: ${Colors.surfaceHover};
-  padding: 1.5rem;
-  border-radius: 16px;
-  border: 2px solid ${Colors.borderLight};
-  transition: all 0.3s ease;
-  
-  &:hover {
-    border-color: ${Colors.primaryLight};
-    transform: translateY(-2px);
-  }
-`;
-
-const SectionHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid ${Colors.borderLight};
-`;
-
-const SectionTitle = styled.h3`
-  font-weight: 700;
-  color: ${Colors.textPrimary};
-  margin: 0;
-  font-size: 1.25rem;
-`;
-
-const SectionIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, ${Colors.primary} 0%, ${Colors.primaryLight} 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: 1.5rem;
-`;
-
-const Label = styled.label`
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: ${Colors.textPrimary};
-  font-size: 0.95rem;
-`;
-
-const InputWrapper = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-`;
-
-const InputIcon = styled.div`
-  position: absolute;
-  left: 1rem;
-  color: ${Colors.textLight};
-  z-index: 2;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: 1rem 1rem 1rem 3rem;
-  border: 2px solid ${Colors.border};
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  background: ${Colors.surface};
-  color: ${Colors.textPrimary};
-  
-  &:focus {
-    outline: none;
-    border-color: ${Colors.primary};
-    box-shadow: 0 0 0 3px ${Colors.primaryLight}20;
-  }
-  
-  &::placeholder {
-    color: ${Colors.textLight};
-  }
-`;
-
-const Select = styled.select`
-  width: 100%;
-  padding: 1rem 1rem 1rem 3rem;
-  border: 2px solid ${Colors.border};
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  background: ${Colors.surface};
-  color: ${Colors.textPrimary};
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 1rem center;
-  background-size: 16px;
-  
-  &:focus {
-    outline: none;
-    border-color: ${Colors.primary};
-    box-shadow: 0 0 0 3px ${Colors.primaryLight}20;
-  }
-`;
-
-const RateProfileCard = styled.div`
-  background: ${Colors.surface};
-  border: 2px solid ${props => props.active ? Colors.primary : Colors.border};
-  border-radius: 12px;
-  padding: 1.25rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  
-  ${props => props.active && `
-    background: linear-gradient(135deg, ${Colors.primary}08 0%, ${Colors.primaryLight}08 100%);
-    border-color: ${Colors.primary};
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(107, 70, 193, 0.15);
-  `}
-  
-  &:hover {
-    border-color: ${Colors.primaryLight};
-    transform: translateY(-2px);
-  }
-`;
-
-const ProfileHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-`;
-
-const ProfileIcon = styled.div`
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: ${props => props.color};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-`;
-
-const ProfileTitle = styled.h4`
-  margin: 0;
-  font-weight: 700;
-  color: ${Colors.textPrimary};
-  font-size: 1.1rem;
-`;
-
-const ProfileDescription = styled.p`
-  margin: 0;
-  color: ${Colors.textSecondary};
-  font-size: 0.9rem;
-  line-height: 1.4;
-`;
-
-const SummaryBox = styled.div`
-  background: linear-gradient(135deg, ${Colors.surfaceHover} 0%, #F8FAFC 100%);
-  border: 2px solid ${Colors.borderLight};
-  padding: 2rem;
-  border-radius: 20px;
-  margin: 2rem 0;
-  position: relative;
-  overflow: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, ${Colors.primary} 0%, ${Colors.accent} 100%);
-  }
-`;
-
-const SummaryItem = styled.div`
+const PageTop = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid ${Colors.borderLight};
-  
+  margin-bottom: 26px;
+`;
+
+const Brand = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 11px;
+`;
+
+const BrandMark = styled.div`
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: ${Colors.pine};
+  color: ${Colors.gold};
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+`;
+
+const BrandName = styled.div`
+  font-size: 9.5px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: ${Colors.muted};
+  font-weight: 600;
+`;
+
+const BrandSub = styled.div`
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: ${Colors.ink};
+  line-height: 1.2;
+`;
+
+const BackLink = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 500 13px 'Outfit', sans-serif;
+  color: ${Colors.moss};
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  transition: color .2s;
+
+  &:hover {
+    color: ${Colors.pine};
+  }
+`;
+
+const ClientCard = styled.section`
+  background: ${Colors.ink};
+  border-radius: 14px;
+  padding: 22px 26px;
+  color: #EDEAE0;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 12px;
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: -90px;
+    top: -90px;
+    width: 230px;
+    height: 230px;
+    border-radius: 50%;
+    border: 1px solid rgba(198, 161, 91, .22);
+  }
+`;
+
+const Eyebrow = styled.div`
+  font-size: 9.5px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  color: ${Colors.gold};
+  font-weight: 600;
+  margin-bottom: 6px;
+`;
+
+const ClientName = styled.h1`
+  font-family: 'Fraunces', serif;
+  font-size: clamp(22px, 3.4vw, 28px);
+  font-weight: 600;
+  line-height: 1.15;
+  margin-bottom: 6px;
+`;
+
+const ClientMeta = styled.div`
+  font-size: 12.5px;
+  color: rgba(237, 234, 224, .6);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-weight: 300;
+
+  b {
+    color: rgba(237, 234, 224, .9);
+    font-weight: 500;
+  }
+`;
+
+const Stats = styled.section`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+`;
+
+const Stat = styled.div`
+  background: ${Colors.paper};
+  border: 1px solid ${Colors.line};
+  border-radius: 12px;
+  padding: 13px 16px;
+`;
+
+const StatLabel = styled.div`
+  font-size: 9.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: ${Colors.muted};
+  font-weight: 600;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  svg {
+    color: ${Colors.gold};
+  }
+`;
+
+const StatValue = styled.div`
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: ${Colors.ink};
+`;
+
+const BtnOpen = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: ${Colors.pine};
+  color: #F3EFE4;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 20px;
+  font: 600 13.5px 'Outfit', sans-serif;
+  cursor: pointer;
+  transition: all .25s ${Colors.ease};
+  box-shadow: 0 8px 18px -8px rgba(31, 61, 51, .5);
+
+  &:hover {
+    background: #27493d;
+    transform: translateY(-1px);
+  }
+
+  svg {
+    color: ${Colors.gold};
+  }
+`;
+
+const Scrim = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 27, 25, .45);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .35s ${Colors.ease}, visibility .35s;
+  z-index: 90;
+
+  &.show {
+    opacity: 1;
+    visibility: visible;
+  }
+`;
+
+const Panel = styled.aside`
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(420px, 100vw);
+  background: ${Colors.paper};
+  box-shadow: -24px 0 60px -18px rgba(22, 33, 30, .35);
+  border-radius: 16px 0 0 16px;
+  transform: translateX(calc(100% + 40px));
+  transition: transform .45s ${Colors.ease};
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+
+  &.open {
+    transform: translateX(0);
+  }
+
+  @media (max-width: 480px) {
+    border-radius: 0;
+  }
+`;
+
+const PanelHead = styled.header`
+  padding: 18px 22px 15px;
+  border-bottom: 1px solid ${Colors.lineSoft};
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+`;
+
+const PanelKicker = styled.div`
+  font-size: 9.5px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: ${Colors.gold};
+  font-weight: 600;
+  margin-bottom: 3px;
+`;
+
+const PanelTitle = styled.h2`
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: ${Colors.ink};
+`;
+
+const IconBtn = styled.button`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid ${Colors.line};
+  background: ${Colors.paper};
+  color: ${Colors.muted};
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all .25s;
+
+  &:hover {
+    border-color: ${Colors.pine};
+    color: ${Colors.pine};
+  }
+`;
+
+const PanelBody = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px;
+  scrollbar-width: thin;
+  scrollbar-color: ${Colors.line} transparent;
+`;
+
+const Strip = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border-bottom: 1px solid ${Colors.lineSoft};
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+`;
+
+const StripAvatar = styled.div`
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: ${Colors.pine};
+  color: ${Colors.gold};
+  display: grid;
+  place-items: center;
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+`;
+
+const StripName = styled.div`
+  font-weight: 600;
+  font-size: 13.5px;
+  color: ${Colors.ink};
+`;
+
+const StripMeta = styled.div`
+  font-size: 11.5px;
+  color: ${Colors.muted};
+`;
+
+const Group = styled.div`
+  margin-bottom: 18px;
+`;
+
+const GroupLabel = styled.div`
+  font-size: 9.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: ${Colors.muted};
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: ${Colors.lineSoft};
+  }
+`;
+
+const Segment = styled.div`
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: ${Colors.cream};
+  border: 1px solid ${Colors.line};
+  border-radius: 10px;
+  padding: 3px;
+`;
+
+const SegmentIndicator = styled.div`
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  background: ${Colors.pine};
+  border-radius: 8px;
+  transition: transform .3s ${Colors.ease};
+  transform: ${props => props.isHourly ? 'translateX(100%)' : 'translateX(0)'};
+`;
+
+const SegmentBtn = styled.button`
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: 600 12.5px 'Outfit', sans-serif;
+  color: ${props => props.active ? '#F3EFE4' : Colors.muted};
+  transition: color .25s;
+  border-radius: 8px;
+`;
+
+const CurrencyGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+`;
+
+const CurrencyCard = styled.label`
+  position: relative;
+  border: 1px solid ${props => props.selected ? Colors.pine : Colors.line};
+  border-radius: 10px;
+  padding: 11px 12px;
+  cursor: pointer;
+  transition: all .2s ${Colors.ease};
+  background: ${props => props.selected ? `linear-gradient(150deg, #fff 55%, ${Colors.goldSoft})` : Colors.paper};
+
+  &:hover {
+    border-color: ${Colors.moss};
+  }
+
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+`;
+
+const CurCode = styled.span`
+  font-family: 'Fraunces', serif;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: ${Colors.ink};
+  display: block;
+`;
+
+const CurName = styled.span`
+  font-size: 10.5px;
+  color: ${Colors.muted};
+  display: block;
+  margin-top: 1px;
+`;
+
+const CurCheck = styled.span`
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: ${Colors.pine};
+  color: ${Colors.gold};
+  display: grid;
+  place-items: center;
+  opacity: ${props => props.selected ? 1 : 0};
+  transform: ${props => props.selected ? 'scale(1)' : 'scale(.5)'};
+  transition: all .2s ${Colors.ease};
+`;
+
+const Control = styled.div`
+  display: flex;
+  align-items: center;
+  background: ${Colors.cream};
+  border: 1px solid ${Colors.line};
+  border-radius: 10px;
+  transition: all .2s;
+
+  &:focus-within {
+    border-color: ${Colors.pine};
+    background: ${Colors.paper};
+    box-shadow: 0 0 0 3px rgba(31, 61, 51, .06);
+  }
+`;
+
+const ControlPrefix = styled.span`
+  padding: 10px 3px 10px 13px;
+  font: 600 12.5px 'Outfit', sans-serif;
+  color: ${Colors.muted};
+  flex-shrink: 0;
+`;
+
+const ControlInput = styled.input`
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font: 500 14.5px 'Outfit', sans-serif;
+  color: ${Colors.ink};
+  padding: 10px 4px;
+  font-variant-numeric: tabular-nums;
+
+  &::placeholder {
+    color: ${Colors.textLight};
+    font-weight: 300;
+  }
+`;
+
+const ControlSuffix = styled.span`
+  padding: 10px 13px 10px 3px;
+  font-size: 11.5px;
+  color: ${Colors.muted};
+  flex-shrink: 0;
+`;
+
+const Hint = styled.p`
+  font-size: 11px;
+  color: ${Colors.muted};
+  margin-top: 6px;
+  padding-left: 2px;
+  font-weight: 300;
+`;
+
+const Summary = styled.div`
+  background: ${Colors.pine};
+  border-radius: 12px;
+  padding: 16px 18px;
+  color: #EDEAE0;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: -50px;
+    bottom: -50px;
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    border: 1px solid rgba(198, 161, 91, .28);
+  }
+`;
+
+const SummaryKicker = styled.div`
+  font-size: 9.5px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: ${Colors.gold};
+  font-weight: 600;
+  margin-bottom: 7px;
+`;
+
+const SummaryRate = styled.div`
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+
+  small {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    color: rgba(237, 234, 224, .6);
+    font-weight: 400;
+  }
+`;
+
+const SummaryNote = styled.div`
+  font-size: 11.5px;
+  color: rgba(237, 234, 224, .55);
+  font-weight: 300;
+  margin: 3px 0 12px;
+`;
+
+const SummaryRows = styled.div`
+  border-top: 1px solid rgba(237, 234, 224, .14);
+`;
+
+const SummaryRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(237, 234, 224, .14);
+  font-size: 12px;
+
   &:last-child {
     border-bottom: none;
   }
+
+  span:first-child {
+    color: rgba(237, 234, 224, .6);
+    font-weight: 300;
+  }
+
+  span:last-child {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
 `;
 
-const SummaryLabel = styled.span`
+const PanelFoot = styled.footer`
+  padding: 13px 22px 16px;
+  border-top: 1px solid ${Colors.lineSoft};
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-weight: 600;
-  color: ${Colors.textPrimary};
+  gap: 8px;
+  flex-shrink: 0;
+  background: ${Colors.paper};
 `;
 
-const SummaryValue = styled.span`
-  font-weight: 700;
-  color: ${Colors.primary};
-  font-size: 1.1rem;
-`;
-
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-`;
-
-const PrimaryButton = styled.button`
+const Btn = styled.button`
   flex: 1;
-  padding: 1.25rem;
-  background: linear-gradient(135deg, ${Colors.primary} 0%, ${Colors.secondary} 100%);
-  border: none;
-  border-radius: 16px;
-  color: white;
-  font-weight: 700;
-  font-size: 1.1rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.75rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 25px rgba(107, 70, 193, 0.4);
+  padding: 10px 10px;
+  border-radius: 10px;
+  font: 600 13px 'Outfit', sans-serif;
   cursor: pointer;
-  
-  &:hover:not(:disabled) {
-    transform: translateY(-3px);
-    box-shadow: 0 15px 35px rgba(107, 70, 193, 0.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: all .2s ${Colors.ease};
+`;
+
+const GhostBtn = styled(Btn)`
+  background: none;
+  border: 1px solid ${Colors.line};
+  color: ${Colors.muted};
+
+  &:hover {
+    border-color: ${Colors.pine};
+    color: ${Colors.pine};
   }
-  
+`;
+
+const SaveBtn = styled(Btn)`
+  background: ${Colors.ink};
+  color: #F3EFE4;
+  border: none;
+
+  &:hover:not(:disabled) {
+    background: #24332e;
+  }
+
   &:disabled {
-    background: ${Colors.textLight};
-    transform: none;
-    box-shadow: none;
-    cursor: not-allowed;
-    opacity: 0.6;
+    opacity: .55;
+    cursor: wait;
+  }
+
+  svg {
+    color: ${Colors.gold};
   }
 `;
 
-const SecondaryButton = styled(PrimaryButton)`
-  background: ${Colors.surface};
-  color: ${Colors.primary};
-  border: 2px solid ${Colors.primary};
-  
-  &:hover:not(:disabled) {
-    background: ${Colors.primary};
-    color: white;
+const Spin = styled.div`
+  animation: spin .9s linear infinite;
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 `;
-
-// Simplified Rate Profile Options
-const rateProfiles = [
-  {
-    id: "standard",
-    name: "Standard Rate",
-    description: "Regular pricing for standard clients",
-    icon: <Badge size={20} />,
-    color: Colors.primary,
-  },
-  {
-    id: "premium",
-    name: "Premium Client",
-    description: "Enhanced services with premium pricing",
-    icon: <Crown size={20} />,
-    color: Colors.warning,
-  },
-  {
-    id: "discount",
-    name: "Discounted Rate",
-    description: "Special rates for specific cases",
-    icon: <Percent size={20} />,
-    color: Colors.success,
-  }
-];
 
 // ===============================
 // MAIN PAGE COMPONENT
@@ -494,6 +667,12 @@ const rateProfiles = [
 const ChargeSettingsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [deceasedData, setDeceasedData] = useState(null);
+  const [billingSummary, setBillingSummary] = useState(null);
 
   const [chargeSettings, setChargeSettings] = useState({
     rateProfile: "standard",
@@ -504,18 +683,12 @@ const ChargeSettingsPage = () => {
     usdRate: "",
   });
 
-  const [loading, setLoading] = useState(false);
-  const [deceasedData, setDeceasedData] = useState(null);
-  const [isLoadingData, setIsLoadingData] = useState(true);
-  const [billingSummary, setBillingSummary] = useState(null);
-
   // Fetch deceased data and billing summary
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoadingData(true);
 
-        // Fetch deceased data
         const [deceasedResponse, billingResponse] = await Promise.all([
           axios.get(`/charge-settings?id=${id}`),
           axios.get(`/billing-summary/${id}`)
@@ -525,7 +698,6 @@ const ChargeSettingsPage = () => {
           const data = deceasedResponse.data.data;
           setDeceasedData(data);
 
-          // Set charge settings from API response
           setChargeSettings({
             rateProfile: data.rateProfile || "standard",
             currency: data.currency || "KES",
@@ -553,19 +725,12 @@ const ChargeSettingsPage = () => {
     }
   }, [id]);
 
-  // Handle input change
+  // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
-    // For number inputs, remove any non-digit characters
     if (name === 'dailyRate' || name === 'hourlyRate' || name === 'usdRate') {
-      // Remove any non-digit characters
-      let cleanValue = value.replace(/[^\d]/g, '');
-
-      // Remove leading zeros
-      cleanValue = cleanValue.replace(/^0+/, '');
-
-      // If empty after cleaning, set to empty string
+      let cleanValue = value.replace(/[^\d]/g, '').replace(/^0+/, '');
       cleanValue = cleanValue === '' ? '' : parseInt(cleanValue, 10);
 
       setChargeSettings((prev) => ({
@@ -573,7 +738,6 @@ const ChargeSettingsPage = () => {
         [name]: cleanValue,
       }));
     } else {
-      // For other inputs, use the value as is
       setChargeSettings((prev) => ({
         ...prev,
         [name]: value,
@@ -581,12 +745,12 @@ const ChargeSettingsPage = () => {
     }
   };
 
-  // Handle rate profile selection
-  const handleRateProfileSelect = (profileId) => {
-    setChargeSettings((prev) => ({
-      ...prev,
-      rateProfile: profileId
-    }));
+  const setFreq = (freq) => {
+    setChargeSettings((prev) => ({ ...prev, chargeType: freq }));
+  };
+
+  const setCurrency = (cur) => {
+    setChargeSettings((prev) => ({ ...prev, currency: cur }));
   };
 
   // Handle form submission
@@ -595,17 +759,12 @@ const ChargeSettingsPage = () => {
     setLoading(true);
 
     try {
-      // Validate input
-      if (!id) {
-        throw new Error("Deceased ID is missing");
-      }
+      if (!id) throw new Error("Deceased ID is missing");
 
-      // Convert empty strings to 0 for validation
       const dailyRate = chargeSettings.dailyRate === "" ? 0 : parseInt(chargeSettings.dailyRate, 10);
       const hourlyRate = chargeSettings.hourlyRate === "" ? 0 : parseInt(chargeSettings.hourlyRate, 10);
       const usdRate = chargeSettings.usdRate === "" ? 0 : parseInt(chargeSettings.usdRate, 10);
 
-      // Custom validation
       if (chargeSettings.chargeType === "daily" && (!dailyRate || dailyRate <= 0)) {
         throw new Error("Please enter a valid daily rate.");
       }
@@ -616,7 +775,6 @@ const ChargeSettingsPage = () => {
         throw new Error("Please enter a valid USD exchange rate.");
       }
 
-      // Prepare API data
       const apiData = {
         rateProfile: chargeSettings.rateProfile,
         currency: chargeSettings.currency,
@@ -626,24 +784,19 @@ const ChargeSettingsPage = () => {
         usdRate: usdRate
       };
 
-      // Send request
       const response = await axios.post(`/update-charge-settings/${id}`, apiData);
 
       if (response.data.success) {
-        toast.success("💰 Charge settings updated successfully!");
-        // Refresh data
+        toast.success("Charge configuration saved.");
+        setIsPanelOpen(false);
+        
         const [deceasedResponse, billingResponse] = await Promise.all([
           axios.get(`/charge-settings?id=${id}`),
           axios.get(`/billing-summary/${id}`)
         ]);
 
-        if (deceasedResponse.data.success) {
-          setDeceasedData(deceasedResponse.data.data);
-        }
-
-        if (billingResponse.data.success) {
-          setBillingSummary(billingResponse.data.data);
-        }
+        if (deceasedResponse.data.success) setDeceasedData(deceasedResponse.data.data);
+        if (billingResponse.data.success) setBillingSummary(billingResponse.data.data);
       } else {
         throw new Error(response.data.message);
       }
@@ -660,314 +813,253 @@ const ChargeSettingsPage = () => {
     navigate(`/billing/${id}`);
   };
 
+  // Helpers
+  const symbols = { KES: 'KSh', USD: '$' };
+  const formatVal = (val) => val ? parseInt(val, 10).toLocaleString('en-US') : '';
+  const fmt = (n, c = chargeSettings.currency) => n ? `${symbols[c]} ${parseInt(n, 10).toLocaleString('en-US')}` : 'Not set';
+  
+  const currentRate = chargeSettings.chargeType === 'daily' ? chargeSettings.dailyRate : chargeSettings.hourlyRate;
+  const projection = currentRate ? (chargeSettings.chargeType === 'daily' ? currentRate * 30 : currentRate * 24 * 30) : 0;
+
   if (isLoadingData) {
     return (
-      <PageContainer>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '50vh',
-          flexDirection: 'column',
-          gap: '1rem'
-        }}>
-          <div className="animate-spin" style={{ color: Colors.primary }}>
-            <RefreshCw size={32} />
-          </div>
-          <p style={{ color: Colors.textSecondary, fontWeight: 600 }}>Loading charge settings...</p>
+      <PageWrapper>
+        <GlobalStyle />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', flexDirection: 'column', gap: '1rem' }}>
+          <Spin>
+            <RefreshCw size={32} color={Colors.pine} />
+          </Spin>
+          <p style={{ color: Colors.muted, fontWeight: 600 }}>Loading charge settings...</p>
         </div>
-      </PageContainer>
+      </PageWrapper>
     );
   }
 
-  const currentProfile = rateProfiles.find(profile => profile.id === chargeSettings.rateProfile);
-
-  // Format currency
-  const formatCurrency = (amount, currency) => {
-    if (!amount || amount === "") return '0';
-    const number = parseInt(amount, 10);
-    if (isNaN(number)) return '0';
-
-    if (currency === 'USD') {
-      return `$${number.toLocaleString()}`;
-    } else {
-      return `KES ${number.toLocaleString()}`;
-    }
-  };
-
-  // Calculate display rate
-  const displayRate = chargeSettings.chargeType === "daily"
-    ? chargeSettings.dailyRate
-    : chargeSettings.hourlyRate;
-
   return (
-    <PageContainer>
-      <PageHeader>
-        <BackButton onClick={() => navigate(-1)}>
-          <ArrowLeft size={20} /> Back
-        </BackButton>
-        <PageTitle>
-          <TrendingUp size={32} /> Custom Billing Setup
-        </PageTitle>
-      </PageHeader>
+    <PageWrapper>
+      <GlobalStyle />
+      
+      <Page>
+        <PageTop>
+          <Brand>
+            <BrandMark>
+              <FlaskConical size={15} />
+            </BrandMark>
+            <div>
+              <BrandName>Restpoint Funeral Home</BrandName>
+              <BrandSub>Care &amp; Billing</BrandSub>
+            </div>
+          </Brand>
+          <BackLink onClick={() => navigate(-1)}>
+            <ArrowLeft size={14} />
+            Back to register
+          </BackLink>
+        </PageTop>
 
-      <PageContent>
-        {/* Client Info Card */}
-        <ClientInfoCard>
-          <ClientAvatar>
-            {deceasedData?.full_name?.charAt(0) || 'C'}
-          </ClientAvatar>
-          <ClientInfo>
-            <ClientName>{deceasedData?.full_name || 'Client'}</ClientName>
-            <ClientDetails>
-              Deceased ID: {id} • {deceasedData?.date_admitted ? `Admitted: ${new Date(deceasedData.date_admitted).toLocaleDateString()}` : 'No admission date'}
-            </ClientDetails>
-          </ClientInfo>
-          <Shield size={24} color="rgba(255,255,255,0.7)" />
-        </ClientInfoCard>
+        <ClientCard>
+          <Eyebrow>In Our Care · Mortuary Wing B</Eyebrow>
+          <ClientName>{deceasedData?.full_name || 'Client'}</ClientName>
+          <ClientMeta>
+            <span>Record <b>{id}</b></span>
+            <span>Admitted <b>{deceasedData?.date_admitted ? new Date(deceasedData.date_admitted).toLocaleDateString() : '—'}</b></span>
+            <span>Currency <b>{chargeSettings.currency}</b></span>
+          </ClientMeta>
+        </ClientCard>
 
-        {/* Quick Stats */}
-        <QuickStats>
-          <StatCard>
-            <StatIcon color={Colors.success}>
-              <CreditCard size={20} />
-            </StatIcon>
-            <StatInfo>
-              <StatLabel>Current Balance</StatLabel>
-              <StatValue>
-                {formatCurrency(deceasedData?.currentBalance || 0, chargeSettings.currency)}
-              </StatValue>
-            </StatInfo>
-          </StatCard>
+        <Stats>
+          <Stat>
+            <StatLabel>
+              <CreditCard size={11} />
+              Outstanding
+            </StatLabel>
+            <StatValue>{fmt(deceasedData?.currentBalance || 0)}</StatValue>
+          </Stat>
+          <Stat>
+            <StatLabel>
+              <DollarSign size={11} />
+              Care charge
+            </StatLabel>
+            <StatValue>{currentRate ? `${fmt(currentRate)}${chargeSettings.chargeType === 'daily' ? ' /day' : ' /hr'}` : 'Not set'}</StatValue>
+          </Stat>
+          <Stat>
+            <StatLabel>
+              <Tag size={11} />
+              Currency
+            </StatLabel>
+            <StatValue>{chargeSettings.currency}</StatValue>
+          </Stat>
+        </Stats>
 
-          <StatCard>
-            <StatIcon color={Colors.primary}>
-              <DollarSign size={20} />
-            </StatIcon>
-            <StatInfo>
-              <StatLabel>Billing Rate</StatLabel>
-              <StatValue>
-                {displayRate ? formatCurrency(displayRate, chargeSettings.currency) : 'Not Set'}
-              </StatValue>
-            </StatInfo>
-          </StatCard>
+        <BtnOpen onClick={() => setIsPanelOpen(true)}>
+          <DollarSign size={15} />
+          Configure care charges
+        </BtnOpen>
+      </Page>
 
-          <StatCard>
-            <StatIcon color={Colors.info}>
-              <BarChart size={20} />
-            </StatIcon>
-            <StatInfo>
-              <StatLabel>Currency</StatLabel>
-              <StatValue>{chargeSettings.currency}</StatValue>
-            </StatInfo>
-          </StatCard>
-        </QuickStats>
+      {/* Side Panel */}
+      <Scrim className={isPanelOpen ? 'show' : ''} onClick={() => setIsPanelOpen(false)} />
+      
+      <Panel className={isPanelOpen ? 'open' : ''} role="dialog" aria-modal="true" aria-label="Charge configuration">
+        <PanelHead>
+          <div>
+            <PanelKicker>{id} · Billing</PanelKicker>
+            <PanelTitle>Charge configuration</PanelTitle>
+          </div>
+          <IconBtn onClick={() => setIsPanelOpen(false)} aria-label="Close">
+            <X size={13} />
+          </IconBtn>
+        </PanelHead>
 
-        <form onSubmit={handleSubmit}>
-          <FormGrid>
-            {/* Rate Profile Section */}
-            <FormSection>
-              <SectionHeader>
-                <SectionIcon>
-                  <UserCheck size={24} />
-                </SectionIcon>
-                <SectionTitle>Client Profile</SectionTitle>
-              </SectionHeader>
+        <PanelBody>
+          <Strip>
+            <StripAvatar>
+              {deceasedData?.full_name?.charAt(0) || 'C'}
+            </StripAvatar>
+            <div>
+              <StripName>{deceasedData?.full_name || 'Client'}</StripName>
+              <StripMeta>
+                Admitted {deceasedData?.date_admitted ? new Date(deceasedData.date_admitted).toLocaleDateString() : '—'} · Wing B
+              </StripMeta>
+            </div>
+          </Strip>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {rateProfiles.map((profile) => (
-                  <RateProfileCard
-                    key={profile.id}
-                    active={chargeSettings.rateProfile === profile.id}
-                    onClick={() => handleRateProfileSelect(profile.id)}
-                  >
-                    <ProfileHeader>
-                      <ProfileIcon color={profile.color}>
-                        {profile.icon}
-                      </ProfileIcon>
-                      <ProfileTitle>{profile.name}</ProfileTitle>
-                    </ProfileHeader>
-                    <ProfileDescription>{profile.description}</ProfileDescription>
-                  </RateProfileCard>
-                ))}
-              </div>
-            </FormSection>
-
-            {/* Billing Configuration */}
-            <FormSection>
-              <SectionHeader>
-                <SectionIcon>
-                  <DollarSign size={24} />
-                </SectionIcon>
-                <SectionTitle>Billing Setup</SectionTitle>
-              </SectionHeader>
-
-              <FormGroup>
-                <Label>
-                  <Zap size={16} /> Charge Frequency
-                </Label>
-                <Select
-                  name="chargeType"
-                  value={chargeSettings.chargeType}
-                  onChange={handleInputChange}
+          <form onSubmit={handleSubmit}>
+            {/* Frequency */}
+            <Group>
+              <GroupLabel>Charge frequency</GroupLabel>
+              <Segment>
+                <SegmentIndicator isHourly={chargeSettings.chargeType === 'hourly'} />
+                <SegmentBtn 
+                  type="button" 
+                  active={chargeSettings.chargeType === 'daily'} 
+                  onClick={() => setFreq('daily')}
                 >
-                  <option value="daily">Daily Rate</option>
-                  <option value="hourly">Hourly Rate</option>
-                </Select>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>
-                  <Tag size={16} /> Currency
-                </Label>
-                <Select
-                  name="currency"
-                  value={chargeSettings.currency}
-                  onChange={handleInputChange}
+                  <Calendar size={13} />
+                  Per day
+                </SegmentBtn>
+                <SegmentBtn 
+                  type="button" 
+                  active={chargeSettings.chargeType === 'hourly'} 
+                  onClick={() => setFreq('hourly')}
                 >
-                  <option value="KES">KES (Kenyan Shilling)</option>
-                  <option value="USD">USD (US Dollar)</option>
-                </Select>
-              </FormGroup>
+                  <Clock size={13} />
+                  Per hour
+                </SegmentBtn>
+              </Segment>
+            </Group>
 
-              {chargeSettings.chargeType === "daily" && (
-                <FormGroup>
-                  <Label>
-                    <Calendar size={16} /> Custom Daily Rate
-                  </Label>
-                  <InputWrapper>
-                    <InputIcon>
-                      <DollarSign size={18} />
-                    </InputIcon>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      name="dailyRate"
-                      value={chargeSettings.dailyRate}
-                      onChange={handleInputChange}
-                      placeholder="Enter amount (e.g., 4000)"
-                    />
-                  </InputWrapper>
-                </FormGroup>
-              )}
+            {/* Currency */}
+            <Group>
+              <GroupLabel>Currency</GroupLabel>
+              <CurrencyGrid>
+                <CurrencyCard selected={chargeSettings.currency === 'KES'} onClick={() => setCurrency('KES')}>
+                  <input type="radio" name="currency" value="KES" checked={chargeSettings.currency === 'KES'} onChange={() => setCurrency('KES')} />
+                  <CurCode>KES</CurCode>
+                  <CurName>Kenyan Shilling</CurName>
+                  <CurCheck selected={chargeSettings.currency === 'KES'}><Check size={9} /></CurCheck>
+                </CurrencyCard>
+                <CurrencyCard selected={chargeSettings.currency === 'USD'} onClick={() => setCurrency('USD')}>
+                  <input type="radio" name="currency" value="USD" checked={chargeSettings.currency === 'USD'} onChange={() => setCurrency('USD')} />
+                  <CurCode>USD</CurCode>
+                  <CurName>US Dollar</CurName>
+                  <CurCheck selected={chargeSettings.currency === 'USD'}><Check size={9} /></CurCheck>
+                </CurrencyCard>
+              </CurrencyGrid>
+            </Group>
 
-              {chargeSettings.chargeType === "hourly" && (
-                <FormGroup>
-                  <Label>
-                    <Clock size={16} /> Custom Hourly Rate
-                  </Label>
-                  <InputWrapper>
-                    <InputIcon>
-                      <DollarSign size={18} />
-                    </InputIcon>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      name="hourlyRate"
-                      value={chargeSettings.hourlyRate}
-                      onChange={handleInputChange}
-                      placeholder="Enter amount (e.g., 200)"
-                    />
-                  </InputWrapper>
-                </FormGroup>
-              )}
+            {/* Rate */}
+            <Group>
+              <GroupLabel>{chargeSettings.chargeType === 'daily' ? 'Daily rate' : 'Hourly rate'}</GroupLabel>
+              <Control>
+                <ControlPrefix>{symbols[chargeSettings.currency]}</ControlPrefix>
+                <ControlInput
+                  type="text"
+                  inputMode="numeric"
+                  name={chargeSettings.chargeType === 'daily' ? 'dailyRate' : 'hourlyRate'}
+                  value={formatVal(currentRate)}
+                  onChange={handleInputChange}
+                  placeholder={chargeSettings.chargeType === 'daily' ? '4,000' : '200'}
+                />
+                <ControlSuffix>/ {chargeSettings.chargeType === 'daily' ? 'day' : 'hour'}</ControlSuffix>
+              </Control>
+              <Hint>
+                {chargeSettings.chargeType === 'daily' 
+                  ? 'Charged once for each day in care.' 
+                  : 'Charged for every hour in care.'}
+              </Hint>
+            </Group>
 
-              {chargeSettings.currency === "USD" && (
-                <FormGroup>
-                  <Label>
-                    <TrendingUp size={16} /> USD Exchange Rate
-                  </Label>
-                  <InputWrapper>
-                    <InputIcon>
-                      <DollarSign size={18} />
-                    </InputIcon>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      name="usdRate"
-                      value={chargeSettings.usdRate}
-                      onChange={handleInputChange}
-                      placeholder="Enter rate (e.g., 130)"
-                    />
-                  </InputWrapper>
-                </FormGroup>
-              )}
-            </FormSection>
-          </FormGrid>
-
-          {/* Summary Section */}
-          <SummaryBox>
-            <h4 style={{
-              margin: "0 0 1.5rem 0",
-              color: Colors.primary,
-              fontWeight: 800,
-              fontSize: '1.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem'
-            }}>
-              <Shield size={28} /> Billing Summary
-            </h4>
-
-            <SummaryItem>
-              <SummaryLabel>
-                <Crown size={18} /> Client Profile
-              </SummaryLabel>
-              <SummaryValue>{currentProfile?.name}</SummaryValue>
-            </SummaryItem>
-
-            <SummaryItem>
-              <SummaryLabel>
-                <DollarSign size={18} /> Billing Rate
-              </SummaryLabel>
-              <SummaryValue>
-                {displayRate ? formatCurrency(displayRate, chargeSettings.currency) : 'Not Set'} / {chargeSettings.chargeType === 'daily' ? 'Day' : 'Hour'}
-              </SummaryValue>
-            </SummaryItem>
-
-            <SummaryItem>
-              <SummaryLabel>
-                <Tag size={18} /> Currency
-              </SummaryLabel>
-              <SummaryValue>{chargeSettings.currency}</SummaryValue>
-            </SummaryItem>
-
-            {chargeSettings.currency === "USD" && chargeSettings.usdRate && (
-              <SummaryItem>
-                <SummaryLabel>
-                  <TrendingUp size={18} /> Exchange Rate
-                </SummaryLabel>
-                <SummaryValue>1 USD = {chargeSettings.usdRate} KES</SummaryValue>
-              </SummaryItem>
+            {/* FX (USD only) */}
+            {chargeSettings.currency === "USD" && (
+              <Group>
+                <GroupLabel>Exchange rate</GroupLabel>
+                <Control>
+                  <ControlPrefix>1 USD =</ControlPrefix>
+                  <ControlInput
+                    type="text"
+                    inputMode="numeric"
+                    name="usdRate"
+                    value={formatVal(chargeSettings.usdRate)}
+                    onChange={handleInputChange}
+                    placeholder="130"
+                  />
+                  <ControlSuffix>KES</ControlSuffix>
+                </Control>
+                <Hint>Converts USD charges for local statements.</Hint>
+              </Group>
             )}
-          </SummaryBox>
 
-          <ActionButtons>
-            <SecondaryButton type="button" onClick={handleViewBillingSummary}>
-              <FileText size={20} /> View Billing Summary
-            </SecondaryButton>
+            {/* Summary */}
+            <Summary>
+              <SummaryKicker>Billing summary</SummaryKicker>
+              <SummaryRate>
+                {currentRate ? `${fmt(currentRate)}` : 'Not set'} <small>/ {chargeSettings.chargeType === 'daily' ? 'day' : 'hour'}</small>
+              </SummaryRate>
+              <SummaryNote>
+                {currentRate 
+                  ? `Estimated 30-day charge · ${fmt(projection)}`
+                  : 'Enter a rate to see a projection.'}
+              </SummaryNote>
+              <SummaryRows>
+                <SummaryRow>
+                  <span>Frequency</span>
+                  <span>{chargeSettings.chargeType === 'daily' ? 'Daily' : 'Hourly'}</span>
+                </SummaryRow>
+                <SummaryRow>
+                  <span>Currency</span>
+                  <span>{chargeSettings.currency}</span>
+                </SummaryRow>
+                {chargeSettings.currency === "USD" && chargeSettings.usdRate && (
+                  <SummaryRow>
+                    <span>Exchange rate</span>
+                    <span>{formatVal(chargeSettings.usdRate)} KES</span>
+                  </SummaryRow>
+                )}
+              </SummaryRows>
+            </Summary>
 
-            <PrimaryButton type="submit" disabled={loading}>
-              {loading ? (
-                <>
-                  <div className="animate-spin">
-                    <RefreshCw size={20} />
-                  </div>
-                  Saving Configuration...
-                </>
-              ) : (
-                <>
-                  <Save size={20} /> Save Custom Billing Setup
-                </>
-              )}
-            </PrimaryButton>
-          </ActionButtons>
-        </form>
-      </PageContent>
-    </PageContainer>
+            <PanelFoot>
+              <GhostBtn type="button" onClick={() => setIsPanelOpen(false)}>
+                Discard
+              </GhostBtn>
+              <SaveBtn type="submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Spin><RefreshCw size={14} /></Spin>
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} />
+                    Save configuration
+                  </>
+                )}
+              </SaveBtn>
+            </PanelFoot>
+          </form>
+        </PanelBody>
+      </Panel>
+    </PageWrapper>
   );
 };
 

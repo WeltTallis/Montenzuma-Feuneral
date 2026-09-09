@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState } from "react";
-import MiniActivityCalendar from "./MiniCalendar";
+import { useNavigate, useParams } from "react-router-dom";
+import HorizontalCalendar from "../../components/views/horizontalCalender";
 import { fetchReleasesFeed, fetchPostmortemsFeed } from "../../api/dashboardFeedApi";
 import { fetchAllBranchDeceased } from "../../api/dashboardDataApi";
 
@@ -102,6 +103,9 @@ const CSS = `
 .hw ::-webkit-scrollbar{width:7px;height:7px}
 .hw ::-webkit-scrollbar-thumb{background:#CBD2DD;border-radius:8px}
 .hw button{cursor:pointer;font-family:inherit}
+.hw-back{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer;color:var(--blue-d);font:600 12px 'Inter',sans-serif;box-shadow:0 1px 2px rgba(17,24,39,.05);margin-bottom:14px;transition:background .15s,box-shadow .15s}
+.hw-back:hover{background:var(--blue-s);box-shadow:0 2px 6px rgba(29,78,216,.15)}
+.hw-back .hw-arr{font-size:15px;line-height:1;flex:none}
 .hw .hw-top{display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap}
 .hw-tiles{display:flex;gap:12px;flex:1;flex-wrap:wrap;justify-content:space-between}
 .hw-tile{position:relative;overflow:hidden;color:#fff;border-radius:18px;padding:15px 17px 14px;flex:1;min-width:186px;max-width:320px;display:flex;flex-direction:column;transition:transform .18s,box-shadow .18s}
@@ -137,6 +141,38 @@ const CSS = `
 .hw-col label{color:var(--faint)}
 .hw .mac{max-width:100%;width:100%}
 @media(max-width:900px){.hw-grid{grid-template-columns:1fr}}
+`;
+const CSS4 = `
+.hw-analytics{border:1px solid var(--line);border-radius:12px;padding:13px 14px 12px;margin-top:12px;background:linear-gradient(180deg,#fff,var(--soft))}
+.hw-ana-head{display:flex;align-items:center;gap:7px;font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--sub);margin-bottom:12px}
+.hw-ana-head .pulse{width:7px;height:7px;border-radius:50%;background:var(--violet);box-shadow:0 0 8px -1px var(--violet)}
+.hw-ana-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.hw-ana-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px 8px;min-width:0}
+.hw-ana-title{font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);display:flex;align-items:center;justify-content:space-between}
+.hw-ana-title b{color:var(--ink);font-weight:800}
+.hw-ana-bars{position:relative;height:62px;margin-top:6px;border-bottom:1px solid var(--line)}
+.hw-ana-x{display:flex;gap:10px;margin-top:5px;font:500 8px 'IBM Plex Mono',monospace;color:var(--faint)}
+.hw-ana-x span{display:inline-flex;align-items:center;gap:4px}
+.hw-ana-x i{width:7px;height:7px;border-radius:2px}
+.hw-seg{display:flex;height:12px;border-radius:6px;overflow:hidden;margin-top:8px;background:var(--line)}
+.hw-seg b{display:block;height:100%;min-width:2px}
+.hw-seg-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:7px}
+.hw-seg-legend span{display:inline-flex;align-items:center;gap:4px;font:500 8px 'IBM Plex Mono',monospace;color:var(--sub)}
+.hw-seg-legend i{width:7px;height:7px;border-radius:50%}
+.hw-ana-pm{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.hw-ana-pm .row{display:flex;align-items:center;gap:6px;font:600 8px 'IBM Plex Mono',monospace;color:var(--sub)}
+.hw-ana-pm .row .bar{flex:1;height:7px;border-radius:4px;background:var(--line);overflow:hidden}
+.hw-ana-pm .row .bar i{display:block;height:100%;border-radius:4px}
+.hw-ana-pm .row .bar i.pend{background:var(--amber)}
+.hw-ana-pm .row .bar i.done{background:var(--green)}
+.hw-ana-pm .row b{color:var(--ink);min-width:16px;text-align:right}
+.hw-ana-donut{display:flex;align-items:center;gap:10px;margin-top:6px}
+.hw-ana-donut svg{flex:none}
+.hw-ana-donut .dl{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.hw-ana-donut .dl span{display:flex;align-items:center;gap:5px;font:500 8px 'IBM Plex Mono',monospace;color:var(--sub)}
+.hw-ana-donut .dl i{width:7px;height:7px;border-radius:50%;flex:none}
+.hw-ana-donut .dl b{margin-left:auto;color:var(--ink)}
+@media(max-width:560px){.hw-ana-grid{grid-template-columns:1fr}}
 `;
 const CSS2 = `
 .hw-trend{border:1px solid var(--line);border-radius:12px;padding:11px 13px 8px;margin-bottom:12px}
@@ -289,6 +325,12 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
   const pd = prettyDate(activeKey);
   const onPick = typeof onPickDate === "function" ? onPickDate : () => {};
   const onOpen = typeof onSelect === "function" ? onSelect : () => {};
+
+  /* back to the normal All-Deceased list page (/tenant/:slug/deceased) */
+  const navigate = useNavigate();
+  const { slug: urlSlug } = useParams();
+  const dashSlug = urlSlug || localStorage.getItem("tenantSlug") || "";
+  const backToAllDeceased = () => navigate(`/tenant/${dashSlug}/deceased`);
 
   /* ── Real postmortem REQUESTS (deceased-service tracker table) ──
      Same feed the deceased profile's Postmortem tab renders. The legacy
@@ -529,9 +571,122 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
     return s;
   };
 
+  /* ── horizontal calendar ─────────────────────────────────────────────
+     DeceasedQuad receives `events` as a { 'YYYY-MM-DD': [{n,t,c}] } map
+     (Mini-calendar shape). The HorizontalCalendar widget wants an array of
+     { id, date (Date), title, color }. We convert here so the existing
+     ModuleDashboard wiring (miniEvents → events) keeps working unchanged. */
+  const CAL_FILLS = { red: "#DC2626", blue: "#2563EB", green: "#16A34A", orange: "#F97316", purple: "#8B5CF6" };
+  const hCalEvents = useMemo(() => {
+    const arr = [];
+    Object.entries(events || {}).forEach(([k, list]) => {
+      if (!Array.isArray(list)) return;
+      const [y, m, d] = String(k).split("-").map(Number);
+      if (!y || !m || !d) return;
+      list.forEach((ev, i) => arr.push({
+        id: `${k}-${i}`,
+        date: new Date(y, m - 1, d),
+        title: ev?.n || "Event",
+        color: CAL_FILLS[ev?.c] || "#2563EB",
+      }));
+    });
+    return arr;
+  }, [events]);
+
+  /* selected day as a Date (the HorizontalCalendar highlights it) */
+  const selDate = useMemo(() => {
+    const [y, m, d] = String(activeKey).split("-").map(Number);
+    return y && m && d ? new Date(y, m - 1, d) : new Date();
+  }, [activeKey]);
+
+  const onHorizPick = (date) => {
+    if (!date || typeof onPick !== "function") return;
+    onPick(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`);
+  };
+
+  /* ── compact analytics block (fills the space under the horizontal strip) ── */
+  const admSeries7 = useMemo(
+    () => last7.map((d) => deceased.filter((r) => admKeyOf(r) === dk(d)).length),
+    [deceased, last7]
+  );
+  const relSeries7 = useMemo(() => last7.map((d) => {
+    const k = dk(d);
+    return relFeedScoped.filter((r) => r._key === k).length
+      + deceased.filter((r) => isReleased(r) && relKeyOf(r) === k && !relFeedNums.has(String(r?.admission_number || ""))).length;
+  }), [deceased, last7, relFeedScoped, relFeedNums]);
+  const anaMax = Math.max(1, ...admSeries7, ...relSeries7);
+
+  const bodySeg = useMemo(() => {
+    let care = 0, pmHold = 0, rel = 0;
+    deceased.forEach((r) => {
+      if (isReleased(r)) { rel++; return; }
+      const pm = pmMetaOf(r);
+      if (pm && !pm.completed && !pmReqNums.has(String(r?.admission_number || ""))) pmHold++;
+      else care++;
+    });
+    return { care, pmHold, rel };
+  }, [deceased, pmReqNums]);
+  const bodyTotal = Math.max(1, bodySeg.care + bodySeg.pmHold + bodySeg.rel);
+
+  const pmDone = Math.max(0, pmTotal - pmPendingCount);
+  const pmTotalSafe = Math.max(1, pmTotal);
+  const pmDonePct = (pmDone / pmTotalSafe) * 100;
+  const pmPendPct = (pmPendingCount / pmTotalSafe) * 100;
+
+  const genderStats = useMemo(() => {
+    let m = 0, f = 0, o = 0;
+    deceased.forEach((r) => {
+      const g = String(r?.sex || r?.gender || "").toLowerCase();
+      if (g.indexOf("m") === 0) m++;
+      else if (g.indexOf("f") === 0) f++;
+      else o++;
+    });
+    return { m, f, o };
+  }, [deceased]);
+
+  /* 7-day grouped bars (Admissions blue · Releases green) */
+  const buildAnaBars = () => {
+    const W = 250, H = 62, n = Math.min(7, admSeries7.length);
+    const slot = (W - 8) / n, bw = Math.min(6, Math.max(3, slot / 2 - 2));
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">`;
+    for (let i = 0; i < n; i++) {
+      const cx = 4 + i * slot + slot / 2;
+      const a = admSeries7[i], r = relSeries7[i];
+      const ah = Math.max(2, (a / anaMax) * (H - 8));
+      const rh = Math.max(2, (r / anaMax) * (H - 8));
+      s += `<rect x="${cx - bw - 1}" y="${H - 4 - ah}" width="${bw}" height="${ah}" rx="1.5" fill="#2563EB" opacity=".85"><title>Admissions ${a}</title></rect>`;
+      s += `<rect x="${cx + 1}" y="${H - 4 - rh}" width="${bw}" height="${rh}" rx="1.5" fill="#10B981" opacity=".85"><title>Releases ${r}</title></rect>`;
+    }
+    s += "</svg>";
+    return s;
+  };
+
+  /* Gender donut SVG */
+  const buildGenderDonut = () => {
+    const R = 20, C = 2 * Math.PI * R;
+    const gt = Math.max(1, genderStats.m + genderStats.f + genderStats.o);
+    const md = (genderStats.m / gt) * C, fd = (genderStats.f / gt) * C;
+    const od = Math.max(0, C - md - fd);
+    let off = 0;
+    const parts = [];
+    [[genderStats.m, "#2563EB", md], [genderStats.f, "#EC4899", fd], [genderStats.o, "#94A3B8", od]].forEach(([v, col, len]) => {
+      if (len <= 0) return;
+      parts.push(`<circle cx="22" cy="22" r="${R}" fill="none" stroke="${col}" stroke-width="7" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" stroke-linecap="round"><title>${v}</title></circle>`);
+      off += len;
+    });
+    return `<svg width="44" height="44" viewBox="0 0 44 44" role="img" aria-label="Gender breakdown">${parts.join("")}</svg>`;
+  };
+
   return (
     <div className="hw">
-      <style>{CSS + CSS2 + CSS3}</style>
+      <style>{CSS + CSS2 + CSS3 + CSS4}</style>
+
+      {/* Back to the normal All-Deceased list */}
+      <button className="hw-back" type="button" onClick={backToAllDeceased} title="Go to All Deceased">
+        <span className="hw-arr" aria-hidden="true">‹</span>
+        <span>All Deceased</span>
+      </button>
+
       {/* ── top KPI cards (glow gradient) ── */}
       <div className="hw-top">
         <div className="hw-tiles">
@@ -568,12 +723,69 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
         <section className="hw-panel">
           <div className="hw-p-head">
             <span className="hw-p-ic hw-i-blue"><Ic d={ICO.calIco.d} s={15} /></span>
-            <div className="hw-p-title">Calendar<small>Daily activity</small></div>
+            <div className="hw-p-title">Calendar<small>Daily activity · Analytics</small></div>
             <span className="hw-p-meta">{pd.day} <b>{pd.short}</b></span>
           </div>
           <div className="hw-p-body">
             <div style={{ width: "100%" }}>
-              <MiniActivityCalendar events={events} loading={loading} onPickDate={onPick} />
+              <HorizontalCalendar
+                eventsData={hCalEvents}
+                selectedDate={selDate}
+                onDateSelect={onHorizPick}
+              />
+
+              {/* Analytics — fills the space under the horizontal strip */}
+              <div className="hw-analytics">
+                <div className="hw-ana-head"><span className="pulse" />Analytics<span style={{ marginLeft: "auto", color: "var(--faint)" }}>live</span></div>
+                <div className="hw-ana-grid">
+                  {/* Admissions & Releases */}
+                  <div className="hw-ana-card">
+                    <div className="hw-ana-title">Admissions &amp; Releases<b>7d</b></div>
+                    <div className="hw-ana-bars" dangerouslySetInnerHTML={{ __html: buildAnaBars() }} />
+                    <div className="hw-ana-x">
+                      <span><i style={{ background: "#2563EB" }} />Adm {admSeries7.reduce((a, b) => a + b, 0)}</span>
+                      <span><i style={{ background: "#10B981" }} />Rel {relSeries7.reduce((a, b) => a + b, 0)}</span>
+                    </div>
+                  </div>
+
+                  {/* Body status */}
+                  <div className="hw-ana-card">
+                    <div className="hw-ana-title">Body status<b>{bodySeg.care + bodySeg.pmHold + bodySeg.rel}</b></div>
+                    <div className="hw-seg">
+                      <b style={{ width: `${(bodySeg.care / bodyTotal) * 100}%`, background: "#2563EB" }} />
+                      <b style={{ width: `${(bodySeg.pmHold / bodyTotal) * 100}%`, background: "#D97706" }} />
+                      <b style={{ width: `${(bodySeg.rel / bodyTotal) * 100}%`, background: "#16A34A" }} />
+                    </div>
+                    <div className="hw-seg-legend">
+                      <span><i style={{ background: "#2563EB" }} />Care {bodySeg.care}</span>
+                      <span><i style={{ background: "#D97706" }} />PM {bodySeg.pmHold}</span>
+                      <span><i style={{ background: "#16A34A" }} />Released {bodySeg.rel}</span>
+                    </div>
+                  </div>
+
+                  {/* Postmortem tracking */}
+                  <div className="hw-ana-card">
+                    <div className="hw-ana-title">Postmortem<b>{pmTotal}</b></div>
+                    <div className="hw-ana-pm">
+                      <div className="row"><span>Pending</span><span className="bar"><i className="pend" style={{ width: `${pmPendPct}%` }} /></span><b>{pmPendingCount}</b></div>
+                      <div className="row"><span>Done</span><span className="bar"><i className="done" style={{ width: `${pmDonePct}%` }} /></span><b>{pmDone}</b></div>
+                    </div>
+                  </div>
+
+                  {/* Gender */}
+                  <div className="hw-ana-card">
+                    <div className="hw-ana-title">Gender<b>{genderStats.m + genderStats.f + genderStats.o}</b></div>
+                    <div className="hw-ana-donut">
+                      <div dangerouslySetInnerHTML={{ __html: buildGenderDonut() }} />
+                      <div className="dl">
+                        <span><i style={{ background: "#2563EB" }} />Male<b>{genderStats.m}</b></span>
+                        <span><i style={{ background: "#EC4899" }} />Female<b>{genderStats.f}</b></span>
+                        <span><i style={{ background: "#94A3B8" }} />Other<b>{genderStats.o}</b></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>

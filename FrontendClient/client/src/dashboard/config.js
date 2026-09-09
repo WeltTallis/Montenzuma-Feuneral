@@ -12,6 +12,32 @@ import {
  * ------------------------------------------------------------------------- */
 export const MODULES = [
   {
+    id: "deceased",
+    label: "Deceased Register",
+    icon: UsersIcon,
+    accent: "#f472b6",
+    apiEndpoint: "/deceased/deceased-all",
+    statusMap: {
+      pending: { label: "Pending", color: "#3b82f6" },
+      admitted: { label: "Admitted", color: "#3b82f6" },
+      admitting: { label: "Embalming", color: "#8b5cf6" },
+      ready: { label: "Ready", color: "#f59e0b" },
+      released: { label: "Released", color: "#22c55e" },
+      buried: { label: "Buried", color: "#64748b" },
+      dispatched: { label: "Dispatched", color: "#64748b" },
+      completed: { label: "Completed", color: "#22c55e" },
+      transferred: { label: "Transferred", color: "#64748b" },
+    },
+    dateField: (b) => b?.date_admitted || b?.adm_date || b?.created_at,
+    clientField: "full_name",
+    idField: "admission_number",
+    kpiFields: [
+      { key: "admitted", label: "Admitted", icon: UsersIcon },
+      { key: "released", label: "Released", icon: CheckIcon },
+      { key: "buried", label: "Buried", icon: TruckIcon },
+    ],
+  },
+  {
     id: "hearse",
     label: "Hearse Bookings",
     icon: TruckIcon,
@@ -89,32 +115,6 @@ export const MODULES = [
     ],
   },
   {
-    id: "deceased",
-    label: "Deceased Register",
-    icon: UsersIcon,
-    accent: "#f472b6",
-    apiEndpoint: "/deceased/deceased-all",
-    statusMap: {
-      pending: { label: "Pending", color: "#3b82f6" },
-      admitted: { label: "Admitted", color: "#3b82f6" },
-      admitting: { label: "Embalming", color: "#8b5cf6" },
-      ready: { label: "Ready", color: "#f59e0b" },
-      released: { label: "Released", color: "#22c55e" },
-      buried: { label: "Buried", color: "#64748b" },
-      dispatched: { label: "Dispatched", color: "#64748b" },
-      completed: { label: "Completed", color: "#22c55e" },
-      transferred: { label: "Transferred", color: "#64748b" },
-    },
-    dateField: (b) => b?.date_admitted || b?.adm_date || b?.created_at,
-    clientField: "full_name",
-    idField: "admission_number",
-    kpiFields: [
-      { key: "admitted", label: "Admitted", icon: UsersIcon },
-      { key: "released", label: "Released", icon: CheckIcon },
-      { key: "buried", label: "Buried", icon: TruckIcon },
-    ],
-  },
-  {
     id: "workshop",
     label: "Workshop",
     icon: WrenchIcon,
@@ -148,8 +148,8 @@ export const DASH_NAV = [
   {
     section: "Operations",
     items: [
-      { i: "H", label: "Hearse", path: "hearse" },
       { i: "D", label: "Deceased", path: "deceased" },
+      { i: "H", label: "Hearse", path: "hearse" },
       { i: "C", label: "Coffins", path: "coffins" },
       { i: "W", label: "Workshop", path: "workshop" },
       { i: "F", label: "Flower Bookings", path: "flowers" },

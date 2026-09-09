@@ -29,39 +29,48 @@ const C = {
   mid: '#444444',
   gray: '#777777',
   lightGray: '#aaaaaa',
-  border: '#c8c8c8',
-  borderLight: '#e0e0e0',
+  border: '#e0e0e0',
+  borderLight: '#efefef',
   bgField: '#f7f7f5',
-  bgAccent: '#f0eeea',
   bgSection: '#fafaf9',
   bgApp: '#ececec',
   exportBtn: '#0F3040',
-  success: '#059669',
+  success: '#047857',
   successBg: '#ecfdf5',
-  warning: '#d97706',
-  warningBg: '#fef3c7',
+  warning: '#b45309',
+  warningBg: '#fffbeb',
   danger: '#dc2626',
   dangerBg: '#fef2f2',
-  info: '#2563eb',
-  infoBg: '#eff6ff',
+  info: '#1e3a8a',
+  infoBg: '#e0e7ff',
   brown: '#795548',
+  
+  // Bright Status Colors
+  cBlue: '#00296B',
+  cOrange: '#E36414',
+  cPurple: '#5F0F40',
+  cPink: '#DD2D4A',
+  cNavy: '#03071E',
+  
+  // Accent / Scrollbar
+  accent: '#DD2D4A',
 };
 
 // ─── Status Configuration ───────────────────────────────────────────
 const STATUS_CONFIG = {
-  active: { label: 'Active', color: '#1e3a8a', bg: '#e0e7ff' },
-  'in morgue': { label: 'In Morgue', color: '#1e3a8a', bg: '#e0e7ff' },
-  'postmortem requested': { label: 'Postmortem Requested', color: '#6d28d9', bg: '#f3e8ff' },
-  'pending autopsy': { label: 'Postmortem Done', color: '#b45309', bg: '#fffbeb' },
-  'postmortem done': { label: 'Postmortem Done', color: '#b45309', bg: '#fffbeb' },
-  pending: { label: 'Pending', color: '#b45309', bg: '#fffbeb' },
-  released: { label: 'Released', color: '#047857', bg: '#ecfdf5' },
-  completed: { label: 'Released', color: '#047857', bg: '#ecfdf5' },
-  complete: { label: 'Released', color: '#047857', bg: '#ecfdf5' },
-  buried: { label: 'Buried', color: '#047857', bg: '#ecfdf5' },
-  transferred: { label: 'Transferred', color: '#6b7280', bg: '#f3f4f6' },
-  'in care': { label: 'In Care', color: '#1e3a8a', bg: '#e0e7ff' },
-  embalmed: { label: 'In Care', color: '#1e3a8a', bg: '#e0e7ff' },
+  active: { label: 'Active', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
+  'in morgue': { label: 'In Morgue', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
+  'postmortem requested': { label: 'Postmortem Requested', color: C.cOrange, bg: 'rgba(227, 100, 20, 0.1)' },
+  'pending autopsy': { label: 'Postmortem Done', color: C.cPurple, bg: 'rgba(95, 15, 64, 0.1)' },
+  'postmortem done': { label: 'Postmortem Done', color: C.cPurple, bg: 'rgba(95, 15, 64, 0.1)' },
+  pending: { label: 'Pending', color: C.cPink, bg: 'rgba(221, 45, 74, 0.1)' },
+  released: { label: 'Released', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
+  completed: { label: 'Released', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
+  complete: { label: 'Released', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
+  buried: { label: 'Buried', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
+  transferred: { label: 'Transferred', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
+  'in care': { label: 'In Care', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
+  embalmed: { label: 'In Care', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
   default: { label: 'Unknown', color: '#6b7280', bg: '#f3f4f6' }
 };
 
@@ -99,10 +108,8 @@ const AppContainer = styled.div`
     margin: 0 auto;
     max-width: 1400px;
     padding: 32px;
-    overflow-x: hidden;
     overflow-x: clip;
   }
-
 
   @media (max-width: 900px) {
     padding: 16px;
@@ -113,105 +120,210 @@ const AppContainer = styled.div`
 `;
 
 const PageHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 16px;
-  box-sizing: border-box;
+  margin-bottom: 24px;
   
   h1 {
     font-family: 'Merriweather', serif;
-    font-size: 24px;
+    font-size: 28px;
     color: ${C.black};
+    font-weight: 900;
     margin: 0;
   }
   p {
     color: ${C.gray};
-    font-size: 14px;
-    margin: 4px 0 0;
-  }
-
-  @media (max-width: 900px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-    h1 { font-size: 22px; }
-    p { font-size: 13px; }
+    font-size: 15px;
+    margin-top: 4px;
   }
 `;
 
-const Actions = styled.div`
+// ─── Sleek Top Toolbar ──────────────────────────────────────────────
+const Toolbar = styled.div`
+  background: white;
+  border: 1px solid ${C.borderLight};
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 24px;
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+  flex-wrap: wrap;
+`;
+
+const ToolbarLeft = styled.div`
+  display: flex;
+  align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  box-sizing: border-box;
+  flex: 1;
+`;
 
-  @media (max-width: 900px) {
-    width: 100%;
-    flex-direction: column;
-    gap: 8px;
+const ToolbarRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+`;
+
+const SearchWrapper = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+`;
+
+const SearchIcon = styled.i`
+  position: absolute;
+  left: 16px;
+  color: ${C.gray};
+  font-size: 14px;
+  pointer-events: none;
+  transition: color 0.2s;
+`;
+
+const SearchInput = styled.input`
+  height: 42px;
+  width: 100%;
+  max-width: 280px;
+  border-radius: 10px;
+  border: 1px solid ${C.border};
+  background: ${C.bgField};
+  padding: 0 16px 0 42px;
+  font-size: 14px;
+  font-family: 'Source Sans 3', sans-serif;
+  color: ${C.dark};
+  transition: all 0.25s ease;
+  outline: none;
+
+  &::placeholder { color: #aaa; }
+
+  &:focus {
+    background: white;
+    border-color: ${C.accent};
+    box-shadow: 0 0 0 4px rgba(221, 45, 74, 0.1);
+
+    & + ${SearchIcon} {
+      color: ${C.accent};
+    }
   }
 `;
 
-const Btn = styled.button`
-  height: 38px;
-  padding: 0 16px; 
-  border-radius: 4px; 
-  font-weight: 600; 
-  font-size: 13px;
-  cursor: pointer; 
-  border: 1px solid ${C.border}; 
-  background: white; 
+const FilterWrapper = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+`;
+
+const FilterSelect = styled.select`
+  height: 42px;
+  width: 100%;
+  max-width: 170px;
+  border-radius: 10px;
+  border: 1px solid ${C.border};
+  background: ${C.bgField};
+  padding: 0 36px 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Source Sans 3', sans-serif;
   color: ${C.dark};
-  transition: 0.15s; 
-  display: inline-flex; 
-  align-items: center; 
-  justify-content: center; 
-  gap: 6px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: all 0.25s ease;
+
+  &:focus {
+    background: white;
+    border-color: ${C.accent};
+    box-shadow: 0 0 0 4px rgba(221, 45, 74, 0.1);
+  }
+`;
+
+const SelectArrow = styled.i`
+  position: absolute;
+  right: 14px;
+  color: ${C.gray};
+  pointer-events: none;
+  font-size: 12px;
+  transition: color 0.2s;
+  
+  ${FilterWrapper}:hover & {
+    color: ${C.dark};
+  }
+`;
+
+// ─── Buttons ────────────────────────────────────────────────────────
+const Btn = styled.button`
+  height: 42px;
+  padding: 0 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   font-family: 'Source Sans 3', sans-serif;
   white-space: nowrap;
-  box-sizing: border-box;
-  
-  &:hover { background: ${C.bgField}; border-color: ${C.gray}; }
-  
-  ${p => p.$primary && `background: ${C.black}; color: white; border-color: ${C.black};
-    &:hover { background: ${C.dark}; }`}
-    
-  ${p => p.$danger && `background: ${C.danger}; color: white; border-color: ${C.danger};
-    &:hover { background: #b91c1c; }`}
-    
-  ${p => p.$export && `background: ${C.exportBtn}; color: white; border-color: ${C.exportBtn};
-    &:hover { background: #0c2530; }`}
-    
-  ${p => p.$sm && `height: 30px; padding: 0 12px; font-size: 12px;`}
-  
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
 
-  @media (max-width: 900px) {
+  ${p => p.$ghost && `
+    background: ${C.bgField};
+    border: 1px solid ${C.border};
+    color: ${C.mid};
+    &:hover { background: #eef2f6; border-color: ${C.gray}; color: ${C.black}; }
+  `}
+
+  ${p => p.$danger && `
+    background: #dc2626;
+    color: white;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+    &:hover:not(:disabled) { background: #b91c1c; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(220, 38, 38, 0.3); }
+  `}
+
+  ${p => p.$export && `
+    background: ${C.exportBtn};
+    color: white;
+    box-shadow: 0 4px 12px rgba(15, 48, 64, 0.2);
+    &:hover:not(:disabled) { background: #0c2530; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(15, 48, 64, 0.3); }
+  `}
+
+  ${p => p.$primary && `
+    background: ${C.black};
+    color: white;
+    &:hover:not(:disabled) { background: ${C.dark}; }
+  `}
+
+  ${p => p.$sm && `
+    height: 32px;
+    padding: 0 16px;
+    font-size: 13px;
+    border-radius: 8px;
+  `}
+
+  @media (max-width: 992px) {
     width: 100%;
   }
 `;
 
-// ─── Sleek Calendar Components ──────────────────────────────────────
+// ─── Calendar Strip ─────────────────────────────────────────────────
 const CalendarContainer = styled.div`
   background: white;
   border: 1px solid ${C.borderLight};
-  border-radius: 10px;
-  padding: 8px 16px;
+  border-radius: 12px;
+  padding: 16px 24px;
   margin-bottom: 24px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
   display: flex;
   align-items: center;
-  gap: 16px;
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
+  gap: 24px;
   overflow: hidden;
 
   @media (max-width: 900px) {
@@ -224,10 +336,10 @@ const CalendarContainer = styled.div`
 
 const CalendarControls = styled.div`
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  border-right: 1px solid ${C.borderLight};
-  padding-right: 16px;
+  border-right: 1px solid ${C.border};
+  padding-right: 24px;
 
   @media (max-width: 900px) {
     border-right: none;
@@ -237,64 +349,55 @@ const CalendarControls = styled.div`
   }
 `;
 
-
 const CalSelect = styled.select`
   border: 1px solid transparent;
   background: ${C.bgField};
   font-family: 'Source Sans 3', sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: ${C.black};
   cursor: pointer;
   border-radius: 6px;
-  padding: 6px 8px;
+  padding: 8px 12px;
   transition: 0.2s;
-  &:hover { background: ${C.borderLight}; }
+  &:hover { background: #eaeae6; }
   &:focus { outline: none; border-color: ${C.gray}; }
 `;
 
-
-
 const CalendarDates = styled.div`
   display: flex;
-  /* Big screens: wrap the days into tidy rows so EVERY date fits — no
-     horizontal overflow, nothing clipped by the card. Small screens keep
-     the classic single-line scroll strip. */
   flex-wrap: wrap;
   justify-content: flex-start;
-  gap: 6px;
-  padding: 4px 2px 6px;
+  gap: 8px;
+  padding: 4px 2px 8px;
   flex: 1;
   width: 100%;
   min-width: 0;
-  max-width: 100%;
   align-items: center;
+  scroll-behavior: smooth;
 
   @media (max-width: 900px) {
     flex-wrap: nowrap;
     overflow-x: auto;
-    scroll-behavior: smooth;
     scrollbar-width: thin;
-    scrollbar-color: ${C.border} transparent;
+    scrollbar-color: ${C.accent} ${C.bgField};
 
     &::-webkit-scrollbar { height: 6px; }
     &::-webkit-scrollbar-track { background: ${C.bgField}; border-radius: 10px; }
-    &::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 10px; }
-    &::-webkit-scrollbar-thumb:hover { background: ${C.gray}; }
+    &::-webkit-scrollbar-thumb { background: ${C.accent}; border-radius: 10px; }
+    &::-webkit-scrollbar-thumb:hover { background: #b71f38; }
   }
 `;
 
-
-
 const CalDateBtn = styled.div`
   flex: 0 0 auto;
-  min-width: 42px;
-  padding: 6px 4px;
-  border-radius: 6px;
+  min-width: 52px;
+  padding: 8px 6px;
+  border-radius: 8px;
   border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s;
   text-align: center;
   position: relative;
   display: flex;
@@ -305,19 +408,14 @@ const CalDateBtn = styled.div`
   &:hover { background: ${C.bgField}; }
 
   ${p => p.$active && `
-    background: ${C.black};
+    background: ${C.accent};
     color: white;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 12px rgba(221, 45, 74, 0.4);
   `}
-
-  @media (max-width: 600px) {
-    min-width: 34px;
-    padding: 4px 2px;
-  }
 `;
 
 const CalWeekday = styled.div`
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   opacity: 0.6;
@@ -325,48 +423,41 @@ const CalWeekday = styled.div`
 `;
 
 const CalDayNum = styled.div`
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 700;
   font-family: 'Merriweather', serif;
   line-height: 1;
 `;
 
 const EventDot = styled.div`
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: ${p => p.$active ? '#fca5a5' : C.danger};
-  box-shadow: 0 0 5px rgba(220, 38, 38, 0.55);
+  background: ${p => p.$active ? 'white' : p.$color || C.gray};
+  box-shadow: 0 0 6px ${p => p.$active ? 'rgba(255,255,255,0.8)' : `rgba(${p.$rgb || '0,0,0'}, 0.6)`};
   position: absolute;
-  bottom: 3px;
-  opacity: 1;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
 `;
 
 // ─── List Components ────────────────────────────────────────────────
 const ListCard = styled.div`
   background: white;
   border: 1px solid ${C.borderLight};
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 `;
 
 const ListHeader = styled.div`
   background: ${C.bgSection};
-  padding: 16px 24px;
+  padding: 20px 24px;
   border-bottom: 1px solid ${C.borderLight};
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  box-sizing: border-box;
+  
   h2 { 
     font-family: 'Merriweather', serif;
-    font-size: 16px; 
+    font-size: 18px; 
     font-weight: 700; 
     color: ${C.black}; 
     margin: 0; 
@@ -375,61 +466,6 @@ const ListHeader = styled.div`
   @media (max-width: 900px) {
     padding: 16px;
   }
-`;
-
-const FilterToolbar = styled.div`
-  padding: 16px 24px;
-  background: white;
-  border-bottom: 1px solid ${C.borderLight};
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-  box-sizing: border-box;
-
-  @media (max-width: 900px) {
-    padding: 16px;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    
-    > * {
-      width: 100% !important;
-      flex: 1 1 100% !important;
-      min-width: 100% !important;
-    }
-  }
-`;
-
-const FormInput = styled.input`
-  height: 38px; 
-  border: 1px solid ${C.border};
-  border-radius: 4px;
-  padding: 0 12px;
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 13px;
-  color: ${C.dark};
-  background: ${p => p.$search ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23777' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cpath d='m21 21-4.35-4.35'%3E%3C/path%3E%3C/svg%3E") no-repeat 10px center, ${C.bgField}` : C.bgField};
-  background-size: ${p => p.$search ? '16px, auto' : 'auto'};
-  padding-left: ${p => p.$search ? '34px' : '12px'};
-  transition: border-color 0.15s;
-  box-sizing: border-box;
-  &:focus { outline: none; border-color: ${C.black}; background-color: white; }
-`;
-
-const FormSelect = styled.select`
-  height: 38px; 
-  border: 1px solid ${C.border};
-  border-radius: 4px;
-  padding: 0 12px;
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 13px; 
-  color: ${C.dark};
-  background: ${C.bgField};
-  transition: border-color 0.15s;
-  cursor: pointer;
-  box-sizing: border-box;
-  &:focus { outline: none; border-color: ${C.black}; background-color: white; }
 `;
 
 const TableWrap = styled.div`
@@ -448,7 +484,7 @@ const StyledTable = styled.table`
   
   thead th {
     text-align: left; 
-    padding: 12px 24px; 
+    padding: 14px 24px; 
     font-size: 11px; 
     font-weight: 700;
     text-transform: uppercase; 
@@ -457,12 +493,14 @@ const StyledTable = styled.table`
     border-bottom: 1px solid ${C.borderLight}; 
     background: ${C.bgSection}; 
     white-space: nowrap;
+    
+    &:last-child { text-align: right; }
   }
   
   tbody tr {
     border-bottom: 1px solid ${C.borderLight}; 
     cursor: pointer; 
-    transition: background 0.1s;
+    transition: background 0.15s;
     &:last-child { border-bottom: none; }
     &:hover { background: ${C.bgField}; }
   }
@@ -472,100 +510,22 @@ const StyledTable = styled.table`
     font-size: 14px; 
     color: ${C.dark}; 
     vertical-align: middle; 
+    
+    &:last-child { text-align: right; }
   }
 `;
 
-const MobileCardContainer = styled.div`
-  display: none;
+const NameCell = styled.div`
+  display: flex; 
+  align-items: center; 
+  gap: 12px;
   
-  @media (max-width: 900px) {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 16px;
-  }
-`;
-
-const MobileCard = styled.div`
-  background: white;
-  border: 1px solid ${C.borderLight};
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  cursor: pointer;
-  transition: 0.2s;
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-
-  &:active {
-    transform: scale(0.98);
-    background: ${C.bgField};
-  }
-
-  @media (max-width: 600px) {
-    padding: 12px;
-  }
-`;
-
-const MobileCardHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 16px;
-`;
-
-const MobileCardNameWrap = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-`;
-
-const MobileCardDetails = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid ${C.borderLight};
-
-  @media (max-width: 600px) {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    padding-top: 12px;
-  }
-
-  div {
-    display: flex;
-    flex-direction: column;
-  }
-
-  span {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: ${C.gray};
-    letter-spacing: 0.08em;
-    margin-bottom: 4px;
-  }
-
-  strong {
-    font-size: 14px;
-    color: ${C.dark};
-    font-weight: 600;
-  }
-`;
-
-const MobileCardFooter = styled.div`
-  margin-top: 16px;
-  display: flex;
-  justify-content: flex-end;
+  .meta { font-size: 12px; color: ${C.gray}; margin-top: 2px; }
 `;
 
 const AvatarSm = styled.div`
-  width: 36px; 
-  height: 36px; 
+  width: 38px; 
+  height: 38px; 
   border-radius: 50%; 
   color: white;
   display: flex; 
@@ -574,29 +534,21 @@ const AvatarSm = styled.div`
   font-weight: 700; 
   font-size: 14px; 
   flex-shrink: 0;
-  background: ${p => p.$female ? C.brown : C.black};
-`;
-
-const NameCell = styled.div`
-  display: flex; 
-  align-items: center; 
-  gap: 12px;
-  .meta { font-size: 12px; color: ${C.gray}; margin-top: 2px; }
+  background: ${p => p.$female ? C.cPurple : C.black};
 `;
 
 const StatusBadge = styled.span`
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
   text-transform: capitalize;
   white-space: nowrap;
   background: ${p => p.$bg};
   color: ${p => p.$color};
-  border: 1px solid ${p => p.$border};
 
   &::before {
     content: '';
@@ -625,11 +577,97 @@ const LoadingState = styled.div`
     width: 24px; 
     height: 24px; 
     border: 2px solid ${C.borderLight};
-    border-top-color: ${C.black}; 
+    border-top-color: ${C.accent}; 
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+`;
+
+// ─── Mobile Cards ───────────────────────────────────────────────────
+const MobileCardContainer = styled.div`
+  display: none;
+  
+  @media (max-width: 900px) {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+`;
+
+const MobileCard = styled.div`
+  background: white;
+  border: 1px solid ${C.borderLight};
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  cursor: pointer;
+  transition: 0.2s;
+
+  &:active {
+    transform: scale(0.98);
+    background: ${C.bgField};
+  }
+`;
+
+const MobileCardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+`;
+
+const MobileCardNameWrap = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  
+  div div:first-child {
+    font-size: 16px;
+    font-weight: 700;
+    color: ${C.black};
+  }
+  div div:last-child {
+    font-size: 13px;
+    color: ${C.gray};
+  }
+`;
+
+const MobileCardDetails = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid ${C.borderLight};
+
+  div {
+    display: flex;
+    flex-direction: column;
+  }
+
+  span {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: ${C.gray};
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  strong {
+    font-size: 14px;
+    color: ${C.dark};
+    font-weight: 600;
+  }
+`;
+
+const MobileCardFooter = styled.div`
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
 `;
 
 // ─── Modal Components ───────────────────────────────────────────────
@@ -651,7 +689,7 @@ const ModalOverlay = styled.div`
 
 const ModalContent = styled.div`
   background: white; 
-  border-radius: 8px; 
+  border-radius: 16px; 
   width: 100%; 
   max-width: 700px;
   max-height: 90dvh;
@@ -678,43 +716,30 @@ const ModalHeader = styled.div`
   top: 0;
   background: white;
   z-index: 10;
-  box-sizing: border-box;
+  
   h2 { 
     font-family: 'Merriweather', serif; 
     font-size: 18px; 
     color: ${C.black}; 
     margin: 0; 
   }
-
-  @media (max-width: 900px) {
-    padding: 16px;
-    h2 { font-size: 16px; }
-  }
 `;
 
 const ModalBody = styled.div`
   padding: 24px;
-  box-sizing: border-box;
-
-  @media (max-width: 900px) {
-    padding: 16px;
-  }
 `;
 
 const ModalFooter = styled.div`
   padding: 16px 24px; 
   border-top: 1px solid ${C.borderLight}; 
-  text-align: right; 
   display: flex; 
   gap: 8px; 
   justify-content: flex-end;
   position: sticky;
   bottom: 0;
   background: white;
-  box-sizing: border-box;
 
   @media (max-width: 900px) {
-    padding: 16px;
     flex-direction: column-reverse;
     
     button {
@@ -746,16 +771,10 @@ const SectionHead = styled.div`
   display: flex; 
   align-items: center; 
   gap: 8px;
+  
   span { opacity: 0.5; font-size: 10px; }
   ${p => p.$mt0 && 'margin-top: 0;'}
   ${p => p.$mt4 && 'margin-top: 32px;'}
-
-  @media (max-width: 900px) {
-    padding: 8px 12px;
-    font-size: 11px;
-    margin-bottom: 16px;
-    ${p => p.$mt4 && 'margin-top: 24px;'}
-  }
 `;
 
 const FormRow = styled.div`
@@ -784,17 +803,17 @@ const FormLabel = styled.label`
 `;
 
 const ModalInput = styled.input`
-  height: 38px; 
+  height: 42px; 
   width: 100%; 
   border: 1px solid ${C.border}; 
-  border-radius: 4px;
+  border-radius: 10px;
   padding: 0 12px; 
   font-family: 'Source Sans 3', sans-serif; 
   font-size: 14px;
   color: ${C.dark}; 
   background: ${C.bgField}; 
   box-sizing: border-box;
-  &:focus { outline: none; border-color: ${C.black}; background: white; }
+  &:focus { outline: none; border-color: ${C.accent}; background: white; box-shadow: 0 0 0 4px rgba(221, 45, 74, 0.1); }
 `;
 
 const DataTable = styled.table`
@@ -843,13 +862,12 @@ const ProgressWidget = styled.div`
   right: 24px;
   background: white;
   padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
   border: 1px solid ${C.borderLight};
   z-index: 2000;
   min-width: 320px;
   animation: ${fadeIn} 0.3s ease-out;
-  box-sizing: border-box;
 
   @media (max-width: 900px) {
     left: 16px;
@@ -860,7 +878,6 @@ const ProgressWidget = styled.div`
     padding: 16px;
   }
 `;
-
 
 // ─── Main Component ─────────────────────────────────────────────────
 const DeceasedListPage = () => {
@@ -880,23 +897,18 @@ const DeceasedListPage = () => {
   // Calendar State
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [calYear, setCalYear] = useState(() => {
-    // The URL is the source of truth for the year (?year=2026) so a
-    // shared/bookmarked link reopens the exact same view.
     const y = Number(searchParams.get('year'));
     return Number.isInteger(y) && y >= 1900 && y <= 2200 ? y : today.getFullYear();
   });
 
-  // Stable handle for URL sync inside callbacks (prevents refetch loops —
-  // react-router's setSearchParams identity can change across navigations).
   const setSearchParamsRef = useRef(null);
   setSearchParamsRef.current = setSearchParams;
-  const [selectedDate, setSelectedDate] = useState(null); // 'YYYY-MM-DD'
+  const [selectedDate, setSelectedDate] = useState(null);
   const activeDateRef = useRef(null);
 
   const [showExport, setShowExport] = useState(false);
   const [exportStart, setExportStart] = useState('');
   const [exportEnd, setExportEnd] = useState('');
-  const [exportJobId, setExportJobId] = useState(null);
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStatus, setExportStatus] = useState('');
   const [exporting, setExporting] = useState(false);
@@ -907,7 +919,7 @@ const DeceasedListPage = () => {
 
   const exportCleanupRef = useRef(null);
 
-  // ─── Fetch Deceased (per selected calendar year) ─────────────────
+  // ─── Fetch Deceased ─────────────────────────────────────────────
   const fetchDeceased = useCallback(async () => {
     setLoading(true);
     setServiceUnavailable(false);
@@ -920,8 +932,6 @@ const DeceasedListPage = () => {
         'x-tenant-slug': tenantSlug,
       };
 
-      // Pull the whole selected year page by page so the calendar dots
-      // and the list reflect every record of that year (not just 50).
       const collected = [];
       let pageNum = 1;
       const pageSize = 200;
@@ -931,9 +941,6 @@ const DeceasedListPage = () => {
         const params = { year: calYear, page: pageNum, limit: pageSize };
         if (search) params.search = search;
 
-        // Append the plain query to the browser URL (year/page/limit only —
-        // no search text, so no special characters for crawlers to choke on):
-        // /all-deceased?year=2026&page=1&limit=100
         if (setSearchParamsRef.current) {
           setSearchParamsRef.current(
             { year: calYear, page: pageNum, limit: pageSize },
@@ -956,7 +963,7 @@ const DeceasedListPage = () => {
 
       setRecords(collected);
     } catch (err) {
-      console.error('Error fetching deceased:', err);
+      console.error("Error fetching deceased:", err);
       setRecords([]);
       if (err.friendlyMessage) {
         setServiceUnavailable(true);
@@ -971,7 +978,6 @@ const DeceasedListPage = () => {
     fetchDeceased();
   }, [fetchDeceased]);
 
-  // ─── Manual Refresh (red header button) ─────────────────────────
   const handleRefresh = useCallback(async () => {
     if (refreshing) return;
     setRefreshing(true);
@@ -993,7 +999,6 @@ const DeceasedListPage = () => {
     };
   }, []);
 
-  // Scroll active date into view
   useEffect(() => {
     if (activeDateRef.current) {
       activeDateRef.current.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
@@ -1001,10 +1006,6 @@ const DeceasedListPage = () => {
   }, [selectedDate, calMonth, calYear]);
 
   // ─── Filters ─────────────────────────────────────────────────────
-  // Year scoping — belt & braces: the API filters server-side via ?year=,
-  // but an older deceased-service build may ignore that param. Filtering
-  // here as well guarantees the list + calendar dots ALWAYS reflect the
-  // selected year.
   const yearRecords = useMemo(() => {
     if (!calYear) return records;
     return records.filter(r => {
@@ -1024,7 +1025,7 @@ const DeceasedListPage = () => {
 
     if (statusFilter) {
       const statusInfo = getStatusInfo(r.body_status || r.status);
-      if (statusFilter === 'active' && statusInfo.label !== 'active' && statusInfo.label !== 'pending') return false;
+      if (statusFilter === 'Active' && statusInfo.label !== 'Active' && statusInfo.label !== 'Pending') return false;
       if (statusFilter === 'Postmortem Requested' && statusInfo.label !== 'Postmortem Requested') return false;
       if (statusFilter === 'Postmortem Done' && statusInfo.label !== 'Postmortem Done' && statusInfo.label !== 'Pending Autopsy') return false;
       if (statusFilter === 'Released' && statusInfo.label !== 'Released' && statusInfo.label !== 'Transferred' && statusInfo.label !== 'Buried') return false;
@@ -1072,13 +1073,12 @@ const DeceasedListPage = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const resetExportState = () => {
+  const resetExportState = useCallback(() => {
     setExporting(false);
     setShowExport(false);
     setExportStatus('');
     setExportProgress(0);
-    setExportJobId(null);
-  };
+  }, []);
 
   const isFileResponse = (contentType = '') =>
     contentType.includes('spreadsheetml') ||
@@ -1097,6 +1097,7 @@ const DeceasedListPage = () => {
     }
 
     setExporting(true);
+    setShowExport(false); // Close modal immediately, rely on ProgressWidget
     setExportProgress(0);
     setExportStatus('Queuing export job...');
 
@@ -1122,7 +1123,6 @@ const DeceasedListPage = () => {
 
       const contentType = (response.headers?.['content-type'] || '').toLowerCase();
 
-      // Fallback path: the server generated the file synchronously
       if (isFileResponse(contentType)) {
         setExportStatus('Download started...');
         downloadExportBlob(response.data, `Deceased_Records_${todayKey()}.xlsx`);
@@ -1131,11 +1131,9 @@ const DeceasedListPage = () => {
         return;
       }
 
-      // Normal path: JSON response with a job id to poll
       const data = await parseBlobJson(response.data);
 
       if (data?.success && data?.jobId) {
-        setExportJobId(data.jobId);
         setExportStatus('Processing export...');
         pollExportStatus(data.jobId);
       } else {
@@ -1152,7 +1150,7 @@ const DeceasedListPage = () => {
       }
 
       showToast(message, 'error');
-      setTimeout(resetExportState, 1500);
+      resetExportState();
     }
   };
 
@@ -1171,9 +1169,7 @@ const DeceasedListPage = () => {
 
     const fail = (msg) => {
       showToast(msg, 'error');
-      setTimeout(() => {
-        resetExportState();
-      }, 2000);
+      resetExportState();
     };
 
     const poll = async () => {
@@ -1195,7 +1191,6 @@ const DeceasedListPage = () => {
 
         const contentType = (response.headers?.['content-type'] || '').toLowerCase();
 
-        // Completed: the server streams the generated file
         if (isFileResponse(contentType)) {
           cleanup();
           downloadExportBlob(response.data, `Deceased_Records_${todayKey()}.zip`);
@@ -1204,7 +1199,6 @@ const DeceasedListPage = () => {
           return;
         }
 
-        // Still processing: the status JSON arrives wrapped in a blob — parse it
         let data;
         try {
           data = await parseBlobJson(response.data);
@@ -1264,7 +1258,6 @@ const DeceasedListPage = () => {
     return cleanup;
   };
 
-  // ─── Export History ──────────────────────────────────────────────
   useEffect(() => {
     const fetchExportHistory = async () => {
       try {
@@ -1299,13 +1292,22 @@ const DeceasedListPage = () => {
   const years = Array.from({ length: 7 }, (_, i) => today.getFullYear() - 5 + i);
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
-  // Map of 'YYYY-MM-DD' → admission count for that day (drives the red dots)
-  const eventCountByDate = useMemo(() => {
+  const hexToRgb = (hex) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `${r}, ${g}, ${b}`;
+  };
+
+  const eventColorByDate = useMemo(() => {
     const map = {};
     yearRecords.forEach(r => {
       const admitted = r.created_at || r.date_admitted || r.admission_date;
       const key = toDateString(admitted);
-      if (key) map[key] = (map[key] || 0) + 1;
+      if (key) {
+        const statusInfo = getStatusInfo(r.body_status || r.status);
+        map[key] = { color: statusInfo.color, rgb: hexToRgb(statusInfo.color) };
+      }
     });
     return map;
   }, [yearRecords]);
@@ -1330,25 +1332,58 @@ const DeceasedListPage = () => {
       <AppContainer>
         <ToastContainer position="top-right" autoClose={3000} />
 
-        {/* Page Header */}
+        {/* Header */}
         <PageHeader>
-          <div>
-            <h1>Deceased Records</h1>
-            <p>Manage and track all deceased records across your facility</p>
-          </div>
-          <Actions>
-            <Btn $danger onClick={handleRefresh} disabled={refreshing || loading} title="Reload deceased records">
-              <i className={`fas fa-sync-alt${refreshing ? ' fa-spin' : ''}`} style={{ fontSize: 12 }}></i>
-              {refreshing ? 'Refreshing...' : 'Refresh Records'}
-            </Btn>
-            <Btn $export onClick={() => setShowExport(true)}>
-              <i className="fas fa-file-export" style={{ fontSize: 12 }}></i> Export Data to Excel
-            </Btn>
-            {/* "New Admission" button removed */}
-          </Actions>
+          <h1>Deceased Records</h1>
+          <p>Manage and track all deceased records across your facility</p>
         </PageHeader>
 
-        {/* Sleek Horizontal Calendar */}
+        {/* Sleek Toolbar */}
+        <Toolbar>
+          <ToolbarLeft>
+            <Btn $danger onClick={handleRefresh} disabled={refreshing || loading}>
+              <i className={`fas fa-sync-alt${refreshing ? ' fa-spin' : ''}`}></i> Refresh
+            </Btn>
+            
+            <SearchWrapper>
+              <SearchInput
+                type="text"
+                placeholder="Search name or ID..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              <SearchIcon className="fas fa-search" />
+            </SearchWrapper>
+            
+            <FilterWrapper>
+              <FilterSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                <option value="">All Statuses</option>
+                <option value="Active">Active / In Morgue</option>
+                <option value="Postmortem Requested">Postmortem Requested</option>
+                <option value="Postmortem Done">Postmortem Done</option>
+                <option value="Released">Released / Transferred</option>
+              </FilterSelect>
+              <SelectArrow className="fas fa-chevron-down" />
+            </FilterWrapper>
+            
+            <FilterWrapper>
+              <FilterSelect value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
+                <option value="">All Genders</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </FilterSelect>
+              <SelectArrow className="fas fa-chevron-down" />
+            </FilterWrapper>
+          </ToolbarLeft>
+          
+          <ToolbarRight>
+            <Btn $export onClick={() => setShowExport(true)}>
+              <i className="fas fa-file-export"></i> Export Data
+            </Btn>
+          </ToolbarRight>
+        </Toolbar>
+
+        {/* Calendar */}
         <CalendarContainer>
           <CalendarControls>
             <CalSelect value={calMonth} onChange={handleMonthChange}>
@@ -1362,18 +1397,17 @@ const DeceasedListPage = () => {
             <CalDateBtn
               $active={!selectedDate}
               onClick={() => setSelectedDate(null)}
-              style={{ minWidth: '38px' }}
+              style={{ minWidth: '40px', alignSelf: 'center' }}
             >
               <CalWeekday>View</CalWeekday>
-              <CalDayNum style={{ fontSize: '11px', marginTop: '1px' }}>All</CalDayNum>
+              <CalDayNum style={{ fontSize: '13px', fontFamily: 'Source Sans 3, sans-serif' }}>All</CalDayNum>
             </CalDateBtn>
 
             {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
               const loopDate = new Date(calYear, calMonth, day);
               const dateStr = toDateString(loopDate);
               const weekday = loopDate.toLocaleDateString('en-US', { weekday: 'short' });
-              const eventCount = eventCountByDate[dateStr] || 0;
-              const hasEvents = eventCount > 0;
+              const eventData = eventColorByDate[dateStr];
               const isActive = selectedDate === dateStr;
 
               return (
@@ -1382,18 +1416,18 @@ const DeceasedListPage = () => {
                   $active={isActive}
                   onClick={() => handleDateClick(dateStr)}
                   ref={isActive ? activeDateRef : null}
-                  title={hasEvents ? `${eventCount} record${eventCount > 1 ? 's' : ''} admitted on this day` : undefined}
+                  title={eventData ? `Records admitted on this day` : undefined}
                 >
                   <CalWeekday>{weekday}</CalWeekday>
                   <CalDayNum>{day}</CalDayNum>
-                  {hasEvents && <EventDot $active={isActive} />}
+                  {eventData && <EventDot $active={isActive} $color={eventData.color} $rgb={eventData.rgb} />}
                 </CalDateBtn>
               );
             })}
           </CalendarDates>
         </CalendarContainer>
 
-        {/* Main Card */}
+        {/* List Card */}
         <ListCard>
           <ListHeader>
             <h2>
@@ -1401,31 +1435,6 @@ const DeceasedListPage = () => {
             </h2>
           </ListHeader>
 
-          {/* Filters */}
-          <FilterToolbar>
-            <FormInput
-              $search
-              type="text"
-              placeholder="Search name or ID..."
-              style={{ flex: 1, minWidth: 200 }}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            <FormSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-              <option value="">All Statuses</option>
-              <option value="Active">Active / In Morgue</option>
-              <option value="Postmortem Requested">Postmortem Requested</option>
-              <option value="Postmortem Done">Postmortem Done</option>
-              <option value="Released">Released / Transferred</option>
-            </FormSelect>
-            <FormSelect value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
-              <option value="">All Genders</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </FormSelect>
-          </FilterToolbar>
-
-          {/* Service Unavailable Message */}
           {serviceUnavailable && (
             <div style={{
               padding: '24px',
@@ -1471,7 +1480,7 @@ const DeceasedListPage = () => {
             </div>
           )}
 
-          {/* Desktop Table Layout */}
+          {/* Desktop Table */}
           <TableWrap>
             <StyledTable>
               <thead>
@@ -1481,7 +1490,7 @@ const DeceasedListPage = () => {
                   <th>Date Admitted</th>
                   <th>Days in Morgue</th>
                   <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Action</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -1515,16 +1524,12 @@ const DeceasedListPage = () => {
                       <td>{formatDate(admitted)}</td>
                       <td>{days} days</td>
                       <td>
-                        <StatusBadge
-                          $bg={statusInfo.bg}
-                          $color={statusInfo.color}
-                          $border={statusInfo.color + '40'}
-                        >
+                        <StatusBadge $bg={statusInfo.bg} $color={statusInfo.color}>
                           {statusInfo.label}
                         </StatusBadge>
                       </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <Btn $sm onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn>
+                      <td>
+                        <Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn>
                       </td>
                     </tr>
                   );
@@ -1533,7 +1538,7 @@ const DeceasedListPage = () => {
             </StyledTable>
           </TableWrap>
 
-          {/* Mobile Sleek Card Layout */}
+          {/* Mobile Cards */}
           <MobileCardContainer>
             {loading ? (
               <LoadingState><div className="spinner" /> Loading records...</LoadingState>
@@ -1562,17 +1567,11 @@ const DeceasedListPage = () => {
                       <MobileCardNameWrap>
                         <AvatarSm $female={isFemale}>{getInitials(name)}</AvatarSm>
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: 16, color: C.black }}>{name}</div>
-                          <div style={{ fontSize: 13, color: C.gray }}>
-                            {sex ? `${sex}, ` : ''}{r.age || '—'} yrs
-                          </div>
+                          <div>{name}</div>
+                          <div>{sex ? `${sex}, ` : ''}{r.age || '—'} yrs</div>
                         </div>
                       </MobileCardNameWrap>
-                      <StatusBadge
-                        $bg={statusInfo.bg}
-                        $color={statusInfo.color}
-                        $border={statusInfo.color + '40'}
-                      >
+                      <StatusBadge $bg={statusInfo.bg} $color={statusInfo.color}>
                         {statusInfo.label}
                       </StatusBadge>
                     </MobileCardHeader>
@@ -1593,7 +1592,7 @@ const DeceasedListPage = () => {
                     </MobileCardDetails>
 
                     <MobileCardFooter>
-                      <Btn $sm onClick={(e) => { e.stopPropagation(); openProfile(id); }}>
+                      <Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>
                         View Profile
                       </Btn>
                     </MobileCardFooter>
@@ -1604,7 +1603,7 @@ const DeceasedListPage = () => {
           </MobileCardContainer>
         </ListCard>
 
-        {/* ─── Export Modal ───────────────────────────────────────── */}
+        {/* Export Modal */}
         <ModalOverlay $open={showExport} onClick={() => !exporting && setShowExport(false)}>
           <ModalContent onClick={e => e.stopPropagation()}>
             <ModalHeader>
@@ -1659,7 +1658,7 @@ const DeceasedListPage = () => {
               </div>
             </ModalBody>
             <ModalFooter>
-              <Btn onClick={() => setShowExport(false)} disabled={exporting}>Cancel</Btn>
+              <Btn $ghost onClick={() => setShowExport(false)} disabled={exporting}>Cancel</Btn>
               <Btn $export onClick={handleExport} disabled={exporting}>
                 {exporting ? 'Exporting...' : 'Generate Export'}
               </Btn>
@@ -1704,7 +1703,7 @@ const DeceasedListPage = () => {
               <div style={{
                 width: `${exportProgress}%`,
                 height: '100%',
-                background: exportStatus === 'Completed' ? C.success : C.exportBtn,
+                background: exportStatus === 'Completed' ? C.success : C.accent,
                 transition: 'width 0.3s ease'
               }} />
             </div>
