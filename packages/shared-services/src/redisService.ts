@@ -176,10 +176,7 @@ export async function getRedisClient(): Promise<RedisClient | null> {
     client = createClient({
       url: DEFAULT_REDIS_URL,
       socket: {
-        reconnectStrategy: () => {
-          // Disable reconnection - if Redis is down, just skip it
-          return false;
-        },
+        reconnectStrategy: (retries: number) => Math.min(retries * 50, 2000),
         connectTimeout: 3000,
       },
     });
