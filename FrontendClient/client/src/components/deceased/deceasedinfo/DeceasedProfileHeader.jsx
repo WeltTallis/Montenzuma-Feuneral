@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import bwipjs from '@bwip-js/browser';
 import { C } from './theme';
@@ -80,7 +80,10 @@ const Barcode = ({ value }) => {
 
 const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettingsClick }) => {
   const navigate = useNavigate();
-  const { id: deceasedId } = useParams();
+  // Read the deceased identifier from the query string (?id=XXX); fall back to the path param.
+  const [searchParams] = useSearchParams();
+  const pathParams = useParams();
+  const deceasedId = searchParams.get('id') || pathParams.id;
   const [showRouteOptimizer, setShowRouteOptimizer] = useState(false);
   const displayId = deceased?.deceased_id || deceased?.id;
   const admissionNo = deceased?.admission_number || deceased?.admission_no || '—';

@@ -3,7 +3,7 @@ import styled, { keyframes, createGlobalStyle } from 'styled-components';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
 
@@ -151,7 +151,11 @@ const TABS = [
 ];
 
 const DeceasedDetailPage = () => {
-  const { id: deceasedId } = useParams();
+  // Read the deceased identifier from the query string (?id=XXX); fall back to
+  // the path param so legacy /deceased/XXX links keep working.
+  const [searchParams] = useSearchParams();
+  const pathParams = useParams();
+  const deceasedId = searchParams.get('id') || pathParams.id;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);

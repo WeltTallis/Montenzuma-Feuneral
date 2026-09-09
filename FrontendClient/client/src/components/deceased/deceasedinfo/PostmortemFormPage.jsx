@@ -816,7 +816,7 @@ const PostmortemFormPage = () => {
         // Navigate back to deceased detail page
         setTimeout(() => {
           const slug = getTenantSlug();
-          navigate(`/tenant/${slug}/deceased/${deceased_id}`);
+          navigate(`/tenant/${slug}/deceased?id=${deceased_id}`);
         }, 1500);
       } else {
         showToast.error(response.data?.message || 'Failed to save record');

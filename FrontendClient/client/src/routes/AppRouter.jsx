@@ -1,4 +1,4 @@
-import { Routes, Route, useParams, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useParams, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 
 
@@ -398,20 +398,17 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
         } />
 
         <Route path="deceased" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedList /></Layout>
+          <DeceasedRouteSwitch tenantData={tenantData} slug={slug} />
         } />
 
         <Route path="deceased/register" element={
           <DeceasedRegistrationForm />
         } />
 
-        <Route path="deceased/:id" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedDetails /></Layout>
-        } />
+        {/* Legacy path-style deceased URLs (/deceased/XXX) → redirect to /deceased?id=XXX */}
+        <Route path="deceased/:id" element={<TenantDeceasedIdRedirect />} />
 
-        <Route path="deceased-details/:id" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedDetails /></Layout>
-        } />
+        <Route path="deceased-details/:id" element={<TenantDeceasedIdRedirect />} />
 
         {/* Financial Details */}
         <Route path="financials/:id" element={
@@ -623,13 +620,46 @@ const TenantRootRedirect = ({ slug }) => {
   return <Navigate to="all-deceased" replace />;
 };
 
+/* /tenant/:slug/deceased          → deceased LIST
+   /tenant/:slug/deceased?id=XXX   → deceased DETAILS for XXX (query-param URL format) */
+const DeceasedRouteSwitch = ({ tenantData, slug }) => {
+  const [searchParams] = useSearchParams();
+  const hasId = !!searchParams.get('id');
+  return hasId ? (
+    <DashboardLayout tenantData={tenantData} tenantSlug={slug}><DeceasedDetails /></DashboardLayout>
+  ) : (
+    <DashboardLayout tenantData={tenantData} tenantSlug={slug}><DeceasedList /></DashboardLayout>
+  );
+};
+
+/* Redirect old path-style deceased URLs (/deceased/XXX, /deceased-details/XXX)
+   to the current query-param format /deceased?id=XXX */
+const TenantDeceasedIdRedirect = () => {
+  const navigate = useNavigate();
+  const { slug: slugParam, id } = useParams();
+
+  useEffect(() => {
+    const slug = slugParam || localStorage.getItem('tenantSlug') || '';
+    navigate(`/tenant/${slug}/deceased?id=${encodeURIComponent(id || '')}`, { replace: true });
+  }, [navigate, slugParam, id]);
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#6B7280' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: '40px', height: '40px', border: '3px solid #E5E7EB', borderTop: '3px solid #C9A84C', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
+        <p>Redirecting...</p>
+      </div>
+    </div>
+  );
+};
+
 const LegacyDeceasedRedirect = () => {
   const navigate = useNavigate();
   const { id } = useParams();
 
   useEffect(() => {
     const tenantSlug = localStorage.getItem('tenantSlug') || '';
-    navigate(`/tenant/${tenantSlug}/deceased/${id}`, { replace: true });
+    navigate(`/tenant/${tenantSlug}/deceased?id=${encodeURIComponent(id || '')}`, { replace: true });
   }, [navigate, id]);
 
   return (
