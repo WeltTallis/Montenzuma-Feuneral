@@ -2,7 +2,6 @@ import { Worker } from 'bullmq';
 import ExcelJS from 'exceljs';
 import fs from 'fs';
 import path from 'path';
-import zlib from 'zlib';
 import { safeTenantQuery } from '../../../shared/dbConfig';
 import Logger from '../../../packages/shared-logger/src/index';
 import { getExcelExportQueue } from '../queues/excelExportQueue';
@@ -168,53 +167,41 @@ export async function createExcelExportWorker(): Promise<Worker | null> {
 
           await job.updateProgress(90);
 
-          // Generate filename
+          // ── Save the workbook ──
+          // IMPORTANT: ExcelJS output (.xlsx) is ALREADY a ZIP-compressed
+          // package (the OOXML spec is a ZIP of XML parts). The previous code
+          // piped it through a raw GZIP stream and renamed it *.zip — a bare
+          // gzip stream is NOT a valid ZIP archive, so every downloaded export
+          // was unopenable/corrupt. We now write the plain .xlsx directly into
+          // the service's persistent data volume (uid 1001 writable) and serve
+          // it as-is. The controller deletes the file right after sending.
+          const exportDir = process.env.EXPORT_DIR || '/usr/src/app/data/exports';
+          fs.mkdirSync(exportDir, { recursive: true });
+
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('.')[0];
           const filename = `Deceased_Records_${tenantSlug}_${timestamp}.xlsx`;
-          const filepath = path.join('/tmp', filename);
+          const filepath = path.join(exportDir, filename);
 
-          // Save file
           await workbook.xlsx.writeFile(filepath);
 
-          // Compress the file to save space
-          const compressedFilename = `Deceased_Records_${tenantSlug}_${timestamp}.zip`;
-          const compressedFilepath = path.join('/tmp', compressedFilename);
-
-          const gzip = zlib.createGzip();
-          const inputStream = fs.createReadStream(filepath);
-          const outputStream = fs.createWriteStream(compressedFilepath);
-
-          await new Promise((resolve, reject) => {
-            inputStream.pipe(gzip).pipe(outputStream);
-            outputStream.on('finish', resolve);
-            outputStream.on('error', reject);
-          });
-
-          // Get file sizes for logging
-          const originalSize = fs.statSync(filepath).size;
-          const compressedSize = fs.statSync(compressedFilepath).size;
-          const compressionRatio = ((1 - compressedSize / originalSize) * 100).toFixed(2);
+          const fileSize = fs.statSync(filepath).size;
 
           Logger.info({
-            message: `Excel export completed and compressed`,
-            originalSize: `${(originalSize / 1024).toFixed(2)} KB`,
-            compressedSize: `${(compressedSize / 1024).toFixed(2)} KB`,
-            compressionRatio: `${compressionRatio}%`
+            message: `Excel export completed`,
+            filename,
+            size: `${(fileSize / 1024).toFixed(2)} KB`,
+            records: dataRows.length,
           });
 
           await job.updateProgress(100);
 
           return {
             success: true,
-            filename: compressedFilename,
-            filepath: compressedFilepath,
-            originalFilename: filename,
-            originalFilepath: filepath,
+            filename,
+            filepath,
             recordCount: dataRows.length,
             tenantSlug,
-            compressionRatio: `${compressionRatio}%`,
-            originalSize,
-            compressedSize,
+            size: fileSize,
           };
 
         } catch (error: any) {

@@ -158,7 +158,6 @@ import postmortemRequestRoutes from './routes/postmortemRequestRoutes';
 import nextOfKinRoutes from './routes/nextOfKinRoutes';
 import hearseRoutes from './routes/hearseRoutes';
 import documentsRoutes from './routes/documentsRoutes';
-
 import deceasedRoutes from './routes/deceasedRoutes';
 app.use('/', deceasedRoutes);
 
@@ -223,20 +222,25 @@ import { getExcelExportQueue } from './queues/excelExportQueue';
 import { startPDFWorker } from './queues/pdfQueue';
 
 // Initialize queues asynchronously - don't block server startup
+let excelWorkerStarted = false;
+
 async function initializeQueues() {
     try {
-        const excelQueue = await getExcelExportQueue();
-        if (excelQueue) {
-            // Only import and start worker if queue is available
-            const { createExcelExportWorker } = await import('./workers/excelExportWorker.js');
-            const worker = await createExcelExportWorker();
-            if (worker) {
-                console.log('[SERVER] Excel export worker initialized');
+        if (!excelWorkerStarted) {
+            const excelQueue = await getExcelExportQueue();
+            if (excelQueue) {
+                // Only import and start worker if queue is available
+                const { createExcelExportWorker } = await import('./workers/excelExportWorker.js');
+                const worker = await createExcelExportWorker();
+                if (worker) {
+                    excelWorkerStarted = true;
+                    console.log('[SERVER] Excel export worker initialized');
+                } else {
+                    console.log('[SERVER] Excel export worker not initialized - Redis not available');
+                }
             } else {
                 console.log('[SERVER] Excel export worker not initialized - Redis not available');
             }
-        } else {
-            console.log('[SERVER] Excel export worker not initialized - Redis not available');
         }
 
         // Initialize PDF worker
@@ -250,6 +254,27 @@ async function initializeQueues() {
 initializeQueues().catch(err => {
     console.warn('[SERVER] Background queue initialization error:', err.message);
 });
+
+// RETRY LOOP — previously initializeQueues() ran exactly ONCE at boot. If Redis
+// was briefly unavailable (or the worker import failed) the Excel worker never
+// started, and every queued export job sat in `bull:excel-export:prioritized`
+// FOREVER while the frontend polled "Export in progress..." until timeout.
+// Retry every 30s (max 20 tries ≈ 10 min) until the worker is actually running.
+let queueInitRetries = 0;
+const queueInitTimer = setInterval(() => {
+    queueInitRetries += 1;
+    if (excelWorkerStarted || queueInitRetries > 20) {
+        clearInterval(queueInitTimer);
+        if (!excelWorkerStarted) {
+            console.warn('[SERVER] Excel export worker could not be started after retries');
+        }
+        return;
+    }
+    console.log(`[SERVER] Retrying queue/worker initialization (attempt ${queueInitRetries})...`);
+    initializeQueues().catch(err => {
+        console.warn('[SERVER] Queue init retry error:', err.message);
+    });
+}, 30_000);
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {

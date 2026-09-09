@@ -187,32 +187,33 @@ export const checkExportStatus = async (req: ExportRequest, res: Response): Prom
     if (state === 'completed') {
       const result = job.returnvalue;
 
-      // Read the compressed file and send it
+      // Read the generated file and send it
       const fs = require('fs');
       const filepath = result?.filepath;
 
       if (filepath && fs.existsSync(filepath)) {
         const fileBuffer = fs.readFileSync(filepath);
 
-        // Clean up both compressed and original files after sending
+        // Clean up the file after sending (single file — the worker no longer
+        // produces a separate "compressed" copy)
         try {
           fs.unlinkSync(filepath);
-          if (result?.originalFilepath && fs.existsSync(result.originalFilepath)) {
-            fs.unlinkSync(result.originalFilepath);
-          }
         } catch (err) {
-          Logger.warn({ message: 'Failed to clean up export files', error: err.message });
+          Logger.warn({ message: 'Failed to clean up export file', error: err.message });
         }
 
-        res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', `attachment; filename=${result?.filename || 'export.zip'}`);
+        // .xlsx IS the correct MIME type — a bare application/zip response made
+        // some clients/browsers block or corrupt the download, and the export
+        // "never worked". The workbook itself is already ZIP-packaged (OOXML).
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=${result?.filename || 'export.xlsx'}`);
 
         return res.send(fileBuffer);
       }
 
       return res.status(500).json({
         success: false,
-        message: 'File not found'
+        message: 'Export file not found — it may have been cleaned up. Please start a new export.'
       });
     }
 

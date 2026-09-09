@@ -55,14 +55,14 @@ const C = {
   info: '#1e3a8a',
   infoBg: '#e0e7ff',
   brown: '#795548',
-  
+
   // Bright Status Colors
   cBlue: '#00296B',
   cOrange: '#E36414',
   cPurple: '#5F0F40',
   cPink: '#DD2D4A',
   cNavy: '#03071E',
-  
+
   // Accent / Scrollbar
   accent: '#DD2D4A',
 };
@@ -108,14 +108,14 @@ const AppContainer = styled.div`
   line-height: 1.5;
   min-height: 100dvh;
   margin: 0 auto;
-  padding: 24px;
+  padding: 14px;
   width: 100%;
-  max-width: 1400px;
+  max-width: 2200px;
   animation: ${fadeIn} 0.25s ease-out;
   box-sizing: border-box;
 
   @media (max-width: 768px) {
-    padding: 16px;
+    padding: 6px;
   }
 `;
 
@@ -1105,6 +1105,15 @@ const DeceasedListPage = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  // Prefer the server-generated filename (Content-Disposition) so exports
+  // always arrive as a proper .xlsx — previously the polled download was
+  // saved as *.zip even though the payload was a spreadsheet.
+  const filenameFromDisposition = (response, fallback) => {
+    const disp = String(response?.headers?.['content-disposition'] || '');
+    const match = disp.match(/filename="?([^";]+)"?/i);
+    return match ? match[1] : fallback;
+  };
+
   const resetExportState = useCallback(() => {
     setExporting(false);
     setShowExport(false);
@@ -1129,7 +1138,7 @@ const DeceasedListPage = () => {
     }
 
     setExporting(true);
-    setShowExport(false); 
+    setShowExport(false);
     setExportProgress(0);
     setExportStatus('Queuing export job...');
 
@@ -1157,7 +1166,7 @@ const DeceasedListPage = () => {
 
       if (isFileResponse(contentType)) {
         setExportStatus('Download started...');
-        downloadExportBlob(response.data, `Deceased_Records_${todayKey()}.xlsx`);
+        downloadExportBlob(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`));
         showToast('Export completed successfully!', 'success');
         setTimeout(resetExportState, 1500);
         return;
@@ -1225,7 +1234,7 @@ const DeceasedListPage = () => {
 
         if (isFileResponse(contentType)) {
           cleanup();
-          downloadExportBlob(response.data, `Deceased_Records_${todayKey()}.zip`);
+          downloadExportBlob(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`));
           showToast('Export completed successfully!', 'success');
           setTimeout(resetExportState, 1500);
           return;
@@ -1376,7 +1385,7 @@ const DeceasedListPage = () => {
             <Btn $danger onClick={handleRefresh} disabled={refreshing || loading}>
               <i className={`fas fa-sync-alt${refreshing ? ' fa-spin' : ''}`}></i> Refresh
             </Btn>
-            
+
             <SearchWrapper>
               <SearchInput
                 type="text"
@@ -1386,7 +1395,7 @@ const DeceasedListPage = () => {
               />
               <SearchIcon className="fas fa-search" />
             </SearchWrapper>
-            
+
             <FilterWrapper>
               <FilterSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                 <option value="">All Statuses</option>
@@ -1397,7 +1406,7 @@ const DeceasedListPage = () => {
               </FilterSelect>
               <SelectArrow className="fas fa-chevron-down" />
             </FilterWrapper>
-            
+
             <FilterWrapper>
               <FilterSelect value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
                 <option value="">All Genders</option>
@@ -1407,7 +1416,7 @@ const DeceasedListPage = () => {
               <SelectArrow className="fas fa-chevron-down" />
             </FilterWrapper>
           </ToolbarLeft>
-          
+
           <ToolbarRight>
             <Btn $export onClick={() => setShowExport(true)}>
               <i className="fas fa-file-export"></i> Export Data
