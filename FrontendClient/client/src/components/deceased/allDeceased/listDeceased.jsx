@@ -26,7 +26,7 @@ const GlobalFonts = createGlobalStyle`
   body {
     margin: 0;
     padding: 0;
-    overflow-x: hidden; /* Prevents global horizontal scroll */
+    overflow-x: hidden;
     background-color: #ececec;
   }
 `;
@@ -100,7 +100,7 @@ const toDateString = (dateObj) => {
   return `${y}-${m}-${day}`;
 };
 
-// ─── Styled Components ──────
+// ─── Styled Components ──────────────────────────────────────────────
 const AppContainer = styled.div`
   font-family: 'Source Sans 3', -apple-system, sans-serif;
   color: ${C.dark};
@@ -351,7 +351,7 @@ const CalendarContainer = styled.div`
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  overflow: hidden; /* the strip can never push this card (or the page) wider */
+  overflow: hidden; /* Prevents the entire card from expanding */
 
   @media (max-width: 768px) {
     flex-direction: column;
@@ -392,16 +392,14 @@ const CalSelect = styled.select`
   &:focus { outline: none; border-color: ${C.gray}; }
 `;
 
-/* Wrapper that owns the leftover width. flex-basis 0% (NOT `width: 100%`
-   like before — that resolved to a basis as wide as the whole card and was
-   what pushed the row past its edges) so it can never overflow. */
 const StripWrap = styled.div`
   position: relative;
   display: flex;
   align-items: center;
-  flex: 1 1 0%;
-  min-width: 0;
+  flex: 1 1 0%;          /* take all remaining space, shrink below content */
+  min-width: 0;          /* allow flex‑shrink below content width */
   max-width: 100%;
+  overflow: hidden;      /* clip the absolutely positioned edges */
 `;
 
 const CalendarDates = styled.div`
@@ -410,17 +408,17 @@ const CalendarDates = styled.div`
   align-items: stretch;
   gap: 6px;
   padding: 4px 2px 8px;
-  flex: 1 1 0%;
-  min-width: 0;
+  flex: 1 1 0%;          /* fill the StripWrap, but can shrink */
+  min-width: 0;          /* critical – allows the flex item to be narrower than its content */
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-behavior: smooth;
   scroll-snap-type: x proximity;
-  overscroll-behavior-x: contain; /* strip scrolling never hijacks the page */
-  scrollbar-width: none;          /* sleek: scrollbar hidden, arrows instead */
-  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;          /* hide scrollbar for Firefox */
+  -ms-overflow-style: none;       /* hide scrollbar for IE/Edge */
   &::-webkit-scrollbar { display: none; }
 `;
 
@@ -556,18 +554,18 @@ const ListHeader = styled.div`
 
 const TableWrap = styled.div`
   width: 100%;
-  overflow-x: auto; /* Allows table to scroll internally */
+  overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   
   @media (max-width: 768px) {
-    display: none; /* Hide table on mobile, show cards instead */
+    display: none;
   }
 `;
 
 const StyledTable = styled.table`
   width: 100%; 
   border-collapse: collapse; 
-  min-width: 900px; /* Ensures it doesn't squish too much, scrolls instead */
+  min-width: 900px;
   
   thead th {
     text-align: left; 
@@ -628,7 +626,6 @@ const StatusBadge = styled.span`
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  width: 25px;
   padding: 5px 12px;
   border-radius: 5px;
   font-size: 12px;
@@ -642,7 +639,6 @@ const StatusBadge = styled.span`
     content: '';
     width: 6px;
     height: 6px;
-  
     background: ${p => p.$color};
   }
 `;
@@ -998,9 +994,6 @@ const DeceasedListPage = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const activeDateRef = useRef(null);
 
-  /* Horizontal date-strip scrolling — only the dates that fit the width are
-     shown; the rest are reachable via arrows / wheel / touch without ever
-     stretching the card or the page. */
   const stripRef = useRef(null);
   const [stripEdges, setStripEdges] = useState({ atStart: true, atEnd: false });
 
@@ -1019,8 +1012,6 @@ const DeceasedListPage = () => {
     el.scrollBy({ left: dir * Math.max(260, el.clientWidth * 0.65), behavior: 'smooth' });
   };
 
-  /* Desktop nicety: vertical wheel scrolls the strip horizontally (only when
-     it actually overflows) so the page doesn't jerk around. */
   useEffect(() => {
     const el = stripRef.current;
     if (!el) return undefined;
@@ -1035,8 +1026,6 @@ const DeceasedListPage = () => {
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
-  /* Track scroll position to show/hide the edge fades + arrows. Re-measures
-     whenever the month/year (day count) changes. */
   useEffect(() => {
     const el = stripRef.current;
     if (!el) return undefined;
@@ -1216,9 +1205,6 @@ const DeceasedListPage = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  // Prefer the server-generated filename (Content-Disposition) so exports
-  // always arrive as a proper .xlsx — previously the polled download was
-  // saved as *.zip even though the payload was a spreadsheet.
   const filenameFromDisposition = (response, fallback) => {
     const disp = String(response?.headers?.['content-disposition'] || '');
     const match = disp.match(/filename="?([^";]+)"?/i);
