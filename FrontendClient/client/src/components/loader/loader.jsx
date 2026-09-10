@@ -1,13 +1,11 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 
 /**
  * GlobalLoader — a single, consistent loader used across the whole app.
  *
- * It reproduces exactly the Rest Point loader design:
- *   • a dual counter-rotating ring spinner
- *   • an uppercase "Loading" caption
- *   • an animated progress bar
- *   • a live percentage that eases in/out (slow start → fast middle → slow end)
+ * PERFORMANCE: Uses pure CSS animations — no JavaScript animation loops,
+ * no requestAnimationFrame, no setState. The browser compositor handles
+ * everything, keeping the main thread free for rendering.
  *
  * Backwards compatible with the previous shared loader API:
  *   <Loader text="Loading…" size="medium|small|large|xlarge" color="primary|#" overlay fullScreen />
@@ -42,53 +40,10 @@ const Loader = ({
   autoRestart = true,
   style,
 }) => {
-  const fillRef = useRef(null);
-  const pctRef = useRef(null);
   const current = SIZE[size] || SIZE.medium;
   const sw = current.spinner;
-  // Resolve named colors, fall back to a literal hex/rgb when not recognised.
   const activeColor = COLOR_MAP[color] || color;
-  // Keep border proportionally thicker on larger spinners (matching the 3px @52px reference).
   const ringWidth = Math.max(2, Math.round(sw * 0.058));
-
-  // Animated progress — same easing program as the reference loader.
-  useEffect(() => {
-    let raf = 0;
-    let timer = 0;
-    let p = 0;
-    let stopped = false;
-
-    const tick = () => {
-      if (stopped) return;
-      // Ease-in-out feel: slow start, fast middle, slow end.
-      const speed = p < 20 ? 0.6 : p < 60 ? 1.2 : p < 85 ? 0.7 : 0.3;
-      p = Math.min(100, p + speed + Math.random() * 0.4);
-      const r = Math.round(p);
-      if (fillRef.current) fillRef.current.style.width = r + "%";
-      if (pctRef.current) pctRef.current.textContent = r + "%";
-
-      if (p < 100) {
-        raf = requestAnimationFrame(tick);
-      } else if (autoRestart) {
-        timer = setTimeout(() => {
-          if (!stopped) {
-            p = 0;
-            raf = requestAnimationFrame(tick);
-          }
-        }, 1400);
-      }
-    };
-
-    timer = setTimeout(() => {
-      if (!stopped) raf = requestAnimationFrame(tick);
-    }, 400);
-
-    return () => {
-      stopped = true;
-      cancelAnimationFrame(raf);
-      clearTimeout(timer);
-    };
-  }, [autoRestart]);
 
   const wrapperStyle = {
     display: "flex",
@@ -112,9 +67,8 @@ const Loader = ({
 
   return (
     <div style={wrapperStyle} className={className}>
-      {/* Dual ring spinner */}
+      {/* Dual ring spinner — pure CSS animation */}
       <div style={{ width: sw, height: sw, position: "relative" }}>
-        {/* Outer faint ring — counter-rotates */}
         <div
           style={{
             position: "absolute",
@@ -125,7 +79,6 @@ const Loader = ({
             animation: "rpspin-reverse 2.4s linear infinite",
           }}
         />
-        {/* Main spinning arc */}
         <div
           style={{
             position: "absolute",
@@ -164,18 +117,16 @@ const Loader = ({
               }}
             >
               <div
-                ref={fillRef}
                 style={{
-                  width: "0%",
+                  width: "40%",
                   height: "100%",
                   background: activeColor,
                   borderRadius: "2px",
-                  transition: "width 0.25s ease",
+                  animation: "loader-slide 1.2s ease-in-out infinite",
                 }}
               />
             </div>
             <span
-              ref={pctRef}
               style={{
                 fontSize: "11px",
                 fontWeight: 500,
@@ -185,7 +136,7 @@ const Loader = ({
                 letterSpacing: "1px",
               }}
             >
-              0%
+              …
             </span>
           </>
         )}
@@ -203,6 +154,11 @@ export const GlobalLoaderStyles = () => (
       }
       @keyframes rpspin-reverse {
         to { transform: rotate(-360deg); }
+      }
+      @keyframes loader-slide {
+        0% { transform: translateX(-100%); }
+        50% { transform: translateX(150%); }
+        100% { transform: translateX(400%); }
       }
     `}
   </style>

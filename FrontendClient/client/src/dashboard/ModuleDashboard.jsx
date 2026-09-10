@@ -375,12 +375,21 @@ export default function ModuleDashboard({ mod }) {
   const toggleStatus = (st) =>
     setActiveStatuses((p) => p.includes(st) ? p.filter((x) => x !== st) : [...p, st]);
 
-  /* ── Loading ───────────────────────────────────────────────── */
-  if (loading && !showStore) {
+  /* ── Loading — show content immediately, loader only on first load ──
+     PERFORMANCE: Don't block the entire dashboard. Show cached/stale data
+     instantly, then update when fresh data arrives. */
+  if (loading && !showStore && !calSources.deceased?.length) {
     return (
       <div style={{ flex: 1, background: T.bg, fontFamily: T.font, position: "relative" }}>
-        {/* Global loader — single consistent app-wide spinner */}
-        <GlobalLoader text={`Loading ${mod.label}`} color={mod.accent} fullScreen={false} size="large" />
+        {/* Lightweight spinner — only on very first load when no data exists */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: "50%",
+            border: `3px solid ${mod.accent}22`,
+            borderTopColor: mod.accent,
+            animation: "rpspin 0.8s linear infinite",
+          }} />
+        </div>
       </div>
     );
   }

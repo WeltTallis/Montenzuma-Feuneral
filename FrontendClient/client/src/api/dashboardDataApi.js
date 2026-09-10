@@ -124,12 +124,25 @@ const resolveBranches = async () => {
   }
 };
 
+// ── Cache for multi-branch deceased fetch (avoids refetch on tab switch) ──
+let _deceasedCache = null;
+let _deceasedCacheTs = 0;
+const CACHE_TTL = 60_000; // 60 seconds
+
 /**
  * Fetch deceased records across EVERY branch by calling the list endpoint
  * with each branch's slug as x-tenant-slug. Every record is tagged with
  * `branch_name` / `_branchSlug` so the dashboard can show activity by branch.
+ *
+ * PERFORMANCE: Results are cached for 60s. Subsequent calls within that window
+ * return instantly without hitting the API. This makes tab switching instant.
  */
-export const fetchAllBranchDeceased = async () => {
+export const fetchAllBranchDeceased = async (forceRefresh = false) => {
+  // Return cached data if fresh
+  if (!forceRefresh && _deceasedCache && Date.now() - _deceasedCacheTs < CACHE_TTL) {
+    return _deceasedCache;
+  }
+
   let branches = await resolveBranches();
   const currentSlug = sliceSlug(getBranchSlug() || getTenantSlug());
   if (currentSlug && !branches.some((b) => b.slug === currentSlug)) {
@@ -160,7 +173,16 @@ export const fetchAllBranchDeceased = async () => {
     }
   }));
 
+  // Store in cache
+  _deceasedCache = out;
+  _deceasedCacheTs = Date.now();
   return out;
+};
+
+/** Clear the deceased cache (call after mutations like register/delete) */
+export const clearDeceasedCache = () => {
+  _deceasedCache = null;
+  _deceasedCacheTs = 0;
 };
 
 /** booking_dates is stored as a JSON array string e.g. '["2026-08-09"]' */

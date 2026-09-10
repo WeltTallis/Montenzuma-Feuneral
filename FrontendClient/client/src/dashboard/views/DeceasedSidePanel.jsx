@@ -3,14 +3,31 @@
    matching the deceased profile detail page. Fetches the live record by id
    and falls back to whatever the dashboard row already carried.
 
+   PERFORMANCE: All API calls are parallelized with Promise.allSettled.
+   Content renders INSTANTLY from cached row data, then updates when
+   fresh data arrives. No loader blocking — stale-while-revalidate pattern.
+
    Icons are inline SVG components — no lucide-react import.
    ───────────────────────────────────────────────────────────────────────── */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Loader from "../../components/loader/loader";
 import api from "../../api/axios";
 import { deceasedApi } from "../../api/deceasedApi";
 import { formatDate, getDaysInMorgue, getInitials } from "../../components/deceased/deceasedinfo/theme";
+
+// ── Simple in-memory cache (survives within session, avoids refetch) ──────
+const _cache = new Map();
+const CACHE_TTL = 30_000; // 30 seconds
+
+function _getCached(key) {
+  const hit = _cache.get(key);
+  if (hit && Date.now() - hit.ts < CACHE_TTL) return hit.data;
+  return null;
+}
+function _setCache(key, data) {
+  _cache.set(key, { ts: Date.now(), data });
+}
 
 
 // ── inline SVG icon factory ────────────────────────────────────────────────
@@ -100,17 +117,21 @@ function Row({ label, value, mono, full }) {
 }
 
 export default function DeceasedSidePanel({ booking, onClose }) {
-  const [deceased, setDeceased] = useState(null);
+  // ── State — start with INSTANT row data, no loader ─────────────────────
+  const [deceased, setDeceased] = useState(booking); // instant from row
   const [nextOfKin, setNextOfKin] = useState(null);
   const [postmortem, setPostmortem] = useState(null);
   const [charges, setCharges] = useState([]);
   const [payments, setPayments] = useState([]);
-  const [loading, setLoading]   = useState(true);
+  const [loading, setLoading]   = useState(false); // NO loader on open
   const [error, setError]       = useState("");
   const [tab, setTab]           = useState("overview");
-  const [tick, setTick]         = useState(0);
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Ref to track if component is still mounted (avoids setState on unmount)
+  const mounted = useRef(true);
+  useEffect(() => { return () => { mounted.current = false; }; }, []);
 
   const id = booking?.deceased_id || booking?.id || booking?.admission_number;
 
@@ -120,92 +141,110 @@ export default function DeceasedSidePanel({ booking, onClose }) {
   const branchSlug = booking?._branchSlug || booking?.branch_slug || booking?.branchDbName || null;
   const branchCfg = branchSlug ? { headers: { "x-tenant-slug": branchSlug } } : undefined;
 
-  // Next of kin — same endpoint the deceased profile page uses.
-  useEffect(() => {
-    let alive = true;
-    if (!id) return undefined;
-    deceasedApi.getNextOfKin(id, branchCfg)
-      .then((res) => {
-        if (!alive) return;
-        const list = Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []);
-        setNextOfKin(list[0] || null);
-      })
-      .catch(() => { /* NOK is optional — falls back to row fields */ });
-    return () => { alive = false; };
-  }, [id, branchSlug, tick]);
+  // ── PARALLEL fetch: all endpoints at once, no waterfall ──────────────
+  const fetchAll = useCallback(async () => {
+    if (!id) { setDeceased(booking); return; }
 
-  // Postmortem + charges/payments — same endpoints the profile sidebar uses.
-  useEffect(() => {
-    let alive = true;
-    if (!id) return undefined;
+    // Check cache first — instant render if fresh
+    const cacheKey = `${id}-${branchSlug}`;
+    const cached = _getCached(cacheKey);
+    if (cached) {
+      if (cached.deceased) setDeceased(cached.deceased);
+      if (cached.nextOfKin) setNextOfKin(cached.nextOfKin);
+      if (cached.postmortem) setPostmortem(cached.postmortem);
+      if (cached.charges) setCharges(cached.charges);
+      if (cached.payments) setPayments(cached.payments);
+      setLastRefreshed(new Date());
+      return;
+    }
 
-    api.get(`/deceased/postmortem/${id}`, branchCfg)
-      .then((res) => { if (alive && res.data?.data) setPostmortem(res.data.data); })
-      .catch(() => { /* no postmortem yet */ });
-
-    api.get(`/deceased/billing-summary/${id}`, branchCfg)
-      .then((res) => {
-        if (!alive) return;
-        const bd = res.data?.data;
-        if (bd?.charges) setCharges(Array.isArray(bd.charges) ? bd.charges : [bd.charges]);
-        if (bd?.payments) setPayments(Array.isArray(bd.payments) ? bd.payments : []);
-      })
-      .catch(() =>
-        // Fallback to the plain charges endpoint (no payments list).
-        api.get(`/deceased/charges/${id}`, branchCfg)
-          .then((r2) => {
-            if (alive && r2.data?.data) {
-              setCharges(Array.isArray(r2.data.data) ? r2.data.data : [r2.data.data]);
-            }
-          })
-          .catch(() => { /* no charges */ })
-      );
-
-    return () => { alive = false; };
-  }, [id, branchSlug, tick]);
-
-  const fetchDeceased = useCallback(async () => {
-    if (!id) { setDeceased(booking); setLoading(false); return; }
+    // Fire ALL requests in parallel — no waiting between them
     setLoading(true); setError("");
     try {
-      const res = await api.get(`/deceased/deceased-id/${id}`, branchCfg);
-      const data = res.data?.data || res.data?.deceased || booking;
-      setDeceased(data);
-      setLastRefreshed(new Date());
+      const [deceasedRes, nokRes, pmRes, billingRes] = await Promise.allSettled([
+        api.get(`/deceased/deceased-id/${id}`, branchCfg),
+        deceasedApi.getNextOfKin(id, branchCfg).catch(() => null),
+        api.get(`/deceased/postmortem/${id}`, branchCfg).catch(() => null),
+        api.get(`/deceased/billing-summary/${id}`, branchCfg).catch(() => null),
+      ]);
+
+      if (!mounted.current) return;
+
+      // Process deceased result
+      if (deceasedRes.status === "fulfilled") {
+        const data = deceasedRes.value?.data?.data || deceasedRes.value?.data?.deceased || booking;
+        setDeceased(data);
+      } else {
+        setDeceased(booking);
+        setError("Couldn't refresh — using row data");
+      }
+
+      // Process NOK result
+      if (nokRes.status === "fulfilled" && nokRes.value) {
+        const list = Array.isArray(nokRes.value?.data) ? nokRes.value.data : (nokRes.value?.data ? [nokRes.value.data] : []);
+        if (list[0]) setNextOfKin(list[0]);
+      }
+
+      // Process postmortem result
+      if (pmRes.status === "fulfilled" && pmRes.value?.data?.data) {
+        setPostmortem(pmRes.value.data.data);
+      }
+
+      // Process billing result
+      if (billingRes.status === "fulfilled") {
+        const bd = billingRes.value?.data?.data;
+        if (bd) {
+          if (bd.charges) setCharges(Array.isArray(bd.charges) ? bd.charges : [bd.charges]);
+          if (bd.payments) setPayments(Array.isArray(bd.payments) ? bd.payments : []);
+        }
+      }
+
+      // Update cache & timestamp (pre-compute values for clarity)
+      const ts = new Date();
+      setLastRefreshed(ts);
+
+      const _nokList = (() => {
+        if (nokRes.status !== "fulfilled" || !nokRes.value) return [];
+        const l = Array.isArray(nokRes.value.data) ? nokRes.value.data : (nokRes.value.data ? [nokRes.value.data] : []);
+        return l;
+      })();
+      const _billData = billingRes.status === "fulfilled" ? billingRes.value?.data?.data : null;
+      _setCache(cacheKey, {
+        deceased: deceasedRes.status === "fulfilled" ? (deceasedRes.value?.data?.data || deceasedRes.value?.data?.deceased || booking) : booking,
+        nextOfKin: _nokList[0] || null,
+        postmortem: pmRes.status === "fulfilled" ? (pmRes.value?.data?.data || null) : null,
+        charges: _billData?.charges ? (Array.isArray(_billData.charges) ? _billData.charges : [_billData.charges]) : [],
+        payments: _billData?.payments ? (Array.isArray(_billData.payments) ? _billData.payments : []) : [],
+      });
     } catch (e) {
-      console.warn("[DeceasedSidePanel] fetch failed, using row data:", e?.message);
-      setError(e?.response?.status ? `Couldn't refresh (HTTP ${e.response.status})` : "");
+      console.warn("[DeceasedSidePanel] fetch error:", e?.message);
       setDeceased(booking);
     } finally {
-      setLoading(false);
+      if (mounted.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, [id, booking, tick]);
+  }, [id, booking, branchSlug]);
 
-  useEffect(() => { fetchDeceased(); }, [fetchDeceased]);
+  // Initial fetch — fires once on mount
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Refresh button — bumps `tick`, which re-runs the deceased fetch (its
-  // useCallback depends on tick) AND re-pulls NOK / postmortem / billing so
-  // every tab shows fresh data.
+  // ── Refresh handler — only shows spinner on refresh button ─────────────
   const handleRefresh = () => {
-    if (loading || refreshing) return;
+    if (refreshing) return;
     setRefreshing(true);
-    setTick((t) => t + 1);
+    fetchAll();
   };
 
-  // Clear the spinner once the deceased fetch settles.
-  useEffect(() => {
-    if (!loading) setRefreshing(false);
-  }, [loading]);
-
-  const d = deceased || booking || {};
-  // Next-of-kin fallback — same one the profile page uses when the
-  // deceased row predates the next_of_kin table.
-  const k = nextOfKin || (d.contact_person || d.phone_number || d.relationship || d.national_id ? {
+  // ── Derived values (memoized to avoid recalculation) ────────────────────
+  const d = useMemo(() => deceased || booking || {}, [deceased, booking]);
+  const k = useMemo(() => nextOfKin || (d.contact_person || d.phone_number || d.relationship || d.national_id ? {
     full_name: d.contact_person || "",
     relationship: d.relationship || "",
     id_number: d.national_id || d.id_number || "",
     contact: d.phone_number || d.tel_number || "",
-  } : {});
+  } : {}), [nextOfKin, d.contact_person, d.phone_number, d.relationship, d.national_id, d.id_number, d.tel_number]);
 
   const fullName    = d.full_name || d.name || d.deceased_name || d.name_of_deceased || "Unknown";
   const admissionNo = d.admission_number || d.admission_no || "—";
@@ -219,8 +258,8 @@ export default function DeceasedSidePanel({ booking, onClose }) {
   const embalmed     = d.embalmed ?? (String(d.admission_status || "").toLowerCase() === "embalmed");
   const daysInMorgue = getDaysInMorgue(d.date_admitted || d.admission_date || d.created_at);
 
-  const totalCharges = charges.reduce((s, c) => s + parseFloat(c.amount || c.charge_amount || 0), 0);
-  const totalPaid    = payments.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+  const totalCharges = useMemo(() => charges.reduce((s, c) => s + parseFloat(c.amount || c.charge_amount || 0), 0), [charges]);
+  const totalPaid    = useMemo(() => payments.reduce((s, p) => s + parseFloat(p.amount || 0), 0), [payments]);
   const balance      = totalCharges - totalPaid;
   const fmtK = (n) => (Math.abs(n) >= 1000 ? `${Math.round(n / 1000)}K` : `${Math.round(n)}`);
 
@@ -348,7 +387,7 @@ export default function DeceasedSidePanel({ booking, onClose }) {
             </div>
             <button
               onClick={handleRefresh}
-              disabled={loading || refreshing}
+              disabled={refreshing}
               className="p-2 rounded-xl text-slate-400 hover:text-teal-700 hover:bg-teal-50 transition-colors disabled:opacity-50"
               aria-label="Refresh"
               title="Refresh"
@@ -362,7 +401,7 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className={loading || refreshing ? "animate-spin" : ""}
+                className={refreshing ? "animate-spin" : ""}
               >
                 <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" />
               </svg>
@@ -411,27 +450,16 @@ export default function DeceasedSidePanel({ booking, onClose }) {
           ))}
         </div>
 
-        {/* Body */}
+        {/* Body — renders IMMEDIATELY from row data, no loader blocking */}
         <div className="flex-1 overflow-y-auto px-4 py-3.5">
-          {loading && (
-            <Loader
-              text="Loading Deceased"
-              size="small"
-              overlay={false}
-              fullScreen={false}
-              style={{ position: "relative", minHeight: 160 }}
-            />
-          )}
-
-          {!loading && error && (
+          {error && (
             <div className="mb-3 rounded-lg px-3 py-2 text-[12px] text-amber-700 bg-amber-50 border border-amber-200">
               {error} — showing summary data.
             </div>
           )}
 
-          {!loading && (
-            <>
-              {/* Stats strip — mirrors the profile sidebar */}
+          <>
+            {/* Stats strip — mirrors the profile sidebar */}
               <div
                 className="grid grid-cols-4 rounded-lg overflow-hidden mb-4"
                 style={{ border: "1px solid #e8ecef", background: "#e8ecef", gap: 1 }}
@@ -672,8 +700,7 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                 </PanelSection>
               </>)}
             </>
-          )}
-        </div>
+          </div>
 
       </aside>
     </>
