@@ -1,5 +1,6 @@
 // Snowfall.jsx
-// ── Flower Snow — gently drifting petals (self-contained styles) ──────────────
+// Flower snow: gently drifting petals, self-contained styles
+
 import { useMemo } from 'react'
 
 const SNOWFALL_CSS = `
@@ -29,7 +30,8 @@ const SNOWFALL_CSS = `
 @media (prefers-reduced-motion: reduce) { .snowfall { display: none; } }
 `
 
-const PETAL_COLORS = ['#FDF6EE', '#F3D9C8', '#E9C9C9', '#FFFFFF', '#DCE8D8']
+/* brighter petal palette */
+const PETAL_COLORS = ['#E8909B', '#F3B8AC', '#F6D3A0', '#BFD8A8']
 
 export default function Snowfall({ count = 14, opacity = 0.5, colors = PETAL_COLORS, bounded = false }) {
   const flakes = useMemo(() => Array.from({ length: count }, (_, i) => ({

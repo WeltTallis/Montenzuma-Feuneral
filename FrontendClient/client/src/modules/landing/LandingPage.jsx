@@ -452,7 +452,7 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; overflow-x: hidden; }
-        body { font-family: 'Inter', sans-serif; color: ${C.gray}; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+        body { font-family: 'Inter', sans-serif; color: ${C.gray}; background: ${C.bone}; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
         h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; color: ${C.ink}; }
         h1 { font-size: clamp(2rem, 6.5vw, 4.6rem); line-height: 1.05; margin-bottom: 1.4rem; }
         h2 { font-size: clamp(1.9rem, 4vw, 2.5rem); line-height: 1.2; }

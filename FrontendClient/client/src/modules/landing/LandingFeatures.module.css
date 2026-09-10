@@ -1,0 +1,4 @@
+/* Features-specific typography helpers — safe for the Features section only */
+.features-sub {
+  font-size: 16px;
+}

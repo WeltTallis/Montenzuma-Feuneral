@@ -75,7 +75,7 @@ const Page = styled.div`
   padding: 1.5rem;
   max-width: 1240px;
   margin: 0 auto;
-  background: ${COLORS.bg};
+  background: ${COLORS.white};
 `;
 
 const PageHeader = styled.div`
