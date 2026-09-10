@@ -77,7 +77,7 @@ const Reveal = ({ delay = 0, children, ...rest }) => {
 
 /* Top bar */
 
-const TopBar = styled.header`
+const TopBarTab = styled.header`
   background: ${C.black};
   display: flex;
   justify-content: space-between;
@@ -100,7 +100,7 @@ const TopBar = styled.header`
 
 /* Hero */
 
-const Hero = styled.section`
+const HeroTab = styled.section`
   background: ${C.black};
   color: ${C.paper};
 `;
@@ -758,14 +758,14 @@ const HardwareRequirementSection = () => {
     <>
       <GlobalStyles />
 
-      <TopBar>
+      <TopBarTab>
         <span className="brand"><span className="mark" />Restpoint · Death care, digitally</span>
         <span className="mid">Hardware specification · Materials</span>
         <span>Spec No. 07 · Rev. C</span>
-      </TopBar>
+      </TopBarTab>
 
       <main>
-        <Hero>
+        <HeroTab>
           <HeroInner>
 
             {/* Left column */}
@@ -884,7 +884,7 @@ const HardwareRequirementSection = () => {
             </HeroPlate>
 
           </HeroInner>
-        </Hero>
+        </HeroTab>
 
         {/* Requirement ledger */}
         <Requirement>
