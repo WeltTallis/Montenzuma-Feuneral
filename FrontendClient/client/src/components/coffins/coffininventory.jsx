@@ -45,7 +45,7 @@ const S = {
   transition: 'all 0.2s ease',
 };
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 const getStockStatus = (stock) => {
   if (stock <= 0) return { label: 'Out of Stock', cls: 'tag-ou', color: '#dc2626' };
   if (stock <= 2) return { label: 'Low Stock', cls: 'tag-lo', color: '#d97706' };
@@ -131,7 +131,7 @@ const styles = {
 
     fontFamily: S.font,
     color: S.text,
-    background: S.bg,
+
     minHeight: '100vh',
     fontSize: 14,
     WebkitFontSmoothing: 'antialiased',
