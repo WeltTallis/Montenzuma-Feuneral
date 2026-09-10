@@ -99,9 +99,9 @@ export default function Samples() {
     setCurrent(Math.max(0, Math.min(Math.max(arrangements.length - 1, 0), idx)));
   }, [arrangements.length]);
 
-  const arr = arrangements[current] || null;
+    const arr = arrangements[current] || null;
 
-const onPointerDown = (e) => {
+  const onPointerDown = (e) => {
     dragStart.current = e.clientX;
     dragging.current = false;
     const target = e.currentTarget;
