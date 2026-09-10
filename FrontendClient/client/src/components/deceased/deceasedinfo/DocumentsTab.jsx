@@ -152,10 +152,12 @@ const DocumentsTab = ({ documents, deceasedId }) => {
       const formData = new FormData();
       formData.append('document', file);
 
-      // IMPORTANT: Do not set Content-Type header — axios will automatically
-      // set multipart/form-data with the correct boundary. The global api
-      // instance defaults to application/json which breaks multer parsing.
+      // IMPORTANT: Content-Type must be explicitly null so the browser sets the
+      // multipart/form-data header WITH the correct boundary. The global api
+      // instance defaults to application/json which would otherwise override the
+      // browser's automatic Content-Type and break multer parsing on the backend.
       const headers = {
+        'Content-Type': null,
         'x-tenant-slug': localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug') || ''
       };
       // Only add auth headers if available (don't spread getTenantHeaders to avoid

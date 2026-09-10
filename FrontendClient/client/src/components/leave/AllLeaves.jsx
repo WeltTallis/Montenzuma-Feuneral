@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSocket } from '../../utils/context/socketContext';
 import { api, ENDPOINTS } from '../../api';
+import { getUserId, getParentTenantSlug } from '../../utils/globalAuth';
 import { Calendar, Clock, Users, FileText, AlertCircle, CheckCircle, XCircle, TrendingUp, Filter } from '../../utils/icons/icons';
 
 const COLORS = {
@@ -226,6 +227,9 @@ const AllLeaves = () => {
     end_date: ''
   });
   const { socket, connected } = useSocket();
+  const currentUserId = getUserId();
+  const tenantSlug = getParentTenantSlug();
+  const tenantHeaders = { headers: { 'x-tenant-slug': tenantSlug || 'system_shared' } };
 
   useEffect(() => {
     fetchLeaves();
@@ -253,6 +257,7 @@ const AllLeaves = () => {
   }, [socket]);
 
   const fetchLeaves = async () => {
+    setLoading(true);
     try {
       const params = new URLSearchParams();
       if (filters.status) params.append('status', filters.status);
@@ -260,8 +265,13 @@ const AllLeaves = () => {
       if (filters.start_date) params.append('start_date', filters.start_date);
       if (filters.end_date) params.append('end_date', filters.end_date);
 
-      const response = await api.get(`${ENDPOINTS.LEAVE.ALL}?${params.toString()}`);
-      setLeaves(Array.isArray(response?.data?.data) ? response.data.data : []);
+      const response = await api.get(`${ENDPOINTS.LEAVE.ALL}?${params.toString()}`, tenantHeaders);
+      const rows = Array.isArray(response?.data?.data)
+        ? response.data.data
+        : Array.isArray(response?.data)
+          ? response.data
+          : [];
+      setLeaves(rows);
     } catch (error) {
       console.error('Error fetching leaves:', error);
     } finally {
@@ -273,8 +283,8 @@ const AllLeaves = () => {
     try {
       await api.patch(ENDPOINTS.LEAVE.UPDATE_STATUS(leaveId), {
         status: 'approved',
-        approved_by: 1
-      });
+        approved_by: currentUserId
+      }, tenantHeaders);
       fetchLeaves();
     } catch (error) {
       console.error('Error approving leave:', error);
@@ -290,8 +300,8 @@ const AllLeaves = () => {
       await api.patch(ENDPOINTS.LEAVE.UPDATE_STATUS(leaveId), {
         status: 'rejected',
         rejection_reason: reason,
-        approved_by: 1
-      });
+        approved_by: currentUserId
+      }, tenantHeaders);
       fetchLeaves();
     } catch (error) {
       console.error('Error rejecting leave:', error);

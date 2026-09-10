@@ -50,24 +50,30 @@ const ModalOverlay = styled.div`
   background-color: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: flex-end;
+  align-items: stretch;
   z-index: 1000;
   padding: 1rem;
   animation: ${fadeIn} 0.2s ease-out;
 `;
 
+
 const ModalContainer = styled.div`
   background: ${Colors.white};
-  border-radius: 1rem;
+  border-radius: 1rem 0 0 1rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   width: 100%;
-  max-width: 1200px;
-  max-height: 90vh;
+  max-width: 620px;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   animation: ${fadeIn} 0.3s ease-out;
   overflow: hidden;
+
+  @media (max-width: 900px) {
+    max-width: 100%;
+    border-radius: 0;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -109,7 +115,7 @@ const ModalBody = styled.div`
   overflow-y: auto;
   padding: 1.5rem;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 1.5rem;
   
   @media (max-width: 900px) {

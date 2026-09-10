@@ -138,6 +138,7 @@ const DayMarker = styled.span`
   border-radius: 2px;
   margin-top: 2px;
   background: ${(p) => p.$color || COLORS.info};
+  cursor: ${(p) => (p.$interactive ? 'pointer' : 'default')};
 `;
 
 const Timeline = styled.div`
@@ -254,7 +255,7 @@ const DayCell = styled.div`
    LeaveCalendar component
    ═══════════════════════════════════════════════════════════════ */
 
-const LeaveCalendar = ({ leaves = [] }) => {
+const LeaveCalendar = ({ leaves = [], onLeaveClick }) => {
   const today = new Date();
   const todayYmd = `${pad(today.getFullYear())}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 
@@ -269,7 +270,9 @@ const LeaveCalendar = ({ leaves = [] }) => {
         const style = STATUS_STYLE[status] || STATUS_STYLE.pending;
         return {
           id: l.id,
-          title: l.leave_type ? TYPE_LABEL[l.leave_type] || l.leave_type : 'Leave',
+          title: l.name
+            ? `${l.name} · ${l.leave_type ? TYPE_LABEL[l.leave_type] || l.leave_type : 'Leave'}`
+            : (l.leave_type ? TYPE_LABEL[l.leave_type] || l.leave_type : 'Leave'),
           start,
           end,
           days: Number(l.days) || 0,
@@ -408,7 +411,14 @@ const LeaveCalendar = ({ leaves = [] }) => {
                     <DayMarker
                       key={r.id}
                       $color={r.style.dot}
+                      $interactive={Boolean(onLeaveClick)}
                       title={`${r.title} (${r.status})`}
+                      role={onLeaveClick ? 'button' : undefined}
+                      tabIndex={onLeaveClick ? 0 : undefined}
+                      onClick={onLeaveClick ? () => onLeaveClick(r.leave) : undefined}
+                      onKeyDown={onLeaveClick ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') onLeaveClick(r.leave);
+                      } : undefined}
                     />
                   ))}
                   {extra > 0 && (
@@ -443,7 +453,12 @@ const LeaveCalendar = ({ leaves = [] }) => {
             const widthPct =
               spanMs > 0 ? ((r.end.getTime() - r.start.getTime()) / spanMs) * 100 : 0;
             return (
-              <PeriodRow key={r.id}>
+              <PeriodRow
+                key={r.id}
+                onClick={onLeaveClick ? () => onLeaveClick(r.leave) : undefined}
+                style={onLeaveClick ? { cursor: 'pointer' } : undefined}
+                title={onLeaveClick ? 'Open leave record' : undefined}
+              >
                 <PeriodDot $color={r.style.dot} />
                 <PeriodLabel>{r.title}</PeriodLabel>
                 <PeriodBarWrap>

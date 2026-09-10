@@ -6,6 +6,7 @@ import {
   Calendar, Clock, Users, FileText, CheckCircle, XCircle, AlertCircle,
   Loader2, RefreshCw, UserCheck, Check, Trash2, Plus, X, ChevronRight,
 } from '../../utils/icons/icons';
+import LeaveCalendar from './LeaveCalendar';
 
 /* ── Palette mirrors the other Leave pages ────────────────────────── */
 const COLORS = {
@@ -552,6 +553,7 @@ const LeaveDashboard = () => {
   const [employees, setEmployees] = useState([]);
   const [actingId, setActingId] = useState(null); // row id currently being actioned
   const [recent, setRecent] = useState([]);       // latest requests across the tenant (every status)
+  const [leaveRecords, setLeaveRecords] = useState([]); // full tenant history for calendar rendering
   // ── Employee leave panel (click a user to open their leave dashboard) ──
   const [selectedUser, setSelectedUser] = useState(null);   // employee currently open in the panel
   const [userDetail, setUserDetail] = useState(null);       // { balance, leaves, additions }
@@ -586,6 +588,7 @@ const LeaveDashboard = () => {
       api.get(ENDPOINTS.LEAVE.USERS_ON_LEAVE, { ...tenantHeaders, signal: abortSignal }),
     ]);
     const allLeaves = normList(allRes);
+    setLeaveRecords(allLeaves);
     setRecent(allLeaves.slice(0, 12));
     setRequests(allLeaves.filter((l) => String(l.status || '').toLowerCase() === 'pending'));
     setOnLeaveUsers(normList(onLeaveRes));
@@ -806,7 +809,6 @@ const LeaveDashboard = () => {
   ];
 
   const pendingQueue = Array.isArray(requests) ? requests : [];
-
   return (
     <Page>
       <PageHeader>
@@ -1051,6 +1053,23 @@ const LeaveDashboard = () => {
             </SectionBody>
           </Section>
 
+          <Section style={{ marginTop: '1.5rem' }}>
+            <SectionHead>
+              <SectionHeadLeft><Calendar size={18} />Leave calendar</SectionHeadLeft>
+              <Pill>{leaveRecords.length} tenant leave records</Pill>
+            </SectionHead>
+            <SectionBody style={{ padding: '0.75rem' }}>
+              <LeaveCalendar
+                leaves={leaveRecords}
+                onLeaveClick={(leave) => openUser({
+                  user_id: leave.user_id,
+                  name: leave.name,
+                  email: leave.email,
+                })}
+              />
+            </SectionBody>
+          </Section>
+
           {/* All registered employees + their leave balances */}
           <Section style={{ marginTop: '1.5rem' }}>
             <SectionHead>
@@ -1133,6 +1152,9 @@ const LeaveDashboard = () => {
                     <MiniStat><MSLabel>Pending</MSLabel><MSValue>{safeNum(userDetail.balance?.pendingDays)}</MSValue></MiniStat>
                     <MiniStat $hl><MSLabel>Available</MSLabel><MSValue>{safeNum(userDetail.balance?.currentBalance)}</MSValue></MiniStat>
                   </MiniGrid>
+
+                  <PanelSubHead><Calendar size={15} /> Leave calendar</PanelSubHead>
+                  <LeaveCalendar leaves={userDetail.leaves} />
 
                   {/* Add leave days */}
                   <PanelSubHead><Plus size={15} /> Add leave days</PanelSubHead>
