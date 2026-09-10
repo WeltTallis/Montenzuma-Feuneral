@@ -6,7 +6,6 @@ import api from '../../api/axios'
 import { Flower2, MapPin, User, Calendar, Clock, ChevronLeft, ChevronRight, X, Check, Truck, Home, Package, AlertTriangle } from '../../utils/icons/icons';
 import { toDateKey, todayKey, parseDate as parseUtilDate } from '../../utils/dates/parseDates';
 
-
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -38,7 +37,6 @@ const STATUS_DESC = {
   completed: 'Successfully delivered to the specified location.'
 };
 
-// Distinct card tint per order status — the whole card communicates its state
 // Distinct card tint per order status — exactly TWO statuses for flowers
 const STATUS_CARD_STYLES = {
   booked: { bg: '#EFF1F3', border: '#EFF1F3' },      // soft amber
@@ -188,7 +186,6 @@ const shortBookingCode = (b) => {
 // Real logged-in username straight from localStorage (`user` is written at
 // login with { username, fullName, email, ... }). Used to auto-fill the
 // "Booked By" field instead of asking the user to type their own name.
-
 const getLocalUserName = () => {
   try {
     const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
@@ -471,7 +468,6 @@ const FlowerBookingsNew = () => {
     }
   }, [newBooking, showToast, loadBookings]);
 
-
   const updateStatus = useCallback(async (id, nextStatus) => {
     const url = `/florist/bookings/${id}/status`;
     console.info(`[FlowerBookings] PATCH ${url} →`, nextStatus);
@@ -505,15 +501,31 @@ const FlowerBookingsNew = () => {
     const form = e.target;
     const fd = new FormData(form);
 
-<<<<<<< Updated upstream
     // Build the payload explicitly with trimmed values so a spaces-only input
     // can't slip past HTML validation and trip the server's non-empty checks.
+    const title = String(fd.get('title') || '').trim();
+    const description = String(fd.get('description') || '').trim();
+    const types = String(fd.get('types') || '').trim();
+    const colors = String(fd.get('colors') || '').trim();
+    const sizes = String(fd.get('sizes') || '').trim();
+
+    // Client-side validation with SPECIFIC messages — the backend's 400s
+    // ("Missing required fields…", "Types must be a non-empty array") would
+    // otherwise be swallowed by the generic catch toast below. Whitespace-only
+    // or comma-only values pass HTML `required` but produce empty arrays
+    // server-side, so trim and check everything here.
+    if (!title) return showToast('Please enter an arrangement title', 'error');
+    if (!description) return showToast('Please enter a description', 'error');
+    if (!types) return showToast('Please enter at least one flower type (comma-separated)', 'error');
+    if (!colors) return showToast('Please enter at least one color (comma-separated)', 'error');
+    if (!sizes) return showToast('Please enter at least one size (comma-separated)', 'error');
+
     const payload = new FormData();
-    payload.append('title', String(fd.get('title') || '').trim());
-    payload.append('description', String(fd.get('description') || '').trim());
-    payload.append('types', String(fd.get('types') || '').trim());
-    payload.append('colors', String(fd.get('colors') || '').trim());
-    payload.append('sizes', String(fd.get('sizes') || '').trim());
+    payload.append('title', title);
+    payload.append('description', description);
+    payload.append('types', types);
+    payload.append('colors', colors);
+    payload.append('sizes', sizes);
     const files = fd.getAll('images').filter(f => f && f.size > 0);
     files.forEach(f => payload.append('images', f));
 
@@ -537,71 +549,6 @@ const FlowerBookingsNew = () => {
       const res = await api.post('/florist/flower-samples', payload, {
         headers: { 'Content-Type': null },
         timeout: 180000,
-=======
-    // Client-side validation with SPECIFIC messages — the backend's 400s
-    // ("Missing required fields…", "Types must be a non-empty array") used to
-    // be swallowed by the generic catch toast below. Whitespace-only or
-    // comma-only values pass HTML `required` but produce empty arrays
-    // server-side, so trim and check everything here.
-    const val = (name) => String(formData.get(name) || '').trim();
-    const title = val('title');
-    const description = val('description');
-    const types = val('types');
-    const colors = val('colors');
-    const sizes = val('sizes');
-
-    if (!title) return showToast('Please enter an arrangement title', 'error');
-    if (!description) return showToast('Please enter a description', 'error');
-    if (!types) return showToast('Please enter at least one flower type (comma-separated)', 'error');
-    if (!colors) return showToast('Please enter at least one color (comma-separated)', 'error');
-    if (!sizes) return showToast('Please enter at least one size (comma-separated)', 'error');
-
-    // Rebuild the FormData with trimmed values so the server never receives
-    // whitespace-only fields.
-    const payload = new FormData();
-    payload.append('title', title);
-    payload.append('description', description);
-    payload.append('types', types);
-    payload.append('colors', colors);
-    payload.append('sizes', sizes);
-    for (const file of formData.getAll('images')) {
-      if (file instanceof File && file.size > 0) payload.append('images', file);
-    }
-
-    // Client-side validation with SPECIFIC messages — the backend's 400s
-    // ("Missing required fields…", "Types must be a non-empty array") used to
-    // be swallowed by the generic catch toast below. Whitespace-only or
-    // comma-only values pass HTML `required` but produce empty arrays
-    // server-side, so trim and check everything here.
-    const val = (name) => String(formData.get(name) || '').trim();
-    const title = val('title');
-    const description = val('description');
-    const types = val('types');
-    const colors = val('colors');
-    const sizes = val('sizes');
-
-    if (!title) return showToast('Please enter an arrangement title', 'error');
-    if (!description) return showToast('Please enter a description', 'error');
-    if (!types) return showToast('Please enter at least one flower type (comma-separated)', 'error');
-    if (!colors) return showToast('Please enter at least one color (comma-separated)', 'error');
-    if (!sizes) return showToast('Please enter at least one size (comma-separated)', 'error');
-
-    // Rebuild the FormData with trimmed values so the server never receives
-    // whitespace-only fields.
-    const payload = new FormData();
-    payload.append('title', title);
-    payload.append('description', description);
-    payload.append('types', types);
-    payload.append('colors', colors);
-    payload.append('sizes', sizes);
-    for (const file of formData.getAll('images')) {
-      if (file instanceof File && file.size > 0) payload.append('images', file);
-    }
-
-    try {
-      const res = await api.post('/florist/flower-samples', payload, {
-        headers: { 'Content-Type': 'multipart/form-data' }
->>>>>>> Stashed changes
       });
 
       const data = res.data;
@@ -616,13 +563,13 @@ const FlowerBookingsNew = () => {
         showToast(data.message || 'Failed to create arrangement', 'error');
       }
     } catch (err) {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
       console.error('[FlowerBookings] Create arrangement FAILED:', {
         status: err?.response?.status,
         serverSaid: err?.response?.data,
         message: err?.message
       });
+      // Surface the server's actual validation message (e.g. "Types must be a
+      // non-empty array") instead of hiding it behind a generic toast.
       showToast(
         err.response?.data?.message ||
         err.friendlyMessage ||
@@ -632,16 +579,6 @@ const FlowerBookingsNew = () => {
     } finally {
       creatingRef.current = false;
       setCreating(false);
-=======
-      // Surface the server's actual validation message (e.g. "Types must be a
-      // non-empty array") instead of hiding it behind a generic toast.
-      showToast(err.response?.data?.message || err.friendlyMessage || 'Failed to create arrangement', 'error');
->>>>>>> Stashed changes
-=======
-      // Surface the server's actual validation message (e.g. "Types must be a
-      // non-empty array") instead of hiding it behind a generic toast.
-      showToast(err.response?.data?.message || err.friendlyMessage || 'Failed to create arrangement', 'error');
->>>>>>> Stashed changes
     }
   };
 
@@ -2620,11 +2557,9 @@ const styles = {
     color: '#2F4F3E',
     border: '1px solid #EAE7E2',
   },
-
   detailItemInfo: {
     flex: 1,
   },
-
   detailLabel: {
     fontSize: '11px',
     color: '#9C9389',
