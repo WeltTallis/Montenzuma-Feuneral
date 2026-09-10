@@ -127,14 +127,14 @@ export const getAllDeceased = async (
             }
         };
 
-        // SAVE TO REDIS
-
+        // SAVE TO REDIS with shorter TTL for faster updates
+        // Reduced from 300 (5 min) to 60 (1 minute) seconds for more responsive updates
         await redisService.serviceSet(
             'deceased-service',
             tenantSlug,
             cacheKey,
             responseData,
-            300 // 5 minutes TTL
+            60 // 1 minute TTL - faster propagation of new records
         );
 
         return res.status(200).json(responseData);
@@ -390,7 +390,14 @@ export const updateDeceased = async (req: Request, res: Response): Promise<Respo
         // Invalidate cache — wipe EVERY key for this service+tenant (detail,
         // list, stats). The old exact-key deletes could never match the real
         // list keys (`deceased:list:<tid>:page:...`), so stale rows lingered.
-        await redisService.clearServiceCache('deceased-service', tenantSlug);
+        try {
+            await redisService.clearServiceCache('deceased-service', tenantSlug);
+        } catch (cacheError) {
+            Logger.warn({
+                message: `Failed to invalidate deceased cache during update`,
+                error: cacheError.message
+            });
+        }
 
         return res.status(200).json({
             success: true,
@@ -460,7 +467,14 @@ export const deleteDeceased = async (req: Request, res: Response): Promise<Respo
         const result = await safeTenantExecute(dbName, deleteQuery, [isNumeric ? parseInt(id, 10) : id]);
 
         // Invalidate cache — wipe EVERY key for this service+tenant.
-        await redisService.clearServiceCache('deceased-service', tenantSlug);
+        try {
+            await redisService.clearServiceCache('deceased-service', tenantSlug);
+        } catch (cacheError) {
+            Logger.warn({
+                message: `Failed to invalidate deceased cache during deletion`,
+                error: cacheError.message
+            });
+        }
 
         // Emit notification for deceased removal
         try {
@@ -577,7 +591,14 @@ export const updateDeceasedStatus = async (req: Request, res: Response): Promise
 
         // Invalidate cache — wipe every deceased key for this tenant.
         const tenantSlug = (req as any).tenantSlug || "unknown";
-        await redisService.clearServiceCache('deceased-service', tenantSlug);
+        try {
+            await redisService.clearServiceCache('deceased-service', tenantSlug);
+        } catch (cacheError) {
+            Logger.warn({
+                message: `Failed to invalidate deceased cache during status update`,
+                error: cacheError.message
+            });
+        }
 
         return res.status(200).json({
             success: true,
