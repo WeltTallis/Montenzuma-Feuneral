@@ -392,7 +392,7 @@ const PREVIEW_CARDS = [
     id: 'body-intake',
     label: 'Case Management',
     title: 'Body Intake Form',
-    desc: 'Digital registration with next-of-kin details, verification, and signature capture in one structured flow.',
+    desc: 'Digital registration with next of kin details, verification, and signature capture in one structured flow.',
     icon: FileText,
     tags: ['Digital Forms', 'Sign-off', 'Auto ID'],
     preview: '/preview/body-intake',
@@ -403,7 +403,7 @@ const PREVIEW_CARDS = [
     id: 'release-form',
     label: 'Self-Service',
     title: 'Release Form Portal',
-    desc: 'Families complete release documentation independently — digital forms and e-signature, no staff needed.',
+    desc: 'Families complete release documentation independently   digital forms and e-signature, no staff needed.',
     icon: ScrollText,
     tags: ['E-Sign', 'ID Verify', 'Auto-Process'],
     preview: '/preview/release-form',
@@ -570,9 +570,9 @@ export default function ModuleGridSection() {
     <Section>
       <Wrap>
         <SectionLabel>Preview Modules</SectionLabel>
-        <SectionTitle>Explore our self-service modules</SectionTitle>
+        <SectionTitle>Explore our self service modules</SectionTitle>
         <SectionDesc>
-          Click on any card to preview the module in action. These self-service tools are designed for tablet use.
+          Click on any card to preview the module in action. These self service tools are designed for tablet use.
         </SectionDesc>
 
         <Grid ref={gridRef}>

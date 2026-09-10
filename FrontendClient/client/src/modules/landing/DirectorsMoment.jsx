@@ -457,7 +457,7 @@ export default function DirectorsMoment() {
 
         <Rv delay={150}>
           <p className="dm-closer">
-            Families don't compare feature lists. They remember <b>how they were treated</b> — and they
+            Families don't compare feature lists. They remember <b>how they were treated</b>  and they
             tell that story at every gathering for the next year.
           </p>
         </Rv>

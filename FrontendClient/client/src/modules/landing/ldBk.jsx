@@ -11,9 +11,7 @@ import NewsroomSection from '../newsroom/NewsroomSection';
 import C from '../../utils/colors/index'
 
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   HOOKS
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
 function useReveal() {
     const ref = useRef(null);
     const [shown, setShown] = useState(false);
@@ -43,9 +41,7 @@ const useOutsideClick = (ref, callback) => {
     }, [ref]);
 };
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   ANIMATION COMPONENTS
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
 const Reveal = ({ children, delay = 0, style = {}, className = '' }) => {
     const [ref, shown] = useReveal();
     return (
@@ -103,9 +99,7 @@ const AnimatedNumber = ({ end, suffix = '', duration = 2000 }) => {
     return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
 };
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   SHARED COMPONENTS
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
 const Mark = ({ size = 28, color = C.verdigris }) => (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
         <circle cx="16" cy="16" r="15" stroke={color} strokeWidth="1.5" />
@@ -141,9 +135,7 @@ const Marquee = ({ items, speed = 35 }) => (
     </div>
 );
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   NAVIGATION (FIXED DROPDOWN)
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
 const PolicyDropdown = ({ navigate, goTerms }) => {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
@@ -220,9 +212,7 @@ const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
     );
 };
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   MOCK COMPONENTS
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
 const MockDocuments = () => (
     <div className="mock-inner">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -257,7 +247,7 @@ const MockDispatch = () => {
             <div className="map-visual"><div className="map-pin"><MapPin size={16} color={C.bone} /></div><div className="map-line" /><div className="map-pin" style={{ background: C.accent }}><MapPin size={16} color={C.bone} /></div><div className="map-truck"><Truck size={20} color={C.brass} /></div></div>
             <div className="slider-group"><div className="slider-row"><span>Distance (km)</span><span className="slider-value">{distance}</span></div><input type="range" min="2" max="120" value={distance} onChange={(e) => setDistance(+e.target.value)} className="custom-range" /></div>
             <div className="slider-group"><div className="slider-row"><span>Fuel rate (KES/L)</span><span className="slider-value">{rate}</span></div><input type="range" min="150" max="250" value={rate} onChange={(e) => setRate(+e.target.value)} className="custom-range" /></div>
-            <div className="dispatch-footer"><span>Auto-billed Trip Cost</span><span className="cost-value">KES {Math.round(distance * 0.12 * rate).toLocaleString()}</span></div>
+            <div className="dispatch-footer"><span>Auto billed Trip Cost</span><span className="cost-value">KES {Math.round(distance * 0.12 * rate).toLocaleString()}</span></div>
         </div>
     );
 };
@@ -307,7 +297,7 @@ const MockDocumentAutomation = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
                 <div>
                     <div className="mono-label" style={{ color: C.verdigris }}>DOCUMENT ENGINE</div>
-                    <div style={{ fontSize: '1.3rem', fontFamily: "'Fraunces', serif", color: C.bone, marginTop: '0.3rem' }}>Auto-Generate</div>
+                    <div style={{ fontSize: '1.3rem', fontFamily: "'Fraunces', serif", color: C.bone, marginTop: '0.3rem' }}>Auto Generate</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '1.3rem', fontFamily: "'Fraunces', serif", color: C.bone, fontWeight: 600 }}>1,247</div>
@@ -336,7 +326,7 @@ const MockDocumentAutomation = () => {
                     <>
                         <div style={{ borderBottom: `1px solid ${C.lineDark}`, paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
                             <div style={{ fontSize: '0.95rem', fontWeight: 600, color: C.bone }}>{docs[selectedDoc].name}</div>
-                            <div style={{ fontSize: '0.7rem', fontFamily: "'JetBrains Mono', monospace", color: C.grayLight, marginTop: '0.2rem' }}>Template {docs[selectedDoc].version} Â· Auto-filled from case data</div>
+                            <div style={{ fontSize: '0.7rem', fontFamily: "'JetBrains Mono', monospace", color: C.grayLight, marginTop: '0.2rem' }}>Template {docs[selectedDoc].version} Â· Auto filled from case data</div>
                         </div>
                         <div style={{ fontSize: '0.82rem', color: C.grayLight, lineHeight: 1.8 }}>
                             <div className="doc-field"><span>Deceased:</span> <strong style={{ color: C.bone }}>Otieno, James M.</strong></div>
@@ -370,7 +360,7 @@ const MockDocumentAutomation = () => {
     );
 };
 
-/* â”€â”€ Support Ticket mock: live conversation between client & support team â”€â”€ */
+/* Support Ticket mock: live conversation between client & support team â”€â”€ */
 const MockSupport = () => (
     <div className="mock-inner">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
@@ -429,9 +419,7 @@ const Showcase = ({ no, title, desc, reverse, children }) => (
     </Reveal>
 );
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   QUICK FIND
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
 const QuickFindSection = () => {
     const [query, setQuery] = useState('');
     const [focused, setFocused] = useState(false);
@@ -440,9 +428,9 @@ const QuickFindSection = () => {
         { icon: Users, label: 'Family Portal', desc: 'Secure access for families to view arrangements', color: C.brass, href: '#features' },
         { icon: Truck, label: 'Dispatch & Fleet', desc: 'Smart route optimization and hearse tracking', color: C.accent, href: '#features' },
         { icon: ShieldCheck, label: 'Funeral Insurance', desc: 'Manage claims, contributions, and payouts', color: C.verdigrisLight, href: '#insurance' },
-        { icon: LifeBuoy, label: 'Real-Time Support', desc: 'Submit issues in-app and get live responses from our team', color: C.brassLight, href: '#features' },
+        { icon: LifeBuoy, label: 'Real-Time Support', desc: 'Submit issues in app and get live responses from our team', color: C.brassLight, href: '#features' },
         { icon: Activity, label: 'Analytics & Reports', desc: 'Real-time insights into your operations', color: C.brassLight, href: '#features' },
-        { icon: Server, label: 'Enterprise Security', desc: 'Bank-grade encryption and access controls', color: C.grayDark, href: '#infra' },
+        { icon: Server, label: 'Enterprise Security', desc: 'Bank grade encryption and access controls', color: C.grayDark, href: '#infra' },
         { icon: FileText, label: 'Document Automation', desc: 'Auto-generate release forms, receipts, and certificates', color: C.verdigris, href: '#features' },
     ];
     const filtered = items.filter(it => it.label.toLowerCase().includes(query.toLowerCase()) || it.desc.toLowerCase().includes(query.toLowerCase()));
@@ -478,9 +466,6 @@ const QuickFindSection = () => {
 };
 
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   MAIN APP
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export default function App() {
     const [loaded, setLoaded] = useState(false);
     const [scrolled, setScrolled] = useState(false);
@@ -501,7 +486,7 @@ export default function App() {
             category: 'NEW Â· INTEGRATED',
             accent: C.brass,
             title: 'Leave Management',
-            excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve and track time off in real time â€” no spreadsheets, no external HR tools.',
+            excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve and track time off in real time ” no spreadsheets, no external HR tools.',
             status: 'NOW LIVE',
         },
         {
@@ -518,7 +503,7 @@ export default function App() {
             category: 'NEW Â· SUPPORT CENTER',
             accent: C.brass,
             title: 'Real-Time Customer Support',
-            excerpt: 'Submit issues directly through the platform and our support agents receive, respond, and resolve them in real time â€” with full status tracking and communication history.',
+            excerpt: 'Submit issues directly through the platform and our support agents receive, respond, and resolve them in real time ” with full status tracking and communication history.',
             status: 'NOW LIVE',
         },
     ];
@@ -529,7 +514,7 @@ export default function App() {
         { icon: Zap, title: 'Seamless Integrations', desc: 'Connect with local payment gateways, accounting software, and communication tools effortlessly.' },
     ];
 
-    const marqueeItems = ['Case Management', 'Family Portal', 'Smart Dispatch', 'Fleet Tracking', 'Funeral Insurance', 'Real-Time Support', 'Billing & Invoicing', 'Analytics & Reports', 'Welfare Schemes'];
+    const marqueeItems = ['Case Management', 'Family Portal', 'Smart Dispatch', 'Fleet Tracking', 'Funeral Insurance', 'Real Time Support', 'Billing & Invoicing', 'Analytics & Reports', 'Welfare Schemes'];
 
     return (
         <>
@@ -607,7 +592,7 @@ export default function App() {
         .marquee-item{display:inline-flex;align-items:center;gap:0.6rem;padding:0 1.8rem;font-size:0.78rem;color:#FFFFFF;font-family:'JetBrains Mono',monospace;white-space:nowrap;text-transform:uppercase;letter-spacing:0.1em}
         .marquee-dot{width:4px;height:4px;border-radius:50%;background:#FFFFFF;display:inline-block;flex-shrink:0}
 
-        /* â”€â”€ Quick Find â”€â”€ */
+        /*  Quick Find  */
         .quickfind-section{padding:clamp(4rem,8vw,6rem) 0;background:${C.bone}}
         .search-bar{display:flex;align-items:center;gap:0.8rem;padding:0.9rem 1.4rem;border:1.5px solid ${C.line};border-radius:12px;background:${C.bone};transition:all 0.35s ease;box-shadow:0 2px 8px rgba(21,23,26,0.03)}
         .search-bar.focused{border-color:${C.verdigris};box-shadow:0 4px 20px rgba(61,79,71,0.1),0 0 0 3px rgba(61,79,71,0.06)}
@@ -624,9 +609,6 @@ export default function App() {
         .quickfind-arrow{margin-left:auto;flex-shrink:0;color:${C.gray};opacity:0;transform:translateX(-6px);transition:all 0.3s ease}
         .quickfind-card:hover .quickfind-arrow{opacity:1;transform:translateX(0);color:var(--card-color)}
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           UNIFIED PLATFORM â€” REDESIGNED
-           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         .unified-section{padding:clamp(5rem,10vw,8rem) 0;background:#0C0C0C;position:relative;overflow:hidden}
         .unified-bg-grid{position:absolute;inset:0;background-image:radial-gradient(rgba(250,248,244,0.06) 1px,transparent 1px);background-size:28px 28px;pointer-events:none}
         .unified-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Fraunces',serif;font-size:clamp(6rem,18vw,16rem);font-weight:700;color:rgba(250,248,244,0.02);pointer-events:none;white-space:nowrap;letter-spacing:-0.03em;user-select:none}
@@ -675,9 +657,7 @@ export default function App() {
         }
         .unified-micro{margin-top:1.2rem;font-size:0.78rem;color:rgba(250,248,244,0.3);font-family:'JetBrains Mono',monospace;letter-spacing:0.05em}
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           INSURANCE â€” REDESIGNED (LIGHT)
-           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+        /* inusranc  sections */
         .insurance-section{
           padding:clamp(5rem,10vw,7rem) 0;background:${C.bone};
           border-top:1px solid ${C.line};position:relative;overflow:hidden;
@@ -705,9 +685,9 @@ export default function App() {
           border:1px solid ${C.line};background:${C.bone2};color:${C.brass};
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           INFRASTRUCTURE â€” BLACK REDESIGN
-           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+        /* 
+           INFRASTRUCTURE ” BLACK REDESIGN
+        */
         .infra-section{
           background:#0A0A0A;padding:clamp(5rem,10vw,7rem) 0;
           position:relative;overflow:hidden;border-top:1px solid rgba(250,248,244,0.06);
@@ -836,8 +816,8 @@ export default function App() {
         @keyframes module-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.7)}}
         @keyframes subtle-pulse{0%,100%{box-shadow:0 0 0 0 rgba(61,79,71,0.4)}70%{box-shadow:0 0 0 6px rgba(61,79,71,0)}}
 
-        /* â”€â”€ CTA â”€â”€ */
-        /* â”€â”€ Newsroom moved to modules/newsroom â”€â”€ */
+        /*  CTA */
+        /*  Newsroom moved to modules/newsroom */
 
         /* â”€â”€ Keyframes â”€â”€ */
         @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-25%)}}
@@ -847,7 +827,9 @@ export default function App() {
         @keyframes gradient-text{0%{background-position:0% center}50%{background-position:100% center}100%{background-position:0% center}}
         @keyframes truckMove{from{left:30%}to{left:60%}}
 
-        /* â”€â”€ Responsive â”€â”€ */
+        /* Responsive  */
+
+
         @media(max-width:800px){.nav-links{display:none}.nav-cta{display:none}.mobile-nav{display:flex;gap:0.5rem;align-items:center}}
         @media(max-width:768px){
           .hero-grid{grid-template-columns:1fr;gap:2.5rem}
@@ -876,7 +858,7 @@ export default function App() {
       `}</style>
 
             <main>
-                {/* â”€â”€ Navigation â”€â”€ */}
+                {/*  Navigation  */}
                 <nav className={scrolled ? 'scrolled' : ''}>
                     <div className="wrap nav-wrap">
                         <div className="logo" onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/'); }}>
@@ -986,9 +968,9 @@ export default function App() {
                     </div>
                 </section>
 
-                {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-            INSURANCE â€” REDESIGNED (LIGHT)
-            â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+                {/* 
+            INSURANCE ” REDESIGNED (LIGHT)
+            •*/}
                 <section id="insurance" className="insurance-section">
                     <div className="insurance-accent-bar" />
                     <div className="insurance-decor-circle" />
@@ -1006,7 +988,7 @@ export default function App() {
                                     Families go through immense pain when they lose a loved one, only to be burdened with huge hospital bills and funeral expenses. We break down these barriers by bringing comprehensive funeral insurance solutions directly to your organization.
                                 </p>
                                 <p style={{ color: C.gray, lineHeight: 1.9, marginBottom: '2.5rem', fontSize: '1.02rem' }}>
-                                    Rest Point now includes funeral insurance management and welfare scheme administration tools â€” claims, contributions, member tracking, and automated payouts all in one place.
+                                    Rest Point now includes funeral insurance management and welfare scheme administration tools ” claims, contributions, member tracking, and automated payouts all in one place.
                                 </p>
                                 <button className="btn btn-dark" onClick={() => navigate('/insurance')} style={{ padding: '1rem 2rem' }}>
                                     Learn about funeral insurance <ArrowRight size={16} />
@@ -1019,15 +1001,15 @@ export default function App() {
                     </div>
                 </section>
 
-                {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-            INFRASTRUCTURE â€” BLACK REDESIGN
-            â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+                {/* 
+            INFRASTRUCTURE  BLACK REDESIGN
+         */}
                 <section id="infra" className="infra-section">
                     <div className="infra-grid-bg" />
                     <div className="infra-glow" />
                     <div className="wrap" style={{ position: 'relative', zIndex: 1 }}>
                         <Reveal style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
-                            <div className="mono-label" style={{ color: 'rgba(250,248,244,0.35)', marginBottom: '1rem', letterSpacing: '0.2em' }}>Enterprise-Grade Infrastructure</div>
+                            <div className="mono-label" style={{ color: 'rgba(250,248,244,0.35)', marginBottom: '1rem', letterSpacing: '0.2em' }}>Enterprise Grade Infrastructure</div>
                             <h2 style={{ color: C.bone, fontSize: 'clamp(2rem, 4.5vw, 3rem)', marginBottom: '1rem' }}>Built for scale, secured by design</h2>
                             <p style={{ color: 'rgba(250,248,244,0.45)', marginTop: '0.5rem', fontSize: '1.02rem', lineHeight: 1.8 }}>Modern infrastructure ensuring your data is safe, accessible, and scalable as your organization grows.</p>
                         </Reveal>
@@ -1055,7 +1037,7 @@ export default function App() {
                     </div>
                 </section>
 
-                {/* â”€â”€ About â”€â”€ */}
+                {/* About */}
                 <section className="about-section">
                     <div className="wrap about-grid">
                         <Reveal>
@@ -1073,7 +1055,7 @@ export default function App() {
                     </div>
                 </section>
 
-                {/* â”€â”€ Modules â”€â”€ */}
+                {/*  Modules */}
                 <section id="modules" className="modules-section">
                     <div className="wrap">
                         <div className="modules-header">
@@ -1104,7 +1086,7 @@ export default function App() {
                     </div>
                 </section>
 
-                {/* â”€â”€ Newsroom â”€â”€ */}
+                {/* Newsroom  */}
                 <NewsroomSection />
 
                 <Footer />

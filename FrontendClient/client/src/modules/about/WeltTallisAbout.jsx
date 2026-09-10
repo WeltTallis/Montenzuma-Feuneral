@@ -352,7 +352,7 @@ export default function WeltTallisAbout() {
                     <div className="wrap">
                         <Reveal style={{ maxWidth: '600px' }}>
                             <div className="label" style={{ marginBottom: '1rem' }}>What We Do</div>
-                            <h2>End-to-end product engineering</h2>
+                            <h2>End to end product engineering</h2>
                             <p style={{ marginTop: '1rem', color: C.gray }}>
                                 From requirements gathering to deployment and maintenance, we handle the full lifecycle of every product we ship.
                             </p>
@@ -362,7 +362,7 @@ export default function WeltTallisAbout() {
                                 { num: '01', icon: Code2, title: 'Software Architecture', desc: 'Designing system architectures that are scalable, maintainable, and built to handle real-world complexity from day one.' },
                                 { num: '02', icon: MonitorSmartphone, title: 'Frontend Engineering', desc: 'Building responsive, performant interfaces with modern frameworks that users actually enjoy interacting with.' },
                                 { num: '03', icon: Server, title: 'Backend Engineering', desc: 'Engineering robust APIs, database layers, and server infrastructure that power everything under the hood.' },
-                                { num: '04', icon: Brain, title: 'AI & Machine Learning', desc: 'Developing and deploying ML algorithms â€” from predictive models to intelligent automation â€” that make products smarter.' },
+                                { num: '04', icon: Brain, title: 'AI & Machine Learning', desc: 'Developing and deploying ML algorithms â€” from predictive models to intelligent automation ” that make products smarter.' },
                                 { num: '05', icon: Cpu, title: 'Embedded & IoT', desc: 'Hardware-software integrations for remote-controlled simulations and real-time sensor systems.' },
                                 { num: '06', icon: ShieldCheck, title: 'Security & Infrastructure', desc: 'Bank-grade encryption, access controls, CI/CD pipelines, and monitoring for reliable 99.9% uptime.' },
                             ].map((cap, i) => (
@@ -403,7 +403,7 @@ export default function WeltTallisAbout() {
                                         </div>
                                         <h3 className="product-title">RestPoint</h3>
                                         <p className="product-desc">
-                                            A complete operational platform for funeral homes and welfare organizations. Case management, family portals, smart dispatch, fleet tracking, funeral insurance administration, and billing â€” all in one system.
+                                            A complete operational platform for funeral homes and welfare organizations. Case management, family portals, smart dispatch, fleet tracking, funeral insurance administration, and billing  all in one system.
                                         </p>
                                         <button className="product-link" onClick={() => navigate('/')}>
                                             Explore RestPoint <ArrowUpRight size={16} className="product-link-arrow" />
@@ -426,7 +426,7 @@ export default function WeltTallisAbout() {
                                         </div>
                                         <h3 className="product-title">Builders Nation</h3>
                                         <p className="product-desc">
-                                            Introducing young kids to the world of technology, engineering, and sustainability through real remote-controlled simulations. Hands-on learning that bridges the gap between theory and real-world application.
+                                            Introducing young kids to the world of technology, engineering, and sustainability through real remote controlled simulations. Hands on learning that bridges the gap between theory and real world application.
                                         </p>
                                         <button className="product-link" onClick={() => window.open('https://buildersnation.netlify.app/', '_blank', 'noopener,noreferrer')}>
                                             Visit Builders Nation <ArrowUpRight size={16} className="product-link-arrow" />
@@ -472,25 +472,27 @@ export default function WeltTallisAbout() {
                             </RevealDir>
 
                             {/* Cyrus Musyoka */}
+                            {/* Ruth Mwende */}
                             <RevealDir from="right" delay={150}>
                                 <div className="team-member team-member-ml">
                                     <div className="team-avatar-wrap">
-                                        <div className="team-avatar">CM</div>
+                                        <div className="team-avatar">RM</div>
                                         <div>
-                                            <div className="team-name">Cyrus Musyoka</div>
-                                            <div className="team-role">Software & ML Engineer</div>
+                                            <div className="team-name">Ruth Mwende</div>
+                                            <div className="team-role">Product & Software Distribution</div>
                                         </div>
                                     </div>
                                     <p className="team-bio">
-                                        Cyrus develops and deploys the AI and machine learning algorithms that make our products intelligent. From predictive analytics and natural language processing to smart automation workflows, he builds the intelligence layer that turns raw data into actionable decisions across both RestPoint and Builders Nation.
+                                        Ruth leads product distribution and software adoption, ensuring our digital solutions reach the right facilities and teams. She works across product presentation, customer onboarding, deployment, and distribution to make RestPoint technology accessible, practical, and seamlessly integrated into everyday operations.
                                     </p>
                                     <div className="team-tech-tags">
-                                        {['Machine Learning', 'AI Algorithms', 'Python', 'Data Engineering', 'NLP', 'Predictive Models'].map(t => (
+                                        {['Product Distribution', 'Product Adoption', 'Customer Onboarding', 'Digital Solutions', 'Partnerships'].map(t => (
                                             <span key={t} className="team-tech-tag">{t}</span>
                                         ))}
                                     </div>
                                 </div>
                             </RevealDir>
+
                         </div>
                     </div>
                 </section>

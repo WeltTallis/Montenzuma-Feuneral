@@ -134,7 +134,7 @@ const FloatingCTA = () => {
         /* --- SMALL TOOLTIP FOR CALL BUTTON --- */
         .tooltip-text {
           position: absolute;
-          left: 65px; /* sits just outside the right of the button */
+          right: 65px; /* sits just outside the LEFT of the button so it stays on screen */
           top: 50%;
           transform: translateY(-50%);
           background-color: #333;
@@ -149,16 +149,16 @@ const FloatingCTA = () => {
           transition: opacity 0.3s ease;
           pointer-events: none;
         }
-        /* Small arrow pointing left towards the button */
+        /* Small arrow pointing right towards the button */
         .tooltip-text::after {
           content: "";
           position: absolute;
-          left: -6px;
+          right: -6px;
           top: 50%;
           transform: translateY(-50%);
-          border-width: 6px 6px 6px 0;
+          border-width: 6px 0 6px 6px;
           border-style: solid;
-          border-color: transparent #333 transparent transparent;
+          border-color: transparent transparent transparent #333;
         }
 
         .call-btn:hover .tooltip-text {
@@ -170,8 +170,8 @@ const FloatingCTA = () => {
         .popup-box {
           position: absolute;
           bottom: 60px;
-          left: 0;
-          width: 300px;
+          right: 0; /* anchor to button's RIGHT edge so the popup opens LEFT (into the viewport) */
+          width: min(300px, calc(100vw - 64px));
           background-color: white;
           border-radius: 12px;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -227,11 +227,11 @@ const FloatingCTA = () => {
         .popup-message::after {
           content: "";
           position: absolute;
-          left: -8px;
+          right: -8px; /* bubble sits to the LEFT of the button → arrow points right at it */
           top: 10px;
-          border-width: 6px 8px 6px 0;
+          border-width: 6px 0 6px 8px;
           border-style: solid;
-          border-color: transparent white transparent transparent;
+          border-color: transparent transparent transparent white;
         }
 
         .popup-footer { padding: 15px; background-color: white; }
@@ -259,9 +259,9 @@ const FloatingCTA = () => {
       `}</style>
 
       <div className={`floating-container ${visible ? '' : 'hidden'}`}>
-        
+
         {/* ================= WHATSAPP BLOCK ================= */}
-        <div 
+        <div
           className="floating-block"
           onMouseEnter={() => setWaOpen(true)}
           onMouseLeave={() => setWaOpen(false)}
@@ -270,16 +270,16 @@ const FloatingCTA = () => {
             <div className="popup-header whatsapp-header">
               <div className="avatar">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="25" height="25">
-                  <path fill="#075E54" d="M224 256A128 128 0 1 0 224 0a128 128 0 1 0 0 256zm-45.7 48C82.7 304 0 382.8 0 481.3C0 497.7 13.3 512 29.7 512H418.3c16.4 0 29.7-14.3 29.7-30.7C448 382.8 365.3 304 269.7 304H178.3z"/>
+                  <path fill="#075E54" d="M224 256A128 128 0 1 0 224 0a128 128 0 1 0 0 256zm-45.7 48C82.7 304 0 382.8 0 481.3C0 497.7 13.3 512 29.7 512H418.3c16.4 0 29.7-14.3 29.7-30.7C448 382.8 365.3 304 269.7 304H178.3z" />
                 </svg>
               </div>
               <div className="header-info">
-                <h3>WhatsApp Support</h3>
+                <h3>Restpoint WhatsApp Support</h3>
                 <span>Online</span>
               </div>
             </div>
             <div className="popup-body">
-              <div className="popup-message">Hi there 👋 <br /> Chat with us on WhatsApp!</div>
+              <div className="popup-message">Hi there  <br /> Chat with us on WhatsApp!</div>
             </div>
             <div className="popup-footer">
               <a href={waHref} target="_blank" rel="noopener noreferrer" className="action-btn action-whatsapp">
@@ -290,7 +290,7 @@ const FloatingCTA = () => {
 
           <a href={waHref} target="_blank" rel="noopener noreferrer" className="floating-btn whatsapp-btn">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="28" height="28">
-              <path fill="#ffffff" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-119.3 0-216 96.7-216 216 0 38.1 9.9 75.3 28.9 108.7L32 480l118.9-31.2c32.4 17.7 68.8 27 106.1 27h.1c119.3 0 216-96.7 216-216 0-59.3-25.2-115.1-67.2-157.1zM223.9 438.6c-31.7 0-62.9-8.5-90.1-24.6l-6.5-3.9-68.1 17.9 18.2-66.5-4.2-6.8c-17.5-27.9-26.7-60.2-26.7-93.6 0-97.8 79.6-177.4 177.4-177.4 47.4 0 91.9 18.5 125.4 52 33.5 33.6 52 78.1 52 125.5 0 97.8-79.6 177.4-177.4 177.4z"/>
+              <path fill="#ffffff" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-119.3 0-216 96.7-216 216 0 38.1 9.9 75.3 28.9 108.7L32 480l118.9-31.2c32.4 17.7 68.8 27 106.1 27h.1c119.3 0 216-96.7 216-216 0-59.3-25.2-115.1-67.2-157.1zM223.9 438.6c-31.7 0-62.9-8.5-90.1-24.6l-6.5-3.9-68.1 17.9 18.2-66.5-4.2-6.8c-17.5-27.9-26.7-60.2-26.7-93.6 0-97.8 79.6-177.4 177.4-177.4 47.4 0 91.9 18.5 125.4 52 33.5 33.6 52 78.1 52 125.5 0 97.8-79.6 177.4-177.4 177.4z" />
             </svg>
           </a>
         </div>
@@ -303,7 +303,7 @@ const FloatingCTA = () => {
             <div className="call-content">
               {/* Real White Phone Icon */}
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="24" height="24">
-                <path fill="#ffffff" d="M164.9 24.6c-7.7-18.6-28-28.5-47.4-23.2l-88 24C12.1 30.2 0 46 0 64C0 311.4 200.6 512 448 512c18 0 33.8-12.1 38.6-29.5l24-88c5.3-19.4-4.6-39.7-23.2-47.4l-96-40c-16.3-6.8-35.2-2.1-46.3 11.6L304.7 368C234.3 334.7 177.3 277.7 144 207.3L193.3 167c13.7-11.2 18.4-30 11.6-46.3l-40-96z"/>
+                <path fill="#ffffff" d="M164.9 24.6c-7.7-18.6-28-28.5-47.4-23.2l-88 24C12.1 30.2 0 46 0 64C0 311.4 200.6 512 448 512c18 0 33.8-12.1 38.6-29.5l24-88c5.3-19.4-4.6-39.7-23.2-47.4l-96-40c-16.3-6.8-35.2-2.1-46.3 11.6L304.7 368C234.3 334.7 177.3 277.7 144 207.3L193.3 167c13.7-11.2 18.4-30 11.6-46.3l-40-96z" />
               </svg>
               {/* Blinking Sound Wave Dots */}
               <div className="ringing-dots">

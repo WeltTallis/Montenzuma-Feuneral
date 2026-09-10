@@ -233,7 +233,7 @@ export default function InsurancePage() {
         { icon: DollarSign, title: 'Claims Processing', desc: 'Streamline claims from submission to payout. Automated workflows reduce processing time significantly.' },
     ];
 
-    // Who needs last expense cover â€” software enabled
+    // Who needs last expense cover  software enabled
     const whoNeeds = [
         'Family breadwinners who want to protect their household from sudden funeral costs',
         'Parents wishing to extend cover to a spouse, children, or elderly dependants',
@@ -526,7 +526,7 @@ export default function InsurancePage() {
                                 <div className="edu-kicker"><Users size={16} /> Who Needs Last Expense Cover in Kenya</div>
                                 <h2 className="edu-head">Protection that starts with your members</h2>
                                 <p className="edu-sub">
-                                    With Rest Point, your organisation can offer affordable last expense cover to the people who need it most â€” and manage every policy without a single manual ledger.
+                                    With Rest Point, your organisation can offer affordable last expense cover to the people who need it most  and manage every policy without a single manual ledger.
                                 </p>
                             </div>
                             <ul className="content-list" style={{ marginTop: '0.5rem' }}>
@@ -596,7 +596,7 @@ export default function InsurancePage() {
                             <div className="edu-kicker"><Layers size={16} /> Benefits of Last Expense Cover with Rest Point</div>
                             <h2 className="edu-head">The software that keeps cover simple and claims fast</h2>
                             <p className="edu-sub">
-                                Families deserve dignity in difficult moments â€” and your team deserves tools that make running funeral cover effortless.
+                                Families deserve dignity in difficult moments  and your team deserves tools that make running funeral cover effortless.
                             </p>
                             <div className="feature-grid" style={{ marginTop: '1.5rem' }}>
                                 {softBenefits.map((feat, i) => (

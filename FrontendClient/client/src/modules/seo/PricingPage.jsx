@@ -85,7 +85,7 @@ const PricingPage = () => {
     const plans = [
         {
             name: 'Starter',
-            price: 'KES 9,200',
+            price: 'KES 18,200',
             period: '/month',
             desc: 'Perfect for small funeral homes & private mortuaries',
             featured: false,
@@ -102,7 +102,7 @@ const PricingPage = () => {
         },
         {
             name: 'Professional',
-            price: 'KES 18,900',
+            price: 'KES 45,900',
             period: '/month',
             desc: 'For growing organizations & multi-branch operations',
             featured: true,
@@ -152,11 +152,11 @@ const PricingPage = () => {
     ];
 
     const faqs = [
-        { q: 'How much does mortuary management software cost in Kenya?', a: 'Rest Point pricing starts from KES 9,200 per month for the Starter plan, KES 18,900 per month for the Professional plan, and custom pricing for Enterprise solutions. All plans include core features with no hidden fees.' },
-        { q: 'Is there a free trial available?', a: 'Yes! We offer a 14-day free trial for all new customers. You can experience the full features of our Professional plan before making a commitment, no credit card required.' },
+        { q: 'How much does mortuary management software cost in Kenya?', a: 'Rest Point pricing starts from KES 18,200 per month for the Starter plan, KES 45,900 per month for the Professional plan, and custom pricing for Enterprise solutions. All plans include core features with no hidden fees.' },
+        { q: 'Is there a free trial available?', a: 'Yes! We offer a 14 day free trial for all new customers. You can experience the full features of our Professional plan before making a commitment, no credit card required.' },
         { q: 'What payment methods do you accept?', a: 'We accept M-Pesa, credit cards, bank transfers, and annual payment options. Annual payments receive a 20% discount.' },
         { q: 'Can I upgrade or downgrade my plan?', a: 'Yes, you can change your plan at any time. Upgrades take effect immediately, and downgrades apply at the next billing cycle. We make it completely frictionless.' },
-        { q: 'Do you offer discounts for non-profits?', a: 'Yes, we offer special pricing for churches, NGOs, and non-profit organizations. Contact our sales team for more information on our welfare and faith-based discounts.' },
+        { q: 'Do you offer discounts for non-profits?', a: 'Yes, we offer special pricing for churches, NGOs, and non profit organizations. Contact our sales team for more information on our welfare and faith-based discounts.' },
         { q: 'How many users can I add to the Starter plan?', a: 'The Starter plan includes up to 20 user accounts at no extra cost. We believe even small teams need proper access controls without being penalized.' },
     ];
 

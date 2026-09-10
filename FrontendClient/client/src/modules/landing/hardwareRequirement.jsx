@@ -390,7 +390,7 @@ const HardwareRequirementSection = () => {
               <em>Tablet / Ipad</em>
             </Heading>
             <SubText>
-              We provide a dedicated touchscreen tablet to give families a modern, respectful, and seamless digital experience. From browsing floral arrangements to signing final documents, the entire process is elevated.
+              We provide a dedicated touchscreen reception portal to give families a modern, respectful, and seamless digital experience. From browsing floral arrangements to signing final documents, the entire process is elevated.
             </SubText>
           </TitleBlock>
 
@@ -458,8 +458,13 @@ const HardwareRequirementSection = () => {
         <RightPanel>
           <SpecCard>
             <h5>System Requirement</h5>
-            <p>To operate the Restpoint system, <strong>all funeral homes are required to purchase this specific tablet.</strong> It serves as your primary digital registry.</p>
+            <p>To operate the Restpoint system, <strong>all funeral homes are required to purchase tablet/ipad.</strong>  This device serves as the funeral home’s primary digital registry, supporting the entire process from intake through release.</p>
+            <br />
+            <p> “Take pride in bringing high end technology to the heart of death care.”</p>
           </SpecCard>
+
+
+
 
           <ImageContainer>
             <ImageFrame>
@@ -477,19 +482,19 @@ const HardwareRequirementSection = () => {
       <Banner>
         <BannerTrack>
           <BannerItem>
-            <span>Mandatory for All Facilities</span>
+            <span>Required for All Facilities ✓ FrontDesk Portal ✓ Your Facility, Digitally Elevated ✓</span>
             <BannerIcon>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </BannerIcon>
-            <em>FrontDesk Portal</em>
+            <em>FrontDesk Portal The New Standard in Funeral Care ✓ </em>
             <BannerIcon>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </BannerIcon>
-            <span>Mandatory for All Facilities</span>
+            <span>RRequired for All Facilities ✓ FrontDesk Portal ✓ Your Facility, Digitally Elevated ✓</span>
             <BannerIcon>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
@@ -505,7 +510,7 @@ const HardwareRequirementSection = () => {
 
           {/* Duplicate for infinite loop */}
           <BannerItem aria-hidden="true">
-            <span>Mandatory for All Facilities</span>
+            <span>Required for All Facilities ✓ FrontDesk Portal ✓ Your Facility, Digitally Elevated ✓</span>
             <BannerIcon>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
@@ -517,7 +522,7 @@ const HardwareRequirementSection = () => {
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </BannerIcon>
-            <span>Mandatory for All Facilities</span>
+            <span>Required for All Facilities ✓</span>
             <BannerIcon>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />

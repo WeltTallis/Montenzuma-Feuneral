@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Heart, Globe, MessageCircle, Camera, Shield, Star, ChevronRight, ExternalLink, Music, Mic } from '../../utils/icons/icons';
 
@@ -365,6 +366,51 @@ export default function MemorialPage() {
 
     return (
         <>
+            <Helmet>
+                <title>Online Memorial & Remembrance Platform | Virtual Candles & Condolences | Rest Point</title>
+                <meta name="title" content="Online Memorial & Remembrance Platform | Virtual Candles & Condolences | Rest Point" />
+                <meta name="description" content="Create a dignified online memorial with Rest Point. Light virtual candles, share memories, post photos and leave condolences in a private safe space for grieving families in Kenya and worldwide." />
+                <meta name="keywords" content="online memorial, memorial page, virtual memorial, remembrance platform, condolence messages, light a candle, mourning online, tribute page, memorial website, funeral memorial software Kenya, grief support, rest point memorial, memorials for loved ones" />
+                <link rel="canonical" href="https://restpoint.co.ke/memorial" />
+                <meta property="og:type" content="website" />
+                <meta property="og:url" content="https://restpoint.co.ke/memorial" />
+                <meta property="og:title" content="Online Memorial & Remembrance Platform | Virtual Candles & Condolences" />
+                <meta property="og:description" content="A dignified private space where families share memories, light virtual candles and mourn together — from anywhere in the world." />
+                <meta property="og:image" content="https://restpoint.co.ke/memorial.jpg" />
+                <meta property="og:image:alt" content="Rest Point online memorial and remembrance platform" />
+                <meta property="og:site_name" content="Rest Point" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content="Online Memorial & Remembrance Platform | Rest Point" />
+                <meta name="twitter:description" content="Create a dignified online memorial. Light virtual candles, share memories and console grieving families." />
+                <meta name="twitter:image" content="https://restpoint.co.ke/memorial.jpg" />
+                <script type="application/ld+json">
+                    {JSON.stringify({
+                        '@context': 'https://schema.org',
+                        '@type': 'WebPage',
+                        name: 'Online Memorial & Remembrance Platform',
+                        description: 'Rest Point online memorial platform lets families light virtual candles, share memories and leave condolences in a private, dignified space.',
+                        url: 'https://restpoint.co.ke/memorial',
+                        isPartOf: { '@type': 'WebSite', name: 'Rest Point', url: 'https://restpoint.co.ke' },
+                        provider: { '@type': 'Organization', name: 'Rest Point', url: 'https://restpoint.co.ke' },
+                        breadcrumb: {
+                            '@type': 'BreadcrumbList',
+                            itemListElement: [
+                                { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://restpoint.co.ke' },
+                                { '@type': 'ListItem', position: 2, name: 'Online Memorial', item: 'https://restpoint.co.ke/memorial' }
+                            ]
+                        },
+                        mainEntity: {
+                            '@type': 'Service',
+                            name: 'Online Memorial & Remembrance Platform',
+                            serviceType: 'Online Memorial',
+                            description: 'Private online memorial pages where families light candles, share memories and console one another.',
+                            provider: { '@type': 'Organization', name: 'Rest Point', url: 'https://restpoint.co.ke' },
+                            areaServed: 'Worldwide'
+                        }
+                    })}
+                </script>
+            </Helmet>
+
             <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }

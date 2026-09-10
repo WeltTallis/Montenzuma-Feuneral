@@ -84,7 +84,6 @@ const Panel = styled.aside`
 
 const PanelHead = styled.header`
   padding: 18px 22px 15px;
-  border-bottom: 1px solid ${Colors.lineSoft};
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -173,8 +172,6 @@ const Segment = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   background: ${Colors.cream};
-  border: 1px solid ${Colors.line};
-  border-radius: 10px;
   padding: 3px;
 `;
 
@@ -204,7 +201,7 @@ const SegmentBtn = styled.button`
   font: 600 12.5px 'Outfit', sans-serif;
   color: ${props => props.$active ? '#F3EFE4' : Colors.muted};
   transition: color .25s;
-  border-radius: 8px;
+
 `;
 
 const CurrencyGrid = styled.div`
@@ -215,8 +212,6 @@ const CurrencyGrid = styled.div`
 
 const CurrencyCard = styled.label`
   position: relative;
-  border: 1px solid ${props => props.$selected ? Colors.pine : Colors.line};
-  border-radius: 10px;
   padding: 11px 12px;
   cursor: pointer;
   transition: all .2s ${Colors.ease};

@@ -302,8 +302,10 @@ export default function AboutPage() {
               <p className="story-text">
                 Not for the morticians. Not for the system. For the families. For the ones left behind. For anyone who has ever sat in a funeral home and wondered: What really happened?
               </p>
+
+
               <p className="story-text">
-                Rest Point gives families the full report â€” the actual data, the complete picture right on their phone. Because in moments of loss, truth matters.
+                “I kept thinking: why can’t a funeral home feel as thoughtfully designed and technologically advanced as every other place we interact with?”
               </p>
               <p className="story-text" style={{ fontWeight: 500, color: C.ink }}>
                 That is why Rest Point exists. That is the story.

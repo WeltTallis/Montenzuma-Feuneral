@@ -486,20 +486,20 @@ const ModernSidebar = ({
       console.log('[ModernSidebar] Using tenant slug from props:', propTenantSlug);
       return propTenantSlug;
     }
-    
+
     // Priority 3: URL param from useParams()
     if (urlSlug && urlSlug !== 'undefined' && urlSlug !== 'null') {
       console.log('[ModernSidebar] Using tenant slug from URL params:', urlSlug);
       return urlSlug;
     }
-    
+
     // Priority 4: localStorage
     const stored = localStorage.getItem('tenantSlug');
     if (stored && stored !== 'undefined' && stored !== 'null') {
       console.log('[ModernSidebar] Using tenant slug from localStorage:', stored);
       return stored;
     }
-    
+
     // Priority 5: user object fallbacks (parent tenant slug etc.)
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -511,7 +511,7 @@ const ModernSidebar = ({
     } catch (e) {
       console.error('[ModernSidebar] Error parsing user:', e);
     }
-    
+
     console.warn('[ModernSidebar] No tenant slug found! This will cause navigation issues.');
     return '';
   }, [propTenantSlug, urlSlug]);
@@ -572,7 +572,7 @@ const ModernSidebar = ({
       items: [
         { icon: Truck, label: 'Hearse', path: `/tenant/${tenantSlug}/hearse` },
         { icon: Users, label: 'Deceased', path: `/tenant/${tenantSlug}/deceased` },
-                { icon: Package, label: 'Coffins', path: `/tenant/${tenantSlug}/coffins` },
+        { icon: Package, label: 'Coffins', path: `/tenant/${tenantSlug}/coffins` },
         { icon: Hammer, label: 'Workshop', path: `/tenant/${tenantSlug}/workshop` },
         { icon: ShoppingCart, label: 'Flower Bookings', path: `/tenant/${tenantSlug}/flowers` },
         { icon: Box, label: 'Mini Store', path: `/tenant/${tenantSlug}/mini-store` },

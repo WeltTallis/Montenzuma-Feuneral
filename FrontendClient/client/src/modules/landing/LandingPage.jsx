@@ -1,20 +1,20 @@
 ﻿import { useState, useEffect, useRef, Children } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy } from '../../utils/icons/icons';
-
 import NewsroomSection from '../newsroom/NewsroomSection';
 import HardwareRequirementSection from './hardwareRequirement';
 import LandingPageSEO from '../seo/LandingPageSEO';
 import Footer from '../../components/layout/Footer';
+import DirectorsMoment from './DirectorsMoment';
 import ModuleGridSection from './imageCard';
+import C from '../../utils/colors/index'
 import FloatingCTA from './FloatingCTA';
-import SiteNav from './nav';
-import Hero from './hero';
 import FaqSection from './FaqSection';
 import MissionSection from './Mission';
-import DirectorsMoment from './DirectorsMoment';
-import C from '../../utils/colors/index'
+import SiteNav from './nav';
+import Hero from './hero';
+import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy } from '../../utils/icons/icons';
+
+
 
 
 /* 
@@ -230,7 +230,7 @@ const MockDocumentAutomation = () => {
           <>
             <div style={{ borderBottom: `1px solid ${C.lineDark}`, paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
               <div style={{ fontSize: '0.95rem', fontWeight: 600, color: C.bone }}>{docs[selectedDoc].name}</div>
-              <div style={{ fontSize: '0.7rem', fontFamily: "'JetBrains Mono', monospace", color: C.grayLight, marginTop: '0.2rem' }}>Template {docs[selectedDoc].version} · Auto-filled from case data</div>
+              <div style={{ fontSize: '0.7rem', fontFamily: "'JetBrains Mono', monospace", color: C.grayLight, marginTop: '0.2rem' }}>Template {docs[selectedDoc].version} · Auto filled from case data</div>
             </div>
             <div style={{ fontSize: '0.82rem', color: C.grayLight, lineHeight: 1.8 }}>
               <div className="doc-field"><span>Deceased:</span> <strong style={{ color: C.bone }}>Otieno, James M.</strong></div>
@@ -428,19 +428,22 @@ const Showcase = ({ no, title, desc, reverse, children }) => (
 export default function App() {
   const navigate = useNavigate();
 
-  const goStart = () => { window.scrollTo({ top: 0, behavior: 
-'smooth'
- }); navigate(
-'/register'
-); };
+  const goStart = () => {
+    window.scrollTo({
+      top: 0, behavior:
+        'smooth'
+    }); navigate(
+      '/register'
+    );
+  };
 
   const landingModules = [
-    { dark: true, to: true, category: 'NEW · INTEGRATED', accent: C.brass, title: 'Leave Management', excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve and track time off in real time — no spreadsheets, no external HR tools.', status: 'NOW LIVE' },
-    { static: true, category: 'SELF SERVICE', accent: C.verdigris, title: 'Floral Booking', excerpt: 'The right flowers, right in front of them. Families browse a curated selection on a tablet at the front desk and choose with confidence — the booking lands instantly on your computer and in your florist\'s view. Less searching. Less thinking. A better experience.', status: 'RECEPTIONIST PORTAL' },
-    { dark: true, to: true, category: 'NEW · SUPPORT CENTER', accent: C.brass, title: 'Real-Time Customer Support', excerpt: 'Submit issues directly through the platform and our support agents receive, respond, and resolve them in real time — with full status tracking and communication history.', status: 'NOW LIVE' },
+    { dark: true, to: true, category: 'NEW · INTEGRATED', accent: C.brass, title: 'Leave Management', excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve and track time off in real time  no spreadsheets, no external HR tools.', status: 'NOW LIVE' },
+    { static: true, category: 'SELF SERVICE', accent: C.verdigris, title: 'Floral Booking', excerpt: 'The right flowers, right in front of them. Families browse a curated selection on a tablet at the front desk and choose with confidence  the booking lands instantly on your computer and in your florist\'s view. Less searching. Less thinking. A better experience.', status: 'RECEPTIONIST PORTAL' },
+    { dark: true, to: true, category: 'NEW · SUPPORT CENTER', accent: C.brass, title: 'Real Time Customer Support', excerpt: 'Submit issues directly through the platform and our support agents receive, respond, and resolve them in real time  with full status tracking and communication history.', status: 'NOW LIVE' },
   ];
 
-  const marqueeItems = ['Case Management', 'Family Portal', 'Smart Dispatch', 'Fleet Tracking', 'Funeral Insurance', 'Real-Time Support', 'Billing & Invoicing', 'Analytics & Reports', 'Welfare Schemes'];
+  const marqueeItems = ['Case Management', 'Family Portal', 'Smart Dispatch', 'Fleet Tracking', 'Funeral Insurance', 'Real Time Support', 'Billing & Invoicing', 'Analytics & Reports', 'Welfare Schemes'];
 
   return (
     <>
@@ -726,17 +729,17 @@ export default function App() {
               <AppWindow title="restpoint.app/support"><MockSupport /></AppWindow>
             </Showcase>
             <Showcase no="07" title="The Right Flowers. Right in Front of Them." reverse={false} desc={
-           <>
-  Families shouldn't have to search the internet for hours trying to figure out what flowers are right for the moment.
-  <br /><br />
-  Give them a tablet at the front desk. Show them a curated selection of arrangements .
-  <br /><br />
-  Once they choose, the booking appears instantly in the software. Your florist gets notified right away. 
-  <br /><br />
-  They can even add custom details on the spot  like ribbon colors, specific flower preferences, or personalized messages.
-  <br /><br />
+              <>
+                Families shouldn't have to search the internet for hours trying to figure out what flowers are right for the moment.
+                <br /><br />
+                Give them a tablet at the front desk. Show them a curated selection of arrangements .
+                <br /><br />
+                Once they choose, the booking appears instantly in the software. Your florist gets notified right away.
+                <br /><br />
+                They can even add custom details on the spot  like ribbon colors, specific flower preferences, or personalized messages.
+                <br /><br />
 
-</>
+              </>
             }>
               <FloralPreview />
             </Showcase>
@@ -768,7 +771,7 @@ export default function App() {
         {/* ── Hardware Requirement (replaces the old uptime/audit-trail infrastructure block) ── */}
         <HardwareRequirementSection />
 
-                {/* ── Our Mission ── */}
+        {/* ── Our Mission ── */}
         <MissionSection />
 
         {/* ── For Funeral Directors — the confirmation moment (live candle demo) ── */}
@@ -828,7 +831,7 @@ export default function App() {
                 you do it.
               </p>
               <p className="lockin-desc">
-                This is high-end technology engineered specifically for the death care industry. We give you the
+                This is high end technology engineered specifically for the death care industry. We give you the
                 infrastructure to digitize operations, eliminate the paperwork bottleneck, and deliver a flawless,
                 premium experience from the front door to the final farewell.
               </p>
@@ -837,7 +840,7 @@ export default function App() {
                 <div className="lockin-card">
                   <div className="lockin-card-icon"><Layers size={22} color="#4D9B7F" /></div>
                   <h3>One Platform.</h3>
-                  <p>Case management, smart dispatch, family portals, and front-desk tablet booking—unified in one secure command center.</p>
+                  <p>Case management, smart dispatch, family portals, and front desk tablet booking unified in one secure command center.</p>
                 </div>
                 <div className="lockin-card">
                   <div className="lockin-card-icon"><ShieldCheck size={22} color="#4D9B7F" /></div>

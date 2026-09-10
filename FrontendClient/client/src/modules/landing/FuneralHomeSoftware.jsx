@@ -356,7 +356,7 @@ const FuneralHomeSoftware = () => {
                                 <Users size={14} /> Built for Funeral Homes
                             </div>
                             <h1>The Operating System for <span style={{ color: C.brass }}>Modern Funeral Homes</span></h1>
-                            <p className="hero-desc">Streamline operations, honor families, and grow your business with purpose-built software designed exclusively for funeral home professionals.</p>
+                            <p className="hero-desc">Streamline operations, honor families, and grow your business with purpose built software designed exclusively for funeral home professionals.</p>
                             <div className="hero-buttons">
                                 <button className="btn btn-brass" onClick={goStart}>Start Free Trial <ArrowRight size={16} /></button>
                                 <button className="btn btn-ghost" onClick={() => navigate('/contact')}>Book Demo</button>
