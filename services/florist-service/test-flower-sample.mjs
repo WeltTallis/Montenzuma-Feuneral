@@ -5,29 +5,34 @@ import multer from 'multer';
 
 // ── 1. Build a real multipart body exactly like the browser/axios would ──
 const boundary = '----WebKitFormBoundaryTESTBOUNDARY';
-const fields = {
+const png = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64'
+);
+
+function buildBody(fields) {
+  let text = '';
+  for (const [k, v] of Object.entries(fields)) {
+    text += `--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`;
+  }
+  const fileHeader = `--${boundary}\r\nContent-Disposition: form-data; name="images"; filename="test.png"\r\nContent-Type: image/png\r\n\r\n`;
+  return Buffer.concat([
+    Buffer.from(text, 'utf8'),
+    Buffer.from(fileHeader, 'utf8'),
+    png,
+    Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8'),
+  ]);
+}
+
+const VALID = {
   title: 'White Rose Wreath',
   description: 'A beautiful white rose wreath',
   types: 'Wreath, Spray',
   colors: 'White, Red',
   sizes: 'Small, Medium, Large',
 };
-let text = '';
-for (const [k, v] of Object.entries(fields)) {
-  text += `--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`;
-}
-// Minimal valid 1x1 transparent PNG
-const png = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-  'base64'
-);
-const fileHeader = `--${boundary}\r\nContent-Disposition: form-data; name="images"; filename="test.png"\r\nContent-Type: image/png\r\n\r\n`;
-const bodyBuffer = Buffer.concat([
-  Buffer.from(text, 'utf8'),
-  Buffer.from(fileHeader, 'utf8'),
-  png,
-  Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8'),
-]);
+const WHITESPACE_TYPES = { ...VALID, types: '   ' };
+const EMPTY_TITLE = { ...VALID, title: '' };
 
 // ── 2. Express app mirroring the florist service middleware ──
 process.env.NODE_ENV = 'development'; // ensureUploadDir uses tmp fallback

@@ -310,6 +310,7 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
   const tenantId = tenantIdOf(req);
 
   try {
+<<<<<<< Updated upstream
     // Extract fields with multiple key variations to handle form-data naming
     const rawTitle = req.body.title || req.body.name || 'Untitled Sample';
     const rawDescription = req.body.description || req.body.desc || '';
@@ -317,6 +318,24 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
     const types = toArray(req.body.types || req.body['types[]']);
     const colors = toArray(req.body.colors || req.body['colors[]']);
     const sizes = toArray(req.body.sizes || req.body['sizes[]']);
+=======
+    const {
+      title: rawTitle,
+      description: rawDescription,
+      images: providedImages
+    }: CreateFlowerSampleDTO = req.body;
+
+    // Trim text fields — whitespace-only values must be treated as missing so
+    // the validation below returns a clear 400 instead of storing blank rows.
+    const title = String(rawTitle || '').trim();
+    const description = String(rawDescription || '').trim();
+
+    // Multipart form fields arrive as comma-separated (or JSON) strings —
+    // normalize them into the arrays the table expects.
+    const types = toArray(req.body.types);
+    const colors = toArray(req.body.colors);
+    const sizes = toArray(req.body.sizes);
+>>>>>>> Stashed changes
 
     const cleanTitle = String(rawTitle).trim() || 'Untitled Sample';
     const cleanDescription = String(rawDescription).trim();
