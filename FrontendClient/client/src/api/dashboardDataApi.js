@@ -127,7 +127,7 @@ const resolveBranches = async () => {
 // ── Cache for multi-branch deceased fetch (avoids refetch on tab switch) ──
 let _deceasedCache = null;
 let _deceasedCacheTs = 0;
-const CACHE_TTL = 60_000; // 60 seconds
+const DECEASED_CACHE_TTL = 60_000; // 60 seconds
 
 /**
  * Fetch deceased records across EVERY branch by calling the list endpoint
@@ -139,7 +139,7 @@ const CACHE_TTL = 60_000; // 60 seconds
  */
 export const fetchAllBranchDeceased = async (forceRefresh = false) => {
   // Return cached data if fresh
-  if (!forceRefresh && _deceasedCache && Date.now() - _deceasedCacheTs < CACHE_TTL) {
+  if (!forceRefresh && _deceasedCache && Date.now() - _deceasedCacheTs < DECEASED_CACHE_TTL) {
     return _deceasedCache;
   }
 
