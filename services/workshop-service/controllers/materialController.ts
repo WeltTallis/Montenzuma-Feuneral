@@ -4,6 +4,7 @@ import { safeTenantQuery, safeTenantExecute } from '../database/db'
 import { getIO } from '../socket'
 
 
+
 const getMaterials = async (req: Request, res: Response) => {
     try {
         const tenantDb = (req as any).tenant?.db_name;
@@ -15,6 +16,9 @@ const getMaterials = async (req: Request, res: Response) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+
+
 
 const getMaterial = async (req: Request, res: Response) => {
     try {
@@ -28,6 +32,9 @@ const getMaterial = async (req: Request, res: Response) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+
+
 
 const createMaterial = async (req: Request, res: Response) => {
     try {
@@ -171,6 +178,13 @@ const useMaterial = async (req: Request, res: Response) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+
+
+
+
+
+
 
 export {
     getMaterials,

@@ -107,6 +107,10 @@ export default function DeceasedSidePanel({ booking, onClose }) {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
+  const [tab, setTab]           = useState("overview");
+  const [tick, setTick]         = useState(0);
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const id = booking?.deceased_id || booking?.id || booking?.admission_number;
 
@@ -128,7 +132,7 @@ export default function DeceasedSidePanel({ booking, onClose }) {
       })
       .catch(() => { /* NOK is optional — falls back to row fields */ });
     return () => { alive = false; };
-  }, [id, branchSlug]);
+  }, [id, branchSlug, tick]);
 
   // Postmortem + charges/payments — same endpoints the profile sidebar uses.
   useEffect(() => {
@@ -158,7 +162,7 @@ export default function DeceasedSidePanel({ booking, onClose }) {
       );
 
     return () => { alive = false; };
-  }, [id, branchSlug]);
+  }, [id, branchSlug, tick]);
 
   const fetchDeceased = useCallback(async () => {
     if (!id) { setDeceased(booking); setLoading(false); return; }
@@ -167,6 +171,7 @@ export default function DeceasedSidePanel({ booking, onClose }) {
       const res = await api.get(`/deceased/deceased-id/${id}`, branchCfg);
       const data = res.data?.data || res.data?.deceased || booking;
       setDeceased(data);
+      setLastRefreshed(new Date());
     } catch (e) {
       console.warn("[DeceasedSidePanel] fetch failed, using row data:", e?.message);
       setError(e?.response?.status ? `Couldn't refresh (HTTP ${e.response.status})` : "");
@@ -174,9 +179,23 @@ export default function DeceasedSidePanel({ booking, onClose }) {
     } finally {
       setLoading(false);
     }
-  }, [id, booking]);
+  }, [id, booking, tick]);
 
   useEffect(() => { fetchDeceased(); }, [fetchDeceased]);
+
+  // Refresh button — bumps `tick`, which re-runs the deceased fetch (its
+  // useCallback depends on tick) AND re-pulls NOK / postmortem / billing so
+  // every tab shows fresh data.
+  const handleRefresh = () => {
+    if (loading || refreshing) return;
+    setRefreshing(true);
+    setTick((t) => t + 1);
+  };
+
+  // Clear the spinner once the deceased fetch settles.
+  useEffect(() => {
+    if (!loading) setRefreshing(false);
+  }, [loading]);
 
   const d = deceased || booking || {};
   // Next-of-kin fallback — same one the profile page uses when the
@@ -204,6 +223,10 @@ export default function DeceasedSidePanel({ booking, onClose }) {
   const totalPaid    = payments.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
   const balance      = totalCharges - totalPaid;
   const fmtK = (n) => (Math.abs(n) >= 1000 ? `${Math.round(n / 1000)}K` : `${Math.round(n)}`);
+
+  // ── Storage charge math (mirrors the profile sidebar) ──
+  const dailyRate     = parseFloat(d.charges?.storage_rate) || 500;
+  const storageCharge = Math.round(daysInMorgue * dailyRate);
 
   const pmStatus = postmortem?.status || null;
 
@@ -276,7 +299,7 @@ export default function DeceasedSidePanel({ booking, onClose }) {
       {/* Drawer */}
       <aside
         className="fixed inset-y-0 right-0 z-[200] flex flex-col shadow-2xl border-l bg-white"
-        style={{ width: "min(430px, 94vw)", borderColor: "rgba(15,23,42,0.08)" }}
+        style={{ width: "min(640px, 94vw)", borderColor: "rgba(15,23,42,0.08)" }}
       >
         {/* Header */}
         <div
@@ -314,13 +337,78 @@ export default function DeceasedSidePanel({ booking, onClose }) {
             </span>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="text-right mr-1 hidden sm:block">
+              <div className="text-[9px] uppercase tracking-wide text-slate-400">Updated</div>
+              <div className="text-[10px] text-slate-500 font-mono">
+                {lastRefreshed
+                  ? lastRefreshed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  : "—"}
+              </div>
+            </div>
+            <button
+              onClick={handleRefresh}
+              disabled={loading || refreshing}
+              className="p-2 rounded-xl text-slate-400 hover:text-teal-700 hover:bg-teal-50 transition-colors disabled:opacity-50"
+              aria-label="Refresh"
+              title="Refresh"
+            >
+              <svg
+                width={16}
+                height={16}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={loading || refreshing ? "animate-spin" : ""}
+              >
+                <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" />
+              </svg>
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Tab bar — Overview / Postmortem / Financials (mirrors the profile tabs) */}
+        <div
+          className="flex gap-1 px-4 border-b"
+          style={{ borderColor: "#eef1f5" }}
+        >
+          {[
+            ["overview", "Overview"],
+            ["postmortem", "Postmortem"],
+            ["financials", "Financials"],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={
+                "px-4 py-2.5 text-[11.5px] font-bold uppercase tracking-wide border-b-2 transition-colors " +
+                (tab === key
+                  ? "text-slate-900"
+                  : "text-slate-400 hover:text-slate-600 border-transparent")
+              }
+              style={{ borderColor: tab === key ? "#0f766e" : "transparent" }}
+            >
+              {label}
+              {key === "financials" && charges.length > 0 && (
+                <span
+                  className="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[9px] font-bold"
+                  style={{ background: "#0f766e18", color: "#0f766e" }}
+                >
+                  {charges.length}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
         {/* Body */}
@@ -361,6 +449,8 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                 ))}
               </div>
 
+              {/* ── Overview tab ── */}
+              {tab === "overview" && (<>
               {/* Notifications */}
               <PanelSection num="!" title="Notifications">
                 <div className="flex gap-2.5 py-2">
@@ -413,9 +503,28 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                 </div>
               </PanelSection>
 
-              {/* 03 — Postmortem Requests (only when a request row was clicked) */}
-              {pmReq && (
-                <PanelSection num="03" title="Postmortem Requests">
+              </>)}
+
+              {/* ── Postmortem tab ── */}
+              {tab === "postmortem" && (<>
+                {!pmReq && !postmortem && (
+                  <div className="rounded-lg px-3 py-6 text-center text-[12.5px] text-slate-400 bg-slate-50 border border-slate-100">
+                    No postmortem recorded for this deceased.
+                  </div>
+                )}
+                {postmortem && (
+                  <PanelSection num="01" title="Postmortem Record">
+                    <div className="grid grid-cols-2 gap-x-4">
+                      <Row label="Status" value={pmStatus ? String(pmStatus).replace(/_/g, " ") : "—"} />
+                      <Row label="Requested On" value={formatDate(postmortem.requested_at || postmortem.created_at)} />
+                      <Row label="Completed On" value={postmortem.completed_at ? formatDate(postmortem.completed_at) : "Not completed"} />
+                      <Row label="Doctor / Pathologist" value={postmortem.doctor_name || postmortem.pathologist || postmortem.requested_by} />
+                      <Row label="Findings / Notes" value={postmortem.findings || postmortem.notes || postmortem.results} full />
+                    </div>
+                  </PanelSection>
+                )}
+                {pmReq && (
+                <PanelSection num="02" title="Postmortem Requests">
                   <div
                     className="flex items-center justify-between gap-2 py-1.5 mb-1"
                   >
@@ -487,6 +596,81 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                   ))}
                 </div>
               </PanelSection>
+              </>)}
+
+              {/* ── Financials tab ── */}
+              {tab === "financials" && (<>
+                <PanelSection num="01" title="Storage Charges">
+                  <div className="grid grid-cols-2 gap-x-4">
+                    <Row label="Days in Morgue" value={`${daysInMorgue} day${daysInMorgue === 1 ? "" : "s"}`} />
+                    <Row label="Daily Storage Rate" value={`KES ${dailyRate.toLocaleString()}`} />
+                    <Row label="Storage Charge So Far" value={`KES ${storageCharge.toLocaleString()}`} />
+                    <Row label="Total Charges (All Services)" value={`KES ${totalCharges.toLocaleString()}`} />
+                    <Row label="Total Paid" value={`KES ${totalPaid.toLocaleString()}`} />
+                    <Row label="Balance" value={`KES ${balance.toLocaleString()}`} />
+                  </div>
+                </PanelSection>
+
+                <PanelSection num="02" title="Itemised Charges">
+                  {charges.length === 0 ? (
+                    <div className="rounded-lg px-3 py-4 text-center text-[12px] text-slate-400 bg-slate-50 border border-slate-100">
+                      No charges recorded yet.
+                    </div>
+                  ) : (
+                    <div className="rounded-lg overflow-hidden" style={{ border: "1px solid #e8ecef" }}>
+                      <div className="grid grid-cols-[1fr_auto] bg-slate-50 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                        <span>Charge</span>
+                        <span>Amount (KES)</span>
+                      </div>
+                      {charges.map((c, i) => (
+                        <div
+                          key={c.id ?? i}
+                          className="grid grid-cols-[1fr_auto] items-center px-3 py-2 border-t border-slate-100 text-[12.5px]"
+                        >
+                          <span className="text-slate-700 font-semibold truncate pr-2">
+                            {c.description || c.charge_type || c.name || `Charge #${c.id ?? i + 1}`}
+                          </span>
+                          <span className="font-mono text-[12px] text-slate-900">
+                            {parseFloat(c.amount || c.charge_amount || 0).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </PanelSection>
+
+                <PanelSection num="03" title="Payments">
+                  {payments.length === 0 ? (
+                    <div className="rounded-lg px-3 py-4 text-center text-[12px] text-slate-400 bg-slate-50 border border-slate-100">
+                      No payments recorded yet.
+                    </div>
+                  ) : (
+                    <div className="rounded-lg overflow-hidden" style={{ border: "1px solid #e8ecef" }}>
+                      <div className="grid grid-cols-[1fr_auto_auto] bg-slate-50 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                        <span>Date</span>
+                        <span>Method</span>
+                        <span>Amount (KES)</span>
+                      </div>
+                      {payments.map((p, i) => (
+                        <div
+                          key={p.id ?? i}
+                          className="grid grid-cols-[1fr_auto_auto] items-center gap-2 px-3 py-2 border-t border-slate-100 text-[12.5px]"
+                        >
+                          <span className="text-slate-700">
+                            {formatDate(p.payment_date || p.paid_at || p.created_at)}
+                          </span>
+                          <span className="text-[10.5px] uppercase text-slate-400">
+                            {p.payment_method || p.method || "—"}
+                          </span>
+                          <span className="font-mono text-[12px] text-emerald-700">
+                            {parseFloat(p.amount || 0).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </PanelSection>
+              </>)}
             </>
           )}
         </div>
