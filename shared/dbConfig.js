@@ -298,6 +298,36 @@ const resolveDatabase = async (slug) => {
             return tenantDbName;
         }
     }
+    // FALLBACK: Try to find a database that matches part of the slug
+    // This handles cases where the slug format doesn't match the tenant slug in the database
+    // but the database name can be derived from the slug
+    try {
+        const pool = await (0, exports.getRootPool());
+        // Try to find a database that matches the slug without the last segment (e.g., "nairobi")
+        if (lastDashIndex > 0) {
+            const possibleDbName = slug.substring(0, lastDashIndex);
+            const [dbRows] = await pool.query('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ? LIMIT 1', [possibleDbName]);
+            if (dbRows && dbRows.length > 0) {
+                LOGGER.info('Found database by truncating slug', { slug, dbName: possibleDbName });
+                branchDbCache.set(slug, { dbName: possibleDbName, createdAt: Date.now() });
+                return possibleDbName;
+            }
+        }
+        // Try to find a database that contains the slug (or vice versa)
+        const [allDbs] = await pool.query('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE ? LIMIT 1', [`%${slug.split('-')[0]}%`]);
+        if (allDbs && allDbs.length > 0) {
+            // Find the best match (longest matching database name)
+            const bestMatch = allDbs.reduce((best, current) => {
+                return current.SCHEMA_NAME.length > best.SCHEMA_NAME.length ? current : best;
+            }, allDbs[0]);
+            LOGGER.info('Found database by partial match', { slug, dbName: bestMatch.SCHEMA_NAME });
+            branchDbCache.set(slug, { dbName: bestMatch.SCHEMA_NAME, createdAt: Date.now() });
+            return bestMatch.SCHEMA_NAME;
+        }
+    }
+    catch (err) {
+        LOGGER.warn('Fallback DB lookup failed', { slug, error: err.message });
+    }
     LOGGER.error('Could not resolve database for slug', { slug });
     return null;
 };

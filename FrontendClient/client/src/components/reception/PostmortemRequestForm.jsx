@@ -488,6 +488,7 @@ export default function PostmortemRequestForm() {
     const [isSearching, setIsSearching] = useState(false);
     const [foundCase, setFoundCase]     = useState(null); // null = not found yet
     const [shakeId, setShakeId]         = useState(false);
+    const [searchType, setSearchType]   = useState('phone'); // phone, id_number, admission_number
 
     // Step 2 state — request form
     const [form, setForm] = useState({ reason: '', requested_by: '', priority: 'normal' });
@@ -516,20 +517,15 @@ export default function PostmortemRequestForm() {
         setLookupError('');
         setFoundCase(null);
 
-        // Auto-detect identifier type:
-        //   - starts with + or is all digits ≥10 chars → phone
-        //   - contains letters (MON-, ADM-, etc.) → admission_number
-        //   - pure 8-digit number → id_number (national ID)
-        //   - otherwise try as deceased_id
-        const isPhone    = /^[+0-9]{10,}$/.test(q);
-        const isAdmNo    = /[a-zA-Z]/.test(q);
-        const isNationalId = /^\d{8}$/.test(q);
-
+        // Build search params based on selected search type
         const params = new URLSearchParams();
-        if (isPhone)      params.set('phone',            q);
-        else if (isAdmNo) params.set('admission_number', q);
-        else if (isNationalId) params.set('id_number',  q);
-        else              params.set('deceased_id',      q);
+        if (searchType === 'phone') {
+            params.set('phone', q);
+        } else if (searchType === 'id_number') {
+            params.set('id_number', q);
+        } else if (searchType === 'admission_number') {
+            params.set('admission_number', q);
+        }
 
         try {
             const res = await axios.get(`${BASE_URL}/public/postmortem/search?${params.toString()}`, {
@@ -676,7 +672,7 @@ export default function PostmortemRequestForm() {
                                     <i className="fas fa-info-circle" />
                                     <div>
                                         Enter the <strong>Deceased Admission Number</strong>, the <strong>Next-of-Kin phone number</strong>,
-                                        or the <strong>Next-of-Kin national ID</strong> to locate the case.
+                                        or the <strong>National ID</strong> to locate the case.
                                     </div>
                                 </Alert>
 
@@ -688,13 +684,28 @@ export default function PostmortemRequestForm() {
                                 )}
 
                                 <FormGroup>
+                                    <Label htmlFor="searchType">
+                                        <i className="fas fa-list" /> Search By
+                                    </Label>
+                                    <Select
+                                        id="searchType"
+                                        value={searchType}
+                                        onChange={e => { setSearchType(e.target.value); setLookupError(''); }}
+                                    >
+                                        <option value="phone">Next of Kin Phone</option>
+                                        <option value="id_number">National ID</option>
+                                        <option value="admission_number">Deceased Admission Number</option>
+                                    </Select>
+                                </FormGroup>
+
+                                <FormGroup>
                                     <Label htmlFor="identifier">
-                                        <i className="fas fa-search" /> Case Identifier
+                                        <i className="fas fa-search" /> {searchType === 'phone' ? 'Phone Number' : searchType === 'id_number' ? 'ID Number' : 'Admission Number'}
                                     </Label>
                                     <Input
                                         id="identifier"
                                         type="text"
-                                        placeholder="e.g. MON-XXXXXX, +254700000000, or National ID"
+                                        placeholder={searchType === 'phone' ? 'e.g. +254700000000' : searchType === 'id_number' ? 'e.g. 12345678' : 'e.g. MON-XXXXXX'}
                                         value={identifier}
                                         onChange={e => { setIdentifier(e.target.value); setLookupError(''); }}
                                         $shake={shakeId}
