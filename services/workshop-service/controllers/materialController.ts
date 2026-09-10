@@ -33,12 +33,15 @@ const createMaterial = async (req: Request, res: Response) => {
         const tenantDb = (req as any).tenant?.db_name;
         if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
 
+        // All materials rows live in the ONE shared operations DB, isolated via
+        // the tenant_slug column (NOT NULL, no default) — so it MUST be provided here.
+        const tenantSlug = (req as any).tenant?.tenant_slug || (req as any).tenantSlug || 'system_shared';
         const { name, category, unit, quantity, unit_price, min_stock_level, description } = req.body;
 
         const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO materials (name, category, unit, quantity, unit_price, min_stock_level, description)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [name, category, unit, quantity || 0, unit_price || 0, min_stock_level || 0, description]
+            `INSERT INTO materials (tenant_slug, name, category, unit, quantity, unit_price, min_stock_level, description)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [tenantSlug, name, category, unit, quantity || 0, unit_price || 0, min_stock_level || 0, description]
         );
 
         const rows: any = await safeTenantQuery(tenantDb, 'SELECT * FROM materials WHERE id = ?', [insertResult.insertId]);

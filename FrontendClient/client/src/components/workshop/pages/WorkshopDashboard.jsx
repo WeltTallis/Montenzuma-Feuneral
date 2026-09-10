@@ -310,7 +310,25 @@ const WorkshopDashboard = () => {
   };
 
   const addMaterial = async (matData) => {
-    try { await workshopService.createMaterial(matData); addToast('Material added', 'success'); setModal(null); loadData(); }
+    try {
+      // Map the form's camelCase fields to the backend's snake_case contract
+      const payload = {
+        name: matData.name,
+        category: matData.category,
+        unit: matData.unit,
+        quantity: matData.quantity,
+        unit_price: matData.price,
+        min_stock_level: matData.minStock,
+        description: matData.description,
+      };
+      const result = await workshopService.createMaterial(payload);
+      // handleResponse returns {success:false} instead of throwing — CHECK it
+      if (!result || !result.success) {
+        addToast('Failed to add material: ' + (result?.error || result?.status || 'Unknown error'), 'error');
+        return;
+      }
+      addToast('Material added', 'success'); setModal(null); loadData();
+    }
     catch (err) { addToast('Failed to add material: ' + err.message, 'error'); }
   };
 

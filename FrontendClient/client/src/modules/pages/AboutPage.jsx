@@ -152,7 +152,7 @@ export default function AboutPage() {
     { icon: Server, title: 'Affordable Infrastructure', desc: 'We understand technology costs millions. We are dedicated to making it affordable for African businesses.' },
     { icon: Layers, title: 'Microservices', desc: 'Decoupled, independently deployed services for every domain.' },
     { icon: Cpu, title: 'Multi-tenancy', desc: 'Isolated tenant databases with shared infrastructure.' },
-    { icon: Lock, title: 'Encryption', desc: 'AES-256 at rest, TLS 1.3 in transit, end-to-end.' },
+    { icon: Lock, title: 'Encryption', desc: 'AES-256 at rest, TLS 1.3 in transit, end to end.' },
     { icon: Zap, title: 'Zero Downtime', desc: 'Rolling deployments, health checks, and circuit breakers.' },
     { icon: Cloud, title: 'Google Drive Backup', desc: 'Automated backups to your own Google Drive. Your data stays yours.' },
   ];
@@ -323,7 +323,7 @@ export default function AboutPage() {
               <div className="mono-label" style={{ color: C.brass, marginBottom: '1rem' }}>About Welt Tallis Technologies</div>
               <h2 style={{ color: C.bone }}>The company behind Rest Point.</h2>
               <p style={{ color: C.grayLight, fontSize: '1.1rem', lineHeight: 1.8, marginBottom: '1.5rem' }}>
-                Welt Tallis Technologies is a software company dedicated to building robust, scalable platforms for African businesses. Rest Point is our flagship product â€” a complete operating system for funeral homes.
+                Welt Tallis Technologies is a software company dedicated to building robust, scalable platforms for African businesses. Rest Point is our flagship product a complete operating system for funeral homes.
               </p>
               <p style={{ color: C.grayLight, fontSize: '1.1rem', lineHeight: 1.8 }}>
                 We understand that technology infrastructure is extremely expensive costs run into millions of shillings. We are dedicated to making it affordable for our clients without compromising on quality, security, or reliability.
@@ -403,7 +403,7 @@ export default function AboutPage() {
                     </div>
                   </div>
                   <p style={{ fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.7 }}>
-                    Builders Nation is a separate platform that immerses young minds into the world of technology, engineering, and sustainability using real remote-controlled simulations.
+                    Builders Nation is a separate platform that immerses young minds into the world of technology, engineering, and sustainability using real remote controlled simulations.
                   </p>
                   <a href="https://buildersnation.netlify.app/" target="_blank" rel="noopener noreferrer" className="link-arrow">
                     Visit Builders Nation <ExternalLink size={14} />

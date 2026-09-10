@@ -108,7 +108,7 @@ const AppContainer = styled.div`
   line-height: 1.5;
   min-height: 100dvh;
   margin: 0 auto;
-  padding: 14px;
+  padding: 10px;
   width: 100%;
   max-width: 2200px;
   animation: ${fadeIn} 0.25s ease-out;

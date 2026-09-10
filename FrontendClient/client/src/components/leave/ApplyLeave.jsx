@@ -894,8 +894,16 @@ const ApplyLeave = () => {
     // The leave service stores every leave in the parent tenant's main DB, so
     // we explicitly send the parent slug for branch users (falls back to the
     // current tenant slug when there is no parent, e.g. the parent itself).
+    // NOTE: spread order matters — the default axios interceptor sets
+    // x-tenant-slug from getTenantSlug(); our explicit parentSlug MUST win,
+    // so it goes AFTER tenantHeaders. x-user-id is also required on
+    // MY_LEAVES/BALANCE so the backend can scope to the logged-in employee.
     const parentSlug = getParentTenantSlug() || getTenantSlug();
-    const tenantHeaders = useMemo(() => ({ headers: { 'x-tenant-slug': parentSlug } }), [parentSlug]);
+    const tenantHeaders = useMemo(() => {
+      const h = { 'x-tenant-slug': parentSlug };
+      if (userId) h['x-user-id'] = String(userId);
+      return { headers: h };
+    }, [parentSlug, userId]);
 
     // ── State ──
     const [myLeaves, setMyLeaves] = useState([]);

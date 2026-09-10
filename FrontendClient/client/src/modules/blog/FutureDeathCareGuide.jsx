@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     question: 'How does fully automated software protect sensitive family data?',
-    answer: 'All data is encrypted in transit (256 bit SSL) and at rest, with role-based access control so staff only see what their role requires. The family portal runs in a locked, guided session that wipes clean after each use.',
+    answer: 'All data is encrypted in transit (256 bit SSL) and at rest, with role based access control so staff only see what their role requires. The family portal runs in a locked, guided session that wipes clean after each use.',
   },
   {
     question: 'Can hearse bookings be handled by the client without calling?',
@@ -113,7 +113,7 @@ const FutureDeathCareGuide = () => {
               <p>Consider the traditional intake process. A family, reeling from a sudden loss, is handed a clipboard with a carbon copy form. They are asked to spell their loved one’s name three times, to recall exact dates, and to sign legal documents in a state of shock. This is not service. This is <strong>bureaucracy disguised as procedure.</strong></p>
               <JournalList items={[
                 'Paper intake forms that get lost, misfiled, or illegibly filled in under pressure',
-                'Physical ledgers that force staff to re-type the same data two or three times',
+                'Physical ledgers that force staff to re type the same data two or three times',
                 'Disconnected software   one tool for billing, another for schedules, none talking to each other',
                 'No quick way to answer a family’s simple question without digging through a filing cabinet',
                 'Compliance records that live in binders instead of an auditable digital trail',
@@ -139,14 +139,14 @@ const FutureDeathCareGuide = () => {
                 caption="Fig 02 · The intersection of architecture and digital empathy"
               />
               <p>By bringing curated marketplaces, digital release authorizations, and real-time payment processing directly to the tablet, the funeral director transforms the consultation room into a complete, self contained sanctuary. The family never has to break eye contact to wait for a system to load.</p>
-              <p>The same quiet automation runs through the whole building. In the prep room, <strong>chemical inventory manages itself</strong>: completing a case deducts the exact chemicals used, low-stock alerts arrive before you run dry, and batch numbers, expiry dates and usage logs are recorded automatically for audits. On the road, families check hearse availability by date and time slot and book the vehicle themselves at transparent prices  and when a fleet is fully booked, the system securely pings a partnered funeral home across town for a vehicle share, so <strong>no family is ever turned away</strong>.</p>
+              <p>The same quiet automation runs through the whole building. In the prep room, <strong>chemical inventory manages itself</strong>: completing a case deducts the exact chemicals used, low stock alerts arrive before you run dry, and batch numbers, expiry dates and usage logs are recorded automatically for audits. On the road, families check hearse availability by date and time slot and book the vehicle themselves at transparent prices  and when a fleet is fully booked, the system securely pings a partnered funeral home across town for a vehicle share, so <strong>no family is ever turned away</strong>.</p>
               <p>The coffin marketplace removes the showroom floor entirely. Families browse the full catalog in high resolution, compare materials and prices side by side, and reserve from the comfort of home  the reservation landing directly on the deceased’s case file so the prep team and billing stay in sync. From there, the paperwork runs itself:</p>
               <JournalList items={[
-                'A case opens the moment a death is reported — details captured once, used everywhere',
+                'A case opens the moment a death is reported  details captured once, used everywhere',
                 'Death certificates, permits and service agreements are pre filled with the family’s data automatically',
                 'The system builds the invoice from the services selected  no re typing, no arithmetic errors',
                 'The family pays securely on the tablet portal or from the family portal after hours',
-                'Paid invoices update your accounting records instantly   zero double-entry, zero lost paperwork',
+                'Paid invoices update your accounting records instantly   zero double entry, zero lost paperwork',
               ]} />
             </>
           ),
@@ -157,7 +157,7 @@ const FutureDeathCareGuide = () => {
           em: 'Standard',
           children: (
             <>
-              <p>This is the architecture of remembrance. It is the deliberate construction of an environment where the <strong>heavy lifting is done by software</strong>, so the heavy lifting of grief can be carried by human hands. The future of death care is not just about going paperless — it is about creating an interconnected, highly secure, and automated ecosystem. At Restpoint, we build the tools, but the empathy belongs to you.</p>
+              <p>This is the architecture of remembrance. It is the deliberate construction of an environment where the <strong>heavy lifting is done by software</strong>, so the heavy lifting of grief can be carried by human hands. The future of death care is not just about going paperless  it is about creating an interconnected, highly secure, and automated ecosystem. At Restpoint, we build the tools, but the empathy belongs to you.</p>
               <JournalList items={[
                 'Digital intake, release, and postmortem tracking that keeps a bulletproof chain of custody',
                 'Precision chemical inventory so your prep room never runs dry  and compliance is automatic',
