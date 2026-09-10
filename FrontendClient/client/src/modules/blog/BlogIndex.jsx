@@ -95,9 +95,32 @@ const INDEX_CSS = `
   .ji-card h3 em{font-style:italic;color:var(--accent)}
   .ji-card p{font-size:0.95rem;line-height:1.65;color:var(--grayLight)}
   .ji-meta{font-family:'JetBrains Mono',monospace;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--gray);display:flex;gap:1.2rem;margin-top:auto;flex-wrap:wrap}
-  .ji-stats{font-family:'JetBrains Mono',monospace;font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent)}
+  .ji-stats{display:flex;align-items:center;gap:0.6rem;margin-top:auto;padding-top:0.75rem;border-top:1px solid var(--line)}
+  .ji-stat-item{display:inline-flex;align-items:center;gap:0.35rem;font-family:'JetBrains Mono',monospace;font-size:0.62rem;font-weight:600;letter-spacing:0.02em;color:var(--gray)}
+  .ji-stat-item svg{width:14px;height:14px;stroke-width:1.6;flex-shrink:0;opacity:0.7}
+  .ji-stat-item.likes{color:#C77B5E}
+  .ji-stat-item.likes svg{fill:#C77B5E;stroke:#C77B5E;opacity:1}
   @media (max-width:920px){.ji-featured{grid-template-columns:1fr}.ji-featured-img{min-height:260px}.ji-grid{grid-template-columns:1fr}}
 `;
+
+const EyeIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const HeartIcon = ({ filled }) => (
+  <svg viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+  </svg>
+);
+
+const CommentIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
 
 const BlogIndex = () => {
   const navigate = useNavigate();
@@ -183,8 +206,12 @@ const BlogIndex = () => {
             <div className="ji-cat">{featured.category} · Featured</div>
             <h2>{featured.title}<br /><em>{featured.accent}</em></h2>
             <p>{featured.excerpt}</p>
-            {statsLabel(stats[slugFrom(featured.to)]) && (
-              <div className="ji-stats">{statsLabel(stats[slugFrom(featured.to)])}</div>
+            {stats[slugFrom(featured.to)] && (
+              <div className="ji-stats">
+                <span className="ji-stat-item"><EyeIcon /> {fmtCount(stats[slugFrom(featured.to)].views)}</span>
+                <span className="ji-stat-item likes"><HeartIcon filled={false} /> {fmtCount(stats[slugFrom(featured.to)].likes)}</span>
+                <span className="ji-stat-item"><CommentIcon /> {fmtCount(stats[slugFrom(featured.to)].commentCount || 0)}</span>
+              </div>
             )}
             <div className="ji-read">Read the story →</div>
           </div>
@@ -202,12 +229,14 @@ const BlogIndex = () => {
                   <span>{p.read}</span>
                   <span>{p.date}</span>
                   <span>{p.author}</span>
-                  {st && (
-                    <span className="ji-stat">
-                      {fmtCount(st.views)} reads · {fmtCount(st.likes)} likes · {fmtCount(st.commentCount || 0)} comments
-                    </span>
-                  )}
                 </div>
+                {st && (
+                  <div className="ji-stats">
+                    <span className="ji-stat-item"><EyeIcon /> {fmtCount(st.views)}</span>
+                    <span className="ji-stat-item likes"><HeartIcon filled={false} /> {fmtCount(st.likes)}</span>
+                    <span className="ji-stat-item"><CommentIcon /> {fmtCount(st.commentCount || 0)}</span>
+                  </div>
+                )}
               </button>
             );
           })}

@@ -50,42 +50,89 @@ export const JOURNAL_CSS = `
   }
 
   /* ============ FLOATING ENGAGEMENT DOCK ============ */
-  .engagment-dock {
-    position: fixed;    left: 30px;    top: 50%;
+  .engagement-dock {
+    position: fixed;
+    left: 24px;
+    top: 50%;
     transform: translateY(-50%);
     z-index: 50;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-    padding: 1rem 0.6rem;
-    background: rgba(250, 248, 244, 0.8);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--line);
-    border-radius: 50px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    gap: 0.75rem;
+    padding: 1.25rem 0.85rem;
+    background: rgba(250, 248, 244, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(227, 221, 208, 0.7);
+    border-radius: 100px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .engagement-dock:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06);
   }
   .dock-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.2rem;
+    gap: 0.35rem;
     cursor: pointer;
     background: transparent;
     border: none;
-    color: var(--gray);
+    color: #8A8780;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 0.35rem;
+    border-radius: 50%;
+    position: relative;
+  }
+  .dock-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: transparent;
+    transition: all 0.3s ease;
+    z-index: -1;
+  }
+  .dock-item:hover {
+    color: #C77B5E;
+    transform: translateY(-2px) scale(1.08);
+  }
+  .dock-item:hover::after {
+    background: rgba(199, 123, 94, 0.08);
+  }
+  .dock-item.liked {
+    color: #C77B5E;
+  }
+  .dock-item.liked::after {
+    background: rgba(199, 123, 94, 0.1);
+  }
+  .dock-item:active {
+    transform: translateY(0) scale(0.95);
+  }
+  .dock-item svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 1.75;
     transition: all 0.3s ease;
   }
-  .dock-item:hover { color: var(--accent); transform: translateY(-3px); }
-  .dock-item.liked { color: var(--accent); }
-  .dock-item svg { width: 18px; height: 18px; }
+  .dock-item:hover svg {
+    stroke-width: 2;
+  }
   .dock-count {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     font-weight: 600;
-    color: var(--ink);  }
+    color: #000000;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    min-height: 0.6rem;
+  }
   .dock-divider {
-    width: 20px;    height: 1px;
-    background: var(--line);    margin: 0 auto;
+    width: 24px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #E3DDD0 50%, transparent);
+    margin: 0.25rem auto;
   }
 
   /* ============ MASTHEAD ============ */
@@ -623,18 +670,21 @@ export const JOURNAL_CSS = `
 
   /* ============ RESPONSIVE ============ */
   @media (max-width: 900px) {
-    .engagment-dock {
-      left: auto;
-      right: 20px;
+    .engagement-dock {
+      left: 50%;
+      right: auto;
       top: auto;
-      bottom: 20px;
-      transform: none;
+      bottom: 24px;
+      transform: translateX(-50%);
       flex-direction: row;
-      padding: 0.8rem 1rem;
-      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      gap: 1.25rem;
+      border-radius: 100px;
     }
     .dock-item { flex-direction: row; gap: 0.5rem; }
-    .dock-divider { width: 1px; height: 20px; margin: 0; }
+    .dock-item:hover { transform: translateY(-1px) scale(1.05); }
+    .dock-item:active { transform: translateY(0) scale(0.98); }
+    .dock-divider { width: 1px; height: 24px; margin: 0; background: linear-gradient(180deg, transparent, #E3DDD0 50%, transparent); }
     .blog-nav-right { display: none; }
     .hero-image-container { height: 40vh; min-height: 300px; }
     .mag-comment { grid-template-columns: 1fr; gap: 1rem; }
@@ -941,17 +991,17 @@ return (
 
       {/* FLOATING ENGAGEMENT DOCK */}
       <div className="engagement-dock">
-        <div className="dock-item" style={{ cursor: 'default' }} aria-label="Reads">
+        <button className="dock-item" style={{ cursor: 'default' }} aria-label={`${fmtCount(views)} reads`} title={`${fmtCount(views)} reads`}>
           <EyeSvg />
           <span className="dock-count">{fmtCount(views)}</span>
-        </div>
+        </button>
         <div className="dock-divider" />
-        <button className={liked ? 'dock-item liked' : 'dock-item'} onClick={toggleLike} aria-label="Like this story">
-          <HeartSvg />
+        <button className={liked ? 'dock-item liked' : 'dock-item'} onClick={toggleLike} aria-label={liked ? 'Unlike this story' : 'Like this story'} title={`${fmtCount(likes)} likes`}>
+          <HeartSvg filled={liked} />
           <span className="dock-count">{fmtCount(likes)}</span>
         </button>
         <div className="dock-divider" />
-        <button className="dock-item" onClick={() => setOverlayOpen(true)} aria-label="Open discussion">
+        <button className="dock-item" onClick={() => setOverlayOpen(true)} aria-label={`${fmtCount(comments.length)} comments`} title={`${fmtCount(comments.length)} comments`}>
           <CommentSvg />
           <span className="dock-count">{fmtCount(comments.length)}</span>
         </button>
