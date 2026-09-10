@@ -20,15 +20,15 @@ const faqs = [
   },
   {
     question: 'What happens if a funeral home loses internet connection?',
-    answer: 'Rest Point is 100% cloud-based with advanced local caching. If the internet briefly drops, tablets can still view critical data and continue intake; everything syncs to the cloud the moment the connection is restored.',
+    answer: 'Rest Point is 100% cloud based with advanced local caching. If the internet briefly drops, tablets can still view critical data and continue intake; everything syncs to the cloud the moment the connection is restored.',
   },
   {
     question: 'How does fully automated software protect sensitive family data?',
-    answer: 'All data is encrypted in transit (256-bit SSL) and at rest, with role-based access control so staff only see what their role requires. The family portal runs in a locked, guided session that wipes clean after each use.',
+    answer: 'All data is encrypted in transit (256 bit SSL) and at rest, with role-based access control so staff only see what their role requires. The family portal runs in a locked, guided session that wipes clean after each use.',
   },
   {
     question: 'Can hearse bookings be handled by the client without calling?',
-    answer: 'Yes. Funeral homes can publish transparent fleet pricing, and families can view availability and book the hearse directly from a lobby tablet or from home — and through a partner network, homes can even share vehicles when a fleet is fully booked.',
+    answer: 'Yes. Funeral homes can publish transparent fleet pricing, and families can view availability and book the hearse directly from a lobby tablet or from home   and through a partner network, homes can even share vehicles when a fleet is fully booked.',
   },
 ];
 
@@ -43,7 +43,7 @@ const postSchema = [
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
     headline: 'The Future of Death Care: How Fully Automated Funeral Homes Are Changing the Industry',
-    description: 'How cloud-based death care software is transforming funeral home operations — from QR-scanned intake and digital release to hearse self-booking, coffin marketplaces, and fully automated workflows.',
+    description: 'How cloud-based death care software is transforming funeral home operations   from QR-scanned intake and digital release to hearse self-booking, coffin marketplaces, and fully automated workflows.',
     author: { '@type': 'Person', name: 'Peter Mumo', description: 'Developer at Restpoint' },
     publisher: { '@type': 'Organization', name: 'Rest Point', logo: { '@type': 'ImageObject', url: 'https://restpoint.co.ke/logo.png' } },
     datePublished: '2026-09-04',
@@ -71,13 +71,13 @@ const FutureDeathCareGuide = () => {
     <>
       <Helmet>
         <title>The Future of Death Care: How Fully Automated Funeral Homes Are Changing the Industry | RestPoint</title>
-        <meta name="description" content="Discover how fully automated funeral homes use cloud-based software for QR-scanned intake, digital release, chemical inventory control, hearse self-booking, coffin marketplaces, automated invoicing, and 24/7 family portals. Written by Peter Mumo, Developer at Restpoint." />
+        <meta name="description" content="Discover how fully automated funeral homes use cloud-based software for QR-scanned intake, digital release, chemical inventory control, hearse self booking, coffin marketplaces, automated invoicing, and 24/7 family portals. Written by Peter Mumo, Developer at Restpoint." />
         <meta name="keywords" content="future of death care, automated funeral home software, funeral home management system, digital intake and release, funeral home digitization, hearse management software, coffin marketplace, funeral home invoicing, family portal funeral, funeral home compliance software, cloud funeral software Kenya, Restpoint death care" />
         <meta name="author" content="Peter Mumo" />
         <link rel="canonical" href={blogUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:title" content="The Future of Death Care: How Fully Automated Funeral Homes Are Changing the Industry" />
-        <meta property="og:description" content="From QR-scanned intake to coffin marketplaces and 24/7 family portals — how modern funeral homes are going fully automated." />
+        <meta property="og:description" content="From QR scanned intake to coffin marketplaces and 24/7 family portals how modern funeral homes are going fully automated." />
         <meta property="og:url" content={blogUrl} />
         <meta property="og:site_name" content="Rest Point" />
         <meta property="article:published_time" content="2026-09-04" />
@@ -85,19 +85,19 @@ const FutureDeathCareGuide = () => {
         <meta property="article:section" content="Death Care Technology" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="The Future of Death Care: Fully Automated Funeral Homes" />
-        <meta name="twitter:description" content="How cloud-based software is transforming funeral home operations and family experiences." />
+        <meta name="twitter:description" content="How cloud based software is transforming funeral home operations and family experiences." />
         {postSchema.map((s, i) => (
           <script key={i} type="application/ld+json">{JSON.stringify(s)}</script>
         ))}
       </Helmet>
 
-<JournalArticle
-slug="future-of-death-care-software-restpoint"
+      <JournalArticle
+        slug="future-of-death-care-software-restpoint"
         navMeta={['Vol. 01', '2026', 'Death Care']}
         heroMeta={['Field Notes', '9 Min Read', 'September 2026']}
         title="The Future of"
         titleAccent="Death Care."
-        excerpt="Why the modern funeral home is becoming fully automated — QR-scanned intake, digital release, hearse self-booking, coffin marketplaces and 24/7 family portals. A deep dive into the systems that serve grieving families."
+        excerpt="Why the modern funeral home is becoming fully automated   QR scanned intake, digital release, hearse self booking, coffin marketplaces and 24/7 family portals. A deep dive into the systems that serve grieving families."
         author={{ initials: 'PM', name: 'Peter Mumo', role: 'Developer · Restpoint' }}
         heroImage={{
           src: 'https://images.unsplash.com/photo-1505290420458-b1d24243d6e8?q=80&w=1600&auto=format&fit=crop',
@@ -110,15 +110,15 @@ slug="future-of-death-care-software-restpoint"
           children: (
             <>
               <p>For decades, the funeral home has been viewed as a space frozen in time. Heavy curtains, polished wood, and ledgers filled with handwritten names. While the world outside accelerated into the digital age, the business of grief remained stubbornly analog. But the families walking through those doors today are not the families of 1995. They are digital natives, managing their lives from glass rectangles in their pockets, and they expect the same frictionless experience from the hardest moments of their lives.</p>
-              <p>Consider the traditional intake process. A family, reeling from a sudden loss, is handed a clipboard with a carbon-copy form. They are asked to spell their loved one’s name three times, to recall exact dates, and to sign legal documents in a state of shock. This is not service. This is <strong>bureaucracy disguised as procedure.</strong></p>
+              <p>Consider the traditional intake process. A family, reeling from a sudden loss, is handed a clipboard with a carbon copy form. They are asked to spell their loved one’s name three times, to recall exact dates, and to sign legal documents in a state of shock. This is not service. This is <strong>bureaucracy disguised as procedure.</strong></p>
               <JournalList items={[
                 'Paper intake forms that get lost, misfiled, or illegibly filled in under pressure',
                 'Physical ledgers that force staff to re-type the same data two or three times',
-                'Disconnected software — one tool for billing, another for schedules, none talking to each other',
+                'Disconnected software   one tool for billing, another for schedules, none talking to each other',
                 'No quick way to answer a family’s simple question without digging through a filing cabinet',
                 'Compliance records that live in binders instead of an auditable digital trail',
               ]} />
-              <p>When we designed the Restpoint FrontDesk tablet, we started with a single question: how do we remove the cognitive load from the family? Every case arrives with a unique QR code. A staff member scans it, enters a secure ID, and the entire case file opens in a single protected view. By transforming intake into a guided, touch-screen experience, the director sits beside the family and navigates the process together. The system remembers the dates, auto-populates the forms, and captures the signature securely. <strong>The technology recedes, leaving only the human connection.</strong></p>
+              <p>When we designed the Restpoint FrontDesk tablet, we started with a single question: how do we remove the cognitive load from the family? Every case arrives with a unique QR code. A staff member scans it, enters a secure ID, and the entire case file opens in a single protected view. By transforming intake into a guided, touch screen experience, the director sits beside the family and navigates the process together. The system remembers the dates, auto populates the forms, and captures the signature securely. <strong>The technology recedes, leaving only the human connection.</strong></p>
             </>
           ),
         }}
@@ -138,15 +138,15 @@ slug="future-of-death-care-software-restpoint"
                 alt="A peaceful, modern architectural space"
                 caption="Fig 02 · The intersection of architecture and digital empathy"
               />
-              <p>By bringing curated marketplaces, digital release authorizations, and real-time payment processing directly to the tablet, the funeral director transforms the consultation room into a complete, self-contained sanctuary. The family never has to break eye contact to wait for a system to load.</p>
-              <p>The same quiet automation runs through the whole building. In the prep room, <strong>chemical inventory manages itself</strong>: completing a case deducts the exact chemicals used, low-stock alerts arrive before you run dry, and batch numbers, expiry dates and usage logs are recorded automatically for audits. On the road, families check hearse availability by date and time slot and book the vehicle themselves at transparent prices — and when a fleet is fully booked, the system securely pings a partnered funeral home across town for a vehicle share, so <strong>no family is ever turned away</strong>.</p>
-              <p>The coffin marketplace removes the showroom floor entirely. Families browse the full catalog in high resolution, compare materials and prices side by side, and reserve from the comfort of home — the reservation landing directly on the deceased’s case file so the prep team and billing stay in sync. From there, the paperwork runs itself:</p>
+              <p>By bringing curated marketplaces, digital release authorizations, and real-time payment processing directly to the tablet, the funeral director transforms the consultation room into a complete, self contained sanctuary. The family never has to break eye contact to wait for a system to load.</p>
+              <p>The same quiet automation runs through the whole building. In the prep room, <strong>chemical inventory manages itself</strong>: completing a case deducts the exact chemicals used, low-stock alerts arrive before you run dry, and batch numbers, expiry dates and usage logs are recorded automatically for audits. On the road, families check hearse availability by date and time slot and book the vehicle themselves at transparent prices  and when a fleet is fully booked, the system securely pings a partnered funeral home across town for a vehicle share, so <strong>no family is ever turned away</strong>.</p>
+              <p>The coffin marketplace removes the showroom floor entirely. Families browse the full catalog in high resolution, compare materials and prices side by side, and reserve from the comfort of home  the reservation landing directly on the deceased’s case file so the prep team and billing stay in sync. From there, the paperwork runs itself:</p>
               <JournalList items={[
                 'A case opens the moment a death is reported — details captured once, used everywhere',
-                'Death certificates, permits and service agreements are pre-filled with the family’s data automatically',
-                'The system builds the invoice from the services selected — no re-typing, no arithmetic errors',
+                'Death certificates, permits and service agreements are pre filled with the family’s data automatically',
+                'The system builds the invoice from the services selected  no re typing, no arithmetic errors',
                 'The family pays securely on the tablet portal or from the family portal after hours',
-                'Paid invoices update your accounting records instantly — zero double-entry, zero lost paperwork',
+                'Paid invoices update your accounting records instantly   zero double-entry, zero lost paperwork',
               ]} />
             </>
           ),
@@ -160,10 +160,10 @@ slug="future-of-death-care-software-restpoint"
               <p>This is the architecture of remembrance. It is the deliberate construction of an environment where the <strong>heavy lifting is done by software</strong>, so the heavy lifting of grief can be carried by human hands. The future of death care is not just about going paperless — it is about creating an interconnected, highly secure, and automated ecosystem. At Restpoint, we build the tools, but the empathy belongs to you.</p>
               <JournalList items={[
                 'Digital intake, release, and postmortem tracking that keeps a bulletproof chain of custody',
-                'Precision chemical inventory so your prep room never runs dry — and compliance is automatic',
-                'Hearse self-booking and fleet sharing that make sure no family is ever turned away',
+                'Precision chemical inventory so your prep room never runs dry  and compliance is automatic',
+                'Hearse self booking and fleet sharing that make sure no family is ever turned away',
                 'A coffin marketplace that gives families time, privacy, and confidence',
-                'Automated documents, invoicing, and accounting sync — zero double-entry',
+                'Automated documents, invoicing, and accounting sync  zero double-entry',
                 'A 24/7 family portal that turns transparency into trust',
               ]} />
             </>

@@ -8,7 +8,7 @@ import JournalArticle, { JournalFigure, JournalFlowerList } from '../JournalArti
 
 const introContent = (
   <>
-    <p>There is a moment in the arrangement room, usually an hour into the consultation, when the conversation turns to flowers. It is a delicate pivot. The family has just finished discussing the weightiest matters—the service, the transport, the legalities—and now they are asked to make a series of aesthetic choices that will define the visual memory of their loved one's farewell.</p>
+    <p>There is a moment in the arrangement room, usually an hour into the consultation, when the conversation turns to flowers. It is a delicate pivot. The family has just finished discussing the weightiest matters—the service, the transport, the legalities and now they are asked to make a series of aesthetic choices that will define the visual memory of their loved one's farewell.</p>
 
     <p>Historically, this is where the friction began. A funeral director would slide a heavy, laminated catalog across the desk. The photos would be outdated, heavily watermarked stock images from 1998. The family would point to a picture, only to be told that specific arrangement wasn't available from the local florist that week. More flipping. More waiting. More phone calls.</p>
 
@@ -18,7 +18,7 @@ const introContent = (
 
 const gardenContent = (
   <>
-    <p>With the Restpoint FrontDesk tablet, we introduced a curated floral marketplace. But we didn't just scan old catalogs into a PDF. We built a system where the funeral home pre-uploads high-resolution, true-to-life images of the exact arrangements they offer. When a family picks up the tablet, they aren't looking at a database; they are walking through a digital garden.</p>
+    <p>With the Restpoint FrontDesk tablet, we introduced a curated floral marketplace. But we didn't just scan old catalogs into a PDF. We built a system where the funeral home pre uploads high-resolution, true-to-life images of the exact arrangements they offer. When a family picks up the tablet, they aren't looking at a database; they are walking through a digital garden.</p>
 
     <p>The interface is designed for touch. A simple swipe moves through cascading lilies, vibrant roses, and quiet, elegant orchids. The pricing is transparent. The descriptions are clear. If an item is out of season, it is gently marked, and suitable alternatives are suggested automatically by the system.</p>
   </>
@@ -54,7 +54,7 @@ const conclusionContent = (
   <>
     <p>When a family selects a premium casket spray on the Restpoint tablet, they don't need to ask if it fits the budget. The system already knows the parameters of their arrangement plan. It doesn't block them; it simply guides them. If they choose a bouquet that requires a specific type of vase, the system adds it to the cart automatically.</p>
 
-    <p>Behind the scenes, the funeral director is notified on their own device. The order is compiled, the local florist is synced, and the inventory is updated in real-time. <strong>The friction is eliminated entirely.</strong> The family only experiences the beauty of the selection. They never see the logistics.</p>
+    <p>Behind the scenes, the funeral director is notified on their own device. The order is compiled, the local florist is synced, and the inventory is updated in real time. <strong>The friction is eliminated entirely.</strong> The family only experiences the beauty of the selection. They never see the logistics.</p>
   </>
 );
 

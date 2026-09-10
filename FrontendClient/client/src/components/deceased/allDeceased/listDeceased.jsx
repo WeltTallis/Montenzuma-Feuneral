@@ -1232,7 +1232,8 @@ const DeceasedListPage = () => {
     if (selectedDate) {
       const admitted = r.created_at || r.date_admitted || r.admission_date;
       const recordDateStr = toDateString(admitted);
-      if (recordDateStr !== selectedDate) return false;
+      const selectedDateStr = toDateString(selectedDate);
+      if (recordDateStr !== selectedDateStr) return false;
     }
 
     return true;

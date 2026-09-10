@@ -105,11 +105,36 @@ const DashboardTab = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Top bar: Refresh */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button onClick={loadData} className="btn" style={{ padding: '8px 16px' }}>
-          <i className="fas fa-sync-alt" style={{ fontSize: 12 }} /> Refresh
-        </button>
+      {/* Header: title + quick-add actions */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: T.primaryBg, color: T.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+            <i className="fas fa-hammer" />
+          </div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: T.text, letterSpacing: '-0.02em', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 8 }}>
+              Workshop Dashboard
+              <span style={{ fontSize: 10, fontWeight: 700, color: T.success, background: T.successBg, padding: '3px 8px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <i className="fas fa-circle" style={{ fontSize: 6, marginRight: 4 }} /> Live
+              </span>
+            </div>
+            <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 3 }}>Manage coffin orders, workers, materials & production stages</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={() => setModal('createOrder')} className="btn btn-primary" style={{ padding: '9px 16px', fontSize: 12.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <i className="fas fa-plus" style={{ fontSize: 10 }} /> New Order
+          </button>
+          <button onClick={() => setModal('createWorker')} style={{ padding: '9px 16px', fontSize: 12.5, fontWeight: 700, background: T.surface, color: T.text, border: `1px solid ${T.bdr}`, borderRadius: 7, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = T.primaryBg; e.currentTarget.style.borderColor = T.primaryLight; e.currentTarget.style.color = T.primary; }} onMouseLeave={e => { e.currentTarget.style.background = T.surface; e.currentTarget.style.borderColor = T.bdr; e.currentTarget.style.color = T.text; }}>
+            <i className="fas fa-user-plus" style={{ fontSize: 11 }} /> Add Worker
+          </button>
+          <button onClick={() => setModal('createMaterial')} style={{ padding: '9px 16px', fontSize: 12.5, fontWeight: 700, background: T.surface, color: T.text, border: `1px solid ${T.bdr}`, borderRadius: 7, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = T.primaryBg; e.currentTarget.style.borderColor = T.primaryLight; e.currentTarget.style.color = T.primary; }} onMouseLeave={e => { e.currentTarget.style.background = T.surface; e.currentTarget.style.borderColor = T.bdr; e.currentTarget.style.color = T.text; }}>
+            <i className="fas fa-cube" style={{ fontSize: 11 }} /> Add Material
+          </button>
+          <button onClick={loadData} className="btn" style={{ padding: '8px 14px' }} title="Refresh data">
+            <i className="fas fa-sync-alt" style={{ fontSize: 12 }} />
+          </button>
+        </div>
       </div>
       {/* Stats Grid (solid cards — matches Coffin Inventory) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
@@ -153,96 +178,114 @@ const DashboardTab = () => {
           </button>
         </div>
 
-        <div style={{ padding: 16, overflowX: 'auto' }}>
-          <div style={{ display: 'flex', gap: 12, minWidth: 1100 }}>
-            {/* Only production stages — Store is hidden here because stored orders live on the Store tab */}
-            {STAGES.slice(0, 4).map((stage, si) => {
-              const stageOrders = orders.filter(o => o.stageIndex === si);
-              return (
-                <div key={si} style={{ flex: 1, minWidth: 200, background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 9, display: 'flex', flexDirection: 'column', maxHeight: 500 }}>
-                  <div style={{ padding: '12px 14px', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: stage.bg }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                      <div style={{ width: 9, height: 9, borderRadius: '50%', background: stage.color }} />
-                      <span style={{ fontSize: 12, fontWeight: 800, color: stage.color, letterSpacing: '-0.01em' }}>{stage.name}</span>
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: stage.color, padding: '2px 9px', background: T.surface, borderRadius: 7, minWidth: 24, textAlign: 'center' }}>{stageOrders.length}</span>
-                  </div>
-
-                  <div style={{ padding: 8, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {stageOrders.length === 0 ? (
-                      <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: '36px 12px', fontStyle: 'italic', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                        <i className="fas fa-inbox" style={{ fontSize: 22, opacity: 0.4 }} /> Empty
+        {orders.length === 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '56px 20px', textAlign: 'center', border: `2px dashed ${T.bdr}`, borderRadius: 10, background: '#FAFBFC', margin: 16 }}>
+            <div style={{ width: 60, height: 60, borderRadius: 14, background: T.primaryBg, color: T.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 14 }}>
+              <i className="fas fa-box-open" />
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: T.text, marginBottom: 4 }}>No coffin orders yet</div>
+            <div style={{ fontSize: 12.5, color: T.textSec, marginBottom: 18, maxWidth: 380, lineHeight: 1.55 }}>
+              Create your first coffin order and it will appear in the production pipeline — ready to move through Building, Painting and Interior.
+            </div>
+            <button onClick={() => setModal('createOrder')} className="btn btn-primary" style={{ padding: '10px 22px', fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+              <i className="fas fa-plus" style={{ fontSize: 11 }} /> Create First Order
+            </button>
+          </div>
+        ) : (
+          <div style={{ padding: 16, overflowX: 'auto' }}>
+            <div style={{ display: 'flex', gap: 12, minWidth: 1100 }}>
+              {/* Only production stages — Store is hidden here because stored orders live on the Store tab */}
+              {STAGES.slice(0, 4).map((stage, si) => {
+                const stageOrders = orders.filter(o => o.stageIndex === si);
+                return (
+                  <div key={si} style={{ flex: 1, minWidth: 200, background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 9, display: 'flex', flexDirection: 'column', maxHeight: 500 }}>
+                    <div style={{ padding: '12px 14px', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: stage.bg }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <div style={{ width: 9, height: 9, borderRadius: '50%', background: stage.color }} />
+                        <span style={{ fontSize: 12, fontWeight: 800, color: stage.color, letterSpacing: '-0.01em' }}>{stage.name}</span>
                       </div>
-                    ) : stageOrders.map(order => {
-                      const assignee = workers.find(w => w.id === order.assignedTo)
-                        || workers.find(w => w.name && order.assignedToName && w.name === order.assignedToName)
-                        || { name: order.assignedToName || 'Unassigned', color: '#94A3B8' };
-                      return (
-                        <div key={order.dbId} style={{ position: 'relative', padding: '12px 13px', background: '#ffffff', borderRadius: 10, border: `1px solid ${stage.color}30`, borderTop: `3px solid ${stage.color}`, boxShadow: '0 1px 3px rgba(15,23,42,0.07)', transition: 'transform 0.15s ease, box-shadow 0.15s ease', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                            <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.04em' }}>{order.id}</span>
-                            {order.priority === 'high' && <span style={{ fontSize: 8, fontWeight: 800, color: '#DC2626', background: '#FEF2F2', padding: '2px 6px', borderRadius: 99 }}>HIGH</span>}
+                      <span style={{ fontSize: 11, fontWeight: 800, color: stage.color, padding: '2px 9px', background: T.surface, borderRadius: 7, minWidth: 24, textAlign: 'center' }}>{stageOrders.length}</span>
+                    </div>
+
+                    <div style={{ padding: 8, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {stageOrders.length === 0 ? (
+                        <div style={{ fontSize: 11.5, color: T.textMuted, textAlign: 'center', padding: '32px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, lineHeight: 1.4 }}>
+                          <div style={{ width: 34, height: 34, borderRadius: 9, background: `${stage.color}15`, color: stage.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                            <i className={`fas ${stage.icon}`} />
                           </div>
-
-                          <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' }}>{order.name}</div>
-
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            <div>
-                              <div style={{ fontSize: 8, textTransform: 'uppercase', color: '#94A3B8', letterSpacing: '0.05em', marginBottom: 2, fontWeight: 700 }}>Type</div>
-                              <div style={{ fontSize: 11.5, fontWeight: 600, color: '#334155' }}>{order.type}</div>
-                            </div>
-                            <div>
-                              <div style={{ fontSize: 8, textTransform: 'uppercase', color: '#94A3B8', letterSpacing: '0.05em', marginBottom: 2, fontWeight: 700 }}>Finish</div>
-                              <div style={{ fontSize: 11.5, fontWeight: 600, color: '#334155' }}>{order.color}</div>
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                            <div style={{ width: 24, height: 24, borderRadius: '50%', background: assignee.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, flexShrink: 0, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.3)' }}>
-                              {assignee.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                            </div>
-                            <div>
-                              <div style={{ fontSize: 8, textTransform: 'uppercase', color: '#94A3B8', letterSpacing: '0.05em', fontWeight: 700, marginBottom: 1 }}>Assigned to</div>
-                              <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>{assignee.name}</div>
-                            </div>
-                          </div>
-
-                          {si < 4 && (
-                            <button
-                              onClick={() => handleAdvanceClick(order)}
-                              disabled={loading}
-                              style={{
-                                marginTop: 3,
-                                width: '100%',
-                                padding: '8px 10px',
-                                borderRadius: 8,
-                                fontSize: 10.5,
-                                fontWeight: 700,
-                                border: 'none',
-                                background: `linear-gradient(135deg, ${T.success}, #047857)`,
-                                color: '#fff',
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 6,
-                                boxShadow: '0 2px 6px rgba(5,150,105,0.25)',
-                                opacity: loading && advancingOrder?.dbId === order.dbId ? 0.6 : 1
-                              }}
-                            >
-                              <i className="fas fa-arrow-right" style={{ fontSize: 9 }} />
-                              {loading && advancingOrder?.dbId === order.dbId ? 'Advancing...' : 'Advance'}
-                            </button>
-                          )}
+                          <span>No orders here yet</span>
                         </div>
-                      );
-                    })}
+                      ) : stageOrders.map(order => {
+                        const assignee = workers.find(w => w.id === order.assignedTo)
+                          || workers.find(w => w.name && order.assignedToName && w.name === order.assignedToName)
+                          || { name: order.assignedToName || 'Unassigned', color: '#94A3B8' };
+                        return (
+                          <div key={order.dbId} style={{ position: 'relative', padding: '12px 13px', background: '#ffffff', borderRadius: 10, border: `1px solid ${stage.color}30`, borderTop: `3px solid ${stage.color}`, boxShadow: '0 1px 3px rgba(15,23,42,0.07)', transition: 'transform 0.15s ease, box-shadow 0.15s ease', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                              <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.04em' }}>{order.id}</span>
+                              {order.priority === 'high' && <span style={{ fontSize: 8, fontWeight: 800, color: '#DC2626', background: '#FEF2F2', padding: '2px 6px', borderRadius: 99 }}>HIGH</span>}
+                            </div>
+
+                            <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' }}>{order.name}</div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                              <div>
+                                <div style={{ fontSize: 8, textTransform: 'uppercase', color: '#94A3B8', letterSpacing: '0.05em', marginBottom: 2, fontWeight: 700 }}>Type</div>
+                                <div style={{ fontSize: 11.5, fontWeight: 600, color: '#334155' }}>{order.type}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 8, textTransform: 'uppercase', color: '#94A3B8', letterSpacing: '0.05em', marginBottom: 2, fontWeight: 700 }}>Finish</div>
+                                <div style={{ fontSize: 11.5, fontWeight: 600, color: '#334155' }}>{order.color}</div>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                              <div style={{ width: 24, height: 24, borderRadius: '50%', background: assignee.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, flexShrink: 0, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.3)' }}>
+                                {assignee.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 8, textTransform: 'uppercase', color: '#94A3B8', letterSpacing: '0.05em', fontWeight: 700, marginBottom: 1 }}>Assigned to</div>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>{assignee.name}</div>
+                              </div>
+                            </div>
+
+                            {si < 4 && (
+                              <button
+                                onClick={() => handleAdvanceClick(order)}
+                                disabled={loading}
+                                style={{
+                                  marginTop: 3,
+                                  width: '100%',
+                                  padding: '8px 10px',
+                                  borderRadius: 8,
+                                  fontSize: 10.5,
+                                  fontWeight: 700,
+                                  border: 'none',
+                                  background: `linear-gradient(135deg, ${T.success}, #047857)`,
+                                  color: '#fff',
+                                  cursor: loading ? 'not-allowed' : 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 6,
+                                  boxShadow: '0 2px 6px rgba(5,150,105,0.25)',
+                                  opacity: loading && advancingOrder?.dbId === order.dbId ? 0.6 : 1
+                                }}
+                              >
+                                <i className="fas fa-arrow-right" style={{ fontSize: 9 }} />
+                                {loading && advancingOrder?.dbId === order.dbId ? 'Advancing...' : 'Advance'}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         </div>
+        )}
       </div>
 
       {/* Advance Modal */}

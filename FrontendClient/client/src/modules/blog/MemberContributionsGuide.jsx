@@ -18,7 +18,7 @@ const MemberContributionsGuide = () => {
     <>
       <Helmet>
         <title>Member Contributions Management Guide | RestPoint</title>
-        <meta name="description" content="How churches, SACCOs, and chamas can manage member contributions digitally — clear policies, payment tracking, real-time visibility, and audit-ready records." />
+        <meta name="description" content="How churches, SACCOs, and chamas can manage member contributions digitally — clear policies, payment tracking, real-time visibility, and audit ready records." />
         <meta name="author" content="Restpoint Editorial" />
         <link rel="canonical" href={blogUrl} />
         <meta property="og:type" content="article" />
@@ -29,13 +29,13 @@ const MemberContributionsGuide = () => {
         <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
-<JournalArticle
-slug="member-contributions"
+      <JournalArticle
+        slug="member-contributions"
         navMeta={['Vol. 01', '2026', 'Welfare']}
         heroMeta={['Welfare Guide', '10 Min Read', 'February 2026']}
         title="Member Contributions,"
         titleAccent="Without the Chaos."
-        excerpt="Every shilling a member contributes is trust. How churches, SACCOs and chamas digitize contributions, end cash-handling chaos, and keep the welfare fund audit-ready."
+        excerpt="Every shilling a member contributes is trust. How churches, SACCOs and chamas digitize contributions, end cash handling chaos, and keep the welfare fund audit ready."
         author={{ initials: 'RP', name: 'Restpoint Editorial', role: 'Welfare Guides · Restpoint' }}
         heroImage={{
           src: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=1600&auto=format&fit=crop',
@@ -55,7 +55,7 @@ slug="member-contributions"
                 '<strong>Reliable payment tracking</strong> — every contribution recorded with date, amount, method, and a running balance',
                 '<strong>Honest reporting</strong> — monthly summaries, a defaulters list, fund balance, and participation rates',
               ]} />
-              <p>Typical contribution ranges across Kenya: chamas collect KES 200–500 per member monthly, small churches KES 300–700 per family, medium churches KES 500–1,000, SACCOs KES 500–2,000, and large organizations up to KES 1,000–5,000. Whatever the amount, the ledger behind it must be beyond question.</p>
+              <p>Typical contribution ranges across Kenya: chamas collect KES 200 500 per member monthly, small churches KES 300 700 per family, medium churches KES 500 1,000, SACCOs KES 500 2,000, and large organizations up to KES 1,000 5,000. Whatever the amount, the ledger behind it must be beyond question.</p>
             </>
           ),
         }}
@@ -69,7 +69,7 @@ slug="member-contributions"
           em: 'Ledger',
           children: (
             <>
-              <p>A digital system replaces the cash box with a record that updates itself. Contributions are logged the moment they arrive — cash, M-Pesa, or bank transfer — receipts are generated automatically, and the committee sees fund health in real time instead of waiting for month-end. Reconciliation that took an evening now takes minutes.</p>
+              <p>A digital system replaces the cash box with a record that updates itself. Contributions are logged the moment they arrive   cash, M-Pesa, or bank transfer   receipts are generated automatically, and the committee sees fund health in real time instead of waiting for month-end. Reconciliation that took an evening now takes minutes.</p>
               <JournalFigure
                 src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1400&auto=format&fit=crop"
                 alt="Clear financial data on a screen"
@@ -92,9 +92,9 @@ slug="member-contributions"
           em: 'Sustains',
           children: (
             <>
-              <p>A welfare fund is a promise made by a community to itself. RestPoint keeps that promise manageable — automated contribution tracking, transparent reporting, and audit-ready records for churches, SACCOs, and chamas across Kenya — so the committee spends its energy on families, not on bookkeeping.</p>
+              <p>A welfare fund is a promise made by a community to itself. RestPoint keeps that promise manageable   automated contribution tracking, transparent reporting, and audit ready records for churches, SACCOs, and chamas across Kenya   so the committee spends its energy on families, not on bookkeeping.</p>
               <JournalList items={[
-                'Automated reminders and receipts for every contribution — cash, M-Pesa, or bank',
+                'Automated reminders and receipts for every contribution   cash, M-Pesa, or bank',
                 'Real-time fund health visible to the whole committee, from anywhere',
                 'Defaulters and outstanding balances identified from data, handled with dignity',
                 'Audit-ready reconciliation in minutes, not evenings',

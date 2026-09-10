@@ -524,7 +524,7 @@ const RouteStep = styled.div`
 const DEFAULT_MORTUARY = {
   lat: -1.2921,
   lon: 36.8219,
-  address: 'LEE FUNERAL SERVICES',
+  address: 'Montenzuma   Monalisa  Feuneral',
 };
 
 const NOMINATIM_API = 'https://nominatim.openstreetmap.org';
