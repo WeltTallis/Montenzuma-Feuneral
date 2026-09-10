@@ -100,7 +100,7 @@ const FutureDeathCareGuide = () => {
         excerpt="Why the modern funeral home is becoming fully automated   QR scanned intake, digital release, hearse self booking, coffin marketplaces and 24/7 family portals. A deep dive into the systems that serve grieving families."
         author={{ initials: 'PM', name: 'Peter Mumo', role: 'Developer · Restpoint' }}
         heroImage={{
-          src: 'https://images.unsplash.com/photo-1505290420458-b1d24243d6e8?q=80&w=1600&auto=format&fit=crop',
+          src: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlfeppD4FnD3xGAyookvQIju4TJFujn_cM7u5OSNrJSpfUCEnekG7JW1k&s=10',
           alt: 'A calm, architectural space',
         }}
         chapterOne={{
@@ -134,7 +134,7 @@ const FutureDeathCareGuide = () => {
             <>
               <p>A funeral home is a sanctuary. But a sanctuary is not defined by its walls; it is defined by the peace it offers. If a family has to leave the room to find a pen, or wait three days for a floral catalog to arrive by mail, the sanctuary is broken.</p>
               <JournalFigure
-                src="https://images.unsplash.com/photo-1501604294613-c19c5e5f5e12?q=80&w=1400&auto=format&fit=crop"
+                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTJ-tDaTM0ZrzzipdNtPEBnizaf6M0h-kaG4ziFbBWprsEU9x9ileD0C8E&s=10"
                 alt="A peaceful, modern architectural space"
                 caption="Fig 02 · The intersection of architecture and digital empathy"
               />
