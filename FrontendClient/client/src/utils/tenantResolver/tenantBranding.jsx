@@ -5,17 +5,22 @@
  */
 
 import env from '../config/env';
+import { useTenantStore } from '../../modules/seo/useTenantStore';
 
-// Default fallback values for tenant branding
+// Neutral fallback values for tenant branding. NEVER hardcode a real funeral
+// home's details here — a freshly registered tenant (e.g. "Lee Funeral Home")
+// has nothing in localStorage yet, so anything hardcoded shows up as dummy
+// data on the intake/release forms. Real values come from the Zustand tenant
+// store (populated by TenantResolver for the EXACT tenant in the URL) or from
+// login-time localStorage. Empty strings render as blanks, never fake data.
 const DEFAULT_BRANDING = {
-  name: 'MONTENZUMA MONALISA  FUNERAL',
-  phone: '+254-722-827-652',
-  email: 'montezumamonalisa.com',
-  location: 'Nairobi, Kenya',
-  country: 'Kenya',
-  address: 'Raila Odinga Wy, Nairobi',
-  Adress: 'Raila Odinga Wy, Nairobi', // legacy key kept for backward compatibility
-  logoUrl: '/monalisa.png',
+  name: '',
+  phone: '',
+  email: '',
+  location: '',
+  country: '',
+  address: '',
+  logoUrl: '',
   fontFamily: "'Saira', sans-serif",
 };
 
@@ -104,56 +109,72 @@ export const getTenantBrandingFromStorage = () => {
  * @returns {object} normalized branding fields
  */
 export const resolveTenantBranding = (tenantData) => {
+  // Fallback chain: 1) explicit argument, 2) the EXACT tenant data from the
+  // Zustand store (populated by TenantResolver from the URL slug), 3) the
+  // login-time localStorage values. Without the store fallback every form
+  // rendered with hardcoded dummy branding for newly registered tenants.
+  let source = tenantData;
+  if (!source || typeof source !== 'object') {
+    try {
+      source = useTenantStore.getState()?.tenantData || null;
+    } catch {
+      source = null;
+    }
+  }
+  // Unwrap raw API responses shaped { success, data: {...} }
+  if (source && !source.name && !source.tenantName && source.data && typeof source.data === 'object') {
+    source = source.data;
+  }
+
   const stored = getTenantBrandingFromStorage();
 
   // Get tenant name with fallbacks
-  const name = tenantData?.name
-    || tenantData?.tenantName
+  const name = source?.name
+    || source?.tenantName
     || stored.name
     || DEFAULT_BRANDING.name;
 
   // Get phone with realistic fallbacks
-  const phone = tenantData?.phone
-    || tenantData?.tenantPhone
+  const phone = source?.phone
+    || source?.tenantPhone
     || stored.phone
     || DEFAULT_BRANDING.phone;
 
   // Get email with realistic fallbacks
-  const email = tenantData?.email
-    || tenantData?.tenantEmail
+  const email = source?.email
+    || source?.tenantEmail
     || stored.email
     || DEFAULT_BRANDING.email;
 
   // Get location with fallbacks
-  const location = tenantData?.location
-    || tenantData?.tenantLocation
+  const location = source?.location
+    || source?.tenantLocation
     || stored.location
     || DEFAULT_BRANDING.location;
 
   // Get country with fallbacks
-  const country = tenantData?.country
-    || tenantData?.tenantCountry
+  const country = source?.country
+    || source?.tenantCountry
     || stored.country
     || DEFAULT_BRANDING.country;
 
-  // Get street address with fallbacks (legacy key stored as "Adress")
-  const address = tenantData?.address
-    || tenantData?.tenantAddress
+  // Get street address with fallbacks
+  const address = source?.address
+    || source?.tenantAddress
     || stored.address
-    || DEFAULT_BRANDING.Adress
     || DEFAULT_BRANDING.address;
 
   // Font family — resolve the tenant brand font. Prefers a per-tenant override, otherwise falls
   // back to the brand font (Saira) that is already imported in index.css for the tenant pages.
-  const fontFamily = tenantData?.fontFamily
-    || tenantData?.font_family
-    || tenantData?.primaryFont
+  const fontFamily = source?.fontFamily
+    || source?.font_family
+    || source?.primaryFont
     || stored.fontFamily
     || DEFAULT_BRANDING.fontFamily
     || '';
 
   // Branch info (first branch) — used for display when available
-  const branchInfo = tenantData?.branches?.[0] || {};
+  const branchInfo = source?.branches?.[0] || {};
 
   // Get branch display values with realistic fallbacks
   const displayBranch = branchInfo?.branch_name && branchInfo.branch_name !== name

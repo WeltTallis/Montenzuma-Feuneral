@@ -75,7 +75,8 @@ const Btn = styled.button`
 `;
 
 const DataTable = styled.table`
-  width: 100%; 
+  width: 100%;
+  min-width: 620px;
   border-collapse: collapse;
   
   th { 
@@ -98,6 +99,16 @@ const DataTable = styled.table`
   tbody tr:last-child td {
     border-bottom: none;
   }
+`;
+
+const TableScroll = styled.div`
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  border: 1px solid ${C.borderLight || '#e0e0e0'};
+  border-radius: 6px;
 `;
 
 const StatusTag = styled.span`
@@ -169,7 +180,7 @@ const DocumentsTab = ({ documents, deceasedId }) => {
         if (slug) headers['x-tenant-slug'] = slug;
       } catch (e) { /* localStorage may not be available */ }
 
-      const response = await api.post(`/documents/${deceasedId}/upload`, formData, {
+      const response = await api.post(`/documents/upload/${deceasedId}`, formData, {
         headers,
         withCredentials: false
       });
@@ -248,37 +259,39 @@ const DocumentsTab = ({ documents, deceasedId }) => {
         </Btn>
       </div>
 
-      {/* Sleek borderless table */}
-      <DataTable>
-        <thead>
-          <tr>
-            <th>Document Name</th>
-            <th>Type</th>
-            <th>Uploaded Date</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {docs.length === 0 ? (
-            <tr><td colSpan={4} style={{ textAlign: 'center', color: C.gray, padding: '24px 0' }}>No documents uploaded</td></tr>
-          ) : docs.map((doc, i) => (
-            <tr key={i}>
-              <td style={{ fontWeight: 600 }}>{doc.originalName || doc.storedName || doc.name || doc.file_name}</td>
-              <td><StatusTag $info>{doc.mimeType || doc.category || doc.type || 'Document'}</StatusTag></td>
-              <td>{formatDate(doc.uploadedAt || doc.uploaded_at || doc.created_at)}</td>
-              <td style={{ textAlign: 'right' }}>
-                <Btn
-                  $sm
-                  onClick={() => openDocumentViewer(doc)}
-                  title="Open document preview in a new page"
-                >
-                  <i className="far fa-images" style={{ marginRight: 5, fontSize: 11 }} /> View
-                </Btn>
-              </td>
+      {/* Keep wide document columns readable without widening the mobile page. */}
+      <TableScroll>
+        <DataTable>
+          <thead>
+            <tr>
+              <th>Document Name</th>
+              <th>Type</th>
+              <th>Uploaded Date</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </DataTable>
+          </thead>
+          <tbody>
+            {docs.length === 0 ? (
+              <tr><td colSpan={4} style={{ textAlign: 'center', color: C.gray, padding: '24px 0' }}>No documents uploaded</td></tr>
+            ) : docs.map((doc, i) => (
+              <tr key={i}>
+                <td style={{ fontWeight: 600 }}>{doc.originalName || doc.storedName || doc.name || doc.file_name}</td>
+                <td><StatusTag $info>{doc.mimeType || doc.category || doc.type || 'Document'}</StatusTag></td>
+                <td>{formatDate(doc.uploadedAt || doc.uploaded_at || doc.created_at)}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <Btn
+                    $sm
+                    onClick={() => openDocumentViewer(doc)}
+                    title="Open document preview in a new page"
+                  >
+                    <i className="far fa-images" style={{ marginRight: 5, fontSize: 11 }} /> View
+                  </Btn>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </DataTable>
+      </TableScroll>
     </>
   );
 };

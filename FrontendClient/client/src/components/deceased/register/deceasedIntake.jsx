@@ -1,8 +1,8 @@
 import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
-import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
+import { getTenantSlug as getStoredTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { ENDPOINTS } from '../../../api/endpoints';
 import OfficialStamp from '../../stamp/stamp';
@@ -920,18 +920,18 @@ const DeceasedRegistrationForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { slug: urlTenantSlug } = useParams();
+
+  // Resolve the EXACT tenant: URL slug (set by the receptionist portal link
+  // /tenant/<slug>/deceased/register) wins, then the stored slug. Never fall
+  // back to 'default' — that would submit intake records under the wrong tenant.
   const getTenantSlug = () => {
-    return localStorage.getItem('tenantSlug') ||
-      localStorage.getItem('tenant_slug') ||
-      (() => {
-        try {
-          const user = JSON.parse(localStorage.getItem('user') || '{}');
-          return user.tenantSlug || user.tenant?.slug || 'default';
-        } catch {
-          return 'default';
-        }
-      })();
+    const exact = urlTenantSlug && urlTenantSlug !== 'default' && urlTenantSlug !== 'dashboard'
+      && urlTenantSlug !== 'undefined' && urlTenantSlug !== 'null'
+      ? urlTenantSlug : '';
+    return exact || getStoredTenantSlug() || '';
   };
+
   const sigPadRef1 = useRef(null);
 
   const [loading, setLoading] = useState(false);
@@ -1247,7 +1247,7 @@ const DeceasedRegistrationForm = () => {
                   <GreetingWelcome>Welcome to</GreetingWelcome>
                   <TextSlider>
                     <TextTrack>
-                      <Phrase>{tenantName || 'Lee Funeral Home'}</Phrase>
+                      <Phrase>{tenantName || 'Welcome'}</Phrase>
                       <Phrase>Sorry for your loss</Phrase>
                       <Phrase>With deepest sympathy</Phrase>
                       <Phrase>May they rest in peace</Phrase>

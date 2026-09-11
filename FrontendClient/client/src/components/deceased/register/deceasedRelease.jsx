@@ -1,7 +1,7 @@
 ﻿import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
+import { getTenantSlug as getStoredTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 import { ToastContainer, toast } from 'react-toastify';
 import InOurCare from '../../common/InOurCare';
@@ -955,20 +955,19 @@ const Barcode = ({ value }) => {
 const DeceasedReleaseForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { id } = useParams();
 
+  const { id, slug: urlTenantSlug } = useParams();
+
+  // Resolve the EXACT tenant: URL slug (set by the receptionist portal link
+  // /tenant/<slug>/release-form/new) wins, then the stored slug. Never fall
+  // back to 'default' — that would submit release records under the wrong tenant.
   const getTenantSlug = () => {
-    return localStorage.getItem('tenantSlug') ||
-      localStorage.getItem('tenant_slug') ||
-      (() => {
-        try {
-          const user = JSON.parse(localStorage.getItem('user') || '{}');
-          return user.tenantSlug || user.tenant?.slug || 'default';
-        } catch {
-          return 'default';
-        }
-      })();
+    const exact = urlTenantSlug && urlTenantSlug !== 'default' && urlTenantSlug !== 'dashboard'
+      && urlTenantSlug !== 'undefined' && urlTenantSlug !== 'null'
+      ? urlTenantSlug : '';
+    return exact || getStoredTenantSlug() || '';
   };
+
 
   const sigPadRef1 = useRef(null);
   const searchTimer = useRef(null);
@@ -1513,7 +1512,7 @@ const DeceasedReleaseForm = () => {
                   <GreetingWelcome>Welcome to</GreetingWelcome>
                   <TextSlider>
                     <TextTrack>
-                      <Phrase>{tenantName || 'Lee Funeral Home'}</Phrase>
+                      <Phrase>{tenantName || 'Welcome'}</Phrase>
                       <Phrase>Sorry for your loss</Phrase>
                       <Phrase>With deepest sympathy</Phrase>
                       <Phrase>May they rest in peace</Phrase>

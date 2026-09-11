@@ -1,0 +1,26 @@
+{
+  "name": "@montezuma/scanner-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Restpoint Scanner Bridge — standalone TypeScript agent that drives the physical scanner (e.g. HP ScanJet via TWAIN/WIA/NAPS2) and uploads the produced PDF directly to the documents-service. Production ships only the compiled executable: dist/agent.js",
+  "main": "dist/agent.js",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node dist/agent.js",
+    "mock": "MOCK_SCAN=1 BRIDGE_ALLOW_SHUTDOWN=1 node dist/agent.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node test/e2e-mock.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.12",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  }
+}

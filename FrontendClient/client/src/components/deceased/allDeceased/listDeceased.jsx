@@ -11,6 +11,7 @@ import {
   todayKey,
 } from '../../../utils/dates/parseDates';
 import 'react-toastify/dist/ReactToastify.css';
+import ScannerBridgeBanner from '../../../components/scanner/ScannerBridgeBanner';
 
 const API_GATEWAY_URL = import.meta.env.VITE_API_URL || '/api/v1/restpoint';
 const BASE_URL = `${API_GATEWAY_URL}/deceased`;
@@ -677,6 +678,88 @@ const CloseBtn = styled.button`
   &:hover { color: ${C.black}; }
 `;
 
+// ─── Export Result Notification Modal ────────────────────────────────
+const NotifyOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: ${fadeIn} 0.2s ease-out;
+`;
+
+const NotifyCard = styled.div`
+  background: white;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 430px;
+  padding: 28px 24px 20px;
+  text-align: center;
+  box-sizing: border-box;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  animation: ${fadeIn} 0.25s ease-out;
+
+  @media (max-width: 768px) {
+    max-width: 100%;
+    padding: 22px 16px 16px;
+  }
+`;
+
+const NotifyIcon = styled.div`
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+`;
+
+const NotifyTitle = styled.div`
+  font-family: 'Merriweather', serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+`;
+
+const NotifyMessage = styled.div`
+  font-size: 13.5px;
+  color: ${C.gray};
+  line-height: 1.6;
+  margin-bottom: 18px;
+  overflow-wrap: anywhere;
+`;
+
+const NotifyActions = styled.div`
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+
+  & + & { margin-top: 10px; }
+
+  @media (max-width: 480px) {
+    flex-direction: column-reverse;
+    button { width: 100%; }
+  }
+`;
+
+const NotifyHint = styled.div`
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid ${C.borderLight};
+  font-size: 11px;
+  color: ${C.lightGray};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+`;
+
 const HistorySection = styled.div`
   display: flex;
   flex-direction: column;
@@ -812,29 +895,6 @@ const StatusTag = styled.span`
   background: ${p => p.$success ? C.successBg : p.$warning ? C.warningBg : p.$info ? C.infoBg : C.bgField};
   color: ${p => p.$success ? C.success : p.$warning ? C.warning : p.$info ? C.info : C.gray};
   border: 1px solid ${p => p.$success ? '#a7f3d0' : p.$warning ? '#fde68a' : p.$info ? '#bfdbfe' : C.borderLight};
-`;
-
-const ProgressWidget = styled.div`
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: white;
-  padding: 20px;
-  border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  border: 1px solid ${C.borderLight};
-  z-index: 2000;
-  min-width: 320px;
-  animation: ${fadeIn} 0.3s ease-out;
-
-  @media (max-width: 768px) {
-    left: 16px;
-    right: 16px;
-    bottom: 16px;
-    min-width: auto;
-    width: calc(100% - 32px);
-    padding: 16px;
-  }
 `;
 
 // ─── HorizontalCalendar Component (copied and adapted) ─────────────
@@ -1164,10 +1224,10 @@ const DeceasedListPage = () => {
   const [showExport, setShowExport] = useState(false);
   const [exportStart, setExportStart] = useState('');
   const [exportEnd, setExportEnd] = useState('');
-  const [exportProgress, setExportProgress] = useState(0);
-  const [exportStatus, setExportStatus] = useState('');
   const [exporting, setExporting] = useState(false);
   const [exportHistory, setExportHistory] = useState([]);
+  // Export result notification modal → { type: 'success' | 'error', message, blob, fileName }
+  const [exportNotify, setExportNotify] = useState(null);
 
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const [unavailableMessage, setUnavailableMessage] = useState('');
@@ -1312,28 +1372,58 @@ const DeceasedListPage = () => {
   };
 
   // ─── Export Functions ───────────────────────────────────────────
-  const downloadExportBlob = (blob, filename) => {
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  };
-
   const filenameFromDisposition = (response, fallback) => {
     const disp = String(response?.headers?.['content-disposition'] || '');
     const match = disp.match(/filename="?([^";]+)"?/i);
     return match ? match[1] : fallback;
   };
 
-  const resetExportState = useCallback(() => {
+  // Open the actual generated .xlsx file in the browser (keeps its real name).
+  const downloadExportBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  // Close the export result notification modal.
+  const closeExportNotify = useCallback(() => {
+    setExportNotify(null);
+  }, []);
+
+  // "Open the actual .xlsx file in the browser" action from the notify modal.
+  const openExportFileInBrowser = useCallback(() => {
+    const blob = exportNotify?.blob;
+    if (!blob) return;
+    downloadExportBlob(blob, exportNotify?.fileName || `Deceased_Records_${todayKey()}.xlsx`);
+  }, [exportNotify]);
+
+  const showExportFailed = useCallback((message) => {
     setExporting(false);
     setShowExport(false);
-    setExportStatus('');
-    setExportProgress(0);
+    setExportNotify({
+      type: 'error',
+      message: message || 'The export could not be completed. Please try again.',
+      blob: null,
+      fileName: '',
+    });
+  }, []);
+
+  const showExportSuccess = useCallback((blob, fileName) => {
+    setExporting(false);
+    setShowExport(false);
+    setExportNotify({
+      type: 'success',
+      message: `${fileName || 'Deceased records export'} was generated successfully.`,
+      blob: blob || null,
+      fileName: fileName || '',
+    });
   }, []);
 
   const isFileResponse = (contentType = '') =>
@@ -1352,10 +1442,10 @@ const DeceasedListPage = () => {
       exportCleanupRef.current = null;
     }
 
+    // Keep the export panel open while generating — its buttons show the
+    // in-progress state and a notify modal reports the result afterwards.
     setExporting(true);
-    setShowExport(false);
-    setExportProgress(0);
-    setExportStatus('Queuing export job...');
+    setExportNotify(null);
 
     try {
       const tenantSlug = getTenantSlug();
@@ -1380,18 +1470,14 @@ const DeceasedListPage = () => {
       const contentType = (response.headers?.['content-type'] || '').toLowerCase();
 
       if (isFileResponse(contentType)) {
-        setExportStatus('Download started...');
-        downloadExportBlob(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`));
-        showToast('Export completed successfully!', 'success');
         loadExportHistory();
-        setTimeout(resetExportState, 1500);
+        showExportSuccess(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`));
         return;
       }
 
       const data = await parseBlobJson(response.data);
 
       if (data?.success && data?.jobId) {
-        setExportStatus('Processing export...');
         pollExportStatus(data.jobId);
       } else {
         throw new Error(data?.message || 'No job ID returned');
@@ -1406,8 +1492,7 @@ const DeceasedListPage = () => {
         } catch { /* keep default message */ }
       }
 
-      showToast(message, 'error');
-      resetExportState();
+      showExportFailed(message);
     }
   };
 
@@ -1425,8 +1510,8 @@ const DeceasedListPage = () => {
     };
 
     const fail = (msg) => {
-      showToast(msg, 'error');
-      resetExportState();
+      cleanup();
+      showExportFailed(msg);
     };
 
     const poll = async () => {
@@ -1450,10 +1535,8 @@ const DeceasedListPage = () => {
 
         if (isFileResponse(contentType)) {
           cleanup();
-          downloadExportBlob(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`));
-          showToast('Export completed successfully!', 'success');
           loadExportHistory();
-          setTimeout(resetExportState, 1500);
+          showExportSuccess(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`));
           return;
         }
 
@@ -1465,9 +1548,6 @@ const DeceasedListPage = () => {
         }
 
         if (data?.success && data?.status) {
-          setExportProgress(data.progress || 0);
-          setExportStatus(data.message || `Processing export... (${data.status})`);
-
           attempts++;
           if (attempts < maxAttempts) {
             timeoutId = setTimeout(poll, pollInterval);
@@ -1494,7 +1574,6 @@ const DeceasedListPage = () => {
         if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
           attempts++;
           if (attempts < maxAttempts) {
-            showToast('Connection hiccup - retrying...', 'warning');
             timeoutId = setTimeout(poll, pollInterval);
           } else {
             fail('Export timed out. Please try again.');
@@ -1587,6 +1666,7 @@ const DeceasedListPage = () => {
   return (
     <>
       <GlobalFonts />
+      <ScannerBridgeBanner />
       <AppContainer>
         <ToastContainer position="top-right" autoClose={3000} />
 
@@ -1923,67 +2003,49 @@ const DeceasedListPage = () => {
           </ModalContent>
         </ModalOverlay>
 
-        {/* Export Progress Widget */}
-        {exporting && (
-          <ProgressWidget>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              marginBottom: '12px'
-            }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: C.bgField,
-                color: C.exportBtn,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <i className="fas fa-file-export" style={{ fontSize: 14 }}></i>
-              </div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: C.dark, fontFamily: 'Merriweather' }}>
-                Export Progress
-              </div>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '6px',
-              background: C.bgField,
-              borderRadius: '4px',
-              overflow: 'hidden',
-              marginBottom: '8px'
-            }}>
-              <div style={{
-                width: `${exportProgress}%`,
-                height: '100%',
-                background: exportStatus === 'Completed' ? C.success : C.accent,
-                transition: 'width 0.3s ease'
-              }} />
-            </div>
-            <div style={{ fontSize: 12, color: C.gray, marginBottom: '4px' }}>
-              {exportStatus}
-            </div>
-            <div style={{ fontSize: 11, color: C.lightGray }}>
-              {exportProgress < 100 ? `Attempt ${Math.ceil(exportProgress / 10)} of 10` : 'Complete'}
-            </div>
-            {exportProgress >= 80 && exportProgress < 100 && (
-              <div style={{
-                fontSize: 11,
-                color: C.warning,
-                marginTop: '8px',
-                fontStyle: 'italic',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}>
-                <i className="fas fa-exclamation-triangle"></i> Taking longer than expected...
-              </div>
-            )}
-          </ProgressWidget>
+        {/* Export Result Notification Modal */}
+        {exportNotify && (
+          <NotifyOverlay onClick={closeExportNotify}>
+            <NotifyCard onClick={e => e.stopPropagation()}>
+              <NotifyIcon
+                style={{
+                  background: exportNotify.type === 'success' ? C.successBg : C.dangerBg,
+                  color: exportNotify.type === 'success' ? C.success : C.danger,
+                }}
+              >
+                <i className={exportNotify.type === 'success' ? 'fas fa-check' : 'fas fa-xmark'}></i>
+              </NotifyIcon>
+              <NotifyTitle style={{ color: exportNotify.type === 'success' ? C.success : C.danger }}>
+                {exportNotify.type === 'success' ? 'Success' : 'Failed'}
+              </NotifyTitle>
+              <NotifyMessage>
+                {exportNotify.type === 'success'
+                  ? (exportNotify.message || 'Your export was generated successfully.')
+                  : (exportNotify.message || 'The export could not be completed. Please try again.')}
+              </NotifyMessage>
+              {exportNotify.type === 'success' && exportNotify.blob && (
+                <NotifyActions>
+                  <Btn
+                    $export
+                    onClick={openExportFileInBrowser}
+                    style={{ whiteSpace: 'normal', height: 'auto', minHeight: 42, padding: '10px 18px' }}
+                  >
+                    <i className="fas fa-arrow-up-right-from-square"></i>
+                    Open the actual .xlsx file in the browser
+                  </Btn>
+                </NotifyActions>
+              )}
+              <NotifyActions>
+                <Btn $ghost onClick={closeExportNotify}>Close</Btn>
+              </NotifyActions>
+              <NotifyHint>
+                <i className="fas fa-circle-info"></i>
+                {exportNotify.type === 'success'
+                  ? 'A copy of this file is also saved in Documents.'
+                  : 'Nothing was downloaded. Please try again.'}
+              </NotifyHint>
+            </NotifyCard>
+          </NotifyOverlay>
         )}
       </AppContainer>
     </>

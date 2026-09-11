@@ -14,6 +14,7 @@ import env from '../../../utils/config/env';
 import PostmortemTab from './PostmortemTab';
 import FinancialsTab from './FinancialsTab';
 import DocumentsTab from './DocumentsTab';
+import ScanDocumentModal from '../../scanner/ScanDocumentModal';
 import OverviewTab from './OverviewTab';
 import AuditLogTab from './AuditLogTab';
 import ReleaseTab from './ReleaseTab';
@@ -218,6 +219,7 @@ const DeceasedDetailPage = () => {
   const [requests, setRequests] = useState([]);
 
   const [showChargeModal, setShowChargeModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
 
   // Ref to track mounted state (avoids setState on unmount)
   const mounted = useRef(true);
@@ -416,6 +418,7 @@ const DeceasedDetailPage = () => {
           onTabSwitch={switchTab}
           onChargeSettingsClick={() => setShowChargeModal(true)}
           onRefresh={fetchData}
+          onScanClick={() => setShowScanModal(true)}
         />
 
         <ProfileLayout>
@@ -471,6 +474,15 @@ const DeceasedDetailPage = () => {
             age={deceased?.age}
           />
         </ProfileLayout>
+
+        {showScanModal && (
+          <ScanDocumentModal
+            deceasedId={deceasedId}
+            deceasedName={deceased?.full_name || deceased?.name || ''}
+            onClose={() => setShowScanModal(false)}
+            onScanned={() => { setShowScanModal(false); fetchData(); }}
+          />
+        )}
 
         {showChargeModal && (
           <ChargeSettingsModal

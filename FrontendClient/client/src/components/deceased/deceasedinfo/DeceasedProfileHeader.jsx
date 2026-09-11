@@ -95,7 +95,7 @@ const Barcode = ({ value }) => {
 
 
 
-const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettingsClick, onRefresh }) => {
+const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettingsClick, onRefresh, onScanClick }) => {
   const navigate = useNavigate();
   // Read the deceased identifier from the query string (?id=XXX); fall back to the path param.
   const [searchParams] = useSearchParams();
@@ -156,7 +156,12 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
             </svg>
             Route Calculations
           </RouteCalcBtn>
-          <Btn>Scan Docs</Btn>
+          <Btn onClick={onScanClick} title="Scan a paper document and upload it straight to this profile's documents">
+            <svg width="14" height="14" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="5">
+              <path d="M12 22 L52 22 C54 22 56 24 56 26 L56 50 C56 52 54 54 52 54 L12 54 C10 54 8 52 8 50 L8 26 C8 24 10 22 12 22 Z" transform="translate(1,0)"/>
+            </svg>
+            Scan Docs
+          </Btn>
           {onChargeSettingsClick && (
             <Btn $primary onClick={onChargeSettingsClick}>⚙️ Charge Settings</Btn>
           )}

@@ -212,7 +212,6 @@ const getRootPool = async () => {
         // Test connection
         try {
             const conn = await rootPool.getConnection();
-            await conn.ping();
             conn.release();
             LOGGER.info('Root database pool created (tenant_tracking)');
         }
@@ -228,7 +227,7 @@ exports.getRootPool = getRootPool;
 const lookupTenantDatabase = async (tenantSlug) => {
     return rootPoolBreaker.call(async () => {
         const pool = await (0, exports.getRootPool)();
-        const [rows] = await pool.query('SELECT db_name FROM tenants WHERE tenant_slug = ? AND status = "active" LIMIT 1', [tenantSlug]);
+        const [rows] = await pool.query('SELECT db_name FROM tenant_tracking.tenants WHERE tenant_slug = ? AND status = "active" LIMIT 1', [tenantSlug]);
         const result = rows;
         if (result.length > 0 && result[0].db_name) {
             return result[0].db_name;
@@ -240,7 +239,7 @@ const lookupTenantDatabase = async (tenantSlug) => {
 exports.lookupTenantDatabase = lookupTenantDatabase;
 // ─── Unified Slug Resolution ─────────────────────────────────────────
 const resolveDatabase = async (slug) => {
-    if (!slug || slug === 'system_shared') {
+    if (!slug) {
         LOGGER.warn('Invalid slug provided', { slug });
         return null;
     }
@@ -278,8 +277,17 @@ const resolveDatabase = async (slug) => {
         if (tenantDbName) {
             try {
                 const pool = await (0, exports.getTenantDB)(tenantDbName);
-                const [rows] = await pool.query(`SELECT branch_db_name FROM branches 
-           WHERE (branch_slug LIKE ? OR branch_name LIKE ?) AND is_active = TRUE 
+                // Prefer an EXACT full-slug match first (e.g. `org-home-nairobi`) so
+                // similarly named branches (`Nairobi`, `Nairobi West`) can never
+                // cross-resolve, then fall back to the loose name match.
+                const [exactRows] = await pool.query('SELECT branch_db_name FROM branches WHERE branch_slug = ? AND is_active = TRUE LIMIT 1', [slug]);
+                const exactList = exactRows;
+                if (exactList.length > 0 && exactList[0].branch_db_name) {
+                    branchDbCache.set(slug, { dbName: exactList[0].branch_db_name, createdAt: Date.now() });
+                    return exactList[0].branch_db_name;
+                }
+                const [rows] = await pool.query(`SELECT branch_db_name FROM branches
+           WHERE (branch_slug LIKE ? OR branch_name LIKE ?) AND is_active = TRUE
            LIMIT 1`, [`%${branchName}%`, `%${branchName}%`]);
                 const list = rows;
                 if (list.length > 0) {
@@ -297,36 +305,6 @@ const resolveDatabase = async (slug) => {
             }
             return tenantDbName;
         }
-    }
-    // FALLBACK: Try to find a database that matches part of the slug
-    // This handles cases where the slug format doesn't match the tenant slug in the database
-    // but the database name can be derived from the slug
-    try {
-        const pool = await (0, exports.getRootPool());
-        // Try to find a database that matches the slug without the last segment (e.g., "nairobi")
-        if (lastDashIndex > 0) {
-            const possibleDbName = slug.substring(0, lastDashIndex);
-            const [dbRows] = await pool.query('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ? LIMIT 1', [possibleDbName]);
-            if (dbRows && dbRows.length > 0) {
-                LOGGER.info('Found database by truncating slug', { slug, dbName: possibleDbName });
-                branchDbCache.set(slug, { dbName: possibleDbName, createdAt: Date.now() });
-                return possibleDbName;
-            }
-        }
-        // Try to find a database that contains the slug (or vice versa)
-        const [allDbs] = await pool.query('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE ? LIMIT 1', [`%${slug.split('-')[0]}%`]);
-        if (allDbs && allDbs.length > 0) {
-            // Find the best match (longest matching database name)
-            const bestMatch = allDbs.reduce((best, current) => {
-                return current.SCHEMA_NAME.length > best.SCHEMA_NAME.length ? current : best;
-            }, allDbs[0]);
-            LOGGER.info('Found database by partial match', { slug, dbName: bestMatch.SCHEMA_NAME });
-            branchDbCache.set(slug, { dbName: bestMatch.SCHEMA_NAME, createdAt: Date.now() });
-            return bestMatch.SCHEMA_NAME;
-        }
-    }
-    catch (err) {
-        LOGGER.warn('Fallback DB lookup failed', { slug, error: err.message });
     }
     LOGGER.error('Could not resolve database for slug', { slug });
     return null;
@@ -361,16 +339,16 @@ const getTenantDB = async (tenantDbName) => {
     // Test connection
     try {
         const conn = await pool.getConnection();
-        await conn.ping();
         conn.release();
         LOGGER.info('Connected to tenant database', { dbName: tenantDbName });
     }
     catch (err) {
         LOGGER.error('Tenant database connection failed', { dbName: tenantDbName, error: err.message });
-        // A database that does not exist is a permanent, deterministic failure — fail
-        // fast instead of caching a poisoned pool whose error only surfaces later at
+        // A database that does not exist is a permanent, deterministic failure — every
+        // query against this pool would fail with the same error. Fail fast with a clear
+        // message instead of caching a poisoned pool whose error only surfaces later at
         // the call site (e.g. "Unknown database" inside a controller).
-        if (err && (err.code === 'ER_BAD_DB_ERROR' || /Unknown database/i.test(String((err && err.message) || '')))) {
+        if (err && (err.code === 'ER_BAD_DB_ERROR' || /Unknown database/i.test(err.message || ''))) {
             await pool.end().catch(() => { });
             throw new Error(`Unknown database '${tenantDbName}'. Did you mean to resolveDatabase(slug) first?`);
         }
@@ -526,3 +504,4 @@ exports.default = {
     closeAllConnections: exports.closeAllConnections,
     healthCheck: exports.healthCheck,
 };
+//# sourceMappingURL=dbConfig.js.map

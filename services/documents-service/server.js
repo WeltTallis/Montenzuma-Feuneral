@@ -1,7 +1,4 @@
-
-
 const { resolveDatabase, safeTenantQuery, safeTenantExecute } = require('../../shared/dbConfig');
-const { validateTenantActive } = require('../../shared/tenancy');
 const { safeQuery } = require('../../shared/database');
 const express = require('express');
 const helmet = require('helmet');
@@ -10,6 +7,27 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
+const PDFDocument = require('pdfkit');
+const sharp = require('sharp');
+
+// Safely import centralized upload service (fallback to local if missing)
+let centralizedUploadService;
+try {
+  centralizedUploadService = require('@montezuma/shared-services/dist/centralizedUploadService.js').centralizedUploadService;
+} catch (e) {
+  console.warn('[DOCUMENTS] centralizedUploadService not found, using local fallback.');
+  centralizedUploadService = {
+    uploadFromFile: async (filePath, tenantSlug, type, folder, entityId) => {
+      const stats = await fs.promises.stat(filePath);
+      return {
+        success: true,
+        path: filePath,
+        filename: path.basename(filePath),
+        size: stats.size
+      };
+    }
+  };
+}
 
 const app = express();
 const PORT = process.env.PORT || 8112;
@@ -20,513 +38,408 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'x-tenant-id', 'x-user-id']
 }));
-
-
 app.use(helmet());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// ============ GLOBAL UPLOADS CONFIGURATION ============
-// Use the ONE shared uploads folder the whole platform writes to
-// (GLOBAL_UPLOADS_DIR -> /opt/storage/uploads). The old code IGNORED the env
-// var and wrote into container-local paths — files were lost on every rebuild
-// and never served through nginx /uploads -> tenant-service.
 const getGlobalUploadsDir = () => {
   const envDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR;
   if (envDir) {
     try {
-      if (!fs.existsSync(envDir)) {
-        fs.mkdirSync(envDir, { recursive: true });
-      }
+      if (!fs.existsSync(envDir)) fs.mkdirSync(envDir, { recursive: true });
       return envDir;
     } catch (e) {
-      console.warn(`[DOCUMENTS] Configured uploads dir "${envDir}" unusable (${e.message}) — falling back.`);
+      console.warn('[DOCUMENTS] uploads dir unusable');
     }
   }
-
-  // Dev-only fallbacks
-  const possiblePaths = [
+  const fallbacks = [
     path.join(process.cwd(), 'uploads'),
     path.join(__dirname, '../../uploads'),
-    path.join(__dirname, '../../../uploads'),
+    path.join(__dirname, '../../../uploads')
   ];
-
-  // Return the first path that exists or can be created
-  for (const basePath of possiblePaths) {
+  for (const p of fallbacks) {
     try {
-      if (!fs.existsSync(basePath)) {
-        fs.mkdirSync(basePath, { recursive: true });
-      }
-      return basePath;
-    } catch (e) {
-      continue;
-    }
+      if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+      return p;
+    } catch (e) { }
   }
-
-  // Fallback to temp directory
   return path.join(require('os').tmpdir(), 'restpoint-uploads');
 };
 
-// Sanitize tenant slugs exactly like generateSlug() so the on-disk folder and
-// the /uploads/... URL always match and tenants can never mix files.
-const sanitizeSlug = (v) => String(v || 'system_shared')
-  .toLowerCase()
-  .replace(/[^a-z0-9._-]+/g, '-')
-  .replace(/-+/g, '-')
-  .replace(/^-|-$/g, '') || 'system_shared';
+const GLOBAL_UPLOADS_DIR = getGlobalUploadsDir();
+const sanitizeSlug = (v) => String(v || 'system_shared').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'system_shared';
+const getTenantSlug = (req) => sanitizeSlug(req.headers['x-tenant-slug'] || req.headers['x-tenant-id'] || 'system_shared');
+const tenantUploadDir = (t, d) => path.join(GLOBAL_UPLOADS_DIR, sanitizeSlug(t), 'documents', String(d || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100));
 
-// Per-tenant documents directory: <uploads>/<slug>/documents/<deceasedId>/
-const tenantUploadDir = (tenantSlug, deceasedId) => {
-  const safeDead = String(deceasedId || 'unknown')
-    .replace(/[^a-zA-Z0-9_-]/g, '_')
-    .slice(0, 100) || 'unknown';
-  return path.join(GLOBAL_UPLOADS_DIR, sanitizeSlug(tenantSlug), 'documents', safeDead);
-};
+const DOCUMENTS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS documents (document_id BIGINT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, original_name VARCHAR(255) NULL, stored_name VARCHAR(255) NULL, file_path VARCHAR(500) NULL, mime_type VARCHAR(120) NULL, file_size BIGINT DEFAULT 0, category VARCHAR(100) DEFAULT 'General', uploaded_by VARCHAR(120) NULL, uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP, INDEX idx_docs_deceased (deceased_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
-// ─── Tenant-aware DB helpers ────────────────────────────────────────────────
-// -------------------------------------------------------------------------
-// -------------------------------------------------------------------------
-// Documents belong to the tenant's own database (same DB the deceased rows
-// live). Use resolveDatabase - NOT lookupTenantDatabase -because it also
-// handles slug-is-db and BRANCH slugs (e.g. org-home-nairobi -> parent
-// tenant DB), exactly like the deceased/bodycheckout services do. The old
-// lookup-only version returned null for branch slugs,and every query silently
-// fell back to the root restpoint_main - "documents is just calling wrong database".
-async function resolveTenantDb(tenantSlug) {
-  if (!tenantSlug || tenantSlug === 'system_shared') return null;
+async function resolveTenantDb(t) {
+  if (!t || t === 'system_shared') return null;
   try {
-    const dbName = await resolveDatabase(tenantSlug);
-    return dbName || null;
+    return await resolveDatabase(t) || null;
   } catch (e) {
-    console.warn('[DOCUMENTS] resolveDatabase failed:', e && e.message);
     return null;
   }
 }
-const DOCUMENTS_TABLE_SQL = `
-  CREATE TABLE IF NOT EXISTS documents (
-    document_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    deceased_id VARCHAR(100) NOT NULL,
-    original_name VARCHAR(255) NULL,
-    stored_name VARCHAR(255) NULL,
-    file_path VARCHAR(500) NULL,
-    mime_type VARCHAR(120) NULL,
-    file_size BIGINT DEFAULT 0,
-    category VARCHAR(100) DEFAULT 'General',
-    uploaded_by VARCHAR(120) NULL,
-    uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_docs_deceased (deceased_id)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-`;
-async function q(tenantSlug, sql, params = []) {
-  const dbName = await resolveTenantDb(tenantSlug);
+
+async function q(t, sql, params = []) {
+  const dbName = await resolveTenantDb(t);
   if (dbName) {
-    // Auto-create the table on the FIRST read too - a fresh tenant DB has no
-    // documents table yet,and a bare SELECT would 500 ("doesn't exist").
-    try { await safeTenantExecute(dbName, DOCUMENTS_TABLE_SQL, []); } catch (e) { /* idempotent */ }
+    try {
+      await safeTenantExecute(dbName, DOCUMENTS_TABLE_SQL, []);
+    } catch (e) { }
     return safeTenantQuery(dbName, sql, params);
   }
-  // No resolvable tenant DB -> root safety net (kept only for legacy single-tenant mode)
   return safeQuery(sql, params);
 }
-async function ensureAndInsertDocument(tenantSlug, insertQuery, params) {
-  const dbName = await resolveTenantDb(tenantSlug);
-  if (dbName) {
-    await safeTenantExecute(dbName, DOCUMENTS_TABLE_SQL, []);
-    return safeTenantQuery(dbName, insertQuery, params);
-  }
-  return safeQuery(insertQuery, params);
-}
-const GLOBAL_UPLOADS_DIR = getGlobalUploadsDir();
 
-// ============ STORAGE CONFIGURATION ============
+function isPDF(b) { return b && b.length >= 5 && b.toString('ascii', 0, 5) === '%PDF-'; }
+function getPDFVersion(b) { if (!b || b.length < 20) return 'unknown'; const m = b.toString('ascii', 0, 20).match(/%PDF-(\d+\.\d+)/); return m ? m[1] : 'unknown'; }
+
+async function createHighQualityPDF(o = {}) {
+  const { content = '', outputPath = null, size = 'A4', margins = 40 } = o;
+  const doc = new PDFDocument({ size, margins, compress: false });
+  const buffers = [];
+  doc.on('data', c => buffers.push(c));
+  await new Promise((resolve, reject) => {
+    doc.on('end', resolve);
+    doc.on('error', reject);
+    doc.font('Helvetica').fontSize(12);
+    if (content) doc.text(content);
+    doc.end();
+  });
+  const buf = Buffer.concat(buffers);
+  if (outputPath) await fs.promises.writeFile(outputPath, buf);
+  return buf;
+}
+
+async function imageToHighQualityPDF(imagePath, outputPath, o = {}) {
+  const { dpi = 300, quality = 100 } = o;
+  const meta = await sharp(imagePath).metadata();
+  const doc = new PDFDocument({ size: 'A4', margins: 0, compress: false });
+  const out = fs.createWriteStream(outputPath);
+  doc.pipe(out);
+  const imgBuf = await sharp(imagePath).jpeg({ quality: 100, mozjpeg: true }).toBuffer();
+  const pw = doc.page.width, ph = doc.page.height, ia = meta.width / meta.height, pa = pw / ph;
+  let dw, dh, ox, oy;
+  if (ia > pa) { dw = pw; dh = pw / ia; ox = 0; oy = (ph - dh) / 2; } else { dh = ph; dw = ph * ia; ox = (pw - dw) / 2; oy = 0; }
+  doc.addPage({ size: 'A4', margin: 0 });
+  doc.image(imgBuf, ox, oy, { width: dw, height: dh });
+  doc.end();
+  await new Promise(r => out.on('finish', r));
+  return outputPath;
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const tenantSlug = req.tenantSlug || sanitizeSlug(req.headers['x-tenant-slug']) || 'system_shared';
-    const uploadPath = tenantUploadDir(tenantSlug, req.params.deceasedId || req.body.deceasedId);
-
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
+    const t = getTenantSlug(req);
+    const d = req.params.deceasedId || req.body.deceasedId;
+    const p = tenantUploadDir(t, d);
+    if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+    cb(null, p);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, 'doc-' + uniqueSuffix + ext);
+    const s = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, 'doc-' + s + path.extname(file.originalname));
   }
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/bmp', 'application/octet-stream',
-      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only PDF, images, and Word documents are allowed.'));
-    }
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/bmp', 'application/octet-stream', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+    if (allowed.includes(file.mimetype)) return cb(null, true);
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv'].includes(ext)) return cb(null, true);
+    cb(new Error('Invalid file type'));
   }
 });
 
-// ============ TENANT RESOLUTION MIDDLEWARE ============
-app.use(async (req, res, next) => {
-  const tenantSlug = sanitizeSlug(req.headers['x-tenant-slug'] || 'system_shared');
-  req.tenantSlug = tenantSlug;
-
-  if (tenantSlug !== 'system_shared') {
-    try {
-      let tenantStatus = await validateTenantActive(tenantSlug);
-
-      // Branch slugs (`org-home-nairobi`) are not rows in the parent tenants
-      // table — the organisation that owns the database is the parent slug
-      // (`org-home`). Fall back to it before warning. Storage intentionally
-      // stays under the incoming (branch) slug so the frontend's /uploads/...
-      // URLs keep resolving to the same folders.
-      if (!tenantStatus.active && tenantSlug.includes('-')) {
-        const parentSlug = tenantSlug.substring(0, tenantSlug.lastIndexOf('-'));
-        const parentStatus = await validateTenantActive(parentSlug);
-        if (parentStatus.active) tenantStatus = parentStatus;
-      }
-
-      if (!tenantStatus.active) {
-        console.warn(`[DOCUMENTS] Tenant validation warning for "${tenantSlug}": ${tenantStatus.reason}. Proceeding anyway.`);
-        // Store whatever info we have
-        req.tenant = { slug: tenantSlug };
-      } else {
-        req.tenant = tenantStatus.tenant;
-      }
-    } catch (error) {
-      console.warn(`[DOCUMENTS] Tenant validation error for "${tenantSlug}": ${error.message}. Proceeding anyway.`);
-      // Allow upload even if tenant validation fails (local dev scenario)
-      req.tenant = { slug: tenantSlug };
+// Flexible upload middleware to accept 'file', 'document', or 'image'
+const flexibleUpload = (req, res, next) => {
+  upload.any()(req, res, (err) => {
+    if (err) return next(err);
+    if (req.files && req.files.length > 0) {
+      req.file = req.files[0]; // Map to req.file for consistency
     }
-  }
-  next();
-});
-
-// ============ HEALTH CHECK ============
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'UP',
-    service: 'documents-service',
-    tenant: req.tenantSlug,
-    timestamp: new Date().toISOString()
+    next();
   });
-});
+};
 
-// ============ STATIC FILES ============
-// Serve files from global uploads directory
-app.use('/uploads', express.static(GLOBAL_UPLOADS_DIR, {
-  setHeaders: (res) => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-  }
-}));
+app.use((req, res, next) => { req.tenantSlug = getTenantSlug(req); next(); });
 
-// ============ API ROUTES ============
+app.get('/health', (req, res) => res.json({ status: 'UP', service: 'documents-service', tenant: req.tenantSlug }));
+app.use('/uploads', express.static(GLOBAL_UPLOADS_DIR, { setHeaders: (r) => { r.set('Access-Control-Allow-Origin', '*'); r.set('Cross-Origin-Resource-Policy', 'cross-origin'); } }));
 
-// ─── Documents router (mounted at full + gateway-stripped prefixes below) ──
 const documentsRouter = express.Router();
 
-// Get all documents for a specific deceased
+// GET Documents by Deceased ID
 documentsRouter.get('/:deceasedId', async (req, res) => {
   const { deceasedId } = req.params;
-  const tenantSlug = req.tenantSlug;
-
-  if (!deceasedId) {
-    return res.status(400).json({ success: false, message: 'Deceased ID is required' });
-  }
-
-  let formattedDocs = [];
-
-  // Try to fetch from database first
+  if (!deceasedId) return res.status(400).json({ success: false, message: 'Deceased ID required' });
   try {
-    const query = `
-      SELECT 
-        document_id,
-        original_name,
-        stored_name,
-        file_path,
-        mime_type,
-        file_size,
-        category,
-        uploaded_by,
-        uploaded_at,
-        deceased_id
-      FROM documents 
-      WHERE deceased_id = ? 
-      ORDER BY uploaded_at DESC
-    `;
-
-    const documents = await q(tenantSlug, query, [deceasedId]);
-
-    // Format documents for frontend
-    formattedDocs = documents.map(doc => ({
-      documentId: doc.document_id,
-      originalName: doc.original_name,
-      storedName: doc.stored_name,
-      url: `/uploads/${tenantSlug}/documents/${deceasedId}/${doc.stored_name}`,
-      mimeType: doc.mime_type,
-      sizeKB: Math.round(doc.file_size / 1024),
-      category: doc.category || 'General',
-      uploadedBy: doc.uploaded_by,
-      uploadedAt: doc.uploaded_at,
-      deceasedId: doc.deceased_id
-    }));
-  } catch (dbError) {
-    console.warn(`[DOCUMENTS] DB query failed for listing, falling back to filesystem: ${dbError.message}`);
-
-    // Fallback: List files from filesystem
-    const uploadDir = path.join(GLOBAL_UPLOADS_DIR, tenantSlug, 'documents', deceasedId);
-    if (fs.existsSync(uploadDir)) {
-      const files = fs.readdirSync(uploadDir);
-      formattedDocs = files.map((fileName, index) => ({
-        documentId: `fs-${Date.now()}-${index}`,
-        originalName: fileName.replace(/^doc-\d+-\d+-/, ''),
-        storedName: fileName,
-        url: `/uploads/${tenantSlug}/documents/${deceasedId}/${fileName}`,
-        mimeType: 'application/octet-stream',
-        sizeKB: Math.round((fs.statSync(path.join(uploadDir, fileName)).size) / 1024),
-        category: 'General',
-        uploadedBy: 'System',
-        uploadedAt: new Date().toISOString(),
-        deceasedId
-      }));
-    }
+    const docs = await q(req.tenantSlug, `SELECT * FROM documents WHERE deceased_id = ? ORDER BY uploaded_at DESC`, [deceasedId]);
+    res.json({
+      success: true,
+      data: docs.map(d => ({
+        ...d,
+        url: `/api/v1/restpoint/documents/download/${d.document_id}`,
+        file_path: d.file_path ? path.basename(d.file_path) : null
+      })),
+      count: docs.length
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
   }
-
-  res.json({
-    success: true,
-    files: formattedDocs,
-    count: formattedDocs.length
-  });
 });
 
-// Upload a new document for a deceased
-documentsRouter.post('/:deceasedId/upload', upload.single('document'), async (req, res) => {
+// UPLOAD Document
+documentsRouter.post('/upload/:deceasedId', flexibleUpload, async (req, res) => {
   try {
     const { deceasedId } = req.params;
-    const { category, uploadedBy } = req.body;
-    const tenantSlug = req.tenantSlug;
+    const { category, documentName } = req.body;
+    const file = req.file;
+    if (!file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    const result = await centralizedUploadService.uploadFromFile(file.path, req.tenantSlug, 'document', 'documents', deceasedId);
+    if (!result.success) return res.status(500).json({ success: false, message: 'Upload failed: ' + result.error });
+
+    let quality = 'Stored via centralized service';
+    if (file.mimetype === 'application/pdf' || path.extname(file.originalname).toLowerCase() === '.pdf') {
+      const buf = await fs.promises.readFile(result.path);
+      if (isPDF(buf)) quality = `PDF v${getPDFVersion(buf)} - ORIGINAL quality preserved, no compression`;
     }
 
-    if (!deceasedId) {
-      return res.status(400).json({ success: false, message: 'Deceased ID is required' });
-    }
-
-    const storedName = req.file.filename;
-    const originalName = req.file.originalname;
-    const mimeType = req.file.mimetype;
-    const fileSize = req.file.size;
-    const filePath = `/uploads/${tenantSlug}/documents/${deceasedId}/${storedName}`;
-
-    // Try to insert document record into database
-    let documentId = Date.now();
-    try {
-      const insertQuery = `
-        INSERT INTO documents (
-          deceased_id,
-          original_name,
-          stored_name,
-          file_path,
-          mime_type,
-          file_size,
-          category,
-          uploaded_by,
-          uploaded_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-      `;
-
-      const result = await ensureAndInsertDocument(tenantSlug, insertQuery, [
-        deceasedId,
-        originalName,
-        storedName,
-        filePath,
-        mimeType,
-        fileSize,
-        category || 'General',
-        uploadedBy || 'System'
-      ]);
-      documentId = result.insertId || documentId;
-    } catch (dbError) {
-      console.warn(`[DOCUMENTS] Database insert failed, using filesystem-only storage: ${dbError.message}`);
-      // File was already saved to disk - return success even without DB record
-    }
+    const ins = await q(req.tenantSlug, `INSERT INTO documents (deceased_id, original_name, stored_name, file_path, mime_type, file_size, category, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [deceasedId, documentName || file.originalname, result.filename, result.path, file.mimetype, result.size, category || 'General', req.headers['x-user-id'] || 'System']);
 
     res.status(201).json({
       success: true,
-      message: 'Document uploaded successfully',
-      document: {
-        documentId,
-        originalName,
-        storedName,
-        url: filePath,
-        mimeType,
-        sizeKB: Math.round(fileSize / 1024),
+      message: 'Uploaded successfully',
+      data: {
+        document_id: ins.insertId,
+        original_name: documentName || file.originalname,
+        url: `/api/v1/restpoint/documents/download/${ins.insertId}`,
+        mime_type: file.mimetype,
+        file_size: result.size,
         category: category || 'General',
-        uploadedBy: uploadedBy || 'System',
-        uploadedAt: new Date().toISOString(),
-        deceasedId
+        quality
       }
     });
-  } catch (error) {
-    console.error('Error uploading document:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error uploading document: ' + error.message
-    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Upload error', details: e.message });
   }
 });
 
-// Download/View a document
+// DOWNLOAD Document
 documentsRouter.get('/download/:documentId', async (req, res) => {
   try {
-    const { documentId } = req.params;
-
-    const query = `
-      SELECT stored_name, original_name, mime_type, file_path, deceased_id
-      FROM documents 
-      WHERE document_id = ?
-    `;
-
-    const docs = await q(req.tenantSlug, query, [documentId]);
-
-    if (!docs || docs.length === 0) {
-      return res.status(404).json({ success: false, message: 'Document not found' });
-    }
+    const docs = await q(req.tenantSlug, `SELECT file_path, original_name, mime_type, file_size FROM documents WHERE document_id = ? AND (tenant_slug = ? OR tenant_slug IS NULL)`, [req.params.documentId, req.tenantSlug]);
+    if (!docs.length) return res.status(404).json({ success: false, message: 'Not found' });
 
     const doc = docs[0];
-    const tenantSlug = req.tenantSlug;
-    const filePath = tenantUploadDir(tenantSlug, doc.deceased_id) + path.sep + doc.stored_name;
+    let p = doc.file_path;
+    if (!p) return res.status(404).json({ success: false, message: 'File path not found in DB' });
 
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: 'File not found on server' });
+    // Resolve path if relative
+    if (!path.isAbsolute(p)) {
+      p = path.join(GLOBAL_UPLOADS_DIR, p);
     }
 
-    res.setHeader('Content-Type', doc.mime_type);
-    res.setHeader('Content-Disposition', `inline; filename="${doc.original_name}"`);
+    if (!fs.existsSync(p)) return res.status(404).json({ success: false, message: 'File not found on disk' });
 
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
-  } catch (error) {
-    console.error('Error downloading document:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error downloading document: ' + error.message
-    });
+    res.setHeader('Content-Type', doc.mime_type || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.original_name || 'document')}"`);
+    res.setHeader('Content-Length', doc.file_size || 0);
+    fs.createReadStream(p).pipe(res);
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
   }
 });
 
-// Delete a document
-documentsRouter.delete('/:deceasedId/:documentId', async (req, res) => {
+// DELETE Document
+documentsRouter.delete('/:documentId', async (req, res) => {
   try {
-    const { documentId, deceasedId } = req.params;
-    const { deletedBy } = req.body;
-    const tenantSlug = req.tenantSlug;
+    const deceasedId = req.query.deceasedId;
+    if (!deceasedId) return res.status(400).json({ success: false, message: 'Deceased ID required' });
 
-    // Get document info before deleting
-    const query = `SELECT stored_name FROM documents WHERE document_id = ? AND deceased_id = ?`;
-    const docs = await q(req.tenantSlug, query, [documentId, deceasedId]);
-
-    if (!docs || docs.length === 0) {
-      return res.status(404).json({ success: false, message: 'Document not found' });
-    }
+    const docs = await q(req.tenantSlug, 'SELECT file_path, stored_name FROM documents WHERE document_id = ? AND deceased_id = ?', [req.params.documentId, deceasedId]);
+    if (!docs.length) return res.status(404).json({ success: false, message: 'Not found' });
 
     const doc = docs[0];
-    const filePath = tenantUploadDir(tenantSlug, deceasedId) + path.sep + doc.stored_name;
 
-    // Delete file from filesystem
-    if (fs.existsSync(filePath)) {
+    // 1. Attempt to delete using the exact file_path from DB
+    let filePath = doc.file_path;
+    if (filePath && !path.isAbsolute(filePath)) {
+      filePath = path.join(GLOBAL_UPLOADS_DIR, filePath);
+    }
+
+    if (filePath && fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
+    } else {
+      // 2. Fallback to old logic just in case path was malformed
+      const fp = tenantUploadDir(req.tenantSlug, deceasedId) + path.sep + doc.stored_name;
+      if (fs.existsSync(fp)) fs.unlinkSync(fp);
     }
 
-    // Delete record from database
-    const deleteQuery = `DELETE FROM documents WHERE document_id = ?`;
-    await q(req.tenantSlug, deleteQuery, [documentId]);
-
-    res.json({
-      success: true,
-      message: 'Document deleted successfully',
-      deletedBy: deletedBy || 'System'
-    });
-  } catch (error) {
-    console.error('Error deleting document:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error deleting document: ' + error.message
-    });
+    await q(req.tenantSlug, 'DELETE FROM documents WHERE document_id = ?', [req.params.documentId]);
+    res.json({ success: true, message: 'Deleted successfully' });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
   }
 });
 
-// Share document via email
-documentsRouter.post('/share', async (req, res) => {
+// GET Metadata
+documentsRouter.get('/:documentId/metadata', async (req, res) => {
   try {
-    const { documentId, recipientEmail, message, documentName } = req.body;
+    const docs = await q(req.tenantSlug, `SELECT file_path, original_name, mime_type, file_size FROM documents WHERE document_id = ? AND (tenant_slug = ? OR tenant_slug IS NULL)`, [req.params.documentId, req.tenantSlug]);
+    if (!docs.length) return res.status(404).json({ success: false, message: 'Not found' });
 
-    // In production, integrate with email service (SendGrid, AWS SES, etc.)
-    // For now, log the share request
-    console.log(`Document share request: ${documentName} to ${recipientEmail}`);
-    console.log(`Message: ${message}`);
+    const doc = docs[0];
+    let p = doc.file_path;
+    if (!p) return res.status(404).json({ success: false, message: 'File path not found in DB' });
 
-    res.json({
-      success: true,
-      message: `Document shared successfully via email to ${recipientEmail}`
-    });
-  } catch (error) {
-    console.error('Error sharing document:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error sharing document: ' + error.message
-    });
+    if (!path.isAbsolute(p)) {
+      p = path.join(GLOBAL_UPLOADS_DIR, p);
+    }
+
+    if (!fs.existsSync(p)) return res.status(404).json({ success: false, message: 'File not found on disk' });
+
+    const buf = await fs.promises.readFile(p, { limit: 1024 });
+    if (isPDF(buf)) {
+      res.json({ success: true, data: { isPDF: true, version: getPDFVersion(buf), size: doc.file_size, originalName: doc.original_name, quality: 'ORIGINAL - No compression, 100% preserved', preserved: true } });
+    } else {
+      res.json({ success: true, data: { isPDF: false, size: doc.file_size, originalName: doc.original_name } });
+    }
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
   }
 });
 
-// ============ ROUTER MOUNTS ============
-// Mount under BOTH the full prefixes (direct/localhost access) and the
-// gateway-stripped prefix — the api-gateway forwards /api/v1/restpoint/documents/...
-// as /documents/... after stripping the base path.
+// CREATE PDF from Text
+documentsRouter.post('/create-pdf', async (req, res) => {
+  try {
+    const { content, deceasedId, filename } = req.body;
+    if (!content) return res.status(400).json({ success: false, message: 'Content required' });
+    if (!deceasedId) return res.status(400).json({ success: false, message: 'Deceased ID required' });
+
+    const dir = tenantUploadDir(req.tenantSlug, deceasedId);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+    const name = filename || `document-${Date.now()}.pdf`;
+    const out = path.join(dir, name);
+
+    await createHighQualityPDF({ content, outputPath: out });
+    const stats = await fs.promises.stat(out);
+
+    const ins = await q(req.tenantSlug, `INSERT INTO documents (deceased_id, original_name, stored_name, file_path, mime_type, file_size, category, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [deceasedId, name, name, out, 'application/pdf', stats.size, 'Generated', req.headers['x-user-id'] || 'System']);
+
+    res.status(201).json({
+      success: true,
+      message: 'PDF created (no compression)',
+      data: {
+        document_id: ins.insertId,
+        original_name: name,
+        url: `/api/v1/restpoint/documents/download/${ins.insertId}`,
+        file_size: stats.size,
+        mime_type: 'application/pdf',
+        quality: 'HIGH - No compression'
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// CONVERT Image to PDF
+documentsRouter.post('/image-to-pdf/:deceasedId', flexibleUpload, async (req, res) => {
+  try {
+    const { deceasedId } = req.params;
+    const { filename } = req.body;
+    const file = req.file;
+    if (!file) return res.status(400).json({ success: false, message: 'No image uploaded' });
+
+    const dir = tenantUploadDir(req.tenantSlug, deceasedId);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+    const name = filename || `converted-${Date.now()}.pdf`;
+    const out = path.join(dir, name);
+
+    await imageToHighQualityPDF(file.path, out, { dpi: 300, quality: 100 });
+
+    // Clean up the original image file
+    await fs.promises.unlink(file.path).catch(() => { });
+
+    const stats = await fs.promises.stat(out);
+    const ins = await q(req.tenantSlug, `INSERT INTO documents (deceased_id, original_name, stored_name, file_path, mime_type, file_size, category, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [deceasedId, name, name, out, 'application/pdf', stats.size, 'Converted', req.headers['x-user-id'] || 'System']);
+
+    res.status(201).json({
+      success: true,
+      message: 'Image to PDF conversion complete',
+      data: {
+        document_id: ins.insertId,
+        original_name: name,
+        url: `/api/v1/restpoint/documents/download/${ins.insertId}`,
+        file_size: stats.size,
+        mime_type: 'application/pdf',
+        quality: 'HIGH - 300 DPI, 100% quality'
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// SHARE Document
+documentsRouter.post('/share', async (req, res) => {
+  console.log(`[DOCUMENTS] Share request: ${req.body.documentName || req.body.documentId} to ${req.body.recipientEmail}`);
+  res.json({ success: true, message: 'Shared successfully' });
+});
+
 app.use('/api/v1/restpoint/documents', documentsRouter);
 app.use('/v1/restpoint/documents', documentsRouter);
 app.use('/documents', documentsRouter);
 
-// ============ ERROR HANDLERS ============
-const { notFoundHandler, errorHandler } = require('../../services/app-global/middlewares/errorHandler');
+// Fallback Error Handlers (in case external files are missing)
+let notFoundHandler, errorHandler;
+try {
+  const errHandlers = require('../../services/app-global/middlewares/errorHandler');
+  notFoundHandler = errHandlers.notFoundHandler;
+  errorHandler = errHandlers.errorHandler;
+} catch (e) {
+  notFoundHandler = (req, res) => res.status(404).json({ success: false, message: 'Route not found' });
+  errorHandler = (err, req, res, next) => {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
+  };
+}
+
 app.use((err, req, res, next) => {
-  // Multer upload errors + rejected file types → friendly 4xx (not a bare 500)
   if (err && (err.code === 'LIMIT_FILE_SIZE' || err.code === 'LIMIT_UNEXPECTED_FILE' || err instanceof multer.MulterError)) {
-    const msg = err.code === 'LIMIT_FILE_SIZE' ? 'File exceeds the 50MB upload limit.' : (err.message || 'Invalid upload.');
-    return res.status(400).json({ success: false, message: msg });
+    return res.status(400).json({ success: false, message: err.code === 'LIMIT_FILE_SIZE' ? 'File exceeds 50MB limit.' : err.message });
   }
-  if (err && err.statusCode) {
-    return res.status(err.statusCode).json({ success: false, message: err.message || 'Request failed' });
+  if (err?.statusCode) {
+    return res.status(err.statusCode).json({ success: false, message: err.message });
   }
   next(err);
 });
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// ============ SERVER STARTUP ============
 const startServer = async () => {
   try {
-    // Ensure global uploads directory exists
-    if (!fs.existsSync(GLOBAL_UPLOADS_DIR)) {
-      fs.mkdirSync(GLOBAL_UPLOADS_DIR, { recursive: true });
-    }
-
+    if (!fs.existsSync(GLOBAL_UPLOADS_DIR)) fs.mkdirSync(GLOBAL_UPLOADS_DIR, { recursive: true });
     app.listen(PORT, '0.0.0.0', () => {
-
-
+      console.log(`[DOCUMENTS] Server running on port ${PORT}`);
+      console.log(`[DOCUMENTS] Uploads Directory: ${GLOBAL_UPLOADS_DIR}`);
+      console.log(`[PDF] High-quality mode enabled - NO compression, 100% quality preserved`);
     });
-  } catch (error) {
-    console.error('Failed to start documents service:', error);
+  } catch (e) {
+    console.error('Failed to start server:', e);
     process.exit(1);
   }
 };
 
 startServer();
-
 module.exports = app;

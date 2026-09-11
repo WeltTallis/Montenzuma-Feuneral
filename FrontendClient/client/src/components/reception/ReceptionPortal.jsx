@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styled, { keyframes, createGlobalStyle } from "styled-components";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { useTenantStore } from "../../modules/seo/useTenantStore";
 
 /* ──────────────────────────────────────────────────────────────
    Montezuma Funeral Home — Reception Portal
@@ -378,8 +379,10 @@ export default function App() {
   const [greet, setGreet] = useState("Good morning")
   const [selectedService, setSelectedService] = useState(null)
   const [showOverlay, setShowOverlay] = useState(false)
+  const { tenantData } = useTenantStore()
+  const tenantName = tenantData?.name || ""
   const tenantSlug =
-    slug || (typeof window !== "undefined" && localStorage.getItem("tenantSlug")) || "system_shared"
+    slug || (typeof window !== "undefined" && localStorage.getItem("tenantSlug")) || ""
 
   useEffect(() => {
     const tick = () => {
@@ -416,7 +419,7 @@ export default function App() {
         {/* ── Hero ── */}
         <Hero>
           <div style={{ position: "absolute", inset: 0 }}>
-            <HeroImg src="/portal.webp" alt="Montezuma Funeral Home reception portal" />
+            <HeroImg src="/portal.webp" alt="Reception portal" />
           </div>
           <Scrim $g="linear-gradient(to right, rgba(14,14,25,0.95) 0%, rgba(5,5,7,0.85) 15%, rgba(5,5,7,0.4) 90%)" />
           <Scrim $g="linear-gradient(to top, rgba(5,5,7,1) 0%, rgba(5,5,7,0) 25%)" />
@@ -433,7 +436,7 @@ export default function App() {
             </BackBtn>
 
             <Wordmark>
-              <Name>Montezuma Funeral Home</Name>
+              <Name>{tenantName || "Reception Portal"}</Name>
               <div
                 style={{
                   width: 128,
