@@ -49,54 +49,58 @@ const Reveal = ({ children, className = '', style = {}, delay = 0 }) => {
 
 const FAQ_CATEGORIES = [
   {
-    tag: 'The Premium Tablet Portal Experience',
-    accent: '#C26B5A', // Terracotta
+    tag: 'Funeral Home Software',
+    accent: '#C26B5A',
     items: [
       {
-        q: 'How does the tablet portal elevate the front desk experience?',
-        a: `Instead of tethering your reception staff to a desktop computer, our portal runs seamlessly on sleek iPads or high-end tablets. Your front desk becomes mobile and graceful. Staff can greet families at the door, walk them to a comfortable seating area, and manage check-ins, floral bookings, and coordination directly from the tablet. It feels less like a transaction and more like a high-end concierge service.`,
+        q: 'What kind of software do funeral homes use?',
+        a: 'Funeral homes use funeral home software, also known as funeral management software, mortuary management software, and deathcare operations software, to manage case files, funeral arrangements, family records, billing, scheduling, hearse dispatch, insurance claims, and document storage in one integrated system.',
+      },
+      {
+        q: 'What is funeral management software?',
+        a: 'Funeral management software is a digital system built for funeral businesses to organize and automate operations. It helps funeral homes and mortuary service providers manage case management, invoicing, family communication, reporting, scheduling, and secure records in one modern platform.',
       },
     ],
   },
   {
-    tag: 'Digital Intake & Release',
-    accent: '#5A7A6B', // Sage Green
+    tag: 'Funeral Business Operations',
+    accent: '#5A7A6B',
     items: [
       {
-        q: 'How does the digital intake process work for families?',
-        a: `We've replaced stressful clipboards and intrusive kiosks with a dignified, guided tablet experience. When a family arrives, they are handed an iPad or directed to a private tablet station. The portal walks them through the deceased intake process with a respectful, calming user interface. The data automatically and securely routes to the director's dashboard, eliminating manual data entry.`,
+        q: 'What software do funeral businesses use for billing and claims?',
+        a: 'Many funeral businesses use funeral software with billing, invoicing, and insurance claim management features to track payments, manage contributions, process funeral policies, and handle payouts more efficiently and accurately.',
       },
       {
-        q: 'What about the release process? Can that be handled digitally too?',
-        a: `Absolutely. The digital release module allows authorized individuals (family members, crematories, or cemeteries) to securely sign digital release forms directly on the tablet. The system captures their digital signature, timestamps the release, and instantly updates the deceased's file, ensuring a fully compliant, paperless chain of custody without needing a physical front-desk terminal.`,
+        q: 'Why do funeral homes need software?',
+        a: 'Funeral home software is essential because it reduces admin work, improves accuracy, speeds up processing, and creates a more organized and professional experience for families. It is especially valuable for funeral businesses handling large volumes of cases, claims, and documentation.',
       },
     ],
   },
   {
-    tag: 'Cloud Infrastructure & 24/7 Uptime',
-    accent: '#5E7C9A', // Slate Blue
+    tag: 'Mortuary & Deathcare Software',
+    accent: '#5E7C9A',
     items: [
       {
-        q: 'Is the portal cloud-based, and what happens if our funeral home loses internet connection?',
-        a: `Yes, our software is 100% cloud-based, meaning your data is stored securely off-site and can be accessed from any authorized iPad or tablet, anywhere. We utilize advanced local caching, meaning if your internet briefly drops, your tablets can still view critical data and continue intake; it will simply sync to the cloud the moment the connection is restored.`,
+        q: 'Do non-funeral organizations use the same software?',
+        a: 'Yes. Mortuary service providers, welfare organizations, deathcare networks, churches, and funeral insurance companies often use mortuary software and funeral business software to manage records, claims, member support, and family communication more effectively.',
       },
       {
-        q: 'Can we really guarantee 24/7 uptime with zero downtime?',
-        a: `Yes. We pride ourselves on a 24/7/365 Uptime Guarantee. Our infrastructure utilizes multi-server redundancy and automatic failover protocols. If one server experiences an issue, another instantly takes over. This means zero downtime for your funeral home, ensuring your portals are always ready to serve families, day or night.`,
+        q: 'Can funeral software help welfare and insurance programs too?',
+        a: 'Absolutely. Funeral insurance software and welfare administration systems use the same core capabilities for member records, claims management, payouts, document tracking, and operational visibility across larger service networks.',
       },
     ],
   },
   {
-    tag: 'Security & Compliance',
-    accent: '#A3875A', // Antique Brass
+    tag: 'SEO & Business Growth',
+    accent: '#A3875A',
     items: [
       {
-        q: 'How do you ensure the highest standards of security for sensitive data on a tablet?',
-        a: `We employ enterprise-grade security protocols. All data is encrypted both in transit (using 256-bit SSL) and at rest. We are fully compliant with industry privacy standards. Furthermore, our system uses role-based access control, meaning staff only see the data necessary for their specific role.`,
+        q: 'Why is funeral software important for growth?',
+        a: 'Funeral software improves operational efficiency, reduces paperwork, and strengthens the client experience. It helps organizations scale their funeral business, improve family communication, and manage increasing case volumes without compromising service quality.',
       },
       {
-        q: `Could a family using a tablet accidentally see another family's data?`,
-        a: `Never. The Family Portal operates in a highly secure, locked "Guided Access" mode. A family member can only see their own intake or release forms. Once a transaction is complete or the screen times out, it automatically wipes the session and returns to the elegant welcoming screen (like the candle-lighting screen), protecting all previous data.`,
+        q: 'What is the best funeral software to look for?',
+        a: 'The best funeral software combines case management, family communication, billing, document automation, reporting, and secure access in one cloud-based platform. It should be designed for actual funeral operations and support both funeral homes and broader deathcare services.',
       },
     ],
   },
@@ -432,8 +436,9 @@ const FaqSection = () => {
               Frequently Asked <span>Questions</span>
             </h2>
             <p className="faq-lead">
-              Everything front-desk teams and funeral directors ask before bringing the premium
-              tablet portal experience to their funeral home.
+              Answers to the questions people ask when searching for funeral home software,
+              funeral management software, mortuary software, funeral business software,
+              and modern deathcare systems for funeral service operations.
             </p>
 
             {/* Mobile: show first quiz prominently before the rest */}

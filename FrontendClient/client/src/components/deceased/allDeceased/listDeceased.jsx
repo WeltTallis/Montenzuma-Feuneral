@@ -33,6 +33,11 @@ const GlobalFonts = createGlobalStyle`
 
 const fadeIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
 
+const slideInRight = keyframes`
+  from { opacity: 0; transform: translateX(60px); }
+  to   { opacity: 1; transform: translateX(0); }
+`;
+
 // ─── Color Variables ────────────────────────────────────────────────
 const C = {
   black: '#0a0a0a',
@@ -572,70 +577,82 @@ const MobileCardFooter = styled.div`
   justify-content: flex-end;
 `;
 
-// ─── Modal Components ───────────────────────────────────────────────
+// ─── Modal Components (side drawer) ─────────────────────────────────
 const ModalOverlay = styled.div`
   display: ${p => p.$open ? 'flex' : 'none'};
   position: fixed; 
   inset: 0; 
-  background: rgba(0,0,0,0.5); 
+  background: rgba(15, 23, 42, 0.55); 
   z-index: 1000;
-  justify-content: center; 
-  align-items: center; 
-  padding: 20px;
+  justify-content: flex-end; 
+  align-items: stretch;
+  animation: ${fadeIn} 0.2s ease-out;
 
   @media (max-width: 768px) {
     padding: 0;
-    align-items: flex-end;
+    align-items: stretch;
   }
 `;
 
 const ModalContent = styled.div`
   background: white; 
-  border-radius: 16px; 
-  width: 100%; 
-  max-width: 700px;
-  max-height: 90dvh;
-  overflow-y: auto; 
-  -webkit-overflow-scrolling: touch;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  width: 100%;
+  max-width: 560px;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35);
+  animation: ${slideInRight} 0.25s ease-out;
 
   @media (max-width: 768px) {
     max-width: 100%;
-    max-height: 90dvh;
-    border-radius: 16px 16px 0 0;
-    margin-top: auto;
-    margin-bottom: 0;
+    width: 100%;
+    border-radius: 0;
   }
 `;
 
 const ModalHeader = styled.div`
-  padding: 20px 24px; 
+  padding: 18px 24px; 
   border-bottom: 1px solid ${C.borderLight};
   display: flex; 
   justify-content: space-between; 
-  align-items: center;
+  align-items: flex-start;
   position: sticky;
   top: 0;
-  background: white;
+  background: linear-gradient(135deg, ${C.exportBtn} 0%, ${C.cNavy} 100%);
   z-index: 10;
   
   h2 { 
     font-family: 'Merriweather', serif; 
-    font-size: 18px; 
-    color: ${C.black}; 
+    font-size: 17px; 
+    color: white;
     margin: 0; 
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  p {
+    margin: 4px 0 0 0;
+    font-size: 11px;
+    color: rgba(255,255,255,0.75);
+    letter-spacing: 0.04em;
   }
 `;
 
 const ModalBody = styled.div`
-  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 24px;
 `;
 
 const ModalFooter = styled.div`
-  padding: 16px 24px; 
+  padding: 14px 24px; 
   border-top: 1px solid ${C.borderLight}; 
   display: flex; 
-  gap: 8px; 
+  gap: 10px; 
   justify-content: flex-end;
   position: sticky;
   bottom: 0;
@@ -658,6 +675,45 @@ const CloseBtn = styled.button`
   cursor: pointer; 
   line-height: 1;
   &:hover { color: ${C.black}; }
+`;
+
+const HistorySection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+`;
+
+const HistoryItem = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid ${C.borderLight};
+  border-radius: 8px;
+  background: white;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: ${C.border};
+    background: ${C.bgSection};
+  }
+
+  .h-file { flex: 1; min-width: 0; }
+  .h-name { font-size: 12.5px; font-weight: 600; color: ${C.dark}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .h-meta { font-size: 11px; color: ${C.gray}; margin-top: 3px; }
+  .h-link { font-size: 11px; color: ${C.exportBtn}; text-decoration: none; font-weight: 600; margin-top: 2px; display: inline-flex; align-items: center; gap: 4px; }
+  .h-link:hover { text-decoration: underline; color: ${C.black}; }
+`;
+
+const EmptyHistory = styled.div`
+  padding: 18px;
+  border: 1px dashed ${C.border};
+  border-radius: 8px;
+  text-align: center;
+  color: ${C.gray};
+  font-size: 12px;
+  line-height: 1.6;
 `;
 
 const SectionHead = styled.div`
@@ -1327,6 +1383,7 @@ const DeceasedListPage = () => {
         setExportStatus('Download started...');
         downloadExportBlob(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`));
         showToast('Export completed successfully!', 'success');
+        loadExportHistory();
         setTimeout(resetExportState, 1500);
         return;
       }
@@ -1395,6 +1452,7 @@ const DeceasedListPage = () => {
           cleanup();
           downloadExportBlob(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`));
           showToast('Export completed successfully!', 'success');
+          loadExportHistory();
           setTimeout(resetExportState, 1500);
           return;
         }
@@ -1458,34 +1516,56 @@ const DeceasedListPage = () => {
     return cleanup;
   };
 
-  useEffect(() => {
-    const fetchExportHistory = async () => {
-      try {
-        const tenantSlug = getTenantSlug();
-        const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
+  // ─── Export History (last 10 files) ─────────────────────────────
+  const loadExportHistory = useCallback(async () => {
+    try {
+      const tenantSlug = getTenantSlug();
+      const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
 
-        const response = await axios.get(
-          `${BASE_URL}/export-history`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'x-tenant-slug': tenantSlug,
-            },
-          }
-        );
-
-        if (response.data?.success && response.data?.data) {
-          setExportHistory(response.data.data);
+      const response = await axios.get(
+        `${BASE_URL}/export-history`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'x-tenant-slug': tenantSlug,
+          },
         }
-      } catch (err) {
-        console.error('Failed to fetch export history:', err);
-      }
-    };
+      );
 
-    if (showExport) {
-      fetchExportHistory();
+      if (response.data?.success && Array.isArray(response.data?.data)) {
+        setExportHistory(response.data.data.slice(0, 10));
+      } else {
+        setExportHistory([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch export history:', err);
+      setExportHistory([]);
     }
-  }, [showExport]);
+  }, []);
+
+  useEffect(() => {
+    if (showExport) {
+      loadExportHistory();
+    }
+  }, [showExport, loadExportHistory]);
+
+  const formatGeneratedAt = (v) => {
+    if (!v) return '—';
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    return d.toLocaleString('en-US', {
+      year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit',
+    });
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes && bytes !== 0) return '—';
+    const kb = Number(bytes) / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    return `${(kb / 1024).toFixed(2)} MB`;
+  };
+
+  const historyCount = () => (Array.isArray(exportHistory) ? exportHistory.length : 0);
 
   // ─── Calendar event data ────────────────────────────────────────
   // Build events from yearRecords (only admission dates)
@@ -1763,13 +1843,17 @@ const DeceasedListPage = () => {
           </MobileCardContainer>
         </ListCard>
 
-        {/* Export Modal */}
+        {/* Export Side Panel */}
         <ModalOverlay $open={showExport} onClick={() => !exporting && setShowExport(false)}>
           <ModalContent onClick={e => e.stopPropagation()}>
             <ModalHeader>
-              <h2>Export Data to Excel</h2>
+              <div>
+                <h2><i className="fas fa-file-export"></i> Export Data to Excel</h2>
+                <p>Generates the official deceased intake register (.xlsx)</p>
+              </div>
               <CloseBtn onClick={() => !exporting && setShowExport(false)}>&times;</CloseBtn>
             </ModalHeader>
+
             <ModalBody>
               <SectionHead $mt0><span>01</span> Select Time Range</SectionHead>
               <FormRow>
@@ -1783,44 +1867,57 @@ const DeceasedListPage = () => {
                 </FormGroup>
               </FormRow>
 
-              <SectionHead $mt4><span>02</span> Export History</SectionHead>
-              <div style={{ border: `1px solid ${C.borderLight}`, borderRadius: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                <DataTable>
-                  <thead>
-                    <tr>
-                      <th>Date Generated</th>
-                      <th>Time Range</th>
-                      <th>Format</th>
-                      <th>Status</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exportHistory.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', color: C.gray, padding: '24px' }}>
-                          No export history available.
-                        </td>
-                      </tr>
-                    ) : (
-                      exportHistory.map((h, i) => (
-                        <tr key={i}>
-                          <td>{h.date}</td>
-                          <td>{h.range}</td>
-                          <td>{h.format}</td>
-                          <td><StatusTag $success>{h.status}</StatusTag></td>
-                          <td><Btn $sm>Download</Btn></td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </DataTable>
-              </div>
+              <SectionHead $mt4>
+                <span>02</span> Export History
+                <em style={{ marginLeft: 8, opacity: 0.6 }}>limit: 10 most recent</em>
+              </SectionHead>
+              {historyCount() === 0 ? (
+                <EmptyHistory>
+                  <div style={{ fontSize: 22, opacity: 0.5, marginBottom: 6 }}><i className="fas fa-folder-open"></i></div>
+                  <div style={{ fontWeight: 600, marginBottom: 2 }}>No exports yet</div>
+                  <div>Your last 10 exported files will appear here.</div>
+                </EmptyHistory>
+              ) : (
+                <HistorySection>
+                  {exportHistory.slice(0, 10).map(h => (
+                    <HistoryItem key={h.id || h.fileName}>
+                      <StatusTag
+                        $success={h.status === 'success'}
+                        $warning={h.status !== 'success'}
+                        style={{ padding: '4px 8px', fontSize: 10 }}
+                      >
+                        {h.status === 'success' ? '✓' : '✕'}
+                      </StatusTag>
+                      <div className="h-file">
+                        <div className="h-name">
+                          <i className="fas fa-file-excel" style={{ fontSize: 11, marginRight: 5 }}></i>
+                          {h.fileName}
+                        </div>
+                        <div className="h-meta">
+                          {formatGeneratedAt(h.generatedAt)} • {h.recordCount || 0} records • {formatFileSize(h.fileSize)}
+                        </div>
+                        {h.fileUrl ? (
+                          <a className="h-link" href={h.fileUrl} target="_blank" rel="noreferrer">
+                            <i className="fas fa-download"></i> Download file
+                          </a>
+                        ) : (
+                          <span className="h-meta" style={{ color: C.gray }}>
+                            Saved to Documents via global uploader
+                          </span>
+                        )}
+                      </div>
+                    </HistoryItem>
+                  ))}
+                </HistorySection>
+              )}
             </ModalBody>
             <ModalFooter>
+              <div style={{ fontSize: 11, color: C.gray, marginRight: 'auto' }}>
+                {exporting ? 'Generating & uploading to Documents…' : 'Uploaded files are stored in Documents'}
+              </div>
               <Btn $ghost onClick={() => setShowExport(false)} disabled={exporting}>Cancel</Btn>
               <Btn $export onClick={handleExport} disabled={exporting}>
-                {exporting ? 'Exporting...' : 'Generate Export'}
+                {exporting ? 'Exporting...' : (<><i className="fas fa-file-excel"></i> Generate Export</>)}
               </Btn>
             </ModalFooter>
           </ModalContent>

@@ -62,7 +62,7 @@ export interface IExportOptions {
 }
 
 export interface IExportHistory {
-  id: number;
+  id?: number;
   tenant_slug: string;
   file_name: string;
   file_size: number;
@@ -72,6 +72,7 @@ export interface IExportHistory {
   period: string;
   status: 'success' | 'failed';
   error_message?: string;
+  file_url?: string;
 }
 
 export class ExcelExportService {
@@ -100,6 +101,7 @@ export class ExcelExportService {
         period VARCHAR(100) NOT NULL DEFAULT 'All Records',
         status ENUM('success', 'failed') NOT NULL DEFAULT 'success',
         error_message TEXT NULL,
+        file_url VARCHAR(500) NULL,
         created_at VARCHAR(255),
         INDEX idx_tenant_slug (tenant_slug),
         INDEX idx_generated_at (generated_at),
@@ -108,6 +110,18 @@ export class ExcelExportService {
     `;
     try {
       await safeTenantExecute(dbName, createTableSQL, []);
+      // Older databases may already have export_history without the file_url
+      // column — add it only when it is actually missing (the duplicate-column
+      // path on fresh tables would otherwise spam the error log on every call).
+      const cols: any[] = await safeTenantQuery(
+        dbName,
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'export_history'`
+      );
+      const hasFileUrl = cols.some((r) => String(r.COLUMN_NAME).toLowerCase() === 'file_url');
+      if (!hasFileUrl) {
+        await safeTenantExecute(dbName, 'ALTER TABLE export_history ADD COLUMN file_url VARCHAR(500) NULL', []);
+      }
     } catch (error: any) {
       console.error(` Failed to create export_history table for DB ${dbName}:`, error.message);
       throw error;
@@ -125,8 +139,8 @@ export class ExcelExportService {
 
     const insertSQL = `
       INSERT INTO export_history 
-        (tenant_slug, file_name, file_size, record_count, generated_at, generated_by, period, status, error_message)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (tenant_slug, file_name, file_size, record_count, generated_at, generated_by, period, status, error_message, file_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const result = await safeTenantExecute(dbName, insertSQL, [
@@ -138,7 +152,8 @@ export class ExcelExportService {
       history.generated_by,
       history.period,
       history.status,
-      history.error_message || null
+      history.error_message || null,
+      history.file_url || null
     ]);
 
     return result.insertId;
