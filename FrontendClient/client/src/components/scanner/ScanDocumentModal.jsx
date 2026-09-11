@@ -16,6 +16,10 @@ const C = {
 };
 
 const spin = keyframes`from { transform: rotate(0deg); } to { transform: rotate(360deg); }`;
+const SpinWrap = styled.span`
+  display: inline-flex;
+  animation: ${spin} 0.8s linear infinite;
+`;
 const popIn = keyframes`from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); }`;
 
 const Overlay = styled.div`
@@ -280,7 +284,7 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
 
         {phase === 'probe' && (
           <StatusBox $kind="info">
-            <Loader2 size={16} className="spinner" style={{ animation: `${spin} 0.8s linear infinite` }} />
+            <SpinWrap><Loader2 size={16} /></SpinWrap>
             Checking for the local Scanner Bridge…
           </StatusBox>
         )}
@@ -337,7 +341,7 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
         {(phase === 'scanning' || phase === 'uploading') && (
           <>
             <StatusBox $kind="info">
-              <Loader2 size={16} className="spinner" style={{ animation: `${spin} 0.8s linear infinite` }} />
+              <SpinWrap><Loader2 size={16} /></SpinWrap>
               {message}
             </StatusBox>
             <ProgressBar $w={progress}><div /></ProgressBar>
