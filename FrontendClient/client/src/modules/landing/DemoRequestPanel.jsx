@@ -66,37 +66,39 @@ const DemoRequestPanel = () => {
           transform-origin: right center;
           background: #0A0A0A;
           color: #C8B292;
-          padding: 1.1rem 1.5rem;
-          border-radius: 8px 0 0 8px;
-          border: 1px solid rgba(169, 143, 110, 0.3);
+          padding: 1.3rem 1.8rem; /* Increased padding for size */
+          border-radius: 10px 0 0 10px;
+          border: 1px solid rgba(169, 143, 110, 0.5);
           border-right: none;
           cursor: pointer;
-          z-index: 50;
-          box-shadow: -4px 0 15px rgba(0, 0, 0, 0.2);
+          z-index: 60;
+          box-shadow: -8px 0 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(169, 143, 110, 0.2); /* Added glow */
           transition: all 0.3s ease;
           display: flex;
           align-items: center;
-          gap: 0.75rem;
-          font-weight: 600;
+          gap: 0.8rem;
+          font-weight: 700;
           letter-spacing: 0.15em;
           text-transform: uppercase;
-          font-size: 0.75rem;
+          font-size: 0.8rem;
           font-family: 'Inter', sans-serif;
+          margin-right: 15px; /* Pushed left off the edge to be visible */
         }
         .drp-trigger:hover {
           background: #A98F6E;
           color: #0A0A0A;
-          padding-right: 2rem;
+          padding-right: 2.2rem;
+          box-shadow: -8px 0 25px rgba(0, 0, 0, 0.5), 0 0 25px rgba(169, 143, 110, 0.4);
         }
         .drp-trigger i {
           transform: rotate(-90deg);
-          font-size: 1rem;
+          font-size: 1.1rem;
         }
 
         /* Pulsing dot on the trigger */
         .drp-dot {
-          width: 0.5rem;
-          height: 0.5rem;
+          width: 0.6rem;
+          height: 0.6rem;
           background: #A98F6E;
           border-radius: 50%;
           animation: drp-pulse 2s infinite;
@@ -106,6 +108,54 @@ const DemoRequestPanel = () => {
           0%   { box-shadow: 0 0 0 0 rgba(169, 143, 110, 0.7); }
           70%  { box-shadow: 0 0 0 8px rgba(169, 143, 110, 0); }
           100% { box-shadow: 0 0 0 0 rgba(169, 143, 110, 0); }
+        }
+
+        /* --- Backdrop Overlay --- */
+        .drp-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(4px);
+          z-index: 65;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.4s ease;
+        }
+        .drp-backdrop.show {
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        /* --- Floating Close Button --- */
+        .drp-close-fixed {
+          position: fixed;
+          top: 25px;
+          right: 25px;
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: #0A0A0A;
+          border: 1px solid rgba(169, 143, 110, 0.5);
+          color: #A98F6E;
+          font-size: 1.3rem;
+          cursor: pointer;
+          z-index: 80;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+          opacity: 0;
+          pointer-events: none;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .drp-close-fixed.show {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .drp-close-fixed:hover {
+          background: #A98F6E;
+          color: #0A0A0A;
+          transform: rotate(90deg);
         }
 
         /* --- Slide-out Panel --- */
@@ -119,7 +169,7 @@ const DemoRequestPanel = () => {
           background-color: #0A0A0A;
           transform: translateX(100%);
           transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-          z-index: 60;
+          z-index: 70; /* Sits above backdrop */
           display: flex;
           box-shadow: -20px 0 50px rgba(0, 0, 0, 0.3);
           font-family: 'Inter', sans-serif;
@@ -159,7 +209,7 @@ const DemoRequestPanel = () => {
           text-transform: uppercase;
           backdrop-filter: blur(4px);
         }
-      .drp-title {
+        .drp-title {
           font-family: 'Fraunces', serif;
           font-size: 2.25rem;
           line-height: 1.25;
@@ -228,7 +278,7 @@ const DemoRequestPanel = () => {
           color: #FAF8F4;
           margin: 0.25rem 0 0;
         }
-        .drp-close {
+        .drp-close { /* Keeping original close style hidden in header if needed, but floating is primary */
           background: none;
           border: none;
           color: #8A8A8A;
@@ -237,6 +287,7 @@ const DemoRequestPanel = () => {
           padding: 0.25rem;
           line-height: 1;
           transition: color 0.3s;
+          display: none; 
         }
         .drp-close:hover { color: #ffffff; }
 
@@ -425,6 +476,23 @@ const DemoRequestPanel = () => {
         <i className="fas fa-arrow-left" aria-hidden="true" />
       </button>
 
+      {/* Backdrop Overlay (Click to close) */}
+      <div 
+        className={`drp-backdrop ${open ? 'show' : ''}`} 
+        onClick={toggle} 
+        aria-hidden="true" 
+      />
+
+      {/* Floating Close Button */}
+      <button 
+        type="button" 
+        className={`drp-close-fixed ${open ? 'show' : ''}`} 
+        onClick={toggle} 
+        aria-label="Close panel"
+      >
+        <i className="fas fa-times" aria-hidden="true" />
+      </button>
+
       {/* The Panel Itself (Split Layout) */}
       <div className={`drp-panel ${open ? 'active' : ''}`} role="dialog" aria-modal="true" aria-label="Request Free Demo">
 
@@ -463,19 +531,8 @@ const DemoRequestPanel = () => {
         {/* Right Side: Form */}
         <div className="drp-form-side">
 
-          {/* Close Button */}
-          <div className="drp-header">
-            <div>
-              <p className="drp-header-label">Get Started</p>
-              <h3 className="drp-header-title">Account Setup</h3>
-            </div>
-            <button type="button" className="drp-close" onClick={toggle} aria-label="Close">
-              <i className="fas fa-times" aria-hidden="true" />
-            </button>
-          </div>
-
           {/* Form Content */}
-          <div className="drp-body">
+          <div className="drp-body" style={{ paddingTop: '5rem' }}> {/* Added top padding to account for floating close button */}
             <form className="drp-form" onSubmit={handleSubmit}>
               <div>
                 <label className="drp-label" htmlFor="drp-home-name">Funeral Home Name</label>
