@@ -1,10 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Download, X, Smartphone } from '../../utils/icons/icons';
+
+// ─── Install prompt settings ─────────────────────────────────────────
+// The user's choice is stored in a COOKIE (not sessionStorage/localStorage):
+// logout clears the auth storage but NOT cookies, so once the user accepts
+// (or dismisses) the banner it stays quiet — it must not pop up again every
+// time they land on the page or log back in.
+const COOKIE_NAME = 'pwa-install-choice';      // 'accepted' | 'dismissed'
+const ACCEPT_MAX_AGE = 60 * 60 * 24 * 365;     // accepted  → 1 year (effectively forever)
+const DISMISS_MAX_AGE = 60 * 60 * 24 * 30;     // "Not now" → 30 days
+const SHOW_DELAY_MS = 60 * 1000;               // appear ~1 minute after landing, not instantly
+
+const getCookie = (name) => {
+    if (typeof document === 'undefined') return null;
+    const match = document.cookie
+        .split('; ')
+        .find((row) => row.startsWith(`${name}=`));
+    return match ? decodeURIComponent(match.split('=').slice(1).join('=')) : null;
+};
+
+const setCookie = (name, value, maxAgeSeconds) => {
+    try {
+        document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax`;
+    } catch { /* cookies unavailable (private mode etc.) — banner just behaves as before */ }
+};
 
 const InstallPrompt = () => {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showPrompt, setShowPrompt] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
+    const delayTimerRef = useRef(null);
 
     useEffect(() => {
         // Check if already installed (standalone mode)
@@ -14,28 +39,42 @@ const InstallPrompt = () => {
 
         setIsStandalone(alreadyInstalled);
 
-        // Don't show if already installed or dismissed this session
-        if (alreadyInstalled || sessionStorage.getItem('pwa-install-dismissed')) {
+        const storedChoice = getCookie(COOKIE_NAME);
+
+        // Don't show if already installed, or the user already accepted /
+        // dismissed the prompt (remembered in a cookie — survives logout).
+        if (alreadyInstalled || storedChoice) {
             return;
         }
 
         const handler = (e) => {
             e.preventDefault();
             setDeferredPrompt(e);
-            setShowPrompt(true);
+            // Do NOT pop up immediately on landing — wait ~1 minute so it is
+            // not in the user's face the second the page loads.
+            if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
+            delayTimerRef.current = setTimeout(() => {
+                setShowPrompt(true);
+            }, SHOW_DELAY_MS);
         };
 
         window.addEventListener('beforeinstallprompt', handler);
 
         // Listen for app installed event
-        window.addEventListener('appinstalled', () => {
+        const installedHandler = () => {
             setIsStandalone(true);
             setShowPrompt(false);
             setDeferredPrompt(null);
-        });
+            if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
+            // Installed → never show the banner again.
+            setCookie(COOKIE_NAME, 'accepted', ACCEPT_MAX_AGE);
+        };
+        window.addEventListener('appinstalled', installedHandler);
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handler);
+            window.removeEventListener('appinstalled', installedHandler);
+            if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
         };
     }, []);
 
@@ -46,12 +85,22 @@ const InstallPrompt = () => {
             console.log(`User ${outcome === 'accepted' ? 'accepted' : 'dismissed'} the install prompt`);
             setDeferredPrompt(null);
             setShowPrompt(false);
+            if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
+            if (outcome === 'accepted') {
+                // User accepted the install → that should be it, never again.
+                setCookie(COOKIE_NAME, 'accepted', ACCEPT_MAX_AGE);
+            } else {
+                // Backed out of the native dialog → quiet for 30 days.
+                setCookie(COOKIE_NAME, 'dismissed', DISMISS_MAX_AGE);
+            }
         }
     };
 
     const handleDismiss = () => {
         setShowPrompt(false);
-        sessionStorage.setItem('pwa-install-dismissed', 'true');
+        if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
+        // Dismissed → stay quiet for 30 days (survives logout & refreshes).
+        setCookie(COOKIE_NAME, 'dismissed', DISMISS_MAX_AGE);
     };
 
     // Don't render if already installed or prompt should not show
