@@ -1252,7 +1252,7 @@ const DeceasedRegistrationForm = () => {
                   <GreetingWelcome>Welcome to</GreetingWelcome>
                   <TextSlider>
                     <TextTrack>
-                      <Phrase>{tenantName || 'Welcome'}</Phrase>
+                      <Phrase>{tenantName}</Phrase>
                       <Phrase>Sorry for your loss</Phrase>
                       <Phrase>With deepest sympathy</Phrase>
                       <Phrase>May they rest in peace</Phrase>
@@ -1265,15 +1265,15 @@ const DeceasedRegistrationForm = () => {
                   <SectionLabel>Facility Information</SectionLabel>
                   <ContactItem>
                     <PinIcon />
-                    {displayAddress || fallback.address || fallback.location}
+                    {displayAddress}
                   </ContactItem>
                   <ContactItem>
                     <MailIcon />
-                    {displayEmail || fallback.email}
+                    {displayEmail}
                   </ContactItem>
                   <ContactItem>
                     <PhoneIcon />
-                    {displayPhone || fallback.phone}
+                    {displayPhone}
                   </ContactItem>
                 </FacilityInfo>
               </ColLeft>
@@ -1767,7 +1767,7 @@ const DeceasedRegistrationForm = () => {
 
           {/* Timestamp strip — the official generation record, kept ABOVE the new footer */}
           <RecordInfoStrip>
-            {tenantName || 'This Funeral Home'} — Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+            {tenantName} — Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
             <br />- Official Intake Record -
           </RecordInfoStrip>
 
@@ -1789,7 +1789,7 @@ const DeceasedRegistrationForm = () => {
             </FooterValues>
 
             <FooterBar>
-              <span>© {new Date().getFullYear()} {tenantName || 'This Funeral Home'}</span>
+              <span>© {new Date().getFullYear()} {tenantName}</span>
               <span>Official Intake Record</span>
             </FooterBar>
           </ElegantFooter>

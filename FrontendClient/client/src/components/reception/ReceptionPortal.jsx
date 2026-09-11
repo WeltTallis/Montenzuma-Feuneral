@@ -436,7 +436,7 @@ export default function App() {
             </BackBtn>
 
             <Wordmark>
-              <Name>{tenantName || "Reception Portal"}</Name>
+              <Name>{tenantName}</Name>
               <div
                 style={{
                   width: 128,

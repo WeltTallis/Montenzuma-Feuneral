@@ -3,15 +3,15 @@
 // Scanner Bridge — release packager.
 //
 //  1. Builds dist/agent.js (via scripts/build.mjs)
-//  2. Assembles release/restpoint-Scanner-Bridge-app/
+//  2. Assembles release/restpoint-scanner-bridge-app/
 //       agent.js                          — the executable (self-contained)
 //       Install-Restpoint-Scanner-Bridge.bat — double-click: install + autostart
 //       Start-Restpoint-Scanner-Bridge.bat   — double-click: just run now
 //       Uninstall-Restpoint-Scanner-Bridge.bat
 //       install.sh / start.sh / uninstall.sh — Linux/macOS equivalents
 //       README-FIRST.txt
-//  3. Zips the folder → release/restpoint-Scanner-Bridge-app.zip
-//     (host this at  https://<domain>/downloads/restpoint-Scanner-Bridge-app)
+//  3. Zips the folder → release/restpoint-scanner-bridge-app.zip
+//     (host this at  https://<domain>/downloads/restpoint-scanner-bridge-app.zip)
 // ─────────────────────────────────────────────────────────────────────────────
 import { build } from 'esbuild';
 import { createRequire } from 'node:module';
@@ -24,8 +24,8 @@ const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const releaseDir = path.join(root, 'release');
-const appDir = path.join(releaseDir, 'restpoint-Scanner-Bridge-app');
-const zipPath = path.join(releaseDir, 'restpoint-Scanner-Bridge-app.zip');
+const appDir = path.join(releaseDir, 'restpoint-scanner-bridge-app');
+const zipPath = path.join(releaseDir, 'restpoint-scanner-bridge-app.zip');
 
 // ── 1. build the executable ─────────────────────────────────────────────────
 console.log('[package] building dist/agent.js …');
@@ -290,8 +290,8 @@ const files = [
 for (const [name, data] of files) fs.writeFileSync(path.join(appDir, name), data);
 console.log(`[package]   app folder: ${appDir}`);
 
-const zip = makeZip(files.map(([name, data]) => ({ name: `restpoint-Scanner-Bridge-app/${name}`, data })));
+const zip = makeZip(files.map(([name, data]) => ({ name: `restpoint-scanner-bridge-app/${name}`, data })));
 fs.mkdirSync(releaseDir, { recursive: true });
 fs.writeFileSync(zipPath, zip);
 console.log(`[package]   zip: ${zipPath} (${(zip.length / 1024).toFixed(1)} KB)`);
-console.log('[package] done - host the zip at  https://<domain>/downloads/restpoint-Scanner-Bridge-app');
+console.log('[package] done - host the zip at  https://<domain>/downloads/restpoint-scanner-bridge-app.zip');

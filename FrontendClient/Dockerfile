@@ -54,9 +54,23 @@ server {
     root  /usr/share/nginx/html;
     index index.html;
 
-    # SPA fallback: any route that is not a static file returns index.html
+                # SPA fallback: any route that is not a static file returns index.html
     location / {
         try_files $uri $uri/ /index.html;
+    }
+
+    # Scanner Bridge app download.
+    # The zip ships as /downloads/restpoint-scanner-bridge-app.zip — serve it as a
+    # binary download (force Content-Disposition so the browser downloads instead
+    # of trying to render it, which is what caused the old "/downloads/..." link to
+    # fall through the SPA fallback and return the home page).
+    location ^~ /downloads/ {
+        alias /usr/share/nginx/html/downloads/;
+        autoindex off;
+        types { }
+        default_type application/zip;
+        add_header Content-Disposition "attachment" always;
+        add_header Cache-Control "public, max-age=86400" always;
     }
 
     # Long-lived cache for hashed/static assets (js/css/images/fonts)

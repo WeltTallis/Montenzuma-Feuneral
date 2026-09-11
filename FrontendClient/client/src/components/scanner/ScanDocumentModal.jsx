@@ -322,7 +322,7 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
             <div style={{ background: C.bgField, border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: '12px 14px', marginTop: 10, fontSize: 13, color: C.dark }}>
               <strong>Install Scanner Bridge</strong> to scan straight from Restpoint
               (no HP software or scanner buttons needed). Download the app at
-              <code>{`${typeof window !== 'undefined' && window.location ? window.location.origin : 'https://restpoint.co.ke'}/downloads/restpoint-Scanner-Bridge-app`}</code>
+                         <code>{`${typeof window !== 'undefined' && window.location ? window.location.origin : 'https://restpoint.co.ke'}/downloads/restpoint-scanner-bridge-app.zip`}</code>
               and run <code>node dist/agent.js</code> on this computer.
             </div>
             {metaFields}

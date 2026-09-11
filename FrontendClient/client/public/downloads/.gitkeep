@@ -1,0 +1,8 @@
+# Scanner Bridge app download zip lives here at runtime.
+# The file itself (restpoint-scanner-bridge-app.zip) is produced by
+# `npm run package` in services/scanner-bridge and must be placed here by the
+# operator (volume mount / deploy step), e.g.:
+#   cp services/scanner-bridge/release/restpoint-scanner-bridge-app.zip \
+#      FrontendClient/client/public/downloads/
+# This .gitkeep keeps the directory in the image so /downloads/ resolves to a
+# clean 404 (served by nginx) instead of falling through to the SPA index.

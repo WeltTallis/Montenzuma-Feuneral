@@ -1,4 +1,4 @@
-﻿import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
+import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 import { useTenantStore } from '../../../modules/seo/useTenantStore';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
@@ -19,7 +19,7 @@ import {
   AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin
 } from '../../../utils/icons/icons';
 
-// ─── Color Palette ──────────────────────────────────
+// --- Color Palette ----------------------------------
 const COLORS = {
   ink: '#1A1A1A',
   bone: '#FAF8F4',
@@ -107,7 +107,7 @@ const ContentWrapper = styled.div`
   z-index: 1;
 `;
 
-/* ─── Natural Borderless Header ── */
+/* --- Natural Borderless Header -- */
 const HeaderWrapper = styled.header`
   padding: 2.5rem 3rem;
   position: relative;
@@ -752,7 +752,7 @@ const ClearSigButton = styled.button`
   }
 `;
 
-/* ─── Woodland Elegance Footer ─────────────────────────────── */
+/* --- Woodland Elegance Footer ------------------------------- */
 const ElegantFooter = styled.footer`
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Karla:wght@400;500;700&display=swap');
 
@@ -874,7 +874,7 @@ const FooterBar = styled.div`
   }
 `;
 
-/* Timestamp strip — sits ABOVE the elegant footer, keeping the
+/* Timestamp strip � sits ABOVE the elegant footer, keeping the
    official generation record visible without cluttering it. */
 const RecordInfoStrip = styled.div`
   font-size: 0.65rem;
@@ -893,7 +893,7 @@ const RecordInfoStrip = styled.div`
   }
 `;
 
-// Contact glyphs — new brand icon set (register/svg/{location, call, mail}.svg),
+// Contact glyphs � new brand icon set (register/svg/{location, call, mail}.svg),
 // inlined with fill="currentColor" so they inherit the brass color from ContactItem CSS.
 const PinIcon = () => (
   <svg viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -920,7 +920,7 @@ const MailIcon = () => (
 );
 
 const formatHeaderDate = (value) => {
-  if (!value) return '—';
+  if (!value) return '�';
   const raw = String(value);
   const date = new Date(raw.length <= 10 ? `${raw}T00:00:00` : raw);
   if (Number.isNaN(date.getTime())) return raw;
@@ -964,7 +964,7 @@ const DeceasedReleaseForm = () => {
 
   // Resolve the EXACT tenant: URL slug (set by the receptionist portal link
   // /tenant/<slug>/release-form/new) wins, then the stored slug. Never fall
-  // back to 'default' — that would submit release records under the wrong tenant.
+  // back to 'default' � that would submit release records under the wrong tenant.
   const getTenantSlug = () => {
     const exact = urlTenantSlug && urlTenantSlug !== 'default' && urlTenantSlug !== 'dashboard'
       && urlTenantSlug !== 'undefined' && urlTenantSlug !== 'null'
@@ -1410,7 +1410,7 @@ const DeceasedReleaseForm = () => {
       sigPadRef1.current?.clear();
       setErrors({});
 
-      // NOTE: no auto-redirect here — after a successful release the record
+      // NOTE: no auto-redirect here � after a successful release the record
       // remains on this page instead of bouncing back to the all-deceased list.
 
     } catch (error) {
@@ -1468,8 +1468,8 @@ const DeceasedReleaseForm = () => {
     );
   }
 
-  // ── Success view ──
-  // After a successful release the vigil page takes over — a candle lit in
+  // -- Success view --
+  // After a successful release the vigil page takes over � a candle lit in
   // the deceased's memory. "Done" returns the user to the portal dashboard.
   if (showSuccess) {
     const rec = releasedRecord || {};
@@ -1507,7 +1507,7 @@ const DeceasedReleaseForm = () => {
         <Watermark>OFFICIAL RECORD</Watermark>
 
         <ContentWrapper>
-          {/* ──── NATURAL BORDERLESS HEADER ──── */}
+          {/* ---- NATURAL BORDERLESS HEADER ---- */}
           <HeaderWrapper>
             <HeaderMain>
 
@@ -1517,7 +1517,7 @@ const DeceasedReleaseForm = () => {
                   <GreetingWelcome>Welcome to</GreetingWelcome>
                   <TextSlider>
                     <TextTrack>
-                      <Phrase>{tenantName || 'Welcome'}</Phrase>
+                      <Phrase>{tenantName}</Phrase>
                       <Phrase>Sorry for your loss</Phrase>
                       <Phrase>With deepest sympathy</Phrase>
                       <Phrase>May they rest in peace</Phrase>
@@ -1530,15 +1530,15 @@ const DeceasedReleaseForm = () => {
                   <SectionLabel>Facility Information</SectionLabel>
                   <ContactItem>
                     <PinIcon />
-                    {displayAddress || fallback.address || fallback.location}
+                    {displayAddress}
                   </ContactItem>
                   <ContactItem>
                     <MailIcon />
-                    {displayEmail || fallback.email}
+                    {displayEmail}
                   </ContactItem>
                   <ContactItem>
                     <PhoneIcon />
-                    {displayPhone || fallback.phone}
+                    {displayPhone}
                   </ContactItem>
                 </FacilityInfo>
               </ColLeft>
@@ -1555,7 +1555,7 @@ const DeceasedReleaseForm = () => {
                     {formData.admission_number || 'AWAITING-ID'}
                   </AdmissionNumber>
                   <Barcode value={formData.admission_number} />
-                  <DeceasedName>{formData.full_name || '—'}</DeceasedName>
+                  <DeceasedName>{formData.full_name || '�'}</DeceasedName>
                 </VerificationBlock>
               </ColRight>
 
@@ -2063,8 +2063,8 @@ const DeceasedReleaseForm = () => {
                       <StampWrapper>
                         <OfficialStamp
                           tenantName={tenantName}
-                          tenantPhone={displayPhone || fallback.phone}
-                          tenantLocation={displayLocation || fallback.location}
+                          tenantPhone={displayPhone}
+                          tenantLocation={displayLocation}
                           recordLabel="OFFICIAL RELEASE RECORD"
                         />
                       </StampWrapper>
@@ -2100,13 +2100,13 @@ const DeceasedReleaseForm = () => {
             </form>
           </FormBody>
 
-          {/* Timestamp strip — the official generation record, kept ABOVE the new footer */}
+          {/* Timestamp strip � the official generation record, kept ABOVE the new footer */}
           <RecordInfoStrip>
-            {tenantName || 'This Funeral Home'} — Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+            {tenantName} � Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
             <br />- Official Release Record -
           </RecordInfoStrip>
 
-          {/* Footer — Woodland Elegance */}
+          {/* Footer � Woodland Elegance */}
           <ElegantFooter>
             <LeafMark>
               <svg viewBox="0 0 24 24" fill="none" stroke="#EDE9DB" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="21" height="21">
@@ -2118,13 +2118,13 @@ const DeceasedReleaseForm = () => {
             <FooterTagline>Received with dignity. Cared for with respect. Remembered with love.</FooterTagline>
 
             <FooterValues>
-              <FooterValueLabel>Dignity</FooterValueLabel><FooterValueDot>·</FooterValueDot>
-              <FooterValueLabel>Care</FooterValueLabel><FooterValueDot>·</FooterValueDot>
+              <FooterValueLabel>Dignity</FooterValueLabel><FooterValueDot>�</FooterValueDot>
+              <FooterValueLabel>Care</FooterValueLabel><FooterValueDot>�</FooterValueDot>
               <FooterValueLabel>Respect</FooterValueLabel>
             </FooterValues>
 
             <FooterBar>
-              <span>© {new Date().getFullYear()} {tenantName || 'This Funeral Home'}</span>
+              <span>� {new Date().getFullYear()} {tenantName}</span>
               <span>Official Release Record</span>
             </FooterBar>
           </ElegantFooter>
@@ -2135,3 +2135,4 @@ const DeceasedReleaseForm = () => {
 };
 
 export default DeceasedReleaseForm;
+

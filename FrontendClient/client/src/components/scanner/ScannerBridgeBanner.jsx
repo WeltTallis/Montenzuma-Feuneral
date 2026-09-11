@@ -7,15 +7,15 @@ const DISMISS_KEY = 'restpoint.scannerBridgeDismissed';
 const DL_URL_KEY = 'restpoint.scannerBridgeDownloadUrl';
 
 // Download page for the Scanner Bridge app — hosted at
-//   https://<domain>/downloads/restpoint-Scanner-Bridge-app
+//   https://<domain>/downloads/restpoint-scanner-bridge-app.zip
 const defaultDownloadUrl = () => {
   try {
     const custom = localStorage.getItem(DL_URL_KEY);
     if (custom) return custom;
     const origin = typeof window !== 'undefined' && window.location ? window.location.origin : 'https://restpoint.co.ke';
-    return `${origin}/downloads/restpoint-Scanner-Bridge-app`;
+    return `${origin}/downloads/restpoint-scanner-bridge-app.zip`;
   } catch {
-    return 'https://restpoint.co.ke/downloads/restpoint-Scanner-Bridge-app';
+    return 'https://restpoint.co.ke/downloads/restpoint-scanner-bridge-app.zip';
   }
 };
 
