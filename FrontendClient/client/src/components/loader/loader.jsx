@@ -59,8 +59,11 @@ const Loader = ({
     right: 0,
     bottom: 0,
     backgroundColor: overlay ? "rgba(249, 250, 251, 0.6)" : "transparent",
-    backdropFilter: overlay ? "blur(6px)" : "none",
-    WebkitBackdropFilter: overlay ? "blur(6px)" : "none",
+
+
+    backdropFilter: "none",
+WebkitBackdropFilter: "none",
+   
     fontFamily: "'Space Grotesk', 'Segoe UI', sans-serif",
     ...style,
   };

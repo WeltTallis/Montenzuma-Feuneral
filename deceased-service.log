@@ -1,0 +1,25 @@
+◇ injected env (35) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+Deceased service running on 5003
+[SERVER] Excel export worker initialized
+{"level":30,"timestamp":"2026-09-11T00:39:16.038Z","pid":47404,"hostname":"DESKTOP-LQQVFI5","msg":"[ExcelExport] Queue initialized successfully"}
+{"level":30,"timestamp":"2026-09-11T00:39:16.057Z","pid":47404,"hostname":"DESKTOP-LQQVFI5","msg":"[ExcelExportWorker] Worker created successfully"}
+PDF Worker started
+{"level":30,"timestamp":"2026-09-11T00:39:16.362Z","pid":47404,"hostname":"DESKTOP-LQQVFI5","msg":"[PDFQueue] Queue initialized successfully"}
+[DECEASED] POST /export-excel - Tenant: monezuma-monalisa-feuneral-home-nairobi
+{"level":"info","msg":"Resolving database for slug","data":{"slug":"monezuma-monalisa-feuneral-home-nairobi"},"ts":"2026-09-11T00:53:21.413Z"}
+{"level":"info","msg":"Root database pool created (tenant_tracking)","ts":"2026-09-11T00:53:21.422Z"}
+{"level":"warn","msg":"No active database found for tenant","data":{"tenantSlug":"monezuma-monalisa-feuneral-home-nairobi"},"ts":"2026-09-11T00:53:21.441Z"}
+{"level":"info","msg":"Connected to tenant database","data":{"dbName":"monezuma-monalisa-feuneral-home"},"ts":"2026-09-11T00:53:21.449Z"}
+[DECEASED] POST /export-excel
+[DECEASED] POST /export-excel - Tenant: monezuma-monalisa-feuneral-home-nairobi
+[DECEASED] POST /export-excel
+{"level":30,"timestamp":"2026-09-11T00:56:07.498Z","pid":47404,"hostname":"DESKTOP-LQQVFI5","message":"Styled Excel export generated successfully: 1 records"}
+{"level":"info","msg":"Pool cleanup completed","data":{"removed":1,"remaining":1},"ts":"2026-09-11T00:58:21.476Z"}
+[DECEASED] POST /deceased/export-excel - Tenant: monezuma-monalisa-feuneral-home-nairobi
+{"level":"info","msg":"Resolving database for slug","data":{"slug":"monezuma-monalisa-feuneral-home-nairobi"},"ts":"2026-09-11T00:58:29.536Z"}
+{"level":"warn","msg":"No active database found for tenant","data":{"tenantSlug":"monezuma-monalisa-feuneral-home-nairobi"},"ts":"2026-09-11T00:58:29.539Z"}
+[DECEASED] POST /deceased/export-excel
+{"level":30,"timestamp":"2026-09-11T00:58:29.569Z","pid":47404,"hostname":"DESKTOP-LQQVFI5","message":"Styled Excel export generated successfully: 1 records"}
+{"level":"info","msg":"Pool cleanup completed","data":{"removed":1,"remaining":1},"ts":"2026-09-11T01:04:21.526Z"}

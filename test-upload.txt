@@ -1,0 +1,2 @@
+RestPoint document upload test file - 2026
+This is a test document to verify the upload endpoint works.

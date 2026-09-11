@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memorial Document Viewer</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          blue: { DEFAULT: '#00296B', light: '#EFF6FF' },
+          green: { DEFAULT: '#132A13', light: '#E8F5E9' }
+        }
+      }
+    }
+  }
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --bg: #ffffff;
+    --canvas-bg: #f8f9fa;
+    --card: #ffffff;
+    --fg: #1f2937;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --soft: #f3f4f6;
+    --blue: #00296B;
+    --blue-bg: #EFF6FF;
+    --green: #132A13;
+    --green-bg: #E8F5E9;
+  }
+  .dark {
+    --bg: #0f1115;
+    --canvas-bg: #0f1115;
+    --card: #16181d;
+    --fg: #f3f4f6;
+    --muted: #9ca3af;
+    --border: #2d3139;
+    --soft: #1a1d23;
+  }
+  * { font-family: 'Manrope', sans-serif; -webkit-font-smoothing: antialiased; }
+  .serif { font-family: 'Cormorant Garamond', serif; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    height: 100vh;
+    overflow: hidden;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+  .dark ::-webkit-scrollbar-thumb { background: #3f4451; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  .doc-item {
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+    position: relative;
+  }
+  .doc-item:hover {
+    background: var(--green-bg);
+    border-left-color: var(--green);
+  }
+  .dark .doc-item:hover {
+    background: rgba(19, 42, 19, 0.2);
+  }
+  .doc-item.active {
+    background: var(--blue-bg);
+    border-left-color: var(--blue);
+  }
+  .dark .doc-item.active {
+    background: rgba(0, 41, 107, 0.2);
+  }
+  .doc-item.active::after {
+    content: '';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    background: var(--blue);
+    border-radius: 50%;
+  }
+
+  .tool-btn { transition: all 0.18s ease; color: var(--muted); }
+  .tool-btn:hover { background: var(--soft); color: var(--blue); }
+  .tool-btn:active { transform: scale(0.95); }
+  .tool-btn.disabled { opacity: 0.35; pointer-events: none; }
+
+  .primary-btn {
+    background: #00296B;
+    color: #ffffff;
+    transition: all 0.2s ease;
+  }
+  .primary-btn:hover { background: #001f50; }
+  .primary-btn:active { transform: scale(0.98); }
+
+  #pdfCanvas {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
+    background: white;
+    transition: opacity 0.3s ease;
+    border-radius: 2px;
+  }
+
+  #imageViewer {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
+    display: none;
+    border-radius: 2px;
+    max-width: none;
+  }
+
+  .thumbnail {
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    overflow: hidden;
+    background: white;
+    padding: 4px;
+  }
+  .thumbnail:hover {
+    border-color: var(--green);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  .thumbnail.active {
+    border-color: var(--blue);
+    box-shadow: 0 4px 12px rgba(0, 41, 107, 0.2);
+  }
+
+  .fade-in { animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .canvas-fade { animation: canvasFade 0.4s ease; }
+  @keyframes canvasFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+  }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--border);
+    border-top-color: #00296B;
+    border-right-color: #132A13;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .page-input { -moz-appearance: textfield; }
+  .page-input::-webkit-outer-spin-button,
+  .page-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  details summary::-webkit-details-marker { display: none; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+  }
+  .chip.blue { background: var(--blue-bg); color: var(--blue); }
+  .chip.green { background: var(--green-bg); color: var(--green); }
+  .dark .chip.blue { background: rgba(0,41,107,0.25); color: #7ea6d6; }
+  .dark .chip.green { background: rgba(19,42,19,0.3); color: #7d9a7d; }
+
+  .shell-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+    color: var(--fg);
+    font-size: 13px;
+    outline: none;
+    transition: border 0.15s ease;
+  }
+  .shell-input:focus { border-color: var(--blue); }
+
+  .unsupported-icon {
+    width: 84px; height: 84px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--blue-bg);
+    color: var(--blue);
+    font-size: 30px;
+  }
+</style>
+</head>
+<body>
+<div class="flex flex-col h-screen">
+
+    <!-- TOP DOC INFO BAR -->
+    <header class="bg-white dark:bg-[#0f1115] border-b border-gray-200 dark:border-[#2d3139] flex-shrink-0 px-6 py-3 flex items-center justify-between flex-wrap gap-y-2">
+      <div class="flex items-center gap-6 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+        <span class="flex items-center gap-2"><i class="fas fa-file-pdf text-[#00296B]"></i><span id="docFileName" class="font-semibold text-gray-900 dark:text-gray-100">—</span></span>
+        <span class="flex items-center gap-2"><i class="far fa-calendar text-[#132A13]"></i><span id="docUploadedAt">—</span></span>
+        <span class="flex items-center gap-2"><i class="far fa-folder text-[#00296B]"></i><span id="docCategory">—</span></span>
+        <span id="docMetaExtra" class="flex items-center gap-2 hidden"><i class="far fa-clock text-[#132A13]"></i><span id="docSizeText">—</span></span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="sourceBadge" class="badge bg-[#E8F5E9] text-[#132A13]">From Backend</span>
+        <span id="confidentialBadge" class="badge bg-[#EFF6FF] text-[#00296B]">Confidential</span>
+        <button id="themeToggle" class="tool-btn w-9 h-9 rounded-md flex items-center justify-center ml-2">
+          <i class="fas fa-moon text-sm dark:hidden"></i>
+          <i class="fas fa-sun text-sm hidden dark:block"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN LAYOUT -->
+    <div class="flex flex-1 overflow-hidden">
+
+      <!-- LEFT: Documents -->
+      <aside class="w-72 bg-white dark:bg-[#0f1115] border-r border-gray-200 dark:border-[#2d3139] flex flex-col relative z-10 flex-shrink-0">
+        <div class="p-4 border-b border-gray-200 dark:border-[#2d3139]">
+          <button id="uploadBtn" class="primary-btn w-full py-2.5 px-4 rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
+            <i class="fas fa-cloud-arrow-up text-xs"></i>
+            Upload Document
+          </button>
+          <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.bmp,.gif" class="hidden">
+
+          <div class="flex items-center gap-2 mt-4">
+            <p class="text-[10px] text-gray-500 dark:text-gray-400 tracking-widest uppercase font-semibold flex-1">Deceased Documents</p>
+            <span class="text-[10px] text-gray-500 dark:text-gray-400"><span id="docCount">0</span> files</span>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3" id="docsScroller">
+          <div id="docList" class="space-y-1"></div>
+        </div>
+
+        <div class="p-3 border-t border-gray-200 dark:border-[#2d3139] bg-gray-50 dark:bg-[#16181d]">
+          <div class="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+            <i class="fas fa-id-card text-[#00296B]"></i>
+            <span class="flex-1 min-w-0 truncate">Deceased ID: <span id="deceasedIdLabel" class="font-semibold text-gray-900 dark:text-gray-100">—</span></span>
+          </div>
+          <div class="flex items-center gap-2 mt-1.5 text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+            <i class="fas fa-building text-[#132A13]"></i>
+            <span class="flex-1 min-w-0 truncate">Tenant: <span id="tenantSlugLabel" class="font-semibold text-gray-900 dark:text-gray-100">—</span></span>
+          </div>
+          <div class="flex items-center gap-2 mt-1.5 text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+            <i class="fas fa-database text-[#00296B]"></i>
+            <span class="flex-1 min-w-0 truncate">Source: <span id="backendEndpointLabel" class="font-semibold text-gray-900 dark:text-gray-100">—</span></span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CENTER: Viewer -->
+      <main class="flex-1 flex flex-col bg-white dark:bg-[#0f1115] relative min-w-0">
+<!-- Toolbar -->
+        <div class="bg-white dark:bg-[#0f1115] border-b border-gray-200 dark:border-[#2d3139] px-5 py-2.5 flex items-center justify-between flex-wrap gap-2 flex-shrink-0">
+          <div class="flex items-center gap-1">
+            <button id="prevBtn" class="tool-btn px-3 py-2 rounded-md text-sm flex items-center gap-2 font-medium" title="Previous (←)">
+              <i class="fas fa-chevron-left text-[11px]"></i>
+              <span class="hidden sm:inline">Prev</span>
+            </button>
+            <div class="flex items-center gap-2 px-3">
+              <input type="number" id="pageInput" value="1" min="1" class="page-input w-12 px-2 py-1 border border-gray-300 dark:border-[#2d3139] dark:bg-[#16181d] rounded text-center text-sm font-medium focus:outline-none focus:border-[#00296B]">
+              <span class="text-gray-500 dark:text-gray-400 text-sm">/ <span id="totalPages">—</span></span>
+            </div>
+            <button id="nextBtn" class="tool-btn px-3 py-2 rounded-md text-sm flex items-center gap-2 font-medium" title="Next (→)">
+              <span class="hidden sm:inline">Next</span>
+              <i class="fas fa-chevron-right text-[11px]"></i>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-1 flex-wrap">
+            <button id="zoomOut" class="tool-btn w-9 h-9 rounded-md" title="Zoom out (-)">
+              <i class="fas fa-search-minus text-sm"></i>
+            </button>
+            <span id="zoomLevel" class="text-sm w-14 text-center font-semibold text-gray-900 dark:text-gray-100">100%</span>
+            <button id="zoomIn" class="tool-btn w-9 h-9 rounded-md" title="Zoom in (+)">
+              <i class="fas fa-search-plus text-sm"></i>
+            </button>
+            <button id="fitBtn" class="tool-btn px-3 py-2 rounded-md text-sm font-medium" title="Fit width">Fit</button>
+            <button id="rotateBtn" class="tool-btn w-9 h-9 rounded-md ml-1" title="Rotate (R)">
+              <i class="fas fa-rotate-right text-sm"></i>
+            </button>
+            <div class="w-px h-6 bg-gray-200 dark:bg-[#2d3139] mx-2"></div>
+            <button id="openExternalBtn" class="tool-btn px-3 py-2 rounded-md text-sm flex items-center gap-2 font-medium" title="Open in new tab">
+              <i class="fas fa-external-link text-xs text-[#132A13]"></i>
+              <span class="hidden md:inline">Open</span>
+            </button>
+            <button id="downloadBtn" class="tool-btn px-3 py-2 rounded-md text-sm flex items-center gap-2 font-medium">
+              <i class="fas fa-download text-xs text-[#132A13]"></i>
+              <span class="hidden md:inline">Download</span>
+            </button>
+            <button id="printBtn" class="tool-btn px-3 py-2 rounded-md text-sm flex items-center gap-2 font-medium">
+              <i class="fas fa-print text-xs text-[#00296B]"></i>
+              <span class="hidden md:inline">Print</span>
+            </button>
+            <div class="w-px h-6 bg-gray-200 dark:bg-[#2d3139] mx-2"></div>
+            <button id="deleteBtn" class="tool-btn px-3 py-2 rounded-md text-sm flex items-center gap-2 font-medium" title="Delete document" style="color:#DD2D4A;">
+              <i class="fas fa-trash-can text-xs text-[#DD2D4A]"></i>
+              <span class="hidden md:inline text-[#DD2D4A]">Delete</span>
+            </button>
+          </div>
+        </div>
+<!-- Canvas area -->
+        <div id="canvasArea" class="flex-1 overflow-auto relative flex justify-center items-start p-8" style="background-color: var(--canvas-bg);">
+          <div id="loadingOverlay" class="absolute inset-0 bg-white/85 dark:bg-[#0f1115]/85 backdrop-blur-sm flex items-center justify-center z-20 hidden">
+            <div class="text-center">
+              <div class="spinner mx-auto mb-4"></div>
+              <p class="text-gray-500 dark:text-gray-400 text-sm serif italic" id="loadingText">Preparing document…</p>
+            </div>
+          </div>
+          <canvas id="pdfCanvas" class="canvas-fade hidden"></canvas>
+          <img id="imageViewer" alt="Document">
+
+          <div id="unsupportedPanel" class="hidden flex flex-col items-center justify-center w-full h-full">
+            <div class="max-w-md mx-auto text-center">
+              <div class="unsupported-icon mx-auto mb-5"><i class="fas fa-file-invoice"></i></div>
+              <p class="serif text-lg text-gray-900 dark:text-gray-100">Preview not available</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed" id="unsupportedText">
+                This document type cannot be previewed in the browser. You can open or download it to view it.
+              </p>
+              <div class="flex gap-2 mt-5 justify-center">
+                <button id="unsupportedOpenBtn" class="tool-btn px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-medium border border-gray-300 dark:border-[#2d3139]">
+                  <i class="fas fa-external-link text-xs"></i> Open
+                </button>
+                <button id="unsupportedDownloadBtn" class="primary-btn px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-medium">
+                  <i class="fas fa-download text-xs"></i> Download
+                </button>
+              </div>
+            </div>
+          </div>
+<!-- Splash: no deceased selected -->
+          <div id="splashView" class="absolute inset-0 flex items-center justify-center z-30 hidden" style="background-color: var(--canvas-bg);">
+            <div class="max-w-lg w-full mx-auto fade-in">
+              <div class="bg-white dark:bg-[#16181d] rounded-2xl border border-gray-200 dark:border-[#2d3139] shadow-xl p-8">
+                <div class="flex items-center justify-center w-14 h-14 rounded-full bg-[#EFF6FF] text-[#00296B] text-xl mx-auto mb-4"><i class="fas fa-archway"></i></div>
+                <p class="serif text-xl text-gray-900 dark:text-gray-100 text-center">Memorial Document Viewer</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Connect to a deceased profile to view its uploaded documents.</p>
+                <div class="grid grid-cols-1 gap-3 mt-6">
+                  <label class="text-[10px] uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-0.5">Deceased ID *</label>
+                  <input id="splashDeceasedId" class="shell-input" placeholder="e.g. DEC-2024-001 / admission number">
+                  <label class="text-[10px] uppercase tracking-widest text-gray-500 dark:text-gray-400 mt-2 mb-0.5">Tenant slug</label>
+                  <input id="splashTenantSlug" class="shell-input" placeholder="auto-filled from session if blank">
+                </div>
+                <div class="flex items-center gap-3 mt-5">
+                  <button id="connectBtn" class="primary-btn flex-1 py-2.5 rounded-lg text-sm font-semibold"><i class="fas fa-plug text-xs mr-1.5"></i>Connect</button>
+                  <button id="sampleBtn" class="flex-1 py-2.5 rounded-lg text-sm font-semibold border border-gray-300 dark:border-[#2d3139] text-gray-700 dark:text-gray-300"><i class="fas fa-scroll text-xs mr-1.5 text-[#132A13]"></i>Try Sample</button>
+                </div>
+                <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-4 text-center leading-relaxed">Tip: open this page as <span class="font-mono">/memorial-document-viewer.html?deceasedId=XXX&tenantSlug=YYY</span> for direct deep-linking.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty documents state -->
+          <div id="emptyDocsView" class="absolute inset-0 flex items-center justify-center z-30 hidden" style="background-color: var(--canvas-bg);">
+            <div class="max-w-md mx-auto text-center fade-in">
+              <div class="flex items-center justify-center w-16 h-16 rounded-full bg-[#E8F5E9] text-[#132A13] text-2xl mx-auto mb-4"><i class="fas fa-folder-open"></i></div>
+              <p class="serif text-xl text-gray-900 dark:text-gray-100">No documents yet</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">Upload a document for this deceased profile and it will appear here — viewable from the backend, ready for printing or download.</p>
+              <button id="emptyUploadBtn" class="primary-btn mt-5 px-5 py-2.5 rounded-lg text-sm font-semibold"><i class="fas fa-cloud-arrow-up text-xs mr-1.5"></i>Upload First Document</button>
+            </div>
+          </div>
+        </div>
+<!-- Status bar -->
+        <div class="bg-white dark:bg-[#0f1115] border-t border-gray-200 dark:border-[#2d3139] px-5 py-1.5 flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 flex-shrink-0">
+          <div class="flex items-center gap-4">
+            <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-[#132A13] rounded-full"></span><span id="statusText">Ready</span></span>
+            <span id="pageInfo">—</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="modeChip" class="chip blue"><i class="fas fa-file-pdf text-[9px]"></i><span>PDF</span></span>
+            <span>Use ← → to navigate · + / − to zoom · R to rotate</span>
+          </div>
+        </div>
+      </main>
+
+      <!-- RIGHT: Thumbnails + Details -->
+      <aside class="w-56 bg-white dark:bg-[#0f1115] border-l border-gray-200 dark:border-[#2d3139] flex flex-col relative z-10 flex-shrink-0">
+        <div class="p-4 border-b border-gray-200 dark:border-[#2d3139]">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="serif text-lg text-gray-900 dark:text-gray-100 leading-none">Pages</p>
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Click to jump</p>
+            </div>
+            <i class="far fa-images text-[#00296B]"></i>
+          </div>
+        </div>
+        <div id="thumbnailList" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
+
+        <div class="p-3 border-t border-gray-200 dark:border-[#2d3139] bg-gray-50 dark:bg-[#16181d]">
+          <details open>
+            <summary class="cursor-pointer text-[11px] font-semibold uppercase tracking-wider flex items-center justify-between text-gray-900 dark:text-gray-100">
+              <span>Document Details</span>
+              <i class="fas fa-chevron-down text-[10px]"></i>
+            </summary>
+            <div id="detailsBody" class="text-[11px] text-gray-600 dark:text-gray-300 mt-2 leading-relaxed serif italic">
+              Select a document to see its details.
+            </div>
+          </details>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-50 space-y-2"></div>
+<script>
+  // ==========================================================================
+  //  MEMORIAL DOCUMENT VIEWER  —  backend-driven (documents-service)
+  //  Loads the real uploaded documents of a deceased profile from the backend
+  //  (documents-service through the API gateway), with the same endpoints the
+  //  React app uses — so localStorage auth/token/tenant work automatically.
+  // ==========================================================================
+  'use strict';
+
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  // ---------------- CONFIG ----------------
+  const URL_PARAMS = new URLSearchParams(location.search);
+  const IS_PROD = /(^|\.)restpoint\.co\.ke$/i.test(location.hostname || '');
+  const GATEWAY = (URL_PARAMS.get('apiUrl') || (IS_PROD ? 'https://restpoint.co.ke' : 'http://localhost:5000')).replace(/\/+$/, '');
+  const CONFIG = {
+    gateway: GATEWAY,
+    apiBase: (URL_PARAMS.get('apiBase') || (GATEWAY + '/api/v1/restpoint')).replace(/\/+$/, ''),
+    uploadsBase: (URL_PARAMS.get('uploadsUrl') || GATEWAY).replace(/\/+$/, ''),
+    docsDirect: (URL_PARAMS.get('docsDirect') || (IS_PROD ? '' : 'http://localhost:8112')).replace(/\/+$/, ''),
+    isProd: IS_PROD
+  };
+
+  const getParam = (k) => { try { return URL_PARAMS.get(k) || ''; } catch { return ''; } };
+  const ls = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
+  const ss = (k) => { try { return sessionStorage.getItem(k) || ''; } catch { return ''; } };
+  const lsUser = () => { try { return JSON.parse(ls('user') || '{}'); } catch { return {}; } };
+
+  function resolveTenantSlug() {
+    const p = getParam('tenantSlug') || getParam('slug') || getParam('tenant');
+    if (p) return p;
+    const u = lsUser();
+    return ls('tenantSlug') || ls('tenant_slug') || u.tenantSlug || (u.tenant && u.tenant.slug) || u.branchSlug || u.branch_slug || '';
+  }
+  function resolveDeceasedId() {
+    const p = getParam('deceasedId') || getParam('deceased_id') || getParam('deceased') || getParam('id');
+    if (p) return p;
+    return ls('deceasedId') || ls('deceased_id') || '';
+  }
+  function resolveAuthToken() {
+    const p = getParam('token');
+    if (p) return p;
+    return ls('authToken') || ls('accessToken') || ss('authToken') || '';
+  }
+
+  const AUTH = { token: resolveAuthToken(), tenantSlug: resolveTenantSlug() };
+  const DECEASED_ID = resolveDeceasedId();
+
+  function authHeaders(withContentType) {
+    const h = {};
+    if (AUTH.token) h['Authorization'] = 'Bearer ' + AUTH.token;
+    if (AUTH.tenantSlug) h['x-tenant-slug'] = AUTH.tenantSlug;
+    if (withContentType) h['Content-Type'] = 'application/json';
+    return h;
+  }
+
+  // ---------------- State ----------------
+  let pdfDoc = null;
+  let currentPage = 1;
+  let baseScale = 1.2;
+  let zoomMultiplier = 1.0;
+  let rotation = 0;
+  let currentDoc = null;   // normalized document
+  let documents = [];      // normalized documents (backend or demo)
+  let isDemo = false;
+  let lastBytes = null;    // raw bytes of the current document
+  let imageBase = { w: 0, h: 0 };
+
+  const $id = (i) => document.getElementById(i);
+  const showEl = (el) => { if (el) el.classList.remove('hidden'); };
+  const hideEl = (el) => { if (el) el.classList.add('hidden'); };
+
+  function setStatus(msg) { $id('statusText').textContent = msg || 'Ready'; }
+// ---------------- Formatting helpers ----------------
+  function formatDate(v) {
+    if (!v) return '—';
+    try {
+      let d = new Date(v);
+      if (isNaN(d.getTime())) {
+        const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) d = new Date(+m[1], +m[2] - 1, +m[3]);
+      }
+      if (isNaN(d.getTime())) return String(v).slice(0, 10);
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
+    } catch { return String(v); }
+  }
+  function formatSize(sizeKB) {
+    if (sizeKB === null || sizeKB === undefined || isNaN(+sizeKB)) return '—';
+    const kb = +sizeKB;
+    if (kb >= 1024) return (kb / 1024).toFixed(1) + ' MB';
+    return Math.max(1, Math.round(kb)) + ' KB';
+  }
+  function fileExt(name) {
+    const m = String(name || '').split('.').pop().toLowerCase();
+    return m && m.length <= 5 ? m : '';
+  }
+  function docKind(mime, name) {
+    const m = String(mime || '').toLowerCase();
+    const ext = fileExt(name);
+    if (m.includes('pdf') || ext === 'pdf') return 'pdf';
+    if (m.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'].includes(ext)) return 'image';
+    return 'other';
+  }
+  function categoryOf(doc) {
+    if (doc.category && doc.category !== 'General') return doc.category;
+    const m = String(doc.mimeType || '').toLowerCase();
+    const ext = fileExt(doc.name);
+    if (m.includes('pdf') || ext === 'pdf') return 'PDF';
+    if (doc.kind === 'image') return 'Image';
+    return 'General';
+  }
+  function docIconHtml(doc) {
+    if (!doc) return '<i class="fas fa-file-pdf text-[#DD2D4A] text-xs"></i>';
+    if (doc.kind === 'pdf') return '<i class="fas fa-file-pdf text-[#DD2D4A] text-xs"></i>';
+    if (doc.kind === 'image') return '<i class="fas fa-file-image text-[#132A13] text-xs"></i>';
+    return '<i class="fas fa-file-word text-[#00296B] text-xs"></i>';
+  }
+  function iconBg(doc) {
+    if (!doc) return 'bg-[#EFF6FF]';
+    if (doc.kind === 'pdf') return 'bg-[#FDE9EC]';
+    if (doc.kind === 'image') return 'bg-[#E8F5E9]';
+    return 'bg-[#EFF6FF]';
+  }
+
+  // ---------------- Backend mapping ----------------
+  function normalizeDoc(f) {
+    if (!f) return null;
+    const stored = f.storedName || f.stored_name || '';
+    const rawName = f.originalName || f.original_name || f.name || f.file_name || f.fileName || stored.replace(/^doc-\d+-\d+-/, '') || 'Document';
+    const mime = f.mimeType || f.mime_type || f.fileType || '';
+    const id = f.documentId || f.document_id || f.id || (f.fileUrl || f.url || 'fs-' + rawName);
+    const sizeKB = (f.sizeKB !== undefined && f.sizeKB !== null) ? f.sizeKB
+      : (f.file_size ? Math.round(f.file_size / 1024) : 0);
+    const d = {
+      id, name: rawName, storedName: stored,
+      url: f.url || f.fileUrl || '',
+      mimeType: mime, sizeKB, category: f.category || f.document_type || 'General',
+      uploadedBy: f.uploadedBy || f.uploaded_by || 'System',
+      uploadedAt: f.uploadedAt || f.uploaded_at || null,
+      deceasedId: f.deceasedId || f.deceased_id || DECEASED_ID,
+      pages: null
+    };
+    d.kind = docKind(mime, rawName);
+    return d;
+  }
+
+  // ---------------- Backend API ----------------
+  async function apiFetch(url, opts) {
+    opts = opts || {};
+    const res = await fetch(url, opts);
+    if (!res.ok) {
+      let msg = 'HTTP ' + res.status;
+      try { const b = await res.json(); msg = b.message || b.error || msg; } catch { /* ignore */ }
+      throw new Error(msg);
+    }
+    return res;
+  }
+
+  async function fetchDocuments() {
+    if (!DECEASED_ID) return [];
+    const res = await apiFetch(CONFIG.apiBase + '/documents/' + encodeURIComponent(DECEASED_ID), {
+      headers: authHeaders(true), cache: 'no-store'
+    });
+    const body = await res.json();
+    const files = body.files || body.data || (Array.isArray(body) ? body : []);
+    return (Array.isArray(files) ? files : []).map(normalizeDoc).filter(Boolean);
+  }
+
+  // Try, in order: gateway download endpoint → static /uploads URL → direct docs-service (dev)
+  async function fetchBytesFor(doc) {
+    const candidates = [];
+    const id = String(doc.id || '');
+    if (!id.startsWith('fs-') && id.length > 0) {
+      candidates.push(CONFIG.apiBase + '/documents/download/' + encodeURIComponent(id));
+    }
+    if (doc.url) {
+      candidates.push(new URL(doc.url, CONFIG.uploadsBase + '/').href);
+      if (CONFIG.docsDirect) candidates.push(CONFIG.docsDirect + (doc.url.startsWith('/') ? doc.url : '/' + doc.url));
+    }
+    let lastErr = null;
+    for (const url of candidates) {
+      try {
+        const res = await apiFetch(url, { headers: authHeaders(false), cache: 'no-store' });
+        return await res.arrayBuffer();
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error('Unable to fetch document bytes');
+  }
+
+  async function uploadFile(file, category) {
+    const fd = new FormData();
+    fd.append('document', file);
+    if (category) fd.append('category', category);
+    const headers = authHeaders(false);
+    delete headers['Content-Type'];
+    const res = await apiFetch(CONFIG.apiBase + '/documents/' + encodeURIComponent(DECEASED_ID) + '/upload', {
+      method: 'POST', headers, body: fd
+    });
+    return res.json();
+  }
+
+  async function deleteRemote(doc) {
+    const res = await apiFetch(CONFIG.apiBase + '/documents/' + encodeURIComponent(DECEASED_ID) + '/' + encodeURIComponent(doc.id), {
+      method: 'DELETE', headers: authHeaders(true)
+    });
+    return res.json();
+  }
+// ---------------- Escaping ----------------
+  function escapeHtml(v) {
+    return String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  const escapeAttr = escapeHtml;
+
+  // ---------------- UI: document list ----------------
+  function renderDocList() {
+    const listEl = $id('docList');
+    $id('docCount').textContent = documents.length;
+    listEl.innerHTML = documents.map((doc, i) => `
+      <div class="doc-item px-3 py-2.5 rounded-md cursor-pointer" data-idx="${i}" data-doc-id="${escapeAttr(doc.id)}">
+        <div class="flex items-start gap-2.5">
+          <div class="w-8 h-8 rounded-lg ${iconBg(doc)} flex items-center justify-center flex-shrink-0">${docIconHtml(doc)}</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-[13px] font-semibold truncate leading-tight text-gray-900 dark:text-gray-100" title="${escapeAttr(doc.name)}">${escapeHtml(doc.name)}</p>
+            <div class="flex items-center gap-1.5 mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+              <span>${formatDate(doc.uploadedAt)}</span><span>·</span>
+              <span class="doc-pages">${doc.kind === 'pdf' ? (doc.pages ? doc.pages + 'p' : 'pdf') : (doc.kind === 'image' ? 'img' : 'file')}</span>
+              <span>·</span><span>${formatSize(doc.sizeKB)}</span>
+            </div>
+            <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">${escapeHtml(categoryOf(doc))}</p>
+          </div>
+        </div>
+      </div>`).join('');
+
+    listEl.querySelectorAll('.doc-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        const idx = parseInt(item.dataset.idx, 10);
+        if (documents[idx]) openDocument(documents[idx]);
+      });
+    });
+    listEl.querySelectorAll('.doc-item').forEach((item) => {
+      if (currentDoc && String(item.dataset.docId) === String(currentDoc.id)) item.classList.add('active');
+    });
+  }
+
+  function updateHeader(doc) {
+    $id('docFileName').textContent = doc ? doc.name : '—';
+    $id('docUploadedAt').textContent = doc ? formatDate(doc.uploadedAt) : '—';
+    $id('docCategory').textContent = doc ? categoryOf(doc) : '—';
+    if (doc && doc.sizeKB > 0) { showEl($id('docMetaExtra')); $id('docSizeText').textContent = formatSize(doc.sizeKB); }
+    else hideEl($id('docMetaExtra'));
+    $id('sourceBadge').textContent = isDemo ? 'Sample' : 'From Backend';
+    $id('sourceBadge').className = 'badge ' + (isDemo ? 'bg-[#EFF6FF] text-[#00296B]' : 'bg-[#E8F5E9] text-[#132A13]');
+    $id('deceasedIdLabel').textContent = DECEASED_ID || (isDemo ? '—' : '—');
+    $id('tenantSlugLabel').textContent = AUTH.tenantSlug || (isDemo ? 'demo' : '—');
+    $id('backendEndpointLabel').textContent = CONFIG.apiBase;
+  }
+
+  function renderDetails(doc) {
+    const body = $id('detailsBody');
+    if (!doc) { body.textContent = 'Select a document to see its details.'; return; }
+    const rows = [
+      ['Category', categoryOf(doc)], ['Uploaded by', doc.uploadedBy || '—'],
+      ['Uploaded on', formatDate(doc.uploadedAt)], ['File size', formatSize(doc.sizeKB)],
+      ['MIME type', doc.mimeType || fileExt(doc.name) || '—'],
+      ['Pages', doc.pages ? String(doc.pages) : '—'],
+      ['Document ID', String(doc.id)], ['Deceased ID', DECEASED_ID || '—']
+    ];
+    body.innerHTML = rows.map((r) => `<div class="flex justify-between gap-2 py-1" style="font-size:11px">
+      <span class="text-gray-500 dark:text-gray-500">${escapeHtml(r[0])}</span>
+      <span class="font-medium text-right truncate" style="max-width:45%" title="${escapeAttr(r[1])}">${escapeHtml(String(r[1]))}</span>
+    </div>`).join('');
+  }
+
+  // ---------------- UI: mode helpers ----------------
+  function updateModeChip(label, iconClass) {
+    const chip = $id('modeChip');
+    const s = chip.querySelector('span'); if (s) s.textContent = label;
+    const i = chip.querySelector('i'); if (i) i.className = 'fas ' + iconClass + ' text-[9px]';
+  }
+  function setPdfMode(on) {
+    ['prevBtn', 'nextBtn', 'rotateBtn', 'printBtn'].forEach((id) => {
+      const b = $id(id);
+      if (on) b.classList.remove('disabled'); else b.classList.add('disabled');
+    });
+    $id('pageInput').disabled = !on;
+    if (!on) { $id('pageInput').value = 1; $id('totalPages').textContent = '—'; }
+  }
+  function clearThumbnails() { $id('thumbnailList').innerHTML = ''; }
+  function resetZoom() { zoomMultiplier = 1.0; updateZoomLabel(); }
+
+  function absoluteDocUrl(doc) {
+    if (!doc) return '';
+    if (doc.url) return new URL(doc.url, CONFIG.uploadsBase + '/').href;
+    const id = String(doc.id || '');
+    if (id && !id.startsWith('fs-')) return CONFIG.apiBase + '/documents/download/' + encodeURIComponent(id);
+    return '';
+  }
+
+  // ---------------- Main open pipeline ----------------
+  async function openDocument(doc) {
+    if (!doc) return;
+    currentDoc = doc;
+    renderDocList();
+    hideEl($id('splashView'));
+    hideEl($id('emptyDocsView'));
+    showLoading(true, 'Opening ' + doc.name + '…');
+    try {
+      const bytes = isDemo ? generateSamplePDF() : await fetchBytesFor(doc);
+      lastBytes = bytes;
+      await refreshAllRenderers(bytes);
+      renderDetails(doc);
+      updateHeader(doc);
+      showToast('Opened: ' + doc.name, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to open document: ' + err.message, 'error');
+      setStatus('Error — failed to open document');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  async function refreshAllRenderers(bytes) {
+    hideEl($id('pdfCanvas'));
+    hideEl($id('imageViewer'));
+    hideEl($id('unsupportedPanel'));
+    resetZoom();
+    $id('canvasArea').scrollTop = 0;
+    if (currentDoc.kind === 'pdf') return openPdfBytes(bytes);
+    if (currentDoc.kind === 'image') return openImageBytes(bytes);
+    return openOtherPanel();
+  }
+// ---------------- PDF rendering ----------------
+  async function openPdfBytes(bytes) {
+    const data = new Uint8Array(bytes);
+    const loadingTask = pdfjsLib.getDocument({ data });
+    pdfDoc = await loadingTask.promise;
+    currentPage = 1;
+    rotation = 0;
+    resetZoom();
+    currentDoc.pages = pdfDoc.numPages;
+    $id('totalPages').textContent = pdfDoc.numPages;
+    $id('pageInput').value = 1;
+    $id('pageInput').max = pdfDoc.numPages;
+    setPdfMode(true);
+    updateModeChip('PDF', 'fa-file-pdf');
+    await renderPage(1);
+    await renderThumbnails();
+    renderDocList();
+    renderDetails(currentDoc);
+    setStatus('Ready');
+  }
+
+  async function renderPage(num) {
+    if (!pdfDoc) return;
+    const page = await pdfDoc.getPage(num);
+    const canvas = $id('pdfCanvas');
+    const ctx = canvas.getContext('2d');
+    const scale = baseScale * zoomMultiplier;
+    const viewport = page.getViewport({ scale, rotation });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    canvas.style.width = viewport.width + 'px';
+    canvas.style.height = viewport.height + 'px';
+    showEl(canvas);
+    canvas.classList.remove('canvas-fade');
+    void canvas.offsetWidth;
+    canvas.classList.add('canvas-fade');
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    $id('pageInput').value = num;
+    $id('pageInfo').textContent = 'Page ' + num + ' of ' + pdfDoc.numPages;
+    updateThumbnailActive();
+  }
+
+  async function renderThumbnails() {
+    const list = $id('thumbnailList');
+    list.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i);
+      const viewport = page.getViewport({ scale: 0.22 });
+      const wrap = document.createElement('div');
+      wrap.className = 'thumbnail' + (i === currentPage ? ' active' : '');
+      wrap.dataset.page = i;
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.style.width = '100%';
+      canvas.style.display = 'block';
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const label = document.createElement('p');
+      label.className = 'text-[10px] text-center text-gray-500 dark:text-gray-400 mt-1.5 font-medium';
+      label.textContent = 'Page ' + i;
+      wrap.appendChild(canvas);
+      wrap.appendChild(label);
+      wrap.addEventListener('click', () => {
+        currentPage = i;
+        renderPage(i);
+        $id('canvasArea').scrollTop = 0;
+      });
+      frag.appendChild(wrap);
+    }
+    list.appendChild(frag);
+  }
+
+  function updateThumbnailActive() {
+    document.querySelectorAll('#thumbnailList .thumbnail').forEach((t) => {
+      t.classList.toggle('active', parseInt(t.dataset.page, 10) === currentPage);
+    });
+  }
+
+  // ---------------- Image rendering ----------------
+  async function openImageBytes(bytes) {
+    pdfDoc = null;
+    setPdfMode(false);
+    clearThumbnails();
+    const blob = new Blob([bytes], { type: currentDoc.mimeType || 'image/png' });
+    const img = $id('imageViewer');
+    img.src = URL.createObjectURL(blob);
+    img.style.transform = '';
+    img.onload = () => {
+      imageBase.w = img.naturalWidth || 0;
+      imageBase.h = img.naturalHeight || 0;
+      zoomMultiplier = 1.0;
+      applyImageTransform();
+    };
+    showEl(img);
+    updateModeChip('Image', 'fa-file-image');
+    $id('pageInfo').textContent = 'Image preview';
+    $id('totalPages').textContent = '—';
+    setStatus('Ready');
+  }
+
+  function applyImageTransform() {
+    const img = $id('imageViewer');
+    if (!imageBase.w) return;
+    img.style.width = Math.round(imageBase.w * zoomMultiplier) + 'px';
+    img.style.height = Math.round(imageBase.h * zoomMultiplier) + 'px';
+    img.style.transform = 'rotate(' + rotation + 'deg)';
+    updateZoomLabel();
+  }
+
+  // ---------------- Unsupported / other types ----------------
+  function openOtherPanel() {
+    pdfDoc = null;
+    setPdfMode(false);
+    clearThumbnails();
+    $id('pageInfo').textContent = 'Preview not available';
+    $id('totalPages').textContent = '—';
+    showEl($id('unsupportedPanel'));
+    const mime = currentDoc.mimeType || '';
+    $id('unsupportedText').textContent = (mime && mime !== 'application/octet-stream')
+      ? 'This ' + mime + ' file cannot be previewed in the browser. Open or download it to view it.'
+      : 'This document type cannot be previewed in the browser. You can open or download it to view it.';
+    updateModeChip('Document', 'fa-file-word');
+    setStatus('Ready');
+  }
+
+  // ---------------- Shared UI helpers ----------------
+  function showLoading(show, text) {
+    if (text) $id('loadingText').textContent = text;
+    if (show) { showEl($id('loadingOverlay')); setStatus('Working…'); }
+    else hideEl($id('loadingOverlay'));
+  }
+  function updateZoomLabel() {
+    $id('zoomLevel').textContent = Math.round(zoomMultiplier * 100) + '%';
+  }
+  function showToast(msg, type) {
+    const container = $id('toastContainer');
+    const toast = document.createElement('div');
+    const colors = { success: 'bg-[#132A13] text-white', error: 'bg-[#DD2D4A] text-white', info: 'bg-[#00296B] text-white' };
+    const icons = { success: 'fa-check-circle', error: 'fa-circle-exclamation', info: 'fa-circle-info' };
+    toast.className = (colors[type] || colors.info) + ' px-4 py-3 rounded-lg shadow-xl text-sm flex items-center gap-2.5 fade-in font-medium';
+    toast.innerHTML = '<i class="fas ' + (icons[type] || icons.info) + '"></i> ' + escapeHtml(msg);
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s, transform 0.3s';
+      toast.style.transform = 'translateY(8px)';
+      setTimeout(() => toast.remove(), 300);
+    }, 2800);
+  }
+// ---------------- Refresh list ----------------
+  async function refreshList(autoSelect) {
+    try {
+      documents = await fetchDocuments();
+      renderDocList();
+      updateHeader(currentDoc);
+      hideEl($id('splashView'));
+      if (documents.length === 0) {
+        currentDoc = null;
+        hideEl($id('pdfCanvas')); hideEl($id('imageViewer')); hideEl($id('unsupportedPanel'));
+        setPdfMode(false); clearThumbnails();
+        updateHeader(null); renderDetails(null);
+        $id('pageInfo').textContent = '—'; $id('totalPages').textContent = '—';
+        showEl($id('emptyDocsView'));
+        return;
+      }
+      hideEl($id('emptyDocsView'));
+      if (autoSelect && !currentDoc) {
+        openDocument(documents[0]);
+      } else if (!currentDoc) {
+        openDocument(documents[0]);
+      }
+    } catch (err) {
+      console.error('refreshList error:', err);
+      setStatus('Backend unavailable');
+    }
+  }
+
+  // ---------------- Upload ----------------
+  async function handleUpload(file) {
+    if (!file) return;
+    if (!DECEASED_ID) { showToast('No deceased profile connected — use the connect screen first', 'error'); return; }
+    showLoading(true, 'Uploading ' + file.name + '…');
+    const btn = $id('uploadBtn');
+    btn.disabled = true;
+    try {
+      const body = await uploadFile(file, 'General');
+      showToast(body.message || 'Document uploaded successfully', 'success');
+      showLoading(false);
+      if (body.document && body.document.documentId) {
+        documents = await fetchDocuments();
+        renderDocList();
+        const d = normalizeDoc(body.document);
+        if (d) openDocument(d);
+      } else {
+        await refreshList(true);
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Upload failed: ' + err.message, 'error');
+      showLoading(false);
+    } finally {
+      btn.disabled = false;
+      setStatus('Ready');
+    }
+  }
+
+  // ---------------- Delete ----------------
+  async function handleDelete() {
+    if (!currentDoc) return;
+    if (isDemo) { showToast('Sample documents cannot be deleted', 'error'); return; }
+    if (!confirm('Delete "' + currentDoc.name + '" permanently?\nThis removes it from the backend storage.')) return;
+    showLoading(true, 'Deleting…');
+    try {
+      await deleteRemote(currentDoc);
+      showToast('Document deleted', 'success');
+      showLoading(false);
+      currentDoc = null;
+      await refreshList(true);
+    } catch (err) {
+      console.error(err);
+      showToast('Delete failed: ' + err.message, 'error');
+      showLoading(false);
+    }
+  }
+
+  // ---------------- Download ----------------
+  async function handleDownload() {
+    if (!currentDoc) return;
+    showLoading(true, 'Preparing download…');
+    try {
+      const data = lastBytes || (await fetchBytesFor(currentDoc));
+      const blob = new Blob([data], { type: currentDoc.mimeType || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = currentDoc.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      showToast('Download started: ' + currentDoc.name, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Download failed: ' + err.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  // ---------------- Print ----------------
+  async function handlePrint() {
+    if (!currentDoc) return;
+    showLoading(true, 'Preparing print…');
+    try {
+      const data = lastBytes || (await fetchBytesFor(currentDoc));
+      if (currentDoc.kind === 'image') {
+        const blob = new Blob([data], { type: currentDoc.mimeType || 'image/png' });
+        const url = URL.createObjectURL(blob);
+        const w = window.open('', '_blank');
+        if (w) {
+          w.document.write('<html><head><title>Print ' + escapeAttr(currentDoc.name) + '</title></head><body style="margin:0"><img src="' + url + '" style="width:100%"></body></html>');
+          w.document.close();
+          setTimeout(() => { w.focus(); w.print(); }, 400);
+        }
+      } else {
+        const blob = new Blob([data], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        iframe.onload = () => setTimeout(() => {
+          try { iframe.contentWindow.print(); }
+          catch (e) { window.open(url); }
+        }, 250);
+      }
+      showToast('Preparing print dialog…', 'info');
+    } catch (err) {
+      console.error(err);
+      showToast('Print failed: ' + err.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  // ---------------- Open external ----------------
+  function handleOpenExternal() {
+    if (!currentDoc) return;
+    const url = absoluteDocUrl(currentDoc);
+    if (!url) { showToast('No external URL available for this document', 'error'); return; }
+    window.open(url, '_blank', 'noopener');
+  }
+// ---------------- Controls wiring ----------------
+  function applyViewZoom() {
+    if (pdfDoc) renderPage(currentPage);
+    else if (currentDoc && currentDoc.kind === 'image') applyImageTransform();
+  }
+
+  function wireControls() {
+    $id('zoomIn').addEventListener('click', () => {
+      zoomMultiplier = Math.min(zoomMultiplier + 0.15, 3); updateZoomLabel(); applyViewZoom();
+    });
+    $id('zoomOut').addEventListener('click', () => {
+      zoomMultiplier = Math.max(zoomMultiplier - 0.15, 0.4); updateZoomLabel(); applyViewZoom();
+    });
+    $id('fitBtn').addEventListener('click', () => { zoomMultiplier = 1.0; updateZoomLabel(); applyViewZoom(); });
+    $id('rotateBtn').addEventListener('click', () => { rotation = (rotation + 90) % 360; applyViewZoom(); });
+    $id('prevBtn').addEventListener('click', () => {
+      if (pdfDoc && currentPage > 1) { currentPage--; renderPage(currentPage); }
+    });
+    $id('nextBtn').addEventListener('click', () => {
+      if (pdfDoc && currentPage < pdfDoc.numPages) { currentPage++; renderPage(currentPage); }
+    });
+    $id('pageInput').addEventListener('change', (e) => {
+      const p = parseInt(e.target.value, 10);
+      if (pdfDoc && p >= 1 && p <= pdfDoc.numPages) { currentPage = p; renderPage(p); }
+      else e.target.value = currentPage;
+    });
+    $id('downloadBtn').addEventListener('click', handleDownload);
+    $id('printBtn').addEventListener('click', handlePrint);
+    $id('deleteBtn').addEventListener('click', handleDelete);
+    $id('openExternalBtn').addEventListener('click', handleOpenExternal);
+    $id('unsupportedOpenBtn').addEventListener('click', handleOpenExternal);
+    $id('unsupportedDownloadBtn').addEventListener('click', handleDownload);
+    $id('uploadBtn').addEventListener('click', () => $id('fileInput').click());
+    $id('emptyUploadBtn').addEventListener('click', () => $id('fileInput').click());
+    $id('fileInput').addEventListener('change', (e) => {
+      const file = (e.target.files && e.target.files.length) ? e.target.files[0] : null;
+      e.target.value = '';
+      if (file) handleUpload(file);
+    });
+  }
+
+  // ---------------- Theme + keyboard ----------------
+  function wireTheme() {
+    const htmlEl = document.documentElement;
+    const saved = ls('memorialViewerTheme');
+    if (saved === 'dark') htmlEl.classList.add('dark');
+    $id('themeToggle').addEventListener('click', () => {
+      htmlEl.classList.toggle('dark');
+      try { localStorage.setItem('memorialViewerTheme', htmlEl.classList.contains('dark') ? 'dark' : 'light'); } catch { /* ignore */ }
+    });
+  }
+
+  function wireKeyboard() {
+    document.addEventListener('keydown', (e) => {
+      if (e.target && e.target.tagName === 'INPUT') return;
+      if (e.key === 'ArrowLeft') { e.preventDefault(); $id('prevBtn').click(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); $id('nextBtn').click(); }
+      else if (e.key === '+' || e.key === '=') { e.preventDefault(); $id('zoomIn').click(); }
+      else if (e.key === '-') { e.preventDefault(); $id('zoomOut').click(); }
+      else if (e.key && e.key.toLowerCase() === 'r') { e.preventDefault(); $id('rotateBtn').click(); }
+    });
+  }
+// ---------------- Sample memorial program (demo mode) ----------------
+  function generateSamplePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+    const W = 612, H = 792;
+    const cBlue = [0, 41, 107];
+    const cGreen = [19, 42, 19];
+
+    // Page 1: Cover
+    doc.setFillColor(255, 255, 255); doc.rect(0, 0, W, H, 'F');
+    doc.setDrawColor(...cBlue); doc.setLineWidth(1.2); doc.rect(40, 40, W - 80, H - 80);
+    doc.setDrawColor(...cGreen); doc.setLineWidth(0.4); doc.rect(48, 48, W - 96, H - 96);
+    doc.setDrawColor(...cBlue); doc.setLineWidth(0.6);
+    doc.line(180, 130, 280, 130); doc.line(332, 130, 432, 130); doc.circle(306, 130, 3, 'S');
+    doc.setFont("times", "italic"); doc.setFontSize(13); doc.setTextColor(...cGreen);
+    doc.text("In Loving Memory of", 306, 165, { align: "center" });
+    doc.setFont("times", "bold"); doc.setFontSize(44); doc.setTextColor(31, 41, 55);
+    doc.text("Margaret Eleanor", 306, 225, { align: "center" });
+    doc.text("Whitfield", 306, 275, { align: "center" });
+    doc.setFont("times", "normal"); doc.setFontSize(15); doc.setTextColor(107, 114, 128);
+    doc.text("March 14, 1948  —  March 8, 2024", 306, 315, { align: "center" });
+    doc.setDrawColor(...cBlue); doc.setLineWidth(0.5);
+    doc.line(220, 345, 280, 345); doc.line(332, 345, 392, 345); doc.circle(306, 345, 2.5, 'S');
+    doc.setFont("times", "italic"); doc.setFontSize(13); doc.setTextColor(...cBlue);
+    doc.text("\"To live in hearts we leave behind", 306, 385, { align: "center" });
+    doc.text("is not to die.\"", 306, 403, { align: "center" });
+    doc.setFontSize(11); doc.text("— Thomas Campbell", 306, 425, { align: "center" });
+    doc.setFont("times", "normal"); doc.setFontSize(12); doc.setTextColor(31, 41, 55);
+    doc.text("A Celebration of Life Service", 306, 490, { align: "center" });
+    doc.setFontSize(11); doc.setTextColor(107, 114, 128);
+    doc.text("will be held on", 306, 510, { align: "center" });
+    doc.setFont("times", "bold"); doc.setFontSize(14); doc.setTextColor(...cBlue);
+    doc.text("Saturday, March 16, 2024 at 2:00 PM", 306, 535, { align: "center" });
+    doc.setFont("times", "normal"); doc.setFontSize(12); doc.text("Everwell Memorial Chapel", 306, 565, { align: "center" });
+    doc.setFontSize(11); doc.setTextColor(107, 114, 128); doc.text("1428 Garden Avenue, Riverside", 306, 583, { align: "center" });
+    doc.setFont("times", "italic"); doc.setFontSize(10); doc.setTextColor(...cGreen);
+    doc.text("Everwell Memorial  ·  Serving Families Since 1947", 306, 715, { align: "center" });
+
+    // Page 2: Order of Service
+    doc.addPage();
+    doc.setFillColor(255, 255, 255); doc.rect(0, 0, W, H, 'F');
+    doc.setDrawColor(...cBlue); doc.setLineWidth(0.8); doc.rect(40, 40, W - 80, H - 80);
+    doc.setFont("times", "bold"); doc.setFontSize(28); doc.setTextColor(31, 41, 55);
+    doc.text("Order of Service", 306, 100, { align: "center" });
+    doc.setDrawColor(...cGreen); doc.setLineWidth(0.5); doc.line(240, 115, 372, 115);
+    const items = [
+      { time: "2:00 PM", title: "Prelude", detail: "Selections by the Family Choir" },
+      { time: "2:10 PM", title: "Welcome & Invocation", detail: "Reverend James Holloway" },
+      { time: "2:20 PM", title: "Hymn", detail: "\"Amazing Grace\"" },
+      { time: "2:25 PM", title: "Scripture Reading", detail: "Psalm 23  ·  Read by Sarah Whitfield" },
+      { time: "2:35 PM", title: "Eulogy", detail: "Delivered by David Whitfield, son" },
+      { time: "2:50 PM", title: "Musical Tribute", detail: "\"Wind Beneath My Wings\"  ·  Eleanor Whitfield" },
+      { time: "3:05 PM", title: "Reflections", detail: "Open sharing from family and friends" },
+      { time: "3:25 PM", title: "Closing Prayer", detail: "Reverend James Holloway" },
+      { time: "3:30 PM", title: "Recessional", detail: "\"Going Home\"  ·  Dvořák" },
+    ];
+    let y = 165;
+    items.forEach(item => {
+      doc.setFont("times", "bold"); doc.setFontSize(11); doc.setTextColor(...cBlue);
+      doc.text(item.time, 80, y);
+      doc.setFont("times", "bold"); doc.setFontSize(13); doc.setTextColor(31, 41, 55);
+      doc.text(item.title, 160, y);
+      doc.setFont("times", "italic"); doc.setFontSize(10); doc.setTextColor(107, 114, 128);
+      doc.text(item.detail, 160, y + 14);
+      doc.setDrawColor(229, 231, 235); doc.setLineWidth(0.3); doc.line(80, y + 25, W - 80, y + 25);
+      y += 50;
+    });
+    doc.setFont("times", "italic"); doc.setFontSize(10); doc.setTextColor(...cGreen);
+    doc.text("A reception will follow at the Everwell Family Center", 306, 720, { align: "center" });
+// Page 3: Obituary
+    doc.addPage();
+    doc.setFillColor(255, 255, 255); doc.rect(0, 0, W, H, 'F');
+    doc.setDrawColor(...cBlue); doc.setLineWidth(0.8); doc.rect(40, 40, W - 80, H - 80);
+    doc.setFont("times", "bold"); doc.setFontSize(24); doc.setTextColor(31, 41, 55);
+    doc.text("Obituary", 306, 100, { align: "center" });
+    doc.setDrawColor(...cGreen); doc.setLineWidth(0.5); doc.line(265, 115, 347, 115);
+    const paragraphs = [
+      "Margaret Eleanor Whitfield, beloved mother, grandmother, and friend, passed away peacefully on March 8, 2024, surrounded by her loving family. She was 75 years old.",
+      "Born on March 14, 1948, in Riverside to Harold and Eleanor Pemberton, Margaret spent her early years on the family's rose farm. She inherited her mother's gift for cultivation and her father's quiet strength, traits that would define her throughout her remarkable life.",
+      "For over thirty years, Margaret taught fourth grade at Lincoln Elementary, where she was known for her patience, her story-hour, and the small garden she maintained with each class. Generations of children carried her lessons forward into adulthood.",
+      "She is survived by her husband Robert; her children David (Lisa) Whitfield and Sarah (Michael) Brennan; her grandchildren Eleanor, Thomas, and Charlotte; her sister Patricia (Richard) Calloway; and a wide circle of nieces, nephews, and friends whose lives she touched deeply.",
+      "In lieu of flowers, the family requests donations be made to the Lincoln Elementary School Garden Fund, where Margaret's legacy of growth and care will continue to bloom for generations to come.",
+      "A private interment will precede the celebration of life service at Greenwood Memorial Gardens."
+    ];
+    y = 150;
+    doc.setFont("times", "normal"); doc.setFontSize(11); doc.setTextColor(31, 41, 55);
+    paragraphs.forEach(p => {
+      const lines = doc.splitTextToSize(p, W - 152);
+      doc.text(lines, 76, y);
+      y += lines.length * 14 + 12;
+    });
+    doc.setDrawColor(...cBlue); doc.setLineWidth(0.4); doc.line(200, y + 10, 412, y + 10);
+    doc.setFont("times", "italic"); doc.setFontSize(10); doc.setTextColor(...cGreen);
+    doc.text("Forever in our hearts", 306, y + 28, { align: "center" });
+
+    // Page 4: Photo tribute
+    doc.addPage();
+    doc.setFillColor(255, 255, 255); doc.rect(0, 0, W, H, 'F');
+    doc.setDrawColor(...cBlue); doc.setLineWidth(0.8); doc.rect(40, 40, W - 80, H - 80);
+    doc.setFont("times", "bold"); doc.setFontSize(24); doc.setTextColor(31, 41, 55);
+    doc.text("A Life Well Lived", 306, 100, { align: "center" });
+    doc.setDrawColor(...cGreen); doc.setLineWidth(0.5); doc.line(245, 115, 367, 115);
+    const photos = [
+      { x: 90, y: 150, label: "1948  ·  Childhood" },
+      { x: 320, y: 150, label: "1971  ·  Wedding Day" },
+      { x: 90, y: 340, label: "1985  ·  Family" },
+      { x: 320, y: 340, label: "2008  ·  In the Garden" },
+    ];
+    photos.forEach(p => {
+      doc.setFillColor(249, 250, 251); doc.rect(p.x, p.y, 200, 160, 'F');
+      doc.setDrawColor(...cBlue); doc.setLineWidth(0.6); doc.rect(p.x, p.y, 200, 160);
+      doc.setDrawColor(229, 231, 235); doc.setLineWidth(0.3);
+      doc.circle(p.x + 100, p.y + 80, 18, 'S');
+      doc.circle(p.x + 100, p.y + 80, 8, 'S');
+      doc.setFont("times", "italic"); doc.setFontSize(10); doc.setTextColor(107, 114, 128);
+      doc.text(p.label, p.x + 100, p.y + 180, { align: "center" });
+    });
+    doc.setDrawColor(...cBlue); doc.setLineWidth(0.5); doc.line(200, 560, 412, 560);
+    doc.setFont("times", "italic"); doc.setFontSize(13); doc.setTextColor(31, 41, 55);
+    doc.text("\"Blessed are they that mourn,", 306, 590, { align: "center" });
+    doc.text("for they shall be comforted.\"", 306, 610, { align: "center" });
+    doc.setFontSize(11); doc.setTextColor(...cGreen); doc.text("Matthew 5:4", 306, 632, { align: "center" });
+    doc.setFont("times", "italic"); doc.setFontSize(10); doc.setTextColor(...cBlue);
+    doc.text("With deepest sympathy from the Everwell Memorial family", 306, 715, { align: "center" });
+
+    return doc.output('arraybuffer');
+  }
+
+  // Demo list (same as the original prototype)
+  const SAMPLE_DOCS = [
+    { id: 's-1', name: 'Whitfield_Margaret_Program.pdf', mimeType: 'application/pdf', sizeKB: 2458, category: 'Service Programs', uploadedAt: '2024-03-12', uploadedBy: 'System', kind: 'pdf', pages: 4, url: '' },
+    { id: 's-2', name: 'Death_Certificate_HarperJ.pdf', mimeType: 'application/pdf', sizeKB: 890, category: 'Certificates', uploadedAt: '2024-03-10', uploadedBy: 'System', kind: 'pdf', pages: 1, url: '' },
+    { id: 's-3', name: 'Cremation_Permit_2401.pdf', mimeType: 'application/pdf', sizeKB: 1126, category: 'Permits', uploadedAt: '2024-03-09', uploadedBy: 'System', kind: 'pdf', pages: 2, url: '' },
+    { id: 's-4', name: 'Benson_Service_Order.pdf', mimeType: 'application/pdf', sizeKB: 1536, category: 'Service Programs', uploadedAt: '2024-03-02', uploadedBy: 'System', kind: 'pdf', pages: 4, url: '' },
+    { id: 's-5', name: 'Thompson_Family_Record.pdf', mimeType: 'application/pdf', sizeKB: 1843, category: 'Certificates', uploadedAt: '2024-02-28', uploadedBy: 'System', kind: 'pdf', pages: 3, url: '' },
+    { id: 's-6', name: 'Condolence_Letters_Compiled.pdf', mimeType: 'application/pdf', sizeKB: 3277, category: 'Permits', uploadedAt: '2024-02-24', uploadedBy: 'System', kind: 'pdf', pages: 8, url: '' },
+  ];
+// ---------------- Demo mode ----------------
+  async function startDemo() {
+    isDemo = true;
+    documents = SAMPLE_DOCS.slice();
+    currentDoc = null;
+    hideEl($id('splashView'));
+    hideEl($id('emptyDocsView'));
+    updateHeader(null);
+    renderDocList();
+    await openDocument(documents[0]);
+  }
+
+  // ---------------- Splash connect screen ----------------
+  function wireSplash() {
+    $id('splashDeceasedId').value = DECEASED_ID;
+    $id('splashTenantSlug').value = AUTH.tenantSlug;
+    $id('sampleBtn').addEventListener('click', startDemo);
+    $id('connectBtn').addEventListener('click', () => {
+      const deceasedId = ($id('splashDeceasedId').value || '').trim();
+      const tenantSlug = ($id('splashTenantSlug').value || '').trim();
+      if (!deceasedId) { showToast('Please enter a deceased ID', 'error'); return; }
+      const params = new URLSearchParams(location.search);
+      params.set('deceasedId', deceasedId);
+      if (tenantSlug) params.set('tenantSlug', tenantSlug);
+      params.delete('demo');
+      location.search = params.toString();
+    });
+  }
+
+  // ---------------- Init ----------------
+  async function init() {
+    wireControls();
+    wireTheme();
+    wireKeyboard();
+    wireSplash();
+    updateHeader(null);
+    if (getParam('demo') === '1') { await startDemo(); return; }
+    if (!DECEASED_ID) {
+      showEl($id('splashView'));
+      setStatus('Waiting — connect a deceased profile');
+      return;
+    }
+    $id('deceasedIdLabel').textContent = DECEASED_ID;
+    await refreshList(true);
+  }
+
+  init();
+</script>
+</body>
+</html>

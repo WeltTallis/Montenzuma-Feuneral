@@ -1,0 +1,33 @@
+[RUNTIME WARNING] MARKETPLACE_SERVICE_URL=http://restpoint_marketplace_service:5000 is a Docker-network hostname but the gateway is NOT running in a container and no host port is known for "marketplace". Requests to it will fail with ENOTFOUND until MARKETPLACE_SERVICE_URL is set to a reachable URL.
+[RUNTIME WARNING] MPESA_SERVICE_URL=http://restpoint_mpesa_service:5000 is a Docker-network hostname but the gateway is NOT running in a container and no host port is known for "mpesa". Requests to it will fail with ENOTFOUND until MPESA_SERVICE_URL is set to a reachable URL.
+[RUNTIME WARNING] PORTAL_SERVICE_URL=http://restpoint_portal_service:5000 is a Docker-network hostname but the gateway is NOT running in a container and no host port is known for "portal". Requests to it will fail with ENOTFOUND until PORTAL_SERVICE_URL is set to a reachable URL.
+[RUNTIME] Host mode: NOTIFICATION_SERVICE_URL=http://restpoint_notification_service:5000 is a Docker-network hostname (unresolvable outside Docker). Rewritten to http://127.0.0.1:5018.
+[RUNTIME WARNING] EDOCUMENTS_SERVICE_URL=http://restpoint_edocuments_service:5000 is a Docker-network hostname but the gateway is NOT running in a container and no host port is known for "edocuments". Requests to it will fail with ENOTFOUND until EDOCUMENTS_SERVICE_URL is set to a reachable URL.
+[RUNTIME WARNING] CALENDAR_SERVICE_URL=http://restpoint_calender_service:5000 is a Docker-network hostname but the gateway is NOT running in a container and no host port is known for "calendar". Requests to it will fail with ENOTFOUND until CALENDAR_SERVICE_URL is set to a reachable URL.
+[RUNTIME WARNING] CALL_SERVICE_URL=http://restpoint_call_service:5000 is a Docker-network hostname but the gateway is NOT running in a container and no host port is known for "call". Requests to it will fail with ENOTFOUND until CALL_SERVICE_URL is set to a reachable URL.
+[RUNTIME WARNING] QRCODE_SERVICE_URL=http://restpoint_qrcode_service:5000 is a Docker-network hostname but the gateway is NOT running in a container and no host port is known for "qrcode". Requests to it will fail with ENOTFOUND until QRCODE_SERVICE_URL is set to a reachable URL.
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Failed to connect: Connection is closed.
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+(node:48284) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Error: getaddrinfo ENOTFOUND restpoint_redis
+[REDIS] Disconnected

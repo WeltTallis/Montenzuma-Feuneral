@@ -3,7 +3,6 @@ import styled from 'styled-components';
 import { C, formatDate } from './theme';
 import RouteOptimizer from '../../hearse/RouteOptimizer';
 import api from '../../../api/axios';
-import env from '../../../utils/config/env';
 import { notify } from '../../../utils/notify';
 
 const SectionHead = styled.div`
@@ -117,6 +116,8 @@ const DocumentsTab = ({ documents, deceasedId }) => {
   const [showRouteOptimizer, setShowRouteOptimizer] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [localDocs, setLocalDocs] = useState(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerDocName, setViewerDocName] = useState('Documents');
   const fileInputRef = useRef(null);
 
   // Documents live in the shared uploads folder (<upload>/<slug>/documents/<deceasedId>)
@@ -208,10 +209,47 @@ const DocumentsTab = ({ documents, deceasedId }) => {
     }
   };
 
+  // In-page Memorial Document Viewer (no new tab). The viewer is the same-origin
+  // static page client/public/memorial-document-viewer.html — it auto-reads the
+  // auth token + tenant slug from localStorage and lists/renders the deceased's
+  // backend documents (documents-service via the API gateway) with PDF.js.
+  const viewerIframeSrc = deceasedId
+    ? `/memorial-document-viewer.html?deceasedId=${encodeURIComponent(deceasedId)}`
+    : null;
+
   return (
     <>
       {showRouteOptimizer && <RouteOptimizer onClose={() => setShowRouteOptimizer(false)} />}
-      
+
+      {viewerOpen && viewerIframeSrc ? (
+        <div style={{
+          display: 'flex', flexDirection: 'column',
+          border: `1px solid ${C.borderLight || '#e0e0e0'}`,
+          borderRadius: 10, overflow: 'hidden', marginTop: 12,
+          background: '#ffffff', minHeight: 420
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px',
+            background: C.bgField || '#f7f7f5', borderBottom: `1px solid ${C.borderLight || '#e0e0e0'}`,
+            fontSize: 12, color: C.dark || '#1a1a1a'
+          }}>
+            <Btn $sm onClick={() => setViewerOpen(false)} style={{ cursor: 'pointer' }}>← Back to Table</Btn>
+            <span style={{ fontWeight: 700, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <i className="far fa-images" style={{ color: '#00296B' }} /> Memorial Document Viewer
+            </span>
+            <span style={{ color: '#666666', fontSize: 11, fontFamily: 'monospace', padding: '3px 10px', background: C.bgField || '#f7f7f5', borderRadius: 10 }}>
+              {viewerDocName} · {deceasedId}
+            </span>
+          </div>
+          <iframe
+            key={viewerDocName}
+            src={viewerIframeSrc}
+            title="Memorial Document Viewer"
+            style={{ width: '100%', height: 'calc(100vh - 230px)', minHeight: 380, border: 'none', background: '#f8f9fa' }}
+          />
+        </div>
+      ) : (
+        <>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', flexWrap: 'wrap' }}>
         <input
           ref={fileInputRef}
@@ -253,17 +291,19 @@ const DocumentsTab = ({ documents, deceasedId }) => {
                 <Btn
                   $sm
                   onClick={() => {
-                    const u = doc?.url || (doc?.stored_name ? `/uploads/${localStorage.getItem('tenantSlug') || ''}/documents/${deceasedId}/${doc.stored_name}` : null);
-                    if (u) window.open(`${env.UPLOADS_URL}${u.startsWith('/') ? '' : '/'}${u}`, '_blank', 'noopener');
+                    setViewerDocName(doc?.name || doc?.file_name || 'Documents');
+                    setViewerOpen(true);
                   }}
                 >
-                  View
+                  <i className="far fa-images" style={{ marginRight: 5, fontSize: 11 }} /> View
                 </Btn>
               </td>
             </tr>
           ))}
         </tbody>
       </DataTable>
+        </>
+      )}
     </>
   );
 };

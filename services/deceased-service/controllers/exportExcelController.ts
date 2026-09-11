@@ -41,16 +41,30 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     let whereClause = '';
     const params: any[] = [];
     if (startDate && endDate) {
-      whereClause = 'WHERE created_at BETWEEN ? AND ?';
+      whereClause = 'WHERE d.created_at BETWEEN ? AND ?';
       params.push(startDate, endDate);
     }
 
+    // NOTE: The `deceased` table does NOT have next_of_kin / service_type /
+    // release_date columns (those queries failed with "Unknown column" and the
+    // whole export 500'd). Map them from the real schema:
+    //   - next_of_kin  → LEFT JOIN next_of_kin (primary kin name), fallback deceased.relationship
+    //   - service_type → deceased.burial_type
+    //   - release_date → deceased.dispatch_date
     const query = `
-      SELECT deceased_id, full_name, admission_number, date_of_birth, date_of_death,
-             next_of_kin, service_type, body_status, release_date, dispatch_date, date_admitted, created_at
-      FROM deceased
+      SELECT d.deceased_id, d.full_name, d.admission_number, d.date_of_birth, d.date_of_death,
+             COALESCE(nk.full_name, d.relationship, '—') AS next_of_kin,
+             d.burial_type AS service_type,
+             d.body_status,
+             d.dispatch_date AS release_date,
+             d.dispatch_date, d.date_admitted, d.created_at
+      FROM deceased d
+      LEFT JOIN next_of_kin nk
+        ON nk.deceased_id = d.deceased_id
+       AND nk.is_primary = 1
+       AND (nk.is_deleted IS NULL OR nk.is_deleted = 0)
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY d.created_at DESC
       LIMIT 5000
     `;
     const records: any[] = await safeTenantQuery(dbName, query, params);
@@ -94,6 +108,13 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8B7355' } };
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
     headerRow.height = 28;
+
+    // Populate the header labels (styled above but never written with text —
+    // export files came out with an empty header row).
+    const headerLabels = ['File ID', 'Full Name', 'Date of Birth', 'Date of Death', 'Next of Kin', 'Service', 'Status', 'Release Date', 'Kin Signature'];
+    headerLabels.forEach((label, idx) => {
+      headerRow.getCell(idx + 1).value = label;
+    });
 
     // Add data rows dynamically
     records.forEach((item, index) => {

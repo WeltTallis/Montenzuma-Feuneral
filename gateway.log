@@ -1,0 +1,38 @@
+Loading .env from: C:\Users\User\Downloads\restpoint\services\api-gateway\.env
+{"level":30,"timestamp":"2026-09-11T00:57:18.514Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"  restpoint-gateway v2.0.2"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"  Running on http://0.0.0.0:5000"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"  UV_THREADPOOL_SIZE=64"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"  Service health monitoring: disabled (proxy reacts to real requests)"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":" Available Endpoints:"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   GET  http://localhost:5000/health"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   GET  http://localhost:5000/debug/dns-cache"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":" Resolved service routing table:"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   auth → http://127.0.0.1:5001"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   tenant → http://127.0.0.1:5002"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   deceased → http://127.0.0.1:5003"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   coffin → http://127.0.0.1:5006"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   marketplace → http://restpoint_marketplace_service:5000"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   mpesa → http://restpoint_mpesa_service:5000"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   portal → http://restpoint_portal_service:5000"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.515Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   invoices → http://127.0.0.1:5005"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   notification → http://127.0.0.1:5018"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   documents → http://127.0.0.1:5011"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   analytics → http://127.0.0.1:5009"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   bodycheckout → http://127.0.0.1:5015"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   edocuments → http://restpoint_edocuments_service:5000"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   calendar → http://restpoint_calender_service:5000"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   chemicals → http://127.0.0.1:5105"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   billing → http://127.0.0.1:5020"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   socketio → http://127.0.0.1:5018"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   workshop → http://127.0.0.1:6969"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   extra → http://127.0.0.1:5016"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   call → http://restpoint_call_service:5000"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   qrcode → http://restpoint_qrcode_service:5000"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   scanner → http://127.0.0.1:2024"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   hearse → http://127.0.0.1:5023"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   leave → http://127.0.0.1:5017"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   support → http://127.0.0.1:8111"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   florist → http://127.0.0.1:7070"}
+{"level":30,"timestamp":"2026-09-11T00:57:18.516Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"   store → http://127.0.0.1:7071"}
+{"level":30,"timestamp":"2026-09-11T00:58:09.529Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"→ GET /health"}
+{"level":30,"timestamp":"2026-09-11T00:58:29.508Z","pid":48284,"hostname":"DESKTOP-LQQVFI5","msg":"→ POST /api/v1/restpoint/deceased/export-excel"}
