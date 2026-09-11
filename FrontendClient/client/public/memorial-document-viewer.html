@@ -474,9 +474,13 @@
     if (p) return p;
     return ls('authToken') || ls('accessToken') || ss('authToken') || '';
   }
+  function resolveDocId() {
+    return getParam('docId') || getParam('documentId') || getParam('document_id') || getParam('doc') || '';
+  }
 
   const AUTH = { token: resolveAuthToken(), tenantSlug: resolveTenantSlug() };
   const DECEASED_ID = resolveDeceasedId();
+  const DOC_ID = resolveDocId();
 
   function authHeaders(withContentType) {
     const h = {};
@@ -930,6 +934,12 @@
         return;
       }
       hideEl($id('emptyDocsView'));
+      // When a docId was passed in the URL (deep-link from the deceased
+      // profile Documents tab), auto-open THAT document instead of the first.
+      if (DOC_ID) {
+        const match = documents.find(d => String(d.id) === String(DOC_ID) || String(d.storedName) === String(DOC_ID));
+        if (match) { openDocument(match); return; }
+      }
       if (autoSelect && !currentDoc) {
         openDocument(documents[0]);
       } else if (!currentDoc) {
@@ -1118,6 +1128,8 @@
       else if (e.key && e.key.toLowerCase() === 'r') { e.preventDefault(); $id('rotateBtn').click(); }
     });
   }
+
+  
 // ---------------- Sample memorial program (demo mode) ----------------
   function generateSamplePDF() {
     const { jsPDF } = window.jspdf;

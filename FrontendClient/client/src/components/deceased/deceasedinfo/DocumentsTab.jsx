@@ -4,6 +4,7 @@ import { C, formatDate } from './theme';
 import RouteOptimizer from '../../hearse/RouteOptimizer';
 import api from '../../../api/axios';
 import { notify } from '../../../utils/notify';
+import { getTenantHeaders } from '../../../api/endpoints';
 
 const SectionHead = styled.div`
   font-size: 12px; 
@@ -116,8 +117,6 @@ const DocumentsTab = ({ documents, deceasedId }) => {
   const [showRouteOptimizer, setShowRouteOptimizer] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [localDocs, setLocalDocs] = useState(null);
-  const [viewerOpen, setViewerOpen] = useState(false);
-  const [viewerDocName, setViewerDocName] = useState('Documents');
   const fileInputRef = useRef(null);
 
   // Documents live in the shared uploads folder (<upload>/<slug>/documents/<deceasedId>)
@@ -209,47 +208,27 @@ const DocumentsTab = ({ documents, deceasedId }) => {
     }
   };
 
-  // In-page Memorial Document Viewer (no new tab). The viewer is the same-origin
-  // static page client/public/memorial-document-viewer.html — it auto-reads the
-  // auth token + tenant slug from localStorage and lists/renders the deceased's
-  // backend documents (documents-service via the API gateway) with PDF.js.
-  const viewerIframeSrc = deceasedId
-    ? `/memorial-document-viewer.html?deceasedId=${encodeURIComponent(deceasedId)}`
-    : null;
+  // Open the Memorial Document Viewer as a full standalone page in a new
+  // browser tab — NOT embedded in an iframe inside the deceased profile. The
+  // viewer (client/public/memorial-document-viewer.html) auto-reads the auth
+  // token + tenant slug from localStorage, fetches the deceased's documents
+  // from the documents-service via the API gateway, and renders them with
+  // PDF.js. The deceasedId acts as the session-like identifier that scopes
+  // the viewer to this deceased person's document library.
+  const openDocumentViewer = (doc) => {
+    const docId = doc?.documentId ?? doc?.document_id ?? doc?.id;
+    const params = new URLSearchParams();
+    params.set('deceasedId', deceasedId);
+    if (docId) params.set('docId', docId);
+    // session-like token so the URL never exposes a raw database id directly
+    params.set('session', Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+    window.open(`/memorial-document-viewer.html?${params.toString()}`, '_blank', 'noopener');
+  };
 
   return (
     <>
       {showRouteOptimizer && <RouteOptimizer onClose={() => setShowRouteOptimizer(false)} />}
 
-      {viewerOpen && viewerIframeSrc ? (
-        <div style={{
-          display: 'flex', flexDirection: 'column',
-          border: `1px solid ${C.borderLight || '#e0e0e0'}`,
-          borderRadius: 10, overflow: 'hidden', marginTop: 12,
-          background: '#ffffff', minHeight: 420
-        }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px',
-            background: C.bgField || '#f7f7f5', borderBottom: `1px solid ${C.borderLight || '#e0e0e0'}`,
-            fontSize: 12, color: C.dark || '#1a1a1a'
-          }}>
-            <Btn $sm onClick={() => setViewerOpen(false)} style={{ cursor: 'pointer' }}>← Back to Table</Btn>
-            <span style={{ fontWeight: 700, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <i className="far fa-images" style={{ color: '#00296B' }} /> Memorial Document Viewer
-            </span>
-            <span style={{ color: '#666666', fontSize: 11, fontFamily: 'monospace', padding: '3px 10px', background: C.bgField || '#f7f7f5', borderRadius: 10 }}>
-              {viewerDocName} · {deceasedId}
-            </span>
-          </div>
-          <iframe
-            key={viewerDocName}
-            src={viewerIframeSrc}
-            title="Memorial Document Viewer"
-            style={{ width: '100%', height: 'calc(100vh - 230px)', minHeight: 380, border: 'none', background: '#f8f9fa' }}
-          />
-        </div>
-      ) : (
-        <>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', flexWrap: 'wrap' }}>
         <input
           ref={fileInputRef}
@@ -290,10 +269,8 @@ const DocumentsTab = ({ documents, deceasedId }) => {
               <td style={{ textAlign: 'right' }}>
                 <Btn
                   $sm
-                  onClick={() => {
-                    setViewerDocName(doc?.name || doc?.file_name || 'Documents');
-                    setViewerOpen(true);
-                  }}
+                  onClick={() => openDocumentViewer(doc)}
+                  title="Open document preview in a new page"
                 >
                   <i className="far fa-images" style={{ marginRight: 5, fontSize: 11 }} /> View
                 </Btn>
@@ -302,8 +279,6 @@ const DocumentsTab = ({ documents, deceasedId }) => {
           ))}
         </tbody>
       </DataTable>
-        </>
-      )}
     </>
   );
 };

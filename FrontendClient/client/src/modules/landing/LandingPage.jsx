@@ -8,6 +8,7 @@ import DirectorsMoment from './DirectorsMoment';
 import ModuleGridSection from './imageCard';
 import C from '../../utils/colors/index'
 import FloatingCTA from './FloatingCTA';
+import DemoRequestPanel from './DemoRequestPanel';
 import FaqSection from './FaqSection';
 import MissionSection from './Mission';
 import SiteNav from './nav';
@@ -865,6 +866,7 @@ export default function App() {
 
         <Footer />
         <FloatingCTA />
+        <DemoRequestPanel />
       </main>
     </>
   );
