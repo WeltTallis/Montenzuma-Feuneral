@@ -1,4 +1,5 @@
 ﻿import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
+import { useTenantStore } from '../../../modules/seo/useTenantStore';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { getTenantSlug as getStoredTenantSlug, getAuthToken } from '../../../utils/globalAuth';
@@ -958,6 +959,9 @@ const DeceasedReleaseForm = () => {
 
   const { id, slug: urlTenantSlug } = useParams();
 
+  // Get tenant data from the Zustand store (populated by TenantResolver)
+  const { tenantData } = useTenantStore();
+
   // Resolve the EXACT tenant: URL slug (set by the receptionist portal link
   // /tenant/<slug>/release-form/new) wins, then the stored slug. Never fall
   // back to 'default' — that would submit release records under the wrong tenant.
@@ -986,7 +990,8 @@ const DeceasedReleaseForm = () => {
   const [releaseId, setReleaseId] = useState('');
   const [releasedRecord, setReleasedRecord] = useState(null);
 
-  const branding = useMemo(() => resolveTenantBranding(), []);
+  // Pass tenantData from store to resolveTenantBranding so it uses the EXACT tenant
+  const branding = useMemo(() => resolveTenantBranding(tenantData), [tenantData]);
 
   const {
     name: tenantName,

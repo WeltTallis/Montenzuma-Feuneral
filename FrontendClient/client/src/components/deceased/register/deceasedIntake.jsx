@@ -1,5 +1,6 @@
 import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 import { getTenantSlug as getStoredTenantSlug, getAuthToken } from '../../../utils/globalAuth';
+import { useTenantStore } from '../../../modules/seo/useTenantStore';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
@@ -922,6 +923,9 @@ const DeceasedRegistrationForm = () => {
 
   const { slug: urlTenantSlug } = useParams();
 
+  // Get tenant data from the Zustand store (populated by TenantResolver)
+  const { tenantData } = useTenantStore();
+
   // Resolve the EXACT tenant: URL slug (set by the receptionist portal link
   // /tenant/<slug>/deceased/register) wins, then the stored slug. Never fall
   // back to 'default' — that would submit intake records under the wrong tenant.
@@ -946,7 +950,8 @@ const DeceasedRegistrationForm = () => {
   const [signedSignature, setSignedSignature] = useState('');
   const [lastSignedName, setLastSignedName] = useState('');
 
-  const branding = useMemo(() => resolveTenantBranding(), []);
+  // Pass tenantData from store to resolveTenantBranding so it uses the EXACT tenant
+  const branding = useMemo(() => resolveTenantBranding(tenantData), [tenantData]);
 
   const {
     name: tenantName,

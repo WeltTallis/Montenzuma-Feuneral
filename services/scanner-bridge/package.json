@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "package": "node scripts/package.mjs",
     "start": "node dist/agent.js",
     "mock": "MOCK_SCAN=1 BRIDGE_ALLOW_SHUTDOWN=1 node dist/agent.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",

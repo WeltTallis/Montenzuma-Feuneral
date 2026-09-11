@@ -48,6 +48,7 @@ const pingOnce = (url, timeoutMs) =>
     const done = (ok, info) => {
       if (settled) return;
       settled = true;
+      clearTimeout(timer);
       try { if (ws) ws.close(); } catch { /* ignore */ }
       resolve({ ok, url, info });
     };
@@ -71,8 +72,8 @@ const pingOnce = (url, timeoutMs) =>
         }
       } catch { /* non-json */ }
     };
-    ws.onerror = () => clearTimeout(timer);
-    ws.onclose = () => clearTimeout(timer);
+    ws.onerror = () => done(false, null);
+    ws.onclose = () => done(false, null);
   });
 
 /**
