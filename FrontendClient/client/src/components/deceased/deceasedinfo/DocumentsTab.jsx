@@ -263,9 +263,9 @@ const DocumentsTab = ({ documents, deceasedId }) => {
             <tr><td colSpan={4} style={{ textAlign: 'center', color: C.gray, padding: '24px 0' }}>No documents uploaded</td></tr>
           ) : docs.map((doc, i) => (
             <tr key={i}>
-              <td style={{ fontWeight: 600 }}>{doc.name || doc.file_name}</td>
-              <td><StatusTag $info>{doc.type || 'Document'}</StatusTag></td>
-              <td>{formatDate(doc.created_at)}</td>
+              <td style={{ fontWeight: 600 }}>{doc.originalName || doc.storedName || doc.name || doc.file_name}</td>
+              <td><StatusTag $info>{doc.mimeType || doc.category || doc.type || 'Document'}</StatusTag></td>
+              <td>{formatDate(doc.uploadedAt || doc.uploaded_at || doc.created_at)}</td>
               <td style={{ textAlign: 'right' }}>
                 <Btn
                   $sm
