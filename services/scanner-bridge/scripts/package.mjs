@@ -44,6 +44,16 @@ await build({
 const agentJs = fs.readFileSync(path.join(root, 'dist', 'agent.js'));
 console.log(`[package]   agent.js: ${agentJs.length.toLocaleString()} bytes`);
 
+// ── 1b. (optional) standalone agent.exe produced by `npm run build:exe` ──
+let agentExe = null;
+const exePath = path.join(root, 'dist', 'agent.exe');
+if (fs.existsSync(exePath)) {
+  agentExe = fs.readFileSync(exePath);
+  console.log(`[package]   agent.exe: ${agentExe.length.toLocaleString()} bytes`);
+} else {
+  console.log('[package]   agent.exe: not found (run `npm run build:exe` first)');
+}
+
 // ── 2. minimal ZIP writer (deflate via zlib, CRC-32 implemented inline) ──────
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
@@ -134,19 +144,12 @@ const installBat = [
   'echo ==========================================',
   'echo.',
   'set "HERE=%~dp0"',
-  'set "AGENT=%HERE%agent.js"',
+    'set "AGENT=%HERE%agent.exe"',
   'if not exist "%AGENT%" (',
-  '  echo [ERROR] agent.js not found next to this installer.',
+  '  echo [ERROR] agent.exe not found next to this installer.',
   '  pause & exit /b 1',
   ')',
-  'where node >nul 2>nul',
-  'if errorlevel 1 (',
-  '  echo [ERROR] Node.js was not found on this computer.',
-  '  echo         Install Node 22+ from https://nodejs.org and re-run this installer.',
-  '  pause & exit /b 1',
-  ')',
-  'for /f "delims=" %%i in (\'where node\') do set "NODE_EXE=%%i"',
-  'echo [OK] Node found: %NODE_EXE%',
+  'echo [OK] Scanner Bridge executable found (no Node.js required).',
   'echo.',
   'echo Installing startup shortcut (runs the bridge at every login)...',
   'set "STARTUP=%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"',
@@ -155,8 +158,8 @@ const installBat = [
   '> "%VBS%" echo Set oWS = WScript.CreateObject("WScript.Shell")',
   '>> "%VBS%" echo sLinkFile = "%LNK%"',
   '>> "%VBS%" echo Set oLink = oWS.CreateShortcut(sLinkFile)',
-  '>> "%VBS%" echo oLink.TargetPath = "%NODE_EXE%"',
-  '>> "%VBS%" echo oLink.Arguments = """%AGENT%"""',
+  '>> "%VBS%" echo oLink.TargetPath = "%AGENT%"',
+  '>> "%VBS%" echo oLink.WorkingDirectory = "%HERE%"',
   '>> "%VBS%" echo oLink.WorkingDirectory = "%HERE%"',
   '>> "%VBS%" echo oLink.Description = "Restpoint Scanner Bridge"',
   '>> "%VBS%" echo oLink.Save',

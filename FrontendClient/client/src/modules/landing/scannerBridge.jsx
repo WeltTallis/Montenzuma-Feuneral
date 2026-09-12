@@ -380,6 +380,84 @@ const ScannerSetupGuide = () => {
         .step-content p { font-size: 0.9rem; color: var(--gray); margin: 0; }
       `}</style>
 
+            {/* Navigation Bar */}
+            <nav style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 1000,
+                background: 'var(--ink)',
+                padding: '0.75rem 2rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
+            }}>
+                <a href="/" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    color: 'var(--bone)',
+                    textDecoration: 'none',
+                    fontFamily: "'Fraunces', serif",
+                    fontSize: '1.25rem',
+                    fontWeight: 600
+                }}>
+                    <div style={{
+                        width: '32px',
+                        height: '32px',
+                        background: 'var(--verdigris)',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <i className="fas fa-plus" style={{ color: 'white', fontSize: '0.9rem' }}></i>
+                    </div>
+                    <span>Restpoint</span>
+                </a>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <a href="#mobility" style={{
+                        color: 'var(--bone)',
+                        textDecoration: 'none',
+                        fontSize: '0.9rem',
+                        opacity: 0.8
+                    }}>Portable</a>
+                    <a href="#how-it-works" style={{
+                        color: 'var(--bone)',
+                        textDecoration: 'none',
+                        fontSize: '0.9rem',
+                        opacity: 0.8
+                    }}>How It Works</a>
+                    <a href="#prerequisites" style={{
+                        color: 'var(--bone)',
+                        textDecoration: 'none',
+                        fontSize: '0.9rem',
+                        opacity: 0.8
+                    }}>Setup</a>
+                    <a href="#scanner" style={{
+                        color: 'white',
+                        textDecoration: 'none',
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                        background: 'var(--verdigris)',
+                        padding: '0.5rem 1.25rem',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                    }}>
+                        <i className="fas fa-scanner" style={{ fontSize: '0.85rem' }}></i>
+                        Scanner
+                    </a>
+                </div>
+            </nav>
+
+            {/* Spacer for fixed nav */}
+            <div style={{ height: '60px' }}></div>
+
             {/* Portable Scanner Section */}
             <section id="mobility" className="portable-section">
                 <div className="container">
@@ -404,7 +482,7 @@ const ScannerSetupGuide = () => {
                         </div>
 
                         <div className="portable-visual">
-                            <img src="https://images.unsplash.com/photo-1612832023435-5e89a5506b9e?q=80&w=1000&auto=format&fit=crop" alt="Portable Desk Scanner" />
+                            <img src="https://kingspaperworks.com/wp-content/uploads/2024/08/2600f1.jpg" alt="Portable Desk Scanner" />
                         </div>
                     </div>
                 </div>
@@ -416,22 +494,32 @@ const ScannerSetupGuide = () => {
                     <div className="section-header">
                         <span className="eyebrow" style={{ color: 'var(--brass)' }}>The Engine</span>
                         <h2 className="serif">Why do I need the Restpoint Bridge?</h2>
-                        <p>The meticulously engineered micro-agent that connects our cloud to your desk.</p>
+                     <p>
+        The Restpoint Bridge is a small app/micro agent that connects your desktop/laptop  hardware to our cloud.
+        It helps your devices and our system communicate smoothly and securely,
+        so everything works together without complicated setup.
+    </p>
                     </div>
 
                     <div className="tech-grid">
                         <div className="tech-text">
-                            <h3>The Cloud-to-Local Barrier</h3>
+                            <h3>The Cloud to Local Barrier</h3>
                             <p>Your Restpoint software lives securely in the cloud. Web browsers, by design, are strictly sandboxed—they cannot see or control the physical hardware plugged into your computer. If you click "Scan" in a web browser, it has no way to tell the scanner to pull the paper.</p>
-                            <p>To solve this, we built the <strong>Restpoint Scanner Bridge</strong>. It is a lightweight, invisible micro-agent that installs on the local computer. It acts as a secure relay, receiving commands from the cloud and executing them on your local hardware.</p>
+                            <p>To solve this, we built the <strong>Restpoint Scanner Bridge  Micro  agent</strong>. It is a lightweight, invisible micro agent that installs on the local computer. It acts as a secure relay, receiving commands from the cloud and executing them on your local and  external  hardware.</p>
 
                             <ul className="tech-list">
                                 <li>
                                     <i className="fas fa-shield-halved"></i>
-                                    <div>
-                                        <strong>Secure Local Tunnel</strong>
-                                        <span>Opens a locked, local WebSocket port (ws://localhost:8081) that only your browser can talk to.</span>
-                                    </div>
+                                   <div>
+    <strong>Secure Local Tunnel</strong>
+    <span>
+        Creates a private connection on your computer using  a port(8081). A port is like a
+        small doorway that computers use to communicate. Restpoint uses
+        this private doorway so your cloud  restpoint  can safely talk to the Miro agent  Bridge
+        without exposing it to the internet.
+    </span>
+</div>
+
                                 </li>
                                 <li>
                                     <i className="fas fa-eye-slash"></i>

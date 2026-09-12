@@ -215,6 +215,35 @@ const NavLink = styled.button`
   }
 `;
 
+// Scanner navigation link - prominent with back background
+const NavLinkScanner = styled(NavLink)`
+  background: #3D4F47 !important;
+  color: white !important;
+  padding: 0.6rem 1.25rem !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 2px 8px rgba(61, 79, 71, 0.3) !important;
+  
+  &:hover {
+    background: #2E3F37 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(61, 79, 71, 0.4) !important;
+  }
+  
+  &::after {
+    display: none !important;
+  }
+  
+  @media (max-width: 900px) {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.8rem !important;
+  }
+`;
+
 const DropdownArrow = styled.span`
   display: inline-block;
   width: 0;
@@ -637,6 +666,14 @@ export default function Header() {
                     <DropdownItem key={b.label} href="#" onClick={(e) => { e.preventDefault(); go(b.path); }}>{b.label}</DropdownItem>
                   ))}
                 </DropdownMenu>
+              </NavItemWrapper>
+
+              {/* Scanner Link (Prominent) */}
+              <NavItemWrapper>
+                <NavLinkScanner onClick={() => go('/scanner')}>
+                  <i className="fas fa-scanner" style={{ fontSize: '0.85rem' }}></i>
+                  Scanner
+                </NavLinkScanner>
               </NavItemWrapper>
 
               {/* Policies with Dropdown */}

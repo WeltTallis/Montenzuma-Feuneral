@@ -7,13 +7,14 @@
   "engines": {
     "node": ">=24.0.0"
   },
-  "scripts": {
+    "scripts": {
     "build": "node scripts/build.mjs",
     "package": "node scripts/package.mjs",
     "start": "node dist/agent.js",
     "mock": "MOCK_SCAN=1 BRIDGE_ALLOW_SHUTDOWN=1 node dist/agent.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node test/e2e-mock.mjs"
+    "test": "node test/e2e-mock.mjs",
+    "build:exe": "npm run build && pkg dist/agent.js --targets node18-win-x64 --output dist/agent.exe --compress GZip"
   },
   "dependencies": {
     "ws": "^8.18.0"
@@ -22,6 +23,12 @@
     "@types/node": "^22.0.0",
     "@types/ws": "^8.5.12",
     "esbuild": "^0.25.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "assets": [],
+    "outputPath": "dist",
+    "targets": "node18-win-x64"
   }
 }
