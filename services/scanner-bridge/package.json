@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node test/e2e-mock.mjs",
     "build:exe": "npm run build && pkg dist/agent.js --targets node18-win-x64 --output dist/agent.exe --compress GZip",
-    "build:installer": "node scripts/build-installer.mjs"
+    "build:installer": "node scripts/build-installer.mjs",
+    "build:mac": "node scripts/build-macos.mjs"
   },
   "dependencies": {
     "ws": "^8.18.0"

@@ -180,10 +180,18 @@ const DocumentsTab = ({ documents, deceasedId }) => {
         if (slug) headers['x-tenant-slug'] = slug;
       } catch (e) { /* localStorage may not be available */ }
 
-      const response = await api.post(`/documents/upload/${String(deceasedId)}`, formData, {
-        headers,
-        withCredentials: false
-      });
+      formData.append('deceasedId', String(deceasedId));
+
+      let response;
+      try {
+        response = await api.post('/documents/upload', formData, {
+          headers,
+          withCredentials: false
+        });
+      } catch (uploadError) {
+        if (uploadError.response?.status !== 404) throw uploadError;
+        response = await api.post(`/documents/upload/${String(deceasedId)}`, formData, { headers, withCredentials: false });
+      }
 
       if (response.data?.success || response.data?.document) {
         notify.success('Document uploaded', response.data?.message || 'Document uploaded successfully');

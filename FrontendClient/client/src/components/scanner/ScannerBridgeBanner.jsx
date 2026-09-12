@@ -12,10 +12,17 @@ const defaultDownloadUrl = () => {
     const custom = localStorage.getItem(DL_URL_KEY);
     if (custom) return custom;
     const origin = typeof window !== 'undefined' && window.location ? window.location.origin : 'https://restpoint.co.ke';
-    return `${origin}/downloads/Restpoint-Scanner-Bridge-Installer.exe`;
+    return `${origin}/downloads/windows/Restpoint-Scanner-Bridge-Installer.exe`;
   } catch {
-    return 'https://restpoint.co.ke/downloads/Restpoint-Scanner-Bridge-Installer.exe';
+    return 'https://restpoint.co.ke/downloads/windows/Restpoint-Scanner-Bridge-Installer.exe';
   }
+};
+
+const defaultMacDownloadUrl = () => {
+  const origin = typeof window !== 'undefined' && window.location
+    ? window.location.origin
+    : 'https://restpoint.co.ke';
+  return `${origin}/downloads/macbook/Restpoint-Scanner-Bridge.pkg`;
 };
 
 const modalIn = keyframes`
@@ -204,6 +211,24 @@ const PrimaryBtn = styled.a`
   &:hover { background: #5eead4; box-shadow: 0 0 20px rgba(45, 212, 191, 0.5); }
 `;
 
+const MacBtn = styled(PrimaryBtn)`
+  color: #f8fafc;
+  background: #334155;
+  box-shadow: none;
+  &:hover { background: #475569; box-shadow: none; }
+`;
+
+const DownloadActions = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+
+  @media (max-width: 420px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
 /**
  * "Install Scanner Bridge" prompt — render INSIDE the deceased list page.
  * Probes the local bridge once. If the agent is not running (and the user has
@@ -281,9 +306,14 @@ const ScannerBridgeBanner = ({ onReady }) => {
         <ModalFooter>
           <GhostBtn onClick={dismiss}>Dismiss</GhostBtn>
           {!showSteps && <GhostBtn onClick={() => setShowSteps(true)}>Details</GhostBtn>}
-          <PrimaryBtn href={defaultDownloadUrl()} download>
-            <Printer size={16} /> Install &amp; Connect
-          </PrimaryBtn>
+          <DownloadActions>
+            <PrimaryBtn href={defaultDownloadUrl()} download>
+              <Printer size={16} /> Windows Installer
+            </PrimaryBtn>
+            <MacBtn href={defaultMacDownloadUrl()} download>
+              <Printer size={16} /> macOS Installer
+            </MacBtn>
+          </DownloadActions>
         </ModalFooter>
       </Modal>
     </Overlay>

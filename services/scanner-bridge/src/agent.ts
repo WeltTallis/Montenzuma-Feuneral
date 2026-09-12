@@ -287,8 +287,10 @@ function buildMultipart(ctx: UploadContext, boundary: string): Buffer {
     const safeName = sanitizeFilename(ctx.documentName);
     const mime = mimeForFormat(ctx.format || 'pdf');
     const safeCategory = String(ctx.category || 'General').replace(/[\r\n]+/g, ' ').slice(0, 100);
+    const safeDeceasedId = String(ctx.deceasedId || '').trim();
     const parts: Buffer[] = [];
     parts.push(Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="deceasedId"\r\n\r\n${safeDeceasedId}\r\n` +
         `--${boundary}\r\nContent-Disposition: form-data; name="document"; filename="${safeName}"\r\n` +
         `Content-Type: ${mime}\r\n\r\n`
     ));
@@ -303,9 +305,11 @@ function buildMultipart(ctx: UploadContext, boundary: string): Buffer {
 
 async function uploadScannedDocument(ctx: UploadContext): Promise<{ body: any; httpStatus: number }> {
     const base = ctx.apiBase.replace(/\/+$/, '');
-    const url = `${base}/documents/upload/${encodeURIComponent(ctx.deceasedId)}`;
+    const safeDeceasedId = String(ctx.deceasedId || '').trim();
+    const primaryUrl = `${base}/documents/upload`;
+    const legacyUrl = `${base}/documents/upload/${encodeURIComponent(safeDeceasedId)}`;
     const boundary = `----RestpointBridge-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    const body = buildMultipart(ctx, boundary);
+    const body = buildMultipart({ ...ctx, deceasedId: safeDeceasedId }, boundary);
 
     const headers: Record<string, string> = {
         'Content-Type': `multipart/form-data; boundary=${boundary}`,
@@ -315,21 +319,37 @@ async function uploadScannedDocument(ctx: UploadContext): Promise<{ body: any; h
     if (ctx.tenantSlug) headers['x-tenant-slug'] = String(ctx.tenantSlug).replace(/[\r\n]+/g, '').trim();
     if (ctx.userId) headers['x-user-id'] = String(ctx.userId).replace(/[\r\n]+/g, '').trim();
 
-    // FIX: Ensure fetch is available and cast to any to prevent TS lib conflicts
     const fetchFn = (typeof fetch !== 'undefined' ? fetch : null) as any;
     if (!fetchFn) throw new Error('Node 18+ (with global fetch) is required for uploads.');
 
-    console.log(`[BRIDGE] uploading ${body.length} bytes → POST ${url}`);
-    const res = await fetchFn(url, { method: 'POST', headers, body, redirect: 'follow' });
-    const text = await res.text();
-    let json: any = {};
-    try { json = JSON.parse(text); } catch { /* non-JSON body */ }
+    const tryUpload = async (url: string) => {
+        console.log(`[BRIDGE] uploading ${body.length} bytes → POST ${url}`);
+        const res = await fetchFn(url, { method: 'POST', headers, body, redirect: 'follow' });
+        const text = await res.text();
+        let json: any = {};
+        try { json = JSON.parse(text); } catch { /* non-JSON body */ }
+        return { res, text, json };
+    };
 
-    if (!res.ok) {
-        const detail = json?.message || json?.details || json?.error || text.slice(0, 300);
-        throw new Error(`Upload failed (HTTP ${res.status}): ${detail}`);
+    const primary = await tryUpload(primaryUrl);
+    if (primary.res.ok) {
+        try { return { body: JSON.parse(primary.text), httpStatus: primary.res.status }; }
+        catch { return { body: primary.text, httpStatus: primary.res.status }; }
     }
-    return { body: json, httpStatus: res.status };
+
+    if (primary.res.status !== 404) {
+        const detail = primary.json?.message || primary.json?.details || primary.json?.error || primary.text.slice(0, 300);
+        throw new Error(`Upload failed (HTTP ${primary.res.status}): ${detail}`);
+    }
+
+    const fallback = await tryUpload(legacyUrl);
+    if (!fallback.res.ok) {
+        const detail = fallback.json?.message || fallback.json?.details || fallback.json?.error || fallback.text.slice(0, 300);
+        throw new Error(`Upload failed (HTTP ${fallback.res.status}): ${detail}`);
+    }
+
+    try { return { body: JSON.parse(fallback.text), httpStatus: fallback.res.status }; }
+    catch { return { body: fallback.text, httpStatus: fallback.res.status }; }
 }
 
 // ── WebSocket server ──────────────────────────────────────────────────────────

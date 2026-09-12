@@ -200,11 +200,12 @@ documentsRouter.get('/:deceasedId', async (req, res) => {
 });
 
 // UPLOAD Document
-documentsRouter.post('/upload/:deceasedId', flexibleUpload, async (req, res) => {
+const handleDocumentUpload = async (req, res) => {
   try {
     // Gateways may preserve an encoded equals sign in IDs such as MON-ABC=2026.
     // Decode once at the service boundary so both raw and encoded clients work.
-    const deceasedId = normalizeDeceasedId(req.params.deceasedId);
+    const deceasedId = normalizeDeceasedId(req.params.deceasedId || req.body.deceasedId);
+    if (!deceasedId) return res.status(400).json({ success: false, message: 'Deceased ID required' });
     const { category, documentName } = req.body;
     const file = req.file;
     if (!file) return res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -236,7 +237,15 @@ documentsRouter.post('/upload/:deceasedId', flexibleUpload, async (req, res) => 
   } catch (e) {
     res.status(500).json({ success: false, message: 'Upload error', details: e.message });
   }
-});
+};
+
+// Accept both normal IDs and raw IDs that contain '=' (for example
+// LEE-MARHAZJHQRTVHN2TN6E=2026). Express 5 accepts the raw path parameter
+// directly; the previous wildcard syntax is invalid and does not match.
+documentsRouter.post('/upload/:deceasedId', flexibleUpload, handleDocumentUpload);
+// Compatibility route for gateways/proxies that reject a raw equals sign in the
+// path parameter. The multipart body carries deceasedId instead.
+documentsRouter.post('/upload', flexibleUpload, handleDocumentUpload);
 
 // DOWNLOAD Document
 documentsRouter.get('/download/:documentId', async (req, res) => {

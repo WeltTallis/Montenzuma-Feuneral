@@ -130,11 +130,19 @@ const uploadFileDirect = async ({ file, deceasedId, documentName, category }) =>
     if (slug) headers['x-tenant-slug'] = slug;
   } catch { /* localStorage unavailable */ }
 
-  const res = await api.post(`/documents/upload/${String(deceasedId)}`, formData, {
-    headers,
-    withCredentials: false,
-  });
-  return res.data;
+  formData.append('deceasedId', String(deceasedId));
+
+  try {
+    const res = await api.post('/documents/upload', formData, {
+      headers,
+      withCredentials: false,
+    });
+    return res.data;
+  } catch (uploadError) {
+    if (uploadError.response?.status !== 404) throw uploadError;
+    const fallback = await api.post(`/documents/upload/${String(deceasedId)}`, formData, { headers, withCredentials: false });
+    return fallback.data;
+  }
 };
 
 const defaultScanName = (deceasedName) => {
@@ -368,9 +376,13 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
             <div style={{ background: C.bgField, border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: '12px 14px', marginTop: 10, fontSize: 13, color: C.dark }}>
               <strong>Install Scanner Bridge</strong> to scan straight from Restpoint
               (no HP software or scanner buttons needed). Download the app at
-              <a href="/downloads/Restpoint-Scanner-Bridge-Installer.exe" download>
+              <a href="/downloads/windows/Restpoint-Scanner-Bridge-Installer.exe" download>
                 Download the Scanner Bridge installer
               </a>{' '}and run it once on this computer. Node.js is not required.
+              <br />
+              <a href="/downloads/macbook/Restpoint-Scanner-Bridge.pkg" download>
+                MacBook users: download the macOS package
+              </a>.
             </div>
             {metaFields}
             <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>

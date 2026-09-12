@@ -488,6 +488,48 @@ const ScannerSetupGuide = () => {
                 </div>
             </section>
 
+            {/* Installation & Downloads */}
+            <section id="setup" className="download-section" style={{ paddingTop: '4rem', paddingBottom: '4rem' }}>
+                <div className="container">
+                    <div className="section-header" style={{ marginBottom: '2.5rem' }}>
+                        <span className="eyebrow">Installation Guide</span>
+                        <h2 className="serif">Install for Mac or Windows</h2>
+                        <p>Choose your operating system and install the bridge on the desk computer in under a minute.</p>
+                    </div>
+
+                    <div className="prereq-grid">
+                        {/* Restpoint Bridge */}
+                        <div className="prereq-card primary">
+                            <span className="prereq-badge">Required</span>
+                            <div className="prereq-icon">
+                                <i className="fas fa-microchip"></i>
+                            </div>
+                            <h3 className="serif">Restpoint Scanner Bridge</h3>
+                            <p>The meticulously engineered agent that connects your browser to the physical scanner. Runs silently on startup.</p>
+                            <a href="/downloads/windows/Restpoint-Scanner-Bridge-Installer.exe" className="btn-secondary" download>
+                                <i className="fas fa-download"></i> Download Windows Installer (.exe)
+                            </a>
+                            <a href="/downloads/macbook/Restpoint-Scanner-Bridge.pkg" className="btn-secondary" download style={{ marginTop: '0.6rem' }}>
+                                <i className="fab fa-apple"></i> Download macOS Installer (.pkg)
+                            </a>
+                        </div>
+
+                        {/* NAPS2 */}
+                        <div className="prereq-card">
+                            <span className="prereq-badge">Free & Open Source</span>
+                            <div className="prereq-icon">
+                                <i className="fas fa-print"></i>
+                            </div>
+                            <h3 className="serif">NAPS2 Scanner Driver</h3>
+                            <p>The free, open-source translator required to talk to your hardware via TWAIN/WIA.</p>
+                            <a href="https://www.naps2.com/download" target="_blank" rel="noopener noreferrer" className="btn-primary">
+                                <i className="fas fa-external-link-alt"></i> Download NAPS2
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* The Bridge App Section (Engine) */}
             <section id="bridge-app" className="split-section">
                 <div className="container">
@@ -652,16 +694,15 @@ const ScannerSetupGuide = () => {
             </section>
 
             {/* Installation & Downloads */}
-            <section id="setup" className="download-section">
+            <section id="setup" className="download-section" style={{ paddingTop: '4rem', paddingBottom: '4rem' }}>
                 <div className="container">
-                    <div className="section-header">
+                    <div className="section-header" style={{ marginBottom: '2.5rem' }}>
                         <span className="eyebrow">Installation Guide</span>
-                        <h2 className="serif">Required Downloads</h2>
-                        <p>Get the desk computer ready in 5 minutes. Install both components below.</p>
+                        <h2 className="serif">Install for Mac or Windows</h2>
+                        <p>Choose your operating system and install the bridge on the desk computer in under a minute.</p>
                     </div>
 
                     <div className="prereq-grid">
-                        {/* Restpoint Bridge */}
                         <div className="prereq-card primary">
                             <span className="prereq-badge">Required</span>
                             <div className="prereq-icon">
@@ -669,12 +710,14 @@ const ScannerSetupGuide = () => {
                             </div>
                             <h3 className="serif">Restpoint Scanner Bridge</h3>
                             <p>The meticulously engineered agent that connects your browser to the physical scanner. Runs silently on startup.</p>
-                            <a href="/downloads/Restpoint-Scanner-Bridge-Installer.exe" className="btn-secondary" download>
+                            <a href="/downloads/windows/Restpoint-Scanner-Bridge-Installer.exe" className="btn-secondary" download>
                                 <i className="fas fa-download"></i> Download Windows Installer (.exe)
+                            </a>
+                            <a href="/downloads/macbook/Restpoint-Scanner-Bridge.pkg" className="btn-secondary" download style={{ marginTop: '0.6rem' }}>
+                                <i className="fab fa-apple"></i> Download macOS Installer (.pkg)
                             </a>
                         </div>
 
-                        {/* NAPS2 */}
                         <div className="prereq-card">
                             <span className="prereq-badge">Free & Open Source</span>
                             <div className="prereq-icon">
@@ -688,7 +731,6 @@ const ScannerSetupGuide = () => {
                         </div>
                     </div>
 
-                    {/* Setup Steps */}
                     <div className="steps-timeline">
                         <div className="step-item">
                             <div className="step-num">1</div>
@@ -708,7 +750,7 @@ const ScannerSetupGuide = () => {
                             <div className="step-num">3</div>
                             <div className="step-content">
                                 <h4>Install Restpoint Bridge</h4>
-                                <p>Download the Restpoint Scanner Bridge ZIP file. Extract it and double-click <code>Install.bat</code>. It will start silently and run on every boot.</p>
+                                <p>Download the matching Windows .exe or macOS .pkg installer for this computer, run it once, and the bridge will start silently on login.</p>
                             </div>
                         </div>
                         <div className="step-item">
