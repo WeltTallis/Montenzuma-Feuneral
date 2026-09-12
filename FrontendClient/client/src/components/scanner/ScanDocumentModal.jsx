@@ -25,19 +25,25 @@ const popIn = keyframes`from { opacity: 0; transform: scale(0.92); } to { opacit
 const Overlay = styled.div`
   position: fixed; inset: 0; z-index: 120;
   background: rgba(10, 10, 10, 0.38);
-  display: flex; align-items: stretch; justify-content: flex-end;
+  display: block;
   animation: ${keyframes`from { opacity: 0; } to { opacity: 1; }`} 0.18s ease-out;
 `;
 
 const Panel = styled.div`
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
   width: min(520px, 100vw);
   height: 100vh;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   background: #ffffff;
   border-left: 1px solid ${C.border};
   box-shadow: -18px 0 44px -18px rgba(10, 10, 10, 0.35);
   animation: ${keyframes`from { transform: translateX(100%); } to { transform: translateX(0); }`} 0.2s ease-out;
-  padding: 28px 26px;
+  padding: 0;
 
   @media (max-width: 560px) {
     padding: 22px 18px;
@@ -45,14 +51,43 @@ const Panel = styled.div`
 `;
 
 const Head = styled.div`
-  display: flex; align-items: center; gap: 10px; justify-content: space-between;
-  h3 { font-family: 'Source Sans 3', sans-serif; font-size: 17px; font-weight: 700; color: ${C.black}; margin: 0; display: flex; align-items: center; gap: 8px; }
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(135deg, #0f3040 0%, #163f52 100%);
+  border-bottom: 1px solid #0b2936;
+  box-shadow: 0 8px 18px rgba(15, 48, 64, 0.16);
+  h3 { font-family: 'Merriweather', Georgia, serif; font-size: 17px; font-weight: 700; color: #fff; margin: 0; display: flex; align-items: center; gap: 10px; }
+  h3 svg { flex: 0 0 auto; }
+`;
+
+const PanelSubtitle = styled.span`
+  display: block;
+  margin: 4px 0 0 52px;
+  color: rgba(255, 255, 255, 0.72);
+  font: 11px 'Source Sans 3', sans-serif;
+  letter-spacing: 0.04em;
+`;
+
+const PanelBody = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  -webkit-overflow-scrolling: touch;
+
+  @media (max-width: 560px) {
+    padding: 18px;
+  }
 `;
 
 const CloseBtn = styled.button`
-  width: 30px; height: 30px; border-radius: 50%; border: 1px solid ${C.border};
-  background: white; color: ${C.gray}; cursor: pointer; display: grid; place-items: center;
-  &:hover { color: ${C.black}; border-color: ${C.black}; }
+  width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08); color: #fff; cursor: pointer; display: grid; place-items: center;
+  &:hover { background: rgba(255, 255, 255, 0.18); border-color: #fff; }
 `;
 
 const StatusBox = styled.div`
@@ -177,7 +212,11 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
           break;
         case 'ERROR':
           setPhase('error');
-          setMessage(data.message || 'Scan failed. Please try again.');
+          setMessage(
+            /spawnSync\s+naps2(?:\.exe)?\s+ENOENT/i.test(data.message || '')
+              ? 'NAPS2 is not installed or is not on PATH. For a hardware-free test, start the Scanner Bridge in mock mode with MOCK_SCAN=1.'
+              : (data.message || 'Scan failed. Please try again.')
+          );
           try { ws.close(); } catch { /* ignore */ }
           break;
         default: break;
@@ -279,12 +318,16 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
     <Overlay onClick={busy ? undefined : onClose}>
       <Panel onClick={(e) => e.stopPropagation()}>
         <Head>
-          <h3><ScannerIcon /> Scan Document</h3>
+          <div>
+            <h3><ScannerIcon /> Scan Document</h3>
+            <PanelSubtitle>Capture and attach documents to this deceased profile</PanelSubtitle>
+          </div>
           <CloseBtn onClick={onClose} disabled={busy} title="Close">
             <X size={14} />
           </CloseBtn>
         </Head>
 
+        <PanelBody>
         {phase === 'probe' && (
           <StatusBox $kind="info">
             <SpinWrap><Loader2 size={16} /></SpinWrap>
@@ -397,6 +440,7 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
             {hiddenFileInput}
           </>
         )}
+        </PanelBody>
       </Panel>
     </Overlay>
   );

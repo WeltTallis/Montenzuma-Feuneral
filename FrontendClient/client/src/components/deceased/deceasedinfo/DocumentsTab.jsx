@@ -203,7 +203,7 @@ const DocumentsTab = ({ documents, deceasedId }) => {
       } else if (status === 413) {
         detail = 'File is too large (max 50MB).';
       } else if (status === 404) {
-        detail = 'Deceased record not found.';
+        detail = msg || 'Document upload endpoint or deceased record was not found.';
       } else if (msg) {
         detail = msg;
       }

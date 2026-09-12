@@ -70,6 +70,11 @@ const GLOBAL_UPLOADS_DIR = getGlobalUploadsDir();
 const sanitizeSlug = (v) => String(v || 'system_shared').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'system_shared';
 const getTenantSlug = (req) => sanitizeSlug(req.headers['x-tenant-slug'] || req.headers['x-tenant-id'] || 'system_shared');
 const tenantUploadDir = (t, d) => path.join(GLOBAL_UPLOADS_DIR, sanitizeSlug(t), 'documents', String(d || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100));
+const normalizeDeceasedId = (value) => {
+  let id = String(value || '').trim();
+  try { id = decodeURIComponent(id); } catch { /* already decoded */ }
+  return id;
+};
 
 const DOCUMENTS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS documents (document_id BIGINT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, original_name VARCHAR(255) NULL, stored_name VARCHAR(255) NULL, file_path VARCHAR(500) NULL, mime_type VARCHAR(120) NULL, file_size BIGINT DEFAULT 0, category VARCHAR(100) DEFAULT 'General', uploaded_by VARCHAR(120) NULL, uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP, INDEX idx_docs_deceased (deceased_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
@@ -176,7 +181,7 @@ const documentsRouter = express.Router();
 
 // GET Documents by Deceased ID
 documentsRouter.get('/:deceasedId', async (req, res) => {
-  const { deceasedId } = req.params;
+  const deceasedId = normalizeDeceasedId(req.params.deceasedId);
   if (!deceasedId) return res.status(400).json({ success: false, message: 'Deceased ID required' });
   try {
     const docs = await q(req.tenantSlug, `SELECT * FROM documents WHERE deceased_id = ? ORDER BY uploaded_at DESC`, [deceasedId]);
@@ -199,8 +204,7 @@ documentsRouter.post('/upload/:deceasedId', flexibleUpload, async (req, res) => 
   try {
     // Gateways may preserve an encoded equals sign in IDs such as MON-ABC=2026.
     // Decode once at the service boundary so both raw and encoded clients work.
-    let deceasedId = req.params.deceasedId;
-    try { deceasedId = decodeURIComponent(deceasedId); } catch { /* already decoded */ }
+    const deceasedId = normalizeDeceasedId(req.params.deceasedId);
     const { category, documentName } = req.body;
     const file = req.file;
     if (!file) return res.status(400).json({ success: false, message: 'No file uploaded' });

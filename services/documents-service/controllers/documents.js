@@ -39,6 +39,12 @@ function documentsDir(tenantSlug, deceasedId) {
   return dir;
 }
 
+function normalizeDeceasedId(value) {
+  let id = String(value || '').trim();
+  try { id = decodeURIComponent(id); } catch (e) { /* already decoded */ }
+  return id;
+}
+
 function absoluteStoredPath(storedPath) {
   // stored_path is stored as "/uploads/documents/{tenant}/{deceased}/{file}" —
   // resolve under GLOBAL_UPLOADS_DIR by stripping the leading "/uploads" prefix.
@@ -99,22 +105,20 @@ const uploadDocument = async (req, res) => {
       return res.status(404).json({ message: 'Tenant database not found' });
     }
     // FIX: Use deceasedId to match the route parameter name
-    const { deceasedId } = req.params;
-    const { type } = req.body;
+    const deceasedId = normalizeDeceasedId(req.params.deceasedId);
+    const type = req.body.type || req.body.category || 'General';
     const file = req.file;
 
     if (!file) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    if (!type) {
-      return res.status(400).json({ message: 'Document type is required' });
-    }
     // Check if deceased exists in tenant database
+    const lookupValue = normalizeDeceasedId(deceasedId);
     const deceasedCheck = await safeTenantQuery(
       dbName,
-      'SELECT id FROM deceased WHERE deceased_id = ?',
-      [deceasedId],
+      'SELECT id, deceased_id FROM deceased WHERE deceased_id = ? OR admission_number = ? OR (deceased_id REGEXP "^[0-9]+$" AND id = ?) LIMIT 1',
+      [lookupValue, lookupValue, lookupValue],
     );
 
     if (deceasedCheck.length === 0) {
@@ -134,7 +138,8 @@ const uploadDocument = async (req, res) => {
       });
     }
     // Multi-tenant folder structure: {GLOBAL_UPLOADS_DIR}/documents/{tenantSlug}/{deceasedId}/
-    const uploadDir = documentsDir(tenantSlug, deceasedId);
+    const canonicalDeceasedId = deceasedCheck[0].deceased_id || lookupValue;
+    const uploadDir = documentsDir(tenantSlug, canonicalDeceasedId);
     await ensureFolderExists(uploadDir);
 
     const uniqueName = `${Date.now()}-${Math.floor(Math.random() * 10000)}${path.extname(file.originalname)}`;
@@ -151,7 +156,7 @@ const uploadDocument = async (req, res) => {
         (deceased_id, document_type, file_name, file_path, mime_type, uploaded_at, created_at, tenant_slug) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        deceasedId,
+        canonicalDeceasedId,
         type,
         file.originalname,
         relativePath,

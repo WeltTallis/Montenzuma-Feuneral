@@ -403,6 +403,9 @@ const DeceasedDetailPage = () => {
   const totalCharges = useMemo(() => charges.reduce((s, c) => s + (parseFloat(c.amount || c.charge_amount || 0)), 0), [charges]);
   const totalPaid = useMemo(() => payments.reduce((s, p) => s + (parseFloat(p.amount || 0)), 0), [payments]);
   const balance = totalCharges - totalPaid;
+  // Uploads and document records use the canonical public deceased_id. The
+  // route may contain a numeric database id or another legacy identifier.
+  const documentDeceasedId = deceased?.deceased_id || deceased?.deceasedId || deceasedId;
 
   // ── Show content immediately — no blocking loader ──
   // The page renders instantly from cache/previous data, then updates when fresh data arrives
@@ -449,7 +452,7 @@ const DeceasedDetailPage = () => {
               </TabPane>
 
               <TabPane $active={activeTab === 'docs'}>
-                <DocumentsTab documents={deceased?.documents} deceasedId={deceasedId} />
+                <DocumentsTab documents={deceased?.documents} deceasedId={documentDeceasedId} />
               </TabPane>
 
               <TabPane $active={activeTab === 'audit'}>
@@ -477,7 +480,7 @@ const DeceasedDetailPage = () => {
 
         {showScanModal && (
           <ScanDocumentModal
-            deceasedId={deceasedId}
+            deceasedId={documentDeceasedId}
             deceasedName={deceased?.full_name || deceased?.name || ''}
             onClose={() => setShowScanModal(false)}
             onScanned={() => { setShowScanModal(false); fetchData(); }}
