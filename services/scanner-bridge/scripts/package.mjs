@@ -1,18 +1,11 @@
 #!/usr/bin/env node
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 // Scanner Bridge — release packager.
-//
 //  1. Builds dist/agent.js (via scripts/build.mjs)
 //  2. Assembles release/restpoint-scanner-bridge-app/
-//       agent.js                          — the executable (self-contained)
-//       Install-Restpoint-Scanner-Bridge.bat — double-click: install + autostart
-//       Start-Restpoint-Scanner-Bridge.bat   — double-click: just run now
-//       Uninstall-Restpoint-Scanner-Bridge.bat
-//       install.sh / start.sh / uninstall.sh — Linux/macOS equivalents
-//       README-FIRST.txt
 //  3. Zips the folder → release/restpoint-scanner-bridge-app.zip
 //     (host this at  https://<domain>/downloads/restpoint-scanner-bridge-app.zip)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─
 import { build } from 'esbuild';
 import { createRequire } from 'node:module';
 import * as fs from 'node:fs';
@@ -144,7 +137,7 @@ const installBat = [
   'echo ==========================================',
   'echo.',
   'set "HERE=%~dp0"',
-    'set "AGENT=%HERE%agent.exe"',
+  'set "AGENT=%HERE%agent.exe"',
   'if not exist "%AGENT%" (',
   '  echo [ERROR] agent.exe not found next to this installer.',
   '  pause & exit /b 1',

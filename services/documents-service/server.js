@@ -138,7 +138,8 @@ async function imageToHighQualityPDF(imagePath, outputPath, o = {}) {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const t = getTenantSlug(req);
-    const d = req.params.deceasedId || req.body.deceasedId;
+    // Support regex capture group (req.params[0]) and named param (req.params.deceasedId)
+    const d = req.params[0] || req.params.deceasedId || req.body.deceasedId;
     const p = tenantUploadDir(t, d);
     if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
     cb(null, p);
@@ -180,8 +181,9 @@ app.use('/uploads', express.static(GLOBAL_UPLOADS_DIR, { setHeaders: (r) => { r.
 const documentsRouter = express.Router();
 
 // GET Documents by Deceased ID
-documentsRouter.get('/:deceasedId', async (req, res) => {
-  const deceasedId = normalizeDeceasedId(req.params.deceasedId);
+// Use regex route to match IDs containing '=' (Express 5 path-to-regexp v8 limitation)
+documentsRouter.get(/^\/([^/]+)$/, async (req, res) => {
+  const deceasedId = normalizeDeceasedId(req.params[0]);
   if (!deceasedId) return res.status(400).json({ success: false, message: 'Deceased ID required' });
   try {
     const docs = await q(req.tenantSlug, `SELECT * FROM documents WHERE deceased_id = ? ORDER BY uploaded_at DESC`, [deceasedId]);
@@ -204,7 +206,8 @@ const handleDocumentUpload = async (req, res) => {
   try {
     // Gateways may preserve an encoded equals sign in IDs such as MON-ABC=2026.
     // Decode once at the service boundary so both raw and encoded clients work.
-    const deceasedId = normalizeDeceasedId(req.params.deceasedId || req.body.deceasedId);
+    // Support both regex capture group (req.params[0]) and named param (req.params.deceasedId)
+    const deceasedId = normalizeDeceasedId(req.params[0] || req.params.deceasedId || req.body.deceasedId);
     if (!deceasedId) return res.status(400).json({ success: false, message: 'Deceased ID required' });
     const { category, documentName } = req.body;
     const file = req.file;
@@ -240,9 +243,14 @@ const handleDocumentUpload = async (req, res) => {
 };
 
 // Accept both normal IDs and raw IDs that contain '=' (for example
-// LEE-MARHAZJHQRTVHN2TN6E=2026). Express 5 accepts the raw path parameter
-// directly; the previous wildcard syntax is invalid and does not match.
-documentsRouter.post('/upload/:deceasedId', flexibleUpload, handleDocumentUpload);
+// LEE-MARHAZJHQRTVHN2TN6E=2026, MON-UMEUKGNCTEAEZE8NU7V=2026).
+//
+// IMPORTANT: We use a regex route here instead of '/upload/:deceasedId' because
+// Express 5 (path-to-regexp v8) fails to match the '=' character in named path
+// parameters. The ':deceasedId' syntax silently returns 404 for IDs containing '='.
+// The regex /^\/upload\/(.+)$/ explicitly captures everything after '/upload/'
+// including '=' signs and any other special characters.
+documentsRouter.post(/^\/upload\/(.+)$/, flexibleUpload, handleDocumentUpload);
 // Compatibility route for gateways/proxies that reject a raw equals sign in the
 // path parameter. The multipart body carries deceasedId instead.
 documentsRouter.post('/upload', flexibleUpload, handleDocumentUpload);

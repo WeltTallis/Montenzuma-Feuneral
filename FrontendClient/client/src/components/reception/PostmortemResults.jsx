@@ -55,15 +55,15 @@ const PostmortemResults = () => {
     } catch (err) {
       // Fallback to mock data
       const mockDB = {
-        'ADM-2025-00472': {
+        'F/A01': {
           name: 'Ochieng, James Mwangi', dod: 'June 28, 2025', cod: 'Acute myocardial infarction',
           status: 'Complete', cond: 'Embalmed — Good', path: 'Dr. Wanjiku Gathoni', filed: 'July 1, 2025'
         },
-        'ADM-2025-00518': {
+        'M/A02': {
           name: 'Mutua, Susan Njeri', dod: 'July 3, 2025', cod: 'Blunt force trauma — RTA',
           status: 'Complete', cond: 'Refrigerated — Fair', path: 'Dr. Ahmed Osman', filed: 'July 5, 2025'
         },
-        'ADM-2025-00603': {
+        'F/A03': {
           name: 'Kiprop, Daniel Arap', dod: 'July 10, 2025', cod: 'Suspected pulmonary embolism',
           status: 'Pending histology', cond: 'Refrigerated — Intact', path: 'Dr. Wanjiku Gathoni', filed: 'Awaiting completion'
         }
@@ -101,7 +101,7 @@ const PostmortemResults = () => {
             type="text"
             value={deceasedId}
             onChange={(e) => { setDeceasedId(e.target.value.toUpperCase()); setError(''); }}
-            placeholder="ADM-2025-00472"
+            placeholder="F/A01"
             spellCheck="false"
             autoComplete="off"
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}

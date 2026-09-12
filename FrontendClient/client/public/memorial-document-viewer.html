@@ -19,33 +19,66 @@
   }
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
+  @font-face {
+    font-family: 'Computer Modern Roman';
+    src: local('CMU Serif'), local('Computer Modern Serif'), local('Latin Modern Roman'), local('DejaVu Serif'), serif;
+    font-weight: 400;
+    font-style: normal;
+  }
+
+  @font-face {
+    font-family: 'Computer Modern Bold Extended';
+    src: local('CMU Serif Bold'), local('Computer Modern Bold'), local('Latin Modern Roman Demi'), local('DejaVu Serif Bold'), serif;
+    font-weight: 700;
+    font-style: normal;
+  }
+
+  @font-face {
+    font-family: 'Computer Modern Italic';
+    src: local('CMU Serif Italic'), local('Computer Modern Serif Italic'), local('Latin Modern Roman Italic'), local('DejaVu Serif Italic'), serif;
+    font-weight: 400;
+    font-style: italic;
+  }
+
+  @font-face {
+    font-family: 'Computer Modern Typewriter';
+    src: local('CMU Typewriter Text'), local('Computer Modern Typewriter'), local('Latin Modern Mono'), local('DejaVu Sans Mono'), monospace;
+    font-weight: 400;
+    font-style: normal;
+  }
+
   :root {
-    --bg: #ffffff;
-    --canvas-bg: #f8f9fa;
+    --bg: #f4f1ec;
+    --canvas-bg: #f8f6f2;
     --card: #ffffff;
-    --fg: #1f2937;
-    --muted: #6b7280;
-    --border: #e5e7eb;
-    --soft: #f3f4f6;
-    --blue: #00296B;
-    --blue-bg: #EFF6FF;
+    --fg: #1a1a1a;
+    --muted: #555555;
+    --border: #d9d4ce;
+    --soft: #f7f5f2;
+    --black: #0a0a0a;
+    --dark: #1a1a1a;
+    --gray: #777777;
     --green: #132A13;
-    --green-bg: #E8F5E9;
+    --green-bg: #e8f5e9;
+    --panel-shadow: 0 2px 10px rgba(10, 10, 10, 0.06);
   }
   .dark {
-    --bg: #0f1115;
-    --canvas-bg: #0f1115;
-    --card: #16181d;
-    --fg: #f3f4f6;
-    --muted: #9ca3af;
-    --border: #2d3139;
-    --soft: #1a1d23;
+    --bg: #111315;
+    --canvas-bg: #171b1d;
+    --card: #1a1d20;
+    --fg: #f5f5f5;
+    --muted: #a3a3a3;
+    --border: #2b2f33;
+    --soft: #1f2428;
+    --panel-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
   }
-  * { font-family: 'Manrope', sans-serif; -webkit-font-smoothing: antialiased; }
-  .serif { font-family: 'Cormorant Garamond', serif; }
+  * { font-family: 'Computer Modern Roman', 'CMU Serif', 'Latin Modern Roman', serif; -webkit-font-smoothing: antialiased; }
+  .serif { font-family: 'Computer Modern Bold Extended', 'CMU Serif Bold', 'Latin Modern Roman Demi', serif; }
+  .mono, code, pre, .font-mono { font-family: 'Computer Modern Typewriter', 'CMU Typewriter Text', monospace; }
+  em, i { font-family: 'Computer Modern Italic', 'CMU Serif Italic', serif; }
+  strong, b { font-family: 'Computer Modern Bold Extended', 'CMU Serif Bold', serif; }
   body {
     background: var(--bg);
     color: var(--fg);
@@ -64,20 +97,23 @@
     transition: all 0.2s ease;
     border-left: 3px solid transparent;
     position: relative;
+    border-radius: 12px;
+    background: transparent;
   }
   .doc-item:hover {
-    background: var(--green-bg);
-    border-left-color: var(--green);
+    background: #f7f5f2;
+    border-left-color: var(--black);
   }
   .dark .doc-item:hover {
-    background: rgba(19, 42, 19, 0.2);
+    background: rgba(255, 255, 255, 0.03);
   }
   .doc-item.active {
-    background: var(--blue-bg);
-    border-left-color: var(--blue);
+    background: #f3f0eb;
+    border-left-color: var(--black);
+    box-shadow: inset 0 0 0 1px rgba(10, 10, 10, 0.08);
   }
   .dark .doc-item.active {
-    background: rgba(0, 41, 107, 0.2);
+    background: rgba(255, 255, 255, 0.04);
   }
   .doc-item.active::after {
     content: '';
@@ -87,21 +123,33 @@
     transform: translateY(-50%);
     width: 6px;
     height: 6px;
-    background: var(--blue);
+    background: var(--black);
     border-radius: 50%;
   }
 
-  .tool-btn { transition: all 0.18s ease; color: var(--muted); }
-  .tool-btn:hover { background: var(--soft); color: var(--blue); }
-  .tool-btn:active { transform: scale(0.95); }
+  .tool-btn {
+    transition: all 0.18s ease;
+    color: var(--fg);
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow: 0 1px 1px rgba(0,0,0,0.02);
+  }
+  .tool-btn:hover {
+    background: var(--soft);
+    color: var(--black);
+    border-color: #cfc8c1;
+  }
+  .tool-btn:active { transform: scale(0.96); }
   .tool-btn.disabled { opacity: 0.35; pointer-events: none; }
 
   .primary-btn {
-    background: #00296B;
+    background: var(--black);
     color: #ffffff;
     transition: all 0.2s ease;
+    border: 1px solid var(--black);
+    box-shadow: 0 8px 18px rgba(10, 10, 10, 0.12);
   }
-  .primary-btn:hover { background: #001f50; }
+  .primary-btn:hover { background: #1f1f1f; }
   .primary-btn:active { transform: scale(0.98); }
 
   .pdf-page-canvas {
@@ -185,15 +233,16 @@
     font-size: 13px;
     outline: none;
     transition: border 0.15s ease;
+    font-family: 'Computer Modern Roman', 'Times New Roman', serif;
   }
-  .shell-input:focus { border-color: var(--blue); }
+  .shell-input:focus { border-color: var(--black); }
 
   .unsupported-icon {
     width: 84px; height: 84px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    background: var(--blue-bg);
-    color: var(--blue);
+    background: #f2eee9;
+    color: var(--black);
     font-size: 30px;
   }
   
@@ -214,12 +263,12 @@
 <div class="flex flex-col h-screen">
 
     <!-- SLEEK TOP NAVIGATION -->
-    <header class="bg-white dark:bg-[#0f1115] border-b border-gray-200 dark:border-[#2d3139] flex-shrink-0 flex items-center justify-between px-4 py-2 gap-4">
+    <header class="bg-[#f7f3ee] dark:bg-[#171b1d] border-b border-[#d9d4ce] dark:border-[#2d3139] flex-shrink-0 flex items-center justify-between px-4 py-2 gap-4 shadow-[0_1px_0_rgba(10,10,10,0.04)]">
       
       <!-- Left: File Info -->
       <div class="flex items-center gap-3 min-w-0 flex-1">
-        <div class="w-9 h-9 rounded-lg bg-[#EFF6FF] flex items-center justify-center flex-shrink-0">
-          <i class="fas fa-file-pdf text-[#00296B] text-sm"></i>
+        <div class="w-9 h-9 rounded-lg bg-[#f2eee9] flex items-center justify-center flex-shrink-0 border border-[#d9d4ce]">
+          <i class="fas fa-file-pdf text-[#0a0a0a] text-sm"></i>
         </div>
         <div class="min-w-0 hidden md:block">
           <p id="docFileName" class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">No document selected</p>
@@ -247,16 +296,16 @@
       <!-- Right: Actions -->
       <div class="flex items-center gap-2 flex-1 justify-end">
         <button id="downloadBtn" class="tool-btn px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium">
-          <i class="fas fa-download text-[10px] text-[#132A13]"></i>
+          <i class="fas fa-download text-[10px] text-[#0a0a0a]"></i>
           <span class="hidden lg:inline">Download</span>
         </button>
         <button id="printBtn" class="tool-btn px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium">
-          <i class="fas fa-print text-[10px] text-[#00296B]"></i>
+          <i class="fas fa-print text-[10px] text-[#0a0a0a]"></i>
           <span class="hidden lg:inline">Print</span>
         </button>
-        <button id="deleteBtn" class="tool-btn px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium" title="Delete document" style="color:#DD2D4A;">
+        <button id="deleteBtn" class="tool-btn px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium" title="Delete document" style="color:#c0392b;">
           <i class="fas fa-trash-can text-[10px]"></i>
-          <span class="hidden lg:inline text-[#DD2D4A]">Delete</span>
+          <span class="hidden lg:inline text-[#c0392b]">Delete</span>
         </button>
         <div class="w-px h-6 bg-gray-200 dark:bg-[#2d3139] mx-1"></div>
         <button id="toggleRightPanel" class="tool-btn w-9 h-9 rounded-md flex items-center justify-center" title="Toggle thumbnails">
@@ -273,8 +322,8 @@
     <div class="flex flex-1 overflow-hidden">
 
       <!-- LEFT: Documents -->
-      <aside class="w-72 bg-white dark:bg-[#0f1115] border-r border-gray-200 dark:border-[#2d3139] flex flex-col relative z-10 flex-shrink-0">
-        <div class="p-4 border-b border-gray-200 dark:border-[#2d3139]">
+      <aside class="w-72 bg-[#f9f7f4] dark:bg-[#111315] border-r border-[#d9d4ce] dark:border-[#2d3139] flex flex-col relative z-10 flex-shrink-0">
+        <div class="p-4 border-b border-[#d9d4ce] dark:border-[#2d3139]">
           <button id="uploadBtn" class="primary-btn w-full py-2.5 px-4 rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
             <i class="fas fa-cloud-arrow-up text-xs"></i>
             Upload Document
@@ -291,16 +340,16 @@
           <div id="docList" class="space-y-1"></div>
         </div>
 
-        <div class="p-3 border-t border-gray-200 dark:border-[#2d3139] bg-gray-50 dark:bg-[#16181d]">
+        <div class="p-3 border-t border-[#d9d4ce] dark:border-[#2d3139] bg-[#f3efe9] dark:bg-[#171b1d]">
           <div class="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
-            <i class="fas fa-id-card text-[#00296B]"></i>
+            <i class="fas fa-id-card text-[#0a0a0a]"></i>
             <span class="flex-1 min-w-0 truncate">Deceased ID: <span id="deceasedIdLabel" class="font-semibold text-gray-900 dark:text-gray-100">—</span></span>
           </div>
         </div>
       </aside>
 
       <!-- CENTER: Viewer -->
-      <main class="flex-1 flex flex-col bg-white dark:bg-[#0f1115] relative min-w-0">
+      <main class="flex-1 flex flex-col bg-[#fbfaf8] dark:bg-[#0f1115] relative min-w-0">
         <!-- Canvas area (Continuous Scroll) -->
         <div id="canvasArea" class="flex-1 overflow-y-auto relative flex justify-center items-start p-8" style="background-color: var(--canvas-bg);">
           <div id="loadingOverlay" class="absolute inset-0 bg-white/85 dark:bg-[#0f1115]/85 backdrop-blur-sm flex items-center justify-center z-20 hidden">
@@ -365,14 +414,14 @@
       </main>
 
       <!-- RIGHT: Thumbnails + Details -->
-      <aside id="rightPanel" class="right-panel w-56 bg-white dark:bg-[#0f1115] border-l border-gray-200 dark:border-[#2d3139] flex flex-col relative z-10 flex-shrink-0">
-        <div class="p-4 border-b border-gray-200 dark:border-[#2d3139]">
+      <aside id="rightPanel" class="right-panel w-56 bg-[#f7f3ee] dark:bg-[#111315] border-l border-[#d9d4ce] dark:border-[#2d3139] flex flex-col relative z-10 flex-shrink-0">
+        <div class="p-4 border-b border-[#d9d4ce] dark:border-[#2d3139]">
           <div class="flex items-center justify-between">
             <div>
               <p class="serif text-lg text-gray-900 dark:text-gray-100 leading-none">Pages</p>
               <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Click to jump</p>
             </div>
-            <i class="far fa-images text-[#00296B]"></i>
+            <i class="far fa-images text-[#0a0a0a]"></i>
           </div>
         </div>
         <div id="thumbnailList" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
@@ -478,6 +527,17 @@
     const ext = fileExt(name);
     if (m.includes('pdf') || ext === 'pdf') return 'pdf';
     if (m.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'].includes(ext)) return 'image';
+    if (
+      m.includes('word') ||
+      m.includes('document') ||
+      m.includes('officedocument') ||
+      ['doc', 'docx', 'rtf', 'odt', 'txt', 'csv'].includes(ext)
+    ) return 'document';
+    if (
+      m.includes('excel') ||
+      m.includes('spreadsheet') ||
+      ['xls', 'xlsx', 'ods'].includes(ext)
+    ) return 'sheet';
     return 'other';
   }
   function categoryOf(doc) {
@@ -492,12 +552,14 @@
     if (!doc) return '<i class="fas fa-file-pdf text-[#DD2D4A] text-xs"></i>';
     if (doc.kind === 'pdf') return '<i class="fas fa-file-pdf text-[#DD2D4A] text-xs"></i>';
     if (doc.kind === 'image') return '<i class="fas fa-file-image text-[#132A13] text-xs"></i>';
+    if (doc.kind === 'sheet') return '<i class="fas fa-file-excel text-[#1F8F5F] text-xs"></i>';
     return '<i class="fas fa-file-word text-[#00296B] text-xs"></i>';
   }
   function iconBg(doc) {
     if (!doc) return 'bg-[#EFF6FF]';
     if (doc.kind === 'pdf') return 'bg-[#FDE9EC]';
     if (doc.kind === 'image') return 'bg-[#E8F5E9]';
+    if (doc.kind === 'sheet') return 'bg-[#EAF7F1]';
     return 'bg-[#EFF6FF]';
   }
 
@@ -770,14 +832,49 @@
   }
 
   // ---------------- Unsupported / other types ----------------
+  async function openCurrentDocumentExternally(options = {}) {
+    if (!currentDoc) return;
+    try {
+      const data = lastBytes || (await fetchBytesFor(currentDoc));
+      const blob = new Blob([data], { type: currentDoc.mimeType || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!win) {
+        showToast('Please allow pop-ups so the document can open.', 'error');
+        URL.revokeObjectURL(url);
+        return;
+      }
+      if (options.print) {
+        const doPrint = () => {
+          try {
+            win.focus();
+            win.print();
+          } catch (e) {
+            console.warn('Print fallback failed:', e);
+          }
+        };
+        if (win.document.readyState === 'complete') {
+          setTimeout(doPrint, 600);
+        } else {
+          win.addEventListener('load', () => setTimeout(doPrint, 600), { once: true });
+        }
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 6000);
+      showToast(options.print ? 'Opening print preview…' : 'Opening document…', 'info');
+    } catch (err) {
+      showToast('Unable to open this document: ' + err.message, 'error');
+    }
+  }
+
   function openOtherPanel() {
     pdfDoc = null;
     clearThumbnails();
     showEl($id('unsupportedPanel'));
     const mime = currentDoc.mimeType || '';
+    const kindLabel = currentDoc.kind === 'sheet' ? 'spreadsheet' : 'document';
     $id('unsupportedText').textContent = (mime && mime !== 'application/octet-stream')
-      ? 'This ' + mime + ' file cannot be previewed in the browser. Open or download it to view it.'
-      : 'This document type cannot be previewed in the browser. You can open or download it to view it.';
+      ? 'This ' + kindLabel + ' file cannot be previewed in the browser. Open it in another tab or download it to view or print it.'
+      : 'This document type cannot be previewed in the browser. You can open it in another tab or download it to view or print it.';
   }
 
   // ---------------- Shared UI helpers ----------------
@@ -909,24 +1006,31 @@
     if (!currentDoc) return;
     showLoading(true, 'Preparing print…');
     try {
-      const data = lastBytes || (await fetchBytesFor(currentDoc));
-      const blob = new Blob([data], { type: currentDoc.mimeType || 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      
-      const iframe = $id('printIframe');
-      iframe.src = url;
-      
-      iframe.onload = function() {
-        setTimeout(() => {
-          try {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-          } catch (e) {
-            window.open(url, '_blank');
-          }
+      if (currentDoc.kind === 'pdf' || currentDoc.kind === 'image') {
+        const data = lastBytes || (await fetchBytesFor(currentDoc));
+        const blob = new Blob([data], { type: currentDoc.mimeType || 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const printWindow = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!printWindow) {
+          showToast('Please allow pop-ups to print this file.', 'error');
           showLoading(false);
-        }, 500);
-      };
+          return;
+        }
+        const doPrint = () => {
+          try {
+            printWindow.focus();
+            printWindow.print();
+          } catch (e) {
+            console.warn('Direct print failed, opening file instead:', e);
+            printWindow.location.href = url;
+          }
+        };
+        setTimeout(doPrint, 700);
+        setTimeout(() => URL.revokeObjectURL(url), 15000);
+      } else {
+        await openCurrentDocumentExternally({ print: true });
+      }
+      showLoading(false);
     } catch (err) {
       showToast('Print failed: ' + err.message, 'error');
       showLoading(false);
@@ -952,6 +1056,7 @@
     $id('printBtn').addEventListener('click', handlePrint);
     $id('deleteBtn').addEventListener('click', handleDelete);
     $id('unsupportedDownloadBtn').addEventListener('click', handleDownload);
+    $id('unsupportedOpenBtn').addEventListener('click', () => openCurrentDocumentExternally({ print: false }));
     
     $id('uploadBtn').addEventListener('click', () => $id('fileInput').click());
     $id('emptyUploadBtn').addEventListener('click', () => $id('fileInput').click());

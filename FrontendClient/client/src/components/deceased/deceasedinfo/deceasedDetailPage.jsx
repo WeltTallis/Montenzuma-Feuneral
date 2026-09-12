@@ -244,21 +244,25 @@ const DeceasedDetailPage = () => {
     };
   }, []);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (forceRefresh = false) => {
     if (!deceasedId) return;
 
-    // Check cache first — instant render if fresh
     const cacheKey = `${deceasedId}-${getTenantSlug()}`;
-    const cached = _getCached(cacheKey);
-    if (cached) {
-      if (cached.deceased) setDeceased(cached.deceased);
-      if (cached.nextOfKin) setNextOfKin(cached.nextOfKin);
-      if (cached.postmortem) setPostmortem(cached.postmortem);
-      if (cached.charges) setCharges(cached.charges);
-      if (cached.payments) setPayments(cached.payments);
-      if (cached.requests) setRequests(cached.requests);
-      setLoading(false);
-      return;
+
+    if (!forceRefresh) {
+      const cached = _getCached(cacheKey);
+      if (cached) {
+        if (cached.deceased) setDeceased(cached.deceased);
+        if (cached.nextOfKin) setNextOfKin(cached.nextOfKin);
+        if (cached.postmortem) setPostmortem(cached.postmortem);
+        if (cached.charges) setCharges(cached.charges);
+        if (cached.payments) setPayments(cached.payments);
+        if (cached.requests) setRequests(cached.requests);
+        setLoading(false);
+        return;
+      }
+    } else {
+      _deceasedCache.delete(cacheKey);
     }
 
     setLoading(true);
@@ -370,12 +374,12 @@ const DeceasedDetailPage = () => {
       // 7) Release data
       if (relRes.status === 'fulfilled' && relRes.value?.data?.data) {
         setDeceased(prev => prev ? { ...prev, releaseData: relRes.value.data.data } : prev);
-      }
+      }   
 
       // 8) Postmortem requests
       if (pmReqRes.status === 'fulfilled' && Array.isArray(pmReqRes.value?.data?.data)) {
         setRequests(pmReqRes.value.data.data);
-      }
+      }   
 
       // Cache for instant repeat loads
       _setCache(cacheKey, {
@@ -420,7 +424,7 @@ const DeceasedDetailPage = () => {
           onBack={() => { const slug = getTenantSlug(); navigate(`/tenant/${slug}/all-deceased`); }}
           onTabSwitch={switchTab}
           onChargeSettingsClick={() => setShowChargeModal(true)}
-          onRefresh={fetchData}
+          onRefresh={() => fetchData(true)}
           onScanClick={() => setShowScanModal(true)}
         />
 

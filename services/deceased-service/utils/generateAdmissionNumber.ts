@@ -1,12 +1,12 @@
 /**
- * Generate admission number in format: ADM-M/A01 or ADM-M/A001
+ * Generate admission number in format: M/A01 or F/A001
  * Sequence progression:
  * - A01 to A99, then B01 to B99 ... up to Z99 (3 characters total after '/')
  * - After Z99, it cycles to A001 to A099, B001 to B099 ... up to Z099 (4 characters total after '/')
  * 
  * @param gender - "Male" | "Female" | "M" | "F"
  * @param sequence - Sequential number for this tenant (1-based index)
- * @returns Admission number like "ADM-M/A01"
+ * @returns Admission number like "F/A01"
  */
 const generateAdmissionNumber = (
     gender: "Male" | "Female" | "M" | "F" | string,
@@ -46,7 +46,7 @@ const generateAdmissionNumber = (
 
     const sequencePart = `${letter}${numberPart}`;
 
-    return `ADM-${genderPrefix}/${sequencePart}`;
+    return `${genderPrefix}/${sequencePart}`;
 };
 
 export default generateAdmissionNumber;

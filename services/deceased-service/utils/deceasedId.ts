@@ -3,8 +3,8 @@ import crypto from 'crypto'
 /**
  * Deceased ID generator — high-entropy, collision-resistant.
  *
- * Format:   {TENANT}-{NAME}{RANDOM}={YEAR}
- * Example:  MON-DEBQ9N3X6TR4K7WB8ZM=2026
+ * Format:   {TENANT}-{NAME}{RANDOM}{YEAR}
+ * Example:  MON-DEBQ9N3X6TR4K7WB8ZM2026
  *
  * - TENANT : first 3 alphanumerics of the tenant slug (upper-cased)
  * - NAME   : first 3 letters of the deceased's full name (upper-cased, 'XXX' fallback)
@@ -42,7 +42,7 @@ const generateUniqueDeceasedId = (fullName: string, tenantSlug: string): string 
     const namePart = (fullName || '').substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '') || 'XXX';
     // Kenya time = UTC+3 all year round.
     const year = new Date(Date.now() + 3 * 60 * 60 * 1000).getUTCFullYear();
-    return `${sanitizedTenant}-${namePart}${randomPart()}=${year}`;
+    return `${sanitizedTenant}-${namePart}${randomPart()}${year}`;
 };
 
 

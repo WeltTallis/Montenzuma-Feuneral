@@ -92,8 +92,50 @@ const STATUS_CONFIG = {
 };
 
 const getStatusInfo = (statusStr) => {
-  const s = (statusStr || 'active').toLowerCase();
-  return STATUS_CONFIG[s] || STATUS_CONFIG.default;
+  const raw = String(statusStr ?? '').trim();
+  if (!raw) return STATUS_CONFIG.default;
+
+  const normalized = raw
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const aliases = {
+    active: STATUS_CONFIG.active,
+    admitted: STATUS_CONFIG.active,
+    received: STATUS_CONFIG.active,
+    'under care': STATUS_CONFIG.active,
+    'in care': STATUS_CONFIG.active,
+    'in morgue': STATUS_CONFIG.active,
+    morgue: STATUS_CONFIG.active,
+    embalmed: STATUS_CONFIG.active,
+    pending: STATUS_CONFIG.pending,
+    'postmortem requested': STATUS_CONFIG['postmortem requested'],
+    'post mortem requested': STATUS_CONFIG['postmortem requested'],
+    'pending autopsy': STATUS_CONFIG['postmortem requested'],
+    'postmortem done': STATUS_CONFIG['postmortem done'],
+    'post mortem done': STATUS_CONFIG['postmortem done'],
+    completed: STATUS_CONFIG.completed,
+    released: STATUS_CONFIG.released,
+    'released to family': STATUS_CONFIG.released,
+    transferred: STATUS_CONFIG.transferred,
+    transfer: STATUS_CONFIG.transferred,
+    dispatched: STATUS_CONFIG.released,
+    buried: STATUS_CONFIG.buried,
+    'ready for collection': STATUS_CONFIG.released,
+    ready: STATUS_CONFIG.released,
+    default: STATUS_CONFIG.default,
+  };
+
+  if (aliases[normalized]) return aliases[normalized];
+
+  const fallback = Object.entries(STATUS_CONFIG).find(([key, value]) => {
+    if (key === 'default') return false;
+    return normalized.includes(key) || key.includes(normalized);
+  });
+
+  return fallback?.[1] || STATUS_CONFIG.default;
 };
 
 // ─── Helper: Format Date to YYYY-MM-DD ──────────────────────────────
@@ -1826,7 +1868,9 @@ const DeceasedListPage = () => {
                   const adm = r.admission_number || r.admission_no || '—';
                   const admitted = r.created_at || r.date_admitted || r.admission_date;
                   const days = getDaysInMorgue(admitted);
-                  const statusInfo = getStatusInfo(r.body_status || r.status);
+                  const statusInfo = getStatusInfo(
+                    r.body_status || r.body_condition || r.admission_status || r.status || r.release_status || 'active'
+                  );
                   const sex = r.sex || r.gender || '';
                   const isFemale = sex.toLowerCase() === 'female';
                   return (
@@ -1877,7 +1921,9 @@ const DeceasedListPage = () => {
                 const adm = r.admission_number || r.admission_no || '—';
                 const admitted = r.created_at || r.date_admitted || r.admission_date;
                 const days = getDaysInMorgue(admitted);
-                const statusInfo = getStatusInfo(r.body_status || r.status);
+                const statusInfo = getStatusInfo(
+                  r.body_status || r.body_condition || r.admission_status || r.status || r.release_status || 'active'
+                );
                 const sex = r.sex || r.gender || '';
                 const isFemale = sex.toLowerCase() === 'female';
 

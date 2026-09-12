@@ -41,16 +41,16 @@ const SectionHead = styled.div`
 `;
 
 const DetailGrid = styled.div`
-  display: grid; 
-  grid-template-columns: ${p => p.$cols ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(200px, 1fr))'}; 
-  gap: 1.5rem 2rem; 
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px 24px;
   margin-bottom: 24px;
 `;
 
 const TwoColGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem 2rem;
   margin-bottom: 24px;
 `;
 
@@ -63,7 +63,10 @@ const DetailItem = styled.div`
   flex-direction: column;
   gap: 6px;
   min-width: 0;
-  
+  padding: 12px 14px;
+  border: 1px solid ${C.borderLight || '#e0e0e0'};
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,247,245,0.96));
   ${p => p.$full && 'grid-column: 1 / -1;'}
 `;
 
@@ -280,10 +283,10 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
         </div>
       )}
 
-      <TwoColGrid>
+          <TwoColGrid>
         <Col>
-          <SectionHead $mt0 $primary><span>01</span> Release Details</SectionHead>
-          <DetailGrid $cols>
+          <SectionHead $mt0><span>01</span> Release Details</SectionHead>
+          <DetailGrid>
             <DetailItem><DetailLabel>Release ID</DetailLabel><DetailValue>{releaseData?.release_id || '—'}</DetailValue></DetailItem>
             <DetailItem><DetailLabel>Deceased</DetailLabel><DetailValue>{releaseData?.name_of_deceased || d.full_name || d.name_of_deceased || '—'}</DetailValue></DetailItem>
             <DetailItem><DetailLabel>Scheduled Release Date</DetailLabel><DetailValue>{releaseData?.date_of_removal ? formatDate(releaseData.date_of_removal) : 'Not scheduled'}</DetailValue></DetailItem>
@@ -293,7 +296,7 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
 
         <Col>
           <SectionHead $mt0><span>02</span> Receiver / Next of Kin</SectionHead>
-          <DetailGrid $cols>
+          <DetailGrid>
             <DetailItem><DetailLabel>Authorized By (NOK)</DetailLabel><DetailValue>{releaseData?.next_kin || nextOfKin?.full_name || nextOfKin?.name || '—'}</DetailValue></DetailItem>
             <DetailItem><DetailLabel>Relationship to Deceased</DetailLabel><DetailValue>{releaseData?.relationship || nextOfKin?.relationship || '—'}</DetailValue></DetailItem>
             <DetailItem><DetailLabel>Receiver ID Number</DetailLabel><DetailValue>{releaseData?.id_number || nextOfKin?.id_number || '—'}</DetailValue></DetailItem>

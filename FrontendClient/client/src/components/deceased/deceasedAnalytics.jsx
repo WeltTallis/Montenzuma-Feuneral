@@ -108,7 +108,7 @@ function generateMockData() {
       const dateStr = `${year}-${ms}-${ds}`;
       records.push({
         id,
-        admission_number: `ADM-${year}-${String(id).padStart(4, '0')}`,
+        admission_number: `${tmpl.gender === 'Female' ? 'F' : 'M'}/${String.fromCharCode(65 + ((id - 1) % 26))}${String((id % 99) + 1).padStart(2, '0')}`,
         full_name: tmpl.name,
         gender: tmpl.gender,
         age,
