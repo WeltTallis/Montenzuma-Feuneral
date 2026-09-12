@@ -742,6 +742,9 @@ const AppRouter = () => (
       <Route path="/portal/login" element={<PortalLoginPage />} />
       <Route path="/integrations" element={<UpcomingIntegrations />} />
 
+      {/* Public scanner setup page used by the main navigation. */}
+      <Route path="/scanner" element={<ScannerSetupGuide />} />
+
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="/security" element={<SecurityPolicy />} />
