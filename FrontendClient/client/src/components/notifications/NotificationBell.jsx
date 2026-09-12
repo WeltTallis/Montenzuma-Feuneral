@@ -237,20 +237,63 @@ const NotificationBell = () => {
   const [loading, setLoading] = useState(false);
   const [isMuted, setIsMuted] = useState(() => localStorage.getItem('nb_muted') === 'true');
   const dropdownRef = useRef(null);
-  const audioRef = useRef(null);
+  const audioContextRef = useRef(null);
   const { socket } = useSocket();
 
   // Performance: Debounce rapid notifications to prevent excessive re-renders
   const pendingNotificationsRef = useRef([]);
   const debounceTimerRef = useRef(null);
 
+  // Unlock browser audio after the user's first interaction so live socket
+  // notifications can use a sound without triggering autoplay errors.
+  useEffect(() => {
+    const unlockAudio = () => {
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        if (!audioContextRef.current) audioContextRef.current = new AudioContextClass();
+        if (audioContextRef.current.state === 'suspended') audioContextRef.current.resume();
+      } catch { /* audio is optional */ }
+    };
+
+    window.addEventListener('pointerdown', unlockAudio, { once: true, passive: true });
+    return () => window.removeEventListener('pointerdown', unlockAudio);
+  }, []);
+
   const playNotificationSound = useCallback(() => {
+    if (isMuted) return;
     try {
-      if (!isMuted && audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(() => { });
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      if (!audioContextRef.current) audioContextRef.current = new AudioContextClass();
+      const context = audioContextRef.current;
+      if (context.state === 'suspended') {
+        context.resume().catch(() => {});
+        return;
       }
-    } catch { }
+
+      const now = context.currentTime;
+      const master = context.createGain();
+      master.gain.setValueAtTime(0.0001, now);
+      master.gain.exponentialRampToValueAtTime(0.035, now + 0.018);
+      master.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+      master.connect(context.destination);
+
+      // Soft D5 to A5 chime: short and deliberately low volume.
+      [[587.33, 0], [880, 0.1]].forEach(([frequency, offset]) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, now + offset);
+        gain.gain.setValueAtTime(0.0001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.45, now + offset + 0.018);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.24);
+        oscillator.connect(gain);
+        gain.connect(master);
+        oscillator.start(now + offset);
+        oscillator.stop(now + offset + 0.26);
+      });
+    } catch { /* audio is optional */ }
   }, [isMuted]);
 
   const toggleMute = useCallback(() => {
@@ -778,8 +821,6 @@ const NotificationBell = () => {
 
   return (
     <>
-      <audio ref={audioRef} src="/audio/alert.mp3" preload="auto" />
-
       {/* ─── Floating Bell & Glass Dropdown ─── */}
       <div className="nb-container" ref={dropdownRef}>
         <div className="nb-bell-wrap">
