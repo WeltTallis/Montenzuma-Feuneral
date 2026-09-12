@@ -524,6 +524,35 @@ const MobileLoginBtn = styled.button`
   }
 `;
 
+// Mobile Scanner button - prominent with green background
+const MobileScannerBtn = styled.button`
+  width: 100%;
+  padding: 0.95rem;
+  background: #3D4F47;
+  color: #FFFFFF;
+  border: 1px solid #3D4F47;
+  border-radius: 6px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 2px 8px rgba(61, 79, 71, 0.3);
+
+  &:hover {
+    background: #2E3F37;
+    border-color: #2E3F37;
+    box-shadow: 0 4px 12px rgba(61, 79, 71, 0.4);
+  }
+`;
+
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [utilityHidden, setUtilityHidden] = useState(false);
@@ -723,6 +752,10 @@ export default function Header() {
             ))}
 
             <MobileActions>
+              <MobileScannerBtn onClick={() => go('/scanner')}>
+                <i className="fas fa-scanner" style={{ fontSize: '0.85rem' }}></i>
+                Scanner
+              </MobileScannerBtn>
               <MobileLoginBtn onClick={() => go('/login')}>Client Login</MobileLoginBtn>
             </MobileActions>
           </MobilePanelInner>

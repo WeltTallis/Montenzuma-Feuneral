@@ -197,7 +197,10 @@ documentsRouter.get('/:deceasedId', async (req, res) => {
 // UPLOAD Document
 documentsRouter.post('/upload/:deceasedId', flexibleUpload, async (req, res) => {
   try {
-    const { deceasedId } = req.params;
+    // Gateways may preserve an encoded equals sign in IDs such as MON-ABC=2026.
+    // Decode once at the service boundary so both raw and encoded clients work.
+    let deceasedId = req.params.deceasedId;
+    try { deceasedId = decodeURIComponent(deceasedId); } catch { /* already decoded */ }
     const { category, documentName } = req.body;
     const file = req.file;
     if (!file) return res.status(400).json({ success: false, message: 'No file uploaded' });

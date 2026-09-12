@@ -669,8 +669,8 @@ const ScannerSetupGuide = () => {
                             </div>
                             <h3 className="serif">Restpoint Scanner Bridge</h3>
                             <p>The meticulously engineered agent that connects your browser to the physical scanner. Runs silently on startup.</p>
-                            <a href="/downloads/restpoint-scanner-bridge-app.zip" className="btn-secondary">
-                                <i className="fas fa-download"></i> Download Bridge (.zip)
+                            <a href="/downloads/Restpoint-Scanner-Bridge-Installer.exe" className="btn-secondary" download>
+                                <i className="fas fa-download"></i> Download Windows Installer (.exe)
                             </a>
                         </div>
 

@@ -180,7 +180,7 @@ const DocumentsTab = ({ documents, deceasedId }) => {
         if (slug) headers['x-tenant-slug'] = slug;
       } catch (e) { /* localStorage may not be available */ }
 
-      const response = await api.post(`/documents/upload/${deceasedId}`, formData, {
+      const response = await api.post(`/documents/upload/${String(deceasedId)}`, formData, {
         headers,
         withCredentials: false
       });

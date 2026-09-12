@@ -15,31 +15,27 @@ ADF tray, click **Scan Docs** in Restpoint, and the rest is automatic.
 
 ## What ships to production
 
-**Only one file:** `dist/agent.js` — the compiled, self-contained executable
-(TypeScript source → esbuild bundle, `ws` inlined). Copy it to the reception computer
-and run:
-
-```bash
-node dist/agent.js
-```
-
-The `.ts` source is only needed to rebuild.
+For Windows reception computers, distribute **only** `dist/Setup-Restpoint-Scanner-Bridge.exe`.
+It contains the bridge executable, installs it under the current user's local app data,
+creates a hidden Startup shortcut, and starts the bridge without opening a console window.
+Node.js is not required on the reception computer.
 
 ## Build
 
 ```bash
 npm install          # once — dev deps (esbuild, ws, typescript)
-npm run build        # → dist/agent.js  (this is the artifact to ship)
+npm run build        # → dist/agent.js  (development/runtime bundle)
+npm run build:installer # → dist/Setup-Restpoint-Scanner-Bridge.exe
 ```
 
 ## Run
 
-| Mode | Command |
-|------|---------|
-| Real scanner | `node dist/agent.js` |
+| Mode                                 | Command                          |
+| ------------------------------------ | -------------------------------- |
+| Real scanner                         | `node dist/agent.js`             |
 | Mock (no hardware, for testing/demo) | `MOCK_SCAN=1 node dist/agent.js` |
 
-Set up the scanner driver once (see *Scanner drivers* below), then optionally create a
+Set up the scanner driver once (see _Scanner drivers_ below), then optionally create a
 `.env`-style config via environment variables (see [.env.example](./.env.example)).
 
 ## Scanner drivers
@@ -65,17 +61,17 @@ eSCL devices — including the **HP ScanJet Pro 2600 f1**.
 
 JSON over `ws://localhost:{BRIDGE_PORT}` (default **8081**):
 
-| Direction | Message |
-|-----------|---------|
-| C → S | `{ "action": "PING" }` |
-| S → C | `{ "type": "pong", "status": "OK", "version", "mock", "busy" }` |
-| C → S | `{ "action": "GET_SCANNERS" }` |
-| S → C | `{ "status": "OK", "scanners": [{ "id", "name", "location", "available" }] }` |
-| C → S | `{ "action": "START_SCAN", "deceasedId", "documentName"?, "category"?, "token"?, "tenantSlug"?, "userId"?, "apiBase"?, "resolution"?, "colorMode"?, "duplex"?, "pages"?, "source"?, "format"? }` |
-| S → C | `{ "status": "SCANNING",  "progress", "message" }` |
-| S → C | `{ "status": "UPLOADING", "message" }` |
-| S → C | `{ "status": "COMPLETE",  "message", "document", "server" }` |
-| S → C | `{ "status": "ERROR",    "message" }` |
+| Direction | Message                                                                                                                                                                                          |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| C → S     | `{ "action": "PING" }`                                                                                                                                                                           |
+| S → C     | `{ "type": "pong", "status": "OK", "version", "mock", "busy" }`                                                                                                                                  |
+| C → S     | `{ "action": "GET_SCANNERS" }`                                                                                                                                                                   |
+| S → C     | `{ "status": "OK", "scanners": [{ "id", "name", "location", "available" }] }`                                                                                                                    |
+| C → S     | `{ "action": "START_SCAN", "deceasedId", "documentName"?, "category"?, "token"?, "tenantSlug"?, "userId"?, "apiBase"?, "resolution"?, "colorMode"?, "duplex"?, "pages"?, "source"?, "format"? }` |
+| S → C     | `{ "status": "SCANNING",  "progress", "message" }`                                                                                                                                               |
+| S → C     | `{ "status": "UPLOADING", "message" }`                                                                                                                                                           |
+| S → C     | `{ "status": "COMPLETE",  "message", "document", "server" }`                                                                                                                                     |
+| S → C     | `{ "status": "ERROR",    "message" }`                                                                                                                                                            |
 
 `apiBase` is the Restpoint API gateway base (e.g. `https://restpoint.co.ke/api/v1/restpoint`)
 — the web app passes it automatically, and the agent posts the scanned PDF straight to

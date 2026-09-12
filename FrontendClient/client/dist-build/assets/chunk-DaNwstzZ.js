@@ -1,1 +1,0 @@
-import{t}from"./chunk-eZ3__Fgx.js";import"./chunk-DyQAXL3m.js";import"./index-D6gguvjv.js";import"./chunk-Dz5RcEYL.js";import"./chunk-CPDBe4kv2.js";var o="http://localhost:8120",e=t.create({baseURL:o,timeout:1e4});

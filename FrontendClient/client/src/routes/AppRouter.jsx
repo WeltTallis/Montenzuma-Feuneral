@@ -107,6 +107,7 @@ const FlowerBookingsPreview = lazy(() => import('../components/florists/FlowerBo
 const ReleaseFormPreview = lazy(() => import('../components/deceased/register/deceasedRelease'));
 const ReceptionPortalPreview = lazy(() => import('../components/reception/ReceptionPortal'));
 const PublicMemorialPage = lazy(() => import('../components/memorial/PublicMemorialPage'));
+const ScannerSetupGuide = lazy(() => import('../modules/landing/scannerBridge'));
 
 
 const ChemicalManagementDashboard = lazy(() => import('../components/chemicals/chemicals'));
@@ -378,6 +379,13 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
         <Route path="dashboard" element={
           <Suspense fallback={<RouteLoadingFallback />}>
             <DashboardRoleGate tenantSlug={slug} tenantData={tenantData} />
+          </Suspense>
+        } />
+
+        {/* Scanner Setup Guide - Public page */}
+        <Route path="scanner" element={
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <ScannerSetupGuide />
           </Suspense>
         } />
 

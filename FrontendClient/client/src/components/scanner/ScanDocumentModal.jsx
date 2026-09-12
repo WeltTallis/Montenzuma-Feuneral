@@ -24,21 +24,24 @@ const popIn = keyframes`from { opacity: 0; transform: scale(0.92); } to { opacit
 
 const Overlay = styled.div`
   position: fixed; inset: 0; z-index: 120;
-  background: rgba(10, 10, 10, 0.55);
-  display: flex; align-items: center; justify-content: center;
+  background: rgba(10, 10, 10, 0.38);
+  display: flex; align-items: stretch; justify-content: flex-end;
   animation: ${keyframes`from { opacity: 0; } to { opacity: 1; }`} 0.18s ease-out;
 `;
 
 const Panel = styled.div`
-  width: min(480px, calc(100vw - 32px));
-  max-height: calc(100vh - 80px);
+  width: min(520px, 100vw);
+  height: 100vh;
   overflow-y: auto;
   background: #ffffff;
-  border-radius: 14px;
-  border: 1px solid ${C.border};
-  box-shadow: 0 22px 44px -14px rgba(10, 10, 10, 0.35);
-  animation: ${popIn} 0.2s ease-out;
-  padding: 22px 24px;
+  border-left: 1px solid ${C.border};
+  box-shadow: -18px 0 44px -18px rgba(10, 10, 10, 0.35);
+  animation: ${keyframes`from { transform: translateX(100%); } to { transform: translateX(0); }`} 0.2s ease-out;
+  padding: 28px 26px;
+
+  @media (max-width: 560px) {
+    padding: 22px 18px;
+  }
 `;
 
 const Head = styled.div`
@@ -92,7 +95,7 @@ const uploadFileDirect = async ({ file, deceasedId, documentName, category }) =>
     if (slug) headers['x-tenant-slug'] = slug;
   } catch { /* localStorage unavailable */ }
 
-  const res = await api.post(`/documents/upload/${encodeURIComponent(deceasedId)}`, formData, {
+  const res = await api.post(`/documents/upload/${String(deceasedId)}`, formData, {
     headers,
     withCredentials: false,
   });
@@ -322,8 +325,9 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
             <div style={{ background: C.bgField, border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: '12px 14px', marginTop: 10, fontSize: 13, color: C.dark }}>
               <strong>Install Scanner Bridge</strong> to scan straight from Restpoint
               (no HP software or scanner buttons needed). Download the app at
-                         <code>{`${typeof window !== 'undefined' && window.location ? window.location.origin : 'https://restpoint.co.ke'}/downloads/restpoint-scanner-bridge-app.zip`}</code>
-              and run <code>node dist/agent.js</code> on this computer.
+              <a href="/downloads/Restpoint-Scanner-Bridge-Installer.exe" download>
+                Download the Scanner Bridge installer
+              </a>{' '}and run it once on this computer. Node.js is not required.
             </div>
             {metaFields}
             <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
