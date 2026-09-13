@@ -492,6 +492,7 @@ const DeceasedDetailPage = () => {
             postmortem={postmortem}
             bodyStatus={deceased?.body_status || deceased?.status || 'In Morgue'}
             totalCharges={totalCharges}
+            totalPaid={totalPaid}
             balance={balance}
             age={deceased?.age}
           />

@@ -480,6 +480,12 @@
     if (m.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'].includes(ext)) return 'image';
     return 'other';
   }
+  function getBlobMimeType(doc) {
+    if (!doc) return 'application/octet-stream';
+    if (doc.kind === 'pdf') return 'application/pdf';
+    if (doc.kind === 'image') return doc.mimeType || 'image/png';
+    return doc.mimeType || 'application/octet-stream';
+  }
   function categoryOf(doc) {
     if (doc.category && doc.category !== 'General') return doc.category;
     const m = String(doc.mimeType || '').toLowerCase();
@@ -887,7 +893,7 @@
     showLoading(true, 'Preparing download…');
     try {
       const data = lastBytes || (await fetchBytesFor(currentDoc));
-      const blob = new Blob([data], { type: currentDoc.mimeType || 'application/octet-stream' });
+      const blob = new Blob([data], { type: getBlobMimeType(currentDoc) });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -910,23 +916,29 @@
     showLoading(true, 'Preparing print…');
     try {
       const data = lastBytes || (await fetchBytesFor(currentDoc));
-      const blob = new Blob([data], { type: currentDoc.mimeType || 'application/pdf' });
+      const blob = new Blob([data], { type: getBlobMimeType(currentDoc) });
       const url = URL.createObjectURL(blob);
-      
-      const iframe = $id('printIframe');
-      iframe.src = url;
-      
-      iframe.onload = function() {
-        setTimeout(() => {
-          try {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-          } catch (e) {
-            window.open(url, '_blank');
-          }
-          showLoading(false);
-        }, 500);
-      };
+      const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+      if (!printWindow) {
+        showToast('Please allow pop-ups to print this file.', 'error');
+        showLoading(false);
+        return;
+      }
+      const mime = getBlobMimeType(currentDoc);
+      printWindow.document.write('<!doctype html><html><head><title>Print Document</title></head><body style="margin:0;background:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;">' +
+        '<embed src="' + url + '" type="' + mime + '" style="width:100vw;height:100vh;border:none;" />' +
+        '</body></html>');
+      printWindow.document.close();
+      setTimeout(() => {
+        try {
+          printWindow.focus();
+          printWindow.print();
+        } catch (e) {
+          window.open(url, '_blank');
+        }
+        showLoading(false);
+      }, 1200);
+      setTimeout(() => URL.revokeObjectURL(url), 20000);
     } catch (err) {
       showToast('Print failed: ' + err.message, 'error');
       showLoading(false);

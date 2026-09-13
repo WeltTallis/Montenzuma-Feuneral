@@ -147,6 +147,18 @@ const getStoredUserRole = () => {
 
 const isAdminUser = () => getStoredUserRole() === 'systemadmin';
 
+const normalizeDeploymentType = (value, branchCount = 0, metadata = {}) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'single' || normalized === 'multi') return normalized;
+
+  const branchTotal = Number(branchCount || metadata?.branchCount || 0);
+  if (metadata?.deploymentType === 'single' || metadata?.deploymentType === 'multi') {
+    return metadata.deploymentType;
+  }
+
+  return branchTotal > 1 ? 'multi' : 'single';
+};
+
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -184,8 +196,14 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
   });
   const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
 
-  // Determine deployment type: single tenant vs multi-branch
-  const deploymentType = tenantData?.deploymentType || localStorage.getItem('deploymentType') || 'multi';
+  // Determine deployment type: single tenant vs multi-branch.
+  // Prefer the tenant metadata we actually fetched and ignore stale browser
+  // values that would incorrectly force a tenant into multi-branch mode.
+  const deploymentType = normalizeDeploymentType(
+    tenantData?.deploymentType || localStorage.getItem('deploymentType'),
+    tenantData?.branchCount || 0,
+    tenantData || {}
+  );
   const isSingleTenant = deploymentType === 'single';
 
   const handleLogout = () => {
@@ -304,7 +322,11 @@ const TenantResolver = () => {
         const isMultiBranch = hasBranchAssignment || hasParentTenant || hasBranchDbName || branchCount > 1;
 
         const loginDeploymentType = localStorage.getItem('deploymentType');
-        const effectiveDeploymentType = (loginDeploymentType === 'multi' || isMultiBranch) ? 'multi' : (settings?.deploymentType || data?.deploymentType || 'single');
+        const effectiveDeploymentType = normalizeDeploymentType(
+          settings?.deploymentType || data?.deploymentType || loginDeploymentType,
+          branchCount,
+          { ...settings, ...data, branchCount }
+        );
 
         if (!cancelled) {
           const safeData = {

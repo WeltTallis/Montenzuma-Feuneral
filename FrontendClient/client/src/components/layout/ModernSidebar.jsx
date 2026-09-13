@@ -608,7 +608,19 @@ const ModernSidebar = ({
     }
   ];
 
-  const menuItems = customMenuItems || defaultMenuItems;
+  const baseMenuItems = customMenuItems || defaultMenuItems;
+  const filterSingleTenantMenu = (items) =>
+    (items || []).map((section) => ({
+      ...section,
+      items: (section.items || []).filter((item) => {
+        const hiddenPaths = ['/tenant/' + tenantSlug + '/dashboard', '/tenant/' + tenantSlug + '/analytics', '/tenant/' + tenantSlug + '/workshop', '/dashboard', '/analytics', '/workshop'];
+        const hiddenLabels = ['Dashboard', 'Analytics', 'Workshop'];
+        const itemPath = item.path || '';
+        return !(hiddenLabels.includes(item.label) || hiddenPaths.includes(itemPath) || itemPath.includes('/dashboard') || itemPath.includes('/analytics') || itemPath.includes('/workshop'));
+      })
+    })).filter((section) => (section.items || []).length > 0);
+
+  const menuItems = isSingleTenant ? filterSingleTenantMenu(baseMenuItems) : baseMenuItems;
 
   const isActive = (path) => {
     if (customActivePath) {

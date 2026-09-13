@@ -34,6 +34,10 @@ const ModalOverlay = styled.div`
   justify-content: center;
   z-index: 1000;
   padding: 1rem;
+
+  @media (max-width: 768px) {
+    padding: 0;
+  }
 `;
 
 const ModalContainer = styled.div`
@@ -42,10 +46,17 @@ const ModalContainer = styled.div`
   width: 100%;
   max-width: 1000px;
   max-height: 90vh;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+
+  @media (max-width: 768px) {
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -115,8 +126,10 @@ const CoffinGrid = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 0.75rem;
   padding: 1rem;
-  overflow-y: auto;
-  max-height: 40vh;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
 `;
 
 const CoffinCard = styled.div`

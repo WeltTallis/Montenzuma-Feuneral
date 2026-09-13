@@ -83,11 +83,12 @@ const TimelineText = styled.div`
 `;
 const TimelineTime = styled.div`font-size: 11px; color: ${C.gray};`;
 
-const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, totalCharges, balance, age }) => {
+const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, totalCharges, totalPaid = 0, balance = 0, age }) => {
   const name = deceased?.full_name || deceased?.name || 'Unknown';
   const sex = deceased?.sex || deceased?.gender || '';
   const isFemale = sex.toLowerCase() === 'female';
   const daysInMorgue = getDaysInMorgue(deceased?.date_admitted || deceased?.admission_date || deceased?.created_at);
+  const paymentStatus = Number(balance) <= 0 ? 'Done' : 'Pending';
 
   // ─── Days → charges counter ─────────────────────────────────────────
   // The sidebar counts how many days the body has been in the morgue and
@@ -146,6 +147,14 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, totalCharges, balan
         <ChargeRow>
           <span>Balance</span>
           <strong>{balance}K</strong>
+        </ChargeRow>
+        <ChargeRow>
+          <span>Payment status</span>
+          <strong style={{ color: paymentStatus === 'Done' ? '#0f766e' : '#b45309' }}>{paymentStatus}</strong>
+        </ChargeRow>
+        <ChargeRow>
+          <span>Paid so far</span>
+          <strong>{Number(totalPaid || 0).toLocaleString()}K</strong>
         </ChargeRow>
         <ChargeNote>
           Storage charge = days in morgue × daily rate (set under Charge Settings).

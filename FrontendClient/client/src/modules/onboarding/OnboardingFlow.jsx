@@ -370,6 +370,7 @@ export default function OnboardingFlow() {
 
         localStorage.setItem('onboardingData', JSON.stringify(onboardingData));
         localStorage.setItem('onboardingComplete', 'true');
+        localStorage.setItem('deploymentType', formData.deploymentType);
         if (response.data.token) localStorage.setItem('authToken', response.data.token);
         if (response.data.user) localStorage.setItem('user', JSON.stringify(response.data.user));
 
@@ -810,8 +811,10 @@ export default function OnboardingFlow() {
                     <div className="form-group full" style={{ marginBottom: '1.5rem' }}>
                       <label className="form-label">Deployment Type <span style={{ color: C.red }}>*</span></label>
                       <div className="segmented-control" onClick={(e) => {
-                        const val = e.target.classList.contains('segment') ? (e.target.textContent.includes('Single') ? 'single' : 'multi') : formData.deploymentType;
+                        const segment = e.target.closest('.segment');
+                        const val = segment ? (segment.textContent.includes('Single') ? 'single' : 'multi') : formData.deploymentType;
                         setFormData(prev => ({ ...prev, deploymentType: val }));
+                        localStorage.setItem('deploymentType', val);
                       }}>
                         <div className={`segment ${formData.deploymentType === 'single' ? 'active' : ''}`} style={formData.deploymentType === 'single' ? { background: C.ink, color: C.bone } : {}}>Single Tenant</div>
                         <div className={`segment ${formData.deploymentType === 'multi' ? 'active' : ''}`} style={formData.deploymentType === 'multi' ? { background: C.ink, color: C.bone } : {}}>Multi Tenant</div>

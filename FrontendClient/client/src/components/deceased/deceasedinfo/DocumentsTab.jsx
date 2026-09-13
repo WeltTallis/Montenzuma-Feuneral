@@ -148,8 +148,24 @@ const DocumentsTab = ({ documents, deceasedId }) => {
     return () => { cancelled = true; };
   }, [deceasedId]);
 
-  const docs = localDocs ??
-    (Array.isArray(documents) ? documents : []);
+  const normalizeDocument = (doc = {}) => {
+    const documentId = doc.document_id ?? doc.documentId ?? doc.id ?? null;
+    const name = doc.original_name || doc.originalName || doc.name || doc.file_name || doc.fileName || doc.stored_name || doc.storedName || 'Untitled Document';
+    const type = doc.category || doc.mime_type || doc.mimeType || doc.type || 'General';
+    const uploadedAt = doc.uploaded_at || doc.uploadedAt || doc.created_at || doc.createdAt || null;
+
+    return {
+      ...doc,
+      documentId,
+      originalName: name,
+      category: type,
+      mimeType: doc.mime_type || doc.mimeType || doc.type || type,
+      uploadedAt,
+      uploaded_at: uploadedAt,
+    };
+  };
+
+  const docs = (localDocs ?? (Array.isArray(documents) ? documents : [])).map(normalizeDocument);
 
   const handleUploadDocument = async (e) => {
     const file = e.target.files?.[0];
@@ -235,7 +251,8 @@ const DocumentsTab = ({ documents, deceasedId }) => {
   // PDF.js. The deceasedId acts as the session-like identifier that scopes
   // the viewer to this deceased person's document library.
   const openDocumentViewer = (doc) => {
-    const docId = doc?.documentId ?? doc?.document_id ?? doc?.id;
+    const normalized = normalizeDocument(doc);
+    const docId = normalized?.documentId ?? normalized?.document_id ?? normalized?.id;
     const params = new URLSearchParams();
     params.set('deceasedId', deceasedId);
     if (docId) params.set('docId', docId);
@@ -282,10 +299,10 @@ const DocumentsTab = ({ documents, deceasedId }) => {
             {docs.length === 0 ? (
               <tr><td colSpan={4} style={{ textAlign: 'center', color: C.gray, padding: '24px 0' }}>No documents uploaded</td></tr>
             ) : docs.map((doc, i) => (
-              <tr key={i}>
-                <td style={{ fontWeight: 600 }}>{doc.originalName || doc.storedName || doc.name || doc.file_name}</td>
-                <td><StatusTag $info>{doc.mimeType || doc.category || doc.type || 'Document'}</StatusTag></td>
-                <td>{formatDate(doc.uploadedAt || doc.uploaded_at || doc.created_at)}</td>
+              <tr key={doc.documentId ?? doc.document_id ?? i}>
+                <td style={{ fontWeight: 600 }}>{doc.originalName || 'Untitled Document'}</td>
+                <td><StatusTag $info>{doc.category || doc.mimeType || 'General'}</StatusTag></td>
+                <td>{doc.uploadedAt ? formatDate(doc.uploadedAt) : '—'}</td>
                 <td style={{ textAlign: 'right' }}>
                   <Btn
                     $sm

@@ -1300,6 +1300,61 @@ const CoffinDashboard = () => {
     }
   };
 
+  const openAdjustCoffinStock = (coffinId, mode = 'add') => {
+    const coffin = coffins.find((item) => (item.coffin_id || item.id) == coffinId);
+    if (!coffin) return;
+    setModal({
+      open: true,
+      type: 'stockAdjust',
+      data: {
+        coffin_id: coffinId,
+        name: coffin.name,
+        current_stock: parseInt(coffin.stock) || 0,
+        quantity: 1,
+        mode,
+      },
+    });
+  };
+
+  const handleAdjustCoffinStock = async (e) => {
+    e.preventDefault();
+    const stockData = modal.data || {};
+    const coffinId = stockData.coffin_id;
+    const currentStock = parseInt(stockData.current_stock) || 0;
+    const qty = parseInt(stockData.quantity) || 0;
+    const mode = stockData.mode === 'remove' ? 'remove' : 'add';
+
+    if (!coffinId) {
+      toast.error('Coffin not selected');
+      return;
+    }
+    if (!Number.isInteger(qty) || qty <= 0) {
+      toast.error('Please enter a valid quantity greater than zero');
+      return;
+    }
+
+    const nextStock = mode === 'add' ? currentStock + qty : currentStock - qty;
+    if (nextStock < 0) {
+      toast.error('Stock cannot go below zero');
+      return;
+    }
+
+    try {
+      const res = await api.put(`/coffins/${coffinId}`, { quantity: nextStock });
+      if (res.data?.success) {
+        toast.success(
+          mode === 'add'
+            ? `Added ${qty} unit${qty > 1 ? 's' : ''} to ${stockData.name || 'coffin'}`
+            : `Removed ${qty} unit${qty > 1 ? 's' : ''} from ${stockData.name || 'coffin'}`,
+        );
+        setModal({ open: false, type: '', data: {} });
+        fetchAllData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update coffin stock');
+    }
+  };
+
   // â”€â”€â”€ Filtered Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Coffins registered without a per-branch id (branch_id undefined) belong to the
   // current branch, so keep them visible. Otherwise match the selected branch.
@@ -2306,7 +2361,22 @@ const CoffinDashboard = () => {
                         <Tag cls={st.cls}>{st.label}</Tag>
                       </td>
                       <td style={styles.td}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <button
+                            style={{ ...styles.btn, ...styles.btnS, ...styles.btnSm, background: '#059669' }}
+                            onClick={() => openAdjustCoffinStock(id, 'add')}
+                            title="Add stock"
+                          >
+                            <i className="fa-solid fa-plus"></i>
+                          </button>
+                          <button
+                            style={{ ...styles.btn, ...styles.btnD, ...styles.btnSm, background: '#dc2626' }}
+                            onClick={() => openAdjustCoffinStock(id, 'remove')}
+                            title="Subtract stock"
+                            disabled={coffin.stock <= 0}
+                          >
+                            <i className="fa-solid fa-minus"></i>
+                          </button>
                           {coffin.stock > 0 && (
                             <button
                               style={{ ...styles.btn, ...styles.btnS, ...styles.btnSm }}
@@ -2665,6 +2735,104 @@ const CoffinDashboard = () => {
                 disabled={submitLoading}
               >
                 {submitLoading ? 'Saving...' : 'Save Coffin'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {/* Stock Adjustment Modal */}
+      <div
+        style={{
+          ...styles.moOverlay,
+          ...(modal.open && modal.type === 'stockAdjust' ? styles.moOpen : {}),
+        }}
+        onClick={() => setModal({ open: false, type: '', data: {} })}
+      >
+        <div style={styles.md} onClick={(e) => e.stopPropagation()}>
+          <div style={styles.mh}>
+            <h2 style={styles.mh2}>
+              {modal.data.mode === 'remove' ? 'Subtract Inventory' : 'Add Inventory'}
+            </h2>
+            <button style={styles.mx} onClick={() => setModal({ open: false, type: '', data: {} })}>
+              &times;
+            </button>
+          </div>
+          <form onSubmit={handleAdjustCoffinStock}>
+            <div style={styles.mb}>
+              <div style={{ ...styles.detailSection, marginBottom: 16 }}>
+                <div style={styles.detailRow}>
+                  <span style={styles.detailRowSpan}>Coffin</span>
+                  <strong style={styles.detailRowStrong}>{modal.data.name || 'N/A'}</strong>
+                </div>
+                <div style={styles.detailRow}>
+                  <span style={styles.detailRowSpan}>Current Stock</span>
+                  <strong style={styles.detailRowStrong}>{modal.data.current_stock ?? 0}</strong>
+                </div>
+              </div>
+
+              <div style={styles.fg}>
+                <label style={styles.fl}>Action</label>
+                <select
+                  style={styles.fs}
+                  value={modal.data.mode || 'add'}
+                  onChange={(e) =>
+                    setModal({ ...modal, data: { ...modal.data, mode: e.target.value } })
+                  }
+                >
+                  <option value="add">Add Inventory</option>
+                  <option value="remove">Subtract Inventory</option>
+                </select>
+              </div>
+
+              <div style={styles.fg}>
+                <label style={styles.fl}>
+                  {modal.data.mode === 'remove' ? 'Quantity to remove' : 'Quantity to add'}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  style={styles.fi}
+                  value={modal.data.quantity || 1}
+                  onChange={(e) =>
+                    setModal({
+                      ...modal,
+                      data: { ...modal.data, quantity: parseInt(e.target.value) || 1 },
+                    })
+                  }
+                />
+              </div>
+
+              <div style={styles.fg}>
+                <label style={styles.fl}>New Stock Total</label>
+                <input
+                  type="number"
+                  style={styles.fi}
+                  readOnly
+                  value={Math.max(
+                    0,
+                    (parseInt(modal.data.current_stock) || 0) +
+                      ((modal.data.mode || 'add') === 'add'
+                        ? (parseInt(modal.data.quantity) || 0)
+                        : -(parseInt(modal.data.quantity) || 0)),
+                  )}
+                />
+              </div>
+            </div>
+            <div style={styles.mf}>
+              <button
+                type="button"
+                style={{ ...styles.btn, ...styles.btnG }}
+                onClick={() => setModal({ open: false, type: '', data: {} })}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                style={{ ...styles.btn, ...styles.btnP }}
+                disabled={submitLoading}
+              >
+                {submitLoading ? 'Updating...' : modal.data.mode === 'remove' ? 'Save Reduction' : 'Save Addition'}
               </button>
             </div>
           </form>

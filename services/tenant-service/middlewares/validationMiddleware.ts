@@ -9,6 +9,7 @@ export const validateOnboarding = (req: Request, res: Response, next: NextFuncti
   const location = data.location || '';
   const password = data.password || '';
   const full_name = data.full_name || data.fullName || 'Admin';
+  const phoneNumber = data.phone || data.phoneNumber || '';
   // Accept both termsAccepted and acceptTerms from frontend
   const termsAccepted = (data.termsAccepted === true || data.termsAccepted === 'true' || data.termsAccepted === 1) ||
     (data.acceptTerms === true || data.acceptTerms === 'true' || data.acceptTerms === 1);
@@ -65,7 +66,7 @@ export const validateOnboarding = (req: Request, res: Response, next: NextFuncti
   // when only a single named branch was submitted or the branch count alone is
   // ambiguous. Fall back to derivation from branch count for backwards
   // compatibility with older clients that omit deploymentType.
-  let deploymentType = data.deploymentType || data.deployment_type || '';
+  let deploymentType = String(data.deploymentType || data.deployment_type || '').trim().toLowerCase();
   if (deploymentType !== 'single' && deploymentType !== 'multi') {
     deploymentType = mappedBranches.length > 1 ? 'multi' : 'single';
   }
@@ -81,7 +82,7 @@ export const validateOnboarding = (req: Request, res: Response, next: NextFuncti
     location,
     password,
     full_name,
-    phone: data.phone || '',
+    phone: phoneNumber,
     country: data.country || 'Kenya',
     branches: mappedBranches,
     deploymentType,

@@ -51,6 +51,7 @@ export class OnboardingController {
 
       const finalTenantName = tenant_name || organizationName;
       const finalFullName = full_name || 'Admin User';
+      const normalizedDeploymentType = String(deploymentType || '').trim().toLowerCase();
 
       if (!finalTenantName || !email || !password) {
         res.status(400).json({ success: false, message: 'Missing required fields: organization name, email, password' });
@@ -93,7 +94,9 @@ export class OnboardingController {
       // deploymentType is now explicitly forwarded by validationMiddleware for
       // multi-branch tenants; fall back to branch-count derivation for older
       // clients that don't send it.
-            const finalDeploymentType = deploymentType || (normalizedBranches.length > 1 ? 'multi' : 'single');
+      const finalDeploymentType = (normalizedDeploymentType === 'single' || normalizedDeploymentType === 'multi')
+        ? normalizedDeploymentType
+        : (normalizedBranches.length > 1 ? 'multi' : 'single');
       // Canonical tenant slug — mirrors registerTenant()'s subdomain/dbName so the
       // logo folder, the /uploads/<slug> URL and the tracking rows all line up
       // with the tenant record stored in tenant_tracking.tenants.tenant_slug.
