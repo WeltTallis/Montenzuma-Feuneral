@@ -132,7 +132,7 @@ const HOST_SERVICE_DEFAULTS = {
   deceased: 'http://127.0.0.1:5003',
   invoices: 'http://127.0.0.1:5005',
   coffin: 'http://127.0.0.1:5006',
-  documents: 'http://127.0.0.1:5011',
+  documents: 'http://127.0.0.1:5007',
   analytics: 'http://127.0.0.1:5009',
   socketio: 'http://127.0.0.1:5018',
   // Notification REST is served by the socketio-service, so in host mode it

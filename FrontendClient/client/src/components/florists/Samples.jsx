@@ -7,7 +7,6 @@ import api from "../../api/axios";
 import { getTenantId } from "../../utils/globalAuth";
 import { Flower2 } from "../../utils/icons/icons";
 import Snowfall from "./Snowfall";
-import FlowerDetail from "./FlowerDetail";
 import FlowerSnowBookingForm from "./FlowerSnowBookingForm";
 
 /* ─── Snow palette ───────────────────────────────────────────────────────── */
@@ -19,10 +18,10 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
   --serif:'Fraunces',Georgia,serif; --sans:'Inter',sans-serif;
 }
 .mg-viewport{position:fixed;inset:0;overflow:hidden;background:#000;pointer-events:auto}
-.mg-slide{position:absolute;inset:0;transition:opacity .5s ease}
-.mg-slide img{width:100%;height:100%;object-fit:contain;background:rgba(12,10,12,.22);display:block}
+.mg-slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:opacity .5s ease;overflow:hidden;background:#0d090b}
+.mg-slide img{width:min(100%,1600px);height:100%;object-fit:contain;background:rgba(12,10,12,.22);display:block;user-select:none;-webkit-user-drag:none}
 .mg-vignette{position:absolute;inset:0;pointer-events:none;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,transparent 35%,transparent 55%,rgba(0,0,0,.75) 100%)}
-.mg-stories{position:fixed;top:14px;left:18px;right:86px;z-index:10;display:flex;align-items:flex-start;gap:10px;overflow-x:auto;scrollbar-width:none;padding:10px 6px 8px}
+.mg-stories{position:fixed;top:14px;left:18px;right:18px;z-index:10;display:flex;align-items:flex-start;gap:10px;overflow-x:auto;scrollbar-width:none;padding:10px 6px 8px}
 .mg-stories::-webkit-scrollbar{display:none}
 .mg-story-item{display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;cursor:pointer;transition:transform .2s;max-width:74px;background:transparent;border:none;padding:0;box-shadow:none}
 .mg-story-item:hover{transform:translateY(-1px)}
@@ -41,10 +40,11 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 .mg-type{font:400 11px/1.2 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;opacity:.6}
 .mg-name{font:400 clamp(2rem,5vw,2.8rem)/1.05 var(--serif);margin:6px 0 10px;letter-spacing:-.01em}
 .mg-price{font:300 2rem var(--serif);color:var(--gold)}
-.mg-actions{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.mg-btn{padding:14px 32px;border-radius:999px;cursor:pointer;font:600 13px 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;transition:opacity .2s;border:none}
-.mg-btn.details{background:rgba(251,246,241,.9);color:var(--rosewood)}
-.mg-btn.details:hover{opacity:.88}
+.mg-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:12px}
+.mg-btn{width:52px;height:52px;border-radius:50%;cursor:pointer;display:grid;place-items:center;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.12);color:#fff;transition:transform .2s,background .2s;border:none;box-shadow:0 18px 32px rgba(0,0,0,.2)}
+.mg-btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.18)}
+.mg-btn svg{width:22px;height:22px}
+.mg-btn.selected{background:rgba(200,162,98,.9);border-color:rgba(200,162,98,.9)}
 .mg-recommendations{position:fixed;right:24px;bottom:120px;z-index:12;width:min(320px,calc(100vw - 32px));background:rgba(20,15,16,0.52);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px;box-shadow:0 24px 55px rgba(0,0,0,.25)}
 .mg-recommendations-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#fff;margin-bottom:10px}
 .mg-recommendations-head span{font:700 10px 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.85)}
@@ -74,11 +74,9 @@ export default function Samples() {
   const [arrangements, setArrangements] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [current, setCurrent] = useState(0);
-  const [detail, setDetail] = useState(null);
   const [showBooking, setShowBooking] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [storyDrafts, setStoryDrafts] = useState([]);
 
   const dragStart = useRef(null);
   const dragging = useRef(false);
@@ -128,7 +126,7 @@ export default function Samples() {
   }, [loadRecommendations]);
 
   // Build stories from actual arrangements
-  const stories = [...storyDrafts, ...arrangements].slice().reverse().map((a, i) => ({
+  const stories = arrangements.map((a, i) => ({
     id: a.id || a.arrangement_id || i,
     label: (a.title || a.name || 'Arrangement').split(' ')[0],
     arrangementId: a.arrangement_id || a.id,
@@ -160,8 +158,6 @@ export default function Samples() {
     if (dragging.current) {
       if (delta < -50) goTo(current + 1);
       else if (delta > 50) goTo(current - 1);
-    } else {
-      setDetail(arr);
     }
     dragStart.current = null;
     dragging.current = false;
@@ -172,35 +168,18 @@ export default function Samples() {
     const idx = arrangements.findIndex(a => (a.arrangement_id || a.id) === s.arrangementId);
     if (idx >= 0) {
       setCurrent(idx);
-      setDetail(arrangements[idx]);
     }
   };
 
-  const handleAddToStory = useCallback(() => {
-    const activeArrangement = arrangements[current];
-    if (!activeArrangement) return;
-    const uid = `${activeArrangement.arrangement_id || activeArrangement.id || 'story'}-${Date.now()}`;
-    setStoryDrafts((prev) => {
-      if (prev.some((story) => (story.arrangement_id || story.id) === (activeArrangement.arrangement_id || activeArrangement.id))) {
-        return prev;
-      }
-      return [{ ...activeArrangement, id: uid, arrangement_id: activeArrangement.arrangement_id || activeArrangement.id, label: activeArrangement.title || activeArrangement.name || 'Story' }, ...prev];
-    });
-
-    requestAnimationFrame(() => {
-      storyRailRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-    });
-  }, [arrangements, current]);
-
   useEffect(() => {
     const handler = (e) => {
-      if (detail || showBooking) return;
+      if (showBooking) return;
       if (e.key === "ArrowRight") goTo(current + 1);
       if (e.key === "ArrowLeft") goTo(current - 1);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [current, goTo, detail, showBooking]);
+  }, [current, goTo, showBooking]);
 
   const normalizedArrangements = arrangements.map(a => ({
     ...a,
@@ -268,8 +247,6 @@ export default function Samples() {
               })}
             </div>
 
-            <button className="mg-add-story" onClick={(e) => { e.stopPropagation(); handleAddToStory(); }}>Add to Story</button>
-
             {current > 0 && (
               <button className="mg-arrow left" onClick={(e) => { e.stopPropagation(); goTo(current - 1); }} aria-label="Previous arrangement">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
@@ -287,16 +264,20 @@ export default function Samples() {
               <h2 className="mg-name">{arr?.title || arr?.name || 'Arrangement'}</h2>
               <div className="mg-actions">
                 <button
-                  className="mg-btn details"
+                  className={`mg-btn ${selectedIds.includes(arr?.arrangement_id || arr?.id) ? "selected" : ""}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleCart(arr?.arrangement_id || arr?.id);
-                    setDetail(arr);
                   }}
+                  aria-label={selectedIds.includes(arr?.arrangement_id || arr?.id) ? "Remove from cart" : "Add to cart"}
+                  title={selectedIds.includes(arr?.arrangement_id || arr?.id) ? "Remove from cart" : "Add to cart"}
                 >
-                  Add to Cart
+                  {selectedIds.includes(arr?.arrangement_id || arr?.id) ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12.5l4.1 4.1L19 2.5" /></svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                  )}
                 </button>
-                <button className="mg-btn details" onClick={(e) => { e.stopPropagation(); setDetail(arr); }}>View Details</button>
               </div>
 
               <div className="mg-dots">
@@ -322,7 +303,6 @@ export default function Samples() {
                       const idx = arrangements.findIndex((a) => (a.arrangement_id || a.id) === (item.arrangement_id || item.id));
                       if (idx >= 0) {
                         setCurrent(idx);
-                        setDetail(arrangements[idx]);
                       }
                     }}
                   >
@@ -335,21 +315,6 @@ export default function Samples() {
                 ))}
               </div>
             </div>
-          )}
-
-          {detail && (
-            <FlowerDetail
-              activeId={detail.arrangement_id || detail.id}
-              selectedIds={selectedIds}
-              onNavigate={(id) => {
-                const idx = arrangements.findIndex(a => (a.arrangement_id || a.id) === id);
-                if (idx >= 0) { setCurrent(idx); setDetail(arrangements[idx]); }
-              }}
-              onClose={() => setDetail(null)}
-              onToggle={toggleCart}
-              onPreview={openBookingFlow}
-              arrangements={normalizedArrangements}
-            />
           )}
 
           {showBooking && (
