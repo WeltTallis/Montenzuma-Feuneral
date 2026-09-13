@@ -20,17 +20,20 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 }
 .mg-viewport{position:fixed;inset:0;overflow:hidden;background:#000;pointer-events:auto}
 .mg-slide{position:absolute;inset:0;transition:opacity .5s ease}
-.mg-slide img{width:100%;height:100%;object-fit:cover;display:block}
+.mg-slide img{width:100%;height:100%;object-fit:contain;background:rgba(12,10,12,.22);display:block}
 .mg-vignette{position:absolute;inset:0;pointer-events:none;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,transparent 35%,transparent 55%,rgba(0,0,0,.75) 100%)}
-.mg-stories{position:fixed;top:0;left:0;right:0;z-index:10;padding:20px 24px 12px;display:flex;gap:12px;overflow-x:auto;scrollbar-width:none}
+.mg-stories{position:fixed;top:14px;left:18px;right:86px;z-index:10;display:flex;align-items:flex-start;gap:10px;overflow-x:auto;scrollbar-width:none;padding:10px 6px 8px}
 .mg-stories::-webkit-scrollbar{display:none}
-.mg-story-item{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;cursor:pointer;transition:transform .2s}
-.mg-story-item:hover{transform:scale(1.06)}
-.mg-story-ring{width:56px;height:56px;border-radius:50%;padding:2px;display:grid;place-items:center;transition:.25s}
-.mg-story-ring.unseen{background:conic-gradient(var(--gold) 0deg,var(--blush-xl) 90deg,var(--gold) 180deg,var(--blush-xl) 270deg,var(--gold) 360deg);box-shadow:0 0 10px rgba(185,132,128,.35)}
-.mg-story-ring.seen{background:rgba(255,255,255,.18)}
-.mg-story-inner{width:48px;height:48px;border-radius:50%;border:2px solid var(--paper);overflow:hidden;display:grid;place-items:center}
-.mg-story-inner img{width:100%;height:100%;object-fit:cover}
+.mg-story-item{display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;cursor:pointer;transition:transform .2s;max-width:74px;background:transparent;border:none;padding:0;box-shadow:none}
+.mg-story-item:hover{transform:translateY(-1px)}
+.mg-story-ring{width:56px;height:56px;border-radius:50%;padding:2px;display:grid;place-items:center;transition:.25s;background:rgba(255,255,255,.08)}
+.mg-story-ring.unseen{background:conic-gradient(var(--gold) 0deg,var(--blush-xl) 90deg,var(--gold) 180deg,var(--blush-xl) 270deg,var(--gold) 360deg);box-shadow:0 0 0 1px rgba(255,255,255,.18),0 10px 24px rgba(181,118,116,.28)}
+.mg-story-ring.seen{background:rgba(255,255,255,.14)}
+.mg-story-inner{width:48px;height:48px;border-radius:50%;border:2px solid rgba(255,255,255,.72);overflow:hidden;display:grid;place-items:center;background:rgba(255,255,255,.06)}
+.mg-story-inner img{width:100%;height:100%;object-fit:cover;display:block}
+.mg-story-label{font:700 10px/1.1 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.8);max-width:72px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mg-add-story{position:fixed;right:18px;top:18px;z-index:12;padding:11px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.24);background:rgba(16,12,14,.42);backdrop-filter:blur(10px);color:#fff;cursor:pointer;font:700 10px 'Inter',sans-serif;letter-spacing:.16em;text-transform:uppercase;box-shadow:0 18px 32px rgba(0,0,0,.25)}
+.mg-add-story:hover{background:rgba(139,69,87,.8)}
 .mg-bottom{position:fixed;bottom:0;left:0;right:0;z-index:10;padding:32px 40px 40px;color:#fff}
 .mg-badge{display:inline-block;margin-bottom:12px;padding:6px 16px;border-radius:999px;font:700 10px 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase}
 .mg-badge.premium{background:var(--gold);color:#fff}
@@ -38,10 +41,20 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 .mg-type{font:400 11px/1.2 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;opacity:.6}
 .mg-name{font:400 clamp(2rem,5vw,2.8rem)/1.05 var(--serif);margin:6px 0 10px;letter-spacing:-.01em}
 .mg-price{font:300 2rem var(--serif);color:var(--gold)}
-.mg-actions{display:flex;align-items:end;justify-content:space-between}
+.mg-actions{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .mg-btn{padding:14px 32px;border-radius:999px;cursor:pointer;font:600 13px 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;transition:opacity .2s;border:none}
 .mg-btn.details{background:rgba(251,246,241,.9);color:var(--rosewood)}
 .mg-btn.details:hover{opacity:.88}
+.mg-recommendations{position:fixed;right:24px;bottom:120px;z-index:12;width:min(320px,calc(100vw - 32px));background:rgba(20,15,16,0.52);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px;box-shadow:0 24px 55px rgba(0,0,0,.25)}
+.mg-recommendations-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#fff;margin-bottom:10px}
+.mg-recommendations-head span{font:700 10px 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.85)}
+.mg-recommendations-head button{border:none;background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:7px 10px;font:700 9px 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.mg-recommendations-grid{display:flex;flex-direction:column;gap:8px}
+.mg-recommendation-item{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px;cursor:pointer;text-align:left;color:#fff}
+.mg-recommendation-item img{width:52px;height:52px;object-fit:cover;border-radius:10px}
+.mg-recommendation-body{display:flex;flex-direction:column;gap:4px;min-width:0}
+.mg-recommendation-body strong{font:600 12px 'Inter',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mg-recommendation-body span{font:400 10px 'Inter',sans-serif;color:rgba(255,255,255,.7)}
 .mg-dots{display:flex;justify-content:center;gap:8px;margin-top:24px}
 .mg-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .3s;cursor:pointer}
 .mg-dot.active{width:22px;background:var(--gold)}
@@ -59,14 +72,41 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 export default function Samples() {
   const [arrangements, setArrangements] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const [current, setCurrent] = useState(0);
   const [detail, setDetail] = useState(null);
   const [showBooking, setShowBooking] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [storyDrafts, setStoryDrafts] = useState([]);
 
   const dragStart = useRef(null);
   const dragging = useRef(false);
   const viewedStories = useRef(new Set());
+  const storyRailRef = useRef(null);
+
+  const toggleCart = useCallback((id) => {
+    const arrangementId = String(id || '');
+    setSelectedIds((prev) => {
+      if (!arrangementId) return prev;
+      return prev.includes(arrangementId)
+        ? prev.filter((item) => item !== arrangementId)
+        : [...prev, arrangementId];
+    });
+  }, []);
+
+  const loadRecommendations = useCallback(async () => {
+    try {
+      const tenantId = getTenantId();
+      const res = await api.get('/florist/flower-samples/recommendations', {
+        params: { tenant_id: tenantId || undefined, limit: 4 },
+      });
+      setRecommendations(res.data?.data || []);
+    } catch (error) {
+      console.warn('Failed to load recommendations:', error);
+      setRecommendations([]);
+    }
+  }, []);
 
   // Load arrangements from API
   useEffect(() => {
@@ -84,15 +124,16 @@ export default function Samples() {
       setLoading(false);
     };
     load();
-  }, []);
+    loadRecommendations();
+  }, [loadRecommendations]);
 
   // Build stories from actual arrangements
-  const stories = arrangements.slice().reverse().map((a, i) => ({
-    id: a.arrangement_id || i,
+  const stories = [...storyDrafts, ...arrangements].slice().reverse().map((a, i) => ({
+    id: a.id || a.arrangement_id || i,
     label: (a.title || a.name || 'Arrangement').split(' ')[0],
     arrangementId: a.arrangement_id || a.id,
     img: a.images?.[0]?.url || a.images?.[0] || a.img || '',
-    viewed: viewedStories.current.has(a.arrangement_id || i),
+    viewed: viewedStories.current.has(a.id || a.arrangement_id || i),
   }));
 
   const goTo = useCallback((idx) => {
@@ -135,6 +176,22 @@ export default function Samples() {
     }
   };
 
+  const handleAddToStory = useCallback(() => {
+    const activeArrangement = arrangements[current];
+    if (!activeArrangement) return;
+    const uid = `${activeArrangement.arrangement_id || activeArrangement.id || 'story'}-${Date.now()}`;
+    setStoryDrafts((prev) => {
+      if (prev.some((story) => (story.arrangement_id || story.id) === (activeArrangement.arrangement_id || activeArrangement.id))) {
+        return prev;
+      }
+      return [{ ...activeArrangement, id: uid, arrangement_id: activeArrangement.arrangement_id || activeArrangement.id, label: activeArrangement.title || activeArrangement.name || 'Story' }, ...prev];
+    });
+
+    requestAnimationFrame(() => {
+      storyRailRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+    });
+  }, [arrangements, current]);
+
   useEffect(() => {
     const handler = (e) => {
       if (detail || showBooking) return;
@@ -147,12 +204,18 @@ export default function Samples() {
 
   const normalizedArrangements = arrangements.map(a => ({
     ...a,
+    id: a.arrangement_id || a.id,
+    arrangement_id: a.arrangement_id || a.id,
     name: a.title || a.name,
     img: a.images?.[0]?.url || a.images?.[0] || a.img,
     desc: a.desc || a.description || '',
     title: a.title || a.name,
-        portrait: a.images?.[0]?.url || a.images?.[0] || a.portrait || a.img,
+    portrait: a.images?.[0]?.url || a.images?.[0] || a.portrait || a.img,
   }));
+
+  const openBookingFlow = useCallback(() => {
+    setShowBooking(true);
+  }, []);
 
   return (
     <>
@@ -184,7 +247,12 @@ export default function Samples() {
 
             <div className="mg-vignette" />
 
-            <div className="mg-stories">
+            <div ref={storyRailRef} className="mg-stories" onWheel={(e) => {
+              if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                e.preventDefault();
+                e.currentTarget.scrollLeft += e.deltaY;
+              }
+            }}>
               {stories.map((s) => {
                 const isViewing = viewedStories.current.has(s.id);
                 return (
@@ -194,11 +262,13 @@ export default function Samples() {
                         <img src={s.img} alt={s.label} />
                       </div>
                     </div>
-                    <span className="text-[11px] uppercase tracking-widest" style={{ color: isViewing ? 'rgba(255,255,255,.35)' : 'rgba(255,255,255,.85)' }}>{s.label}</span>
+                    <span className="mg-story-label" style={{ opacity: isViewing ? 0.5 : 1 }}>{s.label}</span>
                   </button>
                 );
               })}
             </div>
+
+            <button className="mg-add-story" onClick={(e) => { e.stopPropagation(); handleAddToStory(); }}>Add to Story</button>
 
             {current > 0 && (
               <button className="mg-arrow left" onClick={(e) => { e.stopPropagation(); goTo(current - 1); }} aria-label="Previous arrangement">
@@ -216,7 +286,16 @@ export default function Samples() {
               <p className="mg-type">{arr?.types?.[0] || arr?.type || 'Flower Arrangement'}</p>
               <h2 className="mg-name">{arr?.title || arr?.name || 'Arrangement'}</h2>
               <div className="mg-actions">
-                <span className="mg-price">${arr?.price || '—'}</span>
+                <button
+                  className="mg-btn details"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleCart(arr?.arrangement_id || arr?.id);
+                    setDetail(arr);
+                  }}
+                >
+                  Add to Cart
+                </button>
                 <button className="mg-btn details" onClick={(e) => { e.stopPropagation(); setDetail(arr); }}>View Details</button>
               </div>
 
@@ -228,17 +307,47 @@ export default function Samples() {
             </div>
           </div>
 
+          {recommendations.length > 0 && (
+            <div className="mg-recommendations">
+              <div className="mg-recommendations-head">
+                <span>Most booked now</span>
+                <button onClick={openBookingFlow}>Complete booking</button>
+              </div>
+              <div className="mg-recommendations-grid">
+                {recommendations.map((item) => (
+                  <button
+                    key={item.arrangement_id || item.id}
+                    className="mg-recommendation-item"
+                    onClick={() => {
+                      const idx = arrangements.findIndex((a) => (a.arrangement_id || a.id) === (item.arrangement_id || item.id));
+                      if (idx >= 0) {
+                        setCurrent(idx);
+                        setDetail(arrangements[idx]);
+                      }
+                    }}
+                  >
+                    <img src={item.images?.[0]?.url || item.images?.[0] || item.img || ''} alt={item.title || item.name || 'Recommended arrangement'} />
+                    <div className="mg-recommendation-body">
+                      <strong>{item.title || item.name}</strong>
+                      <span>{item.recommendation_reason || 'Popular choice'}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {detail && (
             <FlowerDetail
               activeId={detail.arrangement_id || detail.id}
-              selectedIds={[detail.arrangement_id || detail.id]}
+              selectedIds={selectedIds}
               onNavigate={(id) => {
                 const idx = arrangements.findIndex(a => (a.arrangement_id || a.id) === id);
                 if (idx >= 0) { setCurrent(idx); setDetail(arrangements[idx]); }
               }}
               onClose={() => setDetail(null)}
-              onToggle={() => {}}
-              onPreview={() => setShowBooking(true)}
+              onToggle={toggleCart}
+              onPreview={openBookingFlow}
               arrangements={normalizedArrangements}
             />
           )}

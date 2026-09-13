@@ -313,12 +313,12 @@ const FloralPreview = () => {
                 ))}
               </div>
               <div className="flp-title-block">
-                <div className="flp-name-tag">Floral Tributes</div>
+                <div className="flp-name-tag">Premium Funeral Flowers</div>
                 <h2 className="flp-headline" style={{ opacity: fading ? 0 : 1, transform: fading ? 'translateY(15px)' : 'translateY(0)' }}>{current.title}</h2>
               </div>
               <div className="flp-wordmark">
-                <div className="flp-wordmark-name">Memorial Florals</div>
-                <div className="flp-wordmark-sub">Est. since care began</div>
+                <div className="flp-wordmark-name">RestPoint Floral Concierge</div>
+                <div className="flp-wordmark-sub">Curated for funeral homes</div>
               </div>
             </div>
           </div>
@@ -356,7 +356,7 @@ export default function App() {
 
   const landingModules = [
     { dark: true, to: true, category: 'NEW · INTEGRATED', accent: C.brass, title: 'Leave Management', excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve and track time off in real time  no spreadsheets, no external HR tools.', status: 'NOW LIVE' },
-    { static: true, category: 'SELF SERVICE', accent: C.verdigris, title: 'Floral Booking', excerpt: 'The right flowers, right in front of them. Families browse a curated selection on a tablet at the front desk and choose with confidence  the booking lands instantly on your computer and in your florist\'s view. Less searching. Less thinking. A better experience.', status: 'RECEPTIONIST PORTAL' },
+    { static: true, category: 'PREMIUM FLORAL BOOKING', accent: C.verdigris, title: 'High-End Funeral Flowers', excerpt: 'We built a premium floral booking flow for funeral homes: families browse refined tribute arrangements, the system recommends elegant options based on the service style and season, and each order is sent directly to the florist with no confusion. This is crafted for funeral homes that take pride in dignified, high-end floral presentation.', status: 'RECEPTIONIST PORTAL' },
     { dark: true, to: true, category: 'NEW · SUPPORT CENTER', accent: C.brass, title: 'Real Time Customer Support', excerpt: 'Submit issues directly through the platform and our support agents receive, respond, and resolve them in real time  with full status tracking and communication history.', status: 'NOW LIVE' },
   ];
 

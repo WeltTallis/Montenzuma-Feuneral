@@ -310,7 +310,6 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
   const tenantId = tenantIdOf(req);
 
   try {
-<<<<<<< Updated upstream
     // Extract fields with multiple key variations to handle form-data naming
     const rawTitle = req.body.title || req.body.name || 'Untitled Sample';
     const rawDescription = req.body.description || req.body.desc || '';
@@ -318,24 +317,6 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
     const types = toArray(req.body.types || req.body['types[]']);
     const colors = toArray(req.body.colors || req.body['colors[]']);
     const sizes = toArray(req.body.sizes || req.body['sizes[]']);
-=======
-    const {
-      title: rawTitle,
-      description: rawDescription,
-      images: providedImages
-    }: CreateFlowerSampleDTO = req.body;
-
-    // Trim text fields — whitespace-only values must be treated as missing so
-    // the validation below returns a clear 400 instead of storing blank rows.
-    const title = String(rawTitle || '').trim();
-    const description = String(rawDescription || '').trim();
-
-    // Multipart form fields arrive as comma-separated (or JSON) strings —
-    // normalize them into the arrays the table expects.
-    const types = toArray(req.body.types);
-    const colors = toArray(req.body.colors);
-    const sizes = toArray(req.body.sizes);
->>>>>>> Stashed changes
 
     const cleanTitle = String(rawTitle).trim() || 'Untitled Sample';
     const cleanDescription = String(rawDescription).trim();
@@ -857,6 +838,84 @@ export const getAllFlowerArrangements = async (req: any, res: any): Promise<any>
 
   } catch (error: any) {
     console.error('Get all flower arrangements error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getRecommendedFlowerArrangements = async (req: any, res: any): Promise<any> => {
+  const tenantSlug = tenantSlugOf(req) || 'default';
+  const limit = Math.min(8, Math.max(1, Number(req.query?.limit || 4))); 
+
+  try {
+    await ensureLikeSchema();
+    const tenantScope = buildTenantScope(req);
+    const bookingSql = `
+      SELECT arrangement_id, COUNT(*) AS booking_count
+      FROM flower_bookings
+      WHERE arrangement_id IS NOT NULL AND ${tenantScope.clause}
+      GROUP BY arrangement_id
+      ORDER BY booking_count DESC, MAX(created_at) DESC
+      LIMIT ?
+    `;
+
+    const bookingRows = await safeQuery(bookingSql, [...tenantScope.params, limit]);
+    const rankedIds = (bookingRows || []).map((row: any) => String(row.arrangement_id)).filter(Boolean);
+
+    if (rankedIds.length === 0) {
+      const fallbackSql = `
+        SELECT arrangement_id, like_count
+        FROM flower_samples
+        WHERE ${tenantScope.clause}
+        ORDER BY like_count DESC, created_at DESC
+        LIMIT ?
+      `;
+      const fallbackRows = await safeQuery(fallbackSql, [...tenantScope.params, limit]);
+      rankedIds.push(...(fallbackRows || []).map((row: any) => String(row.arrangement_id)).filter(Boolean));
+    }
+
+    const uniqueIds = [...new Set(rankedIds)].slice(0, limit);
+    if (!uniqueIds.length) {
+      return res.status(200).json({ success: true, data: [], count: 0 });
+    }
+
+    const placeholders = uniqueIds.map(() => '?').join(', ');
+    const sampleSql = `
+      SELECT id, arrangement_id, title, description,
+             CAST(types AS CHAR) AS types,
+             CAST(colors AS CHAR) AS colors,
+             CAST(sizes AS CHAR) AS sizes,
+             CAST(images AS CHAR) AS images,
+             price, COALESCE(like_count, 0) AS like_count,
+             tenant_slug, tenant_id, created_at, updated_at
+      FROM flower_samples
+      WHERE arrangement_id IN (${placeholders}) AND ${tenantScope.clause}
+    `;
+    const records = await safeQuery(sampleSql, [...uniqueIds, ...tenantScope.params]);
+    const resultMap = new Map((records || []).map((record: any) => [String(record.arrangement_id), parseJSONFields(record)]));
+
+    const bookingMap = new Map((bookingRows || []).map((row: any) => [String(row.arrangement_id), Number(row.booking_count) || 0]));
+    const data = uniqueIds
+      .map((id) => {
+        const item = resultMap.get(String(id));
+        if (!item) return null;
+        const bookingCount = bookingMap.get(String(id)) || 0;
+        return {
+          ...item,
+          recommendation_score: bookingCount + (Number(item.like_count || 0) / 10),
+          recommendation_reason: bookingCount > 0 ? `Booked ${bookingCount} times this period` : 'Popular with florists this week',
+          booking_count: bookingCount
+        };
+      })
+      .filter(Boolean);
+
+    return res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+      tenant_slug: tenantSlug
+    });
+  } catch (error: any) {
+    console.error('Get recommended flower arrangements error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };

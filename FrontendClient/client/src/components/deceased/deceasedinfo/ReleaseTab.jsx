@@ -66,7 +66,7 @@ const DetailItem = styled.div`
   padding: 12px 14px;
   border: 1px solid ${C.borderLight || '#e0e0e0'};
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,247,245,0.96));
+  background: white;
   ${p => p.$full && 'grid-column: 1 / -1;'}
 `;
 
@@ -322,14 +322,6 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
         <DetailItem>
           <DetailLabel>Terms Accepted</DetailLabel>
           <DetailValue>{releaseData ? (releaseData.terms_accepted ? 'Yes' : 'No') : '—'}</DetailValue>
-        </DetailItem>
-        <DetailItem $full>
-          <DetailLabel>Items Returned with Body</DetailLabel>
-          <DetailValue $muted>{releaseData?.items_returned || 'None recorded'}</DetailValue>
-        </DetailItem>
-        <DetailItem $full>
-          <DetailLabel>Notes</DetailLabel>
-          <DetailValue $muted>{releaseData?.notes || 'No notes recorded'}</DetailValue>
         </DetailItem>
       </DetailGrid>
 

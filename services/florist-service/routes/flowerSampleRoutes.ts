@@ -7,6 +7,7 @@ import {
     updateFlowerArrangement,
     deleteFlowerArrangement,
     getAllFlowerArrangements,
+    getRecommendedFlowerArrangements,
     getMySampleLikes,
     likeFlowerSample,
     unlikeFlowerSample
@@ -56,6 +57,11 @@ const uploadMiddleware = (req: any, res: any, next: any) => {
 router.get(
   '/',
   getAllFlowerArrangements as any
+);
+
+router.get(
+  '/recommendations',
+  getRecommendedFlowerArrangements as any
 );
 
 /**
