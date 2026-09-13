@@ -25,10 +25,10 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 .mg-stories::-webkit-scrollbar{display:none}
 .mg-story-item{display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;cursor:pointer;transition:transform .2s;max-width:74px;background:transparent;border:none;padding:0;box-shadow:none}
 .mg-story-item:hover{transform:translateY(-1px)}
-.mg-story-ring{width:52px;height:52px;border-radius:50%;padding:1.5px;display:grid;place-items:center;transition:.25s;background:rgba(255,255,255,.03)}
-.mg-story-ring.unseen{background:conic-gradient(var(--gold) 0deg,var(--blush-xl) 90deg,var(--gold) 180deg,var(--blush-xl) 270deg,var(--gold) 360deg);box-shadow:0 0 0 0.5px rgba(255,255,255,.1),0 4px 10px rgba(181,118,116,.12)}
-.mg-story-ring.seen{background:rgba(255,255,255,.05)}
-.mg-story-inner{width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(255,255,255,.68);overflow:hidden;display:grid;place-items:center;background:rgba(255,255,255,.04)}
+.mg-story-ring{width:52px;height:52px;border-radius:50%;padding:0;display:grid;place-items:center;transition:.25s;background:transparent;overflow:hidden}
+.mg-story-ring.unseen{background:transparent}
+.mg-story-ring.seen{background:transparent}
+.mg-story-inner{width:52px;height:52px;border-radius:50%;border:none;overflow:hidden;display:grid;place-items:center;background:transparent}
 .mg-story-inner img{width:100%;height:100%;object-fit:cover;display:block}
 .mg-story-label{font:700 10px/1.1 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.8);max-width:72px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mg-add-story{position:fixed;right:18px;top:18px;z-index:12;padding:11px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.24);background:rgba(16,12,14,.42);backdrop-filter:blur(10px);color:#fff;cursor:pointer;font:700 10px 'Inter',sans-serif;letter-spacing:.16em;text-transform:uppercase;box-shadow:0 18px 32px rgba(0,0,0,.25)}
