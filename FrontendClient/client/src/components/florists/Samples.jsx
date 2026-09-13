@@ -17,7 +17,7 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
   --gold:#C8A262; --hair:#E8E0DA; --hair2:#E0C9C0;
   --serif:'Fraunces',Georgia,serif; --sans:'Inter',sans-serif;
 }
-.mg-viewport{position:relative;width:calc(100vw - 32px);height:calc(95vh - 20px);margin:10px auto 0;border-radius:28px;overflow:hidden;background:radial-gradient(circle at top, rgba(118,89,75,.35), rgba(11,8,9,.78) 45%, rgba(0,0,0,1) 100%);pointer-events:auto;box-shadow:0 35px 100px rgba(0,0,0,.52), inset 0 0 0 1px rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+.mg-viewport{position:fixed;inset:0;width:100vw;height:100vh;margin:0;border-radius:0;overflow:hidden;background:radial-gradient(circle at top, rgba(118,89,75,.35), rgba(11,8,9,.78) 45%, rgba(0,0,0,1) 100%);pointer-events:auto;box-shadow:none;border:none;touch-action:pan-y}
 .mg-slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:opacity .45s ease, transform .45s ease;overflow:hidden;background:#0d090b;will-change:opacity,transform}
 .mg-slide img{width:100%;height:100%;object-fit:cover;background:rgba(12,10,12,.22);display:block;user-select:none;-webkit-user-drag:none;image-rendering:auto;filter:saturate(1.08) contrast(1.06)}
 .mg-vignette{position:absolute;inset:0;pointer-events:none;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.58) 0%,rgba(0,0,0,.18) 28%,rgba(0,0,0,.12) 52%,rgba(0,0,0,.76) 100%)}
@@ -58,9 +58,9 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 .mg-dots{display:flex;justify-content:center;gap:8px;margin-top:24px}
 .mg-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .3s;cursor:pointer}
 .mg-dot.active{width:22px;background:var(--gold)}
-.mg-cart-bar{position:absolute;right:22px;bottom:130px;z-index:12;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(15,12,14,.52);backdrop-filter:blur(10px);box-shadow:0 24px 32px rgba(0,0,0,.18);border:1px solid rgba(196,168,128,.38)}
-.mg-cart-chip{font:700 10px 'Inter',sans-serif;color:rgba(255,255,255,.82);letter-spacing:.12em;text-transform:uppercase}
-.mg-cart-button{padding:9px 16px;border:none;border-radius:999px;background:linear-gradient(135deg,#C8A262,#F0D7A3);color:#1b1515;font:800 10px 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;box-shadow:0 12px 26px rgba(200,162,98,.35)}
+.mg-cart-bar{position:absolute;right:20px;bottom:118px;z-index:12;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;background:rgba(15,12,14,.52);backdrop-filter:blur(10px);box-shadow:0 18px 28px rgba(0,0,0,.18);border:1px solid rgba(196,168,128,.38)}
+.mg-cart-chip{font:700 8px 'Inter',sans-serif;color:rgba(255,255,255,.82);letter-spacing:.12em;text-transform:uppercase}
+.mg-cart-button{padding:7px 12px;border:none;border-radius:999px;background:linear-gradient(135deg,#C8A262,#F0D7A3);color:#1b1515;font:800 8px 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;box-shadow:0 12px 26px rgba(200,162,98,.25)}
 .mg-cart-button:disabled{opacity:.5;cursor:not-allowed}
 .mg-empty{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--paper);text-align:center;padding:40px}
 .mg-empty-icon{opacity:.35;margin-bottom:16px}
@@ -112,9 +112,7 @@ export default function Samples() {
       if (isSelected) {
         return prev.filter((item) => item !== arrangementId);
       }
-      const next = [...prev, arrangementId];
-      setShowBooking(true);
-      return next;
+      return [...prev, arrangementId];
     });
   }, []);
 
@@ -168,21 +166,46 @@ export default function Samples() {
   const onPointerDown = (e) => {
     dragStart.current = e.clientX;
     dragging.current = false;
-    const target = e.currentTarget;
-    target.setPointerCapture(e.pointerId);
+    if (e.currentTarget && e.pointerId !== undefined) {
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    }
   };
 
   const onPointerMove = (e) => {
     if (dragStart.current === null) return;
-    if (Math.abs(e.clientX - dragStart.current) > 6) dragging.current = true;
+    if (Math.abs(e.clientX - dragStart.current) > 18) dragging.current = true;
   };
 
   const onPointerUp = (e) => {
     if (dragStart.current === null) return;
     const delta = e.clientX - dragStart.current;
     if (dragging.current) {
-      if (delta < -50) goTo(current + 1);
-      else if (delta > 50) goTo(current - 1);
+      if (delta < -32) goTo(current + 1);
+      else if (delta > 32) goTo(current - 1);
+    }
+    dragStart.current = null;
+    dragging.current = false;
+  };
+
+  const onTouchStart = (e) => {
+    if (e.touches && e.touches[0]) {
+      dragStart.current = e.touches[0].clientX;
+      dragging.current = false;
+    }
+  };
+
+  const onTouchMove = (e) => {
+    if (dragStart.current === null || !e.touches?.[0]) return;
+    if (Math.abs(e.touches[0].clientX - dragStart.current) > 18) dragging.current = true;
+  };
+
+  const onTouchEnd = (e) => {
+    if (dragStart.current === null) return;
+    const touchX = e.changedTouches?.[0]?.clientX ?? dragStart.current;
+    const delta = touchX - dragStart.current;
+    if (dragging.current) {
+      if (delta < -32) goTo(current + 1);
+      else if (delta > 32) goTo(current - 1);
     }
     dragStart.current = null;
     dragging.current = false;
@@ -239,7 +262,15 @@ export default function Samples() {
         </div>
       ) : (
         <>
-          <div className="mg-viewport" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+          <div
+            className="mg-viewport"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
             {arrangements.map((a, i) => {
               const img = pickPrimaryImage(a);
               return (
