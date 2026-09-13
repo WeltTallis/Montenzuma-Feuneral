@@ -312,19 +312,28 @@ const ToggleButton = styled.button`
 
 const MobileMenuButton = styled.button`
   position: fixed;
-  top: 12px;
-  left: 12px;
+  bottom: 18px;
+  left: 14px;
   z-index: 60;
-  background: ${COLORS.white};
-  border: 1px solid ${COLORS.border};
-  border-radius: 10px;
-  padding: 10px;
+  width: 52px;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  padding: 0;
   cursor: pointer;
-  box-shadow: 0 2px 12px ${COLORS.shadow};
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.08);
   display: none;
   align-items: center;
   justify-content: center;
   color: ${COLORS.textMain};
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:active {
+    transform: scale(0.96);
+  }
   
   @media (max-width: 767px) {
     display: flex;
@@ -383,19 +392,28 @@ const CloseButton = styled.button`
 
 const SingleTenantMenuButton = styled.button`
   position: fixed;
-  top: 12px;
-  left: 12px;
+  bottom: 18px;
+  left: 14px;
   z-index: 60;
-  background: ${COLORS.white};
-  border: 1px solid ${COLORS.border};
-  border-radius: 10px;
-  padding: 10px;
+  width: 52px;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  padding: 0;
   cursor: pointer;
-  box-shadow: 0 2px 12px ${COLORS.shadow};
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
   color: ${COLORS.textMain};
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:active {
+    transform: scale(0.96);
+  }
   
   &:hover {
     background: ${COLORS.grayHover};

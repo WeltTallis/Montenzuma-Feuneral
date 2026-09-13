@@ -26,7 +26,7 @@ COPY services/bodycheckout-service/package.json ./services/bodycheckout-service/
 # Do NOT chain a second `npm install --omit=optional` here: it re-prunes the
 # sharp platform binaries (@img/sharp-linuxmusl-x64) that were just installed,
 # which bodycheckout imports in bodyRelease.controller.ts / uploadigSignature.ts.
-RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && NODE_OPTIONS=--max-old-space-size=2048 npm install --no-audit --no-fund --include=optional
+RUN npm config set fetch-timeout 1200000 && npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 120000 && npm config set fetch-retry-maxtimeout 600000 && NODE_OPTIONS=--max-old-space-size=2048 npm install --no-audit --no-fund
 
 # Copy source code
 COPY services/configurations/ ./configurations/

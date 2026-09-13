@@ -235,7 +235,14 @@ const NotificationBell = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isMuted, setIsMuted] = useState(() => localStorage.getItem('nb_muted') === 'true');
+  const [isMuted, setIsMuted] = useState(() => {
+    const stored = localStorage.getItem('nb_muted');
+    if (stored === null) {
+      localStorage.setItem('nb_muted', 'false');
+      return false;
+    }
+    return stored === 'true';
+  });
   const dropdownRef = useRef(null);
   const audioContextRef = useRef(null);
   const { socket } = useSocket();
