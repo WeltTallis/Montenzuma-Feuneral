@@ -1,5 +1,5 @@
 import React from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { css, keyframes } from 'styled-components';
 import { QRCodeSVG } from 'qrcode.react';
 import { C, getInitials, getDaysInMorgue, formatDate } from './theme';
 import { getTenantSlug } from '../../../utils/globalAuth';
@@ -217,7 +217,7 @@ const TimelineDot = styled.div`
     box-shadow: 0 0 0 4px white, 0 0 8px rgba(16, 185, 129, 0.4);
   `}
 
-  ${({ $active }) => $active && `
+  ${({ $active }) => $active && css`
     background: ${C.warning};
     border-color: ${C.warning};
     box-shadow: 0 0 0 4px white, 0 0 8px rgba(245, 158, 11, 0.6);
