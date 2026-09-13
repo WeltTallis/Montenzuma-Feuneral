@@ -73,7 +73,7 @@ export default function PremiumReporting() {
   }, []);
 
   return (
-    <section style={{ position: 'relative', padding: 'clamp(4rem, 8vw, 7rem) 0', overflow: 'hidden' }}>
+    <section style={{ position: 'relative', padding: 'clamp(4rem, 8vw, 7rem) 0', overflow: 'hidden', background: '#0a1630' }}>
       {/* Atmospheric Glows */}
       <div style={{
         position: 'absolute', borderRadius: '50%', filter: 'blur(120px)', zIndex: 0, pointerEvents: 'none',
@@ -91,14 +91,14 @@ export default function PremiumReporting() {
           <Reveal>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.75rem',
-              background: '#141414', border: '1px solid #333', padding: '0.5rem 1.25rem', borderRadius: '9999px', marginBottom: '2rem',
+              background: 'rgba(9, 17, 31, 0.75)', border: '1px solid rgba(108, 140, 196, 0.45)', padding: '0.5rem 1.25rem', borderRadius: '9999px', marginBottom: '2rem',
             }}>
               <span style={{
-                width: '8px', height: '8px', background: '#A98F6E', borderRadius: '50%', display: 'inline-block',
+                width: '8px', height: '8px', background: '#9bb8ff', borderRadius: '50%', display: 'inline-block',
                 animation: 'prPulse 2s infinite',
               }} />
               <span style={{
-                fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', color: '#A98F6E', textTransform: 'uppercase',
+                fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', color: '#cfe0ff', textTransform: 'uppercase',
               }}>Bespoke Automation Engine</span>
             </div>
           </Reveal>
@@ -106,12 +106,12 @@ export default function PremiumReporting() {
             <h2 style={{
               fontFamily: "'Fraunces', serif",
               fontSize: 'clamp(2.2rem, 5vw, 4rem)',
-              fontWeight: 300, lineHeight: 1.1, marginBottom: '1.5rem', letterSpacing: '-0.02em', color: C.bone,
+              fontWeight: 300, lineHeight: 1.1, marginBottom: '1.5rem', letterSpacing: '-0.02em', color: '#edf5ff',
             }}>
               Flawless Documentation.<br />
               <span style={{
                 fontStyle: 'italic', fontWeight: 500,
-                background: 'linear-gradient(135deg, #A98F6E 0%, #C8B292 100%)',
+                background: 'linear-gradient(135deg, #9bb8ff 0%, #dfeaff 100%)',
                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
               }}>Zero Effort.</span>
             </h2>

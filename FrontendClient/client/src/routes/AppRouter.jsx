@@ -366,7 +366,9 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
   const isClientPage =
     location.pathname.includes('/receptionist') ||
     location.pathname.includes('/deceased/register') ||
-    location.pathname.includes('/release-form');
+    location.pathname.includes('/release-form') ||
+    location.pathname.includes('/flower-samples') ||
+    location.pathname.includes('/flowers/new');
   const showNotificationBell = !isClientPage;
 
   return (

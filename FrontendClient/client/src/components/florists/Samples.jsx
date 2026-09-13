@@ -17,11 +17,11 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
   --gold:#C8A262; --hair:#E8E0DA; --hair2:#E0C9C0;
   --serif:'Fraunces',Georgia,serif; --sans:'Inter',sans-serif;
 }
-.mg-viewport{position:fixed;inset:0;overflow:hidden;background:#000;pointer-events:auto}
-.mg-slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:opacity .5s ease;overflow:hidden;background:#0d090b}
-.mg-slide img{width:min(100%,1600px);height:100%;object-fit:contain;background:rgba(12,10,12,.22);display:block;user-select:none;-webkit-user-drag:none}
-.mg-vignette{position:absolute;inset:0;pointer-events:none;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,transparent 35%,transparent 55%,rgba(0,0,0,.75) 100%)}
-.mg-stories{position:fixed;top:14px;left:18px;right:18px;z-index:10;display:flex;align-items:flex-start;gap:10px;overflow-x:auto;scrollbar-width:none;padding:10px 6px 8px}
+.mg-viewport{position:relative;width:calc(100vw - 32px);height:calc(95vh - 20px);margin:10px auto 0;border-radius:28px;overflow:hidden;background:radial-gradient(circle at top, rgba(118,89,75,.35), rgba(11,8,9,.78) 45%, rgba(0,0,0,1) 100%);pointer-events:auto;box-shadow:0 35px 100px rgba(0,0,0,.52), inset 0 0 0 1px rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+.mg-slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:opacity .45s ease, transform .45s ease;overflow:hidden;background:#0d090b;will-change:opacity,transform}
+.mg-slide img{width:100%;height:100%;object-fit:cover;background:rgba(12,10,12,.22);display:block;user-select:none;-webkit-user-drag:none;image-rendering:auto;filter:saturate(1.08) contrast(1.06)}
+.mg-vignette{position:absolute;inset:0;pointer-events:none;z-index:3;background:linear-gradient(180deg,rgba(0,0,0,.58) 0%,rgba(0,0,0,.18) 28%,rgba(0,0,0,.12) 52%,rgba(0,0,0,.76) 100%)}
+.mg-stories{position:fixed;top:14px;left:18px;right:18px;z-index:10;display:flex;align-items:flex-start;gap:10px;overflow-x:auto;scrollbar-width:none;padding:10px 6px 8px;scroll-behavior:smooth;background:linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,0));border-radius:18px}
 .mg-stories::-webkit-scrollbar{display:none}
 .mg-story-item{display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;cursor:pointer;transition:transform .2s;max-width:74px;background:transparent;border:none;padding:0;box-shadow:none}
 .mg-story-item:hover{transform:translateY(-1px)}
@@ -33,12 +33,12 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 .mg-story-label{font:700 10px/1.1 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.8);max-width:72px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mg-add-story{position:fixed;right:18px;top:18px;z-index:12;padding:11px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.24);background:rgba(16,12,14,.42);backdrop-filter:blur(10px);color:#fff;cursor:pointer;font:700 10px 'Inter',sans-serif;letter-spacing:.16em;text-transform:uppercase;box-shadow:0 18px 32px rgba(0,0,0,.25)}
 .mg-add-story:hover{background:rgba(139,69,87,.8)}
-.mg-bottom{position:fixed;bottom:0;left:0;right:0;z-index:10;padding:32px 40px 40px;color:#fff}
+.mg-bottom{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:28px 32px 34px;color:#fff;background:linear-gradient(180deg,transparent 0%, rgba(0,0,0,.18) 24%, rgba(0,0,0,.48) 100%)}
 .mg-badge{display:inline-block;margin-bottom:12px;padding:6px 16px;border-radius:999px;font:700 10px 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase}
 .mg-badge.premium{background:var(--gold);color:#fff}
 .mg-badge.standard{background:rgba(251,246,241,.15);color:rgba(255,255,255,.85)}
 .mg-type{font:400 11px/1.2 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;opacity:.6}
-.mg-name{font:400 clamp(2rem,5vw,2.8rem)/1.05 var(--serif);margin:6px 0 10px;letter-spacing:-.01em}
+.mg-name{font:400 clamp(2rem,5vw,2.8rem)/1.05 var(--serif);margin:6px 0 10px;letter-spacing:-.01em;text-shadow:0 8px 24px rgba(0,0,0,.3)}
 .mg-price{font:300 2rem var(--serif);color:var(--gold)}
 .mg-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:12px}
 .mg-btn{width:52px;height:52px;border-radius:50%;cursor:pointer;display:grid;place-items:center;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.12);color:#fff;transition:transform .2s,background .2s;border:none;box-shadow:0 18px 32px rgba(0,0,0,.2)}
@@ -58,10 +58,10 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 .mg-dots{display:flex;justify-content:center;gap:8px;margin-top:24px}
 .mg-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .3s;cursor:pointer}
 .mg-dot.active{width:22px;background:var(--gold)}
-.mg-arrow{position:fixed;top:50%;transform:translateY(-50%);z-index:10;width:48px;height:48px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;cursor:pointer;background:rgba(0,0,0,.35);color:#fff;border:1px solid rgba(255,255,255,.15);transition:opacity .2s}
-.mg-arrow:hover{opacity:.8}
-.mg-arrow.left{left:24px}
-.mg-arrow.right{right:24px}
+.mg-cart-bar{position:absolute;right:22px;bottom:130px;z-index:12;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(15,12,14,.52);backdrop-filter:blur(10px);box-shadow:0 24px 32px rgba(0,0,0,.18);border:1px solid rgba(196,168,128,.38)}
+.mg-cart-chip{font:700 10px 'Inter',sans-serif;color:rgba(255,255,255,.82);letter-spacing:.12em;text-transform:uppercase}
+.mg-cart-button{padding:9px 16px;border:none;border-radius:999px;background:linear-gradient(135deg,#C8A262,#F0D7A3);color:#1b1515;font:800 10px 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;box-shadow:0 12px 26px rgba(200,162,98,.35)}
+.mg-cart-button:disabled{opacity:.5;cursor:not-allowed}
 .mg-empty{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--paper);text-align:center;padding:40px}
 .mg-empty-icon{opacity:.35;margin-bottom:16px}
 .mg-empty h3{font:400 22px var(--serif);color:var(--rosewood);margin-bottom:8px}
@@ -83,13 +83,38 @@ export default function Samples() {
   const viewedStories = useRef(new Set());
   const storyRailRef = useRef(null);
 
+  const pickPrimaryImage = useCallback((entry) => {
+    const list = Array.isArray(entry?.images) ? entry.images : [];
+    if (list.length === 0) {
+      return entry?.image || entry?.img || entry?.portrait || entry?.images?.[0]?.url || '';
+    }
+
+    const sorted = [...list].sort((a, b) => {
+      const aPrimary = Number(a?.is_primary) || 0;
+      const bPrimary = Number(b?.is_primary) || 0;
+      const aOrder = Number(a?.order ?? 0) || 0;
+      const bOrder = Number(b?.order ?? 0) || 0;
+      if (aPrimary !== bPrimary) return bPrimary - aPrimary;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return 0;
+    });
+
+    const chosen = sorted.find((img) => typeof img?.url === 'string' && img.url.trim()) || sorted[0];
+    return chosen?.url || entry?.image || entry?.img || entry?.portrait || '';
+  }, []);
+
   const toggleCart = useCallback((id) => {
     const arrangementId = String(id || '');
+    if (!arrangementId) return;
+
     setSelectedIds((prev) => {
-      if (!arrangementId) return prev;
-      return prev.includes(arrangementId)
-        ? prev.filter((item) => item !== arrangementId)
-        : [...prev, arrangementId];
+      const isSelected = prev.includes(arrangementId);
+      if (isSelected) {
+        return prev.filter((item) => item !== arrangementId);
+      }
+      const next = [...prev, arrangementId];
+      setShowBooking(true);
+      return next;
     });
   }, []);
 
@@ -130,7 +155,7 @@ export default function Samples() {
     id: a.id || a.arrangement_id || i,
     label: (a.title || a.name || 'Arrangement').split(' ')[0],
     arrangementId: a.arrangement_id || a.id,
-    img: a.images?.[0]?.url || a.images?.[0] || a.img || '',
+    img: pickPrimaryImage(a),
     viewed: viewedStories.current.has(a.id || a.arrangement_id || i),
   }));
 
@@ -186,10 +211,10 @@ export default function Samples() {
     id: a.arrangement_id || a.id,
     arrangement_id: a.arrangement_id || a.id,
     name: a.title || a.name,
-    img: a.images?.[0]?.url || a.images?.[0] || a.img,
+    img: pickPrimaryImage(a),
     desc: a.desc || a.description || '',
     title: a.title || a.name,
-    portrait: a.images?.[0]?.url || a.images?.[0] || a.portrait || a.img,
+    portrait: pickPrimaryImage(a),
   }));
 
   const openBookingFlow = useCallback(() => {
@@ -216,10 +241,10 @@ export default function Samples() {
         <>
           <div className="mg-viewport" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
             {arrangements.map((a, i) => {
-              const img = a.images?.[0]?.url || a.images?.[0] || a.img;
+              const img = pickPrimaryImage(a);
               return (
-                <div key={a.arrangement_id || a.id} className="mg-slide" style={{ opacity: i === current ? 1 : 0, pointerEvents: i === current ? "auto" : "none" }}>
-                  <img src={img} alt={a.title || a.name || 'Arrangement'} draggable={false} />
+                <div key={a.arrangement_id || a.id} className="mg-slide" style={{ opacity: i === current ? 1 : 0, pointerEvents: i === current ? "auto" : "none", transform: i === current ? 'scale(1)' : 'scale(1.02)' }}>
+                  <img src={img} alt={a.title || a.name || 'Arrangement'} draggable={false} loading="eager" decoding="async" />
                 </div>
               );
             })}
@@ -247,15 +272,11 @@ export default function Samples() {
               })}
             </div>
 
-            {current > 0 && (
-              <button className="mg-arrow left" onClick={(e) => { e.stopPropagation(); goTo(current - 1); }} aria-label="Previous arrangement">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
-              </button>
-            )}
-            {current < arrangements.length - 1 && (
-              <button className="mg-arrow right" onClick={(e) => { e.stopPropagation(); goTo(current + 1); }} aria-label="Next arrangement">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
-              </button>
+            {selectedIds.length > 0 && (
+              <div className="mg-cart-bar">
+                <span className="mg-cart-chip">{selectedIds.length} selected</span>
+                <button className="mg-cart-button" type="button" onClick={() => setShowBooking(true)}>Continue booking</button>
+              </div>
             )}
 
             <div className="mg-bottom">
@@ -306,7 +327,7 @@ export default function Samples() {
                       }
                     }}
                   >
-                    <img src={item.images?.[0]?.url || item.images?.[0] || item.img || ''} alt={item.title || item.name || 'Recommended arrangement'} />
+                    <img src={pickPrimaryImage(item) || ''} alt={item.title || item.name || 'Recommended arrangement'} loading="eager" decoding="async" />
                     <div className="mg-recommendation-body">
                       <strong>{item.title || item.name}</strong>
                       <span>{item.recommendation_reason || 'Popular choice'}</span>
