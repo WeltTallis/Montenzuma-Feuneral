@@ -73,7 +73,7 @@ export default function PremiumReporting() {
   }, []);
 
   return (
-    <section style={{ position: 'relative', padding: 'clamp(4rem, 8vw, 7rem) 0', overflow: 'hidden', background: '#0a1630' }}>
+    <section style={{ position: 'relative', padding: 'clamp(4rem, 8vw, 7rem) 0', overflow: 'hidden', background: '#000000' }}>
       {/* Atmospheric Glows */}
       <div style={{
         position: 'absolute', borderRadius: '50%', filter: 'blur(120px)', zIndex: 0, pointerEvents: 'none',
@@ -91,14 +91,14 @@ export default function PremiumReporting() {
           <Reveal>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.75rem',
-              background: 'rgba(9, 17, 31, 0.75)', border: '1px solid rgba(108, 140, 196, 0.45)', padding: '0.5rem 1.25rem', borderRadius: '9999px', marginBottom: '2rem',
+              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.5rem 1.25rem', borderRadius: '9999px', marginBottom: '2rem',
             }}>
               <span style={{
-                width: '8px', height: '8px', background: '#9bb8ff', borderRadius: '50%', display: 'inline-block',
+                width: '8px', height: '8px', background: '#ffffff', borderRadius: '50%', display: 'inline-block',
                 animation: 'prPulse 2s infinite',
               }} />
               <span style={{
-                fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', color: '#cfe0ff', textTransform: 'uppercase',
+                fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', color: '#f5f5f5', textTransform: 'uppercase',
               }}>Bespoke Automation Engine</span>
             </div>
           </Reveal>
@@ -106,19 +106,18 @@ export default function PremiumReporting() {
             <h2 style={{
               fontFamily: "'Fraunces', serif",
               fontSize: 'clamp(2.2rem, 5vw, 4rem)',
-              fontWeight: 300, lineHeight: 1.1, marginBottom: '1.5rem', letterSpacing: '-0.02em', color: '#edf5ff',
+              fontWeight: 300, lineHeight: 1.1, marginBottom: '1.5rem', letterSpacing: '-0.02em', color: '#ffffff',
             }}>
               Flawless Documentation.<br />
               <span style={{
                 fontStyle: 'italic', fontWeight: 500,
-                background: 'linear-gradient(135deg, #9bb8ff 0%, #dfeaff 100%)',
-                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                color: '#ffffff',
               }}>Zero Effort.</span>
             </h2>
           </Reveal>
           <Reveal delay={200}>
             <p style={{
-              fontSize: '1.1rem', color: '#8A8A8A', maxWidth: '720px', margin: '0 auto', fontWeight: 300, lineHeight: 1.7,
+              fontSize: '1.1rem', color: '#bdbdbd', maxWidth: '720px', margin: '0 auto', fontWeight: 300, lineHeight: 1.7,
             }}>
               Transform hours of meticulous clinical paperwork into a single click. Our engine orchestrates your intake data into breathtaking, high-end postmortem PDFs and audit-ready Excel exports—instantly.
             </p>

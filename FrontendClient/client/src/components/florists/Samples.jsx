@@ -41,10 +41,10 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 .mg-name{font:400 clamp(2rem,5vw,2.8rem)/1.05 var(--serif);margin:6px 0 10px;letter-spacing:-.01em;text-shadow:0 8px 24px rgba(0,0,0,.3)}
 .mg-price{font:300 2rem var(--serif);color:var(--gold)}
 .mg-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:12px}
-.mg-btn{width:52px;height:52px;border-radius:50%;cursor:pointer;display:grid;place-items:center;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.12);color:#fff;transition:transform .2s,background .2s;border:none;box-shadow:0 18px 32px rgba(0,0,0,.2)}
+.mg-btn{width:52px;height:52px;border-radius:0;cursor:pointer;display:grid;place-items:center;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.12);color:#fff;transition:all .18s ease;border:none;box-shadow:0 18px 32px rgba(0,0,0,.2)}
 .mg-btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.18)}
 .mg-btn svg{width:22px;height:22px}
-.mg-btn.selected{background:rgba(200,162,98,.9);border-color:rgba(200,162,98,.9)}
+.mg-btn.selected{background:#f6f0eb;border-color:#f6f0eb;color:#171310;box-shadow:0 12px 20px rgba(246,240,235,.2)}
 .mg-recommendations{position:fixed;right:24px;bottom:120px;z-index:12;width:min(320px,calc(100vw - 32px));background:rgba(20,15,16,0.52);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px;box-shadow:0 24px 55px rgba(0,0,0,.25)}
 .mg-recommendations-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#fff;margin-bottom:10px}
 .mg-recommendations-head span{font:700 10px 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.85)}
@@ -58,9 +58,9 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 .mg-dots{display:flex;justify-content:center;gap:8px;margin-top:24px}
 .mg-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .3s;cursor:pointer}
 .mg-dot.active{width:22px;background:var(--gold)}
-.mg-cart-bar{position:absolute;right:20px;bottom:118px;z-index:12;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;background:rgba(15,12,14,.52);backdrop-filter:blur(10px);box-shadow:0 18px 28px rgba(0,0,0,.18);border:1px solid rgba(196,168,128,.38)}
-.mg-cart-chip{font:700 8px 'Inter',sans-serif;color:rgba(255,255,255,.82);letter-spacing:.12em;text-transform:uppercase}
-.mg-cart-button{padding:7px 12px;border:none;border-radius:999px;background:linear-gradient(135deg,#C8A262,#F0D7A3);color:#1b1515;font:800 8px 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;box-shadow:0 12px 26px rgba(200,162,98,.25)}
+.mg-cart-bar{position:absolute;right:20px;bottom:118px;z-index:12;display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(15,12,14,.52);backdrop-filter:blur(10px);box-shadow:0 18px 28px rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.24);border-radius:0}
+.mg-cart-chip{font:700 8px 'Inter',sans-serif;color:#f6f0eb;letter-spacing:.12em;text-transform:uppercase}
+.mg-cart-button{padding:7px 12px;border:none;background:#f6f0eb;color:#191612;font:800 8px 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0;box-shadow:none}
 .mg-cart-button:disabled{opacity:.5;cursor:not-allowed}
 .mg-empty{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--paper);text-align:center;padding:40px}
 .mg-empty-icon{opacity:.35;margin-bottom:16px}
@@ -323,6 +323,7 @@ export default function Samples() {
                   }}
                   aria-label={selectedIds.includes(arr?.arrangement_id || arr?.id) ? "Remove from cart" : "Add to cart"}
                   title={selectedIds.includes(arr?.arrangement_id || arr?.id) ? "Remove from cart" : "Add to cart"}
+                  style={{ transition: 'all 0.12s ease-out' }}
                 >
                   {selectedIds.includes(arr?.arrangement_id || arr?.id) ? (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12.5l4.1 4.1L19 2.5" /></svg>
