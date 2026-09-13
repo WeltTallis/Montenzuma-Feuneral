@@ -1,90 +1,335 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Homepage -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <!-- ============================================================
+       Rest Point (restpoint.co.ke) — Sitemap
+       Generated: 2026-09-13
+       Only PUBLIC, indexable pages are listed. Tenant dashboards,
+       deceased records, portals and pre-authenticated routes are
+       deliberately excluded (see robots.txt).
+       ============================================================ -->
+
+  <!-- ============ HOMEPAGE ============ -->
   <url>
     <loc>https://restpoint.co.ke/</loc>
-    <lastmod>2024-01-14</lastmod>
+    <lastmod>2026-09-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://restpoint.co.ke/logo.png</image:loc>
+      <image:title>Rest Point - Funeral Home Management Software Kenya</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://restpoint.co.ke/restpoint.png</image:loc>
+      <image:title>Rest Point dashboard overview</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://restpoint.co.ke/landing.png</image:loc>
+      <image:title>Rest Point landing</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://restpoint.co.ke/welt-tallis.png</image:loc>
+      <image:title>Welt Tallis Technologies</image:title>
+    </image:image>
   </url>
 
-  <!-- Online Memorial -->
+  <!-- ============ SEO TOPIC CLUSTER (core money pages) ============ -->
   <url>
-    <loc>https://restpoint.co.ke/memorial</loc>
-    <lastmod>2026-09-10</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://restpoint.co.ke/funeral-home-management-software</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
-
-  <!-- About Page -->
   <url>
-    <loc>https://restpoint.co.ke/about</loc>
-    <lastmod>2024-01-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- Services -->
-  <url>
-    <loc>https://restpoint.co.ke/services</loc>
-    <lastmod>2024-01-14</lastmod>
+    <loc>https://restpoint.co.ke/mortuary-management-software</loc>
+    <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
-
-  <!-- Features -->
   <url>
-    <loc>https://restpoint.co.ke/features</loc>
-    <lastmod>2024-01-14</lastmod>
+    <loc>https://restpoint.co.ke/hospital-mortuary-software</loc>
+    <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.9</priority>
   </url>
-
-  <!-- Pricing -->
+  <url>
+    <loc>https://restpoint.co.ke/hearse-management</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/mortuary-billing</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
   <url>
     <loc>https://restpoint.co.ke/pricing</loc>
-    <lastmod>2024-01-14</lastmod>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- ============ SOLUTION / INDUSTRY PAGES ============ -->
+  <url>
+    <loc>https://restpoint.co.ke/solutions/churches</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/solutions/saccos</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/solutions/chamas</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/solutions/funeral-homes</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/insurance</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/memorial</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/integrations</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ============ BLOG / GUIDES ============ -->
+  <url>
+    <loc>https://restpoint.co.ke/blog/architecture-of-blooms</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/blog/stories</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/blog/funeral-welfare-management</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/blog/bereavement-management</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/blog/member-contributions</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/blog/future-of-death-care-software-restpoint</loc>
+    <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
-  <!-- Contact -->
+  <!-- ============ COMPARISON PAGES ============ -->
+  <url>
+    <loc>https://restpoint.co.ke/compare/restpoint-vs-excel</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/compare/manual-vs-digital</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/compare/best-church-software-kenya</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/compare/best-sacco-welfare-software</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ============ TOOLS & RESOURCES ============ -->
+  <url>
+    <loc>https://restpoint.co.ke/calculators</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/templates</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/glossary</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/resources/logs</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- ============ LOCATION PAGES ============ -->
+  <url>
+    <loc>https://restpoint.co.ke/locations/nairobi</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/locations/mombasa</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/locations/kisumu</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/locations/eldoret</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ============ COMPANY PAGES ============ -->
+  <url>
+    <loc>https://restpoint.co.ke/about</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/about-welt-tallis</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/why-us</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
   <url>
     <loc>https://restpoint.co.ke/contact</loc>
-    <lastmod>2024-01-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <!-- Login -->
-  <url>
-    <loc>https://restpoint.co.ke/login</loc>
-    <lastmod>2024-01-14</lastmod>
+    <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
-
-  <!-- Register -->
-  <url>
-    <loc>https://restpoint.co.ke/register</loc>
-    <lastmod>2024-01-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-
-  <!-- Blog (if exists) -->
-  <url>
-    <loc>https://restpoint.co.ke/blog</loc>
-    <lastmod>2024-01-14</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <!-- Support -->
   <url>
     <loc>https://restpoint.co.ke/support</loc>
-    <lastmod>2024-01-14</lastmod>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/scanner</loc>
+    <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+  </url>
+
+  <!-- ============ AUTH PAGES ============ -->
+  <url>
+    <loc>https://restpoint.co.ke/register</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/login</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- ============ LEGAL / POLICY PAGES ============ -->
+  <url>
+    <loc>https://restpoint.co.ke/privacy</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/terms</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/security</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/sla</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/releases</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/cookies</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/account-deletion</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://restpoint.co.ke/data-migration</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>

@@ -204,7 +204,6 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
     tenantData?.branchCount || 0,
     tenantData || {}
   );
-  const isSingleTenant = deploymentType === 'single';
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -231,9 +230,11 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const marginLeft = isSingleTenant ? '0' : (isMobile ? '0' : (sidebarOpen ? '200px' : '60px'));
-  const contentPadding = isMobile ? '0.5rem' : (isSingleTenant ? '0.5rem 0.75rem' : (sidebarOpen ? '0.75rem 1rem 0.75rem 0.25rem' : '0.75rem'));
-  const footerMarginLeft = isSingleTenant ? '0' : (isMobile ? '0' : (sidebarOpen ? '200px' : '60px'));
+  // Every deployment type (single tenant included) now reserves sidebar space
+  // on large screens so the persistent desktop sidebar panel is always visible.
+  const marginLeft = isMobile ? '0' : (sidebarOpen ? '200px' : '60px');
+  const contentPadding = isMobile ? '0.5rem' : (sidebarOpen ? '0.75rem 1rem 0.75rem 0.25rem' : '0.75rem');
+  const footerMarginLeft = isMobile ? '0' : (sidebarOpen ? '200px' : '60px');
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F7F9FB', flexDirection: 'column' }}>

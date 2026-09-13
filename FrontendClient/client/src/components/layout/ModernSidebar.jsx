@@ -314,9 +314,11 @@ const MobileMenuButton = styled.button`
   position: fixed;
   bottom: 18px;
   left: 14px;
-  z-index: 60;
+  z-index: 90;
   width: 52px;
   height: 52px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 18px;
@@ -394,9 +396,11 @@ const SingleTenantMenuButton = styled.button`
   position: fixed;
   bottom: 18px;
   left: 14px;
-  z-index: 60;
+  z-index: 90;
   width: 52px;
   height: 52px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 18px;
@@ -477,7 +481,6 @@ const ModernSidebar = ({
   const [isMobile, setIsMobile] = useState(() => {
     return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
   });
-  const [singleTenantOpen, setSingleTenantOpen] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
 
   const isSingleTenant = deploymentType === 'single';
@@ -545,11 +548,15 @@ const ModernSidebar = ({
 
   const checkMobile = useCallback(() => {
     const mobile = window.innerWidth < 768;
-    setIsMobile(mobile);
-    if (mobile) {
-      setIsOpen(false);
+    // Only force-close the drawer on a REAL desktop -> mobile transition.
+    // Mobile browsers fire `resize` constantly (URL bar / keyboard appear and
+    // collapse), so closing on EVERY resize made the hamburger feel broken —
+    // the drawer opened and instantly closed before the user could navigate.
+    if (mobile !== isMobile) {
+      setIsMobile(mobile);
+      if (mobile) setIsOpen(false);
     }
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     checkMobile();
@@ -580,10 +587,6 @@ const ModernSidebar = ({
       localStorage.setItem('sidebarOpen', isOpen.toString());
     }
   }, [isOpen, isMobile, hasMounted]);
-
-  useEffect(() => {
-    setSingleTenantOpen(false);
-  }, [location.pathname]);
 
   // ============================================================
   // FIXED: Build paths with the correct tenant slug
@@ -657,7 +660,6 @@ const ModernSidebar = ({
     console.log('[ModernSidebar] Navigating to:', path);
     navigate(path);
     if (isMobile) setIsOpen(false);
-    setSingleTenantOpen(false);
   };
 
   const handleSwitchToTab = () => {
@@ -736,64 +738,31 @@ const ModernSidebar = ({
     ));
   };
 
-  // ─── SINGLE TENANT VIEW ─────────────────────────────────────
-  if (isSingleTenant) {
-    return (
-      <>
-        <SingleTenantMenuButton onClick={() => setSingleTenantOpen(true)} aria-label="Open menu">
-          <Menu size={22} />
-        </SingleTenantMenuButton>
-
-        {singleTenantOpen && <SingleTenantOverlay onClick={() => setSingleTenantOpen(false)} aria-hidden="true" />}
-
-        <SingleTenantSidebar $isOpen={singleTenantOpen}>
-          <CloseButton onClick={() => setSingleTenantOpen(false)} aria-label="Close sidebar">
-            <X size={22} />
-          </CloseButton>
-
-          <SidebarNav $isOpen={true}>
-            {menuItems.map((section, idx) => (
-              <NavSection key={idx}>
-                {section.section && (
-                  <NavSectionTitle $isOpen={true}>
-                    {section.section}
-                  </NavSectionTitle>
-                )}
-                {renderMenuItems(section.items, true)}
-              </NavSection>
-            ))}
-          </SidebarNav>
-
-          <SidebarFooter $isOpen={true}>
-            <SwitchTabButton $collapsed={false} onClick={handleSwitchToTab}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2v6M9 5h6M5 8l-3 4 3 4M19 8l3 4-3 4M9 22h6"></path>
-                <rect x="7" y="12" width="10" height="6" rx="1" />
-              </svg>
-              <span>Switch to Tab</span>
-            </SwitchTabButton>
-            <LogoutButton $collapsed={false} onClick={handleLogout}>
-              <LogOut size={18} />
-              <span>Sign Out</span>
-            </LogoutButton>
-          </SidebarFooter>
-        </SingleTenantSidebar>
-      </>
-    );
-  }
-
-  // ─── MOBILE VIEW (multi-branch) ─────────────────────────────
+  // ─── MOBILE VIEW (off-canvas drawer for ALL deployment types) ──
+  // Single-tenant installs show the SAME persistent sidebar panel as every
+  // other tenant on large screens (desktop view below). On small screens we
+  // fall back to a hamburger button + slide-in drawer so navigation never
+  // disappears on any device.
   if (isMobile) {
+    const DrawerButton = isSingleTenant ? SingleTenantMenuButton : MobileMenuButton;
+    const DrawerPanel = isSingleTenant ? SingleTenantSidebar : MobileSidebar;
+    const DrawerOverlay = isSingleTenant ? SingleTenantOverlay : SidebarOverlay;
+
     return (
       <>
-        <MobileMenuButton onClick={() => setIsOpen(true)} aria-label="Open menu">
+        <DrawerButton
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          aria-label="Open menu"
+          aria-expanded={isOpen}
+        >
           <Menu size={22} />
-        </MobileMenuButton>
+        </DrawerButton>
 
-        {isOpen && <SidebarOverlay onClick={() => setIsOpen(false)} aria-hidden="true" />}
+        {isOpen && <DrawerOverlay onClick={() => setIsOpen(false)} aria-hidden="true" />}
 
-        <MobileSidebar $isOpen={isOpen}>
-          <CloseButton onClick={() => setIsOpen(false)} aria-label="Close sidebar">
+        <DrawerPanel $isOpen={isOpen}>
+          <CloseButton type="button" onClick={() => setIsOpen(false)} aria-label="Close sidebar">
             <X size={22} />
           </CloseButton>
 
@@ -823,7 +792,7 @@ const ModernSidebar = ({
               <span>Sign Out</span>
             </LogoutButton>
           </SidebarFooter>
-        </MobileSidebar>
+        </DrawerPanel>
       </>
     );
   }

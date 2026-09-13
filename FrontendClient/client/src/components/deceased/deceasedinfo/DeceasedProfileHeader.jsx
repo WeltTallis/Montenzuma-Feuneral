@@ -76,8 +76,8 @@ const Barcode = ({ value }) => {
         bwipjs.toCanvas(canvasRef.current, {
           bcid: 'code128',
           text: value || 'AWAITING-ID',
-          scale: 3,
-          height: 10,
+          scale: 2,
+          height: 6,
           includetext: false,
           paddingwidth: 0,
           paddingheight: 0,
