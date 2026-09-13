@@ -64,7 +64,7 @@ const DetailItem = styled.div`
   gap: 6px;
   min-width: 0;
   padding: 12px 14px;
-  border: 1px solid ${C.borderLight || '#e0e0e0'};
+  border: none;
   border-radius: 10px;
   background: white;
   ${p => p.$full && 'grid-column: 1 / -1;'}
@@ -260,10 +260,10 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
           <i className="fas fa-check-circle" style={{ color: C.success || '#059669', fontSize: 18 }}></i>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontWeight: 700, color: C.success || '#059669', fontSize: 14 }}>
-              BODY RELEASED{releaseData.release_id ? ` — ${releaseData.release_id}` : ''}
+              BODY RELEASED{releaseData?.release_id ? ` — ${releaseData.release_id}` : ''}
             </div>
             <div style={{ fontSize: 12, color: C.gray }}>
-              {releaseData.created_at ? `Released on ${formatDate(releaseData.created_at)}` : ''}
+              {releaseData?.created_at ? `Released on ${formatDate(releaseData.created_at)}` : 'Release details recorded'}
             </div>
           </div>
         </div>
@@ -309,7 +309,7 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
       <DetailGrid>
         <DetailItem><DetailLabel>Permit Number</DetailLabel><DetailValue>{releaseData?.permit_number || '—'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Mode of Transport</DetailLabel><DetailValue>{releaseData?.mode_of_transport || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Released By (Staff)</DetailLabel><DetailValue>{releaseData?.staff_name || releaseData?.received_by || releaseData?.released_by || '—'}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Released By (Staff)</DetailLabel><DetailValue>{releaseData?.staff_name || releaseData?.received_by || releaseData?.released_by ? (releaseData?.staff_name || releaseData?.received_by || releaseData?.released_by) : '—'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Recorded On</DetailLabel><DetailValue>{releaseData?.created_at ? formatDate(releaseData.created_at) : '—'}</DetailValue></DetailItem>
       </DetailGrid>
 

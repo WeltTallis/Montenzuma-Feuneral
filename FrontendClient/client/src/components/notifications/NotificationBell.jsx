@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import api from '../../api/axios';
-import { ENDPOINTS, getTenantHeaders } from '../../api/endpoints';
 import { useSocket } from '../../utils/context/socketContext';
-import { getTenantSlug } from '../../utils/globalAuth';
 import notify from '../../utils/notify';
 import {
   Bell, CheckCircle, X, Clock, Trash2,
@@ -15,7 +12,6 @@ import './NotificationBell.css';
 
 const MAX_NOTIFICATIONS = 50;
 const NOTIFICATION_DEBOUNCE_MS = 100;
-const FETCH_INTERVAL_MS = 30000;
 
 const BellOffIcon = (p) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 14} height={p.size || 14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -311,93 +307,24 @@ const NotificationBell = () => {
     });
   }, []);
 
-  // ─── API Calls ───
-  const fetchNotifications = useCallback(async () => {
-    try {
-      setLoading(true);
-      const tenantSlug = getTenantSlug();
-      const headers = getTenantHeaders();
-      const url = `${ENDPOINTS.NOTIFICATION.BASE}/notifications`;
-      const response = await api.get(url, {
-        headers: { ...headers, 'x-tenant-slug': tenantSlug },
-        params: { _t: Date.now() }
-      });
-
-      if (response.data?.notifications && response.data.notifications.length > 0) {
-        const redisNotifications = response.data.notifications.map(notif => ({
-          id: notif.id,
-          type: notif.type || 'info',
-          message: notif.message || notif.title || '',
-          fullContent: notif.fullContent || notif.message || 'No additional details provided.',
-          is_read: notif.read ? 1 : 0,
-          created_at: notif.createdAt || new Date().toISOString(),
-          title: notif.title || 'Notification',
-          priority: notif.priority || 'low',
-          data: notif.data || null,
-        }));
-
-        setNotifications(prev => {
-          if (!prev || prev.length === 0) return redisNotifications.slice(0, MAX_NOTIFICATIONS);
-          const redisIds = new Set(redisNotifications.map(n => String(n.id)));
-          const liveOnly = prev.filter(p => !redisIds.has(String(p.id)) && !p.persisted);
-          const combined = [...redisNotifications, ...liveOnly];
-          return combined.slice(0, MAX_NOTIFICATIONS);
-        });
-      }
-    } catch {
-      // Keep live socket notifications on error
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const markAsRead = useCallback(async (id) => {
-    try {
-      const headers = getTenantHeaders();
-      await api.put(`${ENDPOINTS.NOTIFICATION.BASE}/notifications/${id}/read`, {}, { headers });
-    } catch { }
+  // NOTE: No backend API calls — the notification fetch/delete endpoints were
+  // removed from the backend. Read/delete state is purely client-side.
+  const markAsRead = useCallback((id) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
   }, []);
 
-  const markAllAsRead = useCallback(async () => {
-    try {
-      const headers = getTenantHeaders();
-      await api.put(`${ENDPOINTS.NOTIFICATION.BASE}/notifications/mark-all-read`, {}, { headers });
-    } catch { }
+  const markAllAsRead = useCallback(() => {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
     setUnreadCount(0);
   }, []);
 
-  const deleteNotification = useCallback(async (id) => {
-    try {
-      const headers = getTenantHeaders();
-      await api.delete(`${ENDPOINTS.NOTIFICATION.BASE}/notifications/${id}`, { headers });
-    } catch { }
+  const deleteNotification = useCallback((id) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
     setUnreadCount(prev => Math.max(0, prev - 1));
   }, []);
 
-  // ─── Effects ───
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, FETCH_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
-  // Fetch notifications when socket connects
-  useEffect(() => {
-    if (!socket) return;
-    const handleConnect = () => fetchNotifications();
-    socket.on('connect', handleConnect);
-    socket.on('reconnect', handleConnect);
-    return () => {
-      socket.off('connect', handleConnect);
-      socket.off('reconnect', handleConnect);
-    };
-  }, [socket, fetchNotifications]);
-
-  // Performance: Batch and debounce notifications to prevent excessive re-renders
+  // ─── Batch and debounce socket notifications (no API fetching — real-time only) ───
   const flushNotifications = useCallback(() => {
     if (pendingNotificationsRef.current.length === 0) return;
     const batch = [...pendingNotificationsRef.current];
@@ -783,35 +710,14 @@ const NotificationBell = () => {
       socket.on(event, handler);
     });
 
-    // CATCH-ALL: the socketio-service prefixes EVERY /emit/<event> with
-    // "notification:" (or "alert:"), and backend services add new events over
-    // time. Listening only to the fixed list above silently drops every event
-    // that is not listed, which is why the bell missed notifications. Listen to
-    // everything and render whatever looks like a notification through the
-    // generic formatter. Events with a specific handler above are skipped so
-    // nothing is ever shown twice.
-    const registeredEvents = new Set(uniqueEvents);
-    const serverControlEvents = new Set([
-      'connected', 'joined', 'joined-deceased', 'error',
-      'connect', 'disconnect', 'reconnect', 'ping', 'pong',
-    ]);
-    const onAnyNotification = (eventName, ...args) => {
-      if (registeredEvents.has(eventName)) return;
-      if (serverControlEvents.has(eventName)) return;
-      const isNotificationEvent =
-        eventName.startsWith('notification:') ||
-        eventName.startsWith('alert:') ||
-        eventName.startsWith('booking_') ||
-        eventName === 'new_booking';
-      if (!isNotificationEvent) return;
-      const data = args.find(a => a && typeof a === 'object') || {};
-      handleNotification(eventName)(data);
-    };
-    socket.onAny(onAnyNotification);
+    // NOTE: Do NOT add an `onAny` handler here. All notification events are already
+    // handled by the specific `socket.on(eventName, handler)` registrations above.
+    // Adding `socket.onAny(...)` would cause every notification to be processed
+    // twice (once by the specific handler, once by onAny), resulting in duplicate
+    // entries in the notification list.
 
     return () => {
       Object.entries(handlers).forEach(([event, handler]) => socket.off(event, handler));
-      socket.offAny(onAnyNotification);
     };
   }, [socket, flushNotifications]);
 

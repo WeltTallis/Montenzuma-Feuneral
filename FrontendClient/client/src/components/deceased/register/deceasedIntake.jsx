@@ -1711,25 +1711,6 @@ const DeceasedRegistrationForm = () => {
                         </InputFieldWrapper>
                       </GridName>
 
-                      <GridDate>
-                        <Label>Verified By System User</Label>
-                        <InputFieldWrapper>
-                          <Input
-                            type="text"
-                            name="verified_by"
-                            value={formData.verified_by}
-                            onChange={handleChange}
-                            readOnly
-                            disabled
-                          />
-                          {hasValue(formData.verified_by) && (
-                            <TickIconWrapper>
-                              <Check size={16} strokeWidth={2.5} />
-                            </TickIconWrapper>
-                          )}
-                        </InputFieldWrapper>
-                      </GridDate>
-
                       <StampWrapper>
                         <OfficialStamp />
                       </StampWrapper>

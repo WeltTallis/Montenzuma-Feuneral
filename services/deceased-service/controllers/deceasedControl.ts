@@ -1,6 +1,6 @@
 import { getKenyaTimeISO, getKenyaDate } from '../../../packages/shared-utils/dist/timestamps';
 import redisService from '../../../packages/shared-services/dist/redisService';
-import { safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig';
+import { safeTenantQuery, safeTenantExecute, resolveDatabase } from '../../../shared/dbConfig';
 import Logger from '../../../packages/shared-logger/src/index';
 import generateUniqueDeceasedId from '../utils/deceasedId';
 import { Request, Response } from 'express';
@@ -521,22 +521,57 @@ export const deleteDeceased = async (req: Request, res: Response): Promise<Respo
 // ============================================
 export const updateDeceasedStatus = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const { admission_number, body_status, is_embalmed } = req.body;
-        const dbName = (req as any).tenant?.db_name;
+        const { admission_number, deceased_id, body_status, is_embalmed } = req.body || {};
+        const tenantSlug = ((req.headers['x-slug'] as string) || (req.headers['x-tenant-slug'] as string) || (req as any).tenantSlug || 'system_shared');
+        const dbName = (req as any).tenant?.db_name || await resolveDatabase(tenantSlug);
 
         if (!dbName) {
             return res.status(400).json({
                 success: false,
-                message: 'No database configured'
+                message: 'No database configured for this tenant'
             });
         }
 
-        if (!admission_number) {
+        if (!admission_number && !deceased_id) {
             return res.status(400).json({
                 success: false,
-                message: 'Admission number is required'
+                message: 'Admission number or deceased ID is required'
             });
         }
+
+        const canonicalBodyStatus = (() => {
+            const raw = String(body_status ?? '').trim();
+            if (!raw) return null;
+            const normalized = raw.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+            const aliases: Record<string, string> = {
+                admitted: 'In Morgue',
+                active: 'In Morgue',
+                'in morgue': 'In Morgue',
+                morgue: 'In Morgue',
+                received: 'In Morgue',
+                'under care': 'In Morgue',
+                'in care': 'In Morgue',
+                embalmed: 'In Morgue',
+                'postmortem requested': 'Postmortem Requested',
+                'post mortem requested': 'Postmortem Requested',
+                'pending autopsy': 'Postmortem Requested',
+                'postmortem done': 'Postmortem Done',
+                'post mortem done': 'Postmortem Done',
+                completed: 'Postmortem Done',
+                released: 'Released',
+                'released to family': 'Released',
+                transferred: 'Transferred',
+                transfer: 'Transferred',
+                dispatched: 'Released',
+                buried: 'Buried',
+                'ready for collection': 'Released',
+                ready: 'Released',
+                pending: 'In Morgue',
+            };
+
+            return aliases[normalized] || raw;
+        })();
 
         // Build dynamic update query.
         // NOTE: the deceased table has NO `is_embalmed` column (embalming is
@@ -547,26 +582,22 @@ export const updateDeceasedStatus = async (req: Request, res: Response): Promise
         const values: any[] = [];
 
         if (is_embalmed === true) {
-            // Promote 'admitted' -> 'embalmed' without ever downgrading a
-            // record that is already released/buried.
             updates.push(`admission_status = IF(admission_status = 'admitted', 'embalmed', admission_status)`);
         }
 
-        if (body_status) {
+        if (canonicalBodyStatus) {
             updates.push('body_status = ?');
-            values.push(body_status);
+            values.push(canonicalBodyStatus);
 
-            const bs = String(body_status).toLowerCase();
-            if (bs === 'released') {
-                // Keep the derived status columns in sync so the deceased
-                // list, filters and dashboards reflect the release at once.
+            const bs = String(canonicalBodyStatus).toLowerCase();
+            if (bs === 'released' || bs === 'transferred' || bs === 'buried') {
                 updates.push(`release_status = 'released'`);
-                updates.push(`admission_status = 'released'`);
+                updates.push(`admission_status = ?`);
+                values.push(bs === 'buried' ? 'buried' : bs === 'transferred' ? 'released' : 'released');
                 updates.push('dispatch_date = COALESCE(dispatch_date, CURDATE())');
-            } else if (bs === 'buried') {
-                updates.push(`release_status = 'released'`);
-                updates.push(`admission_status = 'buried'`);
-                updates.push('dispatch_date = COALESCE(dispatch_date, CURDATE())');
+            } else if (bs === 'postmortem requested' || bs === 'postmortem done') {
+                updates.push('release_status = ?');
+                values.push('pending');
             }
         }
 
@@ -579,24 +610,24 @@ export const updateDeceasedStatus = async (req: Request, res: Response): Promise
             });
         }
 
-        values.push(admission_number);
+        const whereField = deceased_id ? 'deceased_id = ?' : 'admission_number = ?';
+        const whereValue = deceased_id || admission_number;
+        values.push(whereValue);
 
         const updateQuery = `
             UPDATE deceased 
             SET ${updates.join(', ')} 
-            WHERE admission_number = ?
+            WHERE ${whereField}
         `;
 
-        const result = await safeTenantExecute(dbName, updateQuery, values);
+        await safeTenantExecute(dbName, updateQuery, values);
 
-        // Invalidate cache — wipe every deceased key for this tenant.
-        const tenantSlug = (req as any).tenantSlug || "unknown";
         try {
             await redisService.clearServiceCache('deceased-service', tenantSlug);
-        } catch (cacheError) {
+        } catch (cacheError: any) {
             Logger.warn({
                 message: `Failed to invalidate deceased cache during status update`,
-                error: cacheError.message
+                error: cacheError?.message
             });
         }
 

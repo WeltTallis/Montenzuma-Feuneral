@@ -73,22 +73,42 @@ const NotifTime = styled.div`font-size: 10px; color: ${C.lightGray}; margin-top:
 
 const TimelineItem = styled.div`
   display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px;
+  padding: 12px;
+  background: ${p => p.$completed ? 'rgba(16, 185, 129, 0.08)' : p.$active ? 'rgba(251, 191, 36, 0.08)' : '#f9fafb'};
+  border-radius: 8px;
+  border-left: 3px solid ${p => p.$completed ? '#10b981' : p.$active ? '#fbbf24' : '#e5e7eb'};
+  transition: all 0.2s ease;
 `;
 const TimelineDot = styled.div`
-  width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; flex-shrink: 0;
-  background: ${p => p.$done ? C.success : p.$active ? C.warning : C.border};
+  width: 14px; height: 14px; border-radius: 50%; margin-top: 3px; flex-shrink: 0;
+  background: ${p => p.$done ? '#10b981' : p.$active ? '#fbbf24' : '#d1d5db'};
+  box-shadow: ${p => p.$done ? '0 0 8px rgba(16, 185, 129, 0.6)' : p.$active ? '0 0 8px rgba(251, 191, 36, 0.6)' : 'none'};
+  border: ${p => p.$done ? '2px solid #06b6d4' : p.$active ? '2px solid #f59e0b' : '2px solid #e5e7eb'};
 `;
 const TimelineText = styled.div`
-  font-size: 13px; font-weight: 600; color: ${p => p.$muted ? C.gray : C.dark};
+  font-size: 13px; font-weight: 700; color: ${p => p.$muted ? C.gray : C.black};
+  ${p => p.$completed && 'color: #10b981;'}
+  ${p => p.$active && 'color: #f59e0b;'}
 `;
-const TimelineTime = styled.div`font-size: 11px; color: ${C.gray};`;
+const TimelineTime = styled.div`
+  font-size: 11px; color: ${C.gray};
+  font-weight: 600;
+  ${p => p.$completed && 'color: #10b981;'}
+  ${p => p.$active && 'color: #f59e0b;'}
+`;
 
 const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, totalCharges, totalPaid = 0, balance = 0, age }) => {
   const name = deceased?.full_name || deceased?.name || 'Unknown';
   const sex = deceased?.sex || deceased?.gender || '';
   const isFemale = sex.toLowerCase() === 'female';
   const daysInMorgue = getDaysInMorgue(deceased?.date_admitted || deceased?.admission_date || deceased?.created_at);
-  const paymentStatus = Number(balance) <= 0 ? 'Done' : 'Pending';
+  const documentCount = Array.isArray(deceased?.documents) ? deceased.documents.length : 0;
+  const releaseData = deceased?.releaseData || null;
+  
+  let paymentStatus = 'Not Recorded';
+  if (totalCharges > 0) {
+    paymentStatus = Number(balance) <= 0 ? 'Done' : 'Pending';
+  }
 
   // ─── Days → charges counter ─────────────────────────────────────────
   // The sidebar counts how many days the body has been in the morgue and
@@ -117,11 +137,11 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, totalCharges, total
           <StatLabel>Age</StatLabel>
         </StatBox>
         <StatBox>
-          <StatValue>{totalCharges}K</StatValue>
+          <StatValue>{totalCharges && totalCharges > 0 ? (Math.round(totalCharges / 1000)) : '0'}K</StatValue>
           <StatLabel>Charges (KES)</StatLabel>
         </StatBox>
         <StatBox>
-          <StatValue $color={C.danger}>{balance}K</StatValue>
+          <StatValue $color={C.danger}>{balance && balance > 0 ? (Math.round(balance / 1000)) : '0'}K</StatValue>
           <StatLabel>Balance (KES)</StatLabel>
         </StatBox>
       </StatGrid>
@@ -142,24 +162,62 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, totalCharges, total
         </ChargeRow>
         <ChargeRow>
           <span>Total charges (all services)</span>
-          <strong>{totalCharges}K</strong>
+          <strong>{totalCharges && totalCharges > 0 ? (Math.round(totalCharges / 1000)) : '0'}K</strong>
         </ChargeRow>
         <ChargeRow>
           <span>Balance</span>
-          <strong>{balance}K</strong>
+          <strong>{balance && balance > 0 ? (Math.round(balance / 1000)) : '0'}K</strong>
         </ChargeRow>
         <ChargeRow>
           <span>Payment status</span>
-          <strong style={{ color: paymentStatus === 'Done' ? '#0f766e' : '#b45309' }}>{paymentStatus}</strong>
+          <strong style={{ 
+            display: 'inline-block',
+            padding: '4px 10px',
+            borderRadius: '4px',
+            fontWeight: '700',
+            fontSize: '12px',
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+            color: paymentStatus === 'Done' ? 'white' : paymentStatus === 'Not Recorded' ? '#666' : 'white',
+            backgroundColor: paymentStatus === 'Done' ? '#10b981' : paymentStatus === 'Not Recorded' ? '#f3f4f6' : '#f59e0b',
+            boxShadow: paymentStatus === 'Done' ? '0 0 8px rgba(16, 185, 129, 0.4)' : paymentStatus === 'Not Recorded' ? 'none' : '0 0 8px rgba(245, 158, 11, 0.4)'
+          }}>
+            {paymentStatus === 'Done' && '✓ '}{paymentStatus}
+          </strong>
         </ChargeRow>
         <ChargeRow>
           <span>Paid so far</span>
-          <strong>{Number(totalPaid || 0).toLocaleString()}K</strong>
+          <strong>{totalPaid && totalPaid > 0 ? (Math.round(totalPaid / 1000)) : '0'}K</strong>
         </ChargeRow>
         <ChargeNote>
           Storage charge = days in morgue × daily rate (set under Charge Settings).
           Embalming and extra charges are listed under the Financials tab.
         </ChargeNote>
+      </SidebarSection>
+
+      <SidebarSection>
+        <h3>Documents & Storage</h3>
+        <ChargeRow>
+          <span>Documents Uploaded</span>
+          <strong>{documentCount} file{documentCount !== 1 ? 's' : ''}</strong>
+        </ChargeRow>
+        <ChargeRow>
+          <span>Body Storage Status</span>
+          <strong style={{ 
+            display: 'inline-block',
+            padding: '4px 10px',
+            borderRadius: '4px',
+            fontWeight: '700',
+            fontSize: '12px',
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+            color: bodyStatus === 'Released' ? 'white' : 'white',
+            backgroundColor: bodyStatus === 'Released' ? '#10b981' : '#f59e0b',
+            boxShadow: bodyStatus === 'Released' ? '0 0 8px rgba(16, 185, 129, 0.4)' : '0 0 8px rgba(245, 158, 11, 0.4)'
+          }}>
+            {bodyStatus === 'Released' && '✓ '}{bodyStatus === 'In Morgue' || bodyStatus === 'Active' ? 'In Storage' : 'Released'}
+          </strong>
+        </ChargeRow>
       </SidebarSection>
 
       <SidebarSection>
@@ -184,49 +242,51 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, totalCharges, total
 
       <SidebarSection>
         <h3>Mortuary Progress</h3>
-        <TimelineItem>
+        <TimelineItem $completed>
           <TimelineDot $done />
           <div>
-            <TimelineText>Admitted to Morgue</TimelineText>
-            <TimelineTime>{formatDate(deceased?.created_at)}</TimelineTime>
+            <TimelineText $completed>Admitted to Morgue</TimelineText>
+            <TimelineTime $completed>{formatDate(deceased?.created_at)}</TimelineTime>
           </div>
         </TimelineItem>
-        <TimelineItem>
+        <TimelineItem $completed={deceased?.embalmed} $active={!deceased?.embalmed}>
           <TimelineDot $done={deceased?.embalmed} $active={!deceased?.embalmed} />
           <div>
-            <TimelineText>Body {deceased?.embalmed ? 'Embalmed' : 'Awaiting Embalming'}</TimelineText>
-            <TimelineTime>{deceased?.embalmed ? formatDate(deceased?.embalmed_date) : 'Pending'}</TimelineTime>
+            <TimelineText $completed={deceased?.embalmed} $active={!deceased?.embalmed}>{deceased?.embalmed ? '✓ Embalmed' : 'Body Awaiting Embalming'}</TimelineText>
+            <TimelineTime $completed={deceased?.embalmed} $active={!deceased?.embalmed}>{deceased?.embalmed ? formatDate(deceased?.embalmed_date) : 'Pending'}</TimelineTime>
           </div>
         </TimelineItem>
-        <TimelineItem>
-          <TimelineDot $done={postmortem?.status === 'completed'} $active={postmortem?.status === 'pending'} />
+        <TimelineItem $completed={postmortem?.status === 'completed'} $active={postmortem?.status === 'pending' || postmortem?.status === 'in_progress'}>
+          <TimelineDot $done={postmortem?.status === 'completed'} $active={postmortem?.status === 'pending' || postmortem?.status === 'in_progress'} />
           <div>
-            <TimelineText>
+            <TimelineText $completed={postmortem?.status === 'completed'} $active={postmortem?.status === 'pending' || postmortem?.status === 'in_progress'}>
               Postmortem {postmortem ? 
-                (postmortem.status === 'completed' ? 'Completed' : 
+                (postmortem.status === 'completed' ? '✓ Completed' : 
                  postmortem.status === 'pending' ? 'In Progress' : 
                  postmortem.status === 'in_progress' ? 'In Progress' : 'Requested') : 
                 'Not Requested'}
             </TimelineText>
-            <TimelineTime>
+            <TimelineTime $completed={postmortem?.status === 'completed'} $active={postmortem?.status === 'pending' || postmortem?.status === 'in_progress'}>
               {postmortem?.status === 'completed' ? formatDate(postmortem.completed_at || postmortem.updated_at) : 
                postmortem?.status === 'pending' || postmortem?.status === 'in_progress' ? 'Awaiting Results' : 
                postmortem ? formatDate(postmortem.requested_at || postmortem.created_at) : '—'}
             </TimelineTime>
           </div>
         </TimelineItem>
-        <TimelineItem>
-          <TimelineDot $active={bodyStatus === 'In Morgue' || bodyStatus === 'Active'} />
+        <TimelineItem $completed={releaseData && releaseData.release_id} $active={bodyStatus === 'In Morgue' || bodyStatus === 'Active'}>
+          <TimelineDot $active={bodyStatus === 'In Morgue' || bodyStatus === 'Active'} $done={releaseData && releaseData.release_id} />
           <div>
-            <TimelineText>In Storage ({bodyStatus})</TimelineText>
-            <TimelineTime>Currently Active</TimelineTime>
+            <TimelineText $completed={releaseData && releaseData.release_id}>{releaseData && releaseData.release_id ? '✓ Body Released' : 'In Storage (' + (bodyStatus || 'Normal') + ')'}</TimelineText>
+            <TimelineTime $completed={releaseData && releaseData.release_id} $active={!releaseData && (bodyStatus === 'In Morgue' || bodyStatus === 'Active')}>{releaseData && releaseData.release_id ? 'Complete' : 'Currently Active'}</TimelineTime>
           </div>
         </TimelineItem>
-        <TimelineItem>
-          <TimelineDot />
+        <TimelineItem $completed={releaseData && releaseData.release_id} $active={!releaseData}>
+          <TimelineDot $done={releaseData && releaseData.release_id} $active={!releaseData} />
           <div>
-            <TimelineText $muted>Released to Family</TimelineText>
-            <TimelineTime style={{ color: C.lightGray }}>Pending</TimelineTime>
+            <TimelineText $completed={releaseData && releaseData.release_id}>{releaseData && releaseData.release_id ? '✓ Released to Family' : 'Released to Family'}</TimelineText>
+            <TimelineTime $completed={releaseData && releaseData.release_id} $active={!releaseData}>
+              {releaseData && releaseData.release_id ? `${formatDate(releaseData.created_at)}` : 'Pending'}
+            </TimelineTime>
           </div>
         </TimelineItem>
       </SidebarSection>

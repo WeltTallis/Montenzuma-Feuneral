@@ -25,10 +25,10 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 .mg-stories::-webkit-scrollbar{display:none}
 .mg-story-item{display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;cursor:pointer;transition:transform .2s;max-width:74px;background:transparent;border:none;padding:0;box-shadow:none}
 .mg-story-item:hover{transform:translateY(-1px)}
-.mg-story-ring{width:56px;height:56px;border-radius:50%;padding:2px;display:grid;place-items:center;transition:.25s;background:rgba(255,255,255,.08)}
-.mg-story-ring.unseen{background:conic-gradient(var(--gold) 0deg,var(--blush-xl) 90deg,var(--gold) 180deg,var(--blush-xl) 270deg,var(--gold) 360deg);box-shadow:0 0 0 1px rgba(255,255,255,.18),0 10px 24px rgba(181,118,116,.28)}
-.mg-story-ring.seen{background:rgba(255,255,255,.14)}
-.mg-story-inner{width:48px;height:48px;border-radius:50%;border:2px solid rgba(255,255,255,.72);overflow:hidden;display:grid;place-items:center;background:rgba(255,255,255,.06)}
+.mg-story-ring{width:52px;height:52px;border-radius:50%;padding:1.5px;display:grid;place-items:center;transition:.25s;background:rgba(255,255,255,.03)}
+.mg-story-ring.unseen{background:conic-gradient(var(--gold) 0deg,var(--blush-xl) 90deg,var(--gold) 180deg,var(--blush-xl) 270deg,var(--gold) 360deg);box-shadow:0 0 0 0.5px rgba(255,255,255,.1),0 4px 10px rgba(181,118,116,.12)}
+.mg-story-ring.seen{background:rgba(255,255,255,.05)}
+.mg-story-inner{width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(255,255,255,.68);overflow:hidden;display:grid;place-items:center;background:rgba(255,255,255,.04)}
 .mg-story-inner img{width:100%;height:100%;object-fit:cover;display:block}
 .mg-story-label{font:700 10px/1.1 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.8);max-width:72px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mg-add-story{position:fixed;right:18px;top:18px;z-index:12;padding:11px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.24);background:rgba(16,12,14,.42);backdrop-filter:blur(10px);color:#fff;cursor:pointer;font:700 10px 'Inter',sans-serif;letter-spacing:.16em;text-transform:uppercase;box-shadow:0 18px 32px rgba(0,0,0,.25)}
@@ -41,8 +41,8 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 .mg-name{font:400 clamp(2rem,5vw,2.8rem)/1.05 var(--serif);margin:6px 0 10px;letter-spacing:-.01em;text-shadow:0 8px 24px rgba(0,0,0,.3)}
 .mg-price{font:300 2rem var(--serif);color:var(--gold)}
 .mg-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:12px}
-.mg-btn{width:52px;height:52px;border-radius:0;cursor:pointer;display:grid;place-items:center;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.12);color:#fff;transition:all .18s ease;border:none;box-shadow:0 18px 32px rgba(0,0,0,.2)}
-.mg-btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.18)}
+.mg-btn{width:52px;height:52px;border-radius:0;cursor:pointer;display:grid;place-items:center;border:1px solid #573438;background:#573438;color:#fff;transition:all .18s ease;border:none;box-shadow:0 18px 32px rgba(0,0,0,.2)}
+.mg-btn:hover{transform:translateY(-1px);background:#6d4447}
 .mg-btn svg{width:22px;height:22px}
 .mg-btn.selected{background:#f6f0eb;border-color:#f6f0eb;color:#171310;box-shadow:0 12px 20px rgba(246,240,235,.2)}
 .mg-recommendations{position:fixed;right:24px;bottom:120px;z-index:12;width:min(320px,calc(100vw - 32px));background:rgba(20,15,16,0.52);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px;box-shadow:0 24px 55px rgba(0,0,0,.25)}
@@ -66,6 +66,14 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 .mg-empty-icon{opacity:.45;margin-bottom:16px;color:#8b4557}
 .mg-empty h3{font:400 26px var(--serif);color:#4d3a38;margin:0 0 8px}
 .mg-empty p{font:400 15px var(--sans);color:#7d6661;max-width:30rem;line-height:1.6}
+.load-container{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#F8F9FB;background-image:radial-gradient(#E2E8F0 1px,transparent 1px);background-size:24px 24px;text-align:center;padding:40px}
+.load-icon-wrapper{width:72px;height:72px;margin:0 auto 1.5rem;background:#FFFFFF;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(255,61,127,.25);border:1px solid #FFECEF}
+.load-flower{width:36px;height:36px}
+.load-container h3{font-family:'Inter',sans-serif;color:#1E293B;font-size:1.6rem;margin:0 0 1.5rem 0;font-weight:600;letter-spacing:-.5px}
+.load-track{width:100%;height:8px;background:#E2E8F0;border-radius:999px;overflow:hidden;position:relative}
+.load-fill{position:absolute;top:0;left:0;height:100%;width:40%;border-radius:999px;background:linear-gradient(90deg,#FF3D7F,#FF6B35,#FFC107,#00E676);box-shadow:0 0 12px rgba(255,61,127,.7),0 0 6px rgba(0,230,118,.5);animation:load-slide 1.8s cubic-bezier(.65,.05,.36,1) infinite}
+.load-fill::after{content:'';position:absolute;top:0;left:0;right:0;height:50%;border-radius:999px 999px 0 0;background:linear-gradient(to bottom,rgba(255,255,255,.6),transparent)}
+@keyframes load-slide{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
 @media (max-width:768px){.mg-bottom{padding:24px 20px 32px}.mg-name{font-size:1.6rem}.mg-price{font-size:1.5rem}.mg-arrow{width:42px;height:42px}} 
 `;
 
@@ -158,7 +166,11 @@ export default function Samples() {
   }));
 
   const goTo = useCallback((idx) => {
-    setCurrent(Math.max(0, Math.min(Math.max(arrangements.length - 1, 0), idx)));
+    if (arrangements.length <= 1) return;
+    // Loop around: going past the end wraps to the start, going before the start wraps to the end
+    const len = arrangements.length;
+    const looped = ((idx % len) + len) % len;
+    setCurrent(looped);
   }, [arrangements.length]);
 
     const arr = arrangements[current] || null;
@@ -250,10 +262,20 @@ export default function Samples() {
       <Snowfall count={24} opacity={0.5} colors={['#E8909B', '#F3B8AC', '#F6D3A0', '#BFD8A8']} />
 
       {loading ? (
-        <div className="mg-empty">
-          <Flower2 size={48} className="mg-empty-icon" />
-          <h3>Loading Your Feed</h3>
-          <p>Preparing the latest arrangements for your snowy floral gallery.</p>
+        <div className="load-container">
+          <div className="load-icon-wrapper">
+            <svg className="load-flower" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2C13.5 5 13.5 8 12 11C10.5 8 10.5 5 12 2Z" stroke="#FF3D7F"/>
+              <path d="M12 22C10.5 19 10.5 16 12 13C13.5 16 13.5 19 12 22Z" stroke="#FF3D7F"/>
+              <path d="M2 12C5 10.5 8 10.5 11 12C8 13.5 5 13.5 2 12Z" stroke="#00E676"/>
+              <path d="M22 12C19 13.5 16 13.5 13 12C16 10.5 19 10.5 22 12Z" stroke="#00E676"/>
+              <circle cx="12" cy="12" r="2" fill="#FFC107" stroke="none"/>
+            </svg>
+          </div>
+          <h3>Loading Feed</h3>
+          <div className="load-track">
+            <div className="load-fill"></div>
+          </div>
         </div>
       ) : arrangements.length === 0 ? (
         <div className="mg-empty">

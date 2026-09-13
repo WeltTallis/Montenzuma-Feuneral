@@ -191,7 +191,7 @@ export default function OnboardingFlow() {
     password: '',
     verifyPassword: '',
     branchName: '',
-    deploymentType: 'multi',
+    deploymentType: 'single',
   });
 
   const [branches, setBranches] = useState([{ name: '', location: '' }]);
@@ -330,7 +330,7 @@ export default function OnboardingFlow() {
       const submitData = new FormData();
       submitData.append('organizationName', formData.organizationName);
       submitData.append('email', formData.email);
-      submitData.append('phoneNumber', formData.phoneNumber); // Added to payload
+      submitData.append('phone', formData.phoneNumber); // Backend expects 'phone' not 'phoneNumber'
       submitData.append('location', formData.location);
       submitData.append('password', formData.password);
       submitData.append('deploymentType', formData.deploymentType);

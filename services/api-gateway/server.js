@@ -275,47 +275,6 @@ const sharedHttpAgent = new http.Agent({
 // (was only used to pace the periodic backend probes that no longer exist;
 // proxied traffic uses the shared keep-alive agent's own socket limits).
 
-// ─── Redis Client for Direct Notification Access ────────────────────
-// Uses ioredis (declared dependency of this service and the repo-wide Redis
-// client per SERVICE_TOPOLOGY.md). lazyConnect keeps the explicit .connect()
-// call below meaningful; retryStrategy gives up after ~10s so a missing
-// Redis degrades gracefully instead of spamming reconnect errors forever.
-let redisClient = null;
-let redisConnected = false;
-
-try {
-  const Redis = require('ioredis');
-  const redisUrl = process.env.REDIS_URL || 'redis://restpoint_redis:6379';
-  redisClient = new Redis(redisUrl, {
-    lazyConnect: true,
-    // REDIS_URL already carries the password in docker; send REDIS_PASSWORD as a
-    // fallback for host-mode deployments where the URL has no credentials.
-    password: process.env.REDIS_PASSWORD || undefined,
-    retryStrategy: (times) => (times > 20 ? null : Math.min(times * 500, 2000)),
-  });
-
-  redisClient.on('connect', () => {
-    redisConnected = true;
-    console.log(`[REDIS] Connected to ${redisUrl}`);
-  });
-
-  redisClient.on('error', (err) => {
-    redisConnected = false;
-    console.warn(`[REDIS] Error: ${err.message}`);
-  });
-
-  redisClient.on('end', () => {
-    redisConnected = false;
-    console.warn('[REDIS] Disconnected');
-  });
-
-  redisClient.connect().catch(err => {
-    console.warn(`[REDIS] Failed to connect: ${err.message}`);
-  });
-} catch (err) {
-  console.warn('[REDIS] ioredis not available, notifications will return empty');
-}
-
 const APP_NAME = 'restpoint-gateway';
 const APP_VERSION = '2.0.2';
 
@@ -436,13 +395,6 @@ app.use((req, res, next) => {
 // proxy's own per-request timeout (30s, below) and its error handler are
 // what protect callers, because they react to that specific request's own
 // outcome.
-//
-// One exception: the notification service has no container defined in
-// docker-compose at all, so proxying to it is a guaranteed connection
-// error on every request. Short-circuit that one permanently-absent
-// service to an empty-result fallback instead of paying a failed round
-// trip on every page load.
-const KNOWN_UNDEPLOYED_SERVICES = new Set(['notification', 'notifications']);
 
 async function checkServiceAvailability(req, res, next) {
   const urlWithoutQuery = req.url.split('?')[0];
@@ -451,19 +403,6 @@ async function checkServiceAvailability(req, res, next) {
 
   if (!firstSegment) {
     return res.status(400).json({ success: false, message: 'No service specified' });
-  }
-
-  const serviceName = Object.keys(SERVICE_ROUTES).find(
-    route => firstSegment === route || firstSegment.startsWith(route + '-')
-  );
-
-  if (serviceName && KNOWN_UNDEPLOYED_SERVICES.has(serviceName)) {
-    return res.status(200).json({
-      notifications: [],
-      total: 0,
-      source: 'gateway-fallback',
-      message: 'Notification service is not deployed'
-    });
   }
 
   next();

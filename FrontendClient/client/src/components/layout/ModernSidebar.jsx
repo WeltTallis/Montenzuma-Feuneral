@@ -403,7 +403,7 @@ const SingleTenantMenuButton = styled.button`
   padding: 0;
   cursor: pointer;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.08);
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   color: ${COLORS.textMain};
@@ -417,6 +417,10 @@ const SingleTenantMenuButton = styled.button`
   
   &:hover {
     background: ${COLORS.grayHover};
+  }
+
+  @media (max-width: 767px) {
+    display: flex;
   }
 `;
 
@@ -674,7 +678,8 @@ const ModernSidebar = ({
     navigate('/login');
   }, [onLogout, navigate]);
 
-  const renderMenuItems = (items) => {
+  const renderMenuItems = (items, forceVisible = false) => {
+    const visible = forceVisible || isOpen;
     return items.map((item, index) => (
       <MenuItem
         key={index}
@@ -687,11 +692,11 @@ const ModernSidebar = ({
         <MenuItemIcon $active={isActive(item.path)}>
           <item.icon size={20} />
         </MenuItemIcon>
-        <MenuItemLabel $active={isActive(item.path)} $visible={isOpen}>
+        <MenuItemLabel $active={isActive(item.path)} $visible={visible}>
           {item.label}
         </MenuItemLabel>
-        {item.badge && isOpen && (
-          <MenuBadge $visible={isOpen}>{item.badge}</MenuBadge>
+        {item.badge && visible && (
+          <MenuBadge $visible={visible}>{item.badge}</MenuBadge>
         )}
       </MenuItem>
     ));
@@ -754,7 +759,7 @@ const ModernSidebar = ({
                     {section.section}
                   </NavSectionTitle>
                 )}
-                {renderMenuItems(section.items)}
+                {renderMenuItems(section.items, true)}
               </NavSection>
             ))}
           </SidebarNav>
@@ -800,7 +805,7 @@ const ModernSidebar = ({
                     {section.section}
                   </NavSectionTitle>
                 )}
-                {renderMenuItems(section.items)}
+                {renderMenuItems(section.items, true)}
               </NavSection>
             ))}
           </SidebarNav>

@@ -245,6 +245,7 @@ ol {
     /* Fallback */
     background: rgba(255, 255, 255, 0.9);
 
+  
     /* Safari */
     -webkit-backdrop-filter: blur(10px);
 

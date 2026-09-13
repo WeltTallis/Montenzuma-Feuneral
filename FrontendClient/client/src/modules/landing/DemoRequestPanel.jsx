@@ -630,7 +630,7 @@ const DemoRequestPanel = () => {
             </div>
             <h3 className="drp-success-title">Trial Activated.</h3>
             <p className="drp-success-text">
-              Thank you. Check your email for your secure login credentials. Our concierge team will call you shortly to begin onboarding.
+              Thank you. We will set up your account and our concierge team will contact you shortly to begin onboarding.
             </p>
             <button type="button" className="drp-success-close" onClick={toggle}>
               Close Window

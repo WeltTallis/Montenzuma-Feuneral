@@ -265,23 +265,28 @@ const DocumentsTab = ({ documents, deceasedId }) => {
     <>
       {showRouteOptimizer && <RouteOptimizer onClose={() => setShowRouteOptimizer(false)} />}
 
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', flexWrap: 'wrap' }}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          onChange={handleUploadDocument}
-          disabled={isUploading}
-          style={{ display: 'none' }}
-        />
-        <Btn
-          $primary
-          onClick={triggerFileUpload}
-          disabled={isUploading}
-          style={{ cursor: 'pointer' }}
-        >
-          {isUploading ? 'Uploading...' : '+ Upload Document'}
-        </Btn>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            onChange={handleUploadDocument}
+            disabled={isUploading}
+            style={{ display: 'none' }}
+          />
+          <Btn
+            $primary
+            onClick={triggerFileUpload}
+            disabled={isUploading}
+            style={{ cursor: 'pointer' }}
+          >
+            {isUploading ? 'Uploading...' : '+ Upload Document'}
+          </Btn>
+        </div>
+        <div style={{ fontSize: '12px', color: '#777777', fontWeight: 500 }}>
+          {docs.length} document{docs.length !== 1 ? 's' : ''} uploaded
+        </div>
       </div>
 
       {/* Keep wide document columns readable without widening the mobile page. */}
@@ -298,11 +303,13 @@ const DocumentsTab = ({ documents, deceasedId }) => {
           <tbody>
             {docs.length === 0 ? (
               <tr><td colSpan={4} style={{ textAlign: 'center', color: C.gray, padding: '24px 0' }}>No documents uploaded</td></tr>
-            ) : docs.map((doc, i) => (
+            ) : docs.map((doc, i) => {
+              const uploadDate = doc.uploadedAt || doc.uploaded_at || doc.created_at || doc.createdAt;
+              return (
               <tr key={doc.documentId ?? doc.document_id ?? i}>
                 <td style={{ fontWeight: 600 }}>{doc.originalName || 'Untitled Document'}</td>
                 <td><StatusTag $info>{doc.category || doc.mimeType || 'General'}</StatusTag></td>
-                <td>{doc.uploadedAt ? formatDate(doc.uploadedAt) : '—'}</td>
+                <td>{uploadDate ? formatDate(uploadDate) : '—'}</td>
                 <td style={{ textAlign: 'right' }}>
                   <Btn
                     $sm
@@ -313,7 +320,8 @@ const DocumentsTab = ({ documents, deceasedId }) => {
                   </Btn>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </DataTable>
       </TableScroll>

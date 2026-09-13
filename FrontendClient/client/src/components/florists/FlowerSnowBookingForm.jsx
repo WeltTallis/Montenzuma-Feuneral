@@ -4,6 +4,7 @@
 // review step, and the compact confirmation. Rosewood footer inside.
 
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import Snowfall from './Snowfall'
 
@@ -244,6 +245,7 @@ const fmtTime = (t) => {
 /* main component */
 
 export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
+  const navigate = useNavigate()
   const [step, setStep] = useState(1)          // 1 arrangement, 2 details, 3 confirmation
   const [form, setForm] = useState(BLANK)
   const [bad, setBad] = useState({})
@@ -540,8 +542,11 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
                           {confirm.dateStr && <span>{confirm.dateStr}</span>}
                         </div>
                         <div>
-                          <button type="button" className="btn-ghost" style={{ marginTop: 0 }} onClick={resetAll}>
-                            Make another booking
+                          <button type="button" className="btn-ghost" style={{ marginTop: 0 }} onClick={() => {
+                            const slug = localStorage.getItem('tenantSlug') || ''
+                            navigate(slug ? `/tenant/${slug}/receptionist` : '/reception')
+                          }}>
+                            Done
                           </button>
                         </div>
                         <svg className="sprig" aria-hidden="true"><use href="#sprig" /></svg>
