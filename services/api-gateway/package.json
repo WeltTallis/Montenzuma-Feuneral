@@ -28,7 +28,6 @@
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.22.5",
     "rate-limit-redis": "^4.2.0",
-    "undici": "^8.10.1",
     "winston": "^3.19.0"
   },
   "devDependencies": {
@@ -38,9 +37,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^22.0.0",
     "nodemon": "^3.1.14",
-    "rimraf": "^6.0.1",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "ts-node": "^10.9.2"
   },
   "engines": {
     "node": ">=20.0.0"

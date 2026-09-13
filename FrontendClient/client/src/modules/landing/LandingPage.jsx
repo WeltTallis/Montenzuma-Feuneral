@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, Children } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import NewsroomSection from '../newsroom/NewsroomSection';
 import HardwareRequirementSection from './hardwareRequirement';
@@ -69,7 +69,7 @@ const StaggerReveal = ({ children, stagger = 80, className = '', style = {} }) =
   const [ref, shown] = useReveal();
   return (
     <div ref={ref} className={className} style={style}>
-      {Children.map(children, (child, i) => (
+      {(Array.isArray(children) ? children : [children]).map((child, i) => (
         <div key={i} style={{
           opacity: shown ? 1 : 0,
           transform: shown ? 'translateY(0)' : 'translateY(25px)',
@@ -263,7 +263,7 @@ const FloralPreview = () => {
       const link = document.createElement('link');
       link.id = FLP_FONTS_ID;
       link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap';
+      link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap';
       document.head.appendChild(link);
     }
     FLP_FLOWERS.forEach((f) => { const im = document.createElement('img'); im.src = f.img; });
@@ -298,14 +298,14 @@ const FloralPreview = () => {
         <div className="flp-tablet-scale-inner">
           <div className="flp-tablet-frame">
             <div className="flp-tablet-screen">
-              <img className="flp-hero" src={current.img} alt={current.alt} style={{ opacity: fading ? 0 : 1 }} />
+              <img className="flp-hero" src={current.img} alt={current.alt} loading="lazy" decoding="async" style={{ opacity: fading ? 0 : 1 }} />
               <div className="flp-overlay" />
               <div className="flp-strip">
                 {FLP_FLOWERS.map((f, i) => (
                   <button key={f.label} className="flp-story" onClick={() => setFlower(i)}>
                     <div className={`flp-ring ${i === index ? 'flp-unseen' : 'flp-seen'}`}>
                       <div className="flp-ring-inner">
-                        <img src={f.img} alt={f.alt} />
+                        <img src={f.img} alt={f.alt} loading="lazy" decoding="async" />
                       </div>
                     </div>
                     <span className="flp-story-label">{f.label}</span>
@@ -366,7 +366,7 @@ export default function App() {
     <>
       <LandingPageSEO />
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; overflow-x: hidden; }
         body { font-family: 'Inter', sans-serif; color: ${C.gray}; background: ${C.bone}; -webkit-font-smoothing: antialiased; overflow-x: hidden; }

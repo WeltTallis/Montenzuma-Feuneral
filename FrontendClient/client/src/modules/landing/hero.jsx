@@ -4,7 +4,7 @@ import styled, { keyframes, createGlobalStyle } from "styled-components";
 
 /* ── Global Fonts ── */
 const GlobalFonts = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap');
 `;
 
 /* ── Colors ── */
@@ -384,7 +384,7 @@ export default function Hero() {
                         <TabletFrame>
                           <TabletScreen>
                             <FloralUI>
-                              <FlpHero src={FloralData[currentFlower].img} alt="Floral Tribute" fading={fading ? 1 : 0} />
+                              <FlpHero src={FloralData[currentFlower].img} alt="Floral Tribute" fading={fading ? 1 : 0} loading="lazy" decoding="async" />
                               <FlpOverlay />
 
                               <FlpStrip>
@@ -392,7 +392,7 @@ export default function Hero() {
                                   <FlpStory key={i} onClick={() => selectFlower(i)}>
                                     <FlpRing className={i === currentFlower ? "unseen" : "seen"}>
                                       <FlpRingInner>
-                                        <img src={f.img} alt={f.label} />
+                                        <img src={f.img} alt={f.label} loading="lazy" decoding="async" />
                                       </FlpRingInner>
                                     </FlpRing>
                                     <FlpStoryLabel>{f.label}</FlpStoryLabel>

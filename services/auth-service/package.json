@@ -18,17 +18,18 @@
     "dotenv": "16.3.1",
     "express": "5.1.0",
     "express-async-handler": "1.2.0",
+    "express-rate-limit": "^8.6.2",
     "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
     "hpp": "^0.2.3",
     "http-proxy-middleware": "3.0.7",
     "jsonwebtoken": "9.0.0",
     "multer": "2.2.0",
     "mysql2": "^3.23.3",
-    "object-assign": "^4.1.1",
-    "semver": "^7.7.3",
-    "sqlstring": "^2.3.3",
+    "redis": "^4.7.1",
     "ts-node": "^10.9.2",
-    "validator": "^13.11.0"
+    "validator": "^13.11.0",
+    "yargs": "^17.7.3"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

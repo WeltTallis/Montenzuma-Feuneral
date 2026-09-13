@@ -1,0 +1,200 @@
+ Image restpoint-deceased-service:latest Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 606B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 5.98kB 0.1s done
+#2 DONE 0.2s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#3 DONE 3.7s
+
+#4 docker-image://docker.io/docker/dockerfile:1@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
+#4 resolve docker.io/docker/dockerfile:1@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
+#4 resolve docker.io/docker/dockerfile:1@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32 0.6s done
+#4 CACHED
+
+#5 [internal] load metadata for docker.io/library/node:24-alpine
+#5 DONE 1.3s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 629B 0.0s done
+#6 DONE 0.1s
+
+#7 [deps  1/11] FROM docker.io/library/node:24-alpine@sha256:50c8e8ca1d27439048670df5883f32d57cf81cff6233222c893fd0d9884cbd81
+#7 resolve docker.io/library/node:24-alpine@sha256:50c8e8ca1d27439048670df5883f32d57cf81cff6233222c893fd0d9884cbd81 0.1s done
+#7 DONE 0.2s
+
+#8 [internal] load build context
+#8 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 134.46kB 0.6s done
+#8 DONE 0.7s
+
+#9 [deps  2/11] WORKDIR /usr/src/app
+#9 CACHED
+
+#10 [deps  3/11] COPY package.json package-lock.json tsconfig.base.json ./
+#10 CACHED
+
+#11 [deps  5/11] COPY packages/shared-logger/package.json ./packages/shared-logger/
+#11 CACHED
+
+#12 [deps  6/11] COPY packages/shared-utils/package.json ./packages/shared-utils/
+#12 CACHED
+
+#13 [deps  7/11] COPY packages/shared-services/package.json ./packages/shared-services/
+#13 CACHED
+
+#14 [deps  9/11] COPY shared/package.json ./shared/
+#14 CACHED
+
+#15 [deps  8/11] COPY packages/shared-stamps/package.json ./packages/shared-stamps/
+#15 CACHED
+
+#16 [deps  4/11] COPY packages/shared-config/package.json ./packages/shared-config/
+#16 CACHED
+
+#17 [deps 10/11] COPY services/deceased-service/package.json ./services/deceased-service/
+#17 CACHED
+
+#18 [deps 11/11] RUN npm config set fetch-timeout 1200000  && npm config set fetch-retries 5  && npm config set fetch-retry-mintimeout 120000  && npm config set fetch-retry-maxtimeout 600000 && npm install --legacy-peer-deps --no-audit --no-fund
+#18 ...
+
+#19 [prod-deps 11/11] RUN npm config set fetch-timeout 1200000  && npm config set fetch-retries 5  && npm config set fetch-retry-mintimeout 120000  && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
+#19 79.68 npm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+#19 85.34 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+#19 86.62 npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#19 ...
+
+#18 [deps 11/11] RUN npm config set fetch-timeout 1200000  && npm config set fetch-retries 5  && npm config set fetch-retry-mintimeout 120000  && npm config set fetch-retry-maxtimeout 600000 && npm install --legacy-peer-deps --no-audit --no-fund
+#18 98.79 npm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+#18 100.6 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+#18 101.2 npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#18 ...
+
+#19 [prod-deps 11/11] RUN npm config set fetch-timeout 1200000  && npm config set fetch-retries 5  && npm config set fetch-retry-mintimeout 120000  && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
+#19 105.6 npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+#19 107.8 npm warn deprecated cron-parser@4.9.0: v4 is no longer maintained, upgrade to v5
+#19 114.5 npm warn deprecated fstream@1.0.12: This package is no longer supported.
+#19 ...
+
+#18 [deps 11/11] RUN npm config set fetch-timeout 1200000  && npm config set fetch-retries 5  && npm config set fetch-retry-mintimeout 120000  && npm config set fetch-retry-maxtimeout 600000 && npm install --legacy-peer-deps --no-audit --no-fund
+#18 122.7 npm warn deprecated cron-parser@4.9.0: v4 is no longer maintained, upgrade to v5
+#18 123.6 npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+#18 ...
+
+#19 [prod-deps 11/11] RUN npm config set fetch-timeout 1200000  && npm config set fetch-retries 5  && npm config set fetch-retry-mintimeout 120000  && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
+#19 129.8 npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+#19 ...
+
+#18 [deps 11/11] RUN npm config set fetch-timeout 1200000  && npm config set fetch-retries 5  && npm config set fetch-retry-mintimeout 120000  && npm config set fetch-retry-maxtimeout 600000 && npm install --legacy-peer-deps --no-audit --no-fund
+#18 134.2 npm warn deprecated fstream@1.0.12: This package is no longer supported.
+#18 156.9 npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+#18 ...
+
+#19 [prod-deps 11/11] RUN npm config set fetch-timeout 1200000  && npm config set fetch-retries 5  && npm config set fetch-retry-mintimeout 120000  && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
+#19 172.8 
+#19 172.8 added 382 packages in 2m
+#19 172.8 npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+#19 172.8 npm warn install-scripts   msgpackr-extract@3.0.4 (install: node-gyp-build-optional-packages)
+#19 172.8 npm warn install-scripts
+#19 172.8 npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+#19 174.0 npm warn using --force Recommended protections disabled.
+#19 DONE 179.0s
+
+#18 [deps 11/11] RUN npm config set fetch-timeout 1200000  && npm config set fetch-retries 5  && npm config set fetch-retry-mintimeout 120000  && npm config set fetch-retry-maxtimeout 600000 && npm install --legacy-peer-deps --no-audit --no-fund
+#18 228.5 npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+#18 228.5 npm warn install-scripts   msgpackr-extract@3.0.4 (install: node-gyp-build-optional-packages)
+#18 228.5 npm warn install-scripts
+#18 228.5 npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+#18 228.5 
+#18 228.5 added 523 packages in 3m
+#18 DONE 236.5s
+
+#20 [build 1/6] COPY services/configurations/ ./configurations/
+#20 DONE 3.4s
+
+#21 [build 2/6] COPY packages/ ./packages/
+#21 DONE 5.0s
+
+#22 [build 3/6] COPY shared/ ./shared/
+#22 DONE 0.5s
+
+#23 [build 4/6] COPY services/app-global/ ./services/app-global/
+#23 DONE 1.0s
+
+#24 [build 5/6] COPY services/deceased-service/ ./services/deceased-service/
+#24 DONE 2.7s
+
+#25 [build 6/6] RUN cd packages/shared-config && npm run build && cd ../.. &&     cd packages/shared-logger && npm run build && cd ../.. &&     cd packages/shared-utils && npm run build && cd ../.. &&     cd packages/shared-services && npm run build && cd ../.. &&     cd packages/shared-stamps && npm run build && cd ../..
+#25 3.710 
+#25 3.710 > @montezuma/shared-config@1.0.0 build
+#25 3.710 > tsc
+#25 3.710 
+#25 19.06 
+#25 19.06 > @montezuma/shared-logger@1.0.0 build
+#25 19.06 > tsc
+#25 19.06 
+#25 27.27 
+#25 27.27 > @montezuma/shared-utils@1.0.0 build
+#25 27.27 > tsc
+#25 27.27 
+#25 39.43 
+#25 39.43 > @montezuma/shared-services@1.0.0 build
+#25 39.43 > tsc
+#25 39.43 
+#25 55.93 
+#25 55.93 > @montezuma/shared-stamps@1.0.0 build
+#25 55.93 > tsc
+#25 55.93 
+#25 DONE 62.9s
+
+#26 [runtime  6/12] COPY --from=build --chown=nodejs:nodejs /usr/src/app/packages ./packages
+#26 CACHED
+
+#27 [runtime  7/12] COPY --chown=nodejs:nodejs tsconfig.base.json ./
+#27 CACHED
+
+#28 [runtime 11/12] COPY --chown=nodejs:nodejs services/deceased-service/ ./services/deceased-service/
+#28 CACHED
+
+#29 [runtime  3/12] RUN npm install -g tsx --no-audit --no-fund
+#29 CACHED
+
+#30 [runtime  8/12] COPY --chown=nodejs:nodejs shared/ ./shared/
+#30 CACHED
+
+#31 [runtime 10/12] COPY --chown=nodejs:nodejs services/configurations/ ./configurations/
+#31 CACHED
+
+#32 [runtime  2/12] RUN apk add --no-cache dumb-init wget  && addgroup -g 1001 -S nodejs  && adduser -S nodejs -u 1001
+#32 CACHED
+
+#33 [runtime  5/12] COPY --from=prod-deps --chown=nodejs:nodejs /usr/src/app/node_modules ./node_modules
+#33 CACHED
+
+#34 [runtime  9/12] COPY --chown=nodejs:nodejs services/app-global/ ./services/app-global/
+#34 CACHED
+
+#35 [runtime  4/12] WORKDIR /usr/src/app
+#35 CACHED
+
+#36 [runtime 12/12] RUN mkdir -p /usr/src/app/services/deceased-service/uploads  && chown -R nodejs:nodejs /usr/src/app/services/deceased-service/uploads
+#36 CACHED
+
+#37 exporting to image
+#37 exporting layers 0.0s done
+#37 exporting manifest sha256:dfcd48a4bc1ac9e190477a6e2b53bad32b45b0b7a7df677b678ada7e68e46afa 0.0s done
+#37 exporting config sha256:6864a6476e2d9554bbe55a36e10db8a0d5ddd7586c67e44ae2adfc9455fa1ea8 0.0s done
+#37 exporting attestation manifest sha256:953bf27c54d6ccd205644868ba861969a4b75db3ccd541c722f767b82b297271 0.1s done
+#37 exporting manifest list sha256:572046f6ee3e984eee1ea1788c32db70a5710204b49bfd19bfff0d0b8ffcf2da 0.1s done
+#37 naming to docker.io/library/restpoint-deceased-service:latest 0.0s done
+#37 unpacking to docker.io/library/restpoint-deceased-service:latest 0.0s done
+#37 DONE 0.6s
+
+#38 resolving provenance for metadata file
+#38 DONE 0.3s
+ Image restpoint-deceased-service:latest Built 

@@ -64,7 +64,7 @@ const BarcodeBox = styled.div`
 `;
 const BarcodeCode = styled.span`
   font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700;
-  letter-spacing: 0.08em; color: ${C.black};
+  letter-spacing: 0.08em; color: #000000; white-space: nowrap;
 `;
 
 const Barcode = ({ value }) => {
@@ -127,8 +127,8 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
             <BarcodeBox title="Admission barcode">
               <Barcode value={admissionNo !== '—' ? admissionNo : 'AWAITING-ID'} />
             </BarcodeBox>
-            <BarcodeCode style={{ fontWeight: 700, fontSize: 9, wordBreak: 'break-all', maxWidth: '80px', textAlign: 'center' }}>{displayId}</BarcodeCode>
-            <BarcodeCode style={{ fontWeight: 400, fontSize: 9, opacity: 0.7, wordBreak: 'break-all', maxWidth: '80px', textAlign: 'center' }}>{admissionNo !== '—' ? admissionNo : 'AWAITING-ID'}</BarcodeCode>
+            <BarcodeCode style={{ fontWeight: 700, fontSize: 9, color: '#000000', whiteSpace: 'nowrap', textAlign: 'center' }}>{displayId}</BarcodeCode>
+            <BarcodeCode style={{ fontWeight: 700, fontSize: 9, color: '#000000', whiteSpace: 'nowrap', textAlign: 'center' }}>{admissionNo !== '—' ? admissionNo : 'AWAITING-ID'}</BarcodeCode>
           </div>
         </div>
 

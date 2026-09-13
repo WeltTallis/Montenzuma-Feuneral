@@ -74,7 +74,7 @@ const DemoRequestPanel = () => {
       });
       setSubmitted(true);
     } catch (error) {
-      console.warn('Failed to submit free-trial request:', error);
+      console.error('Failed to submit free-trial request:', error);
       alert('We could not send your trial request right now. Please try again in a moment.');
     } finally {
       setSubmitting(false);

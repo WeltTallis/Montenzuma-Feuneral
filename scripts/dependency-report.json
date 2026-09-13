@@ -1,0 +1,2409 @@
+{
+  "generatedAt": "2026-09-13T20:29:29.392Z",
+  "workspaces": {
+    "root": {
+      "name": "@montezuma/restpoint",
+      "sourceFiles": 7,
+      "used": [
+        "express-rate-limit",
+        "helmet",
+        "jsonwebtoken",
+        "mysql2"
+      ],
+      "script": [
+        "concurrently",
+        "ts-node"
+      ],
+      "types": [
+        "@types/cors",
+        "@types/helmet",
+        "@types/jsonwebtoken",
+        "@types/node"
+      ],
+      "unusedEverywhere": [
+        "@biomejs/biome",
+        "@types/bcryptjs",
+        "@types/cookie-parser",
+        "@types/express-session",
+        "@types/hpp",
+        "@types/pino",
+        "@types/validator",
+        "braces",
+        "bull",
+        "compression",
+        "csurf",
+        "path-to-regexp",
+        "pino-loki",
+        "prop-types",
+        "puppeteer",
+        "three",
+        "to-regex-range",
+        "typescript"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "axios",
+          "usedBy": [
+            "services/billing-service",
+            "services/bodycheckout-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service",
+            "shared",
+            "FrontendClient/client"
+          ]
+        },
+        {
+          "dep": "bcryptjs",
+          "usedBy": [
+            "services/auth-service",
+            "services/leave-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "chart.js",
+          "usedBy": [
+            "FrontendClient/client"
+          ]
+        },
+        {
+          "dep": "exceljs",
+          "usedBy": [
+            "services/analytics-service",
+            "services/deceased-service"
+          ]
+        },
+        {
+          "dep": "express-session",
+          "usedBy": [
+            "services/auth-service"
+          ]
+        },
+        {
+          "dep": "hpp",
+          "usedBy": [
+            "services/api-gateway",
+            "services/auth-service"
+          ]
+        },
+        {
+          "dep": "http-proxy-middleware",
+          "usedBy": [
+            "services/api-gateway"
+          ]
+        },
+        {
+          "dep": "ioredis",
+          "usedBy": [
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/deceased-service",
+            "services/invoice-service"
+          ]
+        },
+        {
+          "dep": "knex",
+          "usedBy": [
+            "services/coffin-service",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/store-service",
+            "services/tenant-service",
+            "services/workshop-service"
+          ]
+        },
+        {
+          "dep": "multer",
+          "usedBy": [
+            "services/bodycheckout-service",
+            "services/coffin-service",
+            "services/documents-service",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/leave-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "node-cron",
+          "usedBy": [
+            "services/billing-service",
+            "services/hearse-service"
+          ]
+        },
+        {
+          "dep": "pdfkit",
+          "usedBy": [
+            "services/analytics-service",
+            "services/deceased-service",
+            "services/documents-service",
+            "services/invoice-service"
+          ]
+        },
+        {
+          "dep": "pino",
+          "usedBy": [
+            "packages/shared-logger",
+            "services/billing-service"
+          ]
+        },
+        {
+          "dep": "qrcode.react",
+          "usedBy": [
+            "FrontendClient/client"
+          ]
+        },
+        {
+          "dep": "react-router-dom",
+          "usedBy": [
+            "FrontendClient/client"
+          ]
+        },
+        {
+          "dep": "react-signature-canvas",
+          "usedBy": [
+            "FrontendClient/client"
+          ]
+        },
+        {
+          "dep": "sharp",
+          "usedBy": [
+            "packages/shared-services",
+            "packages/shared-stamps",
+            "services/bodycheckout-service",
+            "services/deceased-service",
+            "services/documents-service"
+          ]
+        },
+        {
+          "dep": "tesseract.js",
+          "usedBy": [
+            "FrontendClient/client"
+          ]
+        },
+        {
+          "dep": "vite-plugin-compression2",
+          "usedBy": [
+            "FrontendClient/client"
+          ]
+        }
+      ],
+      "phantom": [
+        {
+          "dep": "@socket.io/redis-adapter",
+          "providedBy": [
+            "services/socketio-service"
+          ]
+        },
+        {
+          "dep": "cors",
+          "providedBy": [
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/billing-service",
+            "services/bodycheckout-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/documents-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service"
+          ]
+        },
+        {
+          "dep": "dotenv",
+          "providedBy": [
+            "packages/shared",
+            "packages/shared-config",
+            "packages/shared-logger",
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/billing-service",
+            "services/bodycheckout-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/documents-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/socketio-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service",
+            "shared"
+          ]
+        },
+        {
+          "dep": "express",
+          "providedBy": [
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/billing-service",
+            "services/bodycheckout-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/documents-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/socketio-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service"
+          ]
+        },
+        {
+          "dep": "redis",
+          "providedBy": [
+            "packages/shared-services",
+            "services/socketio-service"
+          ]
+        },
+        {
+          "dep": "socket.io",
+          "providedBy": [
+            "services/analytics-service",
+            "services/deceased-service",
+            "services/hearse-service",
+            "services/leave-service",
+            "services/socketio-service",
+            "services/workshop-service"
+          ]
+        }
+      ]
+    },
+    "packages/shared": {
+      "name": "@montezuma/shared",
+      "sourceFiles": 0,
+      "used": [],
+      "script": [],
+      "types": [],
+      "unusedEverywhere": [],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "dotenv",
+          "usedBy": [
+            "root",
+            "packages/shared-config",
+            "packages/shared-logger",
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/billing-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/socketio-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service"
+          ]
+        },
+        {
+          "dep": "jsonwebtoken",
+          "usedBy": [
+            "root",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/socketio-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "mysql2",
+          "usedBy": [
+            "root",
+            "packages/shared-config",
+            "services/auth-service",
+            "services/billing-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service",
+            "shared"
+          ]
+        }
+      ],
+      "phantom": []
+    },
+    "packages/shared-config": {
+      "name": "@montezuma/shared-config",
+      "sourceFiles": 13,
+      "used": [
+        "dotenv",
+        "mysql2"
+      ],
+      "script": [
+        "rimraf",
+        "typescript"
+      ],
+      "types": [
+        "@types/express",
+        "@types/node"
+      ],
+      "unusedEverywhere": [],
+      "usedOnlyElsewhere": [],
+      "phantom": [
+        {
+          "dep": "express",
+          "providedBy": [
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/billing-service",
+            "services/bodycheckout-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/documents-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/socketio-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service"
+          ]
+        }
+      ]
+    },
+    "packages/shared-logger": {
+      "name": "@montezuma/shared-logger",
+      "sourceFiles": 6,
+      "used": [
+        "dotenv",
+        "pino"
+      ],
+      "script": [
+        "rimraf",
+        "typescript"
+      ],
+      "types": [
+        "@types/node",
+        "@types/pino"
+      ],
+      "unusedEverywhere": [
+        "pino-pretty"
+      ],
+      "usedOnlyElsewhere": [],
+      "phantom": []
+    },
+    "packages/shared-services": {
+      "name": "@montezuma/shared-services",
+      "sourceFiles": 15,
+      "used": [
+        "amqplib",
+        "redis"
+      ],
+      "script": [
+        "rimraf",
+        "typescript"
+      ],
+      "types": [
+        "@types/amqplib",
+        "@types/node"
+      ],
+      "unusedEverywhere": [
+        "yallist"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "mysql2",
+          "usedBy": [
+            "root",
+            "packages/shared-config",
+            "services/auth-service",
+            "services/billing-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service",
+            "shared"
+          ]
+        }
+      ],
+      "phantom": [
+        {
+          "dep": "${queueName}",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "sharp",
+          "providedBy": [
+            "root",
+            "packages/shared-stamps",
+            "services/analytics-service",
+            "services/billing-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/documents-service"
+          ]
+        }
+      ]
+    },
+    "packages/shared-stamps": {
+      "name": "@montezuma/shared-stamps",
+      "sourceFiles": 6,
+      "used": [
+        "luxon",
+        "sharp"
+      ],
+      "script": [
+        "rimraf",
+        "typescript"
+      ],
+      "types": [
+        "@types/luxon",
+        "@types/node"
+      ],
+      "unusedEverywhere": [
+        "@types/pdfkit"
+      ],
+      "usedOnlyElsewhere": [],
+      "phantom": []
+    },
+    "packages/shared-utils": {
+      "name": "@montezuma/shared-utils",
+      "sourceFiles": 12,
+      "used": [
+        "luxon"
+      ],
+      "script": [
+        "rimraf",
+        "typescript"
+      ],
+      "types": [
+        "@types/luxon",
+        "@types/node"
+      ],
+      "unusedEverywhere": [],
+      "usedOnlyElsewhere": [],
+      "phantom": []
+    },
+    "services/analytics-service": {
+      "name": "@montezuma/analytics-service",
+      "sourceFiles": 45,
+      "used": [
+        "bullmq",
+        "cors",
+        "dotenv",
+        "exceljs",
+        "express",
+        "express-async-handler",
+        "helmet",
+        "ioredis",
+        "pdfkit",
+        "prom-client",
+        "socket.io"
+      ],
+      "script": [
+        "nodemon",
+        "rimraf",
+        "ts-node",
+        "typescript"
+      ],
+      "types": [
+        "@types/cors",
+        "@types/express",
+        "@types/helmet",
+        "@types/ioredis",
+        "@types/node",
+        "@types/pdfkit"
+      ],
+      "unusedEverywhere": [
+        "@montezuma/shared-config",
+        "@montezuma/shared-logger",
+        "@montezuma/shared-services",
+        "@types/jsonwebtoken",
+        "bcrypt",
+        "bull",
+        "csurf",
+        "object-assign"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "http-proxy-middleware",
+          "usedBy": [
+            "services/api-gateway"
+          ]
+        },
+        {
+          "dep": "jsonwebtoken",
+          "usedBy": [
+            "root",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/socketio-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "multer",
+          "usedBy": [
+            "services/bodycheckout-service",
+            "services/coffin-service",
+            "services/documents-service",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/leave-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "mysql2",
+          "usedBy": [
+            "root",
+            "packages/shared-config",
+            "services/auth-service",
+            "services/billing-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service",
+            "shared"
+          ]
+        },
+        {
+          "dep": "sharp",
+          "usedBy": [
+            "packages/shared-services",
+            "packages/shared-stamps",
+            "services/bodycheckout-service",
+            "services/deceased-service",
+            "services/documents-service"
+          ]
+        },
+        {
+          "dep": "winston",
+          "usedBy": [
+            "services/billing-service"
+          ]
+        }
+      ],
+      "phantom": []
+    },
+    "services/api-gateway": {
+      "name": "restpoint-gateway",
+      "sourceFiles": 4,
+      "used": [
+        "cookie-parser",
+        "cors",
+        "dotenv",
+        "eslint-plugin-security",
+        "express",
+        "express-rate-limit",
+        "helmet",
+        "hpp",
+        "http-proxy-middleware",
+        "ioredis",
+        "jsonwebtoken",
+        "rate-limit-redis"
+      ],
+      "script": [
+        "nodemon"
+      ],
+      "types": [
+        "@types/cors",
+        "@types/express",
+        "@types/express-rate-limit",
+        "@types/jsonwebtoken",
+        "@types/node"
+      ],
+      "unusedEverywhere": [
+        "rimraf",
+        "typescript",
+        "undici"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "express-async-handler",
+          "usedBy": [
+            "services/analytics-service",
+            "services/extra-services",
+            "services/hearse-service",
+            "services/invoice-service"
+          ]
+        },
+        {
+          "dep": "mysql2",
+          "usedBy": [
+            "root",
+            "packages/shared-config",
+            "services/auth-service",
+            "services/billing-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service",
+            "shared"
+          ]
+        },
+        {
+          "dep": "ts-node",
+          "usedBy": [
+            "services/auth-service"
+          ]
+        },
+        {
+          "dep": "winston",
+          "usedBy": [
+            "services/billing-service"
+          ]
+        }
+      ],
+      "phantom": []
+    },
+    "services/auth-service": {
+      "name": "auth-service",
+      "sourceFiles": 18,
+      "used": [
+        "bcryptjs",
+        "cookie-parser",
+        "cors",
+        "dotenv",
+        "express",
+        "express-session",
+        "hpp",
+        "jsonwebtoken",
+        "mysql2",
+        "ts-node",
+        "validator"
+      ],
+      "script": [
+        "nodemon"
+      ],
+      "types": [
+        "@types/cookie-parser",
+        "@types/express",
+        "@types/express-session",
+        "@types/hpp",
+        "@types/validator"
+      ],
+      "unusedEverywhere": [
+        "object-assign",
+        "semver",
+        "sqlstring"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "express-async-handler",
+          "usedBy": [
+            "services/analytics-service",
+            "services/extra-services",
+            "services/hearse-service",
+            "services/invoice-service"
+          ]
+        },
+        {
+          "dep": "http-proxy-middleware",
+          "usedBy": [
+            "services/api-gateway"
+          ]
+        },
+        {
+          "dep": "multer",
+          "usedBy": [
+            "services/bodycheckout-service",
+            "services/coffin-service",
+            "services/documents-service",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/leave-service",
+            "services/tenant-service"
+          ]
+        }
+      ],
+      "phantom": [
+        {
+          "dep": "express-rate-limit",
+          "providedBy": [
+            "root",
+            "services/api-gateway",
+            "services/billing-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "helmet",
+          "providedBy": [
+            "root",
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/billing-service",
+            "services/bodycheckout-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/documents-service",
+            "services/extra-services",
+            "services/invoice-service",
+            "services/socketio-service",
+            "services/support-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "redis",
+          "providedBy": [
+            "packages/shared-services",
+            "services/socketio-service"
+          ]
+        },
+        {
+          "dep": "yargs",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        }
+      ]
+    },
+    "services/billing-service": {
+      "name": "billing-service",
+      "sourceFiles": 6,
+      "used": [
+        "axios",
+        "cors",
+        "dotenv",
+        "express",
+        "express-rate-limit",
+        "helmet",
+        "mysql2",
+        "node-cron",
+        "winston"
+      ],
+      "script": [],
+      "types": [
+        "@types/cors",
+        "@types/express",
+        "@types/node",
+        "@types/node-cron"
+      ],
+      "unusedEverywhere": [
+        "bull",
+        "csurf",
+        "ts-node-dev",
+        "typescript"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "exceljs",
+          "usedBy": [
+            "services/analytics-service",
+            "services/deceased-service"
+          ]
+        },
+        {
+          "dep": "http-proxy-middleware",
+          "usedBy": [
+            "services/api-gateway"
+          ]
+        },
+        {
+          "dep": "multer",
+          "usedBy": [
+            "services/bodycheckout-service",
+            "services/coffin-service",
+            "services/documents-service",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/leave-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "sharp",
+          "usedBy": [
+            "packages/shared-services",
+            "packages/shared-stamps",
+            "services/bodycheckout-service",
+            "services/deceased-service",
+            "services/documents-service"
+          ]
+        }
+      ],
+      "phantom": [
+        {
+          "dep": "pino",
+          "providedBy": [
+            "root",
+            "packages/shared-logger"
+          ]
+        }
+      ]
+    },
+    "services/bodycheckout-service": {
+      "name": "@montezuma/bodycheckout-service",
+      "sourceFiles": 9,
+      "used": [
+        "cors",
+        "express",
+        "helmet",
+        "multer",
+        "zod"
+      ],
+      "script": [
+        "nodemon",
+        "rimraf",
+        "ts-node",
+        "typescript"
+      ],
+      "types": [
+        "@types/express",
+        "@types/multer",
+        "@types/node"
+      ],
+      "unusedEverywhere": [
+        "@montezuma/shared-config",
+        "bcrypt",
+        "object-assign"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "bullmq",
+          "usedBy": [
+            "services/analytics-service",
+            "services/deceased-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "dotenv",
+          "usedBy": [
+            "root",
+            "packages/shared-config",
+            "packages/shared-logger",
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/billing-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/socketio-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service"
+          ]
+        },
+        {
+          "dep": "http-proxy-middleware",
+          "usedBy": [
+            "services/api-gateway"
+          ]
+        },
+        {
+          "dep": "ioredis",
+          "usedBy": [
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/deceased-service",
+            "services/invoice-service"
+          ]
+        },
+        {
+          "dep": "jsonwebtoken",
+          "usedBy": [
+            "root",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/socketio-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "mysql2",
+          "usedBy": [
+            "root",
+            "packages/shared-config",
+            "services/auth-service",
+            "services/billing-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service",
+            "shared"
+          ]
+        },
+        {
+          "dep": "winston",
+          "usedBy": [
+            "services/billing-service"
+          ]
+        }
+      ],
+      "phantom": [
+        {
+          "dep": "axios",
+          "providedBy": [
+            "root",
+            "services/billing-service",
+            "services/deceased-service",
+            "services/hearse-service",
+            "services/support-service",
+            "FrontendClient/client"
+          ]
+        },
+        {
+          "dep": "sharp",
+          "providedBy": [
+            "root",
+            "packages/shared-stamps",
+            "services/analytics-service",
+            "services/billing-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/documents-service"
+          ]
+        }
+      ]
+    },
+    "services/chemical-service": {
+      "name": "chemical-service",
+      "sourceFiles": 6,
+      "used": [
+        "cors",
+        "dotenv",
+        "express",
+        "helmet",
+        "mysql2"
+      ],
+      "script": [
+        "nodemon"
+      ],
+      "types": [],
+      "unusedEverywhere": [],
+      "usedOnlyElsewhere": [],
+      "phantom": []
+    },
+    "services/coffin-service": {
+      "name": "@montezuma/coffin-service",
+      "sourceFiles": 21,
+      "used": [
+        "cors",
+        "dotenv",
+        "express",
+        "helmet",
+        "knex",
+        "multer",
+        "mysql2"
+      ],
+      "script": [
+        "nodemon",
+        "typescript"
+      ],
+      "types": [
+        "@types/cors",
+        "@types/express",
+        "@types/multer",
+        "@types/node"
+      ],
+      "unusedEverywhere": [
+        "@montezuma/shared-config",
+        "@montezuma/shared-logger",
+        "@montezuma/shared-services",
+        "@montezuma/shared-utils",
+        "bcrypt",
+        "bull",
+        "csurf",
+        "generic-pool",
+        "object-assign",
+        "rimraf"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "bullmq",
+          "usedBy": [
+            "services/analytics-service",
+            "services/deceased-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "exceljs",
+          "usedBy": [
+            "services/analytics-service",
+            "services/deceased-service"
+          ]
+        },
+        {
+          "dep": "http-proxy-middleware",
+          "usedBy": [
+            "services/api-gateway"
+          ]
+        },
+        {
+          "dep": "ioredis",
+          "usedBy": [
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/deceased-service",
+            "services/invoice-service"
+          ]
+        },
+        {
+          "dep": "jsonwebtoken",
+          "usedBy": [
+            "root",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/socketio-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "sharp",
+          "usedBy": [
+            "packages/shared-services",
+            "packages/shared-stamps",
+            "services/bodycheckout-service",
+            "services/deceased-service",
+            "services/documents-service"
+          ]
+        },
+        {
+          "dep": "ts-node",
+          "usedBy": [
+            "services/auth-service"
+          ]
+        }
+      ],
+      "phantom": [
+        {
+          "dep": "axios",
+          "providedBy": [
+            "root",
+            "services/billing-service",
+            "services/deceased-service",
+            "services/hearse-service",
+            "services/support-service",
+            "FrontendClient/client"
+          ]
+        }
+      ]
+    },
+    "services/deceased-service": {
+      "name": "@montezuma/deceased-service",
+      "sourceFiles": 36,
+      "used": [
+        "axios",
+        "bullmq",
+        "cors",
+        "dotenv",
+        "exceljs",
+        "express",
+        "helmet",
+        "ioredis",
+        "luxon",
+        "mysql2",
+        "pdfkit",
+        "sharp",
+        "socket.io",
+        "zod"
+      ],
+      "script": [
+        "nodemon",
+        "ts-node",
+        "typescript"
+      ],
+      "types": [
+        "@types/cors",
+        "@types/exceljs",
+        "@types/express",
+        "@types/ioredis",
+        "@types/node",
+        "@types/pdfkit"
+      ],
+      "unusedEverywhere": [
+        "@montezuma/shared-config",
+        "@montezuma/shared-logger",
+        "@montezuma/shared-services",
+        "@montezuma/shared-stamps",
+        "@montezuma/shared-utils",
+        "@types/puppeteer-core",
+        "bcrypt",
+        "bull",
+        "csurf",
+        "object-assign",
+        "puppeteer-core"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "http-proxy-middleware",
+          "usedBy": [
+            "services/api-gateway"
+          ]
+        },
+        {
+          "dep": "jsonwebtoken",
+          "usedBy": [
+            "root",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/socketio-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "multer",
+          "usedBy": [
+            "services/bodycheckout-service",
+            "services/coffin-service",
+            "services/documents-service",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/leave-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "winston",
+          "usedBy": [
+            "services/billing-service"
+          ]
+        }
+      ],
+      "phantom": []
+    },
+    "services/documents-service": {
+      "name": "@montezuma/documents-service",
+      "sourceFiles": 3,
+      "used": [
+        "cors",
+        "express",
+        "helmet",
+        "multer",
+        "pdfkit",
+        "sharp"
+      ],
+      "script": [
+        "nodemon"
+      ],
+      "types": [],
+      "unusedEverywhere": [
+        "bcrypt",
+        "object-assign"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "bullmq",
+          "usedBy": [
+            "services/analytics-service",
+            "services/deceased-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "dotenv",
+          "usedBy": [
+            "root",
+            "packages/shared-config",
+            "packages/shared-logger",
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/billing-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/socketio-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service"
+          ]
+        },
+        {
+          "dep": "http-proxy-middleware",
+          "usedBy": [
+            "services/api-gateway"
+          ]
+        },
+        {
+          "dep": "ioredis",
+          "usedBy": [
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/deceased-service",
+            "services/invoice-service"
+          ]
+        },
+        {
+          "dep": "jsonwebtoken",
+          "usedBy": [
+            "root",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/socketio-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "mysql2",
+          "usedBy": [
+            "root",
+            "packages/shared-config",
+            "services/auth-service",
+            "services/billing-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service",
+            "shared"
+          ]
+        },
+        {
+          "dep": "winston",
+          "usedBy": [
+            "services/billing-service"
+          ]
+        }
+      ],
+      "phantom": []
+    },
+    "services/extra-services": {
+      "name": "@restpoint/extra-services",
+      "sourceFiles": 4,
+      "used": [
+        "cors",
+        "dotenv",
+        "express",
+        "express-async-handler",
+        "helmet",
+        "mysql2"
+      ],
+      "script": [],
+      "types": [],
+      "unusedEverywhere": [],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "jsonwebtoken",
+          "usedBy": [
+            "root",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/socketio-service",
+            "services/tenant-service"
+          ]
+        }
+      ],
+      "phantom": []
+    },
+    "services/florist-service": {
+      "name": "florist-service",
+      "sourceFiles": 13,
+      "used": [
+        "cors",
+        "dotenv",
+        "express",
+        "mysql2"
+      ],
+      "script": [
+        "nodemon",
+        "ts-node",
+        "ts-node-dev",
+        "typescript"
+      ],
+      "types": [
+        "@types/cors",
+        "@types/express",
+        "@types/node"
+      ],
+      "unusedEverywhere": [
+        "@montezuma/shared-services"
+      ],
+      "usedOnlyElsewhere": [],
+      "phantom": [
+        {
+          "dep": "axios",
+          "providedBy": [
+            "root",
+            "services/billing-service",
+            "services/deceased-service",
+            "services/hearse-service",
+            "services/support-service",
+            "FrontendClient/client"
+          ]
+        },
+        {
+          "dep": "knex",
+          "providedBy": [
+            "root",
+            "services/coffin-service",
+            "services/hearse-service",
+            "services/store-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "multer",
+          "providedBy": [
+            "root",
+            "services/analytics-service",
+            "services/auth-service",
+            "services/billing-service",
+            "services/bodycheckout-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/documents-service",
+            "services/hearse-service",
+            "services/leave-service",
+            "services/tenant-service"
+          ]
+        }
+      ]
+    },
+    "services/hearse-service": {
+      "name": "hearse-service",
+      "sourceFiles": 22,
+      "used": [
+        "axios",
+        "cors",
+        "dotenv",
+        "express",
+        "express-async-handler",
+        "knex",
+        "multer",
+        "mysql2",
+        "socket.io"
+      ],
+      "script": [
+        "nodemon",
+        "typescript"
+      ],
+      "types": [
+        "@types/cors",
+        "@types/express",
+        "@types/multer",
+        "@types/node"
+      ],
+      "unusedEverywhere": [
+        "@montezuma/shared-logger",
+        "@montezuma/shared-services",
+        "@montezuma/shared-utils",
+        "@types/jsonwebtoken"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "http-proxy-middleware",
+          "usedBy": [
+            "services/api-gateway"
+          ]
+        },
+        {
+          "dep": "jsonwebtoken",
+          "usedBy": [
+            "root",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/socketio-service",
+            "services/tenant-service"
+          ]
+        }
+      ],
+      "phantom": [
+        {
+          "dep": "node-cron",
+          "providedBy": [
+            "root",
+            "services/billing-service"
+          ]
+        }
+      ]
+    },
+    "services/invoice-service": {
+      "name": "@montezuma/invoice-service",
+      "sourceFiles": 11,
+      "used": [
+        "cors",
+        "dotenv",
+        "escpos",
+        "escpos-network",
+        "escpos-usb",
+        "express",
+        "express-async-handler",
+        "helmet",
+        "ioredis",
+        "mysql2",
+        "pdfkit"
+      ],
+      "script": [
+        "nodemon",
+        "rimraf",
+        "ts-node",
+        "typescript"
+      ],
+      "types": [
+        "@types/cors",
+        "@types/express",
+        "@types/node",
+        "@types/pdfkit"
+      ],
+      "unusedEverywhere": [
+        "@montezuma/shared-stamps",
+        "bcrypt",
+        "jpeg-exif",
+        "node-cache",
+        "tsx"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "bullmq",
+          "usedBy": [
+            "services/analytics-service",
+            "services/deceased-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "jsonwebtoken",
+          "usedBy": [
+            "root",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/socketio-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "winston",
+          "usedBy": [
+            "services/billing-service"
+          ]
+        }
+      ],
+      "phantom": [
+        {
+          "dep": "node-bluetooth-serial",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        }
+      ]
+    },
+    "services/leave-service": {
+      "name": "leave-service",
+      "sourceFiles": 6,
+      "used": [
+        "bcryptjs",
+        "cors",
+        "dotenv",
+        "express",
+        "multer",
+        "mysql2",
+        "socket.io"
+      ],
+      "script": [
+        "nodemon"
+      ],
+      "types": [],
+      "unusedEverywhere": [
+        "body-parser"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "http-proxy-middleware",
+          "usedBy": [
+            "services/api-gateway"
+          ]
+        }
+      ],
+      "phantom": []
+    },
+    "services/scanner-bridge": {
+      "name": "@montezuma/scanner-bridge",
+      "sourceFiles": 9,
+      "used": [
+        "esbuild",
+        "ws"
+      ],
+      "script": [
+        "pkg",
+        "typescript"
+      ],
+      "types": [
+        "@types/node",
+        "@types/ws"
+      ],
+      "unusedEverywhere": [],
+      "usedOnlyElsewhere": [],
+      "phantom": [
+        {
+          "dep": "bufferutil",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "utf-8-validate",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        }
+      ]
+    },
+    "services/socketio-service": {
+      "name": "socketio-service",
+      "sourceFiles": 2,
+      "used": [
+        "@socket.io/redis-adapter",
+        "dotenv",
+        "express",
+        "helmet",
+        "jsonwebtoken",
+        "redis",
+        "socket.io"
+      ],
+      "script": [
+        "nodemon",
+        "ts-node",
+        "typescript"
+      ],
+      "types": [
+        "@types/cors",
+        "@types/express",
+        "@types/express-rate-limit",
+        "@types/helmet",
+        "@types/jsonwebtoken",
+        "@types/node"
+      ],
+      "unusedEverywhere": [],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "hpp",
+          "usedBy": [
+            "services/api-gateway",
+            "services/auth-service"
+          ]
+        }
+      ],
+      "phantom": [
+        {
+          "dep": "cors",
+          "providedBy": [
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/billing-service",
+            "services/bodycheckout-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/documents-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service"
+          ]
+        },
+        {
+          "dep": "express-rate-limit",
+          "providedBy": [
+            "root",
+            "services/api-gateway",
+            "services/billing-service",
+            "services/tenant-service"
+          ]
+        }
+      ]
+    },
+    "services/store-service": {
+      "name": "store-service",
+      "sourceFiles": 6,
+      "used": [
+        "cors",
+        "dotenv",
+        "express",
+        "knex",
+        "mysql2"
+      ],
+      "script": [
+        "nodemon",
+        "ts-node",
+        "ts-node-dev",
+        "typescript"
+      ],
+      "types": [
+        "@types/cors",
+        "@types/express",
+        "@types/node"
+      ],
+      "unusedEverywhere": [
+        "tsx"
+      ],
+      "usedOnlyElsewhere": [],
+      "phantom": []
+    },
+    "services/support-service": {
+      "name": "support-service",
+      "sourceFiles": 5,
+      "used": [
+        "axios",
+        "cors",
+        "dotenv",
+        "express",
+        "helmet",
+        "mysql2"
+      ],
+      "script": [
+        "nodemon"
+      ],
+      "types": [],
+      "unusedEverywhere": [],
+      "usedOnlyElsewhere": [],
+      "phantom": []
+    },
+    "services/tenant-service": {
+      "name": "@restpoint/tenant-service",
+      "sourceFiles": 45,
+      "used": [
+        "bcryptjs",
+        "bullmq",
+        "cors",
+        "dotenv",
+        "express",
+        "express-rate-limit",
+        "fs-extra",
+        "jsonwebtoken",
+        "knex",
+        "multer",
+        "mysql2",
+        "slugify",
+        "uuid"
+      ],
+      "script": [
+        "nodemon",
+        "rimraf",
+        "ts-node",
+        "typescript"
+      ],
+      "types": [
+        "@types/express",
+        "@types/multer",
+        "@types/node"
+      ],
+      "unusedEverywhere": [
+        "@montezuma/shared-config",
+        "@montezuma/shared-logger",
+        "@montezuma/shared-services",
+        "bcrypt",
+        "tsx"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "helmet",
+          "usedBy": [
+            "root",
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/billing-service",
+            "services/bodycheckout-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/documents-service",
+            "services/extra-services",
+            "services/invoice-service",
+            "services/socketio-service",
+            "services/support-service"
+          ]
+        },
+        {
+          "dep": "http-proxy-middleware",
+          "usedBy": [
+            "services/api-gateway"
+          ]
+        },
+        {
+          "dep": "ioredis",
+          "usedBy": [
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/deceased-service",
+            "services/invoice-service"
+          ]
+        },
+        {
+          "dep": "winston",
+          "usedBy": [
+            "services/billing-service"
+          ]
+        }
+      ],
+      "phantom": [
+        {
+          "dep": "axios",
+          "providedBy": [
+            "root",
+            "services/billing-service",
+            "services/deceased-service",
+            "services/hearse-service",
+            "services/support-service",
+            "FrontendClient/client"
+          ]
+        },
+        {
+          "dep": "minimist",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        }
+      ]
+    },
+    "services/workshop-service": {
+      "name": "workshop-service",
+      "sourceFiles": 22,
+      "used": [
+        "cors",
+        "dotenv",
+        "express",
+        "mysql2",
+        "socket.io"
+      ],
+      "script": [
+        "nodemon",
+        "ts-node-dev",
+        "typescript"
+      ],
+      "types": [
+        "@types/cors",
+        "@types/express",
+        "@types/node"
+      ],
+      "unusedEverywhere": [
+        "@types/bcryptjs",
+        "@types/jsonwebtoken"
+      ],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "bcryptjs",
+          "usedBy": [
+            "services/auth-service",
+            "services/leave-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "chart.js",
+          "usedBy": [
+            "FrontendClient/client"
+          ]
+        },
+        {
+          "dep": "jsonwebtoken",
+          "usedBy": [
+            "root",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/socketio-service",
+            "services/tenant-service"
+          ]
+        },
+        {
+          "dep": "pdfkit",
+          "usedBy": [
+            "services/analytics-service",
+            "services/deceased-service",
+            "services/documents-service",
+            "services/invoice-service"
+          ]
+        },
+        {
+          "dep": "ts-node",
+          "usedBy": [
+            "services/auth-service"
+          ]
+        }
+      ],
+      "phantom": [
+        {
+          "dep": "axios",
+          "providedBy": [
+            "root",
+            "services/billing-service",
+            "services/deceased-service",
+            "services/hearse-service",
+            "services/support-service",
+            "FrontendClient/client"
+          ]
+        },
+        {
+          "dep": "knex",
+          "providedBy": [
+            "root",
+            "services/coffin-service",
+            "services/hearse-service",
+            "services/store-service",
+            "services/tenant-service"
+          ]
+        }
+      ]
+    },
+    "shared": {
+      "name": "@restpoint/shared",
+      "sourceFiles": 33,
+      "used": [
+        "mysql2"
+      ],
+      "script": [],
+      "types": [],
+      "unusedEverywhere": [],
+      "usedOnlyElsewhere": [
+        {
+          "dep": "dotenv",
+          "usedBy": [
+            "root",
+            "packages/shared-config",
+            "packages/shared-logger",
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/billing-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/socketio-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service"
+          ]
+        },
+        {
+          "dep": "jsonwebtoken",
+          "usedBy": [
+            "root",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/socketio-service",
+            "services/tenant-service"
+          ]
+        }
+      ],
+      "phantom": [
+        {
+          "dep": "axios",
+          "providedBy": [
+            "root",
+            "services/billing-service",
+            "services/deceased-service",
+            "services/hearse-service",
+            "services/support-service",
+            "FrontendClient/client"
+          ]
+        },
+        {
+          "dep": "express",
+          "providedBy": [
+            "services/analytics-service",
+            "services/api-gateway",
+            "services/auth-service",
+            "services/billing-service",
+            "services/bodycheckout-service",
+            "services/chemical-service",
+            "services/coffin-service",
+            "services/deceased-service",
+            "services/documents-service",
+            "services/extra-services",
+            "services/florist-service",
+            "services/hearse-service",
+            "services/invoice-service",
+            "services/leave-service",
+            "services/socketio-service",
+            "services/store-service",
+            "services/support-service",
+            "services/tenant-service",
+            "services/workshop-service"
+          ]
+        },
+        {
+          "dep": "prom-client",
+          "providedBy": [
+            "services/analytics-service"
+          ]
+        }
+      ]
+    },
+    "FrontendClient/client": {
+      "name": "client",
+      "sourceFiles": 816,
+      "used": [
+        "@bwip-js/browser",
+        "@eslint/js",
+        "@fullcalendar/daygrid",
+        "@fullcalendar/interaction",
+        "@fullcalendar/react",
+        "@fullcalendar/timegrid",
+        "@radix-ui/react-slot",
+        "@tailwindcss/vite",
+        "@vitejs/plugin-react",
+        "@vkhangstack/veloqr",
+        "axios",
+        "bootstrap",
+        "chart.js",
+        "class-variance-authority",
+        "clsx",
+        "date-fns",
+        "eslint",
+        "eslint-plugin-react-hooks",
+        "eslint-plugin-react-refresh",
+        "globals",
+        "lucide-react",
+        "pdfjs-dist",
+        "qrcode.react",
+        "react",
+        "react-bootstrap",
+        "react-dom",
+        "react-helmet-async",
+        "react-pdf",
+        "react-router-dom",
+        "react-signature-canvas",
+        "react-to-print",
+        "react-toastify",
+        "react-webcam",
+        "recharts",
+        "socket.io-client",
+        "styled-components",
+        "sweetalert2",
+        "tailwind-merge",
+        "vite",
+        "vite-plugin-compression2",
+        "zustand"
+      ],
+      "script": [],
+      "types": [
+        "@types/react",
+        "@types/react-dom"
+      ],
+      "unusedEverywhere": [
+        "@emotion/react",
+        "@emotion/styled",
+        "@fullcalendar/core",
+        "@fullcalendar/moment",
+        "@mui/icons-material",
+        "@mui/material",
+        "@tailwindcss/cli",
+        "@tailwindcss/postcss",
+        "@tanstack/react-query",
+        "autoprefixer",
+        "chartjs-adapter-date-fns",
+        "echarts",
+        "fabric",
+        "framer-motion",
+        "moment",
+        "postcss",
+        "react-big-calendar",
+        "react-chartjs-2",
+        "react-datepicker",
+        "react-error-boundary",
+        "react-gauge-chart",
+        "react-intersection-observer",
+        "react-window",
+        "tailwindcss",
+        "terser",
+        "three",
+        "tw-animate-css"
+      ],
+      "usedOnlyElsewhere": [],
+      "phantom": [
+        {
+          "dep": ",",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": ",\r\n          res.data.branches,\r\n          ",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": ", from);\r\n    if (to) params.append(",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": ", label: ",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": ");\r\n        setSubmitLoading(false);\r\n        return;\r\n      }\r\n      const fromBranchRec = branches.find((b) => b.id == sourceBranchId); \r\n      const toBranchRec = branches.find((b) => b.id == currentBranch); \r\n      const res = await api.post(",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": ")} style={inputS} placeholder=",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@/utils",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-accordion",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-alert-dialog",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-aspect-ratio",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-avatar",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-checkbox",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-collapsible",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-context-menu",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-dialog",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-dropdown-menu",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-hover-card",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-label",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-menubar",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-navigation-menu",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-popover",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-progress",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-radio-group",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-scroll-area",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-select",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-separator",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-slider",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-switch",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-tabs",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-toggle",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-toggle-group",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "@radix-ui/react-tooltip",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "${relPath}",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "antd",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "cmdk",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "dayjs",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "electron",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "embla-carousel-react",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "formik",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "input-otp",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "next-themes",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "react-day-picker",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "react-hook-form",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "react-query",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "react-resizable-panels",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "sonner",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "tesseract.js",
+          "providedBy": [
+            "root"
+          ]
+        },
+        {
+          "dep": "vaul",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        },
+        {
+          "dep": "yup",
+          "providedBy": [
+            "<not declared anywhere>"
+          ]
+        }
+      ]
+    }
+  }
+}

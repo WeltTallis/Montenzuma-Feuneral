@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, Children } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, TrendingUp, Search, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy } from '../../utils/icons/icons';
 import PremiumReporting from './PremiumReporting';
@@ -71,7 +71,7 @@ const StaggerReveal = ({ children, stagger = 80, className = '', style = {} }) =
     const [ref, shown] = useReveal();
     return (
         <div ref={ref} className={className} style={style}>
-            {Children.map(children, (child, i) => (
+            {(Array.isArray(children) ? children : [children]).map((child, i) => (
                 <div key={i} style={{
                     opacity: shown ? 1 : 0,
                     transform: shown ? 'translateY(0)' : 'translateY(25px)',
@@ -454,7 +454,7 @@ export default function App() {
         .wrap{max-width:1180px;margin:0 auto;padding:0 clamp(1.25rem,5vw,2.5rem)}
         nav .wrap{overflow:visible!important}
 
-        /* â”€â”€ Nav â”€â”€ */
+        /*  Nav */
         nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(250,248,244,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid ${C.line};padding:1.2rem 0;transition:all 0.4s ease}
         nav.scrolled{background:rgba(250,248,244,0.96);box-shadow:0 1px 12px rgba(21,23,26,0.06)}
         .nav-wrap{display:flex;justify-content:space-between;align-items:center}
@@ -468,7 +468,7 @@ export default function App() {
         .nav-cta{display:flex;gap:0.75rem}
         .mobile-nav{display:none}
 
-        /* â”€â”€ Policy Dropdown (REDESIGNED) â”€â”€ */
+        /*  Policy Dropdown (REDESIGNED)  */
         .policy-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:${C.bone};border:1px solid ${C.line};border-radius:12px;min-width:280px;z-index:1000;box-shadow:0 24px 48px rgba(21,23,26,0.12),0 0 0 1px rgba(21,23,26,0.03);overflow:hidden;transition:all 0.3s cubic-bezier(0.16,1,0.3,1);transform-origin:top right}
         .policy-dropdown-inner{padding:0.4rem}
         .policy-dropdown-item{width:100%;padding:0.75rem 1rem;background:none;border:none;text-align:left;cursor:pointer;font-size:0.84rem;color:${C.gray};border-radius:8px;transition:all 0.2s;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:0.75rem}
@@ -483,7 +483,7 @@ export default function App() {
         .mobile-link:hover{background:${C.bone2}}
         .mobile-policies-header{padding:0.5rem 0;border-bottom:1px solid ${C.line};background:${C.bone2}}
 
-        /* â”€â”€ Hero â”€â”€ */
+        /*  Hero */
         .hero{padding-top:140px;padding-bottom:0;position:relative;overflow:hidden}
         .hero::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 20% 50%,rgba(61,79,71,0.06) 0%,transparent 50%),radial-gradient(circle at 80% 80%,rgba(139,115,85,0.05) 0%,transparent 50%);pointer-events:none}
         .hero-grid{display:grid;grid-template-columns:1.2fr 0.8fr;gap:4rem;align-items:center;position:relative;z-index:1}
@@ -498,7 +498,7 @@ export default function App() {
         .sales-banner-shine{position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(250,248,244,0.07),transparent);animation:shine 5s ease-in-out infinite 3s;pointer-events:none}
         .sales-banner-content{position:absolute;bottom:clamp(1.5rem,4vw,3rem);left:clamp(1.5rem,4vw,3rem);z-index:2;max-width:480px}
 
-        /* â”€â”€ Marquee â”€â”€ */
+        /*  Marquee  */
         .marquee-strip{overflow:hidden;border-top:1px solid ${C.line};border-bottom:1px solid ${C.line};padding:0.9rem 0;background:#000000}
         .marquee-track{display:flex;width:max-content;animation:marquee 35s linear infinite}
         .marquee-item{display:inline-flex;align-items:center;gap:0.6rem;padding:0 1.8rem;font-size:0.78rem;color:#FFFFFF;font-family:'JetBrains Mono',monospace;white-space:nowrap;text-transform:uppercase;letter-spacing:0.1em}
@@ -646,7 +646,7 @@ export default function App() {
         .infra-desc-dark{font-size:0.9rem;color:rgba(250,248,244,0.45);line-height:1.75}
         .infra-card-dark:hover .infra-desc-dark{color:rgba(250,248,244,0.65)}
 
-        /* â”€â”€ App Window â”€â”€ */
+        /* App Window  */
         .app-window{border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -15px rgba(21,23,26,0.2);border:1px solid ${C.line};width:100%;transition:transform 0.4s cubic-bezier(0.16,1,0.3,1)}
         .app-window:hover{transform:translateY(-8px)}
         .window-header{display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1.2rem;border-bottom:1px solid ${C.line};background:${C.bone2}}
@@ -699,7 +699,7 @@ export default function App() {
         .progress-track{width:100%;height:6px;background:rgba(250,248,244,0.1);border-radius:3px;overflow:hidden}
         .progress-fill{width:72%;height:100%;background:${C.brass};border-radius:3px}
 
-        /* â”€â”€ Sections â”€â”€ */
+        /*  Sections  */
         .section{padding:clamp(4rem,8vw,6rem) 0}
         .showcase-mobile{display:grid;grid-template-columns:1.1fr 1fr;gap:4rem;align-items:center;margin-bottom:6rem}
         .about-section{background:${C.bone};padding:clamp(3rem,6vw,4rem) 0;border-top:1px solid ${C.line}}
@@ -731,7 +731,7 @@ export default function App() {
         /*  CTA */
         /*  Newsroom moved to modules/newsroom */
 
-        /* â”€â”€ Keyframes â”€â”€ */
+        /*  Keyframes  */
         @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-25%)}}
         @keyframes shine{0%{left:-100%}50%,100%{left:200%}}
         @keyframes subtle-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}

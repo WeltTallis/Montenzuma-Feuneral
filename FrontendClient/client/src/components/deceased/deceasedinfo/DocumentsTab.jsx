@@ -258,7 +258,7 @@ const DocumentsTab = ({ documents, deceasedId }) => {
     if (docId) params.set('docId', docId);
     // session-like token so the URL never exposes a raw database id directly
     params.set('session', Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
-    window.open(`/restpoint-document-reader.html?${params.toString()}`, '_blank', 'noopener');
+    window.open(`/document-read.html?${params.toString()}`, '_blank', 'noopener');
   };
 
   return (

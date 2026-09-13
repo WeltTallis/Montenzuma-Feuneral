@@ -294,7 +294,7 @@ export default function MissionSection() {
 
             {/* Image Box */}
             <div className="mission-image-box">
-              <img src="/familyportal.png" alt="A person thoughtfully using a digital tablet in a warm, modern space" className="mission-image" />
+              <img src="/familyportal.png" alt="A person thoughtfully using a digital tablet in a warm, modern space" className="mission-image" loading="lazy" decoding="async" />
             </div>
 
             {/* Floating Pure Black Card */}

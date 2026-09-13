@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@montezuma/shared-stamps": "^1.0.0",
-    "bcrypt": "^6.0.0",
     "bullmq": "^5.61.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
@@ -27,10 +26,8 @@
     "express-async-handler": "^1.2.0",
     "helmet": "^8.1.0",
     "ioredis": "^5.8.2",
-    "jpeg-exif": "^1.1.4",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.22.6",
-    "node-cache": "^5.1.2",
     "pdfkit": "^0.15.2",
     "tsx": "^4.7.0",
     "winston": "^3.18.3"

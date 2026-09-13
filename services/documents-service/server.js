@@ -6,6 +6,11 @@ const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+// Centralized Kenya-time timestamp helper (same source the legacy
+// controllers/documents.js uses) so every document insert records when it was
+// uploaded. The tenant `documents` table declares uploaded_at with NO default,
+// so omitting it left the column NULL and the UI rendered "—" for Uploaded Date.
+const { getKenyaTimeISO } = require('../../../packages/shared-utils/dist/timestamps');
 
 const PDFDocument = require('pdfkit');
 const sharp = require('sharp');
@@ -222,7 +227,8 @@ const handleDocumentUpload = async (req, res) => {
       if (isPDF(buf)) quality = `PDF v${getPDFVersion(buf)} - ORIGINAL quality preserved, no compression`;
     }
 
-    const ins = await q(req.tenantSlug, `INSERT INTO documents (deceased_id, original_name, stored_name, file_path, mime_type, file_size, category, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [deceasedId, documentName || file.originalname, result.filename, result.path, file.mimetype, result.size, category || 'General', req.headers['x-user-id'] || 'System']);
+    const uploadedAt = getKenyaTimeISO();
+    const ins = await q(req.tenantSlug, `INSERT INTO documents (deceased_id, original_name, stored_name, file_path, mime_type, file_size, category, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [deceasedId, documentName || file.originalname, result.filename, result.path, file.mimetype, result.size, category || 'General', req.headers['x-user-id'] || 'System', uploadedAt]);
 
     res.status(201).json({
       success: true,
@@ -356,7 +362,7 @@ documentsRouter.post('/create-pdf', async (req, res) => {
     await createHighQualityPDF({ content, outputPath: out });
     const stats = await fs.promises.stat(out);
 
-    const ins = await q(req.tenantSlug, `INSERT INTO documents (deceased_id, original_name, stored_name, file_path, mime_type, file_size, category, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [deceasedId, name, name, out, 'application/pdf', stats.size, 'Generated', req.headers['x-user-id'] || 'System']);
+    const ins = await q(req.tenantSlug, `INSERT INTO documents (deceased_id, original_name, stored_name, file_path, mime_type, file_size, category, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [deceasedId, name, name, out, 'application/pdf', stats.size, 'Generated', req.headers['x-user-id'] || 'System', getKenyaTimeISO()]);
 
     res.status(201).json({
       success: true,
@@ -395,7 +401,7 @@ documentsRouter.post('/image-to-pdf/:deceasedId', flexibleUpload, async (req, re
     await fs.promises.unlink(file.path).catch(() => { });
 
     const stats = await fs.promises.stat(out);
-    const ins = await q(req.tenantSlug, `INSERT INTO documents (deceased_id, original_name, stored_name, file_path, mime_type, file_size, category, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [deceasedId, name, name, out, 'application/pdf', stats.size, 'Converted', req.headers['x-user-id'] || 'System']);
+    const ins = await q(req.tenantSlug, `INSERT INTO documents (deceased_id, original_name, stored_name, file_path, mime_type, file_size, category, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [deceasedId, name, name, out, 'application/pdf', stats.size, 'Converted', req.headers['x-user-id'] || 'System', getKenyaTimeISO()]);
 
     res.status(201).json({
       success: true,

@@ -1,24 +1,31 @@
 // Shared theme for deceased management components
 export const C = {
-  black: '#0a0a0a',
+  // ── Core neutrals ─────────────────────────────
+  black: '#111827',      // Darker, solid black
   dark: '#1a1a1a',
-  mid: '#444444',
-  gray: '#777777',
-  lightGray: '#aaaaaa',
+  mid: '#4b5563',
+  gray: '#6b7280',
+  lightGray: '#9ca3af',
   border: '#c8c8c8',
-  borderLight: '#e0e0e0',
+  borderLight: '#e5e7eb',
   bgField: '#f7f7f5',
   bgSection: '#fafaf9',
   bgApp: '#ececec',
-  success: '#059669',
+
+  // ── Status colors ─────────────────────────────
+  success: '#10b981',
   successBg: '#ecfdf5',
-  warning: '#d97706',
+  successBgTranslucent: 'rgba(16, 185, 129, 0.08)',
+  warning: '#f59e0b',
   warningBg: '#fef3c7',
-  danger: '#dc2626',
+  warningBgTranslucent: 'rgba(251, 191, 36, 0.08)',
+  danger: '#ef4444',
   dangerBg: '#fef2f2',
-  info: '#2563eb',
-  infoBg: '#eff6ff',
-  brown: '#795548',
+  info: '#3b82f6',
+  infoBg: '#dbeafe',
+  brown: '#8b5e3c',
+  activeBg: 'rgba(251, 191, 36, 0.08)',
+  pendingBg: '#f9fafb',
 };
 
 export const formatDate = (dt) => {
