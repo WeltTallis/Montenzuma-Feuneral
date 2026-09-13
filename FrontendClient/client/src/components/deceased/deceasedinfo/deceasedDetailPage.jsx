@@ -250,6 +250,11 @@ const DeceasedDetailPage = () => {
     const safeDeceasedId = encodeURIComponent(deceasedId);
     const cacheKey = `${deceasedId}-${getTenantSlug()}`;
 
+    // Clear cache on force refresh
+    if (forceRefresh) {
+      _deceasedCache.delete(cacheKey);
+    }
+
     if (!forceRefresh) {
       const cached = _getCached(cacheKey);
       if (cached) {
@@ -354,7 +359,11 @@ const DeceasedDetailPage = () => {
       if (billRes.status === 'fulfilled' && billRes.value?.data?.data) {
         const bd = billRes.value.data.data;
         if (bd.charges) setCharges(Array.isArray(bd.charges) ? bd.charges : [bd.charges]);
-        if (bd.payments) setPayments(Array.isArray(bd.payments) ? bd.payments : []);
+        if (bd.payments) setPayments(Array.isArray(bd.payments) ? bd.payments : [bd.payments]);
+        else setPayments([]);
+      } else {
+        setCharges([]);
+        setPayments([]);
       }
 
       // 6) Charge settings

@@ -76,8 +76,8 @@ const Barcode = ({ value }) => {
         bwipjs.toCanvas(canvasRef.current, {
           bcid: 'code128',
           text: value || 'AWAITING-ID',
-          scale: 2,
-          height: 8,
+          scale: 3,
+          height: 10,
           includetext: false,
           paddingwidth: 0,
           paddingheight: 0,
@@ -88,7 +88,7 @@ const Barcode = ({ value }) => {
     }
   }, [value]);
 
-  return <canvas ref={canvasRef} style={{ display: 'block', width: 'auto', height: '40px' }} />;
+  return <canvas ref={canvasRef} style={{ display: 'block', width: 'auto', height: 'auto', maxWidth: '100%' }} />
 };
 
 
@@ -127,8 +127,8 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
             <BarcodeBox title="Admission barcode">
               <Barcode value={admissionNo !== '—' ? admissionNo : 'AWAITING-ID'} />
             </BarcodeBox>
-            <BarcodeCode style={{ fontWeight: 700, fontSize: 11 }}>{displayId}</BarcodeCode>
-            <BarcodeCode style={{ fontWeight: 400, fontSize: 10, opacity: 0.7 }}>{admissionNo !== '—' ? admissionNo : 'AWAITING-ID'}</BarcodeCode>
+            <BarcodeCode style={{ fontWeight: 700, fontSize: 9, wordBreak: 'break-all', maxWidth: '80px', textAlign: 'center' }}>{displayId}</BarcodeCode>
+            <BarcodeCode style={{ fontWeight: 400, fontSize: 9, opacity: 0.7, wordBreak: 'break-all', maxWidth: '80px', textAlign: 'center' }}>{admissionNo !== '—' ? admissionNo : 'AWAITING-ID'}</BarcodeCode>
           </div>
         </div>
 

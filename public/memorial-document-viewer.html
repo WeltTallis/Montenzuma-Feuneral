@@ -694,18 +694,25 @@
     const viewport0 = firstPage.getViewport({ scale: 1 });
     baseScale = Math.min(1.5, containerWidth / viewport0.width);
 
+    // Render PDF pages at devicePixelRatio resolution so text and scanned
+    // documents stay razor sharp on HiDPI / Windows-scaled / Retina displays
+    // (the canvas is then downscaled back to the CSS pixel size).
+    const DPR = Math.min(window.devicePixelRatio || 1, 3);
+
     for (let i = 1; i <= pdfDoc.numPages; i++) {
       const page = await pdfDoc.getPage(i);
-      const scale = baseScale * zoomMultiplier;
-      const viewport = page.getViewport({ scale });
+      // High-quality raster: display-scale x devicePixelRatio (capped so
+      // heavily zoomed pages cannot exhaust memory), CSS size after divide.
+      const renderScale = Math.min(baseScale * zoomMultiplier * DPR, 8);
+      const viewport = page.getViewport({ scale: renderScale });
       
       const canvas = document.createElement('canvas');
       canvas.className = 'pdf-page-canvas';
       canvas.id = 'pdf-page-' + i;
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-      canvas.style.width = viewport.width + 'px';
-      canvas.style.height = viewport.height + 'px';
+      canvas.style.width = Math.round(viewport.width / DPR) + 'px';
+      canvas.style.height = Math.round(viewport.height / DPR) + 'px';
       
       container.appendChild(canvas);
       
@@ -769,9 +776,21 @@
 
   function applyImageTransform() {
     const img = $id('imageViewer');
-    if (!imageBase.w) return;
-    img.style.width = Math.round(imageBase.w * zoomMultiplier) + 'px';
-    img.style.height = Math.round(imageBase.h * zoomMultiplier) + 'px';
+    if (!imageBase.w || !imageBase.h) return;
+    // Fit image documents (scans / photos) inside the viewer area, preserving
+    // aspect ratio. Previously the CSS max-width could clamp the rendered
+    // width while the height stayed at the natural pixel value, which made
+    // large scans look squished/distorted.
+    const area = $id('canvasArea');
+    const maxW = Math.max((area ? area.clientWidth : 900) - 64, 240);
+    let w = imageBase.w * zoomMultiplier;
+    let h = imageBase.h * zoomMultiplier;
+    if (w > maxW) {
+      h = h * (maxW / w);
+      w = maxW;
+    }
+    img.style.width = Math.round(w) + 'px';
+    img.style.height = Math.round(h) + 'px';
     updateZoomLabel();
   }
 
