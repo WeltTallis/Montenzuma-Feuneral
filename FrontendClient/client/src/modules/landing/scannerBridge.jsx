@@ -380,83 +380,66 @@ const ScannerSetupGuide = () => {
         .step-content p { font-size: 0.9rem; color: var(--gray); margin: 0; }
       `}</style>
 
-            {/* Navigation Bar */}
-            <nav style={{
+            {/* Standard app header */}
+            <header style={{
                 position: 'fixed',
                 top: 0,
                 left: 0,
                 right: 0,
                 zIndex: 1000,
-                background: 'var(--ink)',
-                padding: '0.75rem 2rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
+                background: '#0A0A0A',
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.12)'
             }}>
-                <a href="/" style={{
+                <div style={{
+                    maxWidth: '1280px',
+                    margin: '0 auto',
+                    padding: '0.8rem 2rem',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem',
-                    color: 'var(--bone)',
-                    textDecoration: 'none',
-                    fontFamily: "'Fraunces', serif",
-                    fontSize: '1.25rem',
-                    fontWeight: 600
+                    justifyContent: 'space-between',
+                    gap: '1.5rem'
                 }}>
-                    <div style={{
-                        width: '32px',
-                        height: '32px',
-                        background: 'var(--verdigris)',
-                        borderRadius: '6px',
+                    <a href="/" style={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <i className="fas fa-plus" style={{ color: 'white', fontSize: '0.9rem' }}></i>
-                    </div>
-                    <span>Restpoint</span>
-                </a>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                    <a href="#mobility" style={{
-                        color: 'var(--bone)',
+                        gap: '0.6rem',
+                        color: '#FAF8F4',
                         textDecoration: 'none',
-                        fontSize: '0.9rem',
-                        opacity: 0.8
-                    }}>Portable</a>
-                    <a href="#how-it-works" style={{
-                        color: 'var(--bone)',
-                        textDecoration: 'none',
-                        fontSize: '0.9rem',
-                        opacity: 0.8
-                    }}>How It Works</a>
-                    <a href="#prerequisites" style={{
-                        color: 'var(--bone)',
-                        textDecoration: 'none',
-                        fontSize: '0.9rem',
-                        opacity: 0.8
-                    }}>Setup</a>
-                    <a href="#scanner" style={{
-                        color: 'white',
-                        textDecoration: 'none',
-                        fontSize: '0.9rem',
+                        fontFamily: "'Fraunces', serif",
+                        fontSize: '1.3rem',
                         fontWeight: 600,
-                        background: 'var(--verdigris)',
-                        padding: '0.5rem 1.25rem',
-                        borderRadius: '6px',
+                        letterSpacing: '-0.02em'
+                    }}>
+                        <span style={{
+                            display: 'inline-flex',
+                            width: '10px',
+                            height: '10px',
+                            background: '#A98F6E',
+                            borderRadius: '50%'
+                        }} />
+                        <span>Restpoint</span>
+                    </a>
+
+                    <nav style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem'
+                        gap: '1.5rem',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: '0.68rem',
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase'
                     }}>
-                        <i className="fas fa-scanner" style={{ fontSize: '0.85rem' }}></i>
-                        Scanner
-                    </a>
+                        <a href="/" style={{ color: 'rgba(250,248,244,0.7)', textDecoration: 'none' }}>Home</a>
+                        <a href="#mobility" style={{ color: 'rgba(250,248,244,0.7)', textDecoration: 'none' }}>Portable</a>
+                        <a href="#setup" style={{ color: 'rgba(250,248,244,0.7)', textDecoration: 'none' }}>Setup</a>
+                        <a href="#scanner" style={{ color: '#FAF8F4', textDecoration: 'none', opacity: 1 }}>Scanner</a>
+                    </nav>
                 </div>
-            </nav>
+            </header>
 
             {/* Spacer for fixed nav */}
-            <div style={{ height: '60px' }}></div>
+            <div style={{ height: '72px' }}></div>
 
             {/* Portable Scanner Section */}
             <section id="mobility" className="portable-section">

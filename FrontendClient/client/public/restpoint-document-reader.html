@@ -11,8 +11,20 @@
     theme: {
       extend: {
         colors: {
-          blue: { DEFAULT: '#00296B', light: '#EFF6FF' },
-          green: { DEFAULT: '#132A13', light: '#E8F5E9' }
+          primaryDark: '#2C3E50',
+          accentBlue: '#1e293b',
+          white: '#FFFFFF',
+          lightGray: '#F7F9FB',
+          mediumGray: '#E9ECEF',
+          darkGray: '#1e293b',
+          successGreen: '#1DB954',
+          dangerRed: '#C0392B',
+          warningYellow: '#F39C12',
+          infoBlue: '#3498DB',
+          purple: '#6a0572',
+          purpleLight: '#f3e8ff',
+          borderGray: '#E5E7EB',
+          textMuted: '#6B7280',
         }
       }
     }
@@ -21,258 +33,206 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-  @font-face {
-    font-family: 'Computer Modern Roman';
-    src: local('CMU Serif'), local('Computer Modern Serif'), local('Latin Modern Roman'), local('DejaVu Serif'), serif;
-    font-weight: 400;
-    font-style: normal;
-  }
-
-  @font-face {
-    font-family: 'Computer Modern Bold Extended';
-    src: local('CMU Serif Bold'), local('Computer Modern Bold'), local('Latin Modern Roman Demi'), local('DejaVu Serif Bold'), serif;
-    font-weight: 700;
-    font-style: normal;
-  }
-
-  @font-face {
-    font-family: 'Computer Modern Italic';
-    src: local('CMU Serif Italic'), local('Computer Modern Serif Italic'), local('Latin Modern Roman Italic'), local('DejaVu Serif Italic'), serif;
-    font-weight: 400;
-    font-style: italic;
-  }
-
-  @font-face {
-    font-family: 'Computer Modern Typewriter';
-    src: local('CMU Typewriter Text'), local('Computer Modern Typewriter'), local('Latin Modern Mono'), local('DejaVu Sans Mono'), monospace;
-    font-weight: 400;
-    font-style: normal;
-  }
-
+  * { font-family: 'Inter', 'Helvetica Neue', sans-serif; -webkit-font-smoothing: antialiased; }
+  
   :root {
-    --bg: #f4f1ec;
-    --canvas-bg: #f8f6f2;
-    --card: #ffffff;
-    --fg: #1a1a1a;
-    --muted: #555555;
-    --border: #d9d4ce;
-    --soft: #f7f5f2;
-    --black: #0a0a0a;
-    --dark: #1a1a1a;
-    --gray: #777777;
-    --green: #132A13;
-    --green-bg: #e8f5e9;
-    --panel-shadow: 0 2px 10px rgba(10, 10, 10, 0.06);
+    --bg: #FFFFFF; /* Pure white background */
+    --canvas-bg: #F7F9FB; /* Very subtle off-white for the canvas area to make documents pop */
+    --card: #FFFFFF;
+    --fg: #1e293b; /* Dark gray text */
+    --muted: #6B7280;
+    --border: #E5E7EB;
+    --soft: #F7F9FB;
+    
+    /* Action Colors */
+    --blue: #3498DB;
+    --green: #1DB954;
+    --red: #C0392B;
+    --yellow: #F39C12;
+    --purple: #6a0572;
+    --black: #000000;
+    
+    --panel-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   }
-  .dark {
-    --bg: #111315;
-    --canvas-bg: #171b1d;
-    --card: #1a1d20;
-    --fg: #f5f5f5;
-    --muted: #a3a3a3;
-    --border: #2b2f33;
-    --soft: #1f2428;
-    --panel-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
-  }
-  * { font-family: 'Computer Modern Roman', 'CMU Serif', 'Latin Modern Roman', serif; -webkit-font-smoothing: antialiased; }
-  .serif { font-family: 'Computer Modern Bold Extended', 'CMU Serif Bold', 'Latin Modern Roman Demi', serif; }
-  .mono, code, pre, .font-mono { font-family: 'Computer Modern Typewriter', 'CMU Typewriter Text', monospace; }
-  em, i { font-family: 'Computer Modern Italic', 'CMU Serif Italic', serif; }
-  strong, b { font-family: 'Computer Modern Bold Extended', 'CMU Serif Bold', serif; }
+
   body {
     background: var(--bg);
     color: var(--fg);
     height: 100vh;
     overflow: hidden;
-    transition: background 0.3s ease, color 0.3s ease;
   }
 
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-  .dark ::-webkit-scrollbar-thumb { background: #3f4451; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-  .doc-item {
-    transition: all 0.2s ease;
-    border-left: 3px solid transparent;
-    position: relative;
-    border-radius: 12px;
-    background: transparent;
+  /* Header */
+  .top-header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
   }
-  .doc-item:hover {
-    background: #f7f5f2;
-    border-left-color: var(--black);
-  }
-  .dark .doc-item:hover {
-    background: rgba(255, 255, 255, 0.03);
-  }
-  .doc-item.active {
-    background: #f3f0eb;
-    border-left-color: var(--black);
-    box-shadow: inset 0 0 0 1px rgba(10, 10, 10, 0.08);
-  }
-  .dark .doc-item.active {
-    background: rgba(255, 255, 255, 0.04);
-  }
-  .doc-item.active::after {
-    content: '';
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 6px;
-    height: 6px;
-    background: var(--black);
-    border-radius: 50%;
+  
+  .header-icon-tile {
+    background: var(--soft);
+    border: 1px solid var(--border);
+    color: var(--purple);
   }
 
+  /* Action Buttons */
   .tool-btn {
-    transition: all 0.18s ease;
-    color: var(--fg);
+    transition: all 0.2s ease;
+    color: #475569;
     border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.7);
-    box-shadow: 0 1px 1px rgba(0,0,0,0.02);
+    background: var(--card);
   }
   .tool-btn:hover {
     background: var(--soft);
-    color: var(--black);
-    border-color: #cfc8c1;
+    color: var(--fg);
+    border-color: #cbd5e1;
   }
   .tool-btn:active { transform: scale(0.96); }
-  .tool-btn.disabled { opacity: 0.35; pointer-events: none; }
 
-  .primary-btn {
+  .btn-download {
+    background: var(--blue);
+    color: #fff;
+    border: 1px solid #2980b9;
+  }
+  .btn-download:hover { background: #2593e6; }
+
+  .btn-print {
+    background: var(--green);
+    color: #fff;
+    border: 1px solid #17a74a;
+  }
+  .btn-print:hover { background: #19c359; }
+
+  .btn-delete {
+    background: var(--red);
+    color: #fff;
+    border: 1px solid #962b20;
+  }
+  .btn-delete:hover { background: #d64538; }
+
+  .btn-upload {
+    background: var(--purple);
+    color: #fff;
+    border: 1px solid #4a044e;
+    box-shadow: 0 4px 12px rgba(106, 5, 114, 0.15);
+  }
+  .btn-upload:hover { 
+    background: #7b068a;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(106, 5, 114, 0.25);
+  }
+
+  .btn-toggle {
     background: var(--black);
-    color: #ffffff;
+    color: #fff;
+    border: 1px solid #000000;
+  }
+  .btn-toggle:hover { 
+    background: #1a1a1a;
+  }
+
+  /* Sidebar */
+  .side-panel {
+    background: var(--card);
+    border-right: 1px solid var(--border);
+  }
+  
+  .doc-item {
     transition: all 0.2s ease;
-    border: 1px solid var(--black);
-    box-shadow: 0 8px 18px rgba(10, 10, 10, 0.12);
+    border: 1px solid transparent;
+    border-left: 3px solid transparent;
+    background: var(--card);
+    border-radius: 8px;
   }
-  .primary-btn:hover { background: #1f1f1f; }
-  .primary-btn:active { transform: scale(0.98); }
+  .doc-item:hover {
+    background: var(--soft);
+    border-left-color: var(--blue);
+  }
+  .doc-item.active {
+    background: #f3e8ff; /* purpleLight */
+    border-left-color: var(--purple);
+    box-shadow: inset 0 0 0 1px rgba(106, 5, 114, 0.1);
+  }
+  .doc-item.active .doc-name { color: var(--purple); }
 
-  .pdf-page-canvas {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
-    background: white;
-    border-radius: 2px;
-    margin-bottom: 1.5rem;
-    display: block;
-  }
-
-  #imageViewer {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
-    display: none;
-    border-radius: 2px;
-    max-width: none;
-  }
-
-  .thumbnail {
-    transition: all 0.2s ease;
-    cursor: pointer;
-    border: 2px solid transparent;
-    border-radius: 6px;
-    overflow: hidden;
-    background: white;
-    padding: 4px;
-  }
-  .thumbnail:hover {
-    border-color: var(--green);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-  .thumbnail.active {
-    border-color: var(--blue);
-    box-shadow: 0 4px 12px rgba(0, 41, 107, 0.2);
-  }
-
-  .fade-in { animation: fadeIn 0.4s ease; }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .badge {
-    font-size: 10px;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-weight: 600;
-    letter-spacing: 0.6px;
-    text-transform: uppercase;
-  }
-
-  .spinner {
-    width: 48px;
-    height: 48px;
-    border: 2px solid var(--border);
-    border-top-color: #00296B;
-    border-right-color: #132A13;
-    border-radius: 50%;
-    animation: spin 0.9s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Collapsible Panel Animation */
+  /* Right Panel Collapse */
   .right-panel {
-    transition: width 0.3s ease, opacity 0.3s ease;
+    transition: width 0.3s ease, opacity 0.3s ease, border 0.3s ease;
     overflow: hidden;
   }
   .right-panel.collapsed {
     width: 0 !important;
     opacity: 0;
     border-left: none !important;
+    padding: 0 !important;
   }
 
-  .shell-input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
+  /* PDF Canvas */
+  .pdf-page-canvas {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.05);
+    background: white;
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
+    display: block;
+  }
+
+  /* Splash & Empty States */
+  .state-card {
     background: var(--card);
-    color: var(--fg);
-    font-size: 13px;
-    outline: none;
-    transition: border 0.15s ease;
-    font-family: 'Computer Modern Roman', 'Times New Roman', serif;
-  }
-  .shell-input:focus { border-color: var(--black); }
-
-  .unsupported-icon {
-    width: 84px; height: 84px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    background: #f2eee9;
-    color: var(--black);
-    font-size: 30px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
   }
   
-  #printIframe {
-    position: absolute;
-    width: 0;
-    height: 0;
-    border: 0;
-    left: -9999px;
+  .shell-input {
+    width: 100%;
+    padding: 0.625rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--card);
+    color: var(--fg);
+    font-size: 0.875rem;
+    outline: none;
+    transition: all 0.2s;
   }
+  .shell-input:focus { 
+    border-color: var(--purple); 
+    box-shadow: 0 0 0 3px rgba(106, 5, 114, 0.1);
+  }
+
+  .spinner {
+    width: 48px; height: 48px;
+    border: 2px solid var(--border);
+    border-top-color: var(--purple);
+    border-right-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .fade-in { animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
 
-<!-- Hidden iframe for reliable printing -->
-<iframe id="printIframe"></iframe>
-
 <div class="flex flex-col h-screen">
 
-    <!-- SLEEK TOP NAVIGATION -->
-    <header class="bg-[#f7f3ee] dark:bg-[#171b1d] border-b border-[#d9d4ce] dark:border-[#2d3139] flex-shrink-0 flex items-center justify-between px-4 py-2 gap-4 shadow-[0_1px_0_rgba(10,10,10,0.04)]">
-      
+    <!-- HEADER -->
+    <header class="top-header flex-shrink-0 flex items-center justify-between px-5 py-3 gap-4">
+
       <!-- Left: File Info -->
       <div class="flex items-center gap-3 min-w-0 flex-1">
-        <div class="w-9 h-9 rounded-lg bg-[#f2eee9] flex items-center justify-center flex-shrink-0 border border-[#d9d4ce]">
-          <i class="fas fa-file-pdf text-[#0a0a0a] text-sm"></i>
+        <div class="header-icon-tile w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-file-pdf text-sm"></i>
         </div>
         <div class="min-w-0 hidden md:block">
-          <p id="docFileName" class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">No document selected</p>
-          <div class="flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400">
+          <p id="docFileName" class="text-sm font-semibold truncate text-[#1e293b]">No document selected</p>
+          <div class="flex items-center gap-2 text-[10px] mt-0.5 text-[#6B7280]">
             <span id="docUploadedAt">—</span>
             <span>·</span>
             <span id="docSizeText">—</span>
@@ -281,39 +241,34 @@
       </div>
 
       <!-- Center: Zoom Controls -->
-      <div class="flex items-center gap-1 bg-gray-100 dark:bg-[#16181d] rounded-lg p-1">
+      <div class="flex items-center gap-1 bg-[#F7F9FB] border border-[#E5E7EB] rounded-lg p-1">
         <button id="zoomOut" class="tool-btn w-8 h-8 rounded-md flex items-center justify-center" title="Zoom out (-)">
           <i class="fas fa-search-minus text-xs"></i>
         </button>
-        <span id="zoomLevel" class="text-xs w-12 text-center font-semibold text-gray-900 dark:text-gray-100">100%</span>
+        <span id="zoomLevel" class="text-xs w-12 text-center font-semibold text-[#1e293b]">100%</span>
         <button id="zoomIn" class="tool-btn w-8 h-8 rounded-md flex items-center justify-center" title="Zoom in (+)">
           <i class="fas fa-search-plus text-xs"></i>
         </button>
-        <div class="w-px h-5 bg-gray-200 dark:bg-[#2d3139] mx-1"></div>
-        <button id="fitBtn" class="tool-btn px-2 h-8 rounded-md text-xs font-medium" title="Fit width">Fit</button>
+        <div class="w-px h-5 bg-[#E5E7EB] mx-1"></div>
+        <button id="fitBtn" class="tool-btn px-2.5 h-8 rounded-md text-xs font-medium" title="Fit width">Fit</button>
       </div>
 
       <!-- Right: Actions -->
       <div class="flex items-center gap-2 flex-1 justify-end">
-        <button id="downloadBtn" class="tool-btn px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium">
-          <i class="fas fa-download text-[10px] text-[#0a0a0a]"></i>
+        <button id="downloadBtn" class="btn-download px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium transition-all">
+          <i class="fas fa-download text-[10px]"></i>
           <span class="hidden lg:inline">Download</span>
         </button>
-        <button id="printBtn" class="tool-btn px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium">
-          <i class="fas fa-print text-[10px] text-[#0a0a0a]"></i>
+        <button id="printBtn" class="btn-print px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium transition-all">
+          <i class="fas fa-print text-[10px]"></i>
           <span class="hidden lg:inline">Print</span>
         </button>
-        <button id="deleteBtn" class="tool-btn px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium" title="Delete document" style="color:#c0392b;">
+        <button id="deleteBtn" class="btn-delete px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium transition-all" title="Delete document">
           <i class="fas fa-trash-can text-[10px]"></i>
-          <span class="hidden lg:inline text-[#c0392b]">Delete</span>
+          <span class="hidden lg:inline">Delete</span>
         </button>
-        <div class="w-px h-6 bg-gray-200 dark:bg-[#2d3139] mx-1"></div>
-        <button id="toggleRightPanel" class="tool-btn w-9 h-9 rounded-md flex items-center justify-center" title="Toggle thumbnails">
+        <button id="toggleRightPanel" class="btn-toggle w-9 h-9 rounded-md flex items-center justify-center transition-all" title="Toggle thumbnails">
           <i class="fas fa-columns text-xs"></i>
-        </button>
-        <button id="themeToggle" class="tool-btn w-9 h-9 rounded-md flex items-center justify-center">
-          <i class="fas fa-moon text-xs dark:hidden"></i>
-          <i class="fas fa-sun text-xs hidden dark:block"></i>
         </button>
       </div>
     </header>
@@ -322,106 +277,112 @@
     <div class="flex flex-1 overflow-hidden">
 
       <!-- LEFT: Documents -->
-      <aside class="w-72 bg-[#f9f7f4] dark:bg-[#111315] border-r border-[#d9d4ce] dark:border-[#2d3139] flex flex-col relative z-10 flex-shrink-0">
-        <div class="p-4 border-b border-[#d9d4ce] dark:border-[#2d3139]">
-          <button id="uploadBtn" class="primary-btn w-full py-2.5 px-4 rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
+      <aside class="side-panel w-72 flex flex-col relative z-10 flex-shrink-0">
+        <div class="p-4 border-b border-[#E5E7EB]">
+          <button id="uploadBtn" class="btn-upload w-full py-2.5 px-4 rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
             <i class="fas fa-cloud-arrow-up text-xs"></i>
             Upload Document
           </button>
           <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.bmp,.gif" class="hidden">
 
-          <div class="flex items-center gap-2 mt-4">
-            <p class="text-[10px] text-gray-500 dark:text-gray-400 tracking-widest uppercase font-semibold flex-1">Deceased Documents</p>
-            <span class="text-[10px] text-gray-500 dark:text-gray-400"><span id="docCount">0</span> files</span>
+          <div class="flex items-center justify-between mt-4">
+            <span class="text-[10px] text-[#6B7280] tracking-widest uppercase font-semibold">Deceased Documents</span>
+            <span class="text-[10px] text-[#6B7280]"><span id="docCount">0</span> files</span>
           </div>
         </div>
 
         <div class="flex-1 overflow-y-auto p-3" id="docsScroller">
-          <div id="docList" class="space-y-1"></div>
+          <div id="docList" class="space-y-1.5"></div>
         </div>
 
-        <div class="p-3 border-t border-[#d9d4ce] dark:border-[#2d3139] bg-[#f3efe9] dark:bg-[#171b1d]">
-          <div class="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
-            <i class="fas fa-id-card text-[#0a0a0a]"></i>
-            <span class="flex-1 min-w-0 truncate">Deceased ID: <span id="deceasedIdLabel" class="font-semibold text-gray-900 dark:text-gray-100">—</span></span>
+        <div class="p-3 border-t border-[#E5E7EB] bg-[#F7F9FB]">
+          <div class="flex items-center gap-2 text-[11px] text-[#6B7280]">
+            <i class="fas fa-id-card text-[#3498DB]"></i>
+            <span class="flex-1 min-w-0 truncate">Deceased ID: <span id="deceasedIdLabel" class="font-semibold text-[#1e293b]">—</span></span>
           </div>
         </div>
       </aside>
 
       <!-- CENTER: Viewer -->
-      <main class="flex-1 flex flex-col bg-[#fbfaf8] dark:bg-[#0f1115] relative min-w-0">
-        <!-- Canvas area (Continuous Scroll) -->
-        <div id="canvasArea" class="flex-1 overflow-y-auto relative flex justify-center items-start p-8" style="background-color: var(--canvas-bg);">
-          <div id="loadingOverlay" class="absolute inset-0 bg-white/85 dark:bg-[#0f1115]/85 backdrop-blur-sm flex items-center justify-center z-20 hidden">
+      <main class="flex-1 flex flex-col bg-[#F7F9FB] relative min-w-0">
+        <div id="canvasArea" class="flex-1 overflow-y-auto relative flex justify-center items-start p-8">
+          
+          <div id="loadingOverlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-20 hidden">
             <div class="text-center">
               <div class="spinner mx-auto mb-4"></div>
-              <p class="text-gray-500 dark:text-gray-400 text-sm serif italic" id="loadingText">Preparing document…</p>
+              <p class="text-[#6B7280] text-sm italic" id="loadingText">Preparing document…</p>
             </div>
           </div>
           
-          <!-- PDF Pages Container (Stacked) -->
           <div id="pdfPagesContainer" class="w-full max-w-4xl flex flex-col items-center hidden"></div>
           
-          <img id="imageViewer" alt="Document" class="max-w-4xl">
+          <img id="imageViewer" alt="Document" class="max-w-4xl" style="box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); display: none;">
 
           <div id="unsupportedPanel" class="hidden flex flex-col items-center justify-center w-full h-full">
-            <div class="max-w-md mx-auto text-center">
-              <div class="unsupported-icon mx-auto mb-5"><i class="fas fa-file-invoice"></i></div>
-              <p class="serif text-lg text-gray-900 dark:text-gray-100">Preview not available</p>
-              <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed" id="unsupportedText">
+            <div class="max-w-md mx-auto text-center state-card p-8 rounded-xl">
+              <div class="w-16 h-16 rounded-full bg-[#F7F9FB] text-[#F39C12] text-2xl mx-auto mb-5 flex items-center justify-center border border-[#E5E7EB]">
+                <i class="fas fa-file-invoice"></i>
+              </div>
+              <p class="text-lg text-[#1e293b] font-semibold">Preview not available</p>
+              <p class="text-sm text-[#6B7280] mt-2 leading-relaxed" id="unsupportedText">
                 This document type cannot be previewed in the browser. You can open or download it to view it.
               </p>
               <div class="flex gap-2 mt-5 justify-center">
-                <button id="unsupportedOpenBtn" class="tool-btn px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-medium border border-gray-300 dark:border-[#2d3139]">
+                <button id="unsupportedOpenBtn" class="tool-btn px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-medium">
                   <i class="fas fa-external-link text-xs"></i> Open
                 </button>
-                <button id="unsupportedDownloadBtn" class="primary-btn px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-medium">
+                <button id="unsupportedDownloadBtn" class="btn-download px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-medium">
                   <i class="fas fa-download text-xs"></i> Download
                 </button>
               </div>
             </div>
           </div>
 
-          <!-- Splash: no deceased selected -->
-          <div id="splashView" class="absolute inset-0 flex items-center justify-center z-30" style="background-color: var(--canvas-bg);">
-            <div class="max-w-lg w-full mx-auto fade-in">
-              <div class="bg-white dark:bg-[#16181d] rounded-2xl border border-gray-200 dark:border-[#2d3139] shadow-xl p-8">
-                <div class="flex items-center justify-center w-14 h-14 rounded-full bg-[#EFF6FF] text-[#00296B] text-xl mx-auto mb-4"><i class="fas fa-archway"></i></div>
-                <p class="serif text-xl text-gray-900 dark:text-gray-100 text-center">Memorial Document Viewer</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Connect to a deceased profile to view its uploaded documents.</p>
-                <div class="grid grid-cols-1 gap-3 mt-6">
-                  <label class="text-[10px] uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-0.5">Deceased ID *</label>
-                  <input id="splashDeceasedId" class="shell-input" placeholder="e.g. DEC-2024-001 / admission number">
-                </div>
-                <div class="flex items-center gap-3 mt-5">
-                  <button id="connectBtn" class="primary-btn flex-1 py-2.5 rounded-lg text-sm font-semibold"><i class="fas fa-plug text-xs mr-1.5"></i>Connect</button>
-                </div>
-                <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-4 text-center leading-relaxed">Tip: open this page as <span class="font-mono">/memorial-document-viewer?deceasedId=XXX</span> for direct deep-linking.</p>
+          <!-- Splash Screen -->
+          <div id="splashView" class="absolute inset-0 flex items-center justify-center z-30 bg-[#F7F9FB]">
+            <div class="max-w-lg w-full mx-auto fade-in state-card rounded-2xl p-8">
+              <div class="flex items-center justify-center w-14 h-14 rounded-full bg-[#f3e8ff] text-[#6a0572] text-xl mx-auto mb-4 border border-[#E5E7EB]">
+                <i class="fas fa-archway"></i>
+              </div>
+              <p class="text-xl text-[#1e293b] font-semibold text-center">Memorial Document Viewer</p>
+              <p class="text-xs text-[#6B7280] mt-1 text-center">Connect to a deceased profile to view its uploaded documents.</p>
+              <div class="grid grid-cols-1 gap-3 mt-6">
+                <label class="text-[10px] uppercase tracking-widest text-[#6B7280] mb-0.5">Deceased ID *</label>
+                <input id="splashDeceasedId" class="shell-input" placeholder="e.g. DEC-2024-001 / admission number">
+              </div>
+              <div class="flex items-center gap-3 mt-5">
+                <button id="connectBtn" class="btn-upload flex-1 py-2.5 rounded-lg text-sm font-semibold">
+                  <i class="fas fa-plug text-xs mr-1.5"></i>Connect
+                </button>
               </div>
             </div>
           </div>
 
-          <!-- Empty documents state -->
-          <div id="emptyDocsView" class="absolute inset-0 flex items-center justify-center z-30 hidden" style="background-color: var(--canvas-bg);">
-            <div class="max-w-md mx-auto text-center fade-in">
-              <div class="flex items-center justify-center w-16 h-16 rounded-full bg-[#E8F5E9] text-[#132A13] text-2xl mx-auto mb-4"><i class="fas fa-folder-open"></i></div>
-              <p class="serif text-xl text-gray-900 dark:text-gray-100">No documents yet</p>
-              <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">Upload a document for this deceased profile and it will appear here.</p>
-              <button id="emptyUploadBtn" class="primary-btn mt-5 px-5 py-2.5 rounded-lg text-sm font-semibold"><i class="fas fa-cloud-arrow-up text-xs mr-1.5"></i>Upload First Document</button>
+          <!-- Empty State -->
+          <div id="emptyDocsView" class="absolute inset-0 flex items-center justify-center z-30 hidden bg-[#F7F9FB]">
+            <div class="max-w-md mx-auto text-center fade-in state-card p-8 rounded-xl">
+              <div class="w-16 h-16 rounded-full bg-[#f3e8ff] text-[#6a0572] text-2xl mx-auto mb-4 flex items-center justify-center border border-[#E5E7EB]">
+                <i class="fas fa-folder-open"></i>
+              </div>
+              <p class="text-xl text-[#1e293b] font-semibold">No documents yet</p>
+              <p class="text-sm text-[#6B7280] mt-2 leading-relaxed">Upload a document for this deceased profile and it will appear here.</p>
+              <button id="emptyUploadBtn" class="btn-upload mt-5 px-5 py-2.5 rounded-lg text-sm font-semibold">
+                <i class="fas fa-cloud-arrow-up text-xs mr-1.5"></i>Upload First Document
+              </button>
             </div>
           </div>
         </div>
       </main>
 
-      <!-- RIGHT: Thumbnails + Details -->
-      <aside id="rightPanel" class="right-panel w-56 bg-[#f7f3ee] dark:bg-[#111315] border-l border-[#d9d4ce] dark:border-[#2d3139] flex flex-col relative z-10 flex-shrink-0">
-        <div class="p-4 border-b border-[#d9d4ce] dark:border-[#2d3139]">
+      <!-- RIGHT: Thumbnails -->
+      <aside id="rightPanel" class="right-panel w-56 bg-white border-l border-[#E5E7EB] flex flex-col relative z-10 flex-shrink-0">
+        <div class="p-4 border-b border-[#E5E7EB]">
           <div class="flex items-center justify-between">
             <div>
-              <p class="serif text-lg text-gray-900 dark:text-gray-100 leading-none">Pages</p>
-              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Click to jump</p>
+              <p class="text-lg text-[#1e293b] font-semibold leading-none">Pages</p>
+              <p class="text-[10px] text-[#6B7280] mt-1">Click to jump</p>
             </div>
-            <i class="far fa-images text-[#0a0a0a]"></i>
+            <i class="far fa-images text-[#3498DB]"></i>
           </div>
         </div>
         <div id="thumbnailList" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
@@ -429,7 +390,6 @@
     </div>
   </div>
 
-  <!-- Toasts -->
   <div id="toastContainer" class="fixed bottom-6 right-6 z-50 space-y-2"></div>
 
 <script>
@@ -490,16 +450,16 @@
   let pdfDoc = null;
   let baseScale = 1.2;
   let zoomMultiplier = 1.0;
-  let currentDoc = null;   
-  let documents = [];      
-  let lastBytes = null;    
+  let currentDoc = null;
+  let documents = [];
+  let lastBytes = null;
   let imageBase = { w: 0, h: 0 };
 
   const $id = (i) => document.getElementById(i);
   const showEl = (el) => { if (el) el.classList.remove('hidden'); };
   const hideEl = (el) => { if (el) el.classList.add('hidden'); };
 
-  // ---------------- Formatting helpers ----------------
+  // ---------------- Helpers ----------------
   function formatDate(v) {
     if (!v) return '—';
     try {
@@ -527,51 +487,25 @@
     const ext = fileExt(name);
     if (m.includes('pdf') || ext === 'pdf') return 'pdf';
     if (m.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'].includes(ext)) return 'image';
-    if (
-      m.includes('word') ||
-      m.includes('document') ||
-      m.includes('officedocument') ||
-      ['doc', 'docx', 'rtf', 'odt', 'txt', 'csv'].includes(ext)
-    ) return 'document';
-    if (
-      m.includes('excel') ||
-      m.includes('spreadsheet') ||
-      ['xls', 'xlsx', 'ods'].includes(ext)
-    ) return 'sheet';
+    if (m.includes('word') || m.includes('document') || m.includes('officedocument') || ['doc', 'docx', 'rtf', 'odt', 'txt', 'csv'].includes(ext)) return 'document';
+    if (m.includes('excel') || m.includes('spreadsheet') || ['xls', 'xlsx', 'ods'].includes(ext)) return 'sheet';
     return 'other';
   }
-  function categoryOf(doc) {
-    if (doc.category && doc.category !== 'General') return doc.category;
-    const m = String(doc.mimeType || '').toLowerCase();
-    const ext = fileExt(doc.name);
-    if (m.includes('pdf') || ext === 'pdf') return 'PDF';
-    if (doc.kind === 'image') return 'Image';
-    return 'General';
-  }
   function docIconHtml(doc) {
-    if (!doc) return '<i class="fas fa-file-pdf text-[#DD2D4A] text-xs"></i>';
-    if (doc.kind === 'pdf') return '<i class="fas fa-file-pdf text-[#DD2D4A] text-xs"></i>';
-    if (doc.kind === 'image') return '<i class="fas fa-file-image text-[#132A13] text-xs"></i>';
-    if (doc.kind === 'sheet') return '<i class="fas fa-file-excel text-[#1F8F5F] text-xs"></i>';
-    return '<i class="fas fa-file-word text-[#00296B] text-xs"></i>';
-  }
-  function iconBg(doc) {
-    if (!doc) return 'bg-[#EFF6FF]';
-    if (doc.kind === 'pdf') return 'bg-[#FDE9EC]';
-    if (doc.kind === 'image') return 'bg-[#E8F5E9]';
-    if (doc.kind === 'sheet') return 'bg-[#EAF7F1]';
-    return 'bg-[#EFF6FF]';
+    if (!doc) return '<i class="fas fa-file-pdf text-xs"></i>';
+    if (doc.kind === 'pdf') return '<i class="fas fa-file-pdf text-xs"></i>';
+    if (doc.kind === 'image') return '<i class="fas fa-file-image text-xs"></i>';
+    if (doc.kind === 'sheet') return '<i class="fas fa-file-excel text-xs"></i>';
+    return '<i class="fas fa-file-word text-xs"></i>';
   }
 
-  // ---------------- Backend mapping ----------------
   function normalizeDoc(f) {
     if (!f) return null;
     const stored = f.storedName || f.stored_name || '';
     const rawName = f.originalName || f.original_name || f.name || f.file_name || f.fileName || stored.replace(/^doc-\d+-\d+-/, '') || 'Document';
     const mime = f.mimeType || f.mime_type || f.fileType || '';
     const id = f.documentId || f.document_id || f.id || (f.fileUrl || f.url || 'fs-' + rawName);
-    const sizeKB = (f.sizeKB !== undefined && f.sizeKB !== null) ? f.sizeKB
-      : (f.file_size ? Math.round(f.file_size / 1024) : 0);
+    const sizeKB = (f.sizeKB !== undefined && f.sizeKB !== null) ? f.sizeKB : (f.file_size ? Math.round(f.file_size / 1024) : 0);
     const d = {
       id, name: rawName, storedName: stored,
       url: f.url || f.fileUrl || '',
@@ -585,13 +519,12 @@
     return d;
   }
 
-  // ---------------- Backend API ----------------
   async function apiFetch(url, opts) {
     opts = opts || {};
     const res = await fetch(url, opts);
     if (!res.ok) {
       let msg = 'HTTP ' + res.status;
-      try { const b = await res.json(); msg = b.message || b.error || msg; } catch { /* ignore */ }
+      try { const b = await res.json(); msg = b.message || b.error || msg; } catch { }
       throw new Error(msg);
     }
     return res;
@@ -646,28 +579,26 @@
     return res.json();
   }
 
-  // ---------------- Escaping ----------------
   function escapeHtml(v) {
     return String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
   const escapeAttr = escapeHtml;
 
-  // ---------------- UI: document list ----------------
+  // ---------------- UI Rendering ----------------
   function renderDocList() {
     const listEl = $id('docList');
     $id('docCount').textContent = documents.length;
     listEl.innerHTML = documents.map((doc, i) => `
-      <div class="doc-item px-3 py-2.5 rounded-md cursor-pointer" data-idx="${i}" data-doc-id="${escapeAttr(doc.id)}">
+      <div class="doc-item px-3 py-2.5 cursor-pointer" data-idx="${i}" data-doc-id="${escapeAttr(doc.id)}">
         <div class="flex items-start gap-2.5">
-          <div class="w-8 h-8 rounded-lg ${iconBg(doc)} flex items-center justify-center flex-shrink-0">${docIconHtml(doc)}</div>
+          <div class="w-8 h-8 rounded-lg bg-[#F7F9FB] border border-[#E5E7EB] text-[#3498DB] flex items-center justify-center flex-shrink-0">${docIconHtml(doc)}</div>
           <div class="flex-1 min-w-0">
-            <p class="text-[13px] font-semibold truncate leading-tight text-gray-900 dark:text-gray-100" title="${escapeAttr(doc.name)}">${escapeHtml(doc.name)}</p>
-            <div class="flex items-center gap-1.5 mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+            <p class="doc-name text-[13px] font-semibold truncate leading-tight text-[#1e293b]" title="${escapeAttr(doc.name)}">${escapeHtml(doc.name)}</p>
+            <div class="flex items-center gap-1.5 mt-1 text-[10px] text-[#6B7280]">
               <span>${formatDate(doc.uploadedAt)}</span><span>·</span>
-              <span class="doc-pages">${doc.kind === 'pdf' ? (doc.pages ? doc.pages + 'p' : 'pdf') : (doc.kind === 'image' ? 'img' : 'file')}</span>
+              <span>${doc.kind === 'pdf' ? (doc.pages ? doc.pages + 'p' : 'pdf') : (doc.kind === 'image' ? 'img' : 'file')}</span>
               <span>·</span><span>${formatSize(doc.sizeKB)}</span>
             </div>
-            <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">${escapeHtml(categoryOf(doc))}</p>
           </div>
         </div>
       </div>`).join('');
@@ -690,7 +621,6 @@
     $id('deceasedIdLabel').textContent = DECEASED_ID || '—';
   }
 
-  // ---------------- Main open pipeline ----------------
   async function openDocument(doc) {
     if (!doc) return;
     currentDoc = doc;
@@ -705,7 +635,6 @@
       updateHeader(doc);
       showToast('Opened: ' + doc.name, 'success');
     } catch (err) {
-      console.error(err);
       showToast('Failed to open document: ' + err.message, 'error');
     } finally {
       showLoading(false);
@@ -716,23 +645,21 @@
     hideEl($id('pdfPagesContainer'));
     hideEl($id('imageViewer'));
     hideEl($id('unsupportedPanel'));
-    $id('pdfPagesContainer').innerHTML = ''; // Clear previous pages
+    $id('pdfPagesContainer').innerHTML = '';
     zoomMultiplier = 1.0;
     updateZoomLabel();
     $id('canvasArea').scrollTop = 0;
-    
+
     if (currentDoc.kind === 'pdf') return openPdfBytes(bytes);
     if (currentDoc.kind === 'image') return openImageBytes(bytes);
     return openOtherPanel();
   }
 
-  // ---------------- PDF rendering (Continuous Scroll) ----------------
   async function openPdfBytes(bytes) {
     const data = new Uint8Array(bytes);
     const loadingTask = pdfjsLib.getDocument({ data });
     pdfDoc = await loadingTask.promise;
     currentDoc.pages = pdfDoc.numPages;
-    
     showEl($id('pdfPagesContainer'));
     await renderAllPages();
     await renderThumbnails();
@@ -742,10 +669,8 @@
   async function renderAllPages() {
     if (!pdfDoc) return;
     const container = $id('pdfPagesContainer');
-    container.innerHTML = ''; // Clear for re-render on zoom
-    
-    // Calculate base scale to fit container width
-    const containerWidth = container.clientWidth - 32; // padding buffer
+    container.innerHTML = '';
+    const containerWidth = container.clientWidth - 32;
     const firstPage = await pdfDoc.getPage(1);
     const viewport0 = firstPage.getViewport({ scale: 1 });
     baseScale = Math.min(1.5, containerWidth / viewport0.width);
@@ -754,7 +679,6 @@
       const page = await pdfDoc.getPage(i);
       const scale = baseScale * zoomMultiplier;
       const viewport = page.getViewport({ scale });
-      
       const canvas = document.createElement('canvas');
       canvas.className = 'pdf-page-canvas';
       canvas.id = 'pdf-page-' + i;
@@ -762,9 +686,7 @@
       canvas.height = viewport.height;
       canvas.style.width = viewport.width + 'px';
       canvas.style.height = viewport.height + 'px';
-      
       container.appendChild(canvas);
-      
       const ctx = canvas.getContext('2d');
       await page.render({ canvasContext: ctx, viewport }).promise;
     }
@@ -774,15 +696,13 @@
     const list = $id('thumbnailList');
     list.innerHTML = '';
     if (!pdfDoc) return;
-    
     const frag = document.createDocumentFragment();
     for (let i = 1; i <= pdfDoc.numPages; i++) {
       const page = await pdfDoc.getPage(i);
       const viewport = page.getViewport({ scale: 0.22 });
       const wrap = document.createElement('div');
-      wrap.className = 'thumbnail';
+      wrap.className = 'thumbnail border-2 border-transparent rounded-md p-1 bg-white cursor-pointer hover:border-[#3498DB]';
       wrap.dataset.page = i;
-      
       const canvas = document.createElement('canvas');
       canvas.width = viewport.width;
       canvas.height = viewport.height;
@@ -790,11 +710,9 @@
       canvas.style.display = 'block';
       const ctx = canvas.getContext('2d');
       await page.render({ canvasContext: ctx, viewport }).promise;
-      
       const label = document.createElement('p');
-      label.className = 'text-[10px] text-center text-gray-500 dark:text-gray-400 mt-1.5 font-medium';
+      label.className = 'text-[10px] text-center text-[#6B7280] mt-1.5 font-medium';
       label.textContent = 'Page ' + i;
-      
       wrap.appendChild(canvas);
       wrap.appendChild(label);
       wrap.addEventListener('click', () => {
@@ -806,7 +724,6 @@
     list.appendChild(frag);
   }
 
-  // ---------------- Image rendering ----------------
   async function openImageBytes(bytes) {
     pdfDoc = null;
     clearThumbnails();
@@ -831,7 +748,6 @@
     updateZoomLabel();
   }
 
-  // ---------------- Unsupported / other types ----------------
   async function openCurrentDocumentExternally(options = {}) {
     if (!currentDoc) return;
     try {
@@ -845,22 +761,11 @@
         return;
       }
       if (options.print) {
-        const doPrint = () => {
-          try {
-            win.focus();
-            win.print();
-          } catch (e) {
-            console.warn('Print fallback failed:', e);
-          }
-        };
-        if (win.document.readyState === 'complete') {
-          setTimeout(doPrint, 600);
-        } else {
-          win.addEventListener('load', () => setTimeout(doPrint, 600), { once: true });
-        }
+        const doPrint = () => { try { win.focus(); win.print(); } catch (e) { } };
+        if (win.document.readyState === 'complete') setTimeout(doPrint, 600);
+        else win.addEventListener('load', () => setTimeout(doPrint, 600), { once: true });
       }
       setTimeout(() => URL.revokeObjectURL(url), 6000);
-      showToast(options.print ? 'Opening print preview…' : 'Opening document…', 'info');
     } catch (err) {
       showToast('Unable to open this document: ' + err.message, 'error');
     }
@@ -877,21 +782,26 @@
       : 'This document type cannot be previewed in the browser. You can open it in another tab or download it to view or print it.';
   }
 
-  // ---------------- Shared UI helpers ----------------
   function showLoading(show, text) {
     if (text) $id('loadingText').textContent = text;
     if (show) showEl($id('loadingOverlay')); else hideEl($id('loadingOverlay'));
   }
-  function updateZoomLabel() {
-    $id('zoomLevel').textContent = Math.round(zoomMultiplier * 100) + '%';
-  }
+  function updateZoomLabel() { $id('zoomLevel').textContent = Math.round(zoomMultiplier * 100) + '%'; }
   function clearThumbnails() { $id('thumbnailList').innerHTML = ''; }
-  
+
   function showToast(msg, type) {
     const container = $id('toastContainer');
     const toast = document.createElement('div');
-    const colors = { success: 'bg-[#132A13] text-white', error: 'bg-[#DD2D4A] text-white', info: 'bg-[#00296B] text-white' };
-    const icons = { success: 'fa-check-circle', error: 'fa-circle-exclamation', info: 'fa-circle-info' };
+    const colors = { 
+      success: 'bg-[#1DB954] text-white', 
+      error: 'bg-[#C0392B] text-white', 
+      info: 'bg-[#3498DB] text-white' 
+    };
+    const icons = { 
+      success: 'fa-check-circle', 
+      error: 'fa-circle-exclamation', 
+      info: 'fa-circle-info' 
+    };
     toast.className = (colors[type] || colors.info) + ' px-4 py-3 rounded-lg shadow-xl text-sm flex items-center gap-2.5 fade-in font-medium';
     toast.innerHTML = '<i class="fas ' + (icons[type] || icons.info) + '"></i> ' + escapeHtml(msg);
     container.appendChild(toast);
@@ -903,7 +813,6 @@
     }, 2800);
   }
 
-  // ---------------- Refresh list ----------------
   async function refreshList(autoSelect) {
     try {
       documents = await fetchDocuments();
@@ -923,18 +832,13 @@
         const match = documents.find(d => String(d.id) === String(DOC_ID) || String(d.storedName) === String(DOC_ID));
         if (match) { openDocument(match); return; }
       }
-      if (autoSelect && !currentDoc) {
-        openDocument(documents[0]);
-      } else if (!currentDoc) {
-        openDocument(documents[0]);
-      }
+      if (autoSelect && !currentDoc) openDocument(documents[0]);
+      else if (!currentDoc) openDocument(documents[0]);
     } catch (err) {
-      console.error('refreshList error:', err);
       showToast('Backend unavailable: ' + err.message, 'error');
     }
   }
 
-  // ---------------- Upload ----------------
   async function handleUpload(file) {
     if (!file) return;
     if (!DECEASED_ID) { showToast('No deceased profile connected', 'error'); return; }
@@ -961,7 +865,6 @@
     }
   }
 
-  // ---------------- Delete ----------------
   async function handleDelete() {
     if (!currentDoc) return;
     if (!confirm('Delete "' + currentDoc.name + '" permanently?')) return;
@@ -978,7 +881,6 @@
     }
   }
 
-  // ---------------- Download ----------------
   async function handleDownload() {
     if (!currentDoc) return;
     showLoading(true, 'Preparing download…');
@@ -1001,7 +903,6 @@
     }
   }
 
-  // ---------------- Print (Fixed & Reliable) ----------------
   async function handlePrint() {
     if (!currentDoc) return;
     showLoading(true, 'Preparing print…');
@@ -1017,13 +918,8 @@
           return;
         }
         const doPrint = () => {
-          try {
-            printWindow.focus();
-            printWindow.print();
-          } catch (e) {
-            console.warn('Direct print failed, opening file instead:', e);
-            printWindow.location.href = url;
-          }
+          try { printWindow.focus(); printWindow.print(); }
+          catch (e) { printWindow.location.href = url; }
         };
         setTimeout(doPrint, 700);
         setTimeout(() => URL.revokeObjectURL(url), 15000);
@@ -1037,7 +933,6 @@
     }
   }
 
-  // ---------------- Controls wiring ----------------
   function applyViewZoom() {
     if (pdfDoc) renderAllPages();
     else if (currentDoc && currentDoc.kind === 'image') applyImageTransform();
@@ -1066,25 +961,12 @@
       if (file) handleUpload(file);
     });
 
+    // Restore Collapse Feature
     $id('toggleRightPanel').addEventListener('click', () => {
       $id('rightPanel').classList.toggle('collapsed');
     });
   }
 
-  // ---------------- Theme ----------------
-  function wireTheme() {
-    const htmlEl = document.documentElement;
-    const saved = ls('memorialViewerTheme');
-    if (saved === 'dark') htmlEl.classList.add('dark');
-    $id('themeToggle').addEventListener('click', () => {
-      htmlEl.classList.toggle('dark');
-      try { localStorage.setItem('memorialViewerTheme', htmlEl.classList.contains('dark') ? 'dark' : 'light'); } catch { /* ignore */ }
-      // Re-render PDF to match dark/light background if needed
-      if (pdfDoc) renderAllPages();
-    });
-  }
-
-  // ---------------- Splash connect screen ----------------
   function wireSplash() {
     $id('splashDeceasedId').value = DECEASED_ID;
     $id('connectBtn').addEventListener('click', () => {
@@ -1096,10 +978,8 @@
     });
   }
 
-  // ---------------- Init ----------------
   async function init() {
     wireControls();
-    wireTheme();
     wireSplash();
     updateHeader(null);
     if (!DECEASED_ID) {

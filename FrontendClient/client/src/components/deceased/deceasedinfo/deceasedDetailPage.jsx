@@ -247,6 +247,7 @@ const DeceasedDetailPage = () => {
   const fetchData = useCallback(async (forceRefresh = false) => {
     if (!deceasedId) return;
 
+    const safeDeceasedId = encodeURIComponent(deceasedId);
     const cacheKey = `${deceasedId}-${getTenantSlug()}`;
 
     if (!forceRefresh) {
@@ -276,15 +277,15 @@ const DeceasedDetailPage = () => {
 
       // Fire ALL API calls in parallel — no waterfall
       const results = await Promise.allSettled([
-        axios.get(`${BASE_URL}/${deceasedId}`, { headers }),
-        axios.get(`${BASE_URL}/postmortem/${deceasedId}`, { headers }).catch(() => null),
-        axios.get(`${BASE_URL}/${deceasedId}/next-of-kin`, { headers }).catch(() => null),
-        axios.get(`${env.FULL_API_URL}/documents/${deceasedId}`, {
+        axios.get(`${BASE_URL}/${safeDeceasedId}`, { headers }),
+        axios.get(`${BASE_URL}/postmortem/${safeDeceasedId}`, { headers }).catch(() => null),
+        axios.get(`${BASE_URL}/${safeDeceasedId}/next-of-kin`, { headers }).catch(() => null),
+        axios.get(`${env.FULL_API_URL}/documents/${safeDeceasedId}`, {
           headers: { 'x-tenant-slug': slug, 'Authorization': token ? `Bearer ${token}` : '' },
           withCredentials: false
         }).catch(() => null),
-        axios.get(`${BASE_URL}/billing-summary/${deceasedId}`, { headers }).catch(() => null),
-        axios.get(`${BASE_URL}/charge-settings/${deceasedId}`, { headers }).catch(() => null),
+        axios.get(`${BASE_URL}/billing-summary/${safeDeceasedId}`, { headers }).catch(() => null),
+        axios.get(`${BASE_URL}/charge-settings/${safeDeceasedId}`, { headers }).catch(() => null),
         axios.get(`${env.FULL_API_URL}/body-release/by-admission/${encodeURIComponent(deceasedId)}`, { headers }).catch(() => null),
         axios.get(`${env.FULL_API_URL}/postmortem-requests`, { headers, params: { deceased_id: deceasedId } }).catch(() => null),
       ]);
@@ -401,6 +402,20 @@ const DeceasedDetailPage = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const handleRefresh = useCallback(async () => {
+    if (!deceasedId) return;
+    try {
+      setLoading(true);
+      await fetchData(true);
+      showToast('Deceased profile refreshed', 'success');
+    } catch (err) {
+      console.error('Error refreshing deceased profile:', err);
+      showToast('Failed to refresh deceased profile', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [deceasedId, fetchData]);
+
   const switchTab = (key) => setActiveTab(key);
 
   // ── Memoized derived values (avoid recalculation on every render) ──
@@ -424,7 +439,7 @@ const DeceasedDetailPage = () => {
           onBack={() => { const slug = getTenantSlug(); navigate(`/tenant/${slug}/all-deceased`); }}
           onTabSwitch={switchTab}
           onChargeSettingsClick={() => setShowChargeModal(true)}
-          onRefresh={() => fetchData(true)}
+          onRefresh={handleRefresh}
           onScanClick={() => setShowScanModal(true)}
         />
 

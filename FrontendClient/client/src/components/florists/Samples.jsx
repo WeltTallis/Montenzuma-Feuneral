@@ -62,11 +62,11 @@ const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital
 .mg-cart-chip{font:700 8px 'Inter',sans-serif;color:#f6f0eb;letter-spacing:.12em;text-transform:uppercase}
 .mg-cart-button{padding:7px 12px;border:none;background:#f6f0eb;color:#191612;font:800 8px 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0;box-shadow:none}
 .mg-cart-button:disabled{opacity:.5;cursor:not-allowed}
-.mg-empty{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--paper);text-align:center;padding:40px}
-.mg-empty-icon{opacity:.35;margin-bottom:16px}
-.mg-empty h3{font:400 22px var(--serif);color:var(--rosewood);margin-bottom:8px}
-.mg-empty p{font:400 15px var(--sans);color:var(--ink3)}
-@media (max-width:768px){.mg-bottom{padding:24px 20px 32px}.mg-name{font-size:1.6rem}.mg-price{font-size:1.5rem}.mg-arrow{width:42px;height:42px}}
+.mg-empty{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at top, rgba(255,255,255,.96), rgba(242,236,231,.92) 38%, rgba(228,220,214,.94) 100%);text-align:center;padding:40px}
+.mg-empty-icon{opacity:.45;margin-bottom:16px;color:#8b4557}
+.mg-empty h3{font:400 26px var(--serif);color:#4d3a38;margin:0 0 8px}
+.mg-empty p{font:400 15px var(--sans);color:#7d6661;max-width:30rem;line-height:1.6}
+@media (max-width:768px){.mg-bottom{padding:24px 20px 32px}.mg-name{font-size:1.6rem}.mg-price{font-size:1.5rem}.mg-arrow{width:42px;height:42px}} 
 `;
 
 /* ─── Main Component ─────────────────────────────────────────────────────── */
@@ -252,7 +252,8 @@ export default function Samples() {
       {loading ? (
         <div className="mg-empty">
           <Flower2 size={48} className="mg-empty-icon" />
-          <h3>Loading arrangements...</h3>
+          <h3>Loading Your Feed</h3>
+          <p>Preparing the latest arrangements for your snowy floral gallery.</p>
         </div>
       ) : arrangements.length === 0 ? (
         <div className="mg-empty">

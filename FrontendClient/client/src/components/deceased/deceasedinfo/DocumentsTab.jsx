@@ -227,9 +227,9 @@ const DocumentsTab = ({ documents, deceasedId }) => {
     }
   };
 
-  // Open the Memorial Document Viewer as a full standalone page in a new
+  // Open the Restpoint document reader as a full standalone page in a new
   // browser tab — NOT embedded in an iframe inside the deceased profile. The
-  // viewer (client/public/memorial-document-viewer.html) auto-reads the auth
+  // viewer (client/public/restpoint-document-reader.html) auto-reads the auth
   // token + tenant slug from localStorage, fetches the deceased's documents
   // from the documents-service via the API gateway, and renders them with
   // PDF.js. The deceasedId acts as the session-like identifier that scopes
@@ -241,7 +241,7 @@ const DocumentsTab = ({ documents, deceasedId }) => {
     if (docId) params.set('docId', docId);
     // session-like token so the URL never exposes a raw database id directly
     params.set('session', Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
-    window.open(`/memorial-document-viewer.html?${params.toString()}`, '_blank', 'noopener');
+    window.open(`/restpoint-document-reader.html?${params.toString()}`, '_blank', 'noopener');
   };
 
   return (

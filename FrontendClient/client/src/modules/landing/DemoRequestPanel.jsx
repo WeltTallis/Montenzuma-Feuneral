@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import api from '../../api/axios';
 
 /**
  * DemoRequestPanel — "Request Free Demo" slide-out panel pinned to the right edge
@@ -17,6 +18,13 @@ const DemoRequestPanel = () => {
   const [branchType, setBranchType] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [form, setForm] = useState({
+    funeralHomeName: '',
+    location: '',
+    email: '',
+    phone: '',
+    branches: '',
+  });
 
   // Lock page scroll while the panel is open so the background stays put.
   useEffect(() => {
@@ -39,14 +47,38 @@ const DemoRequestPanel = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    // Simulate the API call, then reveal the success overlay.
-    setTimeout(() => {
-      setSubmitting(false);
+
+    const payload = {
+      type: 'trial_request',
+      subject: '14-day free trial request',
+      message: [
+        `Funeral Home: ${form.funeralHomeName.trim()}`,
+        `Location: ${form.location.trim()}`,
+        `Email: ${form.email.trim()}`,
+        `Phone: ${form.phone.trim()}`,
+        `Branch Type: ${branchType || 'single'}`,
+        branchType === 'multi' && form.branches.trim() ? `Branches: ${form.branches.trim()}` : '',
+        'Trial: 14-day free trial',
+      ].filter(Boolean).join('\n'),
+      tenantName: 'Restpoint Landing Page',
+      userEmail: form.email.trim(),
+      userName: form.funeralHomeName.trim() || 'New lead',
+    };
+
+    try {
+      await api.post('/support/tickets', payload, {
+        headers: { 'x-tenant-slug': 'system_shared' },
+      });
       setSubmitted(true);
-    }, 600);
+    } catch (error) {
+      console.warn('Failed to submit free-trial request:', error);
+      alert('We could not send your trial request right now. Please try again in a moment.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -71,7 +103,7 @@ const DemoRequestPanel = () => {
           border: 1px solid rgba(169, 143, 110, 0.5);
           border-right: none;
           cursor: pointer;
-          z-index: 60;
+          z-index: 1400;
           box-shadow: -8px 0 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(169, 143, 110, 0.2); /* Added glow */
           transition: all 0.3s ease;
           display: flex;
@@ -116,7 +148,7 @@ const DemoRequestPanel = () => {
           inset: 0;
           background: rgba(0, 0, 0, 0.6);
           backdrop-filter: blur(4px);
-          z-index: 65;
+          z-index: 1300;
           opacity: 0;
           pointer-events: none;
           transition: opacity 0.4s ease;
@@ -139,7 +171,7 @@ const DemoRequestPanel = () => {
           color: #A98F6E;
           font-size: 1.3rem;
           cursor: pointer;
-          z-index: 80;
+          z-index: 1500;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -169,7 +201,7 @@ const DemoRequestPanel = () => {
           background-color: #0A0A0A;
           transform: translateX(100%);
           transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-          z-index: 70; /* Sits above backdrop */
+          z-index: 1400; /* Sits above backdrop */
           display: flex;
           box-shadow: -20px 0 50px rgba(0, 0, 0, 0.3);
           font-family: 'Inter', sans-serif;
@@ -536,12 +568,12 @@ const DemoRequestPanel = () => {
             <form className="drp-form" onSubmit={handleSubmit}>
               <div>
                 <label className="drp-label" htmlFor="drp-home-name">Funeral Home Name</label>
-                <input id="drp-home-name" type="text" className="drp-input" placeholder="Sterling & Hayes Memorial" required />
+                <input id="drp-home-name" type="text" className="drp-input" placeholder="Sterling & Hayes Memorial" value={form.funeralHomeName} onChange={(e) => setForm((prev) => ({ ...prev, funeralHomeName: e.target.value }))} required />
               </div>
 
               <div>
                 <label className="drp-label" htmlFor="drp-location">Location (City, Country)</label>
-                <input id="drp-location" type="text" className="drp-input" placeholder="Nairobi, Kenya" required />
+                <input id="drp-location" type="text" className="drp-input" placeholder="Nairobi, Kenya" value={form.location} onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))} required />
               </div>
 
               <div>
@@ -562,17 +594,17 @@ const DemoRequestPanel = () => {
               {/* Dynamic Multi-Branch Field */}
               <div className={`drp-branch ${branchType === 'multi' ? 'active' : ''}`}>
                 <label className="drp-label" htmlFor="drp-branches">List All Branches</label>
-                <textarea id="drp-branches" className="drp-textarea" rows="3" placeholder="e.g., Nairobi HQ, Mombasa Branch, Kisumu Branch" />
+                <textarea id="drp-branches" className="drp-textarea" rows="3" placeholder="e.g., Nairobi HQ, Mombasa Branch, Kisumu Branch" value={form.branches} onChange={(e) => setForm((prev) => ({ ...prev, branches: e.target.value }))} />
               </div>
 
               <div className="drp-grid">
                 <div>
                   <label className="drp-label" htmlFor="drp-email">Work Email</label>
-                  <input id="drp-email" type="email" className="drp-input" placeholder="director@sterling.com" required />
+                  <input id="drp-email" type="email" className="drp-input" placeholder="director@sterling.com" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} required />
                 </div>
                 <div>
                   <label className="drp-label" htmlFor="drp-phone">Phone Number</label>
-                  <input id="drp-phone" type="tel" className="drp-input" placeholder="+254 712 345 678" required />
+                  <input id="drp-phone" type="tel" className="drp-input" placeholder="+254 712 345 678" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} required />
                 </div>
               </div>
 

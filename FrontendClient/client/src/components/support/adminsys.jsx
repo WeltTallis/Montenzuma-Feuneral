@@ -37,6 +37,7 @@ const TYPE_META = {
     bug: { label: 'Bug Report', color: C.red, bg: C.redLight },
     feature: { label: 'Suggestion', color: '#16a34a', bg: C.greenLight },
     other: { label: 'General', color: C.gray600, bg: C.gray100 },
+    trial_request: { label: 'Free Trial', color: '#7c3aed', bg: '#f3e8ff' },
 };
 
 const FILTERS = [
