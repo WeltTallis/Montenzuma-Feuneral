@@ -38,7 +38,8 @@
     "provision-worker": "ts-node services/tenant-service/scripts/provision-worker.ts"
   },
   "dependencies": {
-    "pdfkit": "^0.19.1"
+    "pdfkit": "^0.19.1",
+    "perfect-freehand": "^1.2.3"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.7",

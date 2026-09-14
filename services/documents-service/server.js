@@ -75,6 +75,7 @@ const GLOBAL_UPLOADS_DIR = getGlobalUploadsDir();
 const sanitizeSlug = (v) => String(v || 'system_shared').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'system_shared';
 const getTenantSlug = (req) => sanitizeSlug(req.headers['x-tenant-slug'] || req.headers['x-tenant-id'] || 'system_shared');
 const tenantUploadDir = (t, d) => path.join(GLOBAL_UPLOADS_DIR, sanitizeSlug(t), 'documents', String(d || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100));
+const centralizedTenantUploadDir = (t, d) => path.join(GLOBAL_UPLOADS_DIR, sanitizeSlug(t), 'documents', sanitizeSlug(d));
 const normalizeDeceasedId = (value) => {
   let id = String(value || '').trim();
   try { id = decodeURIComponent(id); } catch { /* already decoded */ }
@@ -105,6 +106,26 @@ async function q(t, sql, params = []) {
 
 function isPDF(b) { return b && b.length >= 5 && b.toString('ascii', 0, 5) === '%PDF-'; }
 function getPDFVersion(b) { if (!b || b.length < 20) return 'unknown'; const m = b.toString('ascii', 0, 20).match(/%PDF-(\d+\.\d+)/); return m ? m[1] : 'unknown'; }
+
+function resolveDocumentPath(doc, tenantSlug) {
+  const candidates = [];
+  if (doc.file_path) {
+    candidates.push(path.isAbsolute(doc.file_path)
+      ? doc.file_path
+      : path.join(GLOBAL_UPLOADS_DIR, doc.file_path));
+  }
+
+  // Older records can contain an absolute path from another container or host.
+  // Rebuild the canonical shared-storage path from the tenant, deceased ID,
+  // and stored filename instead of trusting that stale prefix.
+  if (doc.stored_name && doc.deceased_id) {
+    candidates.push(path.join(tenantUploadDir(tenantSlug, doc.deceased_id), path.basename(doc.stored_name)));
+    candidates.push(path.join(centralizedTenantUploadDir(tenantSlug, doc.deceased_id), path.basename(doc.stored_name)));
+    candidates.push(path.join(GLOBAL_UPLOADS_DIR, '_legacy', 'documents', path.basename(doc.stored_name)));
+  }
+
+  return candidates.find(candidate => fs.existsSync(candidate)) || null;
+}
 
 async function createHighQualityPDF(o = {}) {
   const { content = '', outputPath = null, size = 'A4', margins = 40 } = o;
@@ -264,19 +285,13 @@ documentsRouter.post('/upload', flexibleUpload, handleDocumentUpload);
 // DOWNLOAD Document
 documentsRouter.get('/download/:documentId', async (req, res) => {
   try {
-    const docs = await q(req.tenantSlug, `SELECT file_path, original_name, mime_type, file_size FROM documents WHERE document_id = ? AND (tenant_slug = ? OR tenant_slug IS NULL)`, [req.params.documentId, req.tenantSlug]);
+    const docs = await q(req.tenantSlug, `SELECT deceased_id, stored_name, file_path, original_name, mime_type, file_size FROM documents WHERE document_id = ? AND (tenant_slug = ? OR tenant_slug IS NULL)`, [req.params.documentId, req.tenantSlug]);
     if (!docs.length) return res.status(404).json({ success: false, message: 'Not found' });
 
     const doc = docs[0];
-    let p = doc.file_path;
-    if (!p) return res.status(404).json({ success: false, message: 'File path not found in DB' });
-
-    // Resolve path if relative
-    if (!path.isAbsolute(p)) {
-      p = path.join(GLOBAL_UPLOADS_DIR, p);
-    }
-
-    if (!fs.existsSync(p)) return res.status(404).json({ success: false, message: 'File not found on disk' });
+    if (!doc.file_path && !doc.stored_name) return res.status(404).json({ success: false, message: 'File path not found in DB' });
+    const p = resolveDocumentPath(doc, req.tenantSlug);
+    if (!p) return res.status(404).json({ success: false, message: 'File not found on disk' });
 
     res.setHeader('Content-Type', doc.mime_type || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.original_name || 'document')}"`);
@@ -322,18 +337,13 @@ documentsRouter.delete('/:documentId', async (req, res) => {
 // GET Metadata
 documentsRouter.get('/:documentId/metadata', async (req, res) => {
   try {
-    const docs = await q(req.tenantSlug, `SELECT file_path, original_name, mime_type, file_size FROM documents WHERE document_id = ? AND (tenant_slug = ? OR tenant_slug IS NULL)`, [req.params.documentId, req.tenantSlug]);
+    const docs = await q(req.tenantSlug, `SELECT deceased_id, stored_name, file_path, original_name, mime_type, file_size FROM documents WHERE document_id = ? AND (tenant_slug = ? OR tenant_slug IS NULL)`, [req.params.documentId, req.tenantSlug]);
     if (!docs.length) return res.status(404).json({ success: false, message: 'Not found' });
 
     const doc = docs[0];
-    let p = doc.file_path;
-    if (!p) return res.status(404).json({ success: false, message: 'File path not found in DB' });
-
-    if (!path.isAbsolute(p)) {
-      p = path.join(GLOBAL_UPLOADS_DIR, p);
-    }
-
-    if (!fs.existsSync(p)) return res.status(404).json({ success: false, message: 'File not found on disk' });
+    if (!doc.file_path && !doc.stored_name) return res.status(404).json({ success: false, message: 'File path not found in DB' });
+    const p = resolveDocumentPath(doc, req.tenantSlug);
+    if (!p) return res.status(404).json({ success: false, message: 'File not found on disk' });
 
     const buf = await fs.promises.readFile(p, { limit: 1024 });
     if (isPDF(buf)) {

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, forwardRef, useImperativeHandle, useEffect } from 'react';
-import ReactSignatureCanvas from 'react-signature-canvas';
+import { getStroke } from 'perfect-freehand';
 import './SignaturePad.css';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -44,6 +44,21 @@ const Icons = {
   ),
 };
 
+const getPoint = (event, canvas) => {
+  const rect = canvas.getBoundingClientRect();
+  return [event.clientX - rect.left, event.clientY - rect.top, event.pressure > 0 ? event.pressure : 0.5];
+};
+
+const drawStroke = (ctx, points, options) => {
+  const outline = getStroke(points, options);
+  if (outline.length < 2) return;
+  ctx.beginPath();
+  ctx.moveTo(outline[0][0], outline[0][1]);
+  outline.slice(1).forEach(([x, y]) => ctx.lineTo(x, y));
+  ctx.closePath();
+  ctx.fill();
+};
+
 /* ═══════════════════════════════════════════════════════════════
    EXECUTIVE-LEVEL SIGNATURE PAD - ULTRA SMOOTH
    ════════════════════════════════════════════════════════════════ */
@@ -66,7 +81,9 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
 
   const wrapperRef = useRef(null);
   const canvasContainerRef = useRef(null);
-  const sigCanvas = useRef(null);
+  const canvasRef = useRef(null);
+  const strokesRef = useRef([]);
+  const activeStrokeRef = useRef(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -80,35 +97,19 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
   useEffect(() => {
     if (!isClient) return;
 
-    const measure = () => {
-      if (!canvasContainerRef.current) return;
-      const rect = canvasContainerRef.current.getBoundingClientRect();
-      const w = Math.floor(rect.width) || 800;
-      const h = Math.floor(rect.height) || 400;
+   const measure = () => {
+  if (!canvasContainerRef.current) return;
+  const rect = canvasContainerRef.current.getBoundingClientRect();
+  const dpr = Math.max(window.devicePixelRatio || 1, 1);
+  const w = Math.floor(rect.width) || 800;
+  const h = Math.floor(rect.height) || 400;
 
-      if (w > 0 && h > 0 && (w !== canvasSize.width || h !== canvasSize.height)) {
-        let existingData = null;
-        if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
-          try {
-            existingData = sigCanvas.current.toDataURL();
-          } catch (e) { /* ignore */ }
-        }
-
-        setCanvasSize({ width: w, height: h });
-
-        if (existingData) {
-          requestAnimationFrame(() => {
-            try {
-              sigCanvas.current?.fromDataURL(existingData, {
-                width: w,
-                height: h,
-                ratio: 1,
-              });
-            } catch (e) { /* ignore */ }
-          });
-        }
-      }
-    };
+  if (w > 0 && h > 0 && (w !== canvasSize.width || h !== canvasSize.height)) {
+    setCanvasSize({ width: w * dpr, height: h * dpr });
+    // Note: You'll also need to ensure the CSS width/height remains w/h
+    // The CSS provided above uses width: 100%; height: 100%; which handles this automatically!
+  }
+};
 
     measure();
 
@@ -128,17 +129,47 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
     };
   }, [canvasSize.width, canvasSize.height, isClient]);
 
+  const strokeOptions = {
+    size: penWidth * 2.2,
+    thinning: 0.55,
+    smoothing: 0.85,
+    streamline: 0.7,
+    simulatePressure: true,
+    start: { cap: true },
+    end: { cap: true },
+  };
+
+  const redraw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = penColor;
+    strokesRef.current.forEach(stroke => drawStroke(ctx, stroke, strokeOptions));
+    if (activeStrokeRef.current) drawStroke(ctx, activeStrokeRef.current, strokeOptions);
+  }, [penColor, penWidth]);
+
+  useEffect(() => {
+    redraw();
+  }, [canvasSize, redraw]);
+
   useImperativeHandle(ref, () => ({
     clear: handleClear,
-    isEmpty: () => sigCanvas.current?.isEmpty() ?? true,
-    toDataURL: (mime, includeBg) => sigCanvas.current?.toDataURL(mime, includeBg) ?? null,
-    toBlob: (cb, mime, q) => sigCanvas.current?.toBlob(cb, mime, q),
-    getTrimmedCanvas: () => sigCanvas.current?.getTrimmedCanvas(),
+    isEmpty: () => strokesRef.current.length === 0,
+    toDataURL: mime => canvasRef.current?.toDataURL(mime || 'image/png') ?? null,
+    toBlob: (cb, mime, q) => canvasRef.current?.toBlob(cb, mime, q),
+    getTrimmedCanvas: () => canvasRef.current,
     fromDataURL: (url, opts) => {
-      if (sigCanvas.current) {
-        sigCanvas.current.fromDataURL(url, opts);
+      const image = new Image();
+      image.onload = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0, opts?.width || canvas.width, opts?.height || canvas.height);
         setHasContent(true);
-      }
+      };
+      image.src = url;
     },
     undo: handleUndo,
   }));
@@ -146,10 +177,7 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
   const handleBegin = useCallback(() => {
     if (disabled || !isClient) return;
     try {
-      const currentData = sigCanvas.current?.toDataURL();
-      if (currentData) {
-        historyRef.current.push(currentData);
-      }
+      historyRef.current.push(strokesRef.current.map(stroke => stroke.map(point => [...point])));
     } catch (e) {
       console.warn('Signature Pad: Could not save history state', e);
     }
@@ -157,10 +185,15 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
 
   const handleEnd = useCallback(() => {
     if (disabled || !isClient) return;
+    const stroke = activeStrokeRef.current;
+    if (!stroke?.length) return;
+    strokesRef.current.push(stroke);
+    activeStrokeRef.current = null;
+    redraw();
     setHasContent(true);
     if (onChange) {
       try {
-        const data = sigCanvas.current?.toDataURL() ?? null;
+        const data = canvasRef.current?.toDataURL() ?? null;
         onChange(data);
       } catch (e) {
         console.warn('Signature Pad: Error generating data URL', e);
@@ -170,7 +203,9 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
 
   const handleClear = useCallback(() => {
     if (!isClient) return;
-    sigCanvas.current?.clear();
+    strokesRef.current = [];
+    activeStrokeRef.current = null;
+    redraw();
     historyRef.current = [];
     setHasContent(false);
     if (onChange) onChange(null);
@@ -182,21 +217,11 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
       handleClear();
       return;
     }
-    const prevState = historyRef.current.pop();
-    if (sigCanvas.current) {
-      sigCanvas.current.fromDataURL(prevState, {
-        width: sigCanvas.current.getCanvas().width,
-        height: sigCanvas.current.getCanvas().height,
-        ratio: 1,
-      });
-
-      if (sigCanvas.current.isEmpty()) {
-        setHasContent(false);
-        if (onChange) onChange(null);
-      } else {
-        if (onChange) onChange(prevState);
-      }
-    }
+    strokesRef.current = historyRef.current.pop();
+    redraw();
+    const empty = strokesRef.current.length === 0;
+    setHasContent(!empty);
+    if (onChange) onChange(empty ? null : canvasRef.current?.toDataURL() ?? null);
   }, [handleClear, onChange, isClient]);
 
   if (!isClient) {
@@ -231,7 +256,7 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
         <div className="sp-header-hint">Draw above</div>
       </div>
 
-      {/* Canvas Area - ULTRA SMOOTH EXECUTIVE SETTINGS */}
+      {/* Canvas Area - Perfect Freehand rendering */}
       <div className="sp-canvas-container" ref={canvasContainerRef}>
         {!hasContent && (
           <div className="sp-placeholder">
@@ -240,25 +265,26 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
           </div>
         )}
 
-        <ReactSignatureCanvas
-          ref={sigCanvas}
-          canvasProps={{
-            width: canvasSize.width,
-            height: canvasSize.height,
-            className: 'sp-canvas',
-            ...canvasProps,
+        <canvas
+          ref={canvasRef}
+          width={canvasSize.width}
+          height={canvasSize.height}
+          className="sp-canvas"
+          style={{ backgroundColor, ...canvasProps.style }}
+          onPointerDown={event => {
+            if (disabled) return;
+            event.currentTarget.setPointerCapture(event.pointerId);
+            handleBegin();
+            activeStrokeRef.current = [getPoint(event, event.currentTarget)];
+            redraw();
           }}
-          penColor={penColor}
-          dotSize={penWidth}
-          // ─── ULTRA SMOOTH EXECUTIVE SETTINGS ───
-          minWidth={penWidth * 0.3}       // Very thin at high speed
-          maxWidth={penWidth * 2.0}       // Thick at slow speed (executive feel)
-          velocityFilterWeight={0.35}     // Highly responsive = buttery smooth
-          backgroundColor={backgroundColor}
-          onBegin={handleBegin}
-          onEnd={handleEnd}
-          throttle={5}                   // Maximum smoothness
-          clearOnResize={false}
+          onPointerMove={event => {
+            if (!activeStrokeRef.current) return;
+            activeStrokeRef.current.push(getPoint(event, event.currentTarget));
+            redraw();
+          }}
+          onPointerUp={handleEnd}
+          onPointerCancel={handleEnd}
         />
       </div>
 

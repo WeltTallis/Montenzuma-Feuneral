@@ -1,0 +1,726 @@
+﻿
+=== root (@montezuma/restpoint) — 11 source files, 18 declared deps ===
+  USED (imported):
+    - @socket.io/redis-adapter
+    - cors
+    - dotenv
+    - express
+    - jsonwebtoken
+    - mysql2
+    - redis
+    - socket.io
+  SCRIPT (npm script CLI):
+    - concurrently
+    - ts-node
+  TYPES (@types):
+    - @types/cors
+    - @types/helmet
+    - @types/jsonwebtoken
+    - @types/node
+  !! UNUSED EVERYWHERE (candidates for removal):
+    - @biomejs/biome
+    - typescript
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - axios  <- used by: services/billing-service, services/bodycheckout-service, services/coffin-service, services/deceased-service, services/florist-service, services/hearse-service, services/support-service, services/tenant-service, services/workshop-service, shared, FrontendClient/client
+    - pdfkit  <- used by: services/analytics-service, services/deceased-service, services/documents-service, services/invoice-service
+  PHANTOM (imported here, not declared here):
+    - express-rate-limit  <- provided by: services/api-gateway, services/auth-service, services/billing-service, services/socketio-service, services/tenant-service
+    - helmet  <- provided by: services/analytics-service, services/api-gateway, services/auth-service, services/billing-service, services/bodycheckout-service, services/chemical-service, services/coffin-service, services/deceased-service, services/documents-service, services/extra-services, services/invoice-service, services/socketio-service, services/support-service, services/tenant-service
+
+=== packages/shared (@montezuma/shared) — 0 source files, 3 declared deps ===
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - dotenv  <- used by: root, packages/shared-config, packages/shared-logger, services/analytics-service, services/api-gateway, services/auth-service, services/billing-service, services/chemical-service, services/coffin-service, services/deceased-service, services/extra-services, services/florist-service, services/hearse-service, services/invoice-service, services/leave-service, services/socketio-service, services/store-service, services/support-service, services/tenant-service, services/workshop-service
+    - jsonwebtoken  <- used by: root, services/api-gateway, services/auth-service, services/socketio-service, services/tenant-service
+    - mysql2  <- used by: root, packages/shared-config, services/auth-service, services/billing-service, services/chemical-service, services/coffin-service, services/deceased-service, services/extra-services, services/florist-service, services/hearse-service, services/invoice-service, services/leave-service, services/store-service, services/support-service, services/tenant-service, services/workshop-service, shared
+
+=== packages/shared-config (@montezuma/shared-config) — 13 source files, 7 declared deps ===
+  USED (imported):
+    - dotenv
+    - express
+    - mysql2
+  SCRIPT (npm script CLI):
+    - rimraf
+    - typescript
+  TYPES (@types):
+    - @types/express
+    - @types/node
+
+=== packages/shared-logger (@montezuma/shared-logger) — 6 source files, 7 declared deps ===
+  USED (imported):
+    - dotenv
+    - pino
+  SCRIPT (npm script CLI):
+    - rimraf
+    - typescript
+  TYPES (@types):
+    - @types/node
+    - @types/pino
+  !! UNUSED EVERYWHERE (candidates for removal):
+    - pino-loki
+
+=== packages/shared-services (@montezuma/shared-services) — 15 source files, 8 declared deps ===
+  USED (imported):
+    - amqplib
+    - redis
+    - sharp
+  SCRIPT (npm script CLI):
+    - rimraf
+    - typescript
+  TYPES (@types):
+    - @types/amqplib
+    - @types/node
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - mysql2  <- used by: root, packages/shared-config, services/auth-service, services/billing-service, services/chemical-service, services/coffin-service, services/deceased-service, services/extra-services, services/florist-service, services/hearse-service, services/invoice-service, services/leave-service, services/store-service, services/support-service, services/tenant-service, services/workshop-service, shared
+  PHANTOM (imported here, not declared here):
+    - ${queueName}  <- provided by: <not declared anywhere>
+
+=== packages/shared-stamps (@montezuma/shared-stamps) — 6 source files, 6 declared deps ===
+  USED (imported):
+    - luxon
+    - sharp
+  SCRIPT (npm script CLI):
+    - rimraf
+    - typescript
+  TYPES (@types):
+    - @types/luxon
+    - @types/node
+
+=== packages/shared-utils (@montezuma/shared-utils) — 12 source files, 5 declared deps ===
+  USED (imported):
+    - luxon
+  SCRIPT (npm script CLI):
+    - rimraf
+    - typescript
+  TYPES (@types):
+    - @types/luxon
+    - @types/node
+
+=== services/analytics-service (@montezuma/analytics-service) — 45 source files, 30 declared deps ===
+  USED (imported):
+    - bullmq
+    - cors
+    - dotenv
+    - exceljs
+    - express
+    - express-async-handler
+    - helmet
+    - ioredis
+    - pdfkit
+    - prom-client
+    - socket.io
+  SCRIPT (npm script CLI):
+    - nodemon
+    - rimraf
+    - ts-node
+    - typescript
+  TYPES (@types):
+    - @types/cors
+    - @types/express
+    - @types/helmet
+    - @types/ioredis
+    - @types/node
+    - @types/pdfkit
+  !! UNUSED EVERYWHERE (candidates for removal):
+    - @montezuma/shared-config
+    - @montezuma/shared-logger
+    - @montezuma/shared-services
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - http-proxy-middleware  <- used by: services/api-gateway
+    - jsonwebtoken  <- used by: root, services/api-gateway, services/auth-service, services/socketio-service, services/tenant-service
+    - multer  <- used by: services/bodycheckout-service, services/coffin-service, services/documents-service, services/florist-service, services/hearse-service, services/leave-service, services/tenant-service
+    - mysql2  <- used by: root, packages/shared-config, services/auth-service, services/billing-service, services/chemical-service, services/coffin-service, services/deceased-service, services/extra-services, services/florist-service, services/hearse-service, services/invoice-service, services/leave-service, services/store-service, services/support-service, services/tenant-service, services/workshop-service, shared
+    - sharp  <- used by: packages/shared-services, packages/shared-stamps, services/bodycheckout-service, services/deceased-service, services/documents-service
+    - winston  <- used by: services/billing-service
+
+=== services/api-gateway (restpoint-gateway) — 4 source files, 22 declared deps ===
+  USED (imported):
+    - cookie-parser
+    - cors
+    - dotenv
+    - eslint-plugin-security
+    - express
+    - express-rate-limit
+    - helmet
+    - hpp
+    - http-proxy-middleware
+    - ioredis
+    - jsonwebtoken
+    - rate-limit-redis
+  SCRIPT (npm script CLI):
+    - nodemon
+  TYPES (@types):
+    - @types/cors
+    - @types/express
+    - @types/express-rate-limit
+    - @types/jsonwebtoken
+    - @types/node
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - express-async-handler  <- used by: services/analytics-service, services/extra-services, services/hearse-service, services/invoice-service
+    - mysql2  <- used by: root, packages/shared-config, services/auth-service, services/billing-service, services/chemical-service, services/coffin-service, services/deceased-service, services/extra-services, services/florist-service, services/hearse-service, services/invoice-service, services/leave-service, services/store-service, services/support-service, services/tenant-service, services/workshop-service, shared
+    - ts-node  <- used by: services/auth-service
+    - winston  <- used by: services/billing-service
+
+=== services/auth-service (auth-service) — 18 source files, 24 declared deps ===
+  USED (imported):
+    - bcryptjs
+    - cookie-parser
+    - cors
+    - dotenv
+    - express
+    - express-rate-limit
+    - express-session
+    - helmet
+    - hpp
+    - jsonwebtoken
+    - mysql2
+    - redis
+    - ts-node
+    - validator
+    - yargs
+  SCRIPT (npm script CLI):
+    - nodemon
+  TYPES (@types):
+    - @types/cookie-parser
+    - @types/express
+    - @types/express-session
+    - @types/hpp
+    - @types/validator
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - express-async-handler  <- used by: services/analytics-service, services/extra-services, services/hearse-service, services/invoice-service
+    - http-proxy-middleware  <- used by: services/api-gateway
+    - multer  <- used by: services/bodycheckout-service, services/coffin-service, services/documents-service, services/florist-service, services/hearse-service, services/leave-service, services/tenant-service
+
+=== services/billing-service (billing-service) — 6 source files, 18 declared deps ===
+  USED (imported):
+    - axios
+    - cors
+    - dotenv
+    - express
+    - express-rate-limit
+    - helmet
+    - mysql2
+    - node-cron
+    - pino
+    - winston
+  TYPES (@types):
+    - @types/cors
+    - @types/express
+    - @types/node
+    - @types/node-cron
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - exceljs  <- used by: services/analytics-service, services/deceased-service
+    - http-proxy-middleware  <- used by: services/api-gateway
+    - multer  <- used by: services/bodycheckout-service, services/coffin-service, services/documents-service, services/florist-service, services/hearse-service, services/leave-service, services/tenant-service
+    - sharp  <- used by: packages/shared-services, packages/shared-stamps, services/bodycheckout-service, services/deceased-service, services/documents-service
+
+=== services/bodycheckout-service (@montezuma/bodycheckout-service) — 9 source files, 22 declared deps ===
+  USED (imported):
+    - axios
+    - cors
+    - express
+    - helmet
+    - multer
+    - sharp
+    - zod
+  SCRIPT (npm script CLI):
+    - nodemon
+    - rimraf
+    - ts-node
+    - typescript
+  TYPES (@types):
+    - @types/express
+    - @types/multer
+    - @types/node
+  !! UNUSED EVERYWHERE (candidates for removal):
+    - @montezuma/shared-config
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - bullmq  <- used by: services/analytics-service, services/deceased-service, services/tenant-service
+    - dotenv  <- used by: root, packages/shared-config, packages/shared-logger, services/analytics-service, services/api-gateway, services/auth-service, services/billing-service, services/chemical-service, services/coffin-service, services/deceased-service, services/extra-services, services/florist-service, services/hearse-service, services/invoice-service, services/leave-service, services/socketio-service, services/store-service, services/support-service, services/tenant-service, services/workshop-service
+    - http-proxy-middleware  <- used by: services/api-gateway
+    - ioredis  <- used by: services/analytics-service, services/api-gateway, services/deceased-service, services/invoice-service
+    - jsonwebtoken  <- used by: root, services/api-gateway, services/auth-service, services/socketio-service, services/tenant-service
+    - mysql2  <- used by: root, packages/shared-config, services/auth-service, services/billing-service, services/chemical-service, services/coffin-service, services/deceased-service, services/extra-services, services/florist-service, services/hearse-service, services/invoice-service, services/leave-service, services/store-service, services/support-service, services/tenant-service, services/workshop-service, shared
+    - winston  <- used by: services/billing-service
+
+=== services/chemical-service (chemical-service) — 6 source files, 6 declared deps ===
+  USED (imported):
+    - cors
+    - dotenv
+    - express
+    - helmet
+    - mysql2
+  SCRIPT (npm script CLI):
+    - nodemon
+
+=== services/coffin-service (@montezuma/coffin-service) — 21 source files, 25 declared deps ===
+  USED (imported):
+    - axios
+    - cors
+    - dotenv
+    - express
+    - helmet
+    - knex
+    - multer
+    - mysql2
+  SCRIPT (npm script CLI):
+    - nodemon
+    - typescript
+  TYPES (@types):
+    - @types/cors
+    - @types/express
+    - @types/multer
+    - @types/node
+  !! UNUSED EVERYWHERE (candidates for removal):
+    - @montezuma/shared-config
+    - @montezuma/shared-logger
+    - @montezuma/shared-services
+    - @montezuma/shared-utils
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - bullmq  <- used by: services/analytics-service, services/deceased-service, services/tenant-service
+    - exceljs  <- used by: services/analytics-service, services/deceased-service
+    - http-proxy-middleware  <- used by: services/api-gateway
+    - ioredis  <- used by: services/analytics-service, services/api-gateway, services/deceased-service, services/invoice-service
+    - jsonwebtoken  <- used by: root, services/api-gateway, services/auth-service, services/socketio-service, services/tenant-service
+    - sharp  <- used by: packages/shared-services, packages/shared-stamps, services/bodycheckout-service, services/deceased-service, services/documents-service
+    - ts-node  <- used by: services/auth-service
+
+=== services/deceased-service (@montezuma/deceased-service) — 36 source files, 32 declared deps ===
+  USED (imported):
+    - axios
+    - bullmq
+    - cors
+    - dotenv
+    - exceljs
+    - express
+    - helmet
+    - ioredis
+    - luxon
+    - mysql2
+    - pdfkit
+    - sharp
+    - socket.io
+    - zod
+  SCRIPT (npm script CLI):
+    - nodemon
+    - ts-node
+    - typescript
+  TYPES (@types):
+    - @types/cors
+    - @types/exceljs
+    - @types/express
+    - @types/ioredis
+    - @types/node
+    - @types/pdfkit
+  !! UNUSED EVERYWHERE (candidates for removal):
+    - @montezuma/shared-config
+    - @montezuma/shared-logger
+    - @montezuma/shared-services
+    - @montezuma/shared-stamps
+    - @montezuma/shared-utils
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - http-proxy-middleware  <- used by: services/api-gateway
+    - jsonwebtoken  <- used by: root, services/api-gateway, services/auth-service, services/socketio-service, services/tenant-service
+    - multer  <- used by: services/bodycheckout-service, services/coffin-service, services/documents-service, services/florist-service, services/hearse-service, services/leave-service, services/tenant-service
+    - winston  <- used by: services/billing-service
+
+=== services/documents-service (@montezuma/documents-service) — 3 source files, 14 declared deps ===
+  USED (imported):
+    - cors
+    - express
+    - helmet
+    - multer
+    - pdfkit
+    - sharp
+  SCRIPT (npm script CLI):
+    - nodemon
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - bullmq  <- used by: services/analytics-service, services/deceased-service, services/tenant-service
+    - dotenv  <- used by: root, packages/shared-config, packages/shared-logger, services/analytics-service, services/api-gateway, services/auth-service, services/billing-service, services/chemical-service, services/coffin-service, services/deceased-service, services/extra-services, services/florist-service, services/hearse-service, services/invoice-service, services/leave-service, services/socketio-service, services/store-service, services/support-service, services/tenant-service, services/workshop-service
+    - http-proxy-middleware  <- used by: services/api-gateway
+    - ioredis  <- used by: services/analytics-service, services/api-gateway, services/deceased-service, services/invoice-service
+    - jsonwebtoken  <- used by: root, services/api-gateway, services/auth-service, services/socketio-service, services/tenant-service
+    - mysql2  <- used by: root, packages/shared-config, services/auth-service, services/billing-service, services/chemical-service, services/coffin-service, services/deceased-service, services/extra-services, services/florist-service, services/hearse-service, services/invoice-service, services/leave-service, services/store-service, services/support-service, services/tenant-service, services/workshop-service, shared
+    - winston  <- used by: services/billing-service
+
+=== services/extra-services (@restpoint/extra-services) — 4 source files, 7 declared deps ===
+  USED (imported):
+    - cors
+    - dotenv
+    - express
+    - express-async-handler
+    - helmet
+    - mysql2
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - jsonwebtoken  <- used by: root, services/api-gateway, services/auth-service, services/socketio-service, services/tenant-service
+
+=== services/florist-service (florist-service) — 13 source files, 15 declared deps ===
+  USED (imported):
+    - axios
+    - cors
+    - dotenv
+    - express
+    - knex
+    - multer
+    - mysql2
+  SCRIPT (npm script CLI):
+    - nodemon
+    - ts-node
+    - ts-node-dev
+    - typescript
+  TYPES (@types):
+    - @types/cors
+    - @types/express
+    - @types/node
+  !! UNUSED EVERYWHERE (candidates for removal):
+    - @montezuma/shared-services
+
+=== services/hearse-service (hearse-service) — 22 source files, 21 declared deps ===
+  USED (imported):
+    - axios
+    - cors
+    - dotenv
+    - express
+    - express-async-handler
+    - knex
+    - multer
+    - mysql2
+    - node-cron
+    - socket.io
+  SCRIPT (npm script CLI):
+    - nodemon
+    - typescript
+  TYPES (@types):
+    - @types/cors
+    - @types/express
+    - @types/multer
+    - @types/node
+  !! UNUSED EVERYWHERE (candidates for removal):
+    - @montezuma/shared-logger
+    - @montezuma/shared-services
+    - @montezuma/shared-utils
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - http-proxy-middleware  <- used by: services/api-gateway
+    - jsonwebtoken  <- used by: root, services/api-gateway, services/auth-service, services/socketio-service, services/tenant-service
+
+=== services/invoice-service (@montezuma/invoice-service) — 11 source files, 24 declared deps ===
+  USED (imported):
+    - cors
+    - dotenv
+    - escpos
+    - escpos-network
+    - escpos-usb
+    - express
+    - express-async-handler
+    - helmet
+    - ioredis
+    - mysql2
+    - pdfkit
+  SCRIPT (npm script CLI):
+    - nodemon
+    - rimraf
+    - ts-node
+    - typescript
+  TYPES (@types):
+    - @types/cors
+    - @types/express
+    - @types/node
+    - @types/pdfkit
+  !! UNUSED EVERYWHERE (candidates for removal):
+    - @montezuma/shared-stamps
+    - tsx
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - bullmq  <- used by: services/analytics-service, services/deceased-service, services/tenant-service
+    - jsonwebtoken  <- used by: root, services/api-gateway, services/auth-service, services/socketio-service, services/tenant-service
+    - winston  <- used by: services/billing-service
+  PHANTOM (imported here, not declared here):
+    - node-bluetooth-serial  <- provided by: <not declared anywhere>
+
+=== services/leave-service (leave-service) — 6 source files, 9 declared deps ===
+  USED (imported):
+    - bcryptjs
+    - cors
+    - dotenv
+    - express
+    - multer
+    - mysql2
+    - socket.io
+  SCRIPT (npm script CLI):
+    - nodemon
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - http-proxy-middleware  <- used by: services/api-gateway
+
+=== services/scanner-bridge (@montezuma/scanner-bridge) — 9 source files, 6 declared deps ===
+  USED (imported):
+    - esbuild
+    - ws
+  SCRIPT (npm script CLI):
+    - pkg
+    - typescript
+  TYPES (@types):
+    - @types/node
+    - @types/ws
+  PHANTOM (imported here, not declared here):
+    - bufferutil  <- provided by: <not declared anywhere>
+    - utf-8-validate  <- provided by: <not declared anywhere>
+
+=== services/socketio-service (socketio-service) — 2 source files, 19 declared deps ===
+  USED (imported):
+    - @socket.io/redis-adapter
+    - cors
+    - dotenv
+    - express
+    - express-rate-limit
+    - helmet
+    - jsonwebtoken
+    - redis
+    - socket.io
+  SCRIPT (npm script CLI):
+    - nodemon
+    - ts-node
+    - typescript
+  TYPES (@types):
+    - @types/cors
+    - @types/express
+    - @types/express-rate-limit
+    - @types/helmet
+    - @types/jsonwebtoken
+    - @types/node
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - hpp  <- used by: services/api-gateway, services/auth-service
+
+=== services/store-service (store-service) — 6 source files, 13 declared deps ===
+  USED (imported):
+    - cors
+    - dotenv
+    - express
+    - knex
+    - mysql2
+  SCRIPT (npm script CLI):
+    - nodemon
+    - ts-node
+    - ts-node-dev
+    - typescript
+  TYPES (@types):
+    - @types/cors
+    - @types/express
+    - @types/node
+  !! UNUSED EVERYWHERE (candidates for removal):
+    - tsx
+
+=== services/support-service (support-service) — 5 source files, 7 declared deps ===
+  USED (imported):
+    - axios
+    - cors
+    - dotenv
+    - express
+    - helmet
+    - mysql2
+  SCRIPT (npm script CLI):
+    - nodemon
+
+=== services/tenant-service (@restpoint/tenant-service) — 45 source files, 27 declared deps ===
+  USED (imported):
+    - bcryptjs
+    - bullmq
+    - cors
+    - dotenv
+    - express
+    - express-rate-limit
+    - fs-extra
+    - jsonwebtoken
+    - knex
+    - multer
+    - mysql2
+    - slugify
+    - uuid
+  SCRIPT (npm script CLI):
+    - nodemon
+    - rimraf
+    - ts-node
+    - typescript
+  TYPES (@types):
+    - @types/express
+    - @types/multer
+    - @types/node
+  !! UNUSED EVERYWHERE (candidates for removal):
+    - @montezuma/shared-config
+    - @montezuma/shared-logger
+    - @montezuma/shared-services
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - helmet  <- used by: root, services/analytics-service, services/api-gateway, services/auth-service, services/billing-service, services/bodycheckout-service, services/chemical-service, services/coffin-service, services/deceased-service, services/documents-service, services/extra-services, services/invoice-service, services/socketio-service, services/support-service
+    - http-proxy-middleware  <- used by: services/api-gateway
+    - ioredis  <- used by: services/analytics-service, services/api-gateway, services/deceased-service, services/invoice-service
+    - winston  <- used by: services/billing-service
+  PHANTOM (imported here, not declared here):
+    - axios  <- provided by: root, services/billing-service, services/bodycheckout-service, services/coffin-service, services/deceased-service, services/florist-service, services/hearse-service, services/support-service, services/workshop-service, shared, FrontendClient/client
+    - minimist  <- provided by: <not declared anywhere>
+
+=== services/workshop-service (workshop-service) — 22 source files, 18 declared deps ===
+  USED (imported):
+    - axios
+    - cors
+    - dotenv
+    - express
+    - knex
+    - mysql2
+    - socket.io
+  SCRIPT (npm script CLI):
+    - nodemon
+    - ts-node-dev
+    - typescript
+  TYPES (@types):
+    - @types/cors
+    - @types/express
+    - @types/node
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - bcryptjs  <- used by: services/auth-service, services/leave-service, services/tenant-service
+    - chart.js  <- used by: FrontendClient/client
+    - jsonwebtoken  <- used by: root, services/api-gateway, services/auth-service, services/socketio-service, services/tenant-service
+    - pdfkit  <- used by: services/analytics-service, services/deceased-service, services/documents-service, services/invoice-service
+    - ts-node  <- used by: services/auth-service
+
+=== shared (@restpoint/shared) — 33 source files, 6 declared deps ===
+  USED (imported):
+    - axios
+    - express
+    - mysql2
+    - prom-client
+  ~ USED ONLY BY OTHER WORKSPACES (dead weight here):
+    - dotenv  <- used by: root, packages/shared-config, packages/shared-logger, services/analytics-service, services/api-gateway, services/auth-service, services/billing-service, services/chemical-service, services/coffin-service, services/deceased-service, services/extra-services, services/florist-service, services/hearse-service, services/invoice-service, services/leave-service, services/socketio-service, services/store-service, services/support-service, services/tenant-service, services/workshop-service
+    - jsonwebtoken  <- used by: root, services/api-gateway, services/auth-service, services/socketio-service, services/tenant-service
+
+=== FrontendClient/client (client) — 816 source files, 71 declared deps ===
+  USED (imported):
+    - @bwip-js/browser
+    - @eslint/js
+    - @fullcalendar/daygrid
+    - @fullcalendar/interaction
+    - @fullcalendar/react
+    - @fullcalendar/timegrid
+    - @radix-ui/react-slot
+    - @tailwindcss/vite
+    - @vitejs/plugin-react
+    - @vkhangstack/veloqr
+    - axios
+    - bootstrap
+    - chart.js
+    - class-variance-authority
+    - clsx
+    - date-fns
+    - eslint
+    - eslint-plugin-react-hooks
+    - eslint-plugin-react-refresh
+    - globals
+    - lucide-react
+    - pdfjs-dist
+    - qrcode.react
+    - react
+    - react-bootstrap
+    - react-dom
+    - react-helmet-async
+    - react-pdf
+    - react-router-dom
+    - react-signature-canvas
+    - react-to-print
+    - react-toastify
+    - react-webcam
+    - recharts
+    - socket.io-client
+    - styled-components
+    - sweetalert2
+    - tailwind-merge
+    - tesseract.js
+    - vite
+    - vite-plugin-compression2
+    - zustand
+  TYPES (@types):
+    - @types/react
+    - @types/react-dom
+  !! UNUSED EVERYWHERE (candidates for removal):
+    - @emotion/react
+    - @emotion/styled
+    - @fullcalendar/core
+    - @fullcalendar/moment
+    - @mui/icons-material
+    - @mui/material
+    - @tailwindcss/cli
+    - @tailwindcss/postcss
+    - @tanstack/react-query
+    - autoprefixer
+    - chartjs-adapter-date-fns
+    - echarts
+    - fabric
+    - framer-motion
+    - moment
+    - postcss
+    - react-big-calendar
+    - react-chartjs-2
+    - react-datepicker
+    - react-error-boundary
+    - react-gauge-chart
+    - react-intersection-observer
+    - react-window
+    - tailwindcss
+    - terser
+    - three
+    - tw-animate-css
+  PHANTOM (imported here, not declared here):
+    - ,  <- provided by: <not declared anywhere>
+    - ,
+          res.data.branches,
+            <- provided by: <not declared anywhere>
+    - , from);
+    if (to) params.append(  <- provided by: <not declared anywhere>
+    - , label:   <- provided by: <not declared anywhere>
+    - );
+        setSubmitLoading(false);
+        return;
+      }
+      const fromBranchRec = branches.find((b) => b.id == sourceBranchId); 
+      const toBranchRec = branches.find((b) => b.id == currentBranch); 
+      const res = await api.post(  <- provided by: <not declared anywhere>
+    - )} style={inputS} placeholder=  <- provided by: <not declared anywhere>
+    - @/utils  <- provided by: <not declared anywhere>
+    - @radix-ui/react-accordion  <- provided by: <not declared anywhere>
+    - @radix-ui/react-alert-dialog  <- provided by: <not declared anywhere>
+    - @radix-ui/react-aspect-ratio  <- provided by: <not declared anywhere>
+    - @radix-ui/react-avatar  <- provided by: <not declared anywhere>
+    - @radix-ui/react-checkbox  <- provided by: <not declared anywhere>
+    - @radix-ui/react-collapsible  <- provided by: <not declared anywhere>
+    - @radix-ui/react-context-menu  <- provided by: <not declared anywhere>
+    - @radix-ui/react-dialog  <- provided by: <not declared anywhere>
+    - @radix-ui/react-dropdown-menu  <- provided by: <not declared anywhere>
+    - @radix-ui/react-hover-card  <- provided by: <not declared anywhere>
+    - @radix-ui/react-label  <- provided by: <not declared anywhere>
+    - @radix-ui/react-menubar  <- provided by: <not declared anywhere>
+    - @radix-ui/react-navigation-menu  <- provided by: <not declared anywhere>
+    - @radix-ui/react-popover  <- provided by: <not declared anywhere>
+    - @radix-ui/react-progress  <- provided by: <not declared anywhere>
+    - @radix-ui/react-radio-group  <- provided by: <not declared anywhere>
+    - @radix-ui/react-scroll-area  <- provided by: <not declared anywhere>
+    - @radix-ui/react-select  <- provided by: <not declared anywhere>
+    - @radix-ui/react-separator  <- provided by: <not declared anywhere>
+    - @radix-ui/react-slider  <- provided by: <not declared anywhere>
+    - @radix-ui/react-switch  <- provided by: <not declared anywhere>
+    - @radix-ui/react-tabs  <- provided by: <not declared anywhere>
+    - @radix-ui/react-toggle  <- provided by: <not declared anywhere>
+    - @radix-ui/react-toggle-group  <- provided by: <not declared anywhere>
+    - @radix-ui/react-tooltip  <- provided by: <not declared anywhere>
+    - ${relPath}  <- provided by: <not declared anywhere>
+    - antd  <- provided by: <not declared anywhere>
+    - cmdk  <- provided by: <not declared anywhere>
+    - dayjs  <- provided by: <not declared anywhere>
+    - electron  <- provided by: <not declared anywhere>
+    - embla-carousel-react  <- provided by: <not declared anywhere>
+    - formik  <- provided by: <not declared anywhere>
+    - input-otp  <- provided by: <not declared anywhere>
+    - next-themes  <- provided by: <not declared anywhere>
+    - react-day-picker  <- provided by: <not declared anywhere>
+    - react-hook-form  <- provided by: <not declared anywhere>
+    - react-query  <- provided by: <not declared anywhere>
+    - react-resizable-panels  <- provided by: <not declared anywhere>
+    - sonner  <- provided by: <not declared anywhere>
+    - vaul  <- provided by: <not declared anywhere>
+    - yup  <- provided by: <not declared anywhere>
+
+(JSON report also written to scripts\dependency-report.json)

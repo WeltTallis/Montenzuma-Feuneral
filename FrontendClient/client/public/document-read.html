@@ -928,6 +928,7 @@
     }
   }
 
+
   async function handlePrint() {
     if (!currentDoc) return;
     showLoading(true, 'Preparing print…');
@@ -936,22 +937,27 @@
         const data = lastBytes || (await fetchBytesFor(currentDoc));
         const blob = new Blob([data], { type: getBlobMimeType(currentDoc) });
         const url = URL.createObjectURL(blob);
-        const printWindow = window.open('', '_blank', 'noopener,noreferrer');
-        if (!printWindow) {
-          showToast('Please allow pop-ups to print this file.', 'error');
-          showLoading(false);
-          return;
-        }
-        printWindow.document.write('<!doctype html><html><head><title>Print Document</title></head><body style="margin:0;background:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;">' +
-          '<embed src="' + url + '" type="' + getBlobMimeType(currentDoc) + '" style="width:100vw;height:100vh;border:none;" />' +
-          '</body></html>');
-        printWindow.document.close();
-        const doPrint = () => {
-          try { printWindow.focus(); printWindow.print(); }
-          catch (e) { printWindow.location.href = url; }
+        const printFrame = document.createElement('iframe');
+        printFrame.style.position = 'fixed';
+        printFrame.style.width = '1px';
+        printFrame.style.height = '1px';
+        printFrame.style.left = '-9999px';
+        printFrame.style.border = '0';
+        printFrame.src = url;
+        document.body.appendChild(printFrame);
+        printFrame.onload = () => {
+          setTimeout(() => {
+            try {
+              printFrame.contentWindow.focus();
+              printFrame.contentWindow.print();
+            } finally {
+              setTimeout(() => {
+                printFrame.remove();
+                URL.revokeObjectURL(url);
+              }, 1000);
+            }
+          }, 500);
         };
-        setTimeout(doPrint, 1200);
-        setTimeout(() => URL.revokeObjectURL(url), 20000);
       } else {
         await openCurrentDocumentExternally({ print: true });
       }
