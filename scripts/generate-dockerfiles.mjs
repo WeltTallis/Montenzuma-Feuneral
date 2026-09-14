@@ -296,7 +296,7 @@ function renderWorkspaceDockerfile(svc, cfg) {
   const port = cfg.port || 5000;
   const needsTsx = cfg.cmd[0] === 'tsx' || (cfg.cmd[0] === 'sh' && cfg.cmd.join(' ').includes('tsx'));
   const manifests = manifestLines(svc, sharedPkgs).map((l) => `${l}`).join('\n');
-    const prodManifests = prodManifestLines(sharedPkgs);
+    const prodManifests = prodManifestLines(sharedPkgs).join('\n');
   const envLines = [
     'ENV NODE_ENV=production',
     `ENV PORT=${port}`,
