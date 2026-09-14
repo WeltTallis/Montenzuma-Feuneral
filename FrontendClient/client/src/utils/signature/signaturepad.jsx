@@ -153,27 +153,6 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
     redraw();
   }, [canvasSize, redraw]);
 
-  useImperativeHandle(ref, () => ({
-    clear: handleClear,
-    isEmpty: () => strokesRef.current.length === 0,
-    toDataURL: mime => canvasRef.current?.toDataURL(mime || 'image/png') ?? null,
-    toBlob: (cb, mime, q) => canvasRef.current?.toBlob(cb, mime, q),
-    getTrimmedCanvas: () => canvasRef.current,
-    fromDataURL: (url, opts) => {
-      const image = new Image();
-      image.onload = () => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(image, 0, 0, opts?.width || canvas.width, opts?.height || canvas.height);
-        setHasContent(true);
-      };
-      image.src = url;
-    },
-    undo: handleUndo,
-  }));
-
   const handleBegin = useCallback(() => {
     if (disabled || !isClient) return;
     try {
@@ -223,6 +202,27 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
     setHasContent(!empty);
     if (onChange) onChange(empty ? null : canvasRef.current?.toDataURL() ?? null);
   }, [handleClear, onChange, isClient]);
+
+  useImperativeHandle(ref, () => ({
+    clear: handleClear,
+    isEmpty: () => strokesRef.current.length === 0,
+    toDataURL: mime => canvasRef.current?.toDataURL(mime || 'image/png') ?? null,
+    toBlob: (cb, mime, q) => canvasRef.current?.toBlob(cb, mime, q),
+    getTrimmedCanvas: () => canvasRef.current,
+    fromDataURL: (url, opts) => {
+      const image = new Image();
+      image.onload = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0, opts?.width || canvas.width, opts?.height || canvas.height);
+        setHasContent(true);
+      };
+      image.src = url;
+    },
+    undo: handleUndo,
+  }), [handleClear, handleUndo]);
 
   if (!isClient) {
     return (
