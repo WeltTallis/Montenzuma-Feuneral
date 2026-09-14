@@ -241,7 +241,30 @@ function manifestLines(svc, sharedPkgs) {
     'COPY package.json package-lock.json tsconfig.base.json ./',
     ...sharedPkgs.map((p) => `COPY packages/${p}/package.json ./packages/${p}/`),
     'COPY shared/package.json ./shared/',
-    `COPY services/${svc}/package.json ./services/${svc}/`,
+        `COPY services/${svc}/package.json ./services/${svc}/`,
+  ];
+}
+
+// FULL manifest set for the prod-deps stage: copy EVERY non-standalone service
+// manifest so the production install resolves the COMPLETE workspace tree —
+// mirroring the working local `npm install`. This is the real root-cause fix
+// for the api-gateway / auth-service boot crash: with only the target service's
+// manifest, `npm install --omit=dev --legacy-peer-deps` + the shared lockfile
+// (whose root `express-rate-limit`@8.6.2 is pinned by auth-service) silently
+// DROPS express-rate-limit (api-gateway's own ^7.5.1 can't reconcile against
+// the lockfile's 8.6.2) and npm still exits 0 — so server.js throws
+// "Cannot find module 'express-rate-limit'" at boot. Copying all manifests
+// makes npm honor the lockfile roots (express-rate-limit@8.6.2, express@4.x,
+// etc.) exactly like the host install that actually works. Standalone services
+// (e.g. store-service) are intentionally excluded — they live outside the root
+// workspace and have their own self-contained install.
+function prodManifestLines(sharedPkgs) {
+  const services = Object.keys(SERVICES).filter((name) => !SERVICES[name].standalone);
+  return [
+    'COPY package.json package-lock.json tsconfig.base.json ./',
+    ...sharedPkgs.map((p) => `COPY packages/${p}/package.json ./packages/${p}/`),
+    'COPY shared/package.json ./shared/',
+    ...services.map((name) => `COPY services/${name}/package.json ./services/${name}/`),
   ];
 }
 
@@ -273,6 +296,7 @@ function renderWorkspaceDockerfile(svc, cfg) {
   const port = cfg.port || 5000;
   const needsTsx = cfg.cmd[0] === 'tsx' || (cfg.cmd[0] === 'sh' && cfg.cmd.join(' ').includes('tsx'));
   const manifests = manifestLines(svc, sharedPkgs).map((l) => `${l}`).join('\n');
+    const prodManifests = prodManifestLines(sharedPkgs);
   const envLines = [
     'ENV NODE_ENV=production',
     `ENV PORT=${port}`,
@@ -318,7 +342,7 @@ ${buildRun(sharedPkgs)}
 FROM node:24-alpine AS prod-deps
 WORKDIR /usr/src/app
 ENV NODE_OPTIONS=--max-old-space-size=2048
-${manifests}
+${prodManifests}
 
 RUN ${INSTALL_PROD}
 ${cfg.guard ? `\n${cfg.guard}\n` : ''}
