@@ -46,7 +46,13 @@ const Icons = {
 
 const getPoint = (event, canvas) => {
   const rect = canvas.getBoundingClientRect();
-  return [event.clientX - rect.left, event.clientY - rect.top, event.pressure > 0 ? event.pressure : 0.5];
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return [
+    (event.clientX - rect.left) * scaleX,
+    (event.clientY - rect.top) * scaleY,
+    event.pressure > 0 ? event.pressure : 0.5,
+  ];
 };
 
 const drawStroke = (ctx, points, options) => {
@@ -65,7 +71,7 @@ const drawStroke = (ctx, points, options) => {
 
 const ReusableSignaturePad = forwardRef((props, ref) => {
   const {
-    penColor = '#1a3a6b',
+    penColor = '#0f33e7',
     penWidth = 2.5,
     backgroundColor = '#ffffff',
     placeholder = 'Sign here',
@@ -129,9 +135,10 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
     };
   }, [canvasSize.width, canvasSize.height, isClient]);
 
+  const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
   const strokeOptions = {
-    size: penWidth * 2.2,
-    thinning: 0.55,
+    size: penWidth * 2.8 * pixelRatio,
+    thinning: 0.15,
     smoothing: 0.85,
     streamline: 0.7,
     simulatePressure: true,

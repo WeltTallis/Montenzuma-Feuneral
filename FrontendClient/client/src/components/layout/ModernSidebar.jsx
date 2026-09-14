@@ -621,9 +621,9 @@ const ModernSidebar = ({
       ...section,
       items: (section.items || []).filter((item) => {
         const hiddenPaths = ['/tenant/' + tenantSlug + '/dashboard', '/tenant/' + tenantSlug + '/analytics', '/tenant/' + tenantSlug + '/workshop', '/dashboard', '/analytics', '/workshop'];
-        const hiddenLabels = ['Dashboard', 'Analytics', 'Workshop'];
+        const hiddenLabels = ['Dashboard', 'Analytics', 'Workshop', 'Chemical', 'Chemicals'];
         const itemPath = item.path || '';
-        return !(hiddenLabels.includes(item.label) || hiddenPaths.includes(itemPath) || itemPath.includes('/dashboard') || itemPath.includes('/analytics') || itemPath.includes('/workshop'));
+        return !(hiddenLabels.includes(item.label) || hiddenPaths.includes(itemPath) || itemPath.includes('/dashboard') || itemPath.includes('/analytics') || itemPath.includes('/workshop') || itemPath.includes('/chemical') || itemPath.includes('/chemicals'));
       })
     })).filter((section) => (section.items || []).length > 0);
 
