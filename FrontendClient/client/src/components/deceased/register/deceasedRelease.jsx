@@ -1237,9 +1237,6 @@ const DeceasedReleaseForm = () => {
       date_of_death: deceased.date_of_death || '',
       cause_of_death: deceased.cause_of_death || '',
       place_of_death: deceased.place_of_death || deceased.death_location || '',
-      next_kin: deceased.contact_person || deceased.next_kin || deceased.next_of_kin || '',
-      contact_person: deceased.contact_person || deceased.next_kin || '',
-      relationship: deceased.relationship || deceased.kin_relationship || '',
       id_number: deceased.national_id || deceased.id_number || deceased.nationalId || '',
       tel_number: deceased.tell_no || deceased.tel_number || deceased.phone_number || deceased.contact || '',
       date_admitted: deceased.date_admitted || prev.date_admitted,
@@ -1310,7 +1307,7 @@ const DeceasedReleaseForm = () => {
     if (!formData.date_admitted) newErrors.date_admitted = 'Date admitted is required';
     if (!formData.release_date) newErrors.release_date = 'Release date is required';
     if (!formData.released_by.trim()) newErrors.released_by = 'Released by is required';
-    if (!formData.next_kin.trim()) newErrors.next_kin = 'Next of kin is required';
+    if (!formData.next_kin.trim()) newErrors.next_kin = 'Name of the person collecting the body is required';
     if (!/^\d{7,9}$/.test(formData.id_number.trim())) newErrors.id_number = 'Enter a valid National ID number (7-9 digits)';
     if (!formData.tel_number.trim()) newErrors.tel_number = 'Telephone number is required';
     if (!formData.terms_accepted) newErrors.terms_accepted = 'You must accept the terms';
@@ -1825,14 +1822,14 @@ const DeceasedReleaseForm = () => {
 
                 <Row>
                   <Col2>
-                    <Label>Next of Kin Full Name <span style={{ color: COLORS.red }}>*</span></Label>
+                    <Label>Authorizing Party / Person Collecting Body <span style={{ color: COLORS.red }}>*</span></Label>
                     <InputFieldWrapper>
                       <Input
                         type="text"
                         name="next_kin"
                         value={formData.next_kin}
                         onChange={handleChange}
-                        placeholder="Full name of authorizing party"
+                        placeholder="Enter the person collecting the body"
                       />
                       {hasValue(formData.next_kin) && (
                         <TickIconWrapper>

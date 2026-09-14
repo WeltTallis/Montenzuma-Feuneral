@@ -1,9 +1,0 @@
-[ConnectionManager] 🔐 Initialized singleton. Config:
-      ├─ Max connections per tenant: 3
-      ├─ Max queue per tenant:       5
-      ├─ Queue timeout:              10000ms
-      ├─ Idle eviction timeout:      5min
-      ├─ Eviction check interval:    60000ms
-      └─ Connection timeout:         5000ms
-[ConnectionManager] ⏰ Eviction timer started (interval: 60000ms)
-[ConnectionManager] 🆕 Singleton instance created

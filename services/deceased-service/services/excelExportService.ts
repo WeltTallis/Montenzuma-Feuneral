@@ -73,6 +73,7 @@ export interface IExportHistory {
   status: 'success' | 'failed';
   error_message?: string;
   file_url?: string;
+  tracking_id?: string;
 }
 
 export class ExcelExportService {
@@ -102,6 +103,7 @@ export class ExcelExportService {
         status ENUM('success', 'failed') NOT NULL DEFAULT 'success',
         error_message TEXT NULL,
         file_url VARCHAR(500) NULL,
+        tracking_id VARCHAR(100) NULL,
         created_at VARCHAR(255),
         INDEX idx_tenant_slug (tenant_slug),
         INDEX idx_generated_at (generated_at),
@@ -122,6 +124,10 @@ export class ExcelExportService {
       if (!hasFileUrl) {
         await safeTenantExecute(dbName, 'ALTER TABLE export_history ADD COLUMN file_url VARCHAR(500) NULL', []);
       }
+      const hasTrackingId = cols.some((r) => String(r.COLUMN_NAME).toLowerCase() === 'tracking_id');
+      if (!hasTrackingId) {
+        await safeTenantExecute(dbName, 'ALTER TABLE export_history ADD COLUMN tracking_id VARCHAR(100) NULL AFTER file_url', []);
+      }
     } catch (error: any) {
       console.error(` Failed to create export_history table for DB ${dbName}:`, error.message);
       throw error;
@@ -139,8 +145,8 @@ export class ExcelExportService {
 
     const insertSQL = `
       INSERT INTO export_history 
-        (tenant_slug, file_name, file_size, record_count, generated_at, generated_by, period, status, error_message, file_url)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (tenant_slug, file_name, file_size, record_count, generated_at, generated_by, period, status, error_message, file_url, tracking_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const result = await safeTenantExecute(dbName, insertSQL, [
@@ -153,7 +159,8 @@ export class ExcelExportService {
       history.period,
       history.status,
       history.error_message || null,
-      history.file_url || null
+      history.file_url || null,
+      history.tracking_id || null
     ]);
 
     return result.insertId;

@@ -14,6 +14,7 @@ interface ExportRequest extends Request {
     tenant_id: number;
     name: string;
     tenant_slug: string;
+    logo_url?: string | null;
   };
   tenantSlug?: string;
   user?: { email?: string; id?: number };
@@ -29,17 +30,18 @@ const T = {
   exportBtn: 'FF0F3040',    // #0F3040
   headerBorder: 'FF08222D', // #08222d
   ink: 'FF03071E',          // #03071E (navy footer)
-  success: 'FF047857',      // #047857
-  successBg: 'FFECFDF5',    // #ecfdf5
-  warning: 'FFB45309',      // #b45309
-  warningBg: 'FFFFFBEB',    // #fffbeb
-  line: 'FFD1D5DB',         // #d1d5db standard Excel gridline
-  zebra: 'FFF9FAFB',        // #f9fafb
+    success: 'FF3D4F47',
+    successBg: 'FFEFF2EE',
+    warning: 'FF946B2D',
+    warningBg: 'FFFBF7EE',
+    line: 'FFE2DDD3',
+    zebra: 'FFFAF8F4',
   white: 'FFFFFFFF',
-  text: 'FF1F2937',         // #1f2937
-  muted: 'FF6B7280',        // #6b7280
-  slate: 'FF9CA3AF',        // #9ca3af
-  gray2: 'FF4B5563',        // #4b5563
+    text: 'FF14181C',
+    muted: 'FF8E8579',
+    slate: 'FFB5AFA3',
+    gray2: 'FF4B514D',
+    accent: 'FF8B7355',
 };
 
 const HEADERS = [
@@ -95,6 +97,36 @@ function daysInMorgue(dateAdmitted: any, dispatchDate: any): string {
 }
 
 function globalUploadsDir(): string {
+  function resolveTenantLogo(tenantSlug: string, logoUrl?: string | null): { buffer: Buffer; extension: 'png' | 'jpeg' | 'gif' } | null {
+    try {
+      const base = globalUploadsDir();
+      const candidates: string[] = [];
+      if (logoUrl) {
+        const raw = String(logoUrl).replace(/^https?:\/\/[^/]+\//, '').replace(/^\/+/, '');
+        candidates.push(raw.startsWith('uploads/') ? path.join(base, raw.slice('uploads/'.length)) : path.join(base, raw));
+      }
+      const safeSlug = String(tenantSlug || '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+      const logoDir = path.join(base, 'tenants', safeSlug, 'logos');
+      const logoDirs = [
+        logoDir,
+        path.join(base, safeSlug, 'logos'),
+        path.join(base, safeSlug, 'documents', 'logos'),
+      ];
+      for (const dir of logoDirs) {
+        if (fs.existsSync(dir)) {
+          for (const file of fs.readdirSync(dir).sort().reverse()) candidates.push(path.join(dir, file));
+        }
+      }
+      for (const candidate of candidates) {
+        if (!fs.existsSync(candidate) || !fs.statSync(candidate).isFile()) continue;
+        const ext = path.extname(candidate).toLowerCase();
+        if (ext === '.png') return { buffer: fs.readFileSync(candidate), extension: 'png' };
+        if (ext === '.jpg' || ext === '.jpeg') return { buffer: fs.readFileSync(candidate), extension: 'jpeg' };
+        if (ext === '.gif') return { buffer: fs.readFileSync(candidate), extension: 'gif' };
+      }
+    } catch { /* branding is optional; continue without a logo */ }
+    return null;
+  }
   for (const envDir of [
     process.env.GLOBAL_UPLOADS_DIR,
     process.env.UPLOADS_BASE_DIR,
@@ -176,7 +208,7 @@ async function getKinColumns(dbName: string): Promise<Set<string>> {
 // ============================================
 function buildIntakeRegisterWorkbook(
   records: any[],
-  meta: { facilityName: string; generatedBy: string; trackingId: string; timestamp: string }
+  meta: { facilityName: string; generatedBy: string; trackingId: string; timestamp: string; logo?: { buffer: Buffer; extension: 'png' | 'jpeg' | 'gif' } | null }
 ): ExcelJS.Workbook {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Restpoint Funeral Home Software';
@@ -188,7 +220,9 @@ function buildIntakeRegisterWorkbook(
     views: [{ state: 'frozen', ySplit: 3, topLeftCell: 'A4' }],
     pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
+  ws.properties.tabColor = T.exportBtn;
   ws.pageSetup.printTitlesRow = '1:3';
+  ws.pageSetup.printArea = `A1:X${Math.max(4, records.length + 4)}`;
   ws.properties.defaultRowHeight = 18;
 
   ws.columns = COL_WIDTHS.map((w) => ({ width: w }));
@@ -206,11 +240,15 @@ function buildIntakeRegisterWorkbook(
   leftCell.value = {
     richText: [
       { text: `${meta.facilityName}\n`, font: { name: 'Saira', size: 18, bold: true, color: { argb: T.ink } } },
-      { text: 'OFFICIAL DECEASED INTAKE REGISTER', font: { name: 'Saira', size: 10, color: { argb: T.muted } } },
+      { text: 'OFFICIAL DECEASED INTAKE REGISTER', font: { name: 'Saira', size: 10, color: { argb: T.accent } } },
     ],
   };
   leftCell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
-
+  if (meta.logo) {
+    const logoId = workbook.addImage({ buffer: meta.logo.buffer as any, extension: meta.logo.extension });
+    ws.addImage(logoId, { tl: { col: 0.15, row: 0.18 }, ext: { width: 82, height: 42 } });
+    leftCell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true, indent: 7 };
+  }
   ws.mergeCells('M1:X1');
   const rightCell = ws.getCell('M1');
   const barcodeBars = '|||||||||||||||||||||||||||||||||||||||||||';
@@ -250,6 +288,7 @@ function buildIntakeRegisterWorkbook(
       right: { style: 'thin', color: { argb: T.headerBorder } },
     };
   });
+  ws.autoFilter = { from: 'A3', to: 'X3' };
 
   // ── Data rows ──
   records.forEach((item, index) => {
@@ -432,7 +471,26 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     const dbName = tenant?.db_name;
     const tenantSlug = (req as any).tenantSlug || tenant?.tenant_slug || 'unknown';
     const userEmail = (req as any).user?.email || 'System Admin';
-    const facilityName = tenant?.name || 'Restpoint Funeral Home';
+    let facilityName = tenant?.name || 'Restpoint Funeral Home';
+    let logoUrl = tenant?.logo_url || null;
+
+    // The deceased service middleware has the database slug, while the exact
+    // facility branding is authoritative in the central tenant registry.
+    try {
+      if (tenantSlug && tenantSlug !== 'system_shared') {
+        const brandingRows: any[] = await safeTenantQuery(
+          'tenant_tracking',
+          'SELECT tenant_name, logo_url FROM tenants WHERE tenant_slug = ? LIMIT 1',
+          [tenantSlug]
+        );
+        if (brandingRows[0]) {
+          facilityName = brandingRows[0].tenant_name || facilityName;
+          logoUrl = brandingRows[0].logo_url || logoUrl;
+        }
+      }
+    } catch {
+      // Export remains available when the central branding registry is offline.
+    }
 
     if (!dbName) {
       return res.status(400).json({ success: false, message: 'Tenant information missing' });
@@ -516,6 +574,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       generatedBy: `${userEmail} (System Admin)`,
       trackingId,
       timestamp,
+      logo: resolveTenantLogo(tenantSlug, logoUrl),
     });
 
     const buffer: any = await workbook.xlsx.writeBuffer();
@@ -546,6 +605,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
         period,
         status: 'success',
         file_url: uploadedUrl || undefined,
+        tracking_id: trackingId,
       });
     } catch (histErr: any) {
       Logger.warn({ message: 'Failed to save export history', error: histErr && histErr.message });
@@ -596,6 +656,7 @@ export const getExportHistory = async (req: ExportRequest, res: Response): Promi
       period: r.period,
       status: r.status,
       fileUrl: (r as any).file_url || '',
+      trackingId: (r as any).tracking_id || '',
     }));
 
     return res.status(200).json({ success: true, data, total, page, totalPages });

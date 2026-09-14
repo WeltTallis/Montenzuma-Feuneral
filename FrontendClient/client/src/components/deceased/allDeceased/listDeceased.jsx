@@ -2022,6 +2022,11 @@ const DeceasedListPage = () => {
                         <div className="h-meta">
                           {formatGeneratedAt(h.generatedAt)} • {h.recordCount || 0} records • {formatFileSize(h.fileSize)}
                         </div>
+                        {h.trackingId && (
+                          <div className="h-meta" style={{ color: C.export, fontFamily: 'monospace', fontWeight: 700 }}>
+                            Tracking ID: {h.trackingId}
+                          </div>
+                        )}
                         {h.fileUrl ? (
                           <a className="h-link" href={h.fileUrl} target="_blank" rel="noreferrer">
                             <i className="fas fa-download"></i> Download file

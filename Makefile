@@ -1,112 +1,113 @@
 # ============================================================
-# RestPoint Docker Makefile - Production Grade with BuildKit
+# RestPoint Docker Makefile — Production Build System
 # ============================================================
 
-# Enable BuildKit for faster builds
 export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
 
-# ============================================================
-# ============================================================================
-# OOM-SAFE BUILD PARALLELISM
-# ============================================================================
-# `docker compose up`/`build` builds every image in parallel and each image
-# runs its own heavy monorepo `npm install`. On a low-RAM VPS the combined
-# memory spike gets processes SIGKILLed by the OOM killer (exit code 137).
-# COMPOSE_PARALLEL_LIMIT caps concurrent compose operations. 1 = serial
-# (safe default). Override on bigger machines:  make up PARALLEL=4
-# ============================================================================
+# OOM-safe: serial builds keep only one npm install running at a time.
+# Override on bigger machines:  make up PARALLEL=4
 PARALLEL ?= 1
 export COMPOSE_PARALLEL_LIMIT := $(PARALLEL)
-
-# ------------------------------------------------------------------------------
-# Serial image building — wishlist of services that have a build: key.
-# We build them one-by-one (`docker compose build SVC ...`) so that only ONE
-# `npm install` / `go build` runs at a time (OOM-safe). Image-only infra
-# (mariadb/redis/rabbitmq/loki/...) is pulled from the registry, never built.
-#
-# The two lists below are AUTO-FILTERED against the compose file they will be
-# built from, so the wishlist can never go stale again:
-#   • store-service exists ONLY in docker-compose.prod.yml
-#   • florist-service was missing from this list entirely before
-# (One `docker compose config` call per file at parse time; if docker is not
-# reachable the list is simply empty and the build loop is a no-op.)
-# ------------------------------------------------------------------------------
-RAW_BUILD_SERVICES := api-gateway auth-service tenant-service deceased-service billing-service support-service leave-service documents-service socketio-service scanner-service invoice-service coffin-service analytics-service bodycheckout-service chemical-service workshop-service extra-services hearse-service store-service florist-service frontend
-
-# For the DEV compose file (docker-compose.yml) — used by build/build-fast/up/...
-BUILD_SERVICES := $(shell for svc in $(RAW_BUILD_SERVICES); do docker compose config --services 2>/dev/null | grep -qx "$$svc" && echo "$$svc"; done)
-
-# For the PROD compose file (docker-compose.prod.yml) — used by deploy-prod
-BUILD_SERVICES_PROD := $(shell for svc in $(RAW_BUILD_SERVICES); do docker compose -f docker-compose.prod.yml config --services 2>/dev/null | grep -qx "$$svc" && echo "$$svc"; done)
-
-# Cap the V8 heap of the npm install + tsx steps so a single image can never
-# balloon the box. Applied in the Dockerfiles as NODE_OPTIONS=...
 export NODE_OPTIONS := --max-old-space-size=2048
 
-.PHONY: help build build-fast build-no-cache build-no-cache-fast build-service build-service-fast build-all build-all-fast up up-force down restart logs logs-service clean health test dev prod stop ps shell exec deploy-prod deploy-staging backup restore rebuild-fast clear-cache build-optimized build-frontend fix-frontend start usage-tips
+# Build-service list — matches the build: entries in docker-compose.yml.
+# If a service is added/removed from the compose file, update RAW_BUILD_SERVICES.
+RAW_BUILD_SERVICES := \
+  api-gateway \
+  auth-service \
+  tenant-service \
+  deceased-service \
+  invoice-service \
+  coffin-service \
+  documents-service \
+  analytics-service \
+  store-service \
+  socketio-service \
+  bodycheckout-service \
+  extra-services \
+  support-service \
+  chemical-service \
+  billing-service \
+  scanner-service \
+  hearse-service \
+  workshop-service \
+  leave-service \
+  frontend
+
+# For the DEV compose file (docker-compose.yml) — used by build/build-fast/up/...
+BUILD_SERVICES := $(shell for svc in $(RAW_BUILD_SERVICES); do docker compose config --services 2>/dev/null | grep -qw "$$svc" && echo "$$svc"; done)
+
+# For the PROD compose file (docker-compose.prod.yml) — used by deploy-prod
+BUILD_SERVICES_PROD := $(shell for svc in $(RAW_BUILD_SERVICES); do docker compose -f docker-compose.prod.yml config --services 2>/dev/null | grep -qw "$$svc" && echo "$$svc"; done)
 
 # Colors for output
-BLUE := \033[0;34m
-GREEN := \033[0;32m
-RED := \033[0;31m
+BLUE   := \033[0;34m
+GREEN  := \033[0;32m
+RED    := \033[0;31m
 YELLOW := \033[0;33m
-CYAN := \033[0;36m
-NC := \033[0m # No Color
+CYAN   := \033[0;36m
+NC     := \033[0m # No Color
 
 # Environment
-COMPOSE := docker compose
+COMPOSE      := docker compose
 COMPOSE_PROD := docker compose -f docker-compose.prod.yml
 
 # Default target
 .DEFAULT_GOAL := help
 
 help:
-	@echo "$(BLUE)RestPoint Docker Makefile - Production Grade with BuildKit$(NC)"
+	@echo "$(BLUE)RestPoint Docker Makefile — Production Build System$(NC)"
 	@echo ""
-	@echo "$(GREEN) FAST Build Commands (BuildKit enabled):$(NC)"
-	@echo "  make build                - Build all Docker images (with cache)"
+	@echo "$(GREEN)── Build (serial / OOM-safe) ──────────────────────────────$(NC)"
+	@echo "  make build                - Build all images (with cache)"
 	@echo "  make build-fast           - Build all images with BuildKit (serial, cached)"
 	@echo "  make build-no-cache       - Rebuild all images from scratch (sequential)"
 	@echo "  make build-no-cache-fast  - Rebuild all images from scratch (serial, BuildKit)"
 	@echo "  make build-service SVC=X  - Build specific service (no cache)"
 	@echo "  make build-service-fast SVC=X - Build specific service with BuildKit"
-	@echo "  make build-frontend       - Rebuild & redeploy ONLY the UI (fast)"
-	@echo "  make fix-frontend         - Rebuild ONLY the UI from scratch (no cache)"
 	@echo "  make build-all            - Build all services with no cache"
 	@echo "  make build-all-fast       - Build all services with no cache (serial)"
+	@echo "  make build-optimized      - Build all with cache optimizations"
 	@echo "  make clear-cache          - Clear Docker build cache"
 	@echo "  make rebuild-fast         - Clear cache + rebuild all (ULTRA FAST)"
 	@echo ""
-	@echo "$(GREEN)Development:$(NC)"
-	@echo "  make up                   - Start all services (dev)"
-	@echo "  make down                 - Stop all services"
+	@echo "$(GREEN)── Lifecycle ───────────────────────────────────────────$(NC)"
+	@echo "  make up                   - Start all services (dev, build + up)"
+	@echo "  make up-force             - Force recreate all containers"
+	@echo "  make down                 - Stop and remove all services"
 	@echo "  make restart              - Restart all services"
-	@echo "  make dev                  - Set up dev environment"
+	@echo "  make start                - Start services without building"
+	@echo "  make stop                 - Stop services (keep containers)"
+	@echo "  make kill                 - Kill all containers immediately"
 	@echo ""
-	@echo "$(GREEN)Production Deployment:$(NC)"
+	@echo "$(GREEN)── Logs / Status / Access ──────────────────────────────$(NC)"
+	@echo "  make logs                 - Show all logs"
+	@echo "  make logs-service SVC=X   - Show logs for service"
+	@echo "  make health               - Check all services"
+	@echo "  make ps                   - List running containers"
+	@echo "  make ps-all               - List all containers (including stopped)"
+	@echo "  make stats                - Docker resource usage"
+	@echo "  make shell SVC=X          - Shell into service"
+	@echo "  make exec SVC=X CMD='cmd' - Execute command"
+	@echo ""
+	@echo "$(GREEN)── Production Deployment ───────────────────────────────$(NC)"
 	@echo "  make deploy-prod          - Deploy to production (docker-compose.prod.yml)"
 	@echo "  make deploy-staging       - Deploy to staging"
 	@echo "  make prod-up              - Start production services"
 	@echo "  make prod-down            - Stop production services"
 	@echo "  make prod-logs            - Production logs"
+	@echo "  make prod-health          - Production health check"
 	@echo ""
-	@echo "$(GREEN)Operations:$(NC)"
-	@echo "  make backup               - Backup database and data"
-	@echo "  make restore              - Restore from backup"
-	@echo "  make logs                 - Show all logs"
-	@echo "  make logs-service SVC=X   - Show logs for service"
-	@echo "  make health               - Check all services"
-	@echo "  make ps                   - List containers"
-	@echo "  make shell SVC=X          - Shell into service"
-	@echo "  make exec SVC=X CMD='cmd' - Execute command"
-	@echo "  make stats                - Docker resource usage"
+	@echo "$(GREEN)── Frontend ────────────────────────────────────────────$(NC)"
+	@echo "  make fix-frontend         - Rebuild ONLY the UI from scratch (no cache)"
 	@echo ""
-	@echo "$(GREEN)Maintenance:$(NC)"
+	@echo "$(GREEN)── Maintenance ─────────────────────────────────────────$(NC)"
 	@echo "  make clean                - Remove containers & volumes (DESTRUCTIVE)"
 	@echo "  make validate             - Validate docker-compose files"
 	@echo "  make prune                - Remove unused resources"
-	@echo "  make usage-tips           - Show build optimization tips"
+	@echo "  make fix-tenant           - Rebuild & restart tenant-service"
+	@echo "  make fix-gateway          - Rebuild & restart api-gateway"
 	@echo ""
 
 # ============================================================
