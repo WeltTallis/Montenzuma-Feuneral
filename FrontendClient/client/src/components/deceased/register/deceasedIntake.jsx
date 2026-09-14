@@ -1005,7 +1005,6 @@ const DeceasedRegistrationForm = () => {
     id_type: 'National ID',
     tel_number: '',
     alternative_phone: '',
-    email: '',
     received_from: '',
     receiving_officer: '',
     signature: '',
@@ -1060,8 +1059,7 @@ const DeceasedRegistrationForm = () => {
   };
 
   const isValidPhone = (p) => {
-    const digits = String(p || '').replace(/[^\d]/g, '');
-    return digits.length >= 9 && digits.length <= 13;
+    return /^(?:0[17]\d{8}|\+254[17]\d{8})$/.test(String(p || '').replace(/\s/g, ''));
   };
 
   const validateForm = () => {
@@ -1072,7 +1070,7 @@ const DeceasedRegistrationForm = () => {
     if (!formData.received_from.trim()) newErrors.received_from = 'Received from is required';
     if (!formData.contact_person.trim()) newErrors.contact_person = 'Contact person name is required';
     if (!formData.relationship.trim()) newErrors.relationship = 'Relationship is required';
-    if (!formData.id_number.trim()) newErrors.id_number = 'National ID number is required';
+    if (!/^\d{7,9}$/.test(formData.id_number.trim())) newErrors.id_number = 'Enter a valid National ID number (7-9 digits)';
     if (!formData.tel_number.trim()) {
       newErrors.tel_number = 'Telephone number is required';
     } else if (!isValidPhone(formData.tel_number)) {
@@ -1082,9 +1080,7 @@ const DeceasedRegistrationForm = () => {
       newErrors.alternative_phone = 'Please enter a valid alternative phone number';
     }
 
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
+    if (!formData.receiving_officer.trim()) newErrors.receiving_officer = 'Receiving officer name is required';
 
     if (sigPadRef1.current?.isEmpty()) {
       newErrors.signature = 'Signature is required to proceed';
@@ -1128,10 +1124,9 @@ const DeceasedRegistrationForm = () => {
         gender: formData.gender,
         date_of_death: formData.date_of_death || null,
         place_of_death: formData.place_of_death || null,
-        id_type: formData.id_type || 'National ID',
+        id_type: 'National ID',
         alternative_phone: formData.alternative_phone || null,
-        email: formData.email || null,
-        receiving_officer: formData.receiving_officer || null,
+        receiving_officer: formData.receiving_officer.trim(),
         verified_by: formData.verified_by || getLoggedInUserEmail() || null,
         relationship: formData.relationship || null,
         permit_no: formData.permit_number || null,
@@ -1570,23 +1565,6 @@ const DeceasedRegistrationForm = () => {
 
                 <Row>
                   <Col>
-                    <Label>ID Type</Label>
-                    <InputFieldWrapper>
-                      <Input
-                        type="text"
-                        name="id_type"
-                        value="National ID"
-                        readOnly
-                        disabled
-                      />
-                      {hasValue(formData.id_type) && (
-                        <TickIconWrapper>
-                          <Check size={16} strokeWidth={2.5} />
-                        </TickIconWrapper>
-                      )}
-                    </InputFieldWrapper>
-                  </Col>
-                  <Col>
                     <Label>National ID Number</Label>
                     <InputFieldWrapper>
                       <Input
@@ -1643,24 +1621,6 @@ const DeceasedRegistrationForm = () => {
                     </InputFieldWrapper>
                     {errors.alternative_phone && <ErrorMessage>{errors.alternative_phone}</ErrorMessage>}
                   </Col>
-                  <Col>
-                    <Label>Email Address</Label>
-                    <InputFieldWrapper>
-                      <Input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        placeholder="contact@example.com"
-                      />
-                      {hasValue(formData.email) && (
-                        <TickIconWrapper>
-                          <Check size={16} strokeWidth={2.5} />
-                        </TickIconWrapper>
-                      )}
-                    </InputFieldWrapper>
-                    {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
-                  </Col>
                 </Row>
               </Section>
 
@@ -1694,7 +1654,7 @@ const DeceasedRegistrationForm = () => {
 
                     <GridRight>
                       <GridName>
-                        <Label>Receiving Officer</Label>
+                        <Label>Receiving Officer <span style={{ color: COLORS.red }}>*</span></Label>
                         <InputFieldWrapper>
                           <Input
                             type="text"
@@ -1709,6 +1669,7 @@ const DeceasedRegistrationForm = () => {
                             </TickIconWrapper>
                           )}
                         </InputFieldWrapper>
+                        {errors.receiving_officer && <ErrorMessage>{errors.receiving_officer}</ErrorMessage>}
                       </GridName>
 
                       <StampWrapper>

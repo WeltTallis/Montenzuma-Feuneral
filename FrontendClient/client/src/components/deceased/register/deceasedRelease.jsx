@@ -76,7 +76,7 @@ const Container = styled.div`
 
 const FormSheet = styled.div`
   width: 100%;
-  max-width: 900px;
+  max-width: 2200px;
   margin: 0 auto;
   background: ${COLORS.white};
   border-radius: 0;
@@ -1311,7 +1311,7 @@ const DeceasedReleaseForm = () => {
     if (!formData.release_date) newErrors.release_date = 'Release date is required';
     if (!formData.released_by.trim()) newErrors.released_by = 'Released by is required';
     if (!formData.next_kin.trim()) newErrors.next_kin = 'Next of kin is required';
-    if (!formData.id_number.trim()) newErrors.id_number = 'ID number is required';
+    if (!/^\d{7,9}$/.test(formData.id_number.trim())) newErrors.id_number = 'Enter a valid National ID number (7-9 digits)';
     if (!formData.tel_number.trim()) newErrors.tel_number = 'Telephone number is required';
     if (!formData.terms_accepted) newErrors.terms_accepted = 'You must accept the terms';
 
@@ -1352,6 +1352,10 @@ const DeceasedReleaseForm = () => {
       const payload = {
         ...formData,
         admission_number: String(formData.admission_number || '').toUpperCase(),
+        id_type: 'National ID',
+        id_number: formData.id_number.trim(),
+        tell_number: formData.tel_number.trim(),
+        released_by: formData.released_by.trim(),
         time_received: freshTime,
         release_time: freshTime,
         age: formData.age ? parseInt(formData.age, 10) : null,
@@ -1359,7 +1363,6 @@ const DeceasedReleaseForm = () => {
         verified_by: formData.verified_by || getLoggedInUserEmail() || null,
         signature: signatureData,
         name_of_deceased: formData.full_name,
-        tell_number: formData.tel_number,
       };
 
       const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.BODYCHECKOUT.CHECKOUT}`, {
@@ -1858,36 +1861,16 @@ const DeceasedReleaseForm = () => {
                   </Col>
                 </Row>
 
-                <Row>
-                  <Col>
-                    <Label>ID Type</Label>
-                    <InputFieldWrapper>
-                      <Select
-                        name="id_type"
-                        value={formData.id_type}
-                        onChange={handleChange}
-                      >
-                        <option value="">Select Identification</option>
-                        <option value="National ID">National ID</option>
-                        <option value="Passport">Passport</option>
-                        <option value="Alien Card">Alien Card</option>
-                      </Select>
-                      {hasValue(formData.id_type) && (
-                        <TickIconWrapper>
-                          <Check size={16} strokeWidth={2.5} />
-                        </TickIconWrapper>
-                      )}
-                    </InputFieldWrapper>
-                  </Col>
-                  <Col>
-                    <Label>ID / Passport Number <span style={{ color: COLORS.red }}>*</span></Label>
+                        <Row>
+                          <Col>
+                            <Label>National ID Number <span style={{ color: COLORS.red }}>*</span></Label>
                     <InputFieldWrapper>
                       <Input
                         type="text"
                         name="id_number"
                         value={formData.id_number}
                         onChange={handleChange}
-                        placeholder="Identification number"
+                        placeholder="National ID number"
                       />
                       {hasValue(formData.id_number) && (
                         <TickIconWrapper>
@@ -2043,7 +2026,7 @@ const DeceasedReleaseForm = () => {
 
                     <GridRight>
                       <GridName>
-                        <Label>Released By Officer</Label>
+                        <Label>Released By Officer <span style={{ color: COLORS.red }}>*</span></Label>
                         <InputFieldWrapper>
                           <Input
                             type="text"
@@ -2058,6 +2041,7 @@ const DeceasedReleaseForm = () => {
                             </TickIconWrapper>
                           )}
                         </InputFieldWrapper>
+                        {errors.released_by && <ErrorMessage>{errors.released_by}</ErrorMessage>}
                       </GridName>
 
                       <StampWrapper>
