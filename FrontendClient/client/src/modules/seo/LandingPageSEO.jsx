@@ -31,8 +31,8 @@ const LandingPageSEO = () => {
 
     return (
         <SEOHead
-            title="Rest Point | Kenya's #1 Funeral Home Management System & Welfare Management Platform"
-            description="Complete funeral home management and welfare administration platform for churches, SACCOs, chamas, and organizations in Kenya. Manage cases, process funeral insurance claims, track member contributions, and serve families with dignity. Trusted by 500+ organizations. M-Pesa integrated."
+            title="Rest Point | Funeral Home Operating System & Welfare Management Platform"
+            description="Run every funeral home case, family update, insurance claim, dispatch, document, and contribution from one secure platform built for Kenya's funeral homes, churches, SACCOs, and welfare organizations."
             keywords="funeral management software Kenya, funeral home management system, welfare management software, funeral insurance administration, SACCO funeral software, church welfare management, chama management software, member contribution tracking, M-Pesa integration, funeral claims management, bereavement management, funeral cover administration, group funeral insurance, Kenya funeral software"
             url="/"
             schema={[

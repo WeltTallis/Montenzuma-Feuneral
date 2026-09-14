@@ -67,7 +67,7 @@ COPY services/socketio-service/package.json ./services/socketio-service/
 RUN npm config set fetch-timeout 1200000 \
  && npm config set fetch-retries 5 \
  && npm config set fetch-retry-mintimeout 120000 \
- && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
+ && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund
 
 # GUARD: this service hard-requires the redis client (Socket.IO Redis
 # adapter + notification REST store). Fail the build instead of shipping a

@@ -68,7 +68,15 @@ COPY services/api-gateway/package.json ./services/api-gateway/
 RUN npm config set fetch-timeout 1200000 \
  && npm config set fetch-retries 5 \
  && npm config set fetch-retry-mintimeout 120000 \
- && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
+ && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund
+
+# GUARD (api-gateway): validate the root hoisted production deps.
+# npm --omit=dev partial-workspace installs have been observed to silently
+# SKIP packages (e.g. express-rate-limit), exiting 0 and shipping a node_modules
+# that throws "Cannot find module" at boot. Fail the build HERE instead.
+# Mirrors the socketio-service guard; runs in prod-deps WORKDIR (/usr/src/app)
+# so it checks the same root tree server.js resolves against at runtime.
+RUN node -e "['express-rate-limit','express','http-proxy-middleware','helmet','dotenv','cors','cookie-parser','hpp','express-async-handler'].forEach(p=>require.resolve(p)); console.log('[GUARD] api-gateway: root production deps OK')"
 
 # ---------------------------------------------------------------------------
 # Stage 4/4 — runtime: final image

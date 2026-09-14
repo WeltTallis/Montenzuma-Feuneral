@@ -39,7 +39,7 @@ COPY services/store-service/package.json ./
 RUN npm config set fetch-timeout 1200000 \
  && npm config set fetch-retries 5 \
  && npm config set fetch-retry-mintimeout 120000 \
- && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
+ && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund
 
 # ---------------------------------------------------------------------------
 # Stage 3/3 — runtime

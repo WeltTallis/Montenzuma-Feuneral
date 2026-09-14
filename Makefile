@@ -29,7 +29,6 @@ RAW_BUILD_SERVICES := \
   support-service \
   chemical-service \
   billing-service \
-  scanner-service \
   hearse-service \
   workshop-service \
   leave-service \
@@ -71,6 +70,8 @@ help:
 	@echo "  make build-optimized      - Build all with cache optimizations"
 	@echo "  make clear-cache          - Clear Docker build cache"
 	@echo "  make rebuild-fast         - Clear cache + rebuild all (ULTRA FAST)"
+	@echo "  make rebuild-slim         - Rebuild the previously oversized services, then reclaim old layers"
+	@echo "  make rebuild-slim-prod    - Same slim rebuild using docker-compose.prod.yml"
 	@echo ""
 	@echo "$(GREEN)── Lifecycle ───────────────────────────────────────────$(NC)"
 	@echo "  make up                   - Start all services (dev, build + up)"
@@ -169,6 +170,25 @@ build-service-fast:
 	@echo "$(BLUE)Building $(SVC) with BuildKit...$(NC)"
 	@DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache $(SVC)
 	@echo "$(GREEN)✓ $(SVC) built successfully$(NC)"
+
+# Rebuild services that historically carried the old 2–3GB single-stage image.
+# The generated Dockerfiles are already multi-stage; rebuilding replaces the
+# tagged images, while the cleanup removes only layers no container references.
+rebuild-slim:
+	@echo "$(BLUE)Rebuilding oversized services with the generated slim Dockerfiles...$(NC)"
+	@set -e; for svc in florist-service leave-service hearse-service workshop-service; do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache $$svc; done
+	@set -e; for svc in florist-service leave-service hearse-service workshop-service; do echo "  -> restarting $$svc"; $(COMPOSE) up -d --no-deps $$svc; done
+	@echo "$(BLUE)Removing unused old image layers and build cache...$(NC)"
+	@node scripts/docker-cleanup.mjs --apply
+	@echo "$(GREEN)✓ Slim rebuild and safe reclamation complete$(NC)"
+
+rebuild-slim-prod:
+	@echo "$(BLUE)Rebuilding oversized production services with slim images...$(NC)"
+	@set -e; for svc in florist-service leave-service hearse-service workshop-service; do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE_PROD) build --no-cache $$svc; done
+	@set -e; for svc in florist-service leave-service hearse-service workshop-service; do echo "  -> restarting $$svc"; $(COMPOSE_PROD) up -d --no-deps $$svc; done
+	@echo "$(BLUE)Removing unused old production layers and build cache...$(NC)"
+	@node scripts/docker-cleanup.mjs --apply
+	@echo "$(GREEN)✓ Production slim rebuild and safe reclamation complete$(NC)"
 
 # Build with cache optimizations
 build-optimized:

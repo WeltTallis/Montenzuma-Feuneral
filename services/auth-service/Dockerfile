@@ -67,7 +67,14 @@ COPY services/auth-service/package.json ./services/auth-service/
 RUN npm config set fetch-timeout 1200000 \
  && npm config set fetch-retries 5 \
  && npm config set fetch-retry-mintimeout 120000 \
- && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
+ && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund
+
+# GUARD (auth-service): validate production deps from the service dir
+# (express@5 resolves under services/auth-service in the prod tree). npm
+# --omit=dev partial-workspace installs can silently skip packages and
+# exit 0 — fail the build HERE instead of shipping a broken auth service.
+# Mirrors the socketio-service guard.
+RUN cd services/auth-service && node -e "['express','express-rate-limit','express-session','helmet','hpp','cors','cookie-parser','dotenv','validator','bcryptjs','jsonwebtoken','redis','mysql2'].forEach(p=>require.resolve(p)); console.log('[GUARD] auth-service: production deps OK')"
 
 # ---------------------------------------------------------------------------
 # Stage 4/4 — runtime: final image

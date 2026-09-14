@@ -35,7 +35,15 @@ const NPM_SETTINGS = `npm config set fetch-timeout 1200000 \\
  && npm config set fetch-retry-mintimeout 120000 \\
  && npm config set fetch-retry-maxtimeout 600000`;
 const INSTALL_ALL = `${NPM_SETTINGS} && npm install --legacy-peer-deps --no-audit --no-fund`;
-const INSTALL_PROD = `${NPM_SETTINGS} && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && npm cache clean --force`;
+// --no-fault: do NOT follow with `npm cache clean --force` here. Wiping the npm
+// cache after every prod-deps install defeats tarball reuse on the brutally slow
+// registry this repo targets (we measured ~9s/package → a full install is ~37m),
+// which is exactly what made the prod deps stage flaky: a tarball fetch that
+// 500'd after all retries got silently skipped by `--legacy-peer-deps` and npm
+// still exited 0, shipping a node_modules that was MISSING express-rate-limit.
+// The cache lives in the disposable prod-deps stage (/root/.npm) and is never
+// COPY'd into the runtime image, so keeping it is free and strictly safer.
+const INSTALL_PROD = `${NPM_SETTINGS} && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund`;
 
 
 // Shared packages build order (shared-config → shared-logger → shared-utils
@@ -86,23 +94,49 @@ function sharedPkgsFor(serviceDir) {
 // ---------------------------------------------------------------------------
 
 const SERVICES = {
-  'api-gateway': {
+    'api-gateway': {
     cmd: ['node', 'services/api-gateway/server.js'],
     entrypoint: false,
     env: { RUNNING_IN_DOCKER: 'true' },
     extraDirs: [],
     healthPath: '/health',
     note: 'Plain-JS gateway. Needs built shared dists (requires them by path).',
+    // server.js is plain CommonJS and require()s its deps from the ROOT
+    // node_modules (hoisted by the prod-deps install). npm's --omit=dev
+    // install in a partial workspace has been observed to silently skip
+    // packages (e.g. express-rate-limit) and still exit 0 — shipping an
+    // image that throws "Cannot find module 'express-rate-limit'" at boot.
+    // Guard = fail the build HERE (mirrors socketio-service) instead of
+    // silently shipping a broken gateway. Run from WORKDIR /usr/src/app so
+    // the root hoisted tree is what gets validated (this is what server.js
+    // resolves against at runtime).
+    guard: `# GUARD (api-gateway): validate the root hoisted production deps.
+# npm --omit=dev partial-workspace installs have been observed to silently
+# SKIP packages (e.g. express-rate-limit), exiting 0 and shipping a node_modules
+# that throws "Cannot find module" at boot. Fail the build HERE instead.
+# Mirrors the socketio-service guard; runs in prod-deps WORKDIR (/usr/src/app)
+# so it checks the same root tree server.js resolves against at runtime.
+RUN node -e "['express-rate-limit','express','http-proxy-middleware','helmet','dotenv','cors','cookie-parser','hpp','express-async-handler'].forEach(p=>require.resolve(p)); console.log('[GUARD] api-gateway: root production deps OK')"`,
   },
   'analytics-service': {
     cmd: ['tsx', 'services/analytics-service/server.ts'],
     extraDirs: ['data'],
     healthPath: '/health',
   },
-  'auth-service': {
+    'auth-service': {
     cmd: ['tsx', 'services/auth-service/server.ts'],
     extraDirs: ['data'],
     healthPath: '/health',
+    // tsx runs server.ts via require() against deps hoisted into the root
+    // node_modules by the prod-deps install; auth needs express@5 (which lives
+    // under services/auth-service in the full tree) plus its own session/oauth
+    // deps. Same silent-skip failure mode as the gateway — fail fast here.
+    guard: `# GUARD (auth-service): validate production deps from the service dir
+# (express@5 resolves under services/auth-service in the prod tree). npm
+# --omit=dev partial-workspace installs can silently skip packages and
+# exit 0 — fail the build HERE instead of shipping a broken auth service.
+# Mirrors the socketio-service guard.
+RUN cd services/auth-service && node -e "['express','express-rate-limit','express-session','helmet','hpp','cors','cookie-parser','dotenv','validator','bcryptjs','jsonwebtoken','redis','mysql2'].forEach(p=>require.resolve(p)); console.log('[GUARD] auth-service: production deps OK')"`,
   },
   'billing-service': {
     cmd: ['node', 'services/billing-service/server.js'],

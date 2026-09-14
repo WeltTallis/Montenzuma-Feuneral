@@ -104,7 +104,6 @@ services:
       SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
       EXTRA_SERVICES_URL: http://restpoint_extra_services:5000
       WORKSHOP_SERVICE_URL: http://restpoint_workshop_service:6969
-      SCANNER_SERVICE_URL: http://restpoint_scanner_service:2024
       SUPPORT_SERVICE_URL: http://restpoint_support_service:5000
       LEAVE_SERVICE_URL: http://restpoint_leave_service:5000
       FLORIST_SERVICE_URL: http://restpoint_florist_service:5000
@@ -669,42 +668,6 @@ services:
       start_period: 40s
 
   # =============================================================================
-  # SCANNER SERVICE (Go)
-  # =============================================================================
-
-  scanner-service:
-    build:
-      context: services/scanner-service
-      dockerfile: Dockerfile
-    image: restpoint-scanner-service:latest
-    container_name: restpoint_scanner_service
-    restart: always
-    ports:
-      - '${SCANNER_SERVICE_EXTERNAL_PORT:-2024}:2024'
-    environment:
-      SERVER_PORT: 2024
-      SERVER_HOST: 0.0.0.0
-      SERVER_ENV: production
-      STORAGE_TYPE: local
-      STORAGE_UPLOAD_PATH: ./uploads/scanned
-      SCANNER_AUTO_DETECT: true
-      SCANNER_DEFAULT_DPI: 300
-      SCANNER_DEFAULT_FORMAT: pdf
-      TZ: Africa/Nairobi
-    volumes:
-      # Scanned documents land on the shared HOST storage as well
-      - /opt/storage/uploads/scanner:/app/uploads
-      - scanner_config:/app/config
-    networks:
-      - restpoint_network
-    healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:2024/health' ]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 5s
-
-  # =============================================================================
   # HEARSE SERVICE
   # =============================================================================
 
@@ -848,8 +811,6 @@ volumes:
   redis_data:
     driver: local
   rabbitmq_data:
-    driver: local
-  scanner_config:
     driver: local
   auth_service_data:
     driver: local

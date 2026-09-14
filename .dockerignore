@@ -5,7 +5,17 @@
 .gitmodules
 
 # Node
+# Exclude node_modules at EVERY depth. `node_modules/` alone only excludes the
+# context-root copy; without `**/node_modules` the per-service local dev trees
+# (services/<svc>/node_modules — full of workspace symlinks like
+# ../../../../node_modules/express-rate-limit) leak into the build context and
+# get COPY'd into the runtime image, where the symlinks dangle and
+# require() throws "Cannot find module" (this was the real cause of the
+# api-gateway / auth-service boot failure). Exclude them so ONLY the prod-deps
+# root node_modules (hoisted, deterministic) is used.
 node_modules/
+**/node_modules/
+**/node_modules/**
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

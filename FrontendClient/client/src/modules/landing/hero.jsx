@@ -226,7 +226,7 @@ export default function Hero() {
   const [fading, setFading] = useState(false);
   const navigate = useNavigate();
 
-  const rotatingTexts = ["families", "memories", "legacies", "communities"];
+  const rotatingTexts = ["families", "teams", "communities", "every farewell"];
 
   /* Cross-fade helper */
   const selectFlower = (i) => {
@@ -284,26 +284,29 @@ export default function Hero() {
             <HeroText>
 
               <HeroTitle>
-                The modern standard
+                Run a calmer, more
                 <TitleBold>
-                  for the <RotWord key={textIndex}>{rotatingTexts[textIndex]}</RotWord>
+                  <RotWord key={textIndex}>{rotatingTexts[textIndex]}</RotWord> funeral home.
                 </TitleBold>
-                you serve.
               </HeroTitle>
 
               <HeroDesc>
-                Rest Point brings high end technology to the death care industry. Hand families a tablet at the front desk to manage admissions, releases, and florals  everything syncing instantly to your dashboard.
+                Rest Point brings admissions, body releases, documents, dispatch, billing, and family updates into one secure workspace. Give your team a clear next step for every case, from first arrival to final farewell.
               </HeroDesc>
 
               <HeroActions>
                 <BtnBlack onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/register'); }}>
-                  Request Access
+                  Start your setup
                   <BtnArrow>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                   </BtnArrow>
                 </BtnBlack>
-                <BtnGhost onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/login'); }}>View Portal</BtnGhost>
+                <BtnGhost onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/login'); }}>See the client portal</BtnGhost>
               </HeroActions>
+
+              <div style={{ marginTop: '-1.8rem', marginBottom: '2.2rem', color: gray, fontFamily: "'Space Grotesk', sans-serif", fontSize: '0.78rem' }}>
+                Set up your home today and replace scattered paperwork with one calm, connected workflow.
+              </div>
 
               <HeroStats>
                 {statsData.map((s, i) => (
