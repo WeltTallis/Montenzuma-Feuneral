@@ -48,7 +48,7 @@ Frontend: React, Next.js, TailwindCSS
 Database: MySQL / MariaDB (Multi-tenant architecture via database-per-tenant)
 Queue/Cache: Redis / BullMQ (optional, for background jobs)
 Storage: Local disk / S3-compatible storage for signatures, logos, and exports
-Libraries: exceljs, secure-spreadsheet, axios
+Libraries: exceljs, xlsx-populate, axios
 Getting Started (Local Development)
 Prerequisites
 Node.js >= 18.x

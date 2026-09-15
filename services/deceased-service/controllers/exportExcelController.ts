@@ -157,21 +157,22 @@ function resolveTenantLogo(tenantSlug: string, logoUrl?: string | null): { buffe
 // Encrypt an .xlsx buffer with a password using the standard Office "Agile
 // Encryption" (AES). The output opens in Microsoft Excel / Google Sheets with
 // an "Enter password to open" prompt — without the PIN the contents are
-// unreadable. Implemented with secure-spreadsheet (pure JS, no native deps);
-// the library ships no TypeScript types, so it is required inline.
-function encryptXlsxWithPassword(buffer: Buffer, password: string): Promise<Buffer> {
-  const { Readable } = require('stream') as typeof import('stream');
-  const { encrypt } = require('secure-spreadsheet') as {
-    encrypt: (password: string) => import('stream').Transform;
+// unreadable. Implemented with xlsx-populate (already a service dependency —
+// pure JS, no native deps), the same engine the `secure-spreadsheet` CLI uses
+// internally. NOTE: secure-spreadsheet itself cannot be required (ESM-only,
+// CLI-only, no programmatic entry), which is what broke PIN exports with
+// "Cannot find module 'secure-spreadsheet'". xlsx-populate is required inline
+// with a minimal structural type. Verified: images, merges and frozen panes
+// survive the round-trip, and the output carries the standard ECMA-376
+// encrypted-package OLE2 signature (D0 CF 11 E0 A1 B1 1A E1).
+async function encryptXlsxWithPassword(buffer: Buffer, password: string): Promise<Buffer> {
+  const XlsxPopulate = require('xlsx-populate') as {
+    fromDataAsync: (
+      data: Buffer,
+    ) => Promise<{ outputAsync: (opts: { password: string }) => Promise<Buffer> }>;
   };
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    Readable.from(buffer)
-      .pipe(encrypt(password))
-      .on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)))
-      .on('end', () => resolve(Buffer.concat(chunks)))
-      .on('error', (err: Error) => reject(err));
-  });
+  const workbook = await XlsxPopulate.fromDataAsync(buffer);
+  return workbook.outputAsync({ password });
 }
 
 // Resolve a signature stored as a URL path (e.g. /uploads/<slug>/signatures/x.png)
