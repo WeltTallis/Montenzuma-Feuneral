@@ -86,11 +86,6 @@ export const ENDPOINTS = {
     CHARGE_SETTINGS: (id) => `/deceased/charge-settings/${id}`,
     UPDATE_CHARGE_SETTINGS: (id) => `/deceased/charge-settings/${id}`,
   },
-  MPESA: {
-    STKPUSH: '/mpesa/stkpush',
-    PAYMENT: '/mpesa/payment',
-    CALLBACK: '/mpesa/callback',
-  },
   INVOICE: {
     BASE: '/invoices',
     LIST: '/invoices',

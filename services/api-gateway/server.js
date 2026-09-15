@@ -73,9 +73,6 @@ const DOCKER_SERVICE_DEFAULTS = {
   tenant: 'http://restpoint_tenant_service:5000',
   deceased: 'http://restpoint_deceased_service:5000',
   coffin: 'http://restpoint_coffin_service:5000',
-  marketplace: 'http://restpoint_marketplace_service:5000',
-  mpesa: 'http://restpoint_mpesa_service:5000',
-  portal: 'http://restpoint_portal_service:5000',
   invoices: 'http://restpoint_invoice_service:5000',
   // Notification REST (bell list / mark-read / delete) is implemented by the
   // socketio-service (see services/socketio-service/server.ts). There is NO
@@ -93,8 +90,6 @@ const DOCKER_SERVICE_DEFAULTS = {
   socketio: 'http://restpoint_socketio_service:5000',
   workshop: 'http://restpoint_workshop_service:6969',
   extra: 'http://restpoint_extra_services:5000',
-  call: 'http://restpoint_call_service:5000',
-  qrcode: 'http://restpoint_qrcode_service:5000',
   hearse: 'http://restpoint_hearse_service:5000',
   leave: 'http://restpoint_leave_service:5000',
   support: 'http://restpoint_support_service:5000',
@@ -441,14 +436,9 @@ const SERVICE_ROUTES = {
   'bodycheckout': SERVICE_URLS.bodycheckout,
   'body-release': SERVICE_URLS.bodycheckout,
   'extra': SERVICE_URLS.extra,
-  'qrcode': SERVICE_URLS.qrcode,
   'onboarding': SERVICE_URLS.tenant,
-  'portal': SERVICE_URLS.portal,
   // Public deceased/postmortem lookup endpoints are owned by deceased-service.
-  // Keeping this on portal points production traffic at the optional portal
-  // container, which is not part of the production Compose stack.
   'public': SERVICE_URLS.deceased,
-  'mpesa': SERVICE_URLS.mpesa,
   'store': SERVICE_URLS.store,
 };
 
@@ -479,7 +469,17 @@ const SERVICE_FALLBACK_URLS = {
 // what produced the bare "Error occurred while trying to proxy: <host>"
 // 500 response instead of the JSON 503 below. Using `on: {}` fixes both.
 const proxyCache = {};
-for (const targetUrl of Object.values(SERVICE_ROUTES)) {
+for (const [routeKey, targetUrl] of Object.entries(SERVICE_ROUTES)) {
+  if (!targetUrl) {
+    // A route resolved to no URL (e.g. a SERVICE_ROUTES entry pointing at a
+    // SERVICE_URLS key that was never defined, or an env var left blank with
+    // no default). Log loudly and skip it — throwing here crash-loops the
+    // ENTIRE gateway (every route plus /health) instead of leaving just that
+    // one path unroutable. Requests to a skipped route fall through to the
+    // 503 handler in the route lookup below.
+    Logger.error(`[BOOT] SERVICE_ROUTES.${routeKey} resolved to no target URL — route disabled`);
+    continue;
+  }
   if (!proxyCache[targetUrl]) {
     proxyCache[targetUrl] = createProxyMiddleware({
       target: targetUrl,

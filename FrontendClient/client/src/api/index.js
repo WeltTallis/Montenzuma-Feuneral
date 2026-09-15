@@ -3,8 +3,6 @@ export { default as api } from './axios';
 export { ENDPOINTS } from './endpoints';
 export { default as storeApi, StoreAPI } from './storeApi';
 export { authApi } from './authApi';
-export { default as callApi, createCallSocket, getTenantCallRoom, listActiveCallRooms, callTenant } from './callApi';
-export { paymentApi } from './paymentApi';
 export { invoiceApi } from './invoiceApi';
 export { publicApi } from './publicApi';
 export { calendarApi } from './calendar.api';
