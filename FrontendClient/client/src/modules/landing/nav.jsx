@@ -652,9 +652,8 @@ export default function Header() {
               <UtilItem>Death Care OS &mdash; v2.0</UtilItem>
             </UtilGroup>
             <UtilGroup>
-              <UtilLink href="#">Support</UtilLink>
-              <UtilLink href="#">Docs</UtilLink>
-              <UtilLink href="#">Status</UtilLink>
+              <UtilLink href="/support">Support</UtilLink>
+              <UtilLink href="/releases">Release notes</UtilLink>
             </UtilGroup>
           </UtilityContainer>
         </UtilityBar>

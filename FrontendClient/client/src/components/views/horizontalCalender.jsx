@@ -26,15 +26,16 @@ function toMonday(d) {
 export default function HorizontalCalendar({ eventsData = [], selectedDate, onDateSelect }) {
     const [viewStart, setViewStart] = useState(() => toMonday(new Date()));
     const stripRef = useRef(null);
-    const [visibleCount, setVisibleCount] = useState(7);
+    const [visibleCount, setVisibleCount] = useState(30);
     const calendarRef = useRef(null);
 
-    const eventCounts = useMemo(() => {
+    const eventMeta = useMemo(() => {
         const map = {};
         eventsData.forEach((ev) => {
             const date = new Date(ev.date);
             const key = dk(date.getFullYear(), date.getMonth(), date.getDate());
-            map[key] = (map[key] || 0) + 1;
+            if (!map[key]) map[key] = [];
+            map[key].push({ color: ev.color || '#a9762d', title: ev.title || 'Event' });
         });
         return map;
     }, [eventsData]);
@@ -71,13 +72,13 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                 key,
                 dayName: DOWS[(d.getDay() + 6) % 7],
                 dayNum: d.getDate(),
-                count: eventCounts[key] || 0,
+                events: eventMeta[key] || [],
                 isToday: key === todayKey,
                 isSelected: selectedDate != null && key === dk(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()),
             });
         }
         return arr;
-    }, [viewStart, eventCounts, todayKey, selectedDate]);
+    }, [viewStart, eventMeta, todayKey, selectedDate]);
 
     useEffect(() => {
         const targetKey = selectedDate
@@ -93,9 +94,7 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
         const el = stripRef.current;
         if (!el) return;
         const measure = () => {
-            const available = Math.max(el.clientWidth - 28, 40);
-            const count = Math.max(1, Math.floor(available / 44));
-            setVisibleCount(Math.min(count, 30));
+            setVisibleCount(30);
         };
         measure();
         const ro = new ResizeObserver(measure);
@@ -180,10 +179,10 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
 
     return (
         <div style={{
-            background: 'transparent',
-            borderRadius: 10,
-            border: 'none',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            background: '#ffffff',
+            borderRadius: 12,
+            border: '1px solid #e4e0d6',
+            fontFamily: 'IBM Plex Sans, sans-serif',
             width: '100%',
             maxWidth: 2200,
             margin: '0 auto',
@@ -193,13 +192,14 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '0 0 6px 0',
+                padding: '16px 20px',
+                borderBottom: '1px solid #e4e0d6',
             }}>
                 <button
                     onClick={prevWeek}
                     style={{
-                        width: 26,
-                        height: 26,
+                        width: 30,
+                        height: 30,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -208,7 +208,7 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                         background: '#fff',
                         color: '#374151',
                         cursor: 'pointer',
-                        fontSize: '12px',
+                        fontSize: '18px',
                         lineHeight: 1,
                         transition: 'all 0.15s',
                         outline: 'none',
@@ -275,38 +275,34 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                 style={{
                     display: 'flex',
                     justifyContent: 'flex-start',
-                    overflowX: 'hidden',
+                    overflowX: 'auto',
                     overflowY: 'hidden',
-                    padding: '2px 0',
-                    gap: 3,
+                    padding: 0,
+                    gap: 0,
                     scrollBehavior: 'smooth',
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none',
-                    minHeight: 70,
+                    minHeight: 144,
                 }}
                 className="ds-scroll-hide"
             >
-                {days.slice(0, visibleCount).map((day) => {
+                {days.slice(0, visibleCount).map((day, index) => {
                     const { isToday, isSelected } = day;
+                    const eventTypes = [...new Map(day.events.map((event) => [event.color, event])).values()];
 
-                    let bg = 'transparent';
-                    let border = '1.5px solid transparent';
+                    let bg = (day.date.getDay() === 0 || day.date.getDay() === 6) ? '#f7f6f3' : 'transparent';
+                    let border = 'none';
                     let shadow = 'none';
-                    let textColor = '#111827';
-                    let dayNameColor = '#9ca3af';
-                    let badgeBg = '#e5e7eb';
-                    let badgeColor = '#6b7280';
+                    let textColor = '#1c1b18';
+                    let dayNameColor = '#a89c85';
 
                     if (isToday && !isSelected) {
-                        border = '1.5px solid #d80505';
-                        bg = 'transparent';
+                        bg = '#fbf6ea';
                     }
                     if (isSelected) {
-                        bg = 'rgb(244, 0, 0)';
+                        bg = '#1c1b18';
                         textColor = '#fff';
                         dayNameColor = 'rgba(255,255,255,0.8)';
-                        badgeBg = 'rgba(255,255,255,0.2)';
-                        badgeColor = '#fff';
                     }
 
                     return (
@@ -315,9 +311,10 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                             id={`dc-${day.key}`}
                             onClick={() => pickDate(day.date)}
                             style={{
-                                flex: '1 0 36px',
-                                padding: '4px 2px 3px',
-                                borderRadius: 7,
+                                flex: '0 0 108px',
+                                minHeight: 144,
+                                padding: '20px 0',
+                                borderRadius: 0,
                                 border,
                                 background: bg,
                                 textAlign: 'center',
@@ -326,7 +323,7 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                                 boxShadow: shadow,
                                 outline: 'none',
                                 position: 'relative',
-                                minWidth: 30,
+                                minWidth: 108,
                             }}
                             onMouseEnter={(e) => {
                                 if (!isSelected && !isToday) {
@@ -347,38 +344,48 @@ export default function HorizontalCalendar({ eventsData = [], selectedDate, onDa
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.05em',
                                 color: dayNameColor,
-                                marginBottom: 1,
+                                marginBottom: 2,
                                 opacity: isSelected ? 1 : 0.7,
                             }}>
                                 {day.dayName}
                             </div>
                             <div style={{
-                                fontSize: '14px',
-                                fontWeight: isSelected ? 700 : 600,
+                                fontFamily: 'Fraunces, Georgia, serif',
+                                fontSize: '25px',
+                                fontWeight: 600,
+                                width: 40,
+                                height: 40,
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                                 color: textColor,
+                                background: isToday ? (isSelected ? '#ffffff' : '#1c1b18') : 'transparent',
+                                ...(isToday && isSelected ? { color: '#1c1b18' } : {}),
                                 lineHeight: 1.2,
                             }}>
                                 {day.dayNum}
                             </div>
-                            {day.count > 0 && (
-                                <div style={{
-                                    display: 'inline-block',
-                                    marginTop: 1,
-                                    fontSize: '7px',
-                                    fontWeight: 700,
-                                    padding: '0px 4px',
-                                    borderRadius: 3,
-                                    background: badgeBg,
-                                    color: badgeColor,
-                                    lineHeight: 1.5,
-                                    letterSpacing: '0.02em',
-                                }}>
-                                    {day.count}
-                                </div>
-                            )}
+                            <div style={{ display: 'flex', gap: 3, height: 6 }}>
+                                {eventTypes.map((event) => <span key={event.color} title={event.title} style={{ width: 5, height: 5, borderRadius: '50%', background: event.color }} />)}
+                            </div>
                         </button>
                     );
                 })}
+            </div>
+
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 18, padding: '12px 20px',
+                borderTop: '1px solid #e4e0d6', fontSize: 11, color: '#867c6a', flexWrap: 'wrap'
+            }}>
+                {[['#a9762d', 'Intake'], ['#4f6b52', 'Release'], ['#7d3b3b', 'Postmortem']].map(([color, label]) => (
+                    <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <i style={{ width: 6, height: 6, borderRadius: '50%', background: color }} /> {label}
+                    </span>
+                ))}
+                <span style={{ marginLeft: 'auto', fontFamily: 'IBM Plex Mono, monospace', fontSize: 11.5 }}>
+                    Selected - <b style={{ color: '#1c1b18' }}>{selectedDate ? selectedDate.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }) : title}</b>
+                </span>
             </div>
 
             <style>{`.ds-scroll-hide::-webkit-scrollbar{display:none}`}</style>

@@ -4,7 +4,7 @@
  */
 
 // @ts-ignore - Shared module loaded at runtime (JavaScript)
-const { safeTenantQuery, safeTenantExecute, getTenantDB, query, execute } = require('../../shared/dbConfig');
+const { safeTenantQuery, safeTenantExecute, getTenantDB, query, execute } = require('../../../shared/dbConfig');
 
 // Re-export for use in controllers
 export { safeTenantQuery, safeTenantExecute, getTenantDB, query, execute };

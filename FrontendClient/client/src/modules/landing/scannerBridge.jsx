@@ -447,20 +447,20 @@ const ScannerSetupGuide = () => {
                 <div className="container">
                     <div className="portable-grid">
                         <div className="portable-text">
-                            <span className="eyebrow" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: 'var(--brass)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Designed for the Modern Funeral Home</span>
-                            <h3 className="serif">Unrestricted by hardware. Built for the desk.</h3>
-                            <p>We allow your directors to use sleek, portable scanners that can be placed directly on a desk or table and moved easily. Whether it’s a compact desk scanner in the director’s office or a portable document scanner at the front desk, our infrastructure adapts to you.</p>
+                            <span className="eyebrow" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: 'var(--brass)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>For your front desk</span>
+                            <h3 className="serif">Scan documents without the hassle.</h3>
+                            <p>Keep the scanner close to your team. Scan admission forms, release papers, and other documents straight into the right case in Rest Point.</p>
 
                             <div className="portable-features">
                                 <div className="feature-box">
                                     <i className="fas fa-arrows-up-down-left-right"></i>
-                                    <h4>Total Mobility</h4>
-                                    <p>Move the scanner anywhere there’s a computer. No fixed installations required.</p>
+                                    <h4>Move it easily</h4>
+                                    <p>Place it wherever your team does the work. No fixed installation is needed.</p>
                                 </div>
                                 <div className="feature-box">
                                     <i className="fas fa-bolt"></i>
-                                    <h4>Instant Capture</h4>
-                                    <p>Just place the paper in the tray. The bridge handles the rest in milliseconds.</p>
+                                    <h4>Scan in seconds</h4>
+                                    <p>Place the paper in the tray. Rest Point saves the document to the case for you.</p>
                                 </div>
                             </div>
                         </div>
@@ -476,9 +476,9 @@ const ScannerSetupGuide = () => {
             <section id="setup" className="download-section" style={{ paddingTop: '4rem', paddingBottom: '4rem' }}>
                 <div className="container">
                     <div className="section-header" style={{ marginBottom: '2.5rem' }}>
-                        <span className="eyebrow">Installation Guide</span>
-                        <h2 className="serif">Install for Mac or Windows</h2>
-                        <p>Choose your operating system and install the bridge on the desk computer in under a minute.</p>
+                        <span className="eyebrow">Set up your scanner</span>
+                        <h2 className="serif">Ready in a few simple steps.</h2>
+                        <p>Choose your computer, install the two small helper apps, and start scanning into Rest Point.</p>
                     </div>
 
                     <div className="prereq-grid">
@@ -488,13 +488,13 @@ const ScannerSetupGuide = () => {
                             <div className="prereq-icon">
                                 <i className="fas fa-microchip"></i>
                             </div>
-                            <h3 className="serif">Restpoint Scanner Bridge</h3>
-                            <p>The meticulously engineered agent that connects your browser to the physical scanner. Runs silently on startup.</p>
+                            <h3 className="serif">Rest Point connection app</h3>
+                            <p>This small app connects Rest Point to the scanner and runs quietly in the background.</p>
                             <a href="/downloads/windows/Restpoint-Scanner-Bridge-Installer.exe" className="btn-secondary" download>
-                                <i className="fas fa-download"></i> Download Windows Installer (.exe)
+                                <i className="fas fa-download"></i> Windows download
                             </a>
                             <a href="/downloads/macbook/Restpoint-Scanner-Bridge.pkg" className="btn-secondary" download style={{ marginTop: '0.6rem' }}>
-                                <i className="fab fa-apple"></i> Download macOS Installer (.pkg)
+                                <i className="fab fa-apple"></i> Mac download
                             </a>
                         </div>
 
@@ -504,10 +504,10 @@ const ScannerSetupGuide = () => {
                             <div className="prereq-icon">
                                 <i className="fas fa-print"></i>
                             </div>
-                            <h3 className="serif">NAPS2 Scanner Driver</h3>
-                            <p>The free, open-source translator required to talk to your hardware via TWAIN/WIA.</p>
+                            <h3 className="serif">Scanner helper</h3>
+                            <p>This free app helps your computer talk to the scanner.</p>
                             <a href="https://www.naps2.com/download" target="_blank" rel="noopener noreferrer" className="btn-primary">
-                                <i className="fas fa-external-link-alt"></i> Download NAPS2
+                                <i className="fas fa-external-link-alt"></i> Get the scanner helper
                             </a>
                         </div>
                     </div>
@@ -518,47 +518,38 @@ const ScannerSetupGuide = () => {
             <section id="bridge-app" className="split-section">
                 <div className="container">
                     <div className="section-header">
-                        <span className="eyebrow" style={{ color: 'var(--brass)' }}>The Engine</span>
-                        <h2 className="serif">Why do I need the Restpoint Bridge?</h2>
-                     <p>
-        The Restpoint Bridge is a small app/micro agent that connects your desktop/laptop  hardware to our cloud.
-        It helps your devices and our system communicate smoothly and securely,
-        so everything works together without complicated setup.
-    </p>
+                        <span className="eyebrow" style={{ color: 'var(--brass)' }}>How it works</span>
+                        <h2 className="serif">You click Scan. We handle the rest.</h2>
+                        <p>The Rest Point connection app links your scanner to your case files. Your team does not need to manage settings or move files around.</p>
                     </div>
 
                     <div className="tech-grid">
                         <div className="tech-text">
-                            <h3>The Cloud to Local Barrier</h3>
-                            <p>Your Restpoint software lives securely in the cloud. Web browsers, by design, are strictly sandboxed—they cannot see or control the physical hardware plugged into your computer. If you click "Scan" in a web browser, it has no way to tell the scanner to pull the paper.</p>
-                            <p>To solve this, we built the <strong>Restpoint Scanner Bridge  Micro  agent</strong>. It is a lightweight, invisible micro agent that installs on the local computer. It acts as a secure relay, receiving commands from the cloud and executing them on your local and  external  hardware.</p>
+                            <h3>Simple for your team</h3>
+                            <p>Click "Scan Docs" in a case, place the paper in the tray, and let Rest Point do the filing. The connection app runs quietly on the desk computer.</p>
+                            <p>Your documents go to the right case as a clear PDF, ready for your team to review and share.</p>
 
                             <ul className="tech-list">
                                 <li>
                                     <i className="fas fa-shield-halved"></i>
                                    <div>
-    <strong>Secure Local Tunnel</strong>
-    <span>
-        Creates a private connection on your computer using  a port(8081). A port is like a
-        small doorway that computers use to communicate. Restpoint uses
-        this private doorway so your cloud  restpoint  can safely talk to the Miro agent  Bridge
-        without exposing it to the internet.
-    </span>
+                                        <strong>Private connection</strong>
+                                        <span>Your scanner connects to Rest Point through a private link on the desk computer.</span>
 </div>
 
                                 </li>
                                 <li>
                                     <i className="fas fa-eye-slash"></i>
                                     <div>
-                                        <strong>Silent Automation</strong>
-                                        <span>Runs invisibly in the system tray on startup. No windows to open, no buttons to click.</span>
+                                        <strong>Runs quietly</strong>
+                                        <span>It starts with the computer, so staff do not need to open another window.</span>
                                     </div>
                                 </li>
                                 <li>
                                     <i className="fas fa-network-wired"></i>
                                     <div>
-                                        <strong>Direct Cloud Upload</strong>
-                                        <span>Bypasses the browser entirely for heavy file uploads, pushing the PDF directly to the Restpoint API.</span>
+                                        <strong>Filed for you</strong>
+                                        <span>The finished PDF is attached to the case without extra uploads or filing.</span>
                                     </div>
                                 </li>
                             </ul>
@@ -586,34 +577,34 @@ const ScannerSetupGuide = () => {
             <section id="network" className="network-section">
                 <div className="container">
                     <div className="section-header">
-                        <span className="eyebrow">The Bridge Network</span>
-                        <h2 className="serif">Communication Protocols</h2>
-                        <p>How our agent creates a secure, real-time tunnel between the browser, the physical hardware, and the Restpoint Cloud.</p>
+                        <span className="eyebrow">Behind the scan</span>
+                        <h2 className="serif">What happens after you click Scan</h2>
+                        <p>Three quiet steps move the document from the tray to the right case.</p>
                     </div>
 
                     <div className="protocol-grid">
                         {/* Protocol 1 */}
                         <div className="protocol-card">
                             <div className="protocol-icon"><i className="fas fa-plug"></i></div>
-                            <span className="protocol-tag">ws://localhost:8081</span>
-                            <h4>WebSocket Layer</h4>
-                            <p>When a director clicks "Scan", the web app opens a local WebSocket connection to the Bridge Agent. This allows real-time, two-way communication to trigger the hardware and stream live progress states back to the browser UI.</p>
+                            <span className="protocol-tag">Step 1</span>
+                            <h4>Start the scan</h4>
+                            <p>You choose Scan Docs from the case. Rest Point sends the request to the scanner beside you.</p>
                         </div>
 
                         {/* Protocol 2 */}
                         <div className="protocol-card">
                             <div className="protocol-icon"><i className="fas fa-microchip"></i></div>
-                            <span className="protocol-tag">TWAIN / WIA</span>
-                            <h4>Hardware Layer</h4>
-                            <p>The Agent translates the web command into TWAIN or WIA protocols—the native language of scanners. It commands the portable scanner to pull the paper, adjust DPI, and compile a high-quality multi-page PDF file locally.</p>
+                            <span className="protocol-tag">Step 2</span>
+                            <h4>Capture the pages</h4>
+                            <p>The scanner reads the pages and joins them into one clear PDF, even when a document has several pages.</p>
                         </div>
 
                         {/* Protocol 3 */}
                         <div className="protocol-card">
                             <div className="protocol-icon"><i className="fas fa-cloud-arrow-up"></i></div>
-                            <span className="protocol-tag">HTTPS / REST API</span>
-                            <h4>Cloud Layer</h4>
-                            <p>Once the PDF is compiled, the Agent makes a secure, encrypted HTTPS POST request directly to the Restpoint Cloud API, uploading the document and attaching it to the specific deceased profile instantly.</p>
+                            <span className="protocol-tag">Step 3</span>
+                            <h4>Save to the case</h4>
+                            <p>The PDF is sent securely to Rest Point and attached to the correct deceased record.</p>
                         </div>
                     </div>
                 </div>
@@ -623,9 +614,9 @@ const ScannerSetupGuide = () => {
             <section id="why-naps2" className="split-section">
                 <div className="container">
                     <div className="section-header">
-                        <span className="eyebrow" style={{ color: 'var(--brass)' }}>The Translator</span>
-                        <h2 className="serif">Why do I need to install NAPS2?</h2>
-                        <p>The critical open-source tool required to talk to your physical hardware.</p>
+                        <span className="eyebrow" style={{ color: 'var(--brass)' }}>One small helper</span>
+                        <h2 className="serif">Why is the scanner helper needed?</h2>
+                        <p>It helps your computer recognise the scanner. Once it is installed, your team can forget about it.</p>
                     </div>
 
                     <div className="tech-grid reverse">
@@ -645,30 +636,30 @@ const ScannerSetupGuide = () => {
                         </div>
 
                         <div className="tech-text">
-                            <h3>The Language Barrier</h3>
-                            <p>While the Restpoint Bridge handles the cloud communication, it still needs a way to speak to the actual scanner hardware. Scanners use low-level hardware protocols (TWAIN/WIA) that require specialized drivers to operate.</p>
-                            <p>To bridge this gap flawlessly, we leverage <strong>NAPS2</strong>. It is a free, open-source, lightweight tool that acts as a universal translator for your scanner.</p>
+                            <h3>Installed once, used quietly</h3>
+                            <p>The helper gives your computer the simple instructions it needs to work with the scanner.</p>
+                            <p>Your director does not need to open it. Rest Point uses it in the background whenever a document is scanned.</p>
 
                             <ul className="tech-list">
                                 <li>
                                     <i className="fas fa-check-circle"></i>
                                     <div>
-                                        <strong>Hardware Communication</strong>
-                                        <span>NAPS2 already knows how to talk to TWAIN, WIA, and SANE devices seamlessly.</span>
+                                        <strong>Recognises your scanner</strong>
+                                        <span>It helps the computer find and use the connected scanner.</span>
                                     </div>
                                 </li>
                                 <li>
                                     <i className="fas fa-check-circle"></i>
                                     <div>
-                                        <strong>Command Line Interface (CLI)</strong>
-                                        <span>It is triggered invisibly in the background by our Restpoint Agent without opening any windows.</span>
+                                        <strong>Works in the background</strong>
+                                        <span>It starts when needed without opening extra windows.</span>
                                     </div>
                                 </li>
                                 <li>
                                     <i className="fas fa-check-circle"></i>
                                     <div>
-                                        <strong>Invisible to Staff</strong>
-                                        <span>The director never opens NAPS2. It runs silently as an engine that powers our automation.</span>
+                                        <strong>No extra work</strong>
+                                        <span>Your team clicks Scan Docs in Rest Point and carries on.</span>
                                     </div>
                                 </li>
                             </ul>
@@ -681,9 +672,9 @@ const ScannerSetupGuide = () => {
             <section id="setup" className="download-section" style={{ paddingTop: '4rem', paddingBottom: '4rem' }}>
                 <div className="container">
                     <div className="section-header" style={{ marginBottom: '2.5rem' }}>
-                        <span className="eyebrow">Installation Guide</span>
-                        <h2 className="serif">Install for Mac or Windows</h2>
-                        <p>Choose your operating system and install the bridge on the desk computer in under a minute.</p>
+                        <span className="eyebrow">Quick setup</span>
+                        <h2 className="serif">Start scanning in four steps.</h2>
+                        <p>Set it up once on the computer your team uses at the front desk.</p>
                     </div>
 
                     <div className="prereq-grid">
@@ -719,29 +710,29 @@ const ScannerSetupGuide = () => {
                         <div className="step-item">
                             <div className="step-num">1</div>
                             <div className="step-content">
-                                <h4>Connect the Scanner</h4>
-                                <p>Place your portable scanner on the desk and connect it to the computer via USB. Ensure it is powered on.</p>
+                                <h4>Connect the scanner</h4>
+                                <p>Place the scanner on the desk, connect the USB cable, and switch it on.</p>
                             </div>
                         </div>
                         <div className="step-item">
                             <div className="step-num">2</div>
                             <div className="step-content">
-                                <h4>Install NAPS2 Driver</h4>
-                                <p>Download and install NAPS2 from their official website. Open it once to ensure your scanner is detected, then close it.</p>
+                                <h4>Install the scanner helper</h4>
+                                <p>Download the helper above and open it once so the computer can find your scanner.</p>
                             </div>
                         </div>
                         <div className="step-item">
                             <div className="step-num">3</div>
                             <div className="step-content">
-                                <h4>Install Restpoint Bridge</h4>
-                                <p>Download the matching Windows .exe or macOS .pkg installer for this computer, run it once, and the bridge will start silently on login.</p>
+                                <h4>Install the Rest Point app</h4>
+                                <p>Choose the Windows or Mac download above. Open it once; it will start quietly when the computer starts.</p>
                             </div>
                         </div>
                         <div className="step-item">
                             <div className="step-num">4</div>
                             <div className="step-content">
-                                <h4>Scan in Restpoint</h4>
-                                <p>Open a deceased profile in your web browser, click "Scan Docs", place paper in the tray, and watch the PDF appear instantly.</p>
+                                <h4>Scan in Rest Point</h4>
+                                <p>Open a deceased profile, click "Scan Docs", place the paper in the tray, and the PDF will appear in the case.</p>
                             </div>
                         </div>
                     </div>

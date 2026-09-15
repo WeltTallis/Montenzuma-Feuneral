@@ -3,6 +3,7 @@ import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import { QRCodeSVG } from 'qrcode.react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
+import env from '../../utils/config/env';
 
 // ─── Google Fonts ────────────────────────────────────────────
 const GlobalStyles = createGlobalStyle`
@@ -30,8 +31,7 @@ const C = {
     errorBg:   '#fdf2f4',
 };
 
-const API_GATEWAY_URL = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_API_URL || 'http://localhost:5000') : 'http://localhost:5000';
-const BASE_URL = `${API_GATEWAY_URL}/api/v1/restpoint`;
+const BASE_URL = env.FULL_API_URL;
 
 // ─── Animations ────────────────────────────────────────────────
 const fadeIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`;

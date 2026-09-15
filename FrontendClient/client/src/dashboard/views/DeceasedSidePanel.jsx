@@ -11,10 +11,13 @@
    ───────────────────────────────────────────────────────────────────────── */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import Loader from "../../components/loader/loader";
 import api from "../../api/axios";
 import { deceasedApi } from "../../api/deceasedApi";
 import { formatDate, getDaysInMorgue, getInitials } from "../../components/deceased/deceasedinfo/theme";
+import env from "../../utils/config/env";
+import { rebaseUploadUrl } from "../../utils/tenantResolver/tenantBranding";
 
 // ── Simple in-memory cache (survives within session, avoids refetch) ──────
 const _cache = new Map();
@@ -113,6 +116,35 @@ function Row({ label, value, mono, full }) {
         {String(value ?? "—")}
       </div>
     </div>
+  );
+}
+
+function SignatureDisplay({ path }) {
+  const [failed, setFailed] = useState(false);
+
+  const buildUrl = (p) => {
+    if (!p) return null;
+    if (p.startsWith("data:image")) return p;
+    if (p.startsWith("http")) return rebaseUploadUrl(p);
+    if (p.startsWith("/")) return `${env.UPLOADS_URL}${p}`;
+    const clean = p.replace(/^\/+/, "");
+    return `${env.UPLOADS_URL}/${clean}`;
+  };
+
+  const src = buildUrl(path);
+  if (!path) return null;
+
+  return failed ? (
+    <a href={src} target="_blank" rel="noreferrer" className="text-[12px] text-blue-600 underline">
+      Click to view signature ↗
+    </a>
+  ) : (
+    <img
+      src={src}
+      alt="Next of Kin Signature"
+      onError={() => setFailed(true)}
+      style={{ maxWidth: "100%", maxHeight: 200, marginTop: 6, background: "#fff", padding: 6, objectFit: "contain", border: "1px solid #e2e8f0", borderRadius: 8 }}
+    />
   );
 }
 
@@ -245,6 +277,7 @@ export default function DeceasedSidePanel({ booking, onClose }) {
     id_number: d.national_id || d.id_number || "",
     contact: d.phone_number || d.tel_number || "",
   } : {}), [nextOfKin, d.contact_person, d.phone_number, d.relationship, d.national_id, d.id_number, d.tel_number]);
+  const signaturePath = d.signature || nextOfKin?.signature || k?.signature;
 
   const fullName    = d.full_name || d.name || d.deceased_name || d.name_of_deceased || "Unknown";
   const admissionNo = d.admission_number || d.admission_no || "—";
@@ -458,8 +491,330 @@ export default function DeceasedSidePanel({ booking, onClose }) {
             </div>
           )}
 
-          <>
-            {/* Stats strip — mirrors the profile sidebar */}
+          {tab === "overview" ? (
+            <div className="profile-panel-root">
+              <style>{`
+                .profile-panel-root {
+                  --black: #0F172A;
+                  --gray: #64748B;
+                  --mid: #475569;
+                  --lightGray: #94A3B8;
+                  --borderLight: #E2E8F0;
+                  --bg: #F1F5F9;
+                  --white: #FFFFFF;
+                  --success: #16A34A;
+                  --successBg: #F0FDF4;
+                  --warning: #D97706;
+                  --warningBg: #FFFBEB;
+                }
+                .profile-sidebar-card {
+                  background: var(--white);
+                  border: 1px solid var(--borderLight);
+                  border-radius: 16px;
+                  width: 100%;
+                  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+                  display: flex;
+                  flex-direction: column;
+                  overflow: hidden;
+                }
+                .profile-sidebar-header {
+                  background: var(--black);
+                  color: white;
+                  padding: 22px 24px;
+                  display: flex;
+                  align-items: center;
+                  gap: 16px;
+                  border-bottom: 1px solid var(--borderLight);
+                }
+                .profile-header-avatar {
+                  width: 54px; height: 54px;
+                  border-radius: 12px;
+                  background: rgba(255,255,255,0.1);
+                  display: flex; align-items: center; justify-content: center;
+                  font-family: 'IBM Plex Mono', monospace;
+                  font-weight: 700; font-size: 18px;
+                  flex-shrink: 0;
+                }
+                .profile-header-info { min-width: 0; flex: 1; }
+                .profile-header-name {
+                  font-family: 'Merriweather', serif;
+                  font-size: 21px;
+                  font-weight: 700;
+                  line-height: 1.2;
+                  white-space: normal;
+                }
+                .profile-header-meta {
+                  font-size: 11px;
+                  color: rgba(255,255,255,0.68);
+                  margin-top: 4px;
+                  font-family: 'IBM Plex Mono', monospace;
+                  text-transform: uppercase;
+                  letter-spacing: 0.08em;
+                }
+                .profile-tracker-container {
+                  padding: 20px 24px;
+                  border-bottom: 1px solid var(--borderLight);
+                  background: #F8FAFC;
+                }
+                .profile-tracker { display: flex; align-items: center; justify-content: space-between; position: relative; }
+                .profile-track-line { position: absolute; top: 10px; left: 18px; right: 18px; height: 2px; background: var(--borderLight); z-index: 1; }
+                .profile-track-line.active { background: var(--success); width: 50%; left: 25%; }
+                .profile-track-step { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 33.3%; }
+                .profile-track-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--white); border: 2px solid var(--borderLight); display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; }
+                .profile-track-step.done .profile-track-dot { background: var(--success); border-color: var(--success); }
+                .profile-track-step.active .profile-track-dot { background: var(--warning); border-color: var(--warning); box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.2); }
+                .profile-track-label { font-size: 11px; font-weight: 600; color: var(--gray); }
+                .profile-track-step.done .profile-track-label, .profile-track-step.active .profile-track-label { color: var(--black); }
+                .profile-track-date { font-size: 9px; color: var(--lightGray); font-family: 'IBM Plex Mono', monospace; }
+                .profile-sidebar-body {
+                  padding: 22px 24px 12px;
+                  overflow-y: auto;
+                  flex: 1;
+                }
+                .profile-section-head {
+                  font-size: 11px;
+                  font-weight: 700;
+                  letter-spacing: 0.1em;
+                  text-transform: uppercase;
+                  margin-bottom: 16px;
+                  margin-top: 18px;
+                  color: var(--mid);
+                  display: flex;
+                  align-items: center;
+                  gap: 12px;
+                }
+                .profile-section-head:first-child { margin-top: 0; }
+                .profile-section-head::after {
+                  content: '';
+                  flex: 1;
+                  height: 1px;
+                  background: var(--borderLight);
+                }
+                .profile-section-head span {
+                  background: var(--black);
+                  color: white;
+                  padding: 4px 8px;
+                  border-radius: 4px;
+                  font-size: 9px;
+                  font-family: 'IBM Plex Mono', monospace;
+                }
+                .profile-detail-grid {
+                  display: grid;
+                  grid-template-columns: repeat(3, minmax(0, 1fr));
+                  gap: 16px 18px;
+                }
+                .profile-detail-grid + .profile-detail-grid {
+                  margin-top: 14px;
+                  padding-top: 14px;
+                  border-top: 1px solid var(--borderLight);
+                }
+                .profile-detail-item {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 5px;
+                  min-width: 0;
+                }
+                .profile-detail-item.full { grid-column: span 2; }
+                .profile-detail-item.full-3 { grid-column: 1 / -1; }
+                .profile-detail-label {
+                  font-size: 9px;
+                  font-weight: 700;
+                  letter-spacing: 0.12em;
+                  text-transform: uppercase;
+                  color: var(--lightGray);
+                }
+                .profile-detail-value {
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: var(--black);
+                  word-break: break-word;
+                  line-height: 1.4;
+                }
+                .profile-detail-value.empty {
+                  color: var(--lightGray);
+                  font-weight: 500;
+                }
+                .profile-pill {
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 6px;
+                  font-size: 11px;
+                  font-weight: 600;
+                  padding: 5px 10px;
+                  border-radius: 6px;
+                  text-transform: uppercase;
+                  letter-spacing: 0.03em;
+                }
+                .profile-pill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+                .profile-pill.success { background: var(--successBg); color: var(--success); }
+                .profile-sidebar-footer {
+                  background: #F8FAFC;
+                  padding: 14px 24px;
+                  display: flex;
+                  align-items: center;
+                  gap: 14px;
+                  border-top: 1px solid var(--borderLight);
+                }
+                .profile-qr-box { background: white; padding: 4px; border: 1px solid var(--borderLight); border-radius: 6px; }
+                .profile-footer-info { flex: 1; }
+                .profile-footer-title { font-size: 13px; font-weight: 700; color: var(--black); }
+                .profile-footer-sub { font-size: 11px; color: var(--gray); margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
+                @media (max-width: 540px) {
+                  .profile-detail-grid { grid-template-columns: 1fr 1fr; }
+                }
+              `}</style>
+
+              <div className="profile-sidebar-card">
+                <div className="profile-sidebar-header">
+                  <div className="profile-header-avatar">{getInitials(fullName)}</div>
+                  <div className="profile-header-info">
+                    <div className="profile-header-name">{fullName}</div>
+                    <div className="profile-header-meta">Deceased Profile Overview</div>
+                  </div>
+                </div>
+
+                <div className="profile-tracker-container">
+                  <div className="profile-tracker">
+                    <div className="profile-track-line" />
+                    <div className="profile-track-line active" />
+                    <div className="profile-track-step done">
+                      <div className="profile-track-dot">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      </div>
+                      <span className="profile-track-label">Admitted</span>
+                      <span className="profile-track-date">{formatDate(d.date_admitted || d.adm_date || d.created_at) || '—'}</span>
+                    </div>
+                    <div className="profile-track-step active">
+                      <div className="profile-track-dot" />
+                      <span className="profile-track-label">Postmortem</span>
+                      <span className="profile-track-date">{postmortem ? 'In Progress' : 'Pending'}</span>
+                    </div>
+                    <div className="profile-track-step">
+                      <div className="profile-track-dot" />
+                      <span className="profile-track-label">Released</span>
+                      <span className="profile-track-date">Pending</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="profile-sidebar-body">
+                  <div className="profile-section-head"><span>01</span> Admission</div>
+                  <div className="profile-detail-grid">
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Admission Number</span>
+                      <div className="profile-detail-value">{admissionNo}</div>
+                    </div>
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Date Admitted</span>
+                      <div className="profile-detail-value">{formatDate(d.date_admitted || d.adm_date || d.created_at) || '—'}</div>
+                    </div>
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Time Received</span>
+                      <div className="profile-detail-value">{d.time_received || d.admission_time || '—'}</div>
+                    </div>
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Receiving Officer</span>
+                      <div className="profile-detail-value">{d.receiving_officer || d.admitted_by || d.admitted_by_name || '—'}</div>
+                    </div>
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Body Status</span>
+                      <div className="profile-detail-value"><span className="profile-pill success"><i></i> {bodyStatus}</span></div>
+                    </div>
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Permit Number</span>
+                      <div className="profile-detail-value">{d.permit_number || '—'}</div>
+                    </div>
+                    <div className="profile-detail-item full-3">
+                      <span className="profile-detail-label">Received From</span>
+                      <div className="profile-detail-value">{d.received_from || '—'}</div>
+                    </div>
+                  </div>
+
+                  <div className="profile-section-head"><span>02</span> Death Specifics</div>
+                  <div className="profile-detail-grid">
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Date of Death</span>
+                      <div className="profile-detail-value">{formatDate(d.date_of_death) || '—'}</div>
+                    </div>
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Place of Death</span>
+                      <div className="profile-detail-value">{d.place_of_death || '—'}</div>
+                    </div>
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Physician</span>
+                      <div className="profile-detail-value empty">{d.physician || d.attending_physician || '—'}</div>
+                    </div>
+                    <div className="profile-detail-item full-3">
+                      <span className="profile-detail-label">Cause of Death</span>
+                      <div className="profile-detail-value">{d.cause_of_death || '—'}</div>
+                    </div>
+                  </div>
+
+                  <div className="profile-section-head"><span>03</span> Next of Kin</div>
+                  <div className="profile-detail-grid">
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">NOK Name</span>
+                      <div className="profile-detail-value">{k.full_name || k.contact_person || '—'}</div>
+                    </div>
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Relationship</span>
+                      <div className="profile-detail-value">{k.relationship || '—'}</div>
+                    </div>
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">National ID</span>
+                      <div className="profile-detail-value">{k.id_number || k.national_id || '—'}</div>
+                    </div>
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Telephone</span>
+                      <div className="profile-detail-value">{k.contact || k.phone_number || k.tel_number || '—'}</div>
+                    </div>
+                    <div className="profile-detail-item full-3">
+                      <span className="profile-detail-label">Signature</span>
+                      {signaturePath ? (
+                        <div className="profile-detail-value" style={{ marginTop: 4 }}>
+                          <SignatureDisplay path={signaturePath} />
+                        </div>
+                      ) : (
+                        <div className="profile-detail-value empty">—</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="profile-section-head">Release Details</div>
+                  <div className="profile-detail-grid">
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Release ID</span>
+                      <div className="profile-detail-value empty">—</div>
+                    </div>
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Scheduled Release Date</span>
+                      <div className="profile-detail-value">Not scheduled</div>
+                    </div>
+                    <div className="profile-detail-item">
+                      <span className="profile-detail-label">Scheduled Release Time</span>
+                      <div className="profile-detail-value empty">—</div>
+                    </div>
+                    <div className="profile-detail-item full-3">
+                      <span className="profile-detail-label">Deceased</span>
+                      <div className="profile-detail-value">{fullName}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="profile-sidebar-footer">
+                  <div className="profile-qr-box">
+                    <QRCodeSVG value={`https://restpoint.co/deceased/${admissionNo || fullName}`} size={52} bgColor="#ffffff" fgColor="#0F172A" />
+                  </div>
+                  <div className="profile-footer-info">
+                    <div className="profile-footer-title">Body ID Tag</div>
+                    <div className="profile-footer-sub">Scan to verify profile</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Stats strip — mirrors the profile sidebar */}
               <div
                 className="grid grid-cols-4 rounded-lg overflow-hidden mb-4"
                 style={{ border: "1px solid #e8ecef", background: "#e8ecef", gap: 1 }}
@@ -477,63 +832,6 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                 ))}
               </div>
 
-              {/* ── Overview tab ── */}
-              {tab === "overview" && (<>
-              {/* Notifications */}
-              <PanelSection num="!" title="Notifications">
-                <div className="flex gap-2.5 py-2">
-                  <div
-                    className="w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center text-[12px] font-bold"
-                    style={{ background: "#eff6ff", color: "#1d4ed8" }}
-                  >
-                    i
-                  </div>
-                  <div>
-                    <div className="text-[12px] text-slate-700 leading-snug">
-                      Record status: {bodyStatus}
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
-                      Updated {formatDate(d.updated_at) || "—"}
-                    </div>
-                  </div>
-                </div>
-                {daysInMorgue > 7 && (
-                  <div className="flex gap-2.5 py-2 border-t border-slate-100">
-                    <div
-                      className="w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center text-[12px] font-bold"
-                      style={{ background: "#fef3c7", color: "#b45309" }}
-                    >
-                      !
-                    </div>
-                    <div>
-                      <div className="text-[12px] text-slate-700 leading-snug">
-                        Body has been in the morgue for {daysInMorgue} days. Please contact next of kin.
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">Active</div>
-                    </div>
-                  </div>
-                )}
-              </PanelSection>
-
-              <PanelSection num="01" title="Admission">
-                <div className="grid grid-cols-2 gap-x-4">
-                  {admissionRows.map(({ label, value, mono, full }) => (
-                    <Row key={label} label={label} value={value} mono={mono} full={full} />
-                  ))}
-                </div>
-              </PanelSection>
-
-              <PanelSection num="02" title="Next of Kin">
-                <div className="grid grid-cols-2 gap-x-4">
-                  {nokRows.map(({ label, value, mono }) => (
-                    <Row key={label} label={label} value={value} mono={mono} />
-                  ))}
-                </div>
-              </PanelSection>
-
-              </>)}
-
-              {/* ── Postmortem tab ── */}
               {tab === "postmortem" && (<>
                 {!pmReq && !postmortem && (
                   <div className="rounded-lg px-3 py-6 text-center text-[12.5px] text-slate-400 bg-slate-50 border border-slate-100">
@@ -552,81 +850,66 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                   </PanelSection>
                 )}
                 {pmReq && (
-                <PanelSection num="02" title="Postmortem Requests">
-                  <div
-                    className="flex items-center justify-between gap-2 py-1.5 mb-1"
-                  >
-                    <span
-                      className="inline-flex items-center px-2 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider"
-                      style={
-                        pmReqStatus === "cancelled"
-                          ? { background: "#f1f5f9", color: "#64748b" }
-                          : pmReqStatus === "sent"
-                            ? { background: "#dbeafe", color: "#1d4ed8" }
-                            : { background: "#fef3c7", color: "#b45309" }
-                      }
-                    >
-                      {pmReqStatus === "cancelled" ? "Cancelled"
-                        : (String(pmReq.exam_status || "").toLowerCase() === "completed" || pmStatus === "completed") ? "Completed"
-                          : pmReqStatus === "sent" ? "Sent · Awaiting Exam"
-                            : "Requested"}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {pmReq.request_ref || `REQ-${pmReq.id || ""}`}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-4">
-                    <Row label="Requesting Authority" value={pmReq.requesting_authority} />
-                    <Row label="Requested By" value={pmReq.requested_by} />
-                    <Row label="Reason" value={pmReq.reason} full />
-                    <Row label="Requested On" value={formatDate(pmReq.created_at)} />
-                    <Row
-                      label="Sent To Authority"
-                      value={pmReq.sent_at ? formatDate(pmReq.sent_at) : "Not sent yet"}
-                    />
-                    <Row
-                      label="Official Exam"
-                      value={
-                        pmStatus === "completed" ? "Completed"
-                          : pmStatus === "pending" || pmStatus === "in_progress" ? "In Progress"
-                            : pmStatus ? pmStatus
-                              : "Not carried out yet"
-                      }
-                    />
-                  </div>
-                </PanelSection>
-              )}
-
-              {/* 04 — Mortuary Progress (mirrors the profile sidebar timeline) */}
-              <PanelSection num="04" title="Mortuary Progress">
-                <div>
-                  {progressSteps.map(({ done, active, muted, text, time, timeMuted }) => (
-                    <div key={text} className="flex gap-3 items-start mb-3 last:mb-0">
+                  <PanelSection num="02" title="Postmortem Requests">
+                    <div className="flex items-center justify-between gap-2 py-1.5 mb-1">
                       <span
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1"
-                        style={{ background: done ? "#0f766e" : active ? "#d97706" : "#e2e8f0" }}
-                      />
-                      <div>
-                        <div
-                          className="text-[12.5px] font-semibold leading-snug"
-                          style={{ color: muted ? "#94a3b8" : "#1e293b" }}
-                        >
-                          {text}
-                        </div>
-                        <div
-                          className="text-[10.5px] mt-0.5"
-                          style={{ color: timeMuted ? "#cbd5e1" : "#64748b" }}
-                        >
-                          {time}
+                        className="inline-flex items-center px-2 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider"
+                        style={
+                          pmReqStatus === "cancelled"
+                            ? { background: "#f1f5f9", color: "#64748b" }
+                            : pmReqStatus === "sent"
+                              ? { background: "#dbeafe", color: "#1d4ed8" }
+                              : { background: "#fef3c7", color: "#b45309" }
+                        }
+                      >
+                        {pmReqStatus === "cancelled" ? "Cancelled"
+                          : (String(pmReq.exam_status || "").toLowerCase() === "completed" || pmStatus === "completed") ? "Completed"
+                            : pmReqStatus === "sent" ? "Sent · Awaiting Exam"
+                              : "Requested"}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {pmReq.request_ref || `REQ-${pmReq.id || ""}`}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4">
+                      <Row label="Requesting Authority" value={pmReq.requesting_authority} />
+                      <Row label="Requested By" value={pmReq.requested_by} />
+                      <Row label="Reason" value={pmReq.reason} full />
+                      <Row label="Requested On" value={formatDate(pmReq.created_at)} />
+                      <Row label="Sent To Authority" value={pmReq.sent_at ? formatDate(pmReq.sent_at) : "Not sent yet"} />
+                      <Row label="Official Exam" value={pmStatus === "completed" ? "Completed" : pmStatus === "pending" || pmStatus === "in_progress" ? "In Progress" : pmStatus ? pmStatus : "Not carried out yet"} />
+                    </div>
+                  </PanelSection>
+                )}
+
+                <PanelSection num="04" title="Mortuary Progress">
+                  <div>
+                    {progressSteps.map(({ done, active, muted, text, time, timeMuted }) => (
+                      <div key={text} className="flex gap-3 items-start mb-3 last:mb-0">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1"
+                          style={{ background: done ? "#0f766e" : active ? "#d97706" : "#e2e8f0" }}
+                        />
+                        <div>
+                          <div
+                            className="text-[12.5px] font-semibold leading-snug"
+                            style={{ color: muted ? "#94a3b8" : "#1e293b" }}
+                          >
+                            {text}
+                          </div>
+                          <div
+                            className="text-[10.5px] mt-0.5"
+                            style={{ color: timeMuted ? "#cbd5e1" : "#64748b" }}
+                          >
+                            {time}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </PanelSection>
+                    ))}
+                  </div>
+                </PanelSection>
               </>)}
 
-              {/* ── Financials tab ── */}
               {tab === "financials" && (<>
                 <PanelSection num="01" title="Storage Charges">
                   <div className="grid grid-cols-2 gap-x-4">
@@ -700,7 +983,8 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                 </PanelSection>
               </>)}
             </>
-          </div>
+          )}
+        </div>
 
       </aside>
     </>

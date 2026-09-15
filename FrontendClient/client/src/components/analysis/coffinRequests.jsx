@@ -12,6 +12,7 @@ const requests = [
     status: 'Pending',
     priority: 'High',
   },
+
   {
     id: 'REQ-066825-D11B80',
     item: 'Oak Classic',
@@ -22,6 +23,7 @@ const requests = [
     status: 'Approved',
     priority: 'Medium',
   },
+
   {
     id: 'REQ-066826-D11B81',
     item: 'Pearl Walnut',
@@ -32,6 +34,7 @@ const requests = [
     status: 'In Transit',
     priority: 'Low',
   },
+  
 ];
 
 const S = {

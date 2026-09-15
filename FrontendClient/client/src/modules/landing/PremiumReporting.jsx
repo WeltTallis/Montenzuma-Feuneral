@@ -99,7 +99,7 @@ export default function PremiumReporting() {
               }} />
               <span style={{
                 fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', color: '#f5f5f5', textTransform: 'uppercase',
-              }}>Bespoke Automation Engine</span>
+              }}>Premium document workspace</span>
             </div>
           </Reveal>
           <Reveal delay={100}>
@@ -108,18 +108,18 @@ export default function PremiumReporting() {
               fontSize: 'clamp(2.2rem, 5vw, 4rem)',
               fontWeight: 300, lineHeight: 1.1, marginBottom: '1.5rem', letterSpacing: '-0.02em', color: '#ffffff',
             }}>
-              Flawless Documentation.<br />
+              Every document, beautifully handled.<br />
               <span style={{
                 fontStyle: 'italic', fontWeight: 500,
                 color: '#ffffff',
-              }}>Zero Effort.</span>
+              }}>From scan to export.</span>
             </h2>
           </Reveal>
           <Reveal delay={200}>
             <p style={{
               fontSize: '1.1rem', color: '#bdbdbd', maxWidth: '720px', margin: '0 auto', fontWeight: 300, lineHeight: 1.7,
             }}>
-              Transform hours of meticulous clinical paperwork into a single click. Our engine orchestrates your intake data into breathtaking, high-end postmortem PDFs and audit-ready Excel exports—instantly.
+              Scan or upload documents, keep every record in the right case, view files in a polished document workspace, and export structured data to Excel when your team needs it.
             </p>
           </Reveal>
         </div>
@@ -265,9 +265,9 @@ export default function PremiumReporting() {
                 <div>
                   <h3 style={{
                     fontFamily: "'Fraunces', serif", fontSize: '1.5rem', color: 'white', marginBottom: '8px', fontWeight: 500,
-                  }}>Bespoke PDF Architecture</h3>
+                  }}>Scan and upload with confidence</h3>
                   <p style={{ color: '#8A8A8A', lineHeight: 1.8, fontSize: '1rem' }}>
-                    Stop sending families Word documents. Our engine compiles clinical data into the "Woodland Elegance" layout—featuring tracked typography, verdigris accents, and integrated barcodes that reflect the prestige of your establishment.
+                    Capture documents from a scanner or upload them directly. Rest Point keeps admissions, releases, signatures, and supporting records together with the right case, so nothing gets misplaced.
                   </p>
                 </div>
               </div>
@@ -285,9 +285,9 @@ export default function PremiumReporting() {
                 <div>
                   <h3 style={{
                     fontFamily: "'Fraunces', serif", fontSize: '1.5rem', color: 'white', marginBottom: '8px', fontWeight: 500,
-                  }}>Forensic Data Exports</h3>
+                  }}>A high-end document view</h3>
                   <p style={{ color: '#8A8A8A', lineHeight: 1.8, fontSize: '1rem' }}>
-                    Instantly orchestrate facility-wide intake records, inventory logs, and family contact matrices into structured Excel schemas. Engineered for immediate compliance audits and seamless accounting integration.
+                    Review important records in a clear, refined workspace built for professional funeral homes. Open, organise, share, and revisit documents without digging through folders or paper files.
                   </p>
                 </div>
               </div>
@@ -305,9 +305,9 @@ export default function PremiumReporting() {
                 <div>
                   <h3 style={{
                     fontFamily: "'Fraunces', serif", fontSize: '1.5rem', color: 'white', marginBottom: '8px', fontWeight: 500,
-                  }}>Reclaim Your Time</h3>
+                  }}>Export the data you need</h3>
                   <p style={{ color: '#8A8A8A', lineHeight: 1.8, fontSize: '1rem' }}>
-                    Eradicate duplicate data entry. Enter the decedent's details once, and watch the system autonomously populate every required legal document, label, and digital record with flawless precision.
+                    Turn your operational records into structured Excel exports for reporting, audits, reconciliation, and day-to-day planning. The information stays organised and ready when your team needs it.
                   </p>
                 </div>
               </div>
@@ -327,7 +327,7 @@ export default function PremiumReporting() {
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#8A8A8A' }}>
                   <ShieldCheck size={16} color="#A98F6E" />
-                  <span style={{ fontSize: '0.75rem' }}>HIPAA Compliant Architecture</span>
+                  <span style={{ fontSize: '0.75rem' }}>Secure, organised records for your team</span>
                 </div>
               </div>
             </Reveal>

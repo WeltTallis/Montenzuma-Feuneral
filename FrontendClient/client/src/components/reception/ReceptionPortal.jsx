@@ -11,8 +11,8 @@ import { useTenantStore } from "../../modules/seo/useTenantStore";
    Single-file component · Bootstrap grid + styled-components
    ────────────────────────────────────────────────────────────── */
 
-const BODY = "'Space Grotesk', system-ui, sans-serif"
-const HEAD = "'Space Grotesk', system-ui, serif"
+const BODY = "'Saira', system-ui, sans-serif"
+const HEAD = "'Fraunces', Georgia, serif"
 
 /* ── Inline icon set ───────────────────────────────────────── */
 function Icon({ size = 14, sw = 2.25, color = "currentColor", children }) {
@@ -131,7 +131,7 @@ const pulse = keyframes`
 
 /* ── Global font import ────────────────────────────────────── */
 const GlobalFonts = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&family=Saira:wght@400;500;600;700&display=swap');
   body { background: #050507; }
 `
 

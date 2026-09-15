@@ -141,6 +141,12 @@ export default function PrivacyPolicy() {
           </Reveal>
 
           <Reveal delay={400}>
+            <h2>Data Integrity &amp; Responsibility</h2>
+            <p>RestPoint is deeply committed to preserving the fidelity of every record entered into our system. Sensitive information regarding the deceased is securely maintained in its original form and rigorously protected against unauthorized alteration or tampering.</p>
+            <p>Our infrastructure is engineered to ensure that data remains consistent, reliable, and fully traceable throughout its entire lifecycle. From routine updates to system maintenance, the accuracy of your stored information is never compromised. What is entered into RestPoint remains protected, permanently preserved, and managed with the highest standard of responsibility.</p>
+          </Reveal>
+
+          <Reveal delay={450}>
             <h2>Contact</h2>
             <div className="contact-box">
               <p style={{ margin: 0, fontSize: '0.95rem' }}>For privacy related inquiries:</p>

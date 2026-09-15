@@ -392,7 +392,7 @@ const PREVIEW_CARDS = [
     id: 'body-intake',
     label: 'Case Management',
     title: 'Body Intake Form',
-    desc: 'Digital registration with next of kin details, verification, and signature capture in one structured flow.',
+    desc: 'A tablet-ready admission flow for next of kin details, verification, and signatures.',
     icon: FileText,
     tags: ['Digital Forms', 'Sign-off', 'Auto ID'],
     preview: '/preview/body-intake',
@@ -403,7 +403,7 @@ const PREVIEW_CARDS = [
     id: 'release-form',
     label: 'Self-Service',
     title: 'Release Form Portal',
-    desc: 'Families complete release documentation independently   digital forms and e-signature, no staff needed.',
+    desc: 'Families complete release documents on a tablet with guided forms and e-signature.',
     icon: ScrollText,
     tags: ['E-Sign', 'ID Verify', 'Auto-Process'],
     preview: '/preview/release-form',
@@ -414,7 +414,7 @@ const PREVIEW_CARDS = [
     id: 'reception',
     label: 'Receptionist Portal',
     title: 'Reception Portal',
-    desc: 'Manage walk-in clients, track visits, and streamline reception workflows.',
+    desc: 'A tablet-friendly front desk for walk-ins, visits, and daily reception work.',
     icon: Users,
     tags: ['Walk-ins', 'Tracking', 'Workflow'],
     preview: '/preview/reception-portal',
@@ -480,6 +480,13 @@ function PreviewCardEl({ m }) {
     }
   };
 
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
     <PreviewCard
       ref={ref}
@@ -489,6 +496,10 @@ function PreviewCardEl({ m }) {
       $hero={m.hero}
       onMouseMove={onMove}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open ${m.title} tablet preview`}
     >
       <PreviewIcon><Icon size={24} /></PreviewIcon>
       <PreviewLabel>{m.label}</PreviewLabel>
@@ -499,7 +510,7 @@ function PreviewCardEl({ m }) {
       </div>
       <PreviewBadge>
         <Sparkles size={12} />
-        Preview Available
+        Open tablet preview
       </PreviewBadge>
     </PreviewCard>
   );
@@ -569,10 +580,10 @@ export default function ModuleGridSection() {
   return (
     <Section>
       <Wrap>
-        <SectionLabel>Preview Modules</SectionLabel>
-        <SectionTitle>Explore our self service modules</SectionTitle>
+        <SectionLabel>Tablet previews</SectionLabel>
+        <SectionTitle>See the work before you commit.</SectionTitle>
         <SectionDesc>
-          Click on any card to preview the module in action. These self service tools are designed for tablet use.
+          Open a live preview of the tools your team and families use at the front desk - from body admission to body release.
         </SectionDesc>
 
         <Grid ref={gridRef}>

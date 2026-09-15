@@ -8,7 +8,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.extractTenantSlug = exports.tenantMiddleware = void 0;
-const dbConfig_1 = require("../../shared/dbConfig");
+const dbConfig_1 = require("../../../shared/dbConfig");
 /**
  * Middleware that validates tenant and injects database name into request.
  * Must be used after any authentication middleware.

@@ -353,13 +353,13 @@ export default function DirectorsMoment() {
       <div className="dm-wrap">
         <Rv><p className="dm-kicker">For Funeral Directors</p></Rv>
         <Rv delay={90}>
-          <h2 className="dm-title">The last screen a family sees shouldn't feel like <em>a receipt.</em></h2>
+          <h2 className="dm-title">Give every family a more thoughtful way to begin <em>and say goodbye.</em></h2>
         </Rv>
         <Rv delay={150}>
           <p className="dm-sub">
-            When a registration is complete, grief is at its loudest. Every other system answers that
-            moment with a green tick. Yours answers it with a candle. Flip the switch below and watch what
-            a family feels when it's your firm on the other side of the screen.
+            When a family arrives, your team can hand them a tablet to choose flowers, complete admission,
+            and prepare the release. After admission, a candle appears for the next of kin. After release,
+            it appears again. Flip the switch below and see how your firm can turn each digital step into a human moment.
           </p>
         </Rv>
 
@@ -397,17 +397,17 @@ export default function DirectorsMoment() {
                   <div className="dm-pane dm-ours" onPointerMove={handlePaneMove} onPointerLeave={handlePaneLeave}>
                     <canvas ref={cvsRef} className="dm-candle" width={300} height={430}
                       role="img" aria-label="A candle lit in memory" onPointerDown={handleFlare} />
-                    <p className={`dm-oeyebrow dm-orv${stage >= 1 ? ' in' : ''}`}>The register is signed</p>
+                    <p className={`dm-oeyebrow dm-orv${stage >= 1 ? ' in' : ''}`}>Admission complete</p>
                     <h4 className={`dm-oname dm-orv${stage >= 2 ? ' in' : ''}`}>{DEMO.name}</h4>
                     <p className={`dm-odates dm-orv${stage >= 3 ? ' in' : ''}`}>{DEMO.born} — {DEMO.passed}&nbsp;&nbsp;·&nbsp;&nbsp;{DEMO.age} years</p>
-                    <p className={`domsg dm-orv${stage >= 4 ? ' in' : ''}`}>{possessive(firstName(DEMO.name))} story is now in our care.</p>
+                    <p className={`domsg dm-orv${stage >= 4 ? ' in' : ''}`}>{possessive(firstName(DEMO.name))} family has a moment to remember.</p>
                   </div>
                 )}
               </div>
             </div>
 
             <div className="dm-under">
-              <p className="dm-note">This is the real thing live code, running in your browser right now. Try moving your cursor near the flame.</p>
+              <p className="dm-note">A live glimpse of the family experience your team can offer after admission and release.</p>
               {side === 'ours' && (
                 <button type="button" className="dm-replay" onClick={() => setLitKey((k) => k + 1)}>
                   <svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 1.5v3h-3" /></svg>
@@ -429,15 +429,15 @@ export default function DirectorsMoment() {
           <Rv delay={110}>
             <div className="dm-pt">
               <svg viewBox="0 0 20 20"><path d="M8 12 12 8M7.5 9.5 5.4 11.6a3.2 3.2 0 0 0 4.5 4.5l2.1-2.1M12.5 10.5l2.1-2.1a3.2 3.2 0 0 0-4.5-4.5L8 6" /></svg>
-              <h5>Plugs into what you already use</h5>
-              <p>Your existing form passes the name and dates through a simple link. No migration, no retraining, live the same day.</p>
+              <h5>One tablet, every step</h5>
+              <p>Families can choose flowers, complete admission, and prepare release documents in one calm, guided experience.</p>
             </div>
           </Rv>
           <Rv delay={220}>
             <div className="dm-pt">
               <svg viewBox="0 0 20 20"><path d="M10 17S3.5 12.8 3.5 8.2C3.5 5.9 5.3 4 7.6 4c1 0 1.9.4 2.4 1.1C10.5 4.4 11.4 4 12.4 4c2.3 0 4.1 1.9 4.1 4.2C16.5 12.8 10 17 10 17z" /></svg>
-              <h5>Nothing for families to do</h5>
-              <p>No buttons to find, no text to read, no next steps. The page simply keeps the light on   and that's the point.</p>
+              <h5>A candle after each farewell step</h5>
+              <p>After admission and again after release, the next of kin receives a quiet candle moment instead of a cold confirmation screen.</p>
             </div>
           </Rv>
         </div>

@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { lookupTenantDatabase, safeTenantQuery } = require('../../shared/dbConfig');
+const { lookupTenantDatabase, safeTenantQuery } = require('../../../shared/dbConfig');
 const { getKenyaTimeISO } = require('../../../packages/shared-utils/dist/timestamps');
 /**
  * Resolve the canonical global uploads directory, honouring the platform

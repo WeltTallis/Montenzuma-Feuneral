@@ -2,6 +2,7 @@ import axios from 'axios';
 import { ENDPOINTS } from './endpoints';
 import env from '../utils/config/env';
 import { getUserId, getAuthToken, getTenantSlug, getBranchSlug, getBranchId } from '../utils/globalAuth';
+import { reportFailure, reportSuccess } from './connectionStatus';
 
 // Alias for backwards compatibility
 const getSlug = getTenantSlug;
@@ -205,42 +206,22 @@ api.interceptors.request.use((config) => {
 }, (error) => Promise.reject(error));
 
 // ─── Connection-status bridge ───────────────────────────────────────────────
-// The browser's native `online`/`offline` events only fire when the network
-// interface itself changes. When the backend/proxy is unreachable (or a
-// service is down) the browser stays "online", so the ConnectionToast never
-// appeared. We bridge that gap here: any request that fails with a network /
-// proxy / timeout error dispatches `app:connection-lost`, and the first
-// successful request afterwards dispatches `app:connection-restored`.
-let connectionWasLost = false;
-
-const notifyConnectionLost = () => {
-  if (connectionWasLost) return;
-  connectionWasLost = true;
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('app:connection-lost'));
-  }
-};
-
-const notifyConnectionRestored = () => {
-  if (!connectionWasLost) return;
-  connectionWasLost = false;
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('app:connection-restored'));
-  }
-};
-
-// Response interceptor with auto-refresh on 401 and friendly service-down messages
+// Connectivity state + the /health probe live in ./connectionStatus. Only
+// genuine transport failures are reported there, and nothing is announced to
+// the UI until a cheap gateway probe confirms the outage — a 503 from a single
+// microservice or a slow (timed-out) endpoint must never read as "you are
+// offline".
 api.interceptors.response.use(
   (response) => {
     // A successful round-trip means the backend is reachable again.
-    notifyConnectionRestored();
+    reportSuccess();
     return response;
   },
   async (error) => {
     const originalRequest = error.config;
-    
+
     if (error.response?.status === 503) {
-      notifyConnectionLost();
+      // Per-service outage, NOT a connectivity problem: the gateway answered.
       const serviceName = error.response?.data?.service || 'Service';
       const friendlyName = serviceName.charAt(0).toUpperCase() + serviceName.slice(1);
       error.friendlyMessage = error.response?.data?.message || `${friendlyName} is temporarily unavailable. Please try again later.`;
@@ -248,7 +229,7 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 504) {
-      notifyConnectionLost();
+      // Gateway timed out waiting on a service — the user's internet is fine.
       const url = originalRequest?.url || '';
       const pathParts = url.split('/').filter(Boolean);
       const serviceHint = pathParts[2] || pathParts[0] || 'Service';
@@ -256,14 +237,20 @@ api.interceptors.response.use(
       error.friendlyMessage = `${friendlyName} is temporarily unavailable. Please try again later.`;
       return Promise.reject(error);
     }
-    
+
     if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED') {
-      notifyConnectionLost();
+      // ECONNABORTED is a client-side timeout (a slow endpoint, not a dead
+      // network) so reportFailure ignores it; ERR_NETWORK is probed before the
+      // UI is allowed to say the connection was lost.
+      reportFailure(error);
       const url = originalRequest?.url || '';
       const pathParts = url.split('/').filter(Boolean);
       const serviceHint = pathParts[2] || pathParts[0] || 'Service';
       const friendlyName = serviceHint.charAt(0).toUpperCase() + serviceHint.slice(1);
-      error.friendlyMessage = `${friendlyName} service is temporarily unavailable. Please try again later.`;
+      error.friendlyMessage =
+        error.code === 'ECONNABORTED'
+          ? `${friendlyName} took too long to respond. Please try again.`
+          : `${friendlyName} service is temporarily unavailable. Please try again later.`;
       return Promise.reject(error);
     }
     

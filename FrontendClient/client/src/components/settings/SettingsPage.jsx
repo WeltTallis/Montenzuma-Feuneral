@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ENDPOINTS } from '../../api/endpoints';
 import env from '../../utils/config/env';
 import api from '../../api/axios';
+import { getTenantBrandingFromStorage, rebaseUploadUrl } from '../../utils/tenantResolver/tenantBranding';
 
 // Read the raw stored user from either storage (state can be stale/null).
 const resolveStoredUser = () => {
@@ -265,6 +266,13 @@ export default function SettingsPage() {
     // the Users & Roles tab and the "Add User" functionality.
     const isAdmin = isUserManager(currentUser) || isUserManager(resolveStoredUser());
     const isManager = isAdmin;
+    const storedBranding = getTenantBrandingFromStorage();
+    const rawLogoUrl = settings?.logoUrl || settings?.logo_url || settings?.logo || storedBranding.logoUrl;
+    const companyLogo = rawLogoUrl
+        ? rebaseUploadUrl(rawLogoUrl.startsWith('http') || rawLogoUrl.startsWith('data:')
+            ? rawLogoUrl
+            : `${env.UPLOADS_URL.replace(/\/$/, '')}/${rawLogoUrl.replace(/^\/+/, '')}`)
+        : '';
 
     if (loading) {
         return (
@@ -302,13 +310,23 @@ export default function SettingsPage() {
             {/* Header */}
             <div style={{ background: THEME.colors.white, borderBottom: `1px solid ${THEME.colors.line}`, padding: '1.5rem 0' }}>
                 <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        {companyLogo ? (
+                            <img
+                                src={companyLogo}
+                                alt={`${settings?.tenantName || 'Company'} logo`}
+                                style={{ width: 54, height: 54, objectFit: 'contain', border: `1px solid ${THEME.colors.line}`, borderRadius: '8px', padding: '6px', background: THEME.colors.white }}
+                                onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                            />
+                        ) : null}
+                        <div>
                         <h1 style={{ fontFamily: "'Inter', sans-serif", fontSize: '1.5rem', fontWeight: 600, color: THEME.colors.ink, marginBottom: '0.25rem' }}>
                             Settings
                         </h1>
                         <p style={{ fontSize: '0.85rem', color: THEME.colors.gray }}>
                             {isMultiTenant ? 'Multi-Branch Organization' : 'Single Location'} • {settings?.branchCount} {isMultiTenant ? 'branches' : 'location'}
                         </p>
+                        </div>
                     </div>
                     {isManager && (
                         <button
@@ -343,6 +361,19 @@ export default function SettingsPage() {
                     <h3 style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.95rem', fontWeight: 600, color: THEME.colors.ink, marginBottom: '1rem' }}>
                         Organization Information
                     </h3>
+                    {companyLogo && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: `1px solid ${THEME.colors.line}` }}>
+                            <img
+                                src={companyLogo}
+                                alt={`${settings?.tenantName || 'Company'} logo`}
+                                style={{ width: 72, height: 72, objectFit: 'contain', border: `1px solid ${THEME.colors.line}`, borderRadius: '8px', padding: '8px', background: THEME.colors.white }}
+                            />
+                            <div>
+                                <p style={{ fontSize: '0.72rem', color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Company logo</p>
+                                <p style={{ fontSize: '0.88rem', color: THEME.colors.ink, fontWeight: 500 }}>{settings?.tenantName || storedBranding.name || 'Organization branding'}</p>
+                            </div>
+                        </div>
+                    )}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                         <div>
                             <p style={{ fontSize: '0.72rem', color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Organization Name</p>

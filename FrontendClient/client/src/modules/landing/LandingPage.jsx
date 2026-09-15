@@ -352,12 +352,12 @@ export default function App() {
   };
 
   const landingModules = [
-    { dark: true, to: true, category: 'NEW · INTEGRATED', accent: C.brass, title: 'Leave Management', excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve and track time off in real time  no spreadsheets, no external HR tools.', status: 'NOW LIVE' },
+    { dark: true, to: true, category: 'NEW · INTEGRATED', accent: C.brass, title: 'Leave Management', excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve, and track time off in real time - no spreadsheets or external HR tools.', status: 'NOW LIVE' },
     { static: true, category: 'PREMIUM FLORAL BOOKING', accent: C.verdigris, title: 'High-End Funeral Flowers', excerpt: 'We built a premium floral booking flow for funeral homes: families browse refined tribute arrangements, the system recommends elegant options based on the service style and season, and each order is sent directly to the florist with no confusion. This is crafted for funeral homes that take pride in dignified, high-end floral presentation.', status: 'RECEPTIONIST PORTAL' },
-    { dark: true, to: true, category: 'NEW · SUPPORT CENTER', accent: C.brass, title: 'Real Time Customer Support', excerpt: 'Submit issues directly through the platform and our support agents receive, respond, and resolve them in real time  with full status tracking and communication history.', status: 'NOW LIVE' },
+    { dark: true, to: true, category: 'NEW · SUPPORT CENTER', accent: C.brass, title: 'Real-time Customer Support', excerpt: 'Submit issues directly through the platform and our support agents receive, respond to, and resolve them in real time with full status tracking and communication history.', status: 'NOW LIVE' },
   ];
 
-  const marqueeItems = ['Case Management', 'Family Portal', 'Smart Dispatch', 'Fleet Tracking', 'Funeral Insurance', 'Real Time Support', 'Billing & Invoicing', 'Analytics & Reports', 'Welfare Schemes'];
+  const marqueeItems = ['Case Management', 'Family Portal', 'Smart Dispatch', 'Fleet Tracking', 'Funeral Insurance', 'Real-time Support', 'Billing & Invoicing', 'Analytics & Reports', 'Welfare Schemes'];
 
   return (
     <>
@@ -637,18 +637,18 @@ export default function App() {
               <AppWindow title="restpoint.app/fleet" dark><MockHearse /></AppWindow>
             </Showcase>
             <PremiumReporting />
-            <Showcase no="06" title="Real Time Customer Support" desc="Clients can submit issues directly through the platform, while support agents receive, respond to, and resolve requests in real time. The system provides status tracking, communication history no question ever goes unanswered." reverse={true}>
+            <Showcase no="06" title="Real-time Customer Support" desc="Clients can submit issues directly through the platform, while support agents receive, respond to, and resolve requests in real time. The system provides status tracking and communication history, so no question ever goes unanswered." reverse={true}>
               <AppWindow title="restpoint.app/support"><MockSupport /></AppWindow>
             </Showcase>
             <Showcase no="07" title="The Right Flowers. Right in Front of Them." reverse={false} desc={
               <>
                 Families shouldn't have to search the internet for hours trying to figure out what flowers are right for the moment.
                 <br /><br />
-                Give them a tablet at the front desk. Show them a curated selection of arrangements .
+                Give them a tablet at the front desk. Show them a curated selection of arrangements.
                 <br /><br />
                 Once they choose, the booking appears instantly in the software. Your florist gets notified right away.
                 <br /><br />
-                They can even add custom details on the spot  like ribbon colors, specific flower preferences, or personalized messages.
+                They can even add custom details on the spot, like ribbon colors, specific flower preferences, or personalized messages.
                 <br /><br />
 
               </>
@@ -673,7 +673,7 @@ export default function App() {
                   Rest Point now includes funeral insurance management and welfare scheme administration tools  claims, contributions, member tracking, and automated payouts all in one place.
                 </p>
                 <button className="btn btn-brass" onClick={() => navigate('/insurance')} style={{ padding: '1rem 2.4rem' }}>
-                  View More <ArrowRight size={16} />
+                  Explore insurance operations <ArrowRight size={16} />
                 </button>
               </Reveal>
             </div>
@@ -734,7 +734,7 @@ export default function App() {
               <p className="lockin-sub">Grief is heavy enough. Running the operations behind it shouldn't be.</p>
               <p className="lockin-desc">
                 Imagine the modern flow of your home: A family walks in, and instead of drowning in carbon copy paper,
-                they sign admission forms directly on an iPad. At the front desk, they browse real, high resolution images
+                they sign admission forms directly on an iPad. At the front desk, they browse real, high-resolution images
                 of floral arrangements on a tablet, select the perfect tribute, and book it instantly no physical
                 catalogs or messy ledgers required. Down the hall, body releases are processed seamlessly on the same screen.
               </p>

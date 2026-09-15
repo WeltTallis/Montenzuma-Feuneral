@@ -1,4 +1,15 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  CONNECTION_LOST_EVENT,
+  CONNECTION_RESTORED_EVENT,
+  isConnectionLost,
+  probeConnection,
+  reportOfflineEvent,
+  reportOnlineEvent,
+  markConnectionRestored,
+} from '../../api/connectionStatus';
+
+const AUTO_HIDE_MS = 3500;
 
 
 
@@ -57,39 +68,74 @@ const CHECK = (
 
 const ConnectionToast = () => {
   const [visible, setVisible] = useState(false);
-  const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [online, setOnline] = useState(true);
+  // Mirrors of the rendered state, so repeated events for the state the user is
+  // already looking at never re-trigger the animation (the toast used to flash
+  // on every failure) and so we only say "Back Online" after a real outage.
+  const visibleRef = useRef(false);
+  const onlineRef = useRef(true);
   const hideRef = useRef(null);
 
-  useEffect(() => {
-    const show = (isOnline) => {
-      if (hideRef.current) clearTimeout(hideRef.current);
-      setOnline(isOnline);
-      setVisible(true);
-      if (isOnline) {
-        hideRef.current = setTimeout(() => setVisible(false), 3500);
-      }
-    };
+  const show = useCallback((nextOnline) => {
+    if (hideRef.current) clearTimeout(hideRef.current);
+    if (visibleRef.current && onlineRef.current === nextOnline) return;
 
-    const handleOnline = () => show(true);
-    const handleOffline = () => show(false);
-    // App-level events dispatched by the axios response interceptor when a
-    // request fails with a network / proxy / timeout error (browser stays
-    // "online", so the native events alone never fire).
-    const handleAppLost = () => show(false);
-    const handleAppRestored = () => show(true);
+    visibleRef.current = true;
+    onlineRef.current = nextOnline;
+    setOnline(nextOnline);
+    setVisible(true);
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    window.addEventListener('app:connection-lost', handleAppLost);
-    window.addEventListener('app:connection-restored', handleAppRestored);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('app:connection-lost', handleAppLost);
-      window.removeEventListener('app:connection-restored', handleAppRestored);
-      if (hideRef.current) clearTimeout(hideRef.current);
-    };
+    // Only the "back online" confirmation self-dismisses; the outage stays until
+    // connectivity is actually confirmed again.
+    if (nextOnline) {
+      hideRef.current = setTimeout(() => {
+        visibleRef.current = false;
+        setVisible(false);
+      }, AUTO_HIDE_MS);
+    }
   }, []);
+
+  useEffect(() => {
+    // An outage may already be flagged when this mounts (module state survives
+    // remounts and route changes).
+    if (isConnectionLost()) show(false);
+
+    const handleLost = () => show(false);
+    const handleRestored = () => show(true);
+
+    // The native events are no longer trusted on their own: `offline` fires
+    // spuriously in several browsers, and `online` fires on any network change
+    // (switching Wi-Fi, VPN toggling) even when the backend was always
+    // reachable. Both are confirmed against the gateway first.
+    const handleNativeOffline = () => { reportOfflineEvent(); };
+    const handleNativeOnline = () => { reportOnlineEvent(); };
+
+    // Safety net: if the tab was backgrounded (timers throttled) while the
+    // outage was flagged, re-check as soon as the user comes back so a stale
+    // "Connection Lost" toast cannot stay pinned on screen.
+    const handleVisibleOrFocus = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (!isConnectionLost()) return;
+      if (await probeConnection()) markConnectionRestored();
+    };
+
+    window.addEventListener(CONNECTION_LOST_EVENT, handleLost);
+    window.addEventListener(CONNECTION_RESTORED_EVENT, handleRestored);
+    window.addEventListener('offline', handleNativeOffline);
+    window.addEventListener('online', handleNativeOnline);
+    window.addEventListener('focus', handleVisibleOrFocus);
+    document.addEventListener('visibilitychange', handleVisibleOrFocus);
+
+    return () => {
+      window.removeEventListener(CONNECTION_LOST_EVENT, handleLost);
+      window.removeEventListener(CONNECTION_RESTORED_EVENT, handleRestored);
+      window.removeEventListener('offline', handleNativeOffline);
+      window.removeEventListener('online', handleNativeOnline);
+      window.removeEventListener('focus', handleVisibleOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibleOrFocus);
+      if (hideRef.current) clearTimeout(hideRef.current);
+    };
+  }, [show]);
 
   return (
     <>
@@ -108,7 +154,7 @@ const ConnectionToast = () => {
           <p>
             {online
               ? 'Connection successfully restored.'
-              : 'You are currently offline. Retrying connection…'}
+              : 'Can’t reach the server. Retrying connection…'}
           </p>
         </div>
       </div>

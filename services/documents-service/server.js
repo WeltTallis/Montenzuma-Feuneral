@@ -10,7 +10,7 @@ const fs = require('fs');
 // controllers/documents.js uses) so every document insert records when it was
 // uploaded. The tenant `documents` table declares uploaded_at with NO default,
 // so omitting it left the column NULL and the UI rendered "—" for Uploaded Date.
-const { getKenyaTimeISO } = require('../../../packages/shared-utils/dist/timestamps');
+const { getKenyaTimeISO } = require('../../packages/shared-utils/dist/timestamps');
 
 const PDFDocument = require('pdfkit');
 const sharp = require('sharp');

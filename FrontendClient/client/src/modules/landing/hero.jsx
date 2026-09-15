@@ -220,13 +220,10 @@ const statsData = [
 ];
 
 export default function Hero() {
-  const [textIndex, setTextIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [currentFlower, setCurrentFlower] = useState(0);
   const [fading, setFading] = useState(false);
   const navigate = useNavigate();
-
-  const rotatingTexts = ["families", "teams", "communities", "every farewell"];
 
   /* Cross-fade helper */
   const selectFlower = (i) => {
@@ -238,18 +235,13 @@ export default function Hero() {
     }, 380);
   };
 
-  /* Headline rotation and tablet flip run independently */
+  /* Keep the product preview moving without distracting from the core message. */
   useEffect(() => {
-    const textInterval = setInterval(() => {
-      setTextIndex((prev) => (prev + 1) % rotatingTexts.length);
-    }, 3500);
-
     const flipInterval = setInterval(() => {
       setIsFlipped((prev) => !prev);
     }, 6000);
 
     return () => {
-      clearInterval(textInterval);
       clearInterval(flipInterval);
     };
   }, []);
@@ -284,28 +276,28 @@ export default function Hero() {
             <HeroText>
 
               <HeroTitle>
-                Run a calmer, more
+                For funeral homes where every detail matters.
                 <TitleBold>
-                  <RotWord key={textIndex}>{rotatingTexts[textIndex]}</RotWord> funeral home.
+                  One exceptional experience from intake to farewell.
                 </TitleBold>
               </HeroTitle>
 
               <HeroDesc>
-                Rest Point brings admissions, body releases, documents, dispatch, billing, and family updates into one secure workspace. Give your team a clear next step for every case, from first arrival to final farewell.
+                Manage admissions, releases, documents, hearse bookings, flowers, coffins, billing, and family updates in one secure workspace. Replace scattered paperwork with a clear digital operation your team can run with confidence.
               </HeroDesc>
 
               <HeroActions>
                 <BtnBlack onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/register'); }}>
-                  Start your setup
+                  Get started today
                   <BtnArrow>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                   </BtnArrow>
                 </BtnBlack>
-                <BtnGhost onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/login'); }}>See the client portal</BtnGhost>
+                <BtnGhost onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/login'); }}>See Rest Point in action</BtnGhost>
               </HeroActions>
 
               <div style={{ marginTop: '-1.8rem', marginBottom: '2.2rem', color: gray, fontFamily: "'Space Grotesk', sans-serif", fontSize: '0.78rem' }}>
-                Set up your home today and replace scattered paperwork with one calm, connected workflow.
+                One connected workflow for every case, every branch, and every family.
               </div>
 
               <HeroStats>

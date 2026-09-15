@@ -26,6 +26,14 @@ pipeline {
             }
         }
 
+        stage('Path Sanity') {
+            steps {
+                // Fails fast when a service uses one '../' too many and would die
+                // at require-time inside the image (Cannot find module).
+                sh 'npm run check:paths'
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
