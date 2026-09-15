@@ -1,7 +1,6 @@
 import { useMemo, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import HorizontalCalendar from "../../components/views/horizontalCalender";
-import DayBreakdownPanel from "./DayBreakdownPanel";
 import { fetchReleasesFeed, fetchPostmortemsFeed } from "../../api/dashboardFeedApi";
 import { fetchAllBranchDeceased } from "../../api/dashboardDataApi";
 
@@ -551,7 +550,7 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
      (Mini-calendar shape). The HorizontalCalendar widget wants an array of
      { id, date (Date), title, color }. We convert here so the existing
      ModuleDashboard wiring (miniEvents → events) keeps working unchanged. */
-  const CAL_FILLS = { red: "#7d3b3b", blue: "#a9762d", green: "#4f6b52", orange: "#a9762d", purple: "#7d3b3b" };
+  const CAL_FILLS = { red: "#DC2626", blue: "#2563EB", green: "#16A34A", orange: "#F97316", purple: "#8B5CF6" };
   const hCalEvents = useMemo(() => {
     const arr = [];
     Object.entries(events || {}).forEach(([k, list]) => {
@@ -653,36 +652,235 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
   };
 
   return (
-    <div className="hw" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="hw">
       <style>{CSS + CSS2 + CSS3 + CSS4}</style>
 
+      {/* Back to the normal All-Deceased list */}
       <button className="hw-back" type="button" onClick={backToAllDeceased} title="Go to All Deceased">
         <span className="hw-arr" aria-hidden="true">‹</span>
         <span>All Deceased</span>
       </button>
 
-      <div className="hw-panel" style={{ overflow: "hidden" }}>
-        <div className="hw-p-head" style={{ borderBottom: "1px solid var(--line)" }}>
-          <span className="hw-p-ic hw-i-blue"><Ic d={ICO.calIco.d} s={15} /></span>
-          <div className="hw-p-title">Deceased Calendar<small>click a date to view its events</small></div>
-          <span className="hw-p-meta">{pd.day} <b>{pd.short}</b></span>
-        </div>
-        <div className="hw-p-body" style={{ paddingTop: 14, paddingBottom: 16 }}>
-          <HorizontalCalendar
-            eventsData={hCalEvents}
-            selectedDate={selDate}
-            onDateSelect={onHorizPick}
-          />
+      {/* ── top KPI cards (glow gradient) ── */}
+      <div className="hw-top">
+        <div className="hw-tiles">
+          <div className="hw-tile hw-tb">
+            <div className="hw-t-top"><span className="hw-t-ic"><Ic d={ICO.care.d} s={12} /></span><span className="hw-t-label">In care</span></div>
+            <div className="hw-t-mid"><div className="hw-t-num">{nInCare}</div><Gauge pct={inCarePct} /></div>
+            <div className="hw-t-sub">{total ? `${Math.round(inCarePct)}% of ${total} in register · ${branches.length} branch${branches.length > 1 ? "es" : ""}` : `across ${branches.length} branch${branches.length > 1 ? "es" : ""}`}</div>
+          </div>
+          <div className="hw-tile hw-tg">
+            <div className="hw-t-top"><span className="hw-t-ic"><Ic d={ICO.check.d} s={12} /></span><span className="hw-t-label">Released today</span></div>
+            <div className="hw-t-mid"><div className="hw-t-num">{nRelToday}</div><Gauge pct={relPct} /></div>
+            <div className="hw-t-sub">{relWeek ? `${nRelToday} of ${relWeek} handovers this week` : relToday > 0 ? "first handover today" : "no handovers yet this week"}</div>
+          </div>
+          <div className="hw-tile hw-to">
+            <div className="hw-t-top"><span className="hw-t-ic"><Ic d={ICO.warn.d} s={11} /></span><span className="hw-t-label">PM pending</span></div>
+            <div className="hw-t-mid"><div className="hw-t-num">{nPM}</div><Gauge pct={pmPct} /></div>
+            <div className="hw-t-sub">{pmTotal ? `${nPM} of ${pmTotal} requests awaiting` : "no postmortem requests"}</div>
+          </div>
+          <div
+            className={"hw-tile hw-td2" + (latestItem ? " hw-tclick" : "")}
+            onClick={latestItem ? (e) => { e.stopPropagation(); onOpen(latestItem); } : undefined}
+            title={latestItem ? `Open ${latestIntake?.full_name || "record"}` : undefined}
+          >
+            <div className="hw-t-top"><span className="hw-t-ic"><Ic d={ICO.intake.d} s={12} /></span><span className="hw-t-label">Latest intake</span></div>
+            <div className="hw-t-mid"><div className="hw-latest">{latestIntake ? (latestIntake?.full_name || "Unknown") : "No admissions yet"}</div><Gauge pct={tPct} /></div>
+            <div className="hw-t-sub">{latestIntake ? `${latestIntake?.admission_number || "—"} · ${latestWhen} · ${branchOf(latestIntake)}` : "new records appear here"}</div>
+          </div>
         </div>
       </div>
 
-      <div style={{ minHeight: 320 }}>
-        <DayBreakdownPanel
-          dateKey={activeKey}
-          sources={{ deceased, coffins: [] }}
-          loading={loading}
-          onSelect={onOpen}
-        />
+      <div className="hw-grid">
+
+        {/* ── 01 · Calendar ── */}
+        <section className="hw-panel">
+          <div className="hw-p-head">
+            <span className="hw-p-ic hw-i-blue"><Ic d={ICO.calIco.d} s={15} /></span>
+            <div className="hw-p-title">Calendar<small>Daily activity · Analytics</small></div>
+            <span className="hw-p-meta">{pd.day} <b>{pd.short}</b></span>
+          </div>
+          <div className="hw-p-body">
+            <div style={{ width: "100%" }}>
+              <HorizontalCalendar
+                eventsData={hCalEvents}
+                selectedDate={selDate}
+                onDateSelect={onHorizPick}
+              />
+
+              {/* Analytics — 7-day multi-branch trend + per-branch bars */}
+              <div className="hw-trend">
+                <div className="hw-trend-head">
+                  <span className="hw-trend-title">7-day trend · all branches</span>
+                  <div className="hw-trend-legend">
+                    {branches.map((b, i) => (
+                      <span key={b}><i style={{ background: branchColor(b, i) }} />{esc(b)}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="hw-trend-svg" dangerouslySetInnerHTML={{ __html: buildTrend() }} />
+                <div className="hw-trend-x">
+                  {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
+                </div>
+              </div>
+
+              <div className="hw-charts">
+                {branches.map((b, bi) => {
+                  const data = series[bi]; const max = Math.max(3, ...data); const col = branchColor(b, bi);
+                  const dim = fbranch !== "ALL" && fbranch !== b;
+                  const wk = data.reduce((a, x) => a + x, 0);
+                  return (
+                    <div key={b} className={"hw-chart-wrap" + (dim ? " dim" : "")} style={{ "--c": col }}>
+                      <div className="hw-chart-top">
+                        <button className="hw-chart-branch" onClick={() => setFbranch(fbranch === b ? "ALL" : b)} title="Filter ledger by this branch">
+                          <i className="hw-cdot" />{esc(b)}
+                        </button>
+                        <span className="hw-chart-week">{wk} this week</span>
+                      </div>
+                      <div className="hw-chart-body">
+                        <i className="hw-gridline hw-g1" /><i className="hw-gridline hw-g2" />
+                        <div className="hw-bars">
+                          {data.map((v, i) => (
+                            <div key={i}
+                              className={"hw-bar" + (i === 6 ? " today" : "") + (v === 0 ? " zero" : "")}
+                              style={{ background: col, height: v === 0 ? 2 : Math.max(6, (v / max) * 80) + "%" }}
+                              title={`${WD[last7[i].getDay()]} ${last7[i].getDate()} ${MO[last7[i].getMonth()]} — ${v} ${v === 1 ? "admission" : "admissions"}`}>
+                              <span className="v">{v || ""}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="hw-chart-x">
+                        {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 02 · Intake : analytics cards + intake ledger ── */}
+        <section className="hw-panel">
+          <div className="hw-p-head">
+            <span className="hw-p-ic hw-i-violet"><Ic d={ICO.intake.d} s={15} /></span>
+            <div className="hw-p-title">Intake<small>Admissions by branch</small></div>
+            <span className="hw-p-meta">7 days <b>{seriesAll.reduce((a, b) => a + b, 0)}</b></span>
+          </div>
+          <div className="hw-p-body">
+
+            <div className="hw-filters">
+              <button className={"hw-chip" + (fbranch === "ALL" ? " on" : "")} onClick={() => setFbranch("ALL")}>All <span className="n">{deceased.length}</span></button>
+              {branches.map((b) => (
+                <button key={b} className={"hw-chip" + (fbranch === b ? " on" : "")} onClick={() => setFbranch(fbranch === b ? "ALL" : b)}>
+                  {esc(b)} <span className="n">{deceased.filter((r) => branchOf(r) === b).length}</span>
+                </button>
+              ))}
+              <span className="hw-hint">click a row for details</span>
+            </div>
+            <div className="hw-list">
+              <div className="hw-lhead">
+                <span>Name</span>
+                <span className="hw-h-adm">Adm no</span>
+                <span className="hw-h-time">Intake</span>
+                <span>Status</span>
+                <span></span>
+              </div>
+              <div className="hw-l_scroll">
+                {(() => {
+                  const rows = deceased
+                    .filter((r) => fbranch === "ALL" || branchOf(r) === fbranch)
+                    .slice()
+                    .sort((a, b) => String(admKeyOf(b)).localeCompare(String(admKeyOf(a))));
+                  if (!rows.length) return <div className="hw-empty">No admissions recorded.</div>;
+                  return rows.map((r, i) => {
+                    const b = branchOf(r);
+                    const released = isReleased(r);
+                    const pm = pmMetaOf(r);
+                    const badge = released ? { cls: "hw-b-rel", txt: "Released" } : pm ? { cls: "hw-b-pm", txt: "PM hold" } : { cls: "hw-b-care", txt: "In care" };
+                    /* item.id must stay prefixed ("in-<adm_no>") — ModuleDashboard
+                       parses it to locate the record and open DeceasedSidePanel. */
+                    const item = { ...r, id: `in-${r?.admission_number ?? r?.id ?? i}`, full_name: r?.full_name || "Unknown" };
+                    return (
+                      <div key={r?.admission_number ?? r?.id ?? i} className="hw-lrow" onClick={() => onOpen(item)}>
+                        <div className="hw-lwho">
+                          <span className="hw-ava" style={{ background: branchColor(b) }}>{initialOf(r?.full_name)}</span>
+                          <div className="hw-lmain">
+                            <div className="nm">{esc(r?.full_name || "Unknown")}</div>
+                            <div className="sb">{esc(b)}</div>
+                          </div>
+                        </div>
+                        <span className="hw-adm" title="Admission number">{esc(r?.admission_number || "—")}</span>
+                        <span className="hw-ltime" title="Intake time">{timeOf(r) || "—"}</span>
+                        <span className={"hw-badge " + badge.cls}><i />{badge.txt}</span>
+                        <Ic className="hw-chev" d={ICO.chev.d} s={14} sw={2.4} />
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 03 · Releases ── */}
+        <section className="hw-panel">
+          <div className="hw-p-head">
+            <span className="hw-p-ic hw-i-green"><Ic d={ICO.shield.d} s={15} /></span>
+            <div className="hw-p-title">Releases<small>Handover queue</small></div>
+            <span className="hw-p-meta">Today <b>{relToday}</b></span>
+          </div>
+          <div className="hw-p-body">
+            <div className="hw-r-stats">
+              <div className="hw-rs"><span className="k">In care now</span><span className="v">{inCare}</span></div>
+              <div className="hw-rs"><span className="k">Released today</span><span className="v">{relToday}</span></div>
+              <div className="hw-rs"><span className="k">On this day</span><span className="v">{items.releases.length}</span></div>
+            </div>
+            <div className="hw-text-scroll">
+              {items.releases.length === 0 ? (
+                <div className="hw-empty">No releases recorded for this day.</div>
+              ) : items.releases.map((r) => (
+                <div key={r.id} className="hw-item" onClick={(e) => click(e, r)}>
+                  <div className="im">
+                    <div className="nm">{esc(r.name)}</div>
+                    <div className="sb">{esc(r.meta || "—")} · {esc(r.branch || branchOf(r) || "—")}</div>
+                    {r.sub ? <div className="sb">Next of kin: {esc(r.sub)}</div> : null}
+                  </div>
+                  <span className="when">{r.when || ""}</span>
+                  <span className="hw-tag" style={{ background: "#F0FDF4", color: "#15803D" }}>{esc(r.tag || "Released")}</span>
+                  <Ic className="hw-chev" d={ICO.chev.d} s={14} sw={2.4} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── 04 · Postmortem ── */}
+        <section className="hw-panel">
+          <div className="hw-p-head">
+            <span className="hw-p-ic hw-i-amber"><Ic d={ICO.doc.d} s={15} /></span>
+            <div className="hw-p-title">Postmortem Requests<small>Approvals &amp; scheduling</small></div>
+            <span className="hw-p-meta">Pending <b>{pmPendingCount}</b></span>
+          </div>
+          <div className="hw-p-body">
+            <div className="hw-text-scroll">
+              {items.postmortems.length === 0 ? (
+                <div className="hw-empty">No postmortem activity on this day.</div>
+              ) : items.postmortems.map((p) => (
+                <div key={p.id} className="hw-item" onClick={(e) => click(e, p)}>
+                  <div className="im">
+                    <div className="nm">{esc(p.name)}</div>
+                    <div className="sb">{esc(p.meta || "—")} · {esc(p.sub || "—")}</div>
+                  </div>
+                  <span className="when">{p.when}</span>
+                  <span className="hw-tag" style={{ background: p.tagColor === "#16A34A" ? "#F0FDF4" : "#FFFBEB", color: p.tagColor }}>{esc(p.tag)}</span>
+                  <Ic className="hw-chev" d={ICO.chev.d} s={14} sw={2.4} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );

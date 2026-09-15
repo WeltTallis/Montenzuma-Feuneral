@@ -170,51 +170,6 @@ export const authApi = {
     return !!token && token !== 'undefined' && token !== 'null';
   },
 
-  /**
-   * Portal Login — POST /api/v1/restpoint/portal/login
-   */
-  portalLogin: async ({ phone }) => {
-    const previousTenantSlug = api.defaults.headers.common['x-tenant-slug'];
-    delete api.defaults.headers.common['x-tenant-slug'];
-
-    try {
-      const response = await api.post(ENDPOINTS.PORTAL.LOGIN, {
-        phone: phone.trim()
-      });
-      const data = response.data;
-
-      if (data?.success && data?.tenantSlug) {
-        sessionStorage.setItem('sessionToken', data.sessionToken || data.session_token);
-        localStorage.setItem('tenantSlug', data.tenantSlug);
-        if (data.deceased) {
-          sessionStorage.setItem('deceased', JSON.stringify(data.deceased));
-          sessionStorage.setItem('deceasedId', data.deceased.deceased_id);
-        }
-        api.defaults.headers.common['x-tenant-slug'] = data.tenantSlug;
-      }
-      return data;
-    } catch (error) {
-      if (previousTenantSlug) {
-        api.defaults.headers.common['x-tenant-slug'] = previousTenantSlug;
-      }
-      throw error;
-    }
-  },
-
-  portalLogout: () => {
-    sessionStorage.removeItem('sessionToken');
-    sessionStorage.removeItem('deceased');
-    sessionStorage.removeItem('deceasedId');
-    delete api.defaults.headers.common['x-tenant-slug'];
-    return { success: true };
-  },
-
-  getPortalDeceased: async (deceasedId, tenantSlug) => {
-    api.defaults.headers.common['x-tenant-slug'] = tenantSlug;
-    const response = await api.get(`${ENDPOINTS.PORTAL.DECEASED}/${deceasedId}`);
-    return response.data;
-  },
-
   getTenantContext: () => ({
     tenantSlug: localStorage.getItem('tenantSlug'),
     tenantId: localStorage.getItem('tenantId')

@@ -1266,6 +1266,7 @@ const DeceasedListPage = () => {
   const [showExport, setShowExport] = useState(false);
   const [exportStart, setExportStart] = useState('');
   const [exportEnd, setExportEnd] = useState('');
+  const [exportPin, setExportPin] = useState('');
   const [exporting, setExporting] = useState(false);
   const [exportHistory, setExportHistory] = useState([]);
   // Export result notification modal → { type: 'success' | 'error', message, blob, fileName }
@@ -1457,12 +1458,12 @@ const DeceasedListPage = () => {
     });
   }, []);
 
-  const showExportSuccess = useCallback((blob, fileName) => {
+  const showExportSuccess = useCallback((blob, fileName, pinProtected = false) => {
     setExporting(false);
     setShowExport(false);
     setExportNotify({
       type: 'success',
-      message: `${fileName || 'Deceased records export'} was generated successfully.`,
+      message: `${fileName || 'Deceased records export'} was generated successfully.${pinProtected ? ' The file is PIN-protected — Excel or Google Sheets will ask for the PIN when opening it.' : ''}`,
       blob: blob || null,
       fileName: fileName || '',
     });
@@ -1493,11 +1494,20 @@ const DeceasedListPage = () => {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
 
+      // Optional 4-digit security PIN — encrypts the .xlsx so only someone
+      // with the PIN can open it (Excel / Google Sheets prompt for it).
+      const pin = exportPin.trim();
+      if (pin && !/^\d{4}$/.test(pin)) {
+        showExportFailed('The security PIN must be exactly 4 digits. Please correct it and try again.');
+        return;
+      }
+
       const response = await axios.post(
         `${BASE_URL}/export-excel`,
         {
           startDate: exportStart || undefined,
           endDate: exportEnd || undefined,
+          exportPin: pin || undefined,
         },
         {
           headers: {
@@ -1513,14 +1523,14 @@ const DeceasedListPage = () => {
 
       if (isFileResponse(contentType)) {
         loadExportHistory();
-        showExportSuccess(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`));
+        showExportSuccess(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`), pin.length > 0);
         return;
       }
 
       const data = await parseBlobJson(response.data);
 
       if (data?.success && data?.jobId) {
-        pollExportStatus(data.jobId);
+        pollExportStatus(data.jobId, pin.length > 0);
       } else {
         throw new Error(data?.message || 'No job ID returned');
       }
@@ -1538,7 +1548,7 @@ const DeceasedListPage = () => {
     }
   };
 
-  const pollExportStatus = async (jobId) => {
+  const pollExportStatus = async (jobId, pinProtected = false) => {
     const maxAttempts = 90;
     const pollInterval = 2000;
     let attempts = 0;
@@ -1578,7 +1588,7 @@ const DeceasedListPage = () => {
         if (isFileResponse(contentType)) {
           cleanup();
           loadExportHistory();
-          showExportSuccess(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`));
+          showExportSuccess(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`), pinProtected);
           return;
         }
 
@@ -1767,7 +1777,7 @@ const DeceasedListPage = () => {
           </ToolbarLeft>
 
           <ToolbarRight>
-            <Btn $export onClick={() => setShowExport(true)}>
+            <Btn $export onClick={() => { setExportPin(''); setShowExport(true); }}>
               <i className="fas fa-file-export"></i> Export Data
             </Btn>
           </ToolbarRight>
@@ -1993,6 +2003,24 @@ const DeceasedListPage = () => {
                 </FormGroup>
               </FormRow>
 
+              <FormGroup>
+                <FormLabel>Security PIN (optional)</FormLabel>
+                <ModalInput
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  placeholder="Enter a 4-digit PIN to encrypt the file"
+                  maxLength={4}
+                  value={exportPin}
+                  onChange={e => setExportPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  disabled={exporting}
+                />
+                <div style={{ fontSize: 11, color: C.gray, marginTop: 6 }}>
+                  <i className="fas fa-lock" style={{ marginRight: 5 }}></i>
+                  The file will be encrypted — Excel or Google Sheets will ask for this PIN to open it. Leave blank to export without protection.
+                </div>
+              </FormGroup>
+
               <SectionHead $mt4>
                 <span>02</span> Export History
                 <em style={{ marginLeft: 8, opacity: 0.6 }}>limit: 10 most recent</em>
@@ -2044,7 +2072,7 @@ const DeceasedListPage = () => {
             </ModalBody>
             <ModalFooter>
               <div style={{ fontSize: 11, color: C.gray, marginRight: 'auto' }}>
-                {exporting ? 'Generating & uploading to Documents…' : 'Uploaded files are stored in Documents'}
+                {exporting ? (exportPin ? 'Encrypting & uploading to Documents…' : 'Generating & uploading to Documents…') : 'Uploaded files are stored in Documents'}
               </div>
               <Btn $ghost onClick={() => setShowExport(false)} disabled={exporting}>Cancel</Btn>
               <Btn $export onClick={handleExport} disabled={exporting}>

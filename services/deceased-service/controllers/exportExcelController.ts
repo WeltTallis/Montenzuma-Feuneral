@@ -30,18 +30,18 @@ const T = {
   exportBtn: 'FF0F3040',    // #0F3040
   headerBorder: 'FF08222D', // #08222d
   ink: 'FF03071E',          // #03071E (navy footer)
-    success: 'FF3D4F47',
-    successBg: 'FFEFF2EE',
-    warning: 'FF946B2D',
-    warningBg: 'FFFBF7EE',
-    line: 'FFE2DDD3',
-    zebra: 'FFFAF8F4',
+  success: 'FF3D4F47',
+  successBg: 'FFEFF2EE',
+  warning: 'FF946B2D',
+  warningBg: 'FFFBF7EE',
+  line: 'FFE2DDD3',
+  zebra: 'FFFAF8F4',
   white: 'FFFFFFFF',
-    text: 'FF14181C',
-    muted: 'FF8E8579',
-    slate: 'FFB5AFA3',
-    gray2: 'FF4B514D',
-    accent: 'FF8B7355',
+  text: 'FF14181C',
+  muted: 'FF8E8579',
+  slate: 'FFB5AFA3',
+  gray2: 'FF4B514D',
+  accent: 'FF8B7355',
 };
 
 const HEADERS = [
@@ -97,36 +97,6 @@ function daysInMorgue(dateAdmitted: any, dispatchDate: any): string {
 }
 
 function globalUploadsDir(): string {
-  function resolveTenantLogo(tenantSlug: string, logoUrl?: string | null): { buffer: Buffer; extension: 'png' | 'jpeg' | 'gif' } | null {
-    try {
-      const base = globalUploadsDir();
-      const candidates: string[] = [];
-      if (logoUrl) {
-        const raw = String(logoUrl).replace(/^https?:\/\/[^/]+\//, '').replace(/^\/+/, '');
-        candidates.push(raw.startsWith('uploads/') ? path.join(base, raw.slice('uploads/'.length)) : path.join(base, raw));
-      }
-      const safeSlug = String(tenantSlug || '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-      const logoDir = path.join(base, 'tenants', safeSlug, 'logos');
-      const logoDirs = [
-        logoDir,
-        path.join(base, safeSlug, 'logos'),
-        path.join(base, safeSlug, 'documents', 'logos'),
-      ];
-      for (const dir of logoDirs) {
-        if (fs.existsSync(dir)) {
-          for (const file of fs.readdirSync(dir).sort().reverse()) candidates.push(path.join(dir, file));
-        }
-      }
-      for (const candidate of candidates) {
-        if (!fs.existsSync(candidate) || !fs.statSync(candidate).isFile()) continue;
-        const ext = path.extname(candidate).toLowerCase();
-        if (ext === '.png') return { buffer: fs.readFileSync(candidate), extension: 'png' };
-        if (ext === '.jpg' || ext === '.jpeg') return { buffer: fs.readFileSync(candidate), extension: 'jpeg' };
-        if (ext === '.gif') return { buffer: fs.readFileSync(candidate), extension: 'gif' };
-      }
-    } catch { /* branding is optional; continue without a logo */ }
-    return null;
-  }
   for (const envDir of [
     process.env.GLOBAL_UPLOADS_DIR,
     process.env.UPLOADS_BASE_DIR,
@@ -146,6 +116,62 @@ function globalUploadsDir(): string {
     try { fs.mkdirSync(base, { recursive: true }); return base; } catch { /* next */ }
   }
   return path.join(require('os').tmpdir(), 'restpoint-uploads');
+}
+
+// Resolve the tenant logo image from the shared uploads disk. Branding is
+// optional — any failure simply returns null and the export continues without
+// a logo. NOTE: defined at module scope (it was previously nested inside
+// globalUploadsDir(), which made it invisible to exportExcelWithCharts and
+// crashed every export with "resolveTenantLogo is not defined").
+function resolveTenantLogo(tenantSlug: string, logoUrl?: string | null): { buffer: Buffer; extension: 'png' | 'jpeg' | 'gif' } | null {
+  try {
+    const base = globalUploadsDir();
+    const candidates: string[] = [];
+    if (logoUrl) {
+      const raw = String(logoUrl).replace(/^https?:\/\/[^/]+\//, '').replace(/^\/+/, '');
+      candidates.push(raw.startsWith('uploads/') ? path.join(base, raw.slice('uploads/'.length)) : path.join(base, raw));
+    }
+    const safeSlug = String(tenantSlug || '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const logoDir = path.join(base, 'tenants', safeSlug, 'logos');
+    const logoDirs = [
+      logoDir,
+      path.join(base, safeSlug, 'logos'),
+      path.join(base, safeSlug, 'documents', 'logos'),
+    ];
+    for (const dir of logoDirs) {
+      if (fs.existsSync(dir)) {
+        for (const file of fs.readdirSync(dir).sort().reverse()) candidates.push(path.join(dir, file));
+      }
+    }
+    for (const candidate of candidates) {
+      if (!fs.existsSync(candidate) || !fs.statSync(candidate).isFile()) continue;
+      const ext = path.extname(candidate).toLowerCase();
+      if (ext === '.png') return { buffer: fs.readFileSync(candidate), extension: 'png' };
+      if (ext === '.jpg' || ext === '.jpeg') return { buffer: fs.readFileSync(candidate), extension: 'jpeg' };
+      if (ext === '.gif') return { buffer: fs.readFileSync(candidate), extension: 'gif' };
+    }
+  } catch { /* branding is optional; continue without a logo */ }
+  return null;
+}
+
+// Encrypt an .xlsx buffer with a password using the standard Office "Agile
+// Encryption" (AES). The output opens in Microsoft Excel / Google Sheets with
+// an "Enter password to open" prompt — without the PIN the contents are
+// unreadable. Implemented with secure-spreadsheet (pure JS, no native deps);
+// the library ships no TypeScript types, so it is required inline.
+function encryptXlsxWithPassword(buffer: Buffer, password: string): Promise<Buffer> {
+  const { Readable } = require('stream') as typeof import('stream');
+  const { encrypt } = require('secure-spreadsheet') as {
+    encrypt: (password: string) => import('stream').Transform;
+  };
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    Readable.from(buffer)
+      .pipe(encrypt(password))
+      .on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)))
+      .on('end', () => resolve(Buffer.concat(chunks)))
+      .on('error', (err: Error) => reject(err));
+  });
 }
 
 // Resolve a signature stored as a URL path (e.g. /uploads/<slug>/signatures/x.png)
@@ -202,6 +228,7 @@ async function getKinColumns(dbName: string): Promise<Set<string>> {
     return new Set();
   }
 }
+
 // ============================================
 // BUILD THE INTAKE REGISTER WORKBOOK
 // Reproduces the reference HTML sheet exactly.
@@ -211,7 +238,7 @@ function buildIntakeRegisterWorkbook(
   meta: { facilityName: string; generatedBy: string; trackingId: string; timestamp: string; logo?: { buffer: Buffer; extension: 'png' | 'jpeg' | 'gif' } | null }
 ): ExcelJS.Workbook {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Restpoint Funeral Home Software';
+  workbook.creator = ' Funeral Home Software';
   workbook.lastModifiedBy = meta.generatedBy;
   workbook.created = new Date();
   workbook.modified = new Date();
@@ -220,7 +247,8 @@ function buildIntakeRegisterWorkbook(
     views: [{ state: 'frozen', ySplit: 3, topLeftCell: 'A4' }],
     pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
-  ws.properties.tabColor = T.exportBtn;
+
+  ws.properties.tabColor = { argb: T.exportBtn };
   ws.pageSetup.printTitlesRow = '1:3';
   ws.pageSetup.printArea = `A1:X${Math.max(4, records.length + 4)}`;
   ws.properties.defaultRowHeight = 18;
@@ -446,9 +474,9 @@ function buildIntakeRegisterWorkbook(
     c.border = { top: { style: 'thin', color: { argb: T.ink } }, bottom: { style: 'thin', color: { argb: T.ink } } };
     c.alignment = { vertical: 'middle' };
   });
-  footLeft.value = 'CONFIDENTIAL: HIPAA COMPLIANT RECORD';
+  footLeft.value = 'CONFIDENTIAL: COMPLIANT RECORD';
   footLeft.alignment = { vertical: 'middle', horizontal: 'left' };
-  footMid.value = 'RESTPOINT FUNERAL HOME SOFTWARE';
+  footMid.value = ' -- SOFTWARE  --';
   footMid.alignment = { vertical: 'middle', horizontal: 'center' };
   footRight.value = `EXPORT TIMESTAMP: ${footerTimestamp}`;
   footRight.alignment = { vertical: 'middle', horizontal: 'right' };
@@ -456,6 +484,7 @@ function buildIntakeRegisterWorkbook(
 
   return workbook;
 }
+
 // ============================================
 // SYNCHRONOUS STYLED EXCEL EXPORT
 // Generates the intake register in-process and streams it back. This path is
@@ -496,7 +525,19 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       return res.status(400).json({ success: false, message: 'Tenant information missing' });
     }
 
-    const { startDate, endDate } = req.body || {};
+    const { startDate, endDate, exportPin } = req.body || {};
+
+    // Optional PIN protection: when the admin supplies a PIN (4–6 digits) the
+    // finished workbook is encrypted with it and Excel / Google Sheets demand
+    // that PIN before opening the file. An invalid PIN is rejected up-front,
+    // before any database work, so nothing half-encrypted is ever produced.
+    const pin = String(exportPin ?? '').trim();
+    if (pin && !/^\d{4,6}$/.test(pin)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Export PIN must be 4 to 6 digits.',
+      });
+    }
 
     // Build the SELECT safely against the real schema.
     const cols = await getDeceasedColumns(dbName);
@@ -578,14 +619,33 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     });
 
     const buffer: any = await workbook.xlsx.writeBuffer();
+    const plainBuffer = Buffer.from(buffer);
     const ymd = now.toISOString().slice(0, 10);
     const safeSlug = String(tenantSlug).toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'tenant';
     const fileName = `Deceased_Intake_Register_${safeSlug}_${ymd}.xlsx`;
 
+    // ── Optional PIN encryption (standard Office AES — Excel prompts for it) ──
+    // The encrypted buffer is what gets downloaded AND archived to Documents,
+    // so every copy of the file is protected by the PIN.
+    let fileBuffer = plainBuffer;
+    if (pin) {
+      try {
+        fileBuffer = await encryptXlsxWithPassword(plainBuffer, pin);
+        // Never log the PIN itself — only that protection was applied.
+        Logger.info({ message: 'Excel export encrypted with PIN', trackingId });
+      } catch (cryptErr: any) {
+        Logger.error({ message: 'Excel export PIN encryption failed', error: cryptErr && cryptErr.message });
+        return res.status(500).json({
+          success: false,
+          message: 'Could not encrypt the export with the supplied PIN. Please try again.',
+        });
+      }
+    }
+
     // ── Upload the exported file into Documents via the global uploader ──
     let uploadedUrl = '';
     try {
-      const upload = await centralizedUploadService.uploadDocument(Buffer.from(buffer), fileName, safeSlug, 'exports');
+      const upload = await centralizedUploadService.uploadDocument(fileBuffer, fileName, safeSlug, 'exports');
       if (upload && upload.success) uploadedUrl = upload.urlPath || '';
       Logger.info({ message: 'Excel export uploaded to documents', fileName, urlPath: uploadedUrl });
     } catch (uploadErr: any) {
@@ -598,7 +658,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       await exportService.saveExportHistory(dbName, {
         tenant_slug: tenantSlug,
         file_name: fileName,
-        file_size: Buffer.byteLength(buffer),
+        file_size: fileBuffer.length,
         record_count: records.length,
         generated_at: now.toISOString(),
         generated_by: userEmail,
@@ -611,11 +671,11 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       Logger.warn({ message: 'Failed to save export history', error: histErr && histErr.message });
     }
 
-    Logger.info({ message: `Styled intake register exported successfully: ${records.length} records` });
+    Logger.info({ message: `Styled intake register exported successfully: ${records.length} records${pin ? ' (PIN-protected)' : ''}` });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
-    return res.send(Buffer.from(buffer));
+    return res.send(fileBuffer);
   } catch (error: any) {
     Logger.error({ message: 'Styled Excel export failed', error: error.message });
     return res.status(500).json({
