@@ -458,7 +458,10 @@ const SERVICE_ROUTES = {
   'qrcode': SERVICE_URLS.qrcode,
   'onboarding': SERVICE_URLS.tenant,
   'portal': SERVICE_URLS.portal,
-  'public': SERVICE_URLS.portal,
+  // Public deceased/postmortem lookup endpoints are owned by deceased-service.
+  // Keeping this on portal points production traffic at the optional portal
+  // container, which is not part of the production Compose stack.
+  'public': SERVICE_URLS.deceased,
   'mpesa': SERVICE_URLS.mpesa,
   'marketplace': SERVICE_URLS.marketplace,
   'store': SERVICE_URLS.store,
