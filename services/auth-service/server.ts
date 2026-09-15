@@ -1,7 +1,5 @@
 import { autoInitSystemAdmin } from './scripts/auto-init-system-admin';
 import express, { Request, Response, NextFunction } from 'express';
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-
 import { rateLimit } from 'express-rate-limit';
 import authRoutes from './routes/authRoutes';
 import cookieParser from 'cookie-parser';
@@ -11,10 +9,18 @@ import dotenv from 'dotenv';
 import path from 'path';
 import hpp from 'hpp';
 import cors from 'cors';
+import type { Server } from 'http';
+import Logger from '../../packages/shared-logger/dist/index';
 
+// Load environment variables from the repo-root .env before any env value is
+// read below. (Imports are hoisted, so this still runs after every import.)
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const PORT = process.env.PORT || 5001;
 const app = express();
+
+// HTTP server handle — captured in startServer() and used by gracefulShutdown().
+let server: Server | null = null;
 
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
@@ -241,8 +247,8 @@ async function startServer() {
   }
 
   const HOST = process.env.HOST || '0.0.0.0';
-  app.listen(Number(PORT), HOST, () => {
-  
+  server = app.listen(Number(PORT), HOST, () => {
+    console.log(`[auth-service] Listening on http://${HOST}:${PORT} (PID ${process.pid})`);
   });
 }
 
@@ -250,28 +256,37 @@ startServer();
 
 
 
-const   gracefulShutdown  =  (signal: string)  =>{
-  server.close(()=>{
-    process.exit(1)
-  })
-}
+const gracefulShutdown = (signal: string) => {
+  console.log(`[SHUTDOWN] auth-service received ${signal}. Closing HTTP server...`);
+  if (!server) {
+    process.exit(0);
+  }
+  server.close(() => {
+    console.log('[SHUTDOWN] HTTP server closed. Exiting.');
+    process.exit(0);
+  });
+  // Safety net: force-exit if keep-alive connections refuse to drain.
+  setTimeout(() => {
+    console.error('[SHUTDOWN] Graceful shutdown timed out — forcing exit.');
+    process.exit(1);
+  }, 10_000);
+};
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 process.on('unhandledRejection', (reason) => {
   Logger.error({
-    message:   "Unhandled Rejection  in  api gateway",
-    error:   reason
-  })
+    message: 'Unhandled Rejection in auth-service',
+    error: reason,
+  });
 });
-
 
 process.on('uncaughtException', (err) => {
   Logger.error({
-    message:   "unhandles  Exception in  api gateway",
-    error:      err
-  })
+    message: 'Uncaught Exception in auth-service',
+    error: err,
+  });
 });
 
 
