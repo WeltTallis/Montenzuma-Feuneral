@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
 import { compression } from 'vite-plugin-compression2';
 import tailwindcss from '@tailwindcss/vite'
 
@@ -26,7 +25,7 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+            '@': import.meta.dirname + '/./src',
     },
     // Guarantee a single copy of React across the whole module graph, even if
     // some dependency resolves its own copy. Prevents the classic invalid

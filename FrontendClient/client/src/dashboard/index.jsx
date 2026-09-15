@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { MODULES, DASH_NAV } from "./config";
 import ModuleDashboard from "./ModuleDashboard";
 import DashboardNav from "./DashboardNav";
-import CoffinInventoryDashboard from "../components/dashboard/CoffinInventoryDashboard";
+import CoffinInventoryDashboard from "../components/coffins/coffininventory";
 
 /* ─── Design tokens (matches workshop palette) ─────────────────── */
 const T = {

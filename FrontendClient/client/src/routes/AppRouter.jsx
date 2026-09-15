@@ -83,7 +83,7 @@ const StoreDashboard = lazy(() => import('../modules/store'));
 const DeceasedRegistrationForm = lazy(() => import('../components/deceased/register/deceasedIntake'));
 const RegisterCoffin = lazy(() => import('../components/coffins/registerCoffin'));
 const CoffinInventory = lazy(() => import('../components/coffins/coffininventory'));
-const CoffinInventoryDashboard = lazy(() => import('../components/dashboard/CoffinInventoryDashboard'));
+const CoffinInventoryDashboard = lazy(() => import('../components/coffins/coffininventory'));
 const CoffinDetails = lazy(() => import('../components/coffins/coffinDetails'));
 const CoffinRequests = lazy(() => import('../components/analysis/coffinRequests'));
 const DeceasedList = lazy(() => import('../components/deceased/allDeceased/listDeceased'));
