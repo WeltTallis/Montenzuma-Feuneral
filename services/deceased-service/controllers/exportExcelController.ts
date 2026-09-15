@@ -22,26 +22,29 @@ interface ExportRequest extends Request {
 
 // ============================================
 // INTAKE REGISTER EXCEL TEMPLATE COLORS
-// Mirrors the "Sterling & Hayes Memorial Estates — Official Deceased Intake
-// Register" design exactly: navy export button, ink footer, status badges,
-// zebra rows and Excel-native gridlines.
+// A quieter, higher-contrast palette: deep slate-navy header, warm bronze
+// accent reserved for the handful of numbers that matter (admission #, age,
+// days in morgue), and soft neutral tints for the status badges. Fonts are
+// limited to Cambria (title) and Calibri/Consolas (everything else) so the
+// sheet renders identically whether it's opened in Excel, Google Sheets, or
+// LibreOffice — no dependency on a web font that may not be installed.
 // ============================================
 const T = {
-  exportBtn: 'FF0F3040',    // #0F3040
-  headerBorder: 'FF08222D', // #08222d
-  ink: 'FF03071E',          // #03071E (navy footer)
-  success: 'FF3D4F47',
-  successBg: 'FFEFF2EE',
-  warning: 'FF946B2D',
-  warningBg: 'FFFBF7EE',
-  line: 'FFE2DDD3',
-  zebra: 'FFFAF8F4',
+  headerBg: 'FF1F2A3A',     // deep slate navy — column header row
+  headerBorder: 'FF15202B',
+  ink: 'FF15202B',          // footer bar
+  accent: 'FFB8955F',       // muted bronze/gold — used sparingly for key figures
+  success: 'FF2E6B4F',
+  successBg: 'FFEAF3EE',
+  warning: 'FFA6752D',
+  warningBg: 'FFFBF3E7',
+  line: 'FFE3E6EA',
+  zebra: 'FFF7F8FA',
   white: 'FFFFFFFF',
-  text: 'FF14181C',
-  muted: 'FF8E8579',
-  slate: 'FFB5AFA3',
-  gray2: 'FF4B514D',
-  accent: 'FF8B7355',
+  text: 'FF1E2430',
+  muted: 'FF7C8291',
+  slate: 'FFA8AFBD',
+  gray2: 'FF4A5160',
 };
 
 const HEADERS = [
@@ -49,10 +52,10 @@ const HEADERS = [
   'Age', 'Date of Death', 'Cause of Death', 'Place of Death', 'Body Status',
   'Permit Number', 'Received From', 'Contact Person', 'Relationship', 'ID Type',
   'ID Number', 'Primary Phone', 'Alt. Phone', 'Email', 'Receiving Officer',
-  'Verified By', 'Officer Signature', 'Date Released', 'Days in Morgue',
+  'Verified By', 'Date Released', 'Days in Morgue',
 ];
 
-const COL_WIDTHS = [16, 14, 12, 24, 10, 8, 14, 22, 18, 22, 16, 22, 20, 14, 12, 14, 18, 16, 24, 20, 20, 26, 14, 16];
+const COL_WIDTHS = [16, 14, 12, 24, 10, 8, 14, 22, 18, 22, 16, 22, 20, 14, 12, 14, 18, 16, 24, 20, 20, 14, 16];
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 const dash = (v: any): string => (v === null || v === undefined || v === '' ? '—' : String(v));
@@ -175,32 +178,6 @@ async function encryptXlsxWithPassword(buffer: Buffer, password: string): Promis
   return workbook.outputAsync({ password });
 }
 
-// Resolve a signature stored as a URL path (e.g. /uploads/<slug>/signatures/x.png)
-// into an image buffer so it can be embedded in the sheet. Falls back to null.
-function resolveSignatureBuffer(value: any): Buffer | null {
-  if (!value) return null;
-  const v = String(value).trim();
-  try {
-    if (/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(v)) {
-      const b64 = v.split(',')[1];
-      return Buffer.from(b64, 'base64');
-    }
-    // URL path or absolute path → locate on the shared uploads disk.
-    let rel = String(v).replace(/^https?:\/\/[^/]+\//, '');
-    rel = rel.replace(/^\/?(uploads[\\/])*/, '');
-    const base = globalUploadsDir();
-    const candidates = [path.join(base, rel)];
-    if (v.includes('uploads')) {
-      const after = v.split('uploads')[1].replace(/^[\\/]+/, '');
-      candidates.push(path.join(base, after));
-    }
-    for (const c of candidates) {
-      if (fs.existsSync(c)) return fs.readFileSync(c);
-    }
-  } catch { /* fall through */ }
-  return null;
-}
-
 // Discover the columns that actually exist on this tenant's deceased table so the
 // export never breaks on older databases that are missing newer columns.
 async function getDeceasedColumns(dbName: string): Promise<Set<string>> {
@@ -216,30 +193,15 @@ async function getDeceasedColumns(dbName: string): Promise<Set<string>> {
   }
 }
 
-// Same introspection for next_of_kin (older DBs lack signature / id_number / id_type).
-async function getKinColumns(dbName: string): Promise<Set<string>> {
-  try {
-    const rows: any[] = await safeTenantQuery(
-      dbName,
-      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'next_of_kin'`
-    );
-    return new Set(rows.map((r) => String(r.COLUMN_NAME).toLowerCase()));
-  } catch {
-    return new Set();
-  }
-}
-
 // ============================================
 // BUILD THE INTAKE REGISTER WORKBOOK
-// Reproduces the reference HTML sheet exactly.
 // ============================================
 function buildIntakeRegisterWorkbook(
   records: any[],
   meta: { facilityName: string; generatedBy: string; trackingId: string; timestamp: string; logo?: { buffer: Buffer; extension: 'png' | 'jpeg' | 'gif' } | null }
 ): ExcelJS.Workbook {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = ' Funeral Home Software';
+  workbook.creator = 'Restpoint Funeral Home Software';
   workbook.lastModifiedBy = meta.generatedBy;
   workbook.created = new Date();
   workbook.modified = new Date();
@@ -249,9 +211,9 @@ function buildIntakeRegisterWorkbook(
     pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
 
-  ws.properties.tabColor = { argb: T.exportBtn };
+  ws.properties.tabColor = { argb: T.headerBg };
   ws.pageSetup.printTitlesRow = '1:3';
-  ws.pageSetup.printArea = `A1:X${Math.max(4, records.length + 4)}`;
+  ws.pageSetup.printArea = `A1:W${Math.max(4, records.length + 4)}`;
   ws.properties.defaultRowHeight = 18;
 
   ws.columns = COL_WIDTHS.map((w) => ({ width: w }));
@@ -263,13 +225,13 @@ function buildIntakeRegisterWorkbook(
     right: { style: 'thin' as const, color: { argb: T.line } },
   };
 
-  // ── Row 1: Facility header (left) + Export generated / barcode (right) ──
+  // ── Row 1: Facility header (left) + Export generated / tracking ID (right) ──
   ws.mergeCells('A1:L1');
   const leftCell = ws.getCell('A1');
   leftCell.value = {
     richText: [
-      { text: `${meta.facilityName}\n`, font: { name: 'Saira', size: 18, bold: true, color: { argb: T.ink } } },
-      { text: 'OFFICIAL DECEASED INTAKE REGISTER', font: { name: 'Saira', size: 10, color: { argb: T.accent } } },
+      { text: `${meta.facilityName}\n`, font: { name: 'Cambria', size: 18, bold: true, color: { argb: T.text } } },
+      { text: 'OFFICIAL DECEASED INTAKE REGISTER', font: { name: 'Calibri', size: 10, bold: true, color: { argb: T.accent } } },
     ],
   };
   leftCell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
@@ -278,27 +240,25 @@ function buildIntakeRegisterWorkbook(
     ws.addImage(logoId, { tl: { col: 0.15, row: 0.18 }, ext: { width: 82, height: 42 } });
     leftCell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true, indent: 7 };
   }
-  ws.mergeCells('M1:X1');
+  ws.mergeCells('M1:W1');
   const rightCell = ws.getCell('M1');
-  const barcodeBars = '|||||||||||||||||||||||||||||||||||||||||||';
   rightCell.value = {
     richText: [
-      { text: 'EXPORT GENERATED\n', font: { name: 'Saira', size: 9, color: { argb: T.muted } } },
-      { text: `${meta.timestamp}\n`, font: { name: 'Consolas', size: 12, bold: true, color: { argb: T.ink } } },
-      { text: `${barcodeBars}\n`, font: { name: 'Consolas', size: 6, color: { argb: T.ink } } },
-      { text: `TRACKING ID: ${meta.trackingId}`, font: { name: 'Consolas', size: 9, color: { argb: T.slate } } },
+      { text: 'EXPORT GENERATED\n', font: { name: 'Calibri', size: 9, color: { argb: T.muted } } },
+      { text: `${meta.timestamp}\n`, font: { name: 'Consolas', size: 12, bold: true, color: { argb: T.text } } },
+      { text: `Tracking ID: ${meta.trackingId}`, font: { name: 'Consolas', size: 9, color: { argb: T.slate } } },
     ],
   };
   rightCell.alignment = { horizontal: 'right', vertical: 'top', wrapText: true };
-  ws.getRow(1).height = 58;
+  ws.getRow(1).height = 50;
 
-  // ── Row 2: Generated By ──
-  ws.mergeCells('A2:X2');
+  // ── Row 2: Generated By, with a thin accent rule underneath ──
+  ws.mergeCells('A2:W2');
   const genCell = ws.getCell('A2');
-  genCell.value = `Generated By: ${meta.generatedBy}`;
-  genCell.font = { name: 'Saira', size: 11, color: { argb: T.gray2 } };
+  genCell.value = `Generated by: ${meta.generatedBy}`;
+  genCell.font = { name: 'Calibri', size: 11, color: { argb: T.gray2 } };
   genCell.alignment = { horizontal: 'left', vertical: 'middle' };
-  genCell.border = { bottom: { style: 'thick', color: { argb: T.exportBtn } } };
+  genCell.border = { bottom: { style: 'medium', color: { argb: T.accent } } };
   ws.getRow(2).height = 22;
 
   // ── Row 3: Column headers ──
@@ -307,8 +267,8 @@ function buildIntakeRegisterWorkbook(
   HEADERS.forEach((label, idx) => {
     const cell = headerRow.getCell(idx + 1);
     cell.value = label;
-    cell.font = { name: 'Consolas', size: 10, bold: true, color: { argb: T.white } };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: T.exportBtn } };
+    cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: T.white } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: T.headerBg } };
     cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
     cell.border = {
       top: { style: 'thin', color: { argb: T.headerBorder } },
@@ -317,30 +277,30 @@ function buildIntakeRegisterWorkbook(
       right: { style: 'thin', color: { argb: T.headerBorder } },
     };
   });
-  ws.autoFilter = { from: 'A3', to: 'X3' };
+  ws.autoFilter = { from: 'A3', to: 'W3' };
 
   // ── Data rows ──
   records.forEach((item, index) => {
     const rowNumber = 4 + index;
     const row = ws.getRow(rowNumber);
-    row.height = 30;
+    row.height = 28;
 
     const zebraFill = index % 2 === 1
       ? { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: T.zebra } }
       : null;
     const applyBase = (cell: ExcelJS.Cell) => {
       cell.border = thinBorder;
-      cell.font = { name: 'Saira', size: 11, color: { argb: T.text } };
+      cell.font = { name: 'Calibri', size: 11, color: { argb: T.text } };
       cell.alignment = { vertical: 'middle', horizontal: 'left' };
       if (zebraFill) cell.fill = zebraFill;
     };
-    const mono = { name: 'Consolas', size: 11, color: { argb: T.text } };
-    const monoBold = (color: string) => ({ name: 'Consolas', size: 11, bold: true, color: { argb: color } });
+    const mono = { name: 'Consolas', size: 10.5, color: { argb: T.text } };
+    const accentMono = { name: 'Consolas', size: 10.5, bold: true, color: { argb: T.accent } };
 
     // A - Admission #
     applyBase(row.getCell(1));
     row.getCell(1).value = dash(item.admission_number);
-    row.getCell(1).font = monoBold(T.exportBtn);
+    row.getCell(1).font = accentMono;
 
     // B - Date Admitted
     applyBase(row.getCell(2));
@@ -354,7 +314,7 @@ function buildIntakeRegisterWorkbook(
     // D - Full Name
     applyBase(row.getCell(4));
     row.getCell(4).value = dash(item.full_name);
-    row.getCell(4).font = { name: 'Saira', size: 11, bold: true, color: { argb: T.text } };
+    row.getCell(4).font = { name: 'Calibri', size: 11, bold: true, color: { argb: T.text } };
 
     // E - Gender
     applyBase(row.getCell(5));
@@ -363,7 +323,7 @@ function buildIntakeRegisterWorkbook(
     // F - Age
     applyBase(row.getCell(6));
     row.getCell(6).value = dash(item.age);
-    row.getCell(6).font = monoBold(T.exportBtn);
+    row.getCell(6).font = accentMono;
     row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
 
     // G - Date of Death
@@ -382,7 +342,7 @@ function buildIntakeRegisterWorkbook(
     applyBase(row.getCell(10));
     const st = statusDisplay(item.body_status);
     row.getCell(10).value = st.label;
-    row.getCell(10).font = { name: 'Saira', size: 11, bold: true, color: { argb: st.kind === 'success' ? T.success : T.warning } };
+    row.getCell(10).font = { name: 'Calibri', size: 11, bold: true, color: { argb: st.kind === 'success' ? T.success : T.warning } };
     row.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: st.kind === 'success' ? T.successBg : T.warningBg } };
     row.getCell(10).alignment = { vertical: 'middle', horizontal: 'center' };
 
@@ -409,15 +369,17 @@ function buildIntakeRegisterWorkbook(
     // P - ID Number
     applyBase(row.getCell(16));
     row.getCell(16).value = dash(item.id_number);
+    row.getCell(16).font = mono;
 
-    // Q - Primary Phone (amber bold mono)
+    // Q - Primary Phone
     applyBase(row.getCell(17));
     row.getCell(17).value = dash(item.primary_phone);
-    row.getCell(17).font = monoBold(T.warning);
+    row.getCell(17).font = mono;
 
     // R - Alt. Phone
     applyBase(row.getCell(18));
     row.getCell(18).value = dash(item.alternative_phone);
+    row.getCell(18).font = mono;
 
     // S - Email
     applyBase(row.getCell(19));
@@ -431,57 +393,40 @@ function buildIntakeRegisterWorkbook(
     applyBase(row.getCell(21));
     row.getCell(21).value = dash(item.verified_by || item.created_by);
 
-    // V - Officer Signature (embeds the image when resolvable, else italic text)
-    const sigValue = item.kin_signature || item.signature;
-    const sigBuffer = resolveSignatureBuffer(sigValue);
+    // V - Date Released
     applyBase(row.getCell(22));
-    if (sigBuffer) {
-      try {
-        const imgId = workbook.addImage({ buffer: sigBuffer as any, extension: 'png' });
-        ws.addImage(imgId, { tl: { col: 21, row: rowNumber - 1 }, ext: { width: 160, height: 30 } });
-      } catch {
-        row.getCell(22).value = dash(sigValue);
-        row.getCell(22).font = { name: 'Consolas', size: 10, italic: true, color: { argb: T.gray2 } };
-      }
-    } else {
-      row.getCell(22).value = sigValue ? dash(sigValue) : '—';
-      row.getCell(22).font = { name: 'Consolas', size: 10, italic: true, color: { argb: T.gray2 } };
-    }
+    row.getCell(22).value = formatDate(item.dispatch_date);
 
-    // W - Date Released
+    // W - Days in Morgue
     applyBase(row.getCell(23));
-    row.getCell(23).value = formatDate(item.dispatch_date);
-
-    // X - Days in Morgue (green bold mono)
-    applyBase(row.getCell(24));
-    row.getCell(24).value = daysInMorgue(item.date_admitted || item.created_at, item.dispatch_date);
-    row.getCell(24).font = monoBold(T.success);
+    row.getCell(23).value = daysInMorgue(item.date_admitted || item.created_at, item.dispatch_date);
+    row.getCell(23).font = { name: 'Consolas', size: 10.5, bold: true, color: { argb: T.success } };
   });
 
-  // ── Footer row (ink navy bar with three aligned blocks) ──
+  // ── Footer row (navy bar, three aligned blocks, thin gold rule on top) ──
   const footerRowNum = 4 + records.length;
   const footerTimestamp = new Date().toLocaleString('en-US', {
     year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
   });
   ws.mergeCells(`A${footerRowNum}:H${footerRowNum}`);
   ws.mergeCells(`I${footerRowNum}:P${footerRowNum}`);
-  ws.mergeCells(`Q${footerRowNum}:X${footerRowNum}`);
+  ws.mergeCells(`Q${footerRowNum}:W${footerRowNum}`);
   const footLeft = ws.getCell(`A${footerRowNum}`);
   const footMid = ws.getCell(`I${footerRowNum}`);
   const footRight = ws.getCell(`Q${footerRowNum}`);
   [footLeft, footMid, footRight].forEach((c) => {
     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: T.ink } };
-    c.font = { name: 'Consolas', size: 10, bold: true, color: { argb: T.white } };
-    c.border = { top: { style: 'thin', color: { argb: T.ink } }, bottom: { style: 'thin', color: { argb: T.ink } } };
+    c.font = { name: 'Calibri', size: 10, bold: true, color: { argb: T.white } };
+    c.border = { top: { style: 'medium', color: { argb: T.accent } } };
     c.alignment = { vertical: 'middle' };
   });
-  footLeft.value = 'CONFIDENTIAL: COMPLIANT RECORD';
+  footLeft.value = 'CONFIDENTIAL — COMPLIANT RECORD';
   footLeft.alignment = { vertical: 'middle', horizontal: 'left' };
-  footMid.value = ' -- SOFTWARE  --';
+  footMid.value = 'RESTPOINT MORTUARY MANAGEMENT SYSTEM';
   footMid.alignment = { vertical: 'middle', horizontal: 'center' };
   footRight.value = `EXPORT TIMESTAMP: ${footerTimestamp}`;
   footRight.alignment = { vertical: 'middle', horizontal: 'right' };
-  ws.getRow(footerRowNum).height = 26;
+  ws.getRow(footerRowNum).height = 24;
 
   return workbook;
 }
@@ -542,7 +487,6 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
 
     // Build the SELECT safely against the real schema.
     const cols = await getDeceasedColumns(dbName);
-    const kinCols = await getKinColumns(dbName);
     const has = (c: string) => cols.has(c.toLowerCase());
     const permitExpr = has('permit_number')
       ? "COALESCE(d.permit_number, d.national_id, '—')"
@@ -567,7 +511,6 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       'd.receiving_officer',
       'd.verified_by',
       'd.created_by',
-      'd.signature',
       'd.date_admitted',
       'd.created_at',
       'd.dispatch_date',
@@ -580,8 +523,6 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       `${contactExpr} AS contact_person`,
       "COALESCE(nk.relationship, d.relationship, '—') AS relationship",
     ];
-    // Older next_of_kin schemas have no signature column — only select it when present.
-    if (kinCols.has('signature')) selectParts.push('nk.signature AS kin_signature');
 
     const where: string[] = [];
     const params: any[] = [];
