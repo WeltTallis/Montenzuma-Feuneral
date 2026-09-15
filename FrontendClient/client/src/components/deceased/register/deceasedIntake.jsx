@@ -1159,11 +1159,6 @@ const DeceasedRegistrationForm = () => {
       });
       setShowSuccess(true);
 
-      notify.success(
-        'Registration Successful',
-        `${formData.full_name} has been registered successfully.${admissionId ? ` File ID: ${admissionId}` : ''}`
-      );
-
       setFormData({
         ...initialFormData,
         verified_by: getLoggedInUserEmail(),

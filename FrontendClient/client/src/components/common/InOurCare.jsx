@@ -20,18 +20,18 @@ const CSS = `
   .ioc-grain{position:fixed;inset:0;pointer-events:none;z-index:5;opacity:.45;mix-blend-mode:soft-light;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E")}
   .ioc-vigil{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    text-align:center;padding:10px 14px 10px}
-  .ioc-candle{width:min(300px,74vw);aspect-ratio:300/430;display:block;margin-bottom:-14px;cursor:pointer;
+    text-align:center;padding:4px 14px 8px}
+  .ioc-candle{width:min(220px,52vw);aspect-ratio:300/430;display:block;margin-bottom:-22px;cursor:pointer;
     touch-action:pan-y;user-select:none;-webkit-user-select:none}
-  .ioc-eyebrow{font:700 11px/1 'Karla',sans-serif;letter-spacing:.36em;color:#e6a24e;margin:20px 0 0}
-  .ioc-name{margin:20px 0 0;font:italic 500 clamp(36px,7vw,56px)/1.08 'Cormorant Garamond',Georgia,serif;color:#ece3d1}
-  .ioc-dates{margin:16px 0 0;font:600 11px/1.7 'Karla',sans-serif;letter-spacing:.3em;color:#a2937c}
-  .ioc-ref{margin:12px 0 0;font:600 10px/1 'Karla',sans-serif;letter-spacing:.3em;color:rgba(162,147,124,.8);text-transform:uppercase}
-  .ioc-message{margin:30px 0 0;font:italic 500 clamp(21px,4vw,29px)/1.35 'Cormorant Garamond',Georgia,serif;color:#f2c98c;max-width:20ch}
-  .ioc-foot{margin:52px 0 0;font:italic 500 16px/1.75 'Cormorant Garamond',Georgia,serif;color:#a2937c}
-  .ioc-done{margin-top:32px;font:700 12px/1 'Karla',sans-serif;letter-spacing:.32em;text-transform:uppercase;
+  .ioc-eyebrow{font:700 10px/1 'Karla',sans-serif;letter-spacing:.28em;color:#e6a24e;margin:12px 0 0}
+  .ioc-name{margin:12px 0 0;font:italic 500 clamp(30px,5vw,44px)/1.08 'Cormorant Garamond',Georgia,serif;color:#ece3d1}
+  .ioc-dates{margin:9px 0 0;font:600 10px/1.5 'Karla',sans-serif;letter-spacing:.22em;color:#a2937c}
+  .ioc-ref{margin:8px 0 0;font:600 9px/1 'Karla',sans-serif;letter-spacing:.22em;color:rgba(162,147,124,.8);text-transform:uppercase}
+  .ioc-message{margin:18px 0 0;font:italic 500 clamp(19px,3vw,25px)/1.25 'Cormorant Garamond',Georgia,serif;color:#f2c98c;max-width:24ch}
+  .ioc-foot{margin:26px 0 0;font:italic 500 14px/1.45 'Cormorant Garamond',Georgia,serif;color:#a2937c}
+  .ioc-done{margin-top:20px;font:700 11px/1 'Karla',sans-serif;letter-spacing:.26em;text-transform:uppercase;
     color:#e6a24e;background:transparent;border:1px solid rgba(230,162,78,.55);border-radius:9px;
-    padding:16px 58px;cursor:pointer;transition:background .35s ease,color .35s ease,box-shadow .35s ease,transform .35s ease}
+    padding:12px 40px;cursor:pointer;transition:background .35s ease,color .35s ease,box-shadow .35s ease,transform .35s ease}
   .ioc-done:hover{background:#e6a24e;color:#0f0d0a;box-shadow:0 0 34px rgba(230,162,78,.35);transform:translateY(-1px)}
   .ioc-done:active{transform:translateY(0)}
   .ioc-rv{opacity:0;transform:translateY(16px);filter:blur(6px);

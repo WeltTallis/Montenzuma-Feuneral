@@ -643,6 +643,28 @@ const ModalBox = styled.div`
   flex-direction: column;
 `;
 
+const UsageDrawer = styled.aside`
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1100;
+  width: min(430px, 94vw);
+  background: ${COLORS.cardBg};
+  box-shadow: -18px 0 45px rgba(15, 23, 42, 0.18);
+  border-left: 1px solid ${COLORS.border};
+  animation: ${modalSlideUp} 0.25s ease-out;
+  display: flex;
+  flex-direction: column;
+`;
+
+const UsageDrawerStat = styled.div`
+  padding: 14px;
+  border: 1px solid ${COLORS.borderLight};
+  border-radius: 12px;
+  background: ${COLORS.light};
+`;
+
 const ModalHead = styled.div`
   display: flex;
   justify-content: space-between;
@@ -883,6 +905,7 @@ const ChemicalManagementDashboard = () => {
   const [showUsageModal, setShowUsageModal] = useState(false);
   const [showPPEModal, setShowPPEModal] = useState(false);
   const [selectedChemical, setSelectedChemical] = useState(null);
+  const [selectedUsagePerson, setSelectedUsagePerson] = useState(null);
   const [showLowStockBanner, setShowLowStockBanner] = useState(true);
   const lowStockToastShownRef = useRef(false);
   const [dashboardStats, setDashboardStats] = useState({
@@ -908,6 +931,24 @@ const ChemicalManagementDashboard = () => {
   const [ppeFormData, setPPEFormData] = useState({
     item_name: '', quantity_requested: '', requested_by: '', notes: '',
   });
+
+  const personUsage = selectedUsagePerson
+    ? usageData
+      .filter((usage) => String(usage.used_by || '').trim() === selectedUsagePerson)
+      .sort((a, b) => new Date(b.used_at || b.created_at || 0) - new Date(a.used_at || a.created_at || 0))
+    : [];
+  const personUsageTotal = personUsage.reduce((sum, usage) => sum + Number(usage.quantity_used || 0), 0);
+  const latestPersonUsage = personUsage[0] || null;
+  const daysSincePickup = latestPersonUsage
+    ? Math.max(0, Math.floor((Date.now() - new Date(latestPersonUsage.used_at || latestPersonUsage.created_at).getTime()) / 86400000))
+    : 0;
+  const averagePickupGap = personUsage.length > 1
+    ? Math.round(personUsage.slice(1).reduce((sum, usage, index) => {
+      const newer = new Date(personUsage[index].used_at || personUsage[index].created_at).getTime();
+      const older = new Date(usage.used_at || usage.created_at).getTime();
+      return sum + Math.max(0, (newer - older) / 86400000);
+    }, 0) / (personUsage.length - 1))
+    : null;
 
   /* ─── Fetches ──────────────────────────────────────────────── */
   useEffect(() => {
@@ -1330,7 +1371,17 @@ const ChemicalManagementDashboard = () => {
                       <Td>{fmtDate(u.used_at)}</Td>
                       <Td style={{ fontWeight: 650 }}>{u.chemical_name}</Td>
                       <Td>{u.quantity_used} {u.unit}</Td>
-                      <Td>{u.used_by || '—'}</Td>
+                      <Td>
+                        {u.used_by ? (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedUsagePerson(String(u.used_by).trim())}
+                            style={{ border: 0, background: 'none', padding: 0, color: COLORS.accentBlue, fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            {u.used_by}
+                          </button>
+                        ) : '—'}
+                      </Td>
                       <TdWrap>{u.usage_notes || '—'}</TdWrap>
                     </tr>
                   ))}
@@ -1383,6 +1434,42 @@ const ChemicalManagementDashboard = () => {
             </div>
           )}
         </Section>
+      )}
+
+      {selectedUsagePerson && (
+        <>
+          <Overlay onClick={() => setSelectedUsagePerson(null)} />
+          <UsageDrawer aria-label={`${selectedUsagePerson} chemical usage history`}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '22px 22px 16px', borderBottom: `1px solid ${COLORS.border}` }}>
+              <div>
+                <div style={{ fontSize: 11, color: COLORS.textTertiary, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Chemical usage profile</div>
+                <h2 style={{ margin: '6px 0 0', color: COLORS.textPrimary, fontSize: 22 }}>{selectedUsagePerson}</h2>
+              </div>
+              <CloseBtn type="button" onClick={() => setSelectedUsagePerson(null)}><X size={16} /></CloseBtn>
+            </div>
+            <div style={{ padding: 22, overflowY: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+                <UsageDrawerStat><div style={{ color: COLORS.textTertiary, fontSize: 11, textTransform: 'uppercase', fontWeight: 700 }}>Pickups</div><strong style={{ display: 'block', marginTop: 6, fontSize: 24, color: COLORS.textPrimary }}>{personUsage.length}</strong></UsageDrawerStat>
+                <UsageDrawerStat><div style={{ color: COLORS.textTertiary, fontSize: 11, textTransform: 'uppercase', fontWeight: 700 }}>Used so far</div><strong style={{ display: 'block', marginTop: 6, fontSize: 24, color: COLORS.textPrimary }}>{personUsageTotal.toLocaleString()}</strong></UsageDrawerStat>
+                <UsageDrawerStat><div style={{ color: COLORS.textTertiary, fontSize: 11, textTransform: 'uppercase', fontWeight: 700 }}>Last pickup</div><strong style={{ display: 'block', marginTop: 6, fontSize: 14, color: COLORS.textPrimary }}>{latestPersonUsage ? fmtDate(latestPersonUsage.used_at || latestPersonUsage.created_at) : '—'}</strong></UsageDrawerStat>
+                <UsageDrawerStat><div style={{ color: COLORS.textTertiary, fontSize: 11, textTransform: 'uppercase', fontWeight: 700 }}>Since last pickup</div><strong style={{ display: 'block', marginTop: 6, fontSize: 14, color: daysSincePickup > 30 ? COLORS.warningYellow : COLORS.textPrimary }}>{latestPersonUsage ? `${daysSincePickup} day${daysSincePickup === 1 ? '' : 's'}` : '—'}</strong></UsageDrawerStat>
+              </div>
+              <div style={{ padding: '12px 14px', background: '#EFF6FF', border: '1px solid #DBEAFE', borderRadius: 10, marginBottom: 20, color: '#1E40AF', fontSize: 13 }}>
+                Average pickup interval: <strong>{averagePickupGap == null ? 'Not enough history' : `${averagePickupGap} day${averagePickupGap === 1 ? '' : 's'}`}</strong>
+              </div>
+              <div style={{ color: COLORS.textPrimary, fontWeight: 750, fontSize: 14, marginBottom: 10 }}>Recent pickups</div>
+              {personUsage.length === 0 ? <div style={{ color: COLORS.textSecondary, fontSize: 13 }}>No usage records found.</div> : personUsage.slice(0, 20).map((usage) => (
+                <div key={usage.usage_id} style={{ padding: '12px 0', borderBottom: `1px solid ${COLORS.borderLight}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <strong style={{ color: COLORS.textPrimary, fontSize: 13 }}>{usage.chemical_name || 'Chemical'}</strong>
+                    <span style={{ color: COLORS.successGreen, fontWeight: 750, fontSize: 13 }}>{usage.quantity_used} {usage.unit || ''}</span>
+                  </div>
+                  <div style={{ marginTop: 4, color: COLORS.textSecondary, fontSize: 12 }}>{fmtDate(usage.used_at || usage.created_at)}{usage.usage_notes ? ` · ${usage.usage_notes}` : ''}</div>
+                </div>
+              ))}
+            </div>
+          </UsageDrawer>
+        </>
       )}
 
       {/* ══════════════════════════════════════════════════════

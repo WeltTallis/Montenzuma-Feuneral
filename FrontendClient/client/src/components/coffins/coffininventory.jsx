@@ -2506,11 +2506,11 @@ const CoffinDashboard = () => {
         style={{
           height: '100vh',
           minHeight: 0,
-          borderRadius: 16,
           overflow: 'hidden',
-          border: `1px solid ${S.border}`,
-          boxShadow: S.shadowMd,
-          background: '#fff',
+          borderRadius: 0,
+          border: 'none',
+          boxShadow: 'none',
+          background: 'transparent',
         }}
       >
         <ReservationDashboard

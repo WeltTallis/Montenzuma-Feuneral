@@ -211,8 +211,10 @@ const DocumentsTab = ({ documents, deceasedId }) => {
 
       if (response.data?.success || response.data?.document) {
         notify.success('Document uploaded', response.data?.message || 'Document uploaded successfully');
-        // Refresh the documents list instead of full page reload
-        window.location.reload();
+        const refreshed = await api.get(`/documents/${deceasedId}`, { headers: getTenantHeaders(), withCredentials: false });
+        const list = refreshed.data?.files || refreshed.data?.data || [];
+        setLocalDocs(Array.isArray(list) ? list : []);
+        if (fileInputRef.current) fileInputRef.current.value = '';
       } else {
         notify.error('Upload failed', response.data?.message || 'Failed to upload document');
       }

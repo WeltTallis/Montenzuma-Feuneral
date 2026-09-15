@@ -93,6 +93,7 @@ function ChartTip(props) {
 
 export default function ReservationDashboard(props) {
   var bookings = props.bookings || [], coffins = props.coffins || [];
+  var reservationsOnly = props.reservationsOnly === true;
   var formatPrice = props.formatPrice, onNewReservation = props.onNewReservation;
   var navTabs = props.navTabs, activeNav = props.activeNav, onNavChange = props.onNavChange;
   var onInventory = props.onInventory, onTransfer = props.onTransfer;
@@ -103,7 +104,9 @@ export default function ReservationDashboard(props) {
   // requiring external wiring.
   var _av = useState(null), altView = _av[0], setAltView = _av[1];
   var selfNav = !(navTabs && navTabs.length > 0);
-  var effTabs = selfNav
+  var effTabs = reservationsOnly
+    ? [{ key: 'bookings', label: 'Bookings', icon: 'fa-calendar-check' }]
+    : selfNav
     ? [
         { key: 'bookings',  label: 'Bookings',  icon: 'fa-calendar-check' },
         { key: 'inventory', label: 'Inventory', icon: 'fa-boxes-stacked' },
@@ -443,8 +446,8 @@ export default function ReservationDashboard(props) {
                 {['day', 'week', 'month'].map(function (v) { return <button key={v} className={'cb-tb-v' + (view === v ? ' on' : '')} onClick={function () { setView(v); setClickedDay(null); }}>{v}</button>; })}
               </div>
               <button className="cb-tb-new" onClick={function () { if (onNewReservation) onNewReservation(); else showToast('New reservation form'); }}>{IC.pl} New Reservation</button>
-              <button className="cb-tb-btn" onClick={function () { if (onInventory) onInventory(); else if (selfNav) setAltView('inventory'); else showToast('Inventory not configured'); }}>{IC.grid} Inventory</button>
-              <button className="cb-tb-btn" onClick={function () { if (onTransfer) onTransfer(); else if (selfNav) setAltView('transfers'); else showToast('Transfer not configured'); }}>{IC.tr} Transfer</button>
+              {!reservationsOnly && <button className="cb-tb-btn" onClick={function () { if (onInventory) onInventory(); else if (selfNav) setAltView('inventory'); else showToast('Inventory not configured'); }}>{IC.grid} Inventory</button>}
+              {!reservationsOnly && <button className="cb-tb-btn" onClick={function () { if (onTransfer) onTransfer(); else if (selfNav) setAltView('transfers'); else showToast('Transfer not configured'); }}>{IC.tr} Transfer</button>}
             </React.Fragment>
           )}
         </div>

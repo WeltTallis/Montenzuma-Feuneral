@@ -1378,10 +1378,6 @@ const DeceasedReleaseForm = () => {
         throw new Error(result.message || 'Release failed');
       }
 
-      notify.success(
-        'Release Successful',
-        `${formData.full_name || 'The record'} has been released successfully.`
-      );
       if (result.data && result.data.release_id) {
         setReleaseId(result.data.release_id);
       }

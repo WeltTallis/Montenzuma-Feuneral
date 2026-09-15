@@ -16,6 +16,7 @@ import MonthView from "./views/MonthView";
 import WeekView from "./views/WeekView";
 import DayView from "./views/DayView";
 import DeceasedQuad from "./views/DeceasedQuad";
+import ReservationDashboard from "../components/coffins/ReservationDashboard";
 import api from "../api/axios";
 import { fetchAllBranchDeceased } from "../api/dashboardDataApi";
 import GlobalLoader from "../components/loader/loader";
@@ -616,7 +617,16 @@ export default function ModuleDashboard({ mod }) {
                   </div>
                 )}
                 <div className="unified-cal">
-                  {showMini && mod.id === "deceased" ? (
+                  {showMini && mod.id === "coffin" ? (
+                    <div style={{ width: "100%", minWidth: 0 }}>
+                      <ReservationDashboard
+                        bookings={calSources.coffins || []}
+                        coffins={[]}
+                        reservationsOnly
+                        formatPrice={(value) => Number(value || 0).toLocaleString()}
+                      />
+                    </div>
+                  ) : showMini && mod.id === "deceased" ? (
                     <div style={{ width: "100%", minWidth: 0 }}>
                       {/* Deceased tab: complete 2x2 quad redesign —
                           Calendar + Intakes on top, Releases + Post-mortem
