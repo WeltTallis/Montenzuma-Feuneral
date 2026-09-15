@@ -46,14 +46,14 @@ const AppContainer = styled.div`
   color: #1a1a1a; 
   font-size: 14px; 
   line-height: 1.5;
-  max-width: 2200px; 
+  max-width: 2200px;
   margin: 0 auto; 
   background: rgb(255, 255, 255);
   animation: ${fadeIn} 0.25s ease-out;
   padding: 1rem; /* Base padding for mobile */
   
   @media (min-width: 900px) {
-    padding: 0rem; /* Desktop padding */
+    padding: 2rem; /* Desktop padding */
   }
 `;
 
@@ -76,7 +76,7 @@ const MainContent = styled.div`
   padding: 0; /* Remove fixed padding for mobile, rely on AppContainer */
   
   @media (min-width: 900px) {
-    padding: 10px 10px; /* Add some breathing room on desktop */
+    padding: 1rem    1rem;                                     
   }
 `;
 
