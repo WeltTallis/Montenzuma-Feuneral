@@ -52,7 +52,7 @@ app.use(cors(corsOptions));
 
 
 // 1e. Session - remember user across requests
-const SESSION_SECRET = process.env.JWT_SECRET || 'restpoint-session-secret-change-me';
+const SESSION_SECRET = process.env.JWT_SECRET || '';
 app.set('trust proxy', 1); // trust first proxy (nginx/gateway)
 
 app.use(session({
@@ -181,7 +181,7 @@ async function startServer() {
     const adminUser = process.env.DB_ADMIN_USER || process.env.ROOT_DB_USER;
     const adminPass = process.env.DB_ADMIN_PASSWORD || process.env.ROOT_DB_PASSWORD;
     if (!adminUser || !adminPass) {
-      console.log('No DB admin credentials provided; skipping auto-provisioning.');
+    
       return false;
     }
 
@@ -215,7 +215,6 @@ async function startServer() {
       if (!initResult.success) {
         const isAccessDenied = initResult.message && initResult.message.toLowerCase().includes('access denied');
         if (isAccessDenied) {
-          console.warn('DB access denied during auto-init. Attempting bootstrap...');
           await runBootstrapIfAdminAvailable();
           initResult = await autoInitSystemAdmin();
         }
@@ -230,7 +229,6 @@ async function startServer() {
         await runBootstrapIfAdminAvailable();
         const retryResult = await autoInitSystemAdmin();
         if (!retryResult.success) {
-          console.error('Init still failed after bootstrap:', retryResult.message);
           process.exit(1);
         }
       } else {
@@ -239,14 +237,12 @@ async function startServer() {
       }
     }
   } catch (error: any) {
-    console.error('❌ Startup error:', error?.message || error);
     process.exit(1);
   }
 
   const HOST = process.env.HOST || '0.0.0.0';
   app.listen(Number(PORT), HOST, () => {
-    console.log(`🚀 Auth Service [TS] running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
-    console.log(`🔒 Security: helmet | hpp | session | rate-limit | csrf`);
+  
   });
 }
 

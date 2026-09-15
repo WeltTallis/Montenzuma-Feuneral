@@ -92,7 +92,7 @@ help:
 	@echo "  make shell SVC=X          - Shell into service"
 	@echo "  make exec SVC=X CMD='cmd' - Execute command"
 	@echo ""
-	@echo "$(GREEN)── Production Deployment ───────────────────────────────$(NC)"
+	@echo "$(GREEN)── Production Deployment ─────────────────────────$(NC)"
 	@echo "  make deploy-prod          - Deploy to production (docker-compose.prod.yml)"
 	@echo "  make deploy-staging       - Deploy to staging"
 	@echo "  make prod-up              - Start production services"

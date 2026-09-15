@@ -1,12 +1,4 @@
-// ─── MUST BE FIRST: raise the libuv thread pool before any async I/O ───────
-// dns.lookup(), fs, and crypto all share this pool (default size 4). With
-// ~30 services being health-checked concurrently every 30s, 4 slots is not
-// enough — real proxied requests queue behind stuck DNS/connect lookups for
-// dead services, which is why /hearses was taking 14-23s even though the
-// hearse service itself answers in ~50ms.
-// This only works because it runs before any threadpool call happens in this
-// process. For a fully reliable fix, also set UV_THREADPOOL_SIZE=64 in your
-// docker-compose environment / Dockerfile ENV so it's set before Node starts.
+
 if (!process.env.UV_THREADPOOL_SIZE) {
   process.env.UV_THREADPOOL_SIZE = '64';
 }
@@ -165,10 +157,10 @@ function resolveServiceUrl(envKey, serviceKey) {
     // repairs values that arrived from a bundled/prod .env or shell export).
     const hostUrl = HOST_SERVICE_DEFAULTS[serviceKey];
     if (hostUrl) {
-      console.warn(`[RUNTIME] Host mode: ${envKey}=${url} is a Docker-network hostname (unresolvable outside Docker). Rewritten to ${hostUrl}.`);
+
       url = hostUrl;
     } else {
-      console.warn(`[RUNTIME WARNING] ${envKey}=${url} is a Docker-network hostname but the gateway is NOT running in a container and no host port is known for "${serviceKey}". Requests to it will fail with ENOTFOUND until ${envKey} is set to a reachable URL.`);
+    
     }
   }
   return url;
@@ -291,9 +283,6 @@ const SERVICE_URLS = {
   tenant: resolveServiceUrl('TENANT_SERVICE_URL', 'tenant'),
   deceased: resolveServiceUrl('DECEASED_SERVICE_URL', 'deceased'),
   coffin: resolveServiceUrl('COFFIN_SERVICE_URL', 'coffin'),
-  marketplace: resolveServiceUrl('MARKETPLACE_SERVICE_URL', 'marketplace'),
-  mpesa: resolveServiceUrl('MPESA_SERVICE_URL', 'mpesa'),
-  portal: resolveServiceUrl('PORTAL_SERVICE_URL', 'portal'),
   invoices: resolveServiceUrl('INVOICES_SERVICE_URL', 'invoices'),
   notification: resolveServiceUrl('NOTIFICATION_SERVICE_URL', 'notification'),
   documents: resolveServiceUrl('DOCUMENTS_SERVICE_URL', 'documents'),
@@ -306,8 +295,6 @@ const SERVICE_URLS = {
   socketio: resolveServiceUrl('SOCKETIO_SERVICE_URL', 'socketio'),
   workshop: resolveServiceUrl('WORKSHOP_SERVICE_URL', 'workshop'),
   extra: resolveServiceUrl('EXTRA_SERVICES_URL', 'extra'),
-  call: resolveServiceUrl('CALL_SERVICE_URL', 'call'),
-  qrcode: resolveServiceUrl('QRCODE_SERVICE_URL', 'qrcode'),
   hearse: resolveServiceUrl('HEARSE_SERVICE_URL', 'hearse'),
   leave: resolveServiceUrl('LEAVE_SERVICE_URL', 'leave'),
   support: resolveServiceUrl('SUPPORT_SERVICE_URL', 'support'),
@@ -454,7 +441,6 @@ const SERVICE_ROUTES = {
   'bodycheckout': SERVICE_URLS.bodycheckout,
   'body-release': SERVICE_URLS.bodycheckout,
   'extra': SERVICE_URLS.extra,
-  'call': SERVICE_URLS.call,
   'qrcode': SERVICE_URLS.qrcode,
   'onboarding': SERVICE_URLS.tenant,
   'portal': SERVICE_URLS.portal,
@@ -463,7 +449,6 @@ const SERVICE_ROUTES = {
   // container, which is not part of the production Compose stack.
   'public': SERVICE_URLS.deceased,
   'mpesa': SERVICE_URLS.mpesa,
-  'marketplace': SERVICE_URLS.marketplace,
   'store': SERVICE_URLS.store,
 };
 
