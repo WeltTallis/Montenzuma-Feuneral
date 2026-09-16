@@ -557,33 +557,6 @@ const FieldHint = styled.span`
   line-height: 1.4;
 `;
 
-/* Declaration carries no fill — it sits directly on the sheet like a
-   printed record (background colour intentionally removed). */
-const ConsentCard = styled.div`
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 2rem 2.25rem 1.6rem;
-  background: transparent;
-  border: 1px solid ${COLORS.line};
-  border-radius: 6px;
-
-  @media (max-width: 600px) {
-    padding: 1.5rem 1.25rem 1.3rem;
-  }
-`;
-
-const ConsentTitle = styled.h3`
-  margin: 0;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: ${COLORS.brass};
-`;
-
 /* ─── Declaration pieces (mirrors the official "Consent & Declaration" record) ─── */
 
 /* Document-style top rule — thick over thin, like an official record */
@@ -2192,63 +2165,66 @@ const DeceasedReleaseForm = () => {
                     {errors.plate_number && <ErrorMessage>{errors.plate_number}</ErrorMessage>}
                   </Col2>
                 </Row>
-
-                <Row>
-                  <ConsentCard>
-                    <ConsentTitle>Consent and Declaration</ConsentTitle>
-                    <DeclarationRule aria-hidden="true" />
-
-                    <LeadIn>By signing below, I declare and confirm that:</LeadIn>
-
-                    <ClauseList>
-                      <Clause>
-                        <ClauseNo>1.</ClauseNo>
-                        <span>The information I have provided in this form is true and correct.</span>
-                      </Clause>
-                      <Clause>
-                        <ClauseNo>2.</ClauseNo>
-                        <span>I am the legally authorized next of kin, or a duly appointed representative of the deceased.</span>
-                      </Clause>
-                      <Clause>
-                        <ClauseNo>3.</ClauseNo>
-                        <span>
-                          I authorize <ClauseFacility>{tenantName || 'the facility'}</ClauseFacility> to
-                          release the deceased into my custody and permit their transportation.
-                        </span>
-                      </Clause>
-                      <Clause>
-                        <ClauseNo>4.</ClauseNo>
-                        <span>After the release, I take full responsibility for the deceased and all arrangements that follow.</span>
-                      </Clause>
-                    </ClauseList>
-
-                    <ConsentDivider />
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
-                      <AcceptLabel>
-                        <AcceptBox
-                          type="checkbox"
-                          name="terms_accepted"
-                          checked={formData.terms_accepted}
-                          onChange={handleChange}
-                        />
-                        <AcceptText>
-                          I have read and accept this Consent and Declaration.
-                          <AcceptSmall>Signing this form makes it part of the official record of the deceased.</AcceptSmall>
-                        </AcceptText>
-                      </AcceptLabel>
-                      {errors.terms_accepted && (
-                        <ConsentError>⚠ Please tick the box above to confirm before submitting.</ConsentError>
-                      )}
-                    </div>
-                  </ConsentCard>
-                </Row>
               </Section>
 
               {/* Section 5 */}
               <Section>
                 <SectionHead>
                   <SectionNum>05</SectionNum>
+                  <SectionTitle>Consent and Declaration</SectionTitle>
+                </SectionHead>
+
+                <DeclarationRule aria-hidden="true" />
+
+                <LeadIn>By signing below, I declare and confirm that:</LeadIn>
+
+                <ClauseList>
+                  <Clause>
+                    <ClauseNo>1.</ClauseNo>
+                    <span>The information I have provided in this form is true and correct.</span>
+                  </Clause>
+                  <Clause>
+                    <ClauseNo>2.</ClauseNo>
+                    <span>I am the legally authorized next of kin, or a duly appointed representative of the deceased.</span>
+                  </Clause>
+                  <Clause>
+                    <ClauseNo>3.</ClauseNo>
+                    <span>
+                      I authorize <ClauseFacility>{tenantName || 'the facility'}</ClauseFacility> to
+                      release the deceased into my custody and permit their transportation.
+                    </span>
+                  </Clause>
+                  <Clause>
+                    <ClauseNo>4.</ClauseNo>
+                    <span>After the release, I take full responsibility for the deceased and all arrangements that follow.</span>
+                  </Clause>
+                </ClauseList>
+
+                <ConsentDivider />
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+                  <AcceptLabel>
+                    <AcceptBox
+                      type="checkbox"
+                      name="terms_accepted"
+                      checked={formData.terms_accepted}
+                      onChange={handleChange}
+                    />
+                    <AcceptText>
+                      I have read and accept this Consent and Declaration.
+                      <AcceptSmall>Signing this form makes it part of the official record of the deceased.</AcceptSmall>
+                    </AcceptText>
+                  </AcceptLabel>
+                  {errors.terms_accepted && (
+                    <ConsentError>⚠ Please tick the box above to confirm before submitting.</ConsentError>
+                  )}
+                </div>
+              </Section>
+
+              {/* Section 6 */}
+              <Section>
+                <SectionHead>
+                  <SectionNum>06</SectionNum>
                   <SectionTitle>Verification & Digital Sign-off</SectionTitle>
                 </SectionHead>
 
