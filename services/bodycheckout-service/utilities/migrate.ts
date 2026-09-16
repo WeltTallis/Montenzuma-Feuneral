@@ -5,7 +5,8 @@ import Logger from '../../../packages/shared-logger/dist/index';
 
 /**
  * Run the body-checkout migrations (070 body_checkout, 071 checkout_approvals,
- * 072 body_releases) against EVERY active tenant database at service startup.
+ * 072 body_releases, 073 destination/plate columns) against EVERY active tenant
+ * database at service startup.
  *
  * This makes the body-checkout service self-sufficient: even tenants that were
  * provisioned before the central migration runner added the body_releases table

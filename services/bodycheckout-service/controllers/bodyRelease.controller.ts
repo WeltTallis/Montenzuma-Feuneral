@@ -107,6 +107,15 @@ const releaseBodySchema = Zod.z.object({
   name_of_deceased: Zod.z.string().optional(),
   permit_number: Zod.z.string().optional(),
   mode_of_transport: Zod.z.string().optional(),
+  // Where the body is being taken after handover (home, cemetery, another mortuary…)
+  final_destination: Zod.z.string().optional(),
+  // Vehicle plate number for hearse / private-vehicle transport
+  plate_number: Zod.z.string().optional(),
+  // The release form sends release_date / release_time / time_received — accept
+  // them so they can be stored in date_of_removal / time_of_removal below.
+  release_date: Zod.z.string().optional(),
+  release_time: Zod.z.string().optional(),
+  time_received: Zod.z.string().optional(),
   relationship: Zod.z.string().optional(),
   signature: Zod.z.string().optional(),
   staff_name: Zod.z.string().optional(),
@@ -216,10 +225,12 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
       id_number: validatedData.id_number,
       tell_number: validatedData.tell_number,
       relationship: validatedData.relationship || null,
-      date_of_removal: formatDateForMySQL(validatedData.date_of_removal),
-      time_of_removal: formatTimeForMySQL(validatedData.time_of_removal),
+      date_of_removal: formatDateForMySQL(validatedData.date_of_removal || validatedData.release_date),
+      time_of_removal: formatTimeForMySQL(validatedData.time_of_removal || validatedData.release_time || validatedData.time_received),
       permit_number: validatedData.permit_number || null,
       mode_of_transport: validatedData.mode_of_transport || null,
+      final_destination: validatedData.final_destination || null,
+      plate_number: validatedData.plate_number || null,
       terms_accepted: validatedData.terms_accepted ? 1 : 0,
       everything_paid: validatedData.everything_paid ? 1 : 0,
       signature: processedSignature,
@@ -254,10 +265,11 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
         release_id, tenant_slug, admission_number, name_of_deceased,
         next_kin, id_number, tell_number, relationship,
         date_of_removal, time_of_removal, permit_number, mode_of_transport,
+        final_destination, plate_number,
         terms_accepted, everything_paid, signature, staff_name, staff_signature,
         received_by, items_returned, notes,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -273,6 +285,8 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
       releaseData.time_of_removal,
       releaseData.permit_number,
       releaseData.mode_of_transport,
+      releaseData.final_destination,
+      releaseData.plate_number,
       releaseData.terms_accepted,
       releaseData.everything_paid,
       releaseData.signature,
@@ -354,6 +368,8 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
         time_of_removal: releaseData.time_of_removal,
         permit_number: releaseData.permit_number,
         mode_of_transport: releaseData.mode_of_transport,
+        final_destination: releaseData.final_destination,
+        plate_number: releaseData.plate_number,
         terms_accepted: !!releaseData.terms_accepted,
         everything_paid: !!releaseData.everything_paid,
         signature: releaseData.signature,

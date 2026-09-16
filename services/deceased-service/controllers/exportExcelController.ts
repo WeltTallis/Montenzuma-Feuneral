@@ -22,40 +22,37 @@ interface ExportRequest extends Request {
 
 // ============================================
 // INTAKE REGISTER EXCEL TEMPLATE COLORS
-// A quieter, higher-contrast palette: deep slate-navy header, warm bronze
-// accent reserved for the handful of numbers that matter (admission #, age,
-// days in morgue), and soft neutral tints for the status badges. Fonts are
-// limited to Cambria (title) and Calibri/Consolas (everything else) so the
-// sheet renders identically whether it's opened in Excel, Google Sheets, or
-// LibreOffice — no dependency on a web font that may not be installed.
+// Pure Black & Champagne Gold Luxury Palette matching the HTML preview.
 // ============================================
 const T = {
-  headerBg: 'FF1F2A3A',     // deep slate navy — column header row
-  headerBorder: 'FF15202B',
-  ink: 'FF15202B',          // footer bar
-  accent: 'FFB8955F',       // muted bronze/gold — used sparingly for key figures
-  success: 'FF2E6B4F',
-  successBg: 'FFEAF3EE',
-  warning: 'FFA6752D',
-  warningBg: 'FFFBF3E7',
-  line: 'FFE3E6EA',
-  zebra: 'FFF7F8FA',
+  headerBg: 'FF0D0D0D',     // Pure Black Header Band
+  ink: 'FF0D0D0D',          // Footer bar
+  accent: 'FFD4B778',       // Champagne Gold
+  success: 'FF2C4A2E',
+  successBg: 'FFE8F0E8',
+  warning: 'FF6B2E3A',
+  warningBg: 'FFF4E8E8',
+  line: 'FFE0DCD5',         // Soft border for data cells
+  zebra: 'FFFCFBF9',        // Very light warm beige
   white: 'FFFFFFFF',
-  text: 'FF1E2430',
-  muted: 'FF7C8291',
-  slate: 'FFA8AFBD',
-  gray2: 'FF4A5160',
+  text: 'FF0D0D0D',         // Pure Black for primary text
+  monoText: 'FF2C2823',     // Dark Charcoal for mono text
+  muted: 'FFA8A39B',        // Muted Gray for empty data
+  gray2: 'FF8A8579',
+  substripBg: 'FF1B1815',   // Dark Charcoal for substrip
+  thBg: 'FFF4F2EE',         // Light warm gray for table headers
+  thText: 'FF0D0D0D',
 };
 
+// Removed: 'ID Type', 'Alt. Phone', 'Email', 'Receiving Officer', 'Verified By'
 const HEADERS = [
   'Admission #', 'Date Admitted', 'Time Received', 'Full Name', 'Gender',
   'Age', 'Date of Death', 'Cause of Death', 'Place of Death', 'Body Status',
-  'Permit Number', 'Received From', 'Contact Person', 'Relationship', 'ID Type',
-  'ID Number', 'Primary Phone', 'Alt. Phone', 'Email', 'Receiving Officer',
-  'Verified By', 'Date Released', 'Days in Morgue',
+  'Permit Number', 'Received From', 'Contact Person', 'Relationship', 
+  'ID Number', 'Primary Phone', 'Date Released', 'Days in Morgue',
 ];
 
-const COL_WIDTHS = [16, 14, 12, 24, 10, 8, 14, 22, 18, 22, 16, 22, 20, 14, 12, 14, 18, 16, 24, 20, 20, 14, 16];
+const COL_WIDTHS = [12, 13, 11, 24, 9, 6, 13, 22, 22, 18, 13, 20, 19, 13, 13, 17, 13, 10];
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 const dash = (v: any): string => (v === null || v === undefined || v === '' ? '—' : String(v));
@@ -121,11 +118,7 @@ function globalUploadsDir(): string {
   return path.join(require('os').tmpdir(), 'restpoint-uploads');
 }
 
-// Resolve the tenant logo image from the shared uploads disk. Branding is
-// optional — any failure simply returns null and the export continues without
-// a logo. NOTE: defined at module scope (it was previously nested inside
-// globalUploadsDir(), which made it invisible to exportExcelWithCharts and
-// crashed every export with "resolveTenantLogo is not defined").
+// Resolve the tenant logo image from the shared uploads disk.
 function resolveTenantLogo(tenantSlug: string, logoUrl?: string | null): { buffer: Buffer; extension: 'png' | 'jpeg' | 'gif' } | null {
   try {
     const base = globalUploadsDir();
@@ -157,17 +150,7 @@ function resolveTenantLogo(tenantSlug: string, logoUrl?: string | null): { buffe
   return null;
 }
 
-// Encrypt an .xlsx buffer with a password using the standard Office "Agile
-// Encryption" (AES). The output opens in Microsoft Excel / Google Sheets with
-// an "Enter password to open" prompt — without the PIN the contents are
-// unreadable. Implemented with xlsx-populate (already a service dependency —
-// pure JS, no native deps), the same engine the `secure-spreadsheet` CLI uses
-// internally. NOTE: secure-spreadsheet itself cannot be required (ESM-only,
-// CLI-only, no programmatic entry), which is what broke PIN exports with
-// "Cannot find module 'secure-spreadsheet'". xlsx-populate is required inline
-// with a minimal structural type. Verified: images, merges and frozen panes
-// survive the round-trip, and the output carries the standard ECMA-376
-// encrypted-package OLE2 signature (D0 CF 11 E0 A1 B1 1A E1).
+// Encrypt an .xlsx buffer with a password using the standard Office "Agile Encryption"
 async function encryptXlsxWithPassword(buffer: Buffer, password: string): Promise<Buffer> {
   const XlsxPopulate = require('xlsx-populate') as {
     fromDataAsync: (
@@ -178,8 +161,6 @@ async function encryptXlsxWithPassword(buffer: Buffer, password: string): Promis
   return workbook.outputAsync({ password });
 }
 
-// Discover the columns that actually exist on this tenant's deceased table so the
-// export never breaks on older databases that are missing newer columns.
 async function getDeceasedColumns(dbName: string): Promise<Set<string>> {
   try {
     const rows: any[] = await safeTenantQuery(
@@ -213,53 +194,60 @@ function buildIntakeRegisterWorkbook(
 
   ws.properties.tabColor = { argb: T.headerBg };
   ws.pageSetup.printTitlesRow = '1:3';
-  ws.pageSetup.printArea = `A1:W${Math.max(4, records.length + 4)}`;
+  ws.pageSetup.printArea = `A1:R${Math.max(4, records.length + 4)}`; // Updated to R (18 cols)
   ws.properties.defaultRowHeight = 18;
 
   ws.columns = COL_WIDTHS.map((w) => ({ width: w }));
 
   const thinBorder = {
-    top: { style: 'thin' as const, color: { argb: T.line } },
-    left: { style: 'thin' as const, color: { argb: T.line } },
-    bottom: { style: 'thin' as const, color: { argb: T.line } },
-    right: { style: 'thin' as const, color: { argb: T.line } },
+    bottom: { style: 'thin' as const, color: { argb: T.line } }
   };
 
   // ── Row 1: Facility header (left) + Export generated / tracking ID (right) ──
-  ws.mergeCells('A1:L1');
+  ws.mergeCells('A1:I1');
   const leftCell = ws.getCell('A1');
   leftCell.value = {
     richText: [
-      { text: `${meta.facilityName}\n`, font: { name: 'Cambria', size: 18, bold: true, color: { argb: T.text } } },
-      { text: 'OFFICIAL DECEASED INTAKE REGISTER', font: { name: 'Calibri', size: 10, bold: true, color: { argb: T.accent } } },
+      { text: `${meta.facilityName}\n`, font: { name: 'Cambria', size: 22, bold: true, italic: true, color: { argb: T.accent } } },
+      { text: 'OFFICIAL DECEASED INTAKE REGISTER · ESTD. 1974', font: { name: 'Calibri', size: 8.5, bold: true, color: { argb: 'FFA8A39B' } } },
     ],
   };
-  leftCell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+  leftCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: T.headerBg } };
+  leftCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true, indent: 1 };
   if (meta.logo) {
     const logoId = workbook.addImage({ buffer: meta.logo.buffer as any, extension: meta.logo.extension });
     ws.addImage(logoId, { tl: { col: 0.15, row: 0.18 }, ext: { width: 82, height: 42 } });
-    leftCell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true, indent: 7 };
+    leftCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true, indent: 7 };
   }
-  ws.mergeCells('M1:W1');
-  const rightCell = ws.getCell('M1');
+
+  ws.mergeCells('J1:R1');
+  const rightCell = ws.getCell('J1');
   rightCell.value = {
     richText: [
-      { text: 'EXPORT GENERATED\n', font: { name: 'Calibri', size: 9, color: { argb: T.muted } } },
-      { text: `${meta.timestamp}\n`, font: { name: 'Consolas', size: 12, bold: true, color: { argb: T.text } } },
-      { text: `Tracking ID: ${meta.trackingId}`, font: { name: 'Consolas', size: 9, color: { argb: T.slate } } },
+      { text: 'EXPORT GENERATED\n', font: { name: 'Consolas', size: 8, color: { argb: 'FF7C7568' } } },
+      { text: `${meta.timestamp}\n`, font: { name: 'Consolas', size: 10, bold: true, color: { argb: T.accent } } },
+      { text: `Tracking ID: ${meta.trackingId}`, font: { name: 'Consolas', size: 8, color: { argb: 'FF6E6759' } } },
     ],
   };
-  rightCell.alignment = { horizontal: 'right', vertical: 'top', wrapText: true };
-  ws.getRow(1).height = 50;
+  rightCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: T.headerBg } };
+  rightCell.alignment = { horizontal: 'right', vertical: 'middle', wrapText: true, indent: 1 };
+  ws.getRow(1).height = 46;
 
-  // ── Row 2: Generated By, with a thin accent rule underneath ──
-  ws.mergeCells('A2:W2');
+  // ── Row 2: Generated By + Record Count (Substrip) ──
+  ws.mergeCells('A2:I2');
   const genCell = ws.getCell('A2');
-  genCell.value = `Generated by: ${meta.generatedBy}`;
-  genCell.font = { name: 'Calibri', size: 11, color: { argb: T.gray2 } };
-  genCell.alignment = { horizontal: 'left', vertical: 'middle' };
-  genCell.border = { bottom: { style: 'medium', color: { argb: T.accent } } };
-  ws.getRow(2).height = 22;
+  genCell.value = `Generated by ${meta.generatedBy}`;
+  genCell.font = { name: 'Calibri', size: 8.5, italic: true, color: { argb: T.muted } };
+  genCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+  genCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: T.substripBg } };
+
+  ws.mergeCells('J2:R2');
+  const countCell = ws.getCell('J2');
+  countCell.value = `${records.length} of ${records.length} Records · All Records`;
+  countCell.font = { name: 'Consolas', size: 8.5, color: { argb: T.accent } };
+  countCell.alignment = { horizontal: 'right', vertical: 'middle', indent: 1 };
+  countCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: T.substripBg } };
+  ws.getRow(2).height = 16;
 
   // ── Row 3: Column headers ──
   const headerRow = ws.getRow(3);
@@ -267,17 +255,14 @@ function buildIntakeRegisterWorkbook(
   HEADERS.forEach((label, idx) => {
     const cell = headerRow.getCell(idx + 1);
     cell.value = label;
-    cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: T.white } };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: T.headerBg } };
-    cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+    cell.font = { name: 'Calibri', size: 8, bold: true, color: { argb: T.thText } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: T.thBg } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     cell.border = {
-      top: { style: 'thin', color: { argb: T.headerBorder } },
-      left: { style: 'thin', color: { argb: T.headerBorder } },
-      bottom: { style: 'thin', color: { argb: T.headerBorder } },
-      right: { style: 'thin', color: { argb: T.headerBorder } },
+      bottom: { style: 'medium', color: { argb: T.accent } }, // Gold underline
     };
   });
-  ws.autoFilter = { from: 'A3', to: 'W3' };
+  ws.autoFilter = { from: 'A3', to: 'R3' };
 
   // ── Data rows ──
   records.forEach((item, index) => {
@@ -290,17 +275,15 @@ function buildIntakeRegisterWorkbook(
       : null;
     const applyBase = (cell: ExcelJS.Cell) => {
       cell.border = thinBorder;
-      cell.font = { name: 'Calibri', size: 11, color: { argb: T.text } };
-      cell.alignment = { vertical: 'middle', horizontal: 'left' };
+      cell.font = { name: 'Calibri', size: 10, color: { argb: T.text } };
+      cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
       if (zebraFill) cell.fill = zebraFill;
     };
-    const mono = { name: 'Consolas', size: 10.5, color: { argb: T.text } };
-    const accentMono = { name: 'Consolas', size: 10.5, bold: true, color: { argb: T.accent } };
 
     // A - Admission #
     applyBase(row.getCell(1));
     row.getCell(1).value = dash(item.admission_number);
-    row.getCell(1).font = accentMono;
+    row.getCell(1).font = { name: 'Consolas', size: 9.5, bold: true, color: { argb: T.text } };
 
     // B - Date Admitted
     applyBase(row.getCell(2));
@@ -309,21 +292,23 @@ function buildIntakeRegisterWorkbook(
     // C - Time Received
     applyBase(row.getCell(3));
     row.getCell(3).value = formatTime12(item.time_received);
-    row.getCell(3).font = mono;
+    row.getCell(3).font = { name: 'Consolas', size: 9, color: { argb: T.monoText } };
+    row.getCell(3).alignment = { vertical: 'middle', horizontal: 'center' };
 
     // D - Full Name
     applyBase(row.getCell(4));
     row.getCell(4).value = dash(item.full_name);
-    row.getCell(4).font = { name: 'Calibri', size: 11, bold: true, color: { argb: T.text } };
+    row.getCell(4).font = { name: 'Cambria', size: 11, bold: true, color: { argb: T.text } };
 
     // E - Gender
     applyBase(row.getCell(5));
     row.getCell(5).value = dash(item.gender);
+    row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
 
     // F - Age
     applyBase(row.getCell(6));
     row.getCell(6).value = dash(item.age);
-    row.getCell(6).font = accentMono;
+    row.getCell(6).font = { name: 'Consolas', size: 9.5, bold: true, color: { argb: T.text } };
     row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
 
     // G - Date of Death
@@ -342,13 +327,20 @@ function buildIntakeRegisterWorkbook(
     applyBase(row.getCell(10));
     const st = statusDisplay(item.body_status);
     row.getCell(10).value = st.label;
-    row.getCell(10).font = { name: 'Calibri', size: 11, bold: true, color: { argb: st.kind === 'success' ? T.success : T.warning } };
+    row.getCell(10).font = { name: 'Calibri', size: 8, bold: true, color: { argb: st.kind === 'success' ? T.success : T.warning } };
     row.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: st.kind === 'success' ? T.successBg : T.warningBg } };
     row.getCell(10).alignment = { vertical: 'middle', horizontal: 'center' };
+    row.getCell(10).border = {
+      top: { style: 'thin', color: { argb: st.kind === 'success' ? T.success : T.warning } },
+      left: { style: 'thin', color: { argb: st.kind === 'success' ? T.success : T.warning } },
+      bottom: { style: 'thin', color: { argb: st.kind === 'success' ? T.success : T.warning } },
+      right: { style: 'thin', color: { argb: st.kind === 'success' ? T.success : T.warning } },
+    };
 
     // K - Permit Number
     applyBase(row.getCell(11));
     row.getCell(11).value = dash(item.permit_number);
+    row.getCell(11).font = { name: 'Consolas', size: 9, color: { argb: T.monoText } };
 
     // L - Received From
     applyBase(row.getCell(12));
@@ -362,86 +354,57 @@ function buildIntakeRegisterWorkbook(
     applyBase(row.getCell(14));
     row.getCell(14).value = dash(item.relationship);
 
-    // O - ID Type
+    // O - ID Number
     applyBase(row.getCell(15));
-    row.getCell(15).value = dash(item.id_type);
+    row.getCell(15).value = dash(item.id_number);
+    row.getCell(15).font = { name: 'Consolas', size: 9, color: { argb: T.monoText } };
 
-    // P - ID Number
+    // P - Primary Phone
     applyBase(row.getCell(16));
-    row.getCell(16).value = dash(item.id_number);
-    row.getCell(16).font = mono;
+    row.getCell(16).value = dash(item.primary_phone);
+    row.getCell(16).font = { name: 'Consolas', size: 9, color: { argb: T.monoText } };
 
-    // Q - Primary Phone
+    // Q - Date Released
     applyBase(row.getCell(17));
-    row.getCell(17).value = dash(item.primary_phone);
-    row.getCell(17).font = mono;
+    row.getCell(17).value = formatDate(item.dispatch_date);
 
-    // R - Alt. Phone
+    // R - Days in Morgue
     applyBase(row.getCell(18));
-    row.getCell(18).value = dash(item.alternative_phone);
-    row.getCell(18).font = mono;
-
-    // S - Email
-    applyBase(row.getCell(19));
-    row.getCell(19).value = dash(item.email);
-
-    // T - Receiving Officer
-    applyBase(row.getCell(20));
-    row.getCell(20).value = dash(item.receiving_officer);
-
-    // U - Verified By
-    applyBase(row.getCell(21));
-    row.getCell(21).value = dash(item.verified_by || item.created_by);
-
-    // V - Date Released
-    applyBase(row.getCell(22));
-    row.getCell(22).value = formatDate(item.dispatch_date);
-
-    // W - Days in Morgue
-    applyBase(row.getCell(23));
-    row.getCell(23).value = daysInMorgue(item.date_admitted || item.created_at, item.dispatch_date);
-    row.getCell(23).font = { name: 'Consolas', size: 10.5, bold: true, color: { argb: T.success } };
+    row.getCell(18).value = daysInMorgue(item.date_admitted || item.created_at, item.dispatch_date);
+    row.getCell(18).font = { name: 'Consolas', size: 9, color: { argb: T.monoText } };
+    row.getCell(18).alignment = { vertical: 'middle', horizontal: 'center' };
   });
 
-  // ── Footer row (navy bar, three aligned blocks, thin gold rule on top) ──
+  // ── Footer row (black bar, gold rule on top) ──
   const footerRowNum = 4 + records.length;
-  const footerTimestamp = new Date().toLocaleString('en-US', {
-    year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-  });
-  ws.mergeCells(`A${footerRowNum}:H${footerRowNum}`);
-  ws.mergeCells(`I${footerRowNum}:P${footerRowNum}`);
-  ws.mergeCells(`Q${footerRowNum}:W${footerRowNum}`);
+  ws.mergeCells(`A${footerRowNum}:I${footerRowNum}`);
+  ws.mergeCells(`J${footerRowNum}:R${footerRowNum}`);
   const footLeft = ws.getCell(`A${footerRowNum}`);
-  const footMid = ws.getCell(`I${footerRowNum}`);
-  const footRight = ws.getCell(`Q${footerRowNum}`);
-  [footLeft, footMid, footRight].forEach((c) => {
+  const footRight = ws.getCell(`J${footerRowNum}`);
+  
+  [footLeft, footRight].forEach((c) => {
     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: T.ink } };
-    c.font = { name: 'Calibri', size: 10, bold: true, color: { argb: T.white } };
     c.border = { top: { style: 'medium', color: { argb: T.accent } } };
-    c.alignment = { vertical: 'middle' };
+    c.alignment = { vertical: 'middle', indent: 1 };
   });
-  footLeft.value = 'CONFIDENTIAL — COMPLIANT RECORD';
-  footLeft.alignment = { vertical: 'middle', horizontal: 'left' };
-  footMid.value = 'RESTPOINT MORTUARY MANAGEMENT SYSTEM';
-  footMid.alignment = { vertical: 'middle', horizontal: 'center' };
-  footRight.value = `EXPORT TIMESTAMP: ${footerTimestamp}`;
-  footRight.alignment = { vertical: 'middle', horizontal: 'right' };
-  ws.getRow(footerRowNum).height = 24;
+  
+  footLeft.value = 'Confidential Compliant Record';
+  footLeft.font = { name: 'Cambria', size: 9, italic: true, color: { argb: T.muted } };
+  footLeft.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  
+  footRight.value = 'Restpoint Mortuary Management System';
+  footRight.font = { name: 'Consolas', size: 8, color: { argb: T.accent } };
+  footRight.alignment = { vertical: 'middle', horizontal: 'right', indent: 1 };
+  ws.getRow(footerRowNum).height = 26;
 
   return workbook;
 }
 
 // ============================================
 // SYNCHRONOUS STYLED EXCEL EXPORT
-// Generates the intake register in-process and streams it back. This path is
-// fully synchronous — it does NOT depend on Redis/BullMQ, so the old
-// "export queue keeps hanging" problem cannot occur. On success the file is
-// also written to Documents (global uploader) and recorded in export history.
 // ============================================
 export const exportExcelWithCharts = async (req: ExportRequest, res: Response): Promise<Response> => {
   try {
-    // The tenant middleware stores tenant data via (req as any).tenant — not
-    // the typed req.tenant field.
     const tenant = (req as any).tenant;
     const dbName = tenant?.db_name;
     const tenantSlug = (req as any).tenantSlug || tenant?.tenant_slug || 'unknown';
@@ -449,8 +412,6 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     let facilityName = tenant?.name || 'Restpoint Funeral Home';
     let logoUrl = tenant?.logo_url || null;
 
-    // The deceased service middleware has the database slug, while the exact
-    // facility branding is authoritative in the central tenant registry.
     try {
       if (tenantSlug && tenantSlug !== 'system_shared') {
         const brandingRows: any[] = await safeTenantQuery(
@@ -463,9 +424,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
           logoUrl = brandingRows[0].logo_url || logoUrl;
         }
       }
-    } catch {
-      // Export remains available when the central branding registry is offline.
-    }
+    } catch { /* continue */ }
 
     if (!dbName) {
       return res.status(400).json({ success: false, message: 'Tenant information missing' });
@@ -473,10 +432,6 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
 
     const { startDate, endDate, exportPin } = req.body || {};
 
-    // Optional PIN protection: when the admin supplies a PIN (4–6 digits) the
-    // finished workbook is encrypted with it and Excel / Google Sheets demand
-    // that PIN before opening the file. An invalid PIN is rejected up-front,
-    // before any database work, so nothing half-encrypted is ever produced.
     const pin = String(exportPin ?? '').trim();
     if (pin && !/^\d{4,6}$/.test(pin)) {
       return res.status(400).json({
@@ -485,7 +440,6 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       });
     }
 
-    // Build the SELECT safely against the real schema.
     const cols = await getDeceasedColumns(dbName);
     const has = (c: string) => cols.has(c.toLowerCase());
     const permitExpr = has('permit_number')
@@ -508,17 +462,12 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       'd.place_of_death',
       'd.body_status',
       'd.received_from',
-      'd.receiving_officer',
-      'd.verified_by',
       'd.created_by',
       'd.date_admitted',
       'd.created_at',
       'd.dispatch_date',
       `${permitExpr} AS permit_number`,
       "COALESCE(d.phone_number, nk.contact, '—') AS primary_phone",
-      "COALESCE(d.alternative_phone, nk.alternative_phone, '—') AS alternative_phone",
-      "COALESCE(d.email, nk.email, '—') AS email",
-      "COALESCE(d.id_type, nk.id_type, '—') AS id_type",
       "COALESCE(d.national_id, nk.id_number, '—') AS id_number",
       `${contactExpr} AS contact_person`,
       "COALESCE(nk.relationship, d.relationship, '—') AS relationship",
@@ -566,14 +515,10 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     const safeSlug = String(tenantSlug).toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'tenant';
     const fileName = `Deceased_Intake_Register_${safeSlug}_${ymd}.xlsx`;
 
-    // ── Optional PIN encryption (standard Office AES — Excel prompts for it) ──
-    // The encrypted buffer is what gets downloaded AND archived to Documents,
-    // so every copy of the file is protected by the PIN.
     let fileBuffer = plainBuffer;
     if (pin) {
       try {
         fileBuffer = await encryptXlsxWithPassword(plainBuffer, pin);
-        // Never log the PIN itself — only that protection was applied.
         Logger.info({ message: 'Excel export encrypted with PIN', trackingId });
       } catch (cryptErr: any) {
         Logger.error({ message: 'Excel export PIN encryption failed', error: cryptErr && cryptErr.message });
@@ -584,7 +529,6 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       }
     }
 
-    // ── Upload the exported file into Documents via the global uploader ──
     let uploadedUrl = '';
     try {
       const upload = await centralizedUploadService.uploadDocument(fileBuffer, fileName, safeSlug, 'exports');
@@ -594,7 +538,6 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       Logger.warn({ message: 'Excel export document upload skipped', error: uploadErr && uploadErr.message });
     }
 
-    // ── Persist export history ──
     try {
       const exportService = ExcelExportService.getInstance();
       await exportService.saveExportHistory(dbName, {
@@ -628,13 +571,10 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
   }
 };
 
-// The synchronous export does not require status polling, but the route is kept
-// for backward compatibility with the old queue-based client.
 export const checkExportStatus = async (req: ExportRequest, res: Response): Promise<Response> => {
   return res.status(400).json({ success: false, message: 'Synchronous export does not require status polling.' });
 };
 
-// Return the most recent 10 export history entries for this tenant.
 export const getExportHistory = async (req: ExportRequest, res: Response): Promise<Response> => {
   try {
     const tenant = (req as any).tenant;

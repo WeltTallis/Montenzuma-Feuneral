@@ -1061,6 +1061,8 @@ const DeceasedReleaseForm = () => {
     released_by: getLoggedInUserName(),
     permit_number: '',
     mode_of_transport: 'hearse',
+    final_destination: '',
+    plate_number: '',
     terms_accepted: false,
     everything_paid: false,
     signature: '',
@@ -1352,6 +1354,8 @@ const DeceasedReleaseForm = () => {
         id_type: 'National ID',
         id_number: formData.id_number.trim(),
         tell_number: formData.tel_number.trim(),
+        final_destination: formData.final_destination.trim(),
+        plate_number: formData.plate_number.trim(),
         released_by: formData.released_by.trim(),
         time_received: freshTime,
         release_time: freshTime,
@@ -1960,6 +1964,42 @@ const DeceasedReleaseForm = () => {
                       )}
                     </InputFieldWrapper>
                   </Col>
+                  <Col>
+                    <Label>Final Destination / Location</Label>
+                    <InputFieldWrapper>
+                      <InputLg
+                        type="text"
+                        name="final_destination"
+                        value={formData.final_destination}
+                        onChange={handleChange}
+                        placeholder="e.g., Home — Kiambu Road, or Kariakor Cemetery"
+                      />
+                      {hasValue(formData.final_destination) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                  {(formData.mode_of_transport === 'hearse' || formData.mode_of_transport === 'private') && (
+                    <Col>
+                      <Label>Vehicle Plate Number</Label>
+                      <InputFieldWrapper>
+                        <InputLg
+                          type="text"
+                          name="plate_number"
+                          value={formData.plate_number}
+                          onChange={handleChange}
+                          placeholder="e.g., KDA 123A"
+                        />
+                        {hasValue(formData.plate_number) && (
+                          <TickIconWrapper>
+                            <Check size={16} strokeWidth={2.5} />
+                          </TickIconWrapper>
+                        )}
+                      </InputFieldWrapper>
+                    </Col>
+                  )}
                 </Row>
 
                 <Row>

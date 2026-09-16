@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { C, formatDate } from './theme';
+import { C, formatDate, formatDateTime, formatTime12 } from './theme';
 import api from '../../../api/axios';
 import { getTenantHeaders } from '../../../api/endpoints';
 import env from '../../../utils/config/env';
@@ -263,7 +263,7 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
               BODY RELEASED{releaseData?.release_id ? ` — ${releaseData.release_id}` : ''}
             </div>
             <div style={{ fontSize: 12, color: C.gray }}>
-              {releaseData?.created_at ? `Released on ${formatDate(releaseData.created_at)}` : 'Release details recorded'}
+              {releaseData?.created_at ? `Released on ${formatDateTime(releaseData.created_at)}` : 'Release details recorded'}
             </div>
           </div>
         </div>
@@ -289,18 +289,19 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
           <DetailGrid>
             <DetailItem><DetailLabel>Release ID</DetailLabel><DetailValue>{releaseData?.release_id || '—'}</DetailValue></DetailItem>
             <DetailItem><DetailLabel>Deceased</DetailLabel><DetailValue>{releaseData?.name_of_deceased || d.full_name || d.name_of_deceased || '—'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Scheduled Release Date</DetailLabel><DetailValue>{releaseData?.date_of_removal ? formatDate(releaseData.date_of_removal) : 'Not scheduled'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Scheduled Release Time</DetailLabel><DetailValue>{releaseData?.time_of_removal || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Admission Date</DetailLabel><DetailValue>{formatDate(d.date_admitted || d.admission_date || d.created_at)}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Released Date</DetailLabel><DetailValue>{releaseData ? (releaseData.date_of_removal ? formatDate(releaseData.date_of_removal) : (releaseData.created_at ? formatDate(releaseData.created_at) : '—')) : '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Released Time</DetailLabel><DetailValue>{releaseData ? (releaseData.time_of_removal ? formatTime12(releaseData.time_of_removal) : (releaseData.created_at ? formatTime12(releaseData.created_at) : '—')) : '—'}</DetailValue></DetailItem>
           </DetailGrid>
         </Col>
 
         <Col>
           <SectionHead $mt0><span>02</span> Receiver / Next of Kin</SectionHead>
           <DetailGrid>
-            <DetailItem><DetailLabel>Authorized By (NOK)</DetailLabel><DetailValue>{releaseData?.next_kin || nextOfKin?.full_name || nextOfKin?.name || '—'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Relationship to Deceased</DetailLabel><DetailValue>{releaseData?.relationship || nextOfKin?.relationship || '—'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Receiver ID Number</DetailLabel><DetailValue>{releaseData?.id_number || nextOfKin?.id_number || '—'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Receiver Phone</DetailLabel><DetailValue>{releaseData?.tell_number || nextOfKin?.contact || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Receiver (Body Collected By)</DetailLabel><DetailValue>{releaseData?.next_kin || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Relationship to Deceased</DetailLabel><DetailValue>{releaseData?.relationship || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Receiver ID Number</DetailLabel><DetailValue>{releaseData?.id_number || '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Receiver Phone</DetailLabel><DetailValue>{releaseData?.tell_number || '—'}</DetailValue></DetailItem>
           </DetailGrid>
         </Col>
       </TwoColGrid>
@@ -309,8 +310,10 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
       <DetailGrid>
         <DetailItem><DetailLabel>Permit Number</DetailLabel><DetailValue>{releaseData?.permit_number || '—'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Mode of Transport</DetailLabel><DetailValue>{releaseData?.mode_of_transport || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Released By (Staff)</DetailLabel><DetailValue>{releaseData?.staff_name || releaseData?.received_by || releaseData?.released_by ? (releaseData?.staff_name || releaseData?.received_by || releaseData?.released_by) : '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Recorded On</DetailLabel><DetailValue>{releaseData?.created_at ? formatDate(releaseData.created_at) : '—'}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Vehicle Plate Number</DetailLabel><DetailValue>{releaseData?.plate_number || '—'}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Final Destination / Location</DetailLabel><DetailValue>{releaseData?.final_destination || '—'}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Released By (Staff)</DetailLabel><DetailValue>{releaseData?.staff_name || releaseData?.received_by || releaseData?.released_by || '—'}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Recorded On</DetailLabel><DetailValue>{releaseData?.created_at ? formatDateTime(releaseData.created_at) : '—'}</DetailValue></DetailItem>
       </DetailGrid>
 
       <SectionHead $mt0><span>04</span> Verification &amp; Handover Notes</SectionHead>

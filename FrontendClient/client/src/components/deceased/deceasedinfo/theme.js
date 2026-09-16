@@ -33,6 +33,35 @@ export const formatDate = (dt) => {
   return new Date(dt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
+// Exact date AND time, e.g. "Sep 15, 2026, 2:45 PM"
+export const formatDateTime = (dt) => {
+  if (!dt) return '—';
+  const parsed = new Date(dt);
+  if (isNaN(parsed.getTime())) return '—';
+  const date = parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const time = parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return `${date}, ${time}`;
+};
+
+// 24h "HH:MM" / "HH:MM:SS" / datetime string → "h:mm AM/PM"
+export const formatTime12 = (t) => {
+  if (!t) return '—';
+  const s = String(t).trim();
+  const m = s.match(/^(\d{1,2}):(\d{2})/);
+  if (m) {
+    let h = Number(m[1]);
+    const min = m[2];
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${min} ${ampm}`;
+  }
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+  return s;
+};
+
 export const getInitials = (name) => {
   if (!name) return 'NA';
   return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();

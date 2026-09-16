@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS body_releases (
     time_of_removal VARCHAR(20),
     permit_number VARCHAR(100),
     mode_of_transport VARCHAR(100),
+    final_destination VARCHAR(255),
+    plate_number VARCHAR(50),
     terms_accepted BOOLEAN DEFAULT FALSE,
     everything_paid BOOLEAN DEFAULT FALSE,
     signature TEXT,
