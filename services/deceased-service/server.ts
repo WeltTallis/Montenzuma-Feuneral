@@ -159,7 +159,9 @@ import nextOfKinRoutes from './routes/nextOfKinRoutes';
 import hearseRoutes from './routes/hearseRoutes';
 import documentsRoutes from './routes/documentsRoutes';
 import deceasedRoutes from './routes/deceasedRoutes';
+import exportExelRoutes from './routes/exportExel';
 app.use('/', deceasedRoutes);
+app.use('/', exportExelRoutes);
 
 app.use('/', nextOfKinRoutes);
 app.use('/', hearseRoutes);

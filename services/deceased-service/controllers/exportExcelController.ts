@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { safeTenantQuery } from '../../../shared/dbConfig';
 import Logger from '../../../packages/shared-logger/src/index';
+import { centralizedUploadService } from '../../../shared/centralizedUploadService';
 
 // ============================================
 // SYNCHRONOUS STYLED EXCEL EXPORT
@@ -119,20 +120,44 @@ const slugifyTenant = (raw: string): string =>
 const getGlobalUploadsDir = (): string =>
   process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
 
-/** Persist the generated workbook into THIS tenant's global uploads folder.
- *  Returns the public /uploads/... URL + the on-disk path; throws on failure
- *  so the caller can fall back to streaming the file inline. */
-async function saveToGlobalUploads(buffer: Buffer, tenantSlug: string, fileName: string): Promise<{ fullPath: string; fileUrl: string }> {
-  const safeSlug = slugifyTenant(tenantSlug);
-  const reportDir = path.join(getGlobalUploadsDir(), safeSlug, 'deceased-reports');
+/** Encrypt a workbook with a 4-digit PIN using standard Office (ECMA-376
+ *  Agile) encryption via xlsx-populate — the same format Excel prompts for
+ *  and the Workbook Vault viewer (xlsx-preview.html) decrypts fully locally.
+ *  Returns the original buffer untouched when no valid PIN is supplied or
+ *  when the encryption library is unavailable. */
+async function encryptWithPin(buffer: Buffer, pin: string): Promise<Buffer> {
+  if (!/^\d{4}$/.test(pin || '')) return buffer;
+  try {
+    const mod: any = await import('xlsx-populate');
+    const XlsxPopulate = mod.default || mod;
+    const wb = await XlsxPopulate.fromDataAsync(buffer);
+    const out = await wb.outputAsync({ password: pin });
+    Logger.info({ message: 'Export encrypted with the supplied PIN (Agile encryption)' });
+    return Buffer.from(out);
+  } catch (err: any) {
+    Logger.error({ message: 'PIN encryption failed — saving the export unencrypted', error: err?.message });
+    return buffer;
+  }
+}
 
-  // Ensure the tenant's directory tree exists
-  await fs.promises.mkdir(reportDir, { recursive: true });
-
-  const fullPath = path.join(reportDir, fileName);
-  await fs.promises.writeFile(fullPath, buffer);
-
-  return { fullPath, fileUrl: `/uploads/${safeSlug}/deceased-reports/${fileName}` };
+/** Persist the generated workbook into THIS tenant's global uploads folder
+ *  through the GLOBAL UPLOADER (centralizedUploadService) — the same storage
+ *  pipeline every other service uses. Files land in
+ *    <GLOBAL_UPLOADS_DIR>/<tenant-slug>/exports/deceased-reports/<file>
+ *  and are served to browsers at
+ *    /uploads/<tenant-slug>/exports/deceased-reports/<file>
+ *  Throws on failure so the caller can fall back to streaming the file
+ *  inline and the client still receives its export. */
+async function saveToGlobalUploads(
+  buffer: Buffer,
+  tenantSlug: string,
+  fileName: string
+): Promise<{ fullPath: string; fileUrl: string; filename: string }> {
+  const result = await centralizedUploadService.uploadExcel(buffer, fileName, tenantSlug, 'deceased-reports');
+  if (!result.success) {
+    throw new Error(result.error || 'Global uploads save failed');
+  }
+  return { fullPath: result.path, fileUrl: result.urlPath, filename: result.filename };
 }
 
 interface ExportRequest extends Request {
@@ -558,27 +583,36 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       oddFooter: `&8&K6B6862${track} · Expires ${fmtStamp(expires)}&R&8&K6B6862Page &P of &N`,
     };
 
-    /* ---------------- SAVE TO GLOBAL UPLOADS + RESPOND ---------------- */
+    /* ---------------- PIN + SAVE TO GLOBAL UPLOADS + RESPOND ---------------- */
     const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
     const fileName = `${slugifyTenant(tenantSlug)}_Deceased_Records_${now.toISOString().slice(0, 10)}.xlsx`;
 
     Logger.info({ message: `Styled Excel export generated: ${records.length} records · ${track} · expires ${fmtStamp(expires)}` });
 
-    // Primary path — persist the workbook into the shared global uploads
-    // folder scoped to THIS tenant, then hand the /uploads/... URL back so
-    // the browser opens it in xlsx-preview.html (Workbook Vault viewer).
+    // Optional 4-digit PIN — encrypt with standard Office encryption so only
+    // someone with the PIN can open it (Excel prompts for it; the browser
+    // Workbook Vault decrypts locally, then previews instantly).
+    const exportPin = String((req.body || {}).exportPin || '').trim();
+    const pinProtected = /^\d{4}$/.test(exportPin);
+    const finalBuffer = await encryptWithPin(buffer, exportPin);
+
+    // Primary path — persist the workbook through the GLOBAL UPLOADER into
+    // the shared uploads folder scoped to THIS tenant, then hand the
+    // /uploads/... URL back so the browser opens it instantly in
+    // xlsx-preview.html (Workbook Vault viewer).
     try {
-      const { fullPath, fileUrl } = await saveToGlobalUploads(buffer, tenantSlug, fileName);
-      Logger.info({ message: `Export saved to global uploads: ${fullPath}` });
+      const { fullPath, fileUrl, filename } = await saveToGlobalUploads(finalBuffer, tenantSlug, fileName);
+      Logger.info({ message: `Export saved to global uploads via centralized uploader: ${fullPath}` });
       return res.status(200).json({
         success: true,
         message: 'Export saved to the global uploads folder',
-        fileName,
+        fileName: filename,
         fileUrl,
+        pinProtected,
         trackingId: track,
         expiresAt: expires.toISOString(),
         recordCount: records.length,
-        data: { fileName, fileUrl, trackingId: track, expiresAt: expires.toISOString(), recordCount: records.length },
+        data: { fileName: filename, fileUrl, pinProtected, trackingId: track, expiresAt: expires.toISOString(), recordCount: records.length },
       });
     } catch (saveErr: any) {
       // Shared volume unavailable — never lose the export: stream inline
@@ -586,8 +620,8 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       Logger.error({ message: 'Global uploads save failed — streaming export inline instead', error: saveErr?.message });
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
-      res.setHeader('Content-Length', String(buffer.byteLength));
-      return res.send(buffer);
+      res.setHeader('Content-Length', String(finalBuffer.byteLength));
+      return res.send(finalBuffer);
     }
   } catch (error: any) {
     Logger.error({ message: 'Styled Excel export failed', error: error.message });
@@ -610,34 +644,52 @@ export const getExportHistory = async (req: ExportRequest, res: Response): Promi
     const tenant = (req as any).tenant;
     const tenantSlug = (req as any).tenantSlug || tenant?.tenant_slug || 'unknown';
     const safeSlug = slugifyTenant(tenantSlug);
-    const reportDir = path.join(getGlobalUploadsDir(), safeSlug, 'deceased-reports');
 
-    let entries: string[];
-    try {
-      entries = await fs.promises.readdir(reportDir);
-    } catch {
-      // No exports saved yet for this tenant — an empty vault is not an error.
-      return res.status(200).json({ success: true, data: [], count: 0 });
-    }
+    // New exports are written by the GLOBAL UPLOADER into
+    //   <uploads>/<slug>/exports/deceased-reports/…
+    // while older exports live directly in <uploads>/<slug>/deceased-reports/…
+    // — list BOTH so history never loses previously generated files.
+    const reportDirs = [
+      { dir: path.join(getGlobalUploadsDir(), safeSlug, 'exports', 'deceased-reports'), urlBase: `/uploads/${safeSlug}/exports/deceased-reports` },
+      { dir: path.join(getGlobalUploadsDir(), safeSlug, 'deceased-reports'), urlBase: `/uploads/${safeSlug}/deceased-reports` },
+    ];
 
-    const files = (await Promise.all(
-      entries
-        .filter((f) => /\.xlsx$/i.test(f))
-        .map(async (f) => {
-          try {
-            const st = await fs.promises.stat(path.join(reportDir, f));
-            return {
-              fileName: f,
-              fileUrl: `/uploads/${safeSlug}/deceased-reports/${f}`,
-              size: st.size,
-              modifiedAt: st.mtime.toISOString(),
-            };
-          } catch {
-            return null;
-          }
-        })
-    ))
+    const perDir = await Promise.all(
+      reportDirs.map(async ({ dir, urlBase }) => {
+        let entries: string[];
+        try {
+          entries = await fs.promises.readdir(dir);
+        } catch {
+          // This location doesn't exist yet for the tenant — not an error.
+          return [];
+        }
+        return Promise.all(
+          entries
+            .filter((f) => /\.xlsx$/i.test(f))
+            .map(async (f) => {
+              try {
+                const st = await fs.promises.stat(path.join(dir, f));
+                return {
+                  fileName: f,
+                  fileUrl: `${urlBase}/${f}`,
+                  size: st.size,
+                  modifiedAt: st.mtime.toISOString(),
+                };
+              } catch {
+                return null;
+              }
+            })
+        );
+      })
+    );
+
+    // Merge both locations, dedupe by file name (newest location wins order),
+    // newest first.
+    const seen = new Set<string>();
+    const files = perDir
+      .flat()
       .filter((f): f is NonNullable<typeof f> => f !== null)
+      .filter((f) => (seen.has(f.fileName) ? false : (seen.add(f.fileName), true)))
       .sort((a, b) => (a.modifiedAt < b.modifiedAt ? 1 : -1));
 
     return res.status(200).json({ success: true, data: files, count: files.length });

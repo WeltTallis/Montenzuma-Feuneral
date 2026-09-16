@@ -1435,13 +1435,52 @@ const DeceasedListPage = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  // Origin where the shared /uploads folder is served from. The global
+  // uploader saves exports at /uploads/<slug>/exports/deceased-reports/… —
+  // absolute URLs are needed because the Workbook Vault previewer is a
+  // standalone page that fetches the file itself.
+  const uploadsOrigin = () => {
+    const api = import.meta.env.VITE_API_URL || '';
+    if (/^https?:\/\//i.test(api)) {
+      try { return new URL(api).origin; } catch { /* fall through */ }
+    }
+    return window.location.origin;
+  };
+
+  // Open a generated export in the browser-based Excel viewer
+  // (public/xlsx-preview.html — "Workbook Vault"). The viewer lists the
+  // tenant's export history in its side panel, prompts for the PIN when the
+  // workbook is PIN-protected, then previews it instantly — nothing is
+  // downloaded to the device.
+  const openXlsxPreview = (fileUrl, fileName) => {
+    if (!fileUrl) return false;
+    const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
+    const tenantSlug = getTenantSlug() || '';
+    const absFileUrl = /^https?:\/\//i.test(fileUrl)
+      ? fileUrl
+      : `${uploadsOrigin()}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+    const params = new URLSearchParams({
+      file: absFileUrl,
+      name: fileName || 'export.xlsx',
+      history: `${API_GATEWAY_URL}/deceased/export-history`,
+      token: token || '',
+      tenant: tenantSlug || '',
+      uploads: uploadsOrigin(),
+    });
+    window.open(`/xlsx-preview.html?${params.toString()}`, '_blank', 'noopener');
+    return true;
+  };
+
   // Close the export result notification modal.
   const closeExportNotify = useCallback(() => {
     setExportNotify(null);
   }, []);
 
-  // "Open the actual .xlsx file in the browser" action from the notify modal.
+  // "Open in the browser Excel viewer" action from the notify modal —
+  // prefers the server-provided /uploads URL (instant preview), and falls
+  // back to downloading the blob when the file was streamed inline.
   const openExportFileInBrowser = useCallback(() => {
+    if (exportNotify?.fileUrl && openXlsxPreview(exportNotify.fileUrl, exportNotify.fileName)) return;
     const blob = exportNotify?.blob;
     if (!blob) return;
     downloadExportBlob(blob, exportNotify?.fileName || `Deceased_Records_${todayKey()}.xlsx`);
@@ -1454,17 +1493,19 @@ const DeceasedListPage = () => {
       type: 'error',
       message: message || 'The export could not be completed. Please try again.',
       blob: null,
+      fileUrl: null,
       fileName: '',
     });
   }, []);
 
-  const showExportSuccess = useCallback((blob, fileName, pinProtected = false) => {
+  const showExportSuccess = useCallback((blob, fileName, pinProtected = false, fileUrl = null) => {
     setExporting(false);
     setShowExport(false);
     setExportNotify({
       type: 'success',
-      message: `${fileName || 'Deceased records export'} was generated successfully.${pinProtected ? ' The file is PIN-protected — Excel or Google Sheets will ask for the PIN when opening it.' : ''}`,
+      message: `${fileName || 'Deceased records export'} was generated successfully.${pinProtected ? ' The file is PIN-protected — you will be asked for the PIN before it opens.' : ''}`,
       blob: blob || null,
+      fileUrl: fileUrl || null,
       fileName: fileName || '',
     });
   }, []);
@@ -1529,10 +1570,22 @@ const DeceasedListPage = () => {
 
       const data = await parseBlobJson(response.data);
 
+      // Synchronous export: the backend PIN-encrypts (when requested), saves
+      // the workbook to the shared global uploads folder via the global
+      // uploader and hands back its /uploads/... URL. Open it straight in
+      // the browser Excel viewer — no polling, no download needed.
+      if (data?.success && data?.fileUrl) {
+        loadExportHistory();
+        showExportSuccess(null, data.fileName, !!data.pinProtected, data.fileUrl);
+        openXlsxPreview(data.fileUrl, data.fileName);
+        return;
+      }
+
+      // Legacy queue flow (job id → poll until the file is ready).
       if (data?.success && data?.jobId) {
         pollExportStatus(data.jobId, pin.length > 0);
       } else {
-        throw new Error(data?.message || 'No job ID returned');
+        throw new Error(data?.message || 'No export file URL returned');
       }
     } catch (err) {
       console.error('Export error:', err);
@@ -2056,12 +2109,24 @@ const DeceasedListPage = () => {
                           </div>
                         )}
                         {h.fileUrl ? (
-                          <a className="h-link" href={h.fileUrl} target="_blank" rel="noreferrer">
-                            <i className="fas fa-download"></i> Download file
-                          </a>
+                          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                            <a
+                              className="h-link"
+                              href="#view"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                openXlsxPreview(h.fileUrl, h.fileName);
+                              }}
+                            >
+                              <i className="fas fa-eye"></i> View in browser
+                            </a>
+                            <a className="h-link" href={h.fileUrl} target="_blank" rel="noreferrer">
+                              <i className="fas fa-download"></i> Download
+                            </a>
+                          </div>
                         ) : (
                           <span className="h-meta" style={{ color: C.gray }}>
-                            Saved to Documents via global uploader
+                            Saved to global uploads
                           </span>
                         )}
                       </div>
@@ -2072,7 +2137,7 @@ const DeceasedListPage = () => {
             </ModalBody>
             <ModalFooter>
               <div style={{ fontSize: 11, color: C.gray, marginRight: 'auto' }}>
-                {exporting ? (exportPin ? 'Encrypting & uploading to Documents…' : 'Generating & uploading to Documents…') : 'Uploaded files are stored in Documents'}
+                {exporting ? (exportPin ? 'Encrypting & uploading via global uploader…' : 'Generating & uploading via global uploader…') : 'Exports open instantly in the browser Excel viewer'}
               </div>
               <Btn $ghost onClick={() => setShowExport(false)} disabled={exporting}>Cancel</Btn>
               <Btn $export onClick={handleExport} disabled={exporting}>
@@ -2102,7 +2167,7 @@ const DeceasedListPage = () => {
                   ? (exportNotify.message || 'Your export was generated successfully.')
                   : (exportNotify.message || 'The export could not be completed. Please try again.')}
               </NotifyMessage>
-              {exportNotify.type === 'success' && exportNotify.blob && (
+              {exportNotify.type === 'success' && (exportNotify.blob || exportNotify.fileUrl) && (
                 <NotifyActions>
                   <Btn
                     $export
@@ -2110,7 +2175,7 @@ const DeceasedListPage = () => {
                     style={{ whiteSpace: 'normal', height: 'auto', minHeight: 42, padding: '10px 18px' }}
                   >
                     <i className="fas fa-arrow-up-right-from-square"></i>
-                    Open the actual .xlsx file in the browser
+                    Open in the browser Excel viewer
                   </Btn>
                 </NotifyActions>
               )}

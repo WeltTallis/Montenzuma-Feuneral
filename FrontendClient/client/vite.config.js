@@ -166,6 +166,13 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
       },
+      // Shared uploads folder (exported Excel files, etc.) is served through
+      // the API gateway → tenant-service. The xlsx previewer page fetches
+      // these directly, so dev needs the same routing production has.
+      '/uploads': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
     },
   },
 });
