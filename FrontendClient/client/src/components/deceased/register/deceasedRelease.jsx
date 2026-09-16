@@ -516,21 +516,17 @@ const ErrorMessage = styled.span`
   font-family: 'Saira', sans-serif;
 `;
 
-/* Green "length of stay" pill — same green as the database-search tick so the
-   counter reads as part of the same verified-record language. */
+/* Green "length of stay" label — plain green text on the sheet with a small
+   green underline, matching the database-search tick green. */
 const InCareBadge = styled.div`
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
   gap: 0.45rem;
-  /* Full-width strip so it lines up exactly with the Released By field below. */
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.35rem 0.6rem;
+  /* Underline only spans the text — hugs the content, no full-width strip. */
+  width: fit-content;
+  padding: 0 0 0.25rem;
   margin-bottom: 0.85rem;
-  border-radius: 999px;
-  background: rgba(34, 197, 94, 0.12);
-  border: 1px solid rgba(34, 197, 94, 0.45);
+  border-bottom: 2px solid ${COLORS.green};
   color: ${COLORS.green};
   font-family: 'Saira', sans-serif;
   font-size: 0.72rem;
