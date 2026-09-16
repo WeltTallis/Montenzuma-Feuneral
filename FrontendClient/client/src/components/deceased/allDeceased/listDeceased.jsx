@@ -11,7 +11,6 @@ import {
   todayKey,
 } from '../../../utils/dates/parseDates';
 import 'react-toastify/dist/ReactToastify.css';
-import ScannerBridgeBanner from '../../../components/scanner/ScannerBridgeBanner';
 
 const API_GATEWAY_URL = import.meta.env.VITE_API_URL || '/api/v1/restpoint';
 const BASE_URL = `${API_GATEWAY_URL}/deceased`;
@@ -1771,7 +1770,6 @@ const DeceasedListPage = () => {
   return (
     <>
       <GlobalFonts />
-      <ScannerBridgeBanner />
       <AppContainer>
         <ToastContainer position="top-right" autoClose={3000} />
 

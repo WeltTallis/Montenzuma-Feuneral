@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { probeBridge, buildStartScanMessage } from '../../utils/scannerBridge';
-import api from '../../api/axios';
 import { notify } from '../../utils/notify';
 import {
-  Printer, Upload, X, Loader2, CheckCircle, AlertTriangle, FileText, RefreshCw,
+  Printer, X, Loader2, CheckCircle, AlertTriangle, FileText, RefreshCw,
 } from '../../utils/icons/icons';
 
 // ── palette (matches deceased theme) ─────────────────────────────────────────
@@ -115,36 +114,6 @@ const ScannerIcon = () => (
   </svg>
 );
 
-// ── direct upload to the documents-service (manual fallback) ────────────────
-const uploadFileDirect = async ({ file, deceasedId, documentName, category }) => {
-  const formData = new FormData();
-  formData.append('document', file);
-  if (documentName) formData.append('documentName', documentName);
-  if (category) formData.append('category', category);
-
-  const headers = { 'Content-Type': null };
-  try {
-    const token = localStorage.getItem('authToken') || localStorage.getItem('accessToken');
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const slug = localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug');
-    if (slug) headers['x-tenant-slug'] = slug;
-  } catch { /* localStorage unavailable */ }
-
-  formData.append('deceasedId', String(deceasedId));
-
-  try {
-    const res = await api.post('/documents/upload', formData, {
-      headers,
-      withCredentials: false,
-    });
-    return res.data;
-  } catch (uploadError) {
-    if (uploadError.response?.status !== 404) throw uploadError;
-    const fallback = await api.post(`/documents/upload/${String(deceasedId)}`, formData, { headers, withCredentials: false });
-    return fallback.data;
-  }
-};
-
 const defaultScanName = (deceasedName) => {
   const d = new Date();
   const p = (n) => String(n).padStart(2, '0');
@@ -156,8 +125,9 @@ const defaultScanName = (deceasedName) => {
 /**
  * Scan-document modal for the deceased profile.
  * Opens the local Scanner Bridge (ws://localhost:8081), scans → PDF, and the
- * agent uploads DIRECTLY to the documents-service. Falls back to a manual file
- * upload (also straight to the documents-service) when no bridge is installed.
+ * agent uploads DIRECTLY to the documents-service. Scanner-only by design:
+ * there is NO manual/dummy file-upload fallback — if the bridge is missing
+ * the modal shows the install prompt instead.
  */
 const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }) => {
   const [phase, setPhase] = useState('probe'); // probe|ready|unavailable|scanning|uploading|success|error
@@ -167,8 +137,6 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
   const [bridgeUrl, setBridgeUrl] = useState('');
   const [documentName, setDocumentName] = useState(() => defaultScanName(deceasedName));
   const [category, setCategory] = useState('Scan');
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef(null);
 
   useEffect(() => { probe(); }, []);
 
@@ -244,28 +212,6 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
     setPhase(bridgeUrl ? 'ready' : 'unavailable');
   };
 
-  const handleManualFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!deceasedId) { notify.error('Upload failed', 'Missing deceased ID'); return; }
-    setUploading(true);
-    setPhase('uploading');
-    setMessage('Uploading to the documents service…');
-    try {
-      const res = await uploadFileDirect({ file, deceasedId, documentName: documentName || file.name, category });
-      setDocument(res?.data || res || { name: file.name });
-      setPhase('success');
-      setMessage(res?.message || 'Document uploaded successfully!');
-      notify.success('Uploaded', res?.message || 'Document uploaded to the documents service.');
-    } catch (err) {
-      setPhase('error');
-      setMessage(err?.response?.data?.message || err?.message || 'Upload failed. Please try again.');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   const done = () => {
     if (typeof onScanned === 'function') onScanned(document || {});
     if (typeof onClose === 'function') onClose();
@@ -310,17 +256,7 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
     fontFamily: "'Source Sans 3', sans-serif",
   };
 
-  const hiddenFileInput = (
-    <input
-      ref={fileInputRef}
-      type="file"
-      accept=".pdf,.jpg,.jpeg,.png"
-      onChange={handleManualFile}
-      style={{ display: 'none' }}
-    />
-  );
-
-  const busy = phase === 'scanning' || phase === 'uploading' || uploading || phase === 'probe';
+  const busy = phase === 'scanning' || phase === 'uploading' || phase === 'probe';
 
   return (
     <Overlay onClick={busy ? undefined : onClose}>
@@ -359,11 +295,7 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
               <button style={{ ...primaryBtn, flex: 1 }} onClick={startScan}>
                 <Printer size={16} /> Scan Document
               </button>
-              <button style={ghostBtn} onClick={() => fileInputRef.current?.click()}>
-                <Upload size={15} /> Upload a file instead
-              </button>
             </div>
-            {hiddenFileInput}
           </>
         )}
 
@@ -389,11 +321,7 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
               <button style={{ ...primaryBtn, flex: 1 }} onClick={probe}>
                 <RefreshCw size={15} /> Check Again
               </button>
-              <button style={ghostBtn} onClick={() => fileInputRef.current?.click()}>
-                <Upload size={15} /> Upload a scanned file instead
-              </button>
             </div>
-            {hiddenFileInput}
           </>
         )}
 
@@ -442,14 +370,10 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
               {message || 'Scan failed. Please try again.'}
             </StatusBox>
             <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-              <button style={ghostBtn} onClick={resetForAnother}>
+              <button style={{ ...primaryBtn, flex: 1 }} onClick={resetForAnother}>
                 <RefreshCw size={15} /> Try Again
               </button>
-              <button style={ghostBtn} onClick={() => fileInputRef.current?.click()}>
-                <Upload size={15} /> Upload a file instead
-              </button>
             </div>
-            {hiddenFileInput}
           </>
         )}
         </PanelBody>

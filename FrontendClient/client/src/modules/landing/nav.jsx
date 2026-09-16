@@ -215,9 +215,9 @@ const NavLink = styled.button`
   }
 `;
 
-// Scanner navigation link - prominent with back background
+// Scanner navigation link - prominent with dark green background
 const NavLinkScanner = styled(NavLink)`
-  background: #3D4F47 !important;
+  background: #1A2A27 !important;
   color: white !important;
   padding: 0.6rem 1.25rem !important;
   border-radius: 6px !important;
@@ -226,12 +226,12 @@ const NavLinkScanner = styled(NavLink)`
   align-items: center !important;
   gap: 0.5rem !important;
   transition: all 0.3s ease !important;
-  box-shadow: 0 2px 8px rgba(61, 79, 71, 0.3) !important;
+  box-shadow: 0 2px 8px rgba(26, 42, 39, 0.3) !important;
   
   &:hover {
-    background: #2E3F37 !important;
+    background: #24352F !important;
     transform: translateY(-2px) !important;
-    box-shadow: 0 4px 12px rgba(61, 79, 71, 0.4) !important;
+    box-shadow: 0 4px 12px rgba(26, 42, 39, 0.4) !important;
   }
   
   &::after {
@@ -524,13 +524,13 @@ const MobileLoginBtn = styled.button`
   }
 `;
 
-// Mobile Scanner button - prominent with green background
+// Mobile Scanner button - prominent with dark green background
 const MobileScannerBtn = styled.button`
   width: 100%;
   padding: 0.95rem;
-  background: #3D4F47;
+  background: #1A2A27;
   color: #FFFFFF;
-  border: 1px solid #3D4F47;
+  border: 1px solid #1A2A27;
   border-radius: 6px;
   font-family: 'Space Grotesk', sans-serif;
   font-size: 0.75rem;
@@ -544,12 +544,12 @@ const MobileScannerBtn = styled.button`
   justify-content: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
-  box-shadow: 0 2px 8px rgba(61, 79, 71, 0.3);
+  box-shadow: 0 2px 8px rgba(26, 42, 39, 0.3);
 
   &:hover {
-    background: #2E3F37;
-    border-color: #2E3F37;
-    box-shadow: 0 4px 12px rgba(61, 79, 71, 0.4);
+    background: #24352F;
+    border-color: #24352F;
+    box-shadow: 0 4px 12px rgba(26, 42, 39, 0.4);
   }
 `;
 

@@ -191,19 +191,97 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
 
     const { startDate, endDate } = (req.body || {}) as { startDate?: string; endDate?: string };
 
+    // ── SCHEMA-ADAPTIVE RECORD FETCH ────────────────────────────────────
+    // Tenant databases were provisioned at different times: older ones have
+    // no next_of_kin column on deceased (next of kin lives in its own
+    // next_of_kin table), and release_date / service_type are not present in
+    // every schema. Introspect the ACTUAL columns once and build the SELECT
+    // with safe fallbacks so the export can never die on "Unknown column".
+    const tableColumns = async (table: string): Promise<Set<string>> => {
+      try {
+        const cols = await safeTenantQuery(
+          dbName,
+          `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
+          [dbName, table]
+        );
+        return new Set((Array.isArray(cols) ? cols : []).map((c: any) => String(c.COLUMN_NAME).toLowerCase()));
+      } catch {
+        return new Set<string>();
+      }
+    };
+
+    const tableExists = async (table: string): Promise<boolean> => {
+      try {
+        const t = await safeTenantQuery(
+          dbName,
+          `SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? LIMIT 1`,
+          [dbName, table]
+        );
+        return Array.isArray(t) && t.length > 0;
+      } catch {
+        return false;
+      }
+    };
+
+    const dCols = await tableColumns('deceased');
+    const has = (name: string) => dCols.has(String(name).toLowerCase());
+    // Column reference with a NULL fallback so a missing column can never
+    // break the query — the sheet simply shows '—' for that field.
+    const dcol = (name: string, alias?: string) =>
+      has(name) ? `d.${name}${alias ? ` AS ${alias}` : ''}` : `NULL AS ${alias || name}`;
+
+    // Next of kin — the dedicated next_of_kin table (primary kin first) when
+    // it exists, otherwise the deceased.contact_person column on newer DBs.
+    // The subquery joins on d.deceased_id, so it is only used when that
+    // column actually exists in this tenant's schema.
+    let nextOfKinExpr = dcol('contact_person', 'next_of_kin');
+    if (has('deceased_id') && (await tableExists('next_of_kin'))) {
+      const kCols = await tableColumns('next_of_kin');
+      const kinWhere = [`nok.deceased_id = d.deceased_id`];
+      if (kCols.has('is_deleted')) kinWhere.push(`nok.is_deleted = 0`);
+      const kinOrder = kCols.has('is_primary') ? `nok.is_primary DESC, nok.id ASC` : `nok.id ASC`;
+      nextOfKinExpr = `(SELECT nok.full_name FROM next_of_kin nok WHERE ${kinWhere.join(' AND ')} ORDER BY ${kinOrder} LIMIT 1) AS next_of_kin`;
+    }
+
+    // Service type — service_type on newer DBs, burial_type otherwise.
+    const serviceExpr = has('service_type')
+      ? `d.service_type AS service_type`
+      : has('burial_type') ? `d.burial_type AS service_type` : `NULL AS service_type`;
+
+    // Release date — release_date on newer DBs, dispatch_date otherwise
+    // (the row mapping already falls back to dispatch_date itself).
+    const releaseExpr = has('release_date')
+      ? `d.release_date AS release_date`
+      : has('dispatch_date') ? `d.dispatch_date AS release_date` : `NULL AS release_date`;
+
+    const selectParts = [
+      dcol('deceased_id'),
+      dcol('full_name'),
+      dcol('admission_number'),
+      dcol('date_of_birth'),
+      dcol('date_of_death'),
+      nextOfKinExpr,
+      serviceExpr,
+      dcol('body_status'),
+      releaseExpr,
+      dcol('dispatch_date'),
+      dcol('date_admitted'),
+      dcol('created_at'),
+    ].join(',\n             ');
+
     let whereClause = '';
     const params: any[] = [];
-    if (startDate && endDate) {
-      whereClause = 'WHERE created_at BETWEEN ? AND ?';
+    if (startDate && endDate && has('created_at')) {
+      whereClause = 'WHERE d.created_at BETWEEN ? AND ?';
       params.push(startDate, endDate);
     }
 
+    const orderExpr = has('created_at') ? 'd.created_at DESC' : 'd.id DESC';
     const query = `
-      SELECT deceased_id, full_name, admission_number, date_of_birth, date_of_death,
-             next_of_kin, service_type, body_status, release_date, dispatch_date, date_admitted, created_at
-      FROM deceased
+      SELECT ${selectParts}
+      FROM deceased d
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY ${orderExpr}
       LIMIT 5000
     `;
     const records: any[] = await safeTenantQuery(dbName, query, params);

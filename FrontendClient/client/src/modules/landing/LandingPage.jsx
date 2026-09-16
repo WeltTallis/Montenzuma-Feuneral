@@ -4,7 +4,6 @@ import NewsroomSection from '../newsroom/NewsroomSection';
 import HardwareRequirementSection from './hardwareRequirement';
 import LandingPageSEO from '../seo/LandingPageSEO';
 import Footer from '../../components/layout/Footer';
-import DirectorsMoment from './DirectorsMoment';
 import ModuleGridSection from './imageCard';
 import C from '../../utils/colors/index'
 import FloatingCTA from './FloatingCTA';
@@ -685,9 +684,6 @@ export default function App() {
 
         {/* ── Our Mission ── */}
         <MissionSection />
-
-        {/* ── For Funeral Directors — the confirmation moment (live candle demo) ── */}
-        <DirectorsMoment />
 
         {/* ── Modules ── */}
         <section id="modules" className="modules-section">

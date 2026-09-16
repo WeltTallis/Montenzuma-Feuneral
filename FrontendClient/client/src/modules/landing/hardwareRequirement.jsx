@@ -6,7 +6,7 @@ import styled, { createGlobalStyle, keyframes } from 'styled-components';
 const C = {
   black: '#000000',
   paper: '#F7F3EA',
-  verd: '#2E3F37',
+  verd: '#1A2A27',
   brass2: '#C9B08C',
   terra: '#BC5A38',
   terra2: '#D8916C',
