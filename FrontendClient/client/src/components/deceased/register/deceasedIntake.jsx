@@ -583,7 +583,7 @@ const ActionsContainer = styled.div`
 `;
 
 const PrimaryButton = styled.button`
-  background: ${COLORS.verdigris};
+  background: #722F37;
   color: ${COLORS.bone};
   border: none;
   border-radius: 4px;
@@ -601,9 +601,9 @@ const PrimaryButton = styled.button`
   text-transform: uppercase;
 
   &:hover {
-    background: ${COLORS.verdigrisDark};
+    background: #5C242B;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(61, 79, 71, 0.2);
+    box-shadow: 0 4px 12px rgba(114, 47, 55, 0.25);
   }
 
   &:disabled {
@@ -619,9 +619,9 @@ const PrimaryButton = styled.button`
 `;
 
 const GoldButton = styled.button`
-  background: linear-gradient(135deg, ${COLORS.gold} 0%, ${COLORS.goldDark} 100%);
-  color: ${COLORS.ink};
-  border: 1px solid ${COLORS.goldDark};
+  background: #1A2A27;
+  color: ${COLORS.bone};
+  border: 1px solid #1A2A27;
   border-radius: 4px;
   padding: 1rem 2rem;
   font-size: 0.85rem;
@@ -635,12 +635,12 @@ const GoldButton = styled.button`
   transition: all 0.2s ease;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  box-shadow: 0 2px 6px rgba(201, 162, 39, 0.25);
+  box-shadow: 0 2px 6px rgba(26, 42, 39, 0.25);
 
   &:hover {
-    background: linear-gradient(135deg, ${COLORS.goldDark} 0%, ${COLORS.gold} 100%);
+    background: #24352F;
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(201, 162, 39, 0.4);
+    box-shadow: 0 4px 14px rgba(26, 42, 39, 0.35);
     color: ${COLORS.white};
   }
 
@@ -659,9 +659,9 @@ const GoldButton = styled.button`
 `;
 
 const BlackButton = styled.button`
-  background: ${COLORS.ink};
+  background: #1A2A27;
   color: ${COLORS.bone};
-  border: 1px solid ${COLORS.ink};
+  border: 1px solid #1A2A27;
   border-radius: 4px;
   padding: 1rem 2rem;
   font-size: 0.85rem;
@@ -675,13 +675,13 @@ const BlackButton = styled.button`
   transition: all 0.2s ease;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  box-shadow: 0 2px 6px rgba(21, 23, 26, 0.2);
+  box-shadow: 0 2px 6px rgba(26, 42, 39, 0.2);
 
   &:hover {
-    background: #2a2d31;
-    border-color: #2a2d31;
+    background: #24352F;
+    border-color: #24352F;
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(21, 23, 26, 0.35);
+    box-shadow: 0 4px 14px rgba(26, 42, 39, 0.35);
   }
 
   &:disabled {
@@ -723,7 +723,7 @@ const ElegantFooter = styled.footer`
   position: relative;
   width: 100%;
   overflow: hidden;
-  background: #2F3A32;
+  background: #1A2A27;
   color: #E9EBDD;
   text-align: center;
   padding: 56px 20px 0;
