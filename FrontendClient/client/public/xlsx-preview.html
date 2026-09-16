@@ -1,0 +1,2346 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workbook Vault — Encrypted XLSX Viewer</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=Instrument+Sans:ital,wght@0,400..700;1,400..600&family=Spline+Sans+Mono:wght@400..600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cfb@1.2.2/dist/cfb.min.js" onerror="this.remove()"></script>
+
+    <style>
+        :root {
+            --ink: #1A1A1A;
+            --bone: #FAF8F4;
+            --white: #FFFFFF;
+            --brass: #6B4045;
+            --brassLight: #A98F6E;
+            --verdigris: #3D4F47;
+            --verdigrisD: #2E3F37;
+            --line: #E2DDD3;
+            --gray: #6B6862;
+            --muted: #999999;
+            --red: #9B4A3F;
+            --inkBlue: #0f33e7;
+            --gold: #C9A227;
+            --goldDark: #A8851C;
+            --page: #F1EDE4;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Instrument Sans', sans-serif;
+            background: var(--page);
+            color: var(--ink);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .mono {
+            font-family: 'Spline Sans Mono', monospace;
+        }
+
+        button {
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        ::selection {
+            background: var(--gold);
+            color: var(--ink);
+        }
+
+        /* ============ TOP BAR ============ */
+        .bar {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            background: var(--bone);
+            border-bottom: 1px solid var(--line);
+            padding: 10px clamp(12px, 2vw, 22px);
+            flex: none;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .brand img {
+            height: 32px;
+            width: auto;
+            display: block;
+        }
+
+        .brand .fallback {
+            width: 34px;
+            height: 34px;
+            border: 1.5px solid var(--ink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Fraunces', serif;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .brand .div {
+            width: 1px;
+            height: 30px;
+            background: var(--line);
+        }
+
+        .overline {
+            font-size: 8.5px;
+            font-weight: 700;
+            letter-spacing: .22em;
+            text-transform: uppercase;
+            color: var(--brass);
+        }
+
+        h1 {
+            font-family: 'Fraunces', serif;
+            font-size: 17px;
+            font-weight: 560;
+            letter-spacing: -.01em;
+            line-height: 1.1;
+        }
+
+        h1 em {
+            font-style: italic;
+            font-weight: 470;
+            color: var(--brass);
+        }
+
+        .back {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: 1px solid var(--line);
+            background: var(--white);
+            color: var(--gray);
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 7px 13px;
+            transition: color .15s, border-color .15s;
+        }
+
+        .back:hover {
+            color: var(--ink);
+            border-color: var(--brassLight);
+        }
+
+        body.mode-preview .back {
+            display: inline-flex;
+        }
+
+        .tools {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .search {
+            display: none;
+            align-items: center;
+            gap: 7px;
+            background: var(--white);
+            border: 1px solid var(--line);
+            padding: 6px 10px;
+            color: var(--muted);
+            width: 250px;
+        }
+
+        body.mode-preview .search {
+            display: flex;
+        }
+
+        .search input {
+            border: 0;
+            outline: 0;
+            background: none;
+            width: 100%;
+            font-size: 12.5px;
+            color: var(--ink);
+            font-family: inherit;
+        }
+
+        .search input::placeholder {
+            color: var(--muted);
+        }
+
+        .search .cnt {
+            font-size: 10px;
+            color: var(--gray);
+            white-space: nowrap;
+        }
+
+        .icon-btn {
+            background: none;
+            border: 0;
+            color: var(--gray);
+            padding: 2px;
+            display: flex;
+        }
+
+        .icon-btn:hover {
+            color: var(--ink);
+        }
+
+        .icon-btn:disabled {
+            opacity: .3;
+            cursor: default;
+        }
+
+        .seg {
+            display: none;
+            border: 1px solid var(--line);
+            background: var(--white);
+        }
+
+        body.mode-preview .seg {
+            display: flex;
+        }
+
+        .seg button {
+            background: none;
+            border: 0;
+            color: var(--gray);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 10px;
+        }
+
+        .seg button:hover {
+            color: var(--ink);
+        }
+
+        .seg .zval {
+            font-size: 10.5px;
+            min-width: 44px;
+            text-align: center;
+            padding: 7px 0;
+            color: var(--ink);
+            border-left: 1px solid var(--line);
+            border-right: 1px solid var(--line);
+        }
+
+        .tgl {
+            display: none;
+            align-items: center;
+            gap: 7px;
+            background: var(--white);
+            border: 1px solid var(--line);
+            color: var(--gray);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 7px 11px;
+        }
+
+        body.mode-preview .tgl {
+            display: flex;
+        }
+
+        .tgl i {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--line);
+            flex: none;
+        }
+
+        .tgl[aria-pressed="true"] {
+            color: var(--verdigrisD);
+            border-color: var(--verdigris);
+        }
+
+        .tgl[aria-pressed="true"] i {
+            background: var(--verdigris);
+        }
+
+        .add {
+            background: var(--ink);
+            color: var(--bone);
+            border: 0;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .04em;
+            padding: 8px 15px;
+            border-bottom: 2px solid var(--gold);
+        }
+
+        .add:hover {
+            background: #000;
+        }
+
+        /* ============ EXPORT HISTORY SIDE PANEL ============ */
+        .hist-btn {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--white);
+            border: 1px solid var(--line);
+            color: var(--gray);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 7px 11px;
+        }
+
+        .hist-btn:hover {
+            color: var(--ink);
+            border-color: var(--brassLight);
+        }
+
+        .hist {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: min(370px, 90vw);
+            background: var(--bone);
+            border-left: 1px solid var(--line);
+            box-shadow: -18px 0 44px rgba(26, 26, 26, .14);
+            display: flex;
+            flex-direction: column;
+            z-index: 60;
+            animation: histIn .18s ease-out;
+        }
+
+        @keyframes histIn {
+            from { transform: translateX(26px); opacity: 0; }
+            to { transform: none; opacity: 1; }
+        }
+
+        .hist-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 16px 18px 12px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .hist-over {
+            font-size: 8.5px;
+            font-weight: 700;
+            letter-spacing: .22em;
+            text-transform: uppercase;
+            color: var(--brass);
+        }
+
+        .hist-head h2 {
+            font-family: 'Fraunces', serif;
+            font-size: 17px;
+            font-weight: 560;
+            margin-top: 3px;
+        }
+
+        .hist-head h2 em {
+            font-style: italic;
+            font-weight: 470;
+            color: var(--brass);
+        }
+
+        .hist-actions {
+            display: flex;
+            gap: 2px;
+        }
+
+        .hist-list {
+            flex: 1;
+            overflow: auto;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .hist-item {
+            text-align: left;
+            background: var(--white);
+            border: 1px solid var(--line);
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            position: relative;
+            transition: border-color .15s;
+        }
+
+        .hist-item:hover {
+            border-color: var(--brassLight);
+        }
+
+        .hist-item.on {
+            border-color: var(--verdigris);
+            box-shadow: inset 3px 0 0 var(--verdigris);
+        }
+
+        .hist-item .hn {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--ink);
+            word-break: break-all;
+            padding-right: 26px;
+        }
+
+        .hist-item .hm {
+            font-size: 10px;
+            color: var(--gray);
+            display: flex;
+            gap: 8px;
+        }
+
+        .hist-item .hopen {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            color: var(--brass);
+        }
+
+        .hist-empty {
+            font-size: 11.5px;
+            color: var(--gray);
+            text-align: center;
+            padding: 26px 12px;
+            border: 1px dashed var(--line);
+            line-height: 1.7;
+        }
+
+        .hist-note {
+            padding: 10px 18px 14px;
+            font-size: 9.5px;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+        }
+
+        /* ============ CONTEXT STRIP ============ */
+        .ctx {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 7px clamp(12px, 2vw, 22px);
+            border-bottom: 1px solid var(--line);
+            background: var(--bone);
+            font-size: 10px;
+            letter-spacing: .05em;
+            color: var(--gray);
+            flex: none;
+            min-height: 32px;
+        }
+
+        .ctx b {
+            color: var(--ink);
+            font-weight: 600;
+        }
+
+        .ctx .dot {
+            color: var(--brassLight);
+        }
+
+        .ctx .hint {
+            margin-left: auto;
+            color: var(--muted);
+        }
+
+        .sec-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--verdigrisD);
+            font-weight: 600;
+            letter-spacing: .06em;
+        }
+
+        .info {
+            display: inline-flex;
+            color: var(--muted);
+            vertical-align: -2px;
+        }
+
+        /* ============ STAGE ============ */
+        main {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* ---- LIST MODE ---- */
+        #listView {
+            position: absolute;
+            inset: 0;
+            overflow: auto;
+            padding: clamp(14px, 3vw, 30px);
+        }
+
+        .list-wrap {
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        .list-head {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+            margin: 6px 2px 12px;
+        }
+
+        .list-head h2 {
+            font-family: 'Fraunces', serif;
+            font-size: clamp(20px, 2.6vw, 26px);
+            font-weight: 560;
+            letter-spacing: -.01em;
+        }
+
+        .list-head h2 em {
+            font-style: italic;
+            font-weight: 470;
+            color: var(--brass);
+        }
+
+        .list-head .lc {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .list-head .spacer {
+            flex: 1;
+        }
+
+        .mini {
+            background: none;
+            border: 0;
+            color: var(--gray);
+            font-size: 11px;
+            font-weight: 600;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .mini:hover {
+            color: var(--ink);
+        }
+
+        .ledger-card {
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-top: 2.5px solid var(--ink);
+            position: relative;
+            box-shadow: 0 1px 2px rgba(26, 26, 26, .05), 0 26px 60px -30px rgba(26, 26, 26, .25);
+        }
+
+        .ledger-card::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 0;
+            right: 0;
+            border-top: 1px solid var(--ink);
+        }
+
+        .frow {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: 0;
+            border-bottom: 1px solid var(--line);
+            padding: 14px 16px;
+            transition: background .15s;
+            position: relative;
+        }
+
+        .frow:last-child {
+            border-bottom: 0;
+        }
+
+        .frow:hover {
+            background: var(--bone);
+        }
+
+        .frow .fico {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            flex: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1.6px solid var(--inkBlue);
+            color: var(--inkBlue);
+        }
+
+        .frow .fico.done {
+            border-color: var(--verdigris);
+            color: var(--verdigrisD);
+        }
+
+        .frow .fico.plain {
+            border-color: var(--line);
+            color: var(--muted);
+        }
+
+        .frow .fico.error {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .fmeta {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .fname {
+            font-family: 'Spline Sans Mono', monospace;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .fsub {
+            margin-top: 3px;
+            font-size: 10.5px;
+            color: var(--muted);
+            letter-spacing: .02em;
+        }
+
+        .fbadge {
+            flex: none;
+            font-size: 8.5px;
+            font-weight: 700;
+            letter-spacing: .16em;
+            padding: 5px 9px 4px;
+            border: 1px solid;
+        }
+
+        .fbadge.locked {
+            color: var(--inkBlue);
+            border-color: #B6C0F2;
+            background: #F3F5FE;
+        }
+
+        .fbadge.done {
+            color: var(--verdigrisD);
+            border-color: #BFCFC2;
+            background: #F1F5F0;
+        }
+
+        .fbadge.plain {
+            color: var(--muted);
+            border-color: var(--line);
+            background: var(--bone);
+        }
+
+        .fbadge.error {
+            color: var(--red);
+            border-color: #E3C1BB;
+            background: #FBF1EF;
+        }
+
+        .fx {
+            flex: none;
+            background: none;
+            border: 0;
+            color: var(--muted);
+            font-size: 15px;
+            line-height: 1;
+            padding: 4px 6px;
+            opacity: 0;
+            transition: opacity .15s;
+        }
+
+        .frow:hover .fx {
+            opacity: 1;
+        }
+
+        .fx:hover {
+            color: var(--red);
+        }
+
+        .frow .chev {
+            flex: none;
+            color: var(--brassLight);
+        }
+
+        .list-empty-note {
+            margin: 14px 2px;
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: .03em;
+            text-align: center;
+        }
+
+        /* ---- EMPTY STATE ---- */
+        #drop {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .drop-card {
+            width: min(540px, 100%);
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-top: 2.5px solid var(--ink);
+            box-shadow: 0 1px 2px rgba(26, 26, 26, .05), 0 26px 60px -30px rgba(26, 26, 26, .25);
+            padding: 46px 40px 38px;
+            text-align: center;
+            position: relative;
+        }
+
+        .drop-card::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 0;
+            right: 0;
+            border-top: 1px solid var(--ink);
+        }
+
+        .drop-stamp {
+            color: var(--brassLight);
+            opacity: .55;
+            margin-bottom: 18px;
+            transform: rotate(-6deg);
+        }
+
+        .drop-card h2 {
+            font-family: 'Fraunces', serif;
+            font-size: 26px;
+            font-weight: 560;
+            letter-spacing: -.01em;
+        }
+
+        .drop-card h2 em {
+            font-style: italic;
+            font-weight: 470;
+            color: var(--brass);
+        }
+
+        .drop-card p {
+            font-size: 13px;
+            color: var(--gray);
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+
+        .browse {
+            margin-top: 22px;
+            background: var(--ink);
+            color: var(--bone);
+            border: 0;
+            border-bottom: 2px solid var(--gold);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 11px 22px;
+        }
+
+        .browse:hover {
+            background: #000;
+        }
+
+        .drop-card .fmt {
+            margin-top: 16px;
+            font-size: 10px;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .drop-card.drag {
+            outline: 2px dashed var(--gold);
+            outline-offset: 6px;
+        }
+
+        /* ---- PREVIEW MODE ---- */
+        .grid-scroll {
+            position: absolute;
+            inset: 0;
+            overflow: auto;
+            display: none;
+        }
+
+        body.mode-preview .grid-scroll {
+            display: block;
+        }
+
+        .sheet-card {
+            margin: 18px;
+            width: max-content;
+            background: var(--white);
+            border: 1px solid var(--line);
+            box-shadow: 0 1px 2px rgba(26, 26, 26, .05), 0 26px 60px -30px rgba(26, 26, 26, .22);
+            position: relative;
+        }
+
+        #grid {
+            border-collapse: separate;
+            border-spacing: 0;
+            table-layout: fixed;
+        }
+
+        #grid td {
+            background: #fff;
+            padding: 1px 5px;
+            font-size: 11pt;
+            line-height: 1.3;
+            color: var(--ink);
+            overflow: hidden;
+            white-space: nowrap;
+            vertical-align: bottom;
+        }
+
+        #grid td.err {
+            color: var(--red) !important;
+            font-weight: 600;
+        }
+
+        #grid thead th.ruler {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            background: var(--bone);
+            color: var(--muted);
+            font-family: 'Spline Sans Mono', monospace;
+            font-size: 9px;
+            font-weight: 600;
+            text-align: center;
+            height: 22px;
+            padding: 0;
+            box-shadow: inset -1px 0 0 var(--line), inset 0 -1px 0 var(--line);
+        }
+
+        #grid th.corner {
+            position: sticky;
+            left: 0;
+            top: 0;
+            z-index: 6;
+            box-shadow: inset -1px 0 0 var(--line), inset 0 -1px 0 var(--line);
+        }
+
+        #grid tbody th.rn {
+            position: sticky;
+            left: 0;
+            z-index: 4;
+            background: var(--bone);
+            color: var(--muted);
+            font-family: 'Spline Sans Mono', monospace;
+            font-size: 9.5px;
+            font-weight: 600;
+            text-align: center;
+            padding: 0 6px;
+            box-shadow: inset -1px 0 0 var(--line), inset 0 -1px 0 var(--line);
+        }
+
+        #grid td.hit {
+            background: #FFF6D9 !important;
+            box-shadow: inset 0 0 0 2px var(--gold);
+        }
+
+        #grid td.hit.active {
+            box-shadow: inset 0 0 0 2px var(--goldDark), 0 0 0 3px rgba(201, 162, 39, .30);
+            z-index: 2;
+        }
+
+        .img-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .img-layer img {
+            position: absolute;
+            display: block;
+        }
+
+        /* ---- TABS (preview mode) ---- */
+        .tabs {
+            flex: none;
+            display: none;
+            align-items: center;
+            gap: 14px;
+            background: var(--bone);
+            border-top: 1px solid var(--line);
+            padding: 0 clamp(12px, 2vw, 22px);
+            height: 40px;
+        }
+
+        body.mode-preview .tabs {
+            display: flex;
+        }
+
+        .tabs .tlist {
+            display: flex;
+            gap: 4px;
+            overflow-x: auto;
+            height: 100%;
+            align-items: flex-end;
+        }
+
+        .tab {
+            background: transparent;
+            border: 1px solid transparent;
+            border-bottom: 0;
+            color: var(--gray);
+            font-size: 11.5px;
+            font-weight: 500;
+            padding: 8px 14px 7px;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            color: var(--ink);
+        }
+
+        .tab.on {
+            background: var(--white);
+            border-color: var(--line);
+            color: var(--ink);
+            font-weight: 600;
+            border-bottom: 2.5px solid var(--gold);
+            margin-bottom: -1px;
+        }
+
+        .tabs .dims {
+            margin-left: auto;
+            font-size: 10px;
+            letter-spacing: .08em;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        /* ============ PASSWORD MODAL ============ */
+        .pw-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 85;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(26, 26, 26, .5);
+            backdrop-filter: blur(3px);
+            padding: 20px;
+        }
+
+        .pw-overlay.show {
+            display: flex;
+        }
+
+        .pw-card {
+            width: min(410px, 100%);
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-top: 2.5px solid var(--ink);
+            box-shadow: 0 1px 2px rgba(26, 26, 26, .08), 0 30px 70px -30px rgba(26, 26, 26, .4);
+            padding: 34px 32px 26px;
+            position: relative;
+        }
+
+        .pw-card::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 0;
+            right: 0;
+            border-top: 1px solid var(--ink);
+        }
+
+        .pw-lock {
+            width: 52px;
+            height: 52px;
+            margin: 0 auto 16px;
+            border: 2px solid var(--inkBlue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--inkBlue);
+        }
+
+        .pw-card h2 {
+            font-family: 'Fraunces', serif;
+            font-size: 21px;
+            font-weight: 560;
+            text-align: center;
+        }
+
+        .pw-card h2 em {
+            font-style: italic;
+            font-weight: 470;
+            color: var(--brass);
+        }
+
+        .pw-file {
+            margin-top: 8px;
+            text-align: center;
+            font-size: 11px;
+            color: var(--gray);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .pw-queue {
+            margin-top: 4px;
+            text-align: center;
+            font-size: 10px;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .pw-field {
+            margin-top: 20px;
+        }
+
+        .pw-field label {
+            display: block;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: .2em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .pw-field input {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-bottom: 2px solid var(--ink);
+            background: var(--bone);
+            padding: 10px 12px;
+            font-size: 14px;
+            letter-spacing: .06em;
+            font-family: 'Spline Sans Mono', monospace;
+            color: var(--ink);
+            outline: 0;
+        }
+
+        .pw-field input:focus {
+            border-bottom-color: var(--gold);
+        }
+
+        .pw-remember {
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 11.5px;
+            color: var(--gray);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .pw-remember input {
+            accent-color: var(--inkBlue);
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+        }
+
+        .pw-err {
+            margin-top: 12px;
+            font-size: 11.5px;
+            color: var(--red);
+            font-weight: 600;
+            background: #FBF1EF;
+            border-left: 3px solid var(--red);
+            padding: 8px 10px;
+        }
+
+        .pw-actions {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pw-unlock {
+            flex: 1;
+            background: var(--ink);
+            color: var(--bone);
+            border: 0;
+            border-bottom: 2.5px solid var(--inkBlue);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: .04em;
+            padding: 11px 0;
+        }
+
+        .pw-unlock:hover {
+            background: #000;
+        }
+
+        .pw-cancel {
+            background: none;
+            border: 0;
+            color: var(--gray);
+            font-size: 12px;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .pw-note {
+            margin-top: 14px;
+            font-size: 10px;
+            color: var(--muted);
+            text-align: center;
+            letter-spacing: .03em;
+        }
+
+        /* ============ OVERLAYS / TOAST ============ */
+        .dragover {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(26, 26, 26, .45);
+            backdrop-filter: blur(2px);
+        }
+
+        .dragover.show {
+            display: flex;
+        }
+
+        .dragover div {
+            border: 2px dashed var(--gold);
+            color: var(--bone);
+            padding: 34px 60px;
+            font-family: 'Fraunces', serif;
+            font-size: 22px;
+            background: rgba(26, 26, 26, .7);
+        }
+
+        .loading {
+            position: fixed;
+            inset: 0;
+            z-index: 70;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(241, 237, 228, .88);
+            flex-direction: column;
+            gap: 16px;
+            text-align: center;
+            padding: 0 24px;
+        }
+
+        .loading.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 3px solid var(--line);
+            border-top-color: var(--goldDark);
+            animation: spin .8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading p {
+            font-size: 11.5px;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: var(--gray);
+            max-width: 440px;
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 56px;
+            transform: translateX(-50%) translateY(8px);
+            background: var(--ink);
+            color: var(--bone);
+            font-size: 12px;
+            padding: 11px 18px;
+            border-left: 3px solid var(--gold);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s, transform .25s;
+            z-index: 90;
+            max-width: 80vw;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.error {
+            border-left-color: var(--red);
+        }
+
+        .toast.warn {
+            border-left-color: var(--goldDark);
+        }
+
+        ::-webkit-scrollbar {
+            width: 11px;
+            height: 11px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bone);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #D8D2C4;
+            border: 3px solid var(--bone);
+            border-radius: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--brassLight);
+        }
+
+        @media (max-width:760px) {
+            .search {
+                width: 160px;
+            }
+
+            h1 {
+                font-size: 15px;
+            }
+
+            .fbadge {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body class="mode-list">
+
+    <header class="bar">
+        <button class="back" id="backBtn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Files
+        </button>
+        <div class="brand">
+            <img src="https://lf.services/wp-content/uploads/2024/09/LFS-Logo2-e1725725010766.png" alt="LF Services"
+                onerror="this.outerHTML='&lt;div class=fallback&gt;LFS&lt;/div&gt;'">
+            <span class="div"></span>
+            <div>
+                <p class="overline">LFS · Export tools</p>
+                <h1>Workbook <em>Vault</em></h1>
+            </div>
+        </div>
+
+        <div class="tools">
+            <label class="search">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m21 21-4.3-4.3" />
+                </svg>
+                <input id="q" type="text" placeholder="Search cells…">
+                <span class="cnt mono" id="qCnt"></span>
+                <button class="icon-btn" id="qPrev" title="Previous match" disabled><svg width="13" height="13"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                        <path d="m18 15-6-6-6 6" />
+                    </svg></button>
+                <button class="icon-btn" id="qNext" title="Next match" disabled><svg width="13" height="13"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                        <path d="m6 9 6 6 6-6" />
+                    </svg></button>
+            </label>
+            <div class="seg" title="Zoom">
+                <button id="zOut">−</button><span class="zval mono" id="zVal">100%</span><button id="zIn">+</button>
+            </div>
+            <button class="tgl" id="glBtn" aria-pressed="true"><i></i>Gridlines</button>
+            <button class="hist-btn" id="histBtn" title="Export history" hidden>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12a9 9 0 1 0 3-6.7" />
+                    <path d="M3 4v4h4" />
+                    <path d="M12 7v5l3 2" />
+                </svg>
+                History
+            </button>
+            <button class="add" id="openBtn">+ Add files</button>
+        </div>
+    </header>
+
+    <div class="ctx" id="ctx">
+        <span id="ctxBody">Add your encrypted exports — they stay on this machine until you unlock them.</span>
+        <span class="hint mono" id="ctxHint"></span>
+    </div>
+
+    <main>
+        <!-- ============ EMPTY STATE ============ -->
+        <div id="drop">
+            <div class="drop-card" id="dropCard">
+                <div class="drop-stamp" aria-hidden="true">
+                    <svg width="84" height="84" viewBox="0 0 140 140">
+                        <circle cx="70" cy="70" r="64" fill="none" stroke="currentColor" stroke-width="2.4" />
+                        <circle cx="70" cy="70" r="56" fill="none" stroke="currentColor" stroke-width="1.2" />
+                        <rect x="58" y="60" width="24" height="19" rx="2" fill="none" stroke="currentColor"
+                            stroke-width="2.4" />
+                        <path d="M63 60v-5a7 7 0 0 1 14 0v5" fill="none" stroke="currentColor" stroke-width="2.4" />
+                    </svg>
+                </div>
+                <h2>Your encrypted <em>exports</em></h2>
+                <p>Add one or more password-protected workbooks — they'll be listed here.
+                    Click any file to enter its password and preview it.
+                    Unlock once and it stays open for the whole session.</p>
+                <button class="browse" id="browseBtn">Add files</button>
+                <p class="fmt mono">.xlsx · .xlsm — multiple files welcome · never uploaded</p>
+            </div>
+        </div>
+
+        <!-- ============ FILE LIST ============ -->
+        <div id="listView" hidden>
+            <div class="list-wrap">
+                <div class="list-head">
+                    <h2>Saved <em>exports</em></h2>
+                    <span class="lc" id="listCount">0 files</span>
+                    <span class="spacer"></span>
+                    <button class="mini" id="clearAll">Clear list</button>
+                </div>
+                <div class="ledger-card" id="fileList"></div>
+                <p class="list-empty-note">Files marked <b style="color:var(--inkBlue)">LOCKED</b> need a password —
+                    click one to begin. Unlocked files reopen instantly.</p>
+            </div>
+        </div>
+
+        <!-- ============ PREVIEW ============ -->
+        <div class="grid-scroll" id="gridScroll">
+            <div class="sheet-card" id="sheetCard">
+                <table id="grid"></table>
+                <div class="img-layer" id="imgLayer"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="tabs">
+        <div class="tlist" id="tabList"></div>
+        <span class="dims mono" id="dims"></span>
+    </footer>
+
+    <!-- ============ PASSWORD MODAL ============ -->
+    <div class="pw-overlay" id="pwOverlay">
+        <div class="pw-card">
+            <div class="pw-lock" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="11" width="16" height="10" rx="1.5" />
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                </svg>
+            </div>
+            <h2>Protected <em>workbook</em></h2>
+            <p class="pw-file mono" id="pwFile"></p>
+            <p class="pw-queue" id="pwQueue"></p>
+            <div class="pw-field">
+                <label for="pwInput">Password</label>
+                <input id="pwInput" type="password" autocomplete="off" spellcheck="false" placeholder="••••••••••••">
+            </div>
+            <label class="pw-remember">
+                <input type="checkbox" id="pwRemember" checked>
+                Remember for this session — open the remaining files with one click
+            </label>
+            <p class="pw-err" id="pwErr" hidden>Incorrect password — please try again.</p>
+            <div class="pw-actions">
+                <button class="pw-unlock" id="pwUnlock">Unlock &amp; preview</button>
+                <button class="pw-cancel" id="pwCancel">Cancel</button>
+            </div>
+            <p class="pw-note">Decryption happens locally. The password is never stored or transmitted.</p>
+        </div>
+    </div>
+
+    <!-- ============ EXPORT HISTORY SIDE PANEL ============ -->
+    <aside class="hist" id="histPanel" hidden>
+        <div class="hist-head">
+            <div>
+                <p class="hist-over mono">Tenant vault</p>
+                <h2>Export <em>history</em></h2>
+            </div>
+            <div class="hist-actions">
+                <button class="icon-btn" id="histRefresh" title="Refresh">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 1 1-2.6-6.4" />
+                        <path d="M21 3v5h-5" />
+                    </svg>
+                </button>
+                <button class="icon-btn" id="histClose" title="Close panel">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                        stroke-linecap="round">
+                        <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="hist-list" id="histList"></div>
+        <p class="hist-note mono">Every generated export lives in the tenant's uploads vault. Locked workbooks ask for
+            their password / pin before opening — unlocking happens locally.</p>
+    </aside>
+
+    <div class="dragover" id="dragOverlay">
+        <div>Drop to add</div>
+    </div>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p id="loadMsg">Reading file…</p>
+    </div>
+    <div class="toast" id="toast"></div>
+    <input type="file" id="fileInput" accept=".xlsx,.xlsm" multiple hidden>
+
+    <script>
+        /* ================================================================
+           WORKBOOK VAULT
+           - Add many .xlsx/.xlsm files → ledger list with lock badges.
+           - Click a file → password prompt → local Agile decryption → preview.
+           - Session password memory + decrypted cache: unlock once, reopen free.
+           ================================================================ */
+        const $ = s => document.querySelector(s);
+        const LINE = '#E2DDD3';
+        const THEME = ['FFFFFFFF', 'FF000000', 'FFEEEEEE', 'FF44546A', 'FF4472C4', 'FFED7D31',
+            'FFA5A5A5', 'FFFFC000', 'FF5B9BD5', 'FF70AD47', 'FF264478'];
+        const BS = {
+            thin: 1, hair: 1, dotted: 1, dashed: 1, dashDot: 1, medium: 2, mediumDashed: 2,
+            mediumDashDot: 2, double: 2, slantDashDot: 2, thick: 3
+        };
+        const MAXR = 10000, MAXC = 120;
+
+        const state = {
+            files: [],              /* { id, file, name, size, lastModified, encrypted, unlocked, error, buffer } */
+            nextId: 1,
+            mode: 'list',           /* 'list' | 'preview' */
+            wb: null, active: 0, zoom: 1, gl: null,
+            hits: [], hitIdx: 0,
+            previewIdx: -1,
+            sessionPw: null,        /* remembered password, memory only */
+        };
+
+        /* ---------------- tiny utils ---------------- */
+        const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const escTxt = t => esc(t).replace(/\n/g, '<br>');
+        const colLetter = i => { let s = ''; i++; while (i) { s = String.fromCharCode(65 + (i - 1) % 26) + s; i = Math.floor((i - 1) / 26); } return s; };
+        const colIdx = s => { let n = 0; for (const ch of s) n = n * 26 + (ch.charCodeAt(0) - 64); return n; };
+        const tick = () => new Promise(r => setTimeout(r, 0));
+        const errX = c => { const e = new Error(c); e.code = c; return e; };
+        const fmtKB = b => b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : (b / 1024).toFixed(1) + ' KB';
+        const fmtWhen = ts => new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+        function toast(msg, type) {
+            const t = $('#toast');
+            t.textContent = msg;
+            t.className = 'toast show' + (type ? ' ' + type : '');
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => t.classList.remove('show'), 4200);
+        }
+        function showLoad(msg) { $('#loadMsg').textContent = msg; $('#loading').classList.add('show'); }
+        function hideLoad() { $('#loading').classList.remove('show'); }
+
+        /* ================================================================
+           ENCRYPTION MODULE — ECMA-376 Agile Decryption (fully local)
+           ================================================================ */
+        function utf16le(s) {
+            const b = new Uint8Array(s.length * 2);
+            for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); b[2 * i] = c & 0xff; b[2 * i + 1] = c >> 8; }
+            return b;
+        }
+        function u8ToWA(u8) {
+            const words = [], n = u8.length;
+            for (let i = 0; i < n; i++) words[i >>> 2] = (words[i >>> 2] || 0) | (u8[i] << (24 - (i % 4) * 8));
+            return CryptoJS.lib.WordArray.create(words, n);
+        }
+        function waToU8(wa) {
+            const n = wa.sigBytes, out = new Uint8Array(n);
+            for (let i = 0; i < n; i++) out[i] = (wa.words[i >>> 2] >>> (24 - (i & 3) * 8)) & 0xff;
+            return out;
+        }
+        function toWA(x) { return x instanceof CryptoJS.lib.WordArray ? x : u8ToWA(x); }
+        function le32wa(n) { const u = new Uint8Array(4); new DataView(u.buffer).setUint32(0, n, true); return u8ToWA(u); }
+        function algFn(name) {
+            const f = CryptoJS[String(name || 'SHA512').toUpperCase()];
+            if (!f) throw errX('UNSUPPORTED_HASH');
+            return f;
+        }
+        async function deriveH(F, salt, password, spin) {
+            let h = F(salt.clone().concat(utf16le(password)));
+            const it = new Uint8Array(4), dv = new DataView(it.buffer);
+            for (let i = 0; i < spin; i++) {
+                dv.setUint32(0, i, true);
+                h = F(h.clone().concat(u8ToWA(it)));
+                if ((i & 16383) === 16383) await tick();
+            }
+            return h;
+        }
+        function keyFrom(H, blockKey, F, bits) {
+            const full = F(H.clone().concat(u8ToWA(blockKey)));
+            return CryptoJS.lib.WordArray.create(full.words.slice(0, Math.ceil(bits / 32)), bits / 8);
+        }
+        function ivFrom(salt, block, F, size) {
+            const bk = typeof block === 'number' ? le32wa(block) : u8ToWA(block);
+            const full = F(salt.clone().concat(bk));
+            return CryptoJS.lib.WordArray.create(full.words.slice(0, Math.ceil(size / 32)), size / 8);
+        }
+        function aesDec(key, iv, dataU8) {
+            const cp = CryptoJS.lib.CipherParams.create({ ciphertext: u8ToWA(dataU8) });
+            const pt = CryptoJS.AES.decrypt(cp, key, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.NoPadding });
+            return waToU8(pt);
+        }
+        function b64ToU8(s) {
+            const bin = atob(String(s).replace(/\s+/g, ''));
+            const u = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+            return u;
+        }
+        function parseAgileXml(xml) {
+            const doc = new DOMParser().parseFromString(xml, 'text/xml');
+            const g = t => doc.getElementsByTagName(t)[0];
+            const kd = g('keyData'), ek = g('encryptedKey');
+            if (!kd || !ek) throw errX('BAD_ENCRYPTION_INFO');
+            const a = (el, n, d) => { const v = el.getAttribute(n); return v == null ? d : v; };
+            return {
+                keyData: {
+                    salt: b64ToU8(a(kd, 'saltValue')), keyBits: +a(kd, 'keyBits', 256),
+                    blockSize: +a(kd, 'blockSize', 16), hashSize: +a(kd, 'hashSize', 64),
+                },
+                enc: {
+                    salt: b64ToU8(a(ek, 'saltValue')), keyBits: +a(ek, 'keyBits', 256),
+                    blockSize: +a(ek, 'blockSize', 16), hashSize: +a(ek, 'hashSize', 64),
+                    spinCount: +a(ek, 'spinCount', 100000), hashAlg: a(ek, 'hashAlgorithm', 'SHA512'),
+                    verifierInput: b64ToU8(a(ek, 'encryptedVerifierHashInput')),
+                    verifierValue: b64ToU8(a(ek, 'encryptedVerifierHashValue')),
+                    keyValue: b64ToU8(a(ek, 'encryptedKeyValue')),
+                }
+            };
+        }
+        const BK = {
+            verifierHashInput: [0xfe, 0xa7, 0xd2, 0x76, 0x3b, 0x4b, 0x9e, 0x79],
+            verifierHashValue: [0x96, 0x7e, 0x64, 0x8f, 0x46, 0x1f, 0x1f, 0x93],
+            keyValue: [0x14, 0x6e, 0x0b, 0xe7, 0xab, 0xac, 0xd0, 0xd6],
+        };
+        async function decryptAgile(pkg, infoXml, password) {
+            const P = parseAgileXml(infoXml);
+            const F = algFn(P.enc.hashAlg);
+            const encSalt = u8ToWA(P.enc.salt);
+            const keySalt = u8ToWA(P.keyData.salt);
+
+            showLoad(`Deriving key (${P.enc.spinCount.toLocaleString()} iterations)…`);
+            const H = await deriveH(F, encSalt, password, P.enc.spinCount);
+
+            const viIn = aesDec(keyFrom(H, BK.verifierHashInput, F, P.enc.keyBits),
+                ivFrom(encSalt, BK.verifierHashInput, F, P.enc.blockSize),
+                P.enc.verifierInput);
+            const calc = F(u8ToWA(viIn)).toString(CryptoJS.enc.Hex).slice(0, P.enc.hashSize * 2);
+            const stored = waToU8(aesDec(keyFrom(H, BK.verifierHashValue, F, P.enc.keyBits),
+                ivFrom(encSalt, BK.verifierHashValue, F, P.enc.blockSize),
+                P.enc.verifierValue));
+            let storedHex = '';
+            for (const b of stored.subarray(0, P.enc.hashSize)) storedHex += b.toString(16).padStart(2, '0');
+            if (calc !== storedHex) throw errX('WRONG_PASSWORD');
+
+            const fileKey = u8ToWA(aesDec(keyFrom(H, BK.keyValue, F, P.keyData.keyBits),
+                ivFrom(encSalt, BK.keyValue, F, P.enc.blockSize),
+                P.enc.keyValue));
+
+            const origLen = new DataView(pkg.buffer, pkg.byteOffset, 8).getUint32(0, true);
+            const ct = pkg.subarray(8);
+            const SEG = 4096;
+            const out = new Uint8Array(ct.length);
+            for (let off = 0, seg = 0; off < ct.length; off += SEG, seg++) {
+                const piece = ct.subarray(off, Math.min(off + SEG, ct.length));
+                if (piece.length % 16) throw errX('BAD_PACKAGE');
+                out.set(aesDec(fileKey, ivFrom(keySalt, seg, F, P.keyData.blockSize), piece), off);
+                if ((seg & 255) === 255) await tick();
+            }
+            return out.subarray(0, Math.min(origLen, ct.length));
+        }
+        async function decryptBytes(u8, password) {
+            const cfbFile = CFB.read(u8, { type: 'array' });
+            const ei = CFB.find(cfbFile, 'EncryptionInfo');
+            const ep = CFB.find(cfbFile, 'EncryptedPackage');
+            if (!ei || !ep) throw errX('NO_ENCRYPT_STREAM');
+            const raw = x => x instanceof Uint8Array ? x : new Uint8Array(x);
+            const eiU8 = raw(ei.content);
+            if ((eiU8[0] | (eiU8[1] << 8)) < 4) throw errX('LEGACY_ENCRYPTION');
+            const xml = new TextDecoder('utf-8').decode(eiU8.subarray(8));
+            return await decryptAgile(raw(ep.content), xml, password);
+        }
+
+        /* ================================================================
+           PASSWORD MODAL
+           ================================================================ */
+        let pwResolve = null;
+        function promptPassword(item, wrong) {
+            return new Promise(resolve => {
+                pwResolve = resolve;
+                $('#pwFile').textContent = item.name;
+                const left = state.files.filter(f => f.encrypted && !f.unlocked && !f.error).length;
+                $('#pwQueue').textContent = state.sessionPw != null
+                    ? 'Using session password'
+                    : (left > 1 ? `${left} locked files in list` : '');
+                $('#pwErr').hidden = !wrong;
+                $('#pwInput').value = state.sessionPw != null ? state.sessionPw : '';
+                $('#pwRemember').checked = state.sessionPw != null;
+                $('#pwOverlay').classList.add('show');
+                setTimeout(() => {
+                    if (state.sessionPw != null) $('#pwUnlock').focus();
+                    else $('#pwInput').focus();
+                }, 40);
+            });
+        }
+        function closePw(result, remember) {
+            $('#pwOverlay').classList.remove('show');
+            const r = pwResolve; pwResolve = null;
+            if (remember) state.sessionPw = result; else if (result === null) state.sessionPw = state.sessionPw;
+            if (r) r(result);
+        }
+        $('#pwUnlock').addEventListener('click', () => closePw($('#pwInput').value, $('#pwRemember').checked));
+        $('#pwCancel').addEventListener('click', () => closePw(null, $('#pwRemember').checked));
+        $('#pwInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); closePw($('#pwInput').value, $('#pwRemember').checked); }
+        });
+
+        /* ================================================================
+           FILE LIST
+           ================================================================ */
+        async function addFiles(list) {
+            const fresh = [];
+            for (const f of list) {
+                if (!/\.(xlsx|xlsm)$/i.test(f.name)) { toast(`Skipped “${f.name}” — not an .xlsx/.xlsm file.`, 'warn'); continue; }
+                if (state.files.some(x => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified)) continue;
+                fresh.push({
+                    id: state.nextId++, file: f, name: f.name, size: f.size, lastModified: f.lastModified,
+                    encrypted: null, unlocked: false, error: null, buffer: null
+                });
+            }
+            if (!fresh.length) return;
+            state.files.push(...fresh);
+            renderList();
+
+            /* detect encryption per file via magic bytes */
+            for (const it of fresh) {
+                try {
+                    const head = new Uint8Array(await it.file.slice(0, 8).arrayBuffer());
+                    it.encrypted = head[0] === 0xD0 && head[1] === 0xCF && head[2] === 0x11 && head[3] === 0xE0;
+                } catch (e) { it.encrypted = null; }
+            }
+            renderList();
+            const enc = fresh.filter(f => f.encrypted).length;
+            toast(`${fresh.length} file${fresh.length === 1 ? '' : 's'} added` +
+                (enc ? ` — ${enc} password-protected` : ''), undefined);
+        }
+
+        function badge(it) {
+            if (it.error) return '<span class="fbadge error">ERROR</span>';
+            if (it.unlocked) return '<span class="fbadge done">UNLOCKED</span>';
+            if (it.encrypted === false) return '<span class="fbadge plain">NO PASSWORD</span>';
+            return '<span class="fbadge locked">LOCKED</span>';
+        }
+        function fico(it) {
+            if (it.error) return `<span class="fico error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/></svg></span>`;
+            if (it.unlocked) return `<span class="fico done"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>`;
+            return `<span class="fico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>`;
+        }
+        function renderList() {
+            const has = state.files.length > 0;
+            $('#drop').style.display = has ? 'none' : 'flex';
+            $('#listView').hidden = !has;
+            if (!has) return;
+
+            $('#listCount').textContent =
+                `${state.files.length} file${state.files.length === 1 ? '' : 's'} · ` +
+                `${state.files.filter(f => f.unlocked).length} unlocked`;
+
+            $('#fileList').innerHTML = state.files.map((it, i) => `
+    <div class="frow" data-idx="${i}" role="button" tabindex="0" aria-label="Open ${esc(it.name)}">
+      ${fico(it)}
+      <div class="fmeta">
+        <p class="fname">${esc(it.name)}</p>
+        <p class="fsub">${fmtKB(it.size)} · saved ${fmtWhen(it.lastModified)}${it.error ? ' · ' + esc(it.error) :
+                    it.encrypted ? ' · encrypted (Agile)' : ' · plain workbook'}</p>
+      </div>
+      ${badge(it)}
+      <button class="fx" data-rm="${i}" title="Remove from list" aria-label="Remove ${esc(it.name)}">×</button>
+      <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </div>`).join('');
+
+            $('#ctxBody').innerHTML = `<b>${state.files.length}</b> file${state.files.length === 1 ? '' : 's'} · ` +
+                `<b>${state.files.filter(f => f.unlocked).length}</b> unlocked · ` +
+                `<b>${state.files.filter(f => f.encrypted && !f.unlocked).length}</b> locked`;
+            $('#ctxHint').textContent = 'Click a file to open it';
+        }
+        $('#fileList').addEventListener('click', e => {
+            const rm = e.target.closest('[data-rm]');
+            if (rm) {
+                e.stopPropagation();
+                const i = +rm.dataset.rm;
+                const was = state.files[i];
+                state.files.splice(i, 1);
+                renderList();
+                toast(`Removed “${was.name}” from the list.`);
+                return;
+            }
+            const row = e.target.closest('.frow');
+            if (row) openByIndex(+row.dataset.idx);
+        });
+        $('#fileList').addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                const row = e.target.closest('.frow');
+                if (row) { e.preventDefault(); openByIndex(+row.dataset.idx); }
+            }
+        });
+        $('#clearAll').addEventListener('click', () => {
+            state.files = []; state.sessionPw = null;
+            showList();
+            toast('List cleared — session password forgotten.');
+        });
+
+        /* ================================================================
+           OPEN FLOW — list click → password → decrypt → preview
+           ================================================================ */
+        async function openByIndex(i) {
+            const it = state.files[i];
+            if (!it) return;
+
+            if (it.unlocked && it.buffer) {
+                await previewBuffer(it, it.buffer, i);
+                return;
+            }
+            if (it.encrypted === false) {
+                showLoad('Reading file…');
+                try {
+                    const buf = await it.file.arrayBuffer();
+                    it.buffer = buf; it.unlocked = true;
+                    await previewBuffer(it, buf, i);
+                } catch (err) { it.error = 'unreadable'; renderList(); hideLoad(); toast('Could not read this file.', 'error'); }
+                return;
+            }
+
+            let first = true;
+            while (true) {
+                const pw = await promptPassword(it, !first);
+                if (pw == null || pw === '') { if (pw === '') { first = true; $('#pwErr').hidden = false; continue; } return; }
+                showLoad('Decrypting workbook…');
+                try {
+                    const u8 = new Uint8Array(await it.file.arrayBuffer());
+                    const plain = await decryptBytes(u8, pw);
+                    const buf = plain.buffer.slice(plain.byteOffset, plain.byteOffset + plain.byteLength);
+                    it.buffer = buf; it.unlocked = true; it.error = null;
+                    renderList();
+                    await previewBuffer(it, buf, i);
+                    toast(state.sessionPw != null && state.files.some(f => f.encrypted && !f.unlocked)
+                        ? 'Unlocked — the session password will open the remaining files with one click.'
+                        : `Unlocked “${it.name}”.`);
+                    return;
+                } catch (err) {
+                    if (err.code === 'WRONG_PASSWORD') {
+                        if (state.sessionPw === pw) state.sessionPw = null;  /* a wrong remembered pw clears memory */
+                        first = false;
+                        continue;
+                    }
+                    it.error =
+                        err.code === 'LEGACY_ENCRYPTION' ? 'legacy RC4 — re-save in modern Excel' :
+                            err.code === 'LIB_FAIL' ? 'decryption modules failed to load' :
+                                err.code === 'NO_ENCRYPT_STREAM' ? 'rights-managed or corrupt' :
+                                    err.code === 'BAD_ENCRYPTION_INFO' || err.code === 'BAD_PACKAGE' || err.code === 'UNSUPPORTED_HASH'
+                                        ? 'unsupported encryption variant' : 'unreadable';
+                    renderList();
+                    hideLoad();
+                    toast(`“${it.name}”: ${it.error}.`, 'error');
+                    return;
+                }
+            }
+        }
+
+        /* ================================================================
+           MODE SWITCHING + PREVIEW RENDERING
+           ================================================================ */
+        function showList() {
+            state.mode = 'list';
+            document.body.className = 'mode-list';
+            $('#gridScroll').style.display = 'none';
+            renderList();
+        }
+        async function previewBuffer(item, buf, idx) {
+            showLoad('Parsing workbook…');
+            try {
+                const t0 = performance.now();
+                const wb = new ExcelJS.Workbook();
+                await wb.xlsx.load(buf);
+                state.wb = wb; state.active = 0; state.zoom = 1; state.gl = null;
+                state.hits = []; state.hitIdx = 0; state.previewIdx = idx;
+                $('#q').value = '';
+
+                state.mode = 'preview';
+                document.body.className = 'mode-preview';
+                $('#drop').style.display = 'none';
+                $('#listView').hidden = true;
+                $('#gridScroll').style.display = 'block';
+
+                const enc = item.encrypted ? ' · decrypted' : '';
+                $('#ctxBody').innerHTML = `<b>${esc(item.name)}</b> ${fmtKB(item.size)}${enc}` +
+                    `<span class="dot">·</span>${wb.worksheets.length} sheet${wb.worksheets.length === 1 ? '' : 's'}` +
+                    `<span class="dot">·</span>parsed in ${Math.round(performance.now() - t0)} ms`;
+                $('#ctxHint').textContent = 'Esc returns to the file list';
+
+                const list = $('#tabList');
+                list.innerHTML = '';
+                wb.worksheets.forEach((ws, i) => {
+                    const b = document.createElement('button');
+                    b.className = 'tab' + (i === 0 ? ' on' : '');
+                    b.textContent = ws.name || ('Sheet' + (i + 1));
+                    b.addEventListener('click', () => {
+                        list.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+                        b.classList.add('on');
+                        renderSheet(i);
+                        $('#gridScroll').scrollTop = 0; $('#gridScroll').scrollLeft = 0;
+                    });
+                    list.appendChild(b);
+                });
+                renderSheet(0);
+                hideLoad();
+            } catch (err) {
+                hideLoad();
+                console.error(err);
+                toast('Decrypted, but the workbook could not be parsed — it may be corrupt.', 'error');
+            }
+        }
+        $('#backBtn').addEventListener('click', showList);
+
+        /* ---------------- sheet rendering ---------------- */
+        function argbCss(c) {
+            if (!c) return null;
+            if (typeof c === 'object') {
+                if (c.argb) c = c.argb;
+                else if (c.theme != null) {
+                    const base = (THEME[c.theme % THEME.length] || '#000000').replace('FF', '#');
+                    return applyTint(base, c.tint || 0);
+                } else return null;
+            }
+            let s = String(c);
+            if (/^[0-9A-Fa-f]{8}$/.test(s)) s = s.slice(2);
+            return /^[0-9A-Fa-f]{6}$/.test(s) ? '#' + s : null;
+        }
+        function applyTint(hex, t) {
+            if (!t) return hex;
+            const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+            const f = c => Math.round(t > 0 ? c + (255 - c) * t : c * (1 + t));
+            return '#' + [f(r), f(g), f(b)].map(x => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('');
+        }
+        function fontCss(n) {
+            n = n || 'Calibri';
+            if (/consol|mono|courier/i.test(n)) return `'${n}',Consolas,'Spline Sans Mono',monospace`;
+            if (/georgia|times|garamond|book|serif/i.test(n)) return `'${n}',Georgia,serif`;
+            return `'${n}',Calibri,'Segoe UI',sans-serif`;
+        }
+
+
+        function fmtGeneral(n) { return Number.isInteger(n) ? String(n) : String(+n.toFixed(10)); }
+        function fmtNum(n, nf) {
+            nf = nf || 'General';
+            if (/general/i.test(nf)) return fmtGeneral(n);
+            const decM = nf.match(/0\.(0+)/); const dec = decM ? decM[1].length : null;
+            if (/%/.test(nf)) return (n * 100).toFixed(dec || 0) + '%';
+            let body;
+            if (/#,##0/.test(nf)) body = n.toLocaleString('en-US', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec != null ? dec : 2 });
+            else body = dec != null ? n.toFixed(dec) : fmtGeneral(n);
+            const cur = nf.match(/[$€£¥]/); if (cur) body = cur[0] + body;
+            if (n < 0 && /\(.*\)/.test(nf)) body = '(' + body.replace('-', '') + ')';
+            return body;
+        }
+        function fmtDateCell(d, nf) {
+            const P = x => String(x).padStart(2, '0');
+            const M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            nf = (nf || '').toString();
+            let datePart;
+            if (/mmm/i.test(nf)) datePart = `${P(d.getDate())} ${M[d.getMonth()]} ${d.getFullYear()}`;
+            else if (/yyyy/i.test(nf) && /mm/i.test(nf)) datePart = `${d.getFullYear()}-${P(d.getMonth() + 1)}-${P(d.getDate())}`;
+            else if (/d/i.test(nf) && /m/i.test(nf)) datePart = `${P(d.getDate())}/${P(d.getMonth() + 1)}/${/yyyy/i.test(nf) ? d.getFullYear() : String(d.getFullYear()).slice(2)}`;
+            else datePart = `${P(d.getDate())} ${M[d.getMonth()]} ${d.getFullYear()}`;
+            if (/h/i.test(nf)) {
+                const mm = P(d.getMinutes());
+                const time = /hh/i.test(nf)
+                    ? `${P(d.getHours())}:${mm}` + (/ss/i.test(nf) ? ':' + P(d.getSeconds()) : '')
+                    : `${d.getHours() % 12 || 12}:${mm}${/ss/i.test(nf) ? ':' + P(d.getSeconds()) : ''}${/a/i.test(nf) ? (d.getHours() >= 12 ? ' PM' : ' AM') : ''}`;
+                return datePart + ' ' + time;
+            }
+            return datePart;
+        }
+        function cellDisplay(cell) {
+            let v = cell.value;
+            if (v == null || v === '') return { text: '' };
+            if (typeof v === 'boolean') return { text: v ? 'TRUE' : 'FALSE', num: true };
+            if (v instanceof Date) return { text: fmtDateCell(v, cell.numFmt), num: true };
+            if (typeof v === 'number') return { text: fmtNum(v, cell.numFmt), num: true };
+            if (typeof v === 'object') {
+                if (Array.isArray(v.richText)) return { rich: v.richText };
+                if (v.formula !== undefined || v.sharedFormula !== undefined) {
+                    const r = v.result;
+                    if (r == null) return { text: '' };
+                    if (r instanceof Date) return { text: fmtDateCell(r, cell.numFmt), num: true };
+                    if (typeof r === 'number') return { text: fmtNum(r, cell.numFmt), num: true };
+                    return { text: String(r) };
+                }
+                if (v.error) return { text: '#' + v.error, err: true };
+                if (v.hyperlink) return { text: String(v.text ?? v.hyperlink), link: v.hyperlink };
+                if (v.text !== undefined) return { text: String(v.text) };
+            }
+            return { text: String(v) };
+        }
+        function runSpan(run, baseF) {
+            const f = Object.assign({}, baseF || {}, run.font || {});
+            let s = `font-family:${fontCss(f.name)};font-size:${((f.size || 11) * state.zoom).toFixed(1)}pt;`;
+            if (f.bold) s += 'font-weight:700;';
+            if (f.italic) s += 'font-style:italic;';
+            const c = argbCss(f.color); if (c) s += `color:${c};`;
+            return `<span style="${s}">${escTxt(run.text)}</span>`;
+        }
+        function sideSh(side, px, col) {
+            const m = {
+                top: `inset 0 ${px}px 0 0 ${col}`, bottom: `inset 0 -${px}px 0 0 ${col}`,
+                left: `inset ${px}px 0 0 0 ${col}`, right: `inset -${px}px 0 0 0 ${col}`
+            };
+            return m[side];
+        }
+        function cellStyle(cell, disp, gl) {
+            const z = state.zoom, f = cell.font || {}, al = cell.alignment || {};
+            const parts = [];
+            let bg = '#FFFFFF';
+            if (cell.fill && cell.fill.type === 'pattern' && cell.fill.pattern === 'solid')
+                bg = argbCss(cell.fill.fgColor) || '#FFFFFF';
+            parts.push('background:' + bg);
+            const bd = cell.border || {}, sh = [], hasB = {};
+            ['top', 'right', 'bottom', 'left'].forEach(side => {
+                const b = bd[side];
+                if (b && b.style) {
+                    hasB[side] = 1;
+                    const px = Math.max(1, Math.round((BS[b.style] || 1) * Math.max(z, .75)));
+                    sh.push(sideSh(side, px, argbCss(b.color) || '#1A1A1A'));
+                }
+            });
+            if (gl) {
+                if (!hasB.bottom) sh.push('inset 0 -1px 0 0 ' + LINE);
+                if (!hasB.right) sh.push('inset -1px 0 0 0 ' + LINE);
+            }
+            if (sh.length) parts.push('box-shadow:' + sh.join(','));
+            parts.push('font-family:' + fontCss(f.name));
+            parts.push('font-size:' + ((f.size || 11) * z).toFixed(1) + 'pt');
+            if (f.bold) parts.push('font-weight:700');
+            if (f.italic) parts.push('font-style:italic');
+            if (f.underline) parts.push('text-decoration:underline');
+            if (f.strike) parts.push('text-decoration:line-through');
+            const fc = argbCss(f.color); if (fc) parts.push('color:' + fc);
+            const hAlign = al.horizontal || (disp.num ? 'right' : 'left');
+            if (hAlign !== 'general') parts.push('text-align:' + hAlign);
+            parts.push('vertical-align:' + (al.vertical === 'top' ? 'top' : al.vertical === 'middle' ? 'middle' : 'bottom'));
+            if (al.wrapText) parts.push('white-space:normal;word-break:break-word');
+            if (al.indent) parts.push(`padding-left:${5 + al.indent * 8 * z}px`);
+            return parts.join(';');
+        }
+        function colWidthPx(ws, c) {
+            let w = null;
+            const cols = ws.model && ws.model.cols;
+            if (cols) for (const k of cols) {
+                if (c >= (k.min || 1) && c <= (k.max || k.min || 1)) { if (k.width != null) { w = k.width; break; } }
+            }
+            if (w == null) { try { w = ws.getColumn(c).width; } catch (e) { } }
+            if (w == null) w = 8.43;
+            return Math.max(8, Math.round(w * 7 + 5));
+        }
+        function rowHeightPx(ws, r) {
+            try { const h = ws.getRow(r).height; return h != null ? h : null; } catch (e) { return null; }
+        }
+        function decodeRef(ref) {
+            const m = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(ref || '');
+            return m ? { c1: colIdx(m[1]), r1: +m[2], c2: colIdx(m[3]), r2: +m[4] } : null;
+        }
+        function renderSheet(i) {
+            state.active = i;
+            const ws = state.wb.worksheets[i];
+            const view = (ws.views && ws.views[0]) || {};
+            if (state.gl == null) state.gl = view.showGridLines !== false;
+            syncGlBtn();
+
+            const nR = Math.min(ws.rowCount || 0, MAXR);
+            const nC = Math.min(ws.columnCount || 1, MAXC);
+            const rnW = Math.round(36 * state.zoom);
+            const rulerH = Math.round(22 * state.zoom);
+
+            const colW = [], colX = [0];
+            for (let c = 1; c <= nC; c++) { colW.push(colWidthPx(ws, c) * state.zoom); colX.push(colX[c - 1] + colW[c - 1]); }
+            const totalW = colX[nC];
+            const rowY = [0];
+            for (let r = 1; r <= nR; r++) {
+                const h = rowHeightPx(ws, r);
+                rowY.push(rowY[r - 1] + Math.round((h == null ? 20 : h * 96 / 72) * state.zoom));
+            }
+
+            const spanMap = {}, covered = new Set();
+            ((ws.model && ws.model.merges) || []).forEach(m => {
+                const a = decodeRef(m); if (!a) return;
+                spanMap[`${a.r1},${a.c1}`] = { cs: a.c2 - a.c1 + 1, rs: a.r2 - a.r1 + 1 };
+                for (let r = a.r1; r <= a.r2; r++) for (let c = a.c1; c <= a.c2; c++)
+                    if (!(r === a.r1 && c === a.c1)) covered.add(r + ',' + c);
+            });
+
+            const cellHtml = (cell, r, c) => {
+                const disp = cellDisplay(cell);
+                const span = spanMap[`${r},${c}`];
+                let content;
+                if (disp.rich) content = disp.rich.map(run => runSpan(run, cell.font)).join('');
+                else if (disp.link) content = `<a href="${esc(disp.link)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">${escTxt(disp.text)}</a>`;
+                else content = escTxt(disp.text);
+                const attrs = [`data-r="${r}" data-c="${c}"`, `style="${cellStyle(cell, disp, state.gl)}"`];
+                if (disp.err) attrs[0] += ' class="err"';
+                if (span) attrs.push(`colspan="${span.cs}"`, `rowspan="${span.rs}"`);
+                return `<td ${attrs.join(' ')}>${content}</td>`;
+            };
+            const rowHtml = r => {
+                const row = ws.getRow(r);
+                const h = rowHeightPx(ws, r);
+                const hp = Math.round((h == null ? 20 : h * 96 / 72) * state.zoom);
+                let out = `<tr style="height:${hp}px"><th class="rn">${r}</th>`;
+                for (let c = 1; c <= nC; c++) {
+                    if (covered.has(r + ',' + c)) continue;
+                    out += cellHtml(row.getCell(c), r, c);
+                }
+                return out + '</tr>';
+            };
+
+            let cg = `<colgroup><col style="width:${rnW}px">`;
+            for (let c = 0; c < nC; c++) cg += `<col style="width:${colW[c]}px">`;
+            cg += '</colgroup>';
+
+            let head = '<thead><tr class="ruler"><th class="corner"></th>';
+            for (let c = 1; c <= nC; c++) head += `<th scope="col">${colLetter(c - 1)}</th>`;
+            head += '</tr></thead>';
+
+            let body;
+            if (nR === 0) {
+                body = `<tbody><tr style="height:64px"><th class="rn">1</th><td colspan="${nC}" style="text-align:center;color:var(--muted);font-style:italic">This worksheet is empty.</td></tr></tbody>`;
+            } else {
+                body = '<tbody>' + Array.from({ length: nR }, (_, k) => rowHtml(k + 1)).join('') + '</tbody>';
+            }
+
+            const table = $('#grid');
+            table.innerHTML = cg + head + body;
+            table.style.width = (rnW + totalW) + 'px';
+
+            renderImages(ws, { colX, rowY, rnW, rulerH });
+            $('#dims').textContent = `${ws.name} — ${ws.rowCount || 0} rows × ${ws.columnCount || 0} cols`;
+            $('#zVal').textContent = Math.round(state.zoom * 100) + '%';
+            if (ws.rowCount > MAXR || ws.columnCount > MAXC)
+                toast('Large sheet — preview truncated to ' + MAXR + ' rows × ' + MAXC + ' cols.', 'warn');
+            clearHits();
+        }
+        function mediaUrl(m) {
+            try {
+                let b = (m && (m.buffer || m.data)) || null;
+                if (!b) return null;
+                let bytes;
+                if (b instanceof ArrayBuffer) bytes = new Uint8Array(b);
+                else if (ArrayBuffer.isView(b)) bytes = new Uint8Array(b.buffer, b.byteOffset, b.byteLength);
+                else return null;
+                const ext = ((m.extension || 'png') + '').toLowerCase();
+                const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'gif' ? 'image/gif'
+                    : ext === 'svg' ? 'image/svg+xml' : 'image/png';
+                return URL.createObjectURL(new Blob([bytes], { type: mime }));
+            } catch (e) { return null; }
+        }
+        function posAt(arr, frac) {
+            const i = Math.floor(frac), fr = frac - i;
+            const base = arr[Math.min(i, arr.length - 1)] || 0;
+            const next = arr[Math.min(i + 1, arr.length)] != null ? arr[Math.min(i + 1, arr.length)] : base + 64;
+            return base + fr * (next - base);
+        }
+        function renderImages(ws, ctx) {
+            const layer = $('#imgLayer');
+            layer.innerHTML = '';
+            let imgs = [];
+            try { imgs = ws.getImages ? ws.getImages() : []; } catch (e) { }
+            if (!imgs.length) return;
+            const media = (state.wb.model && state.wb.model.media) || [];
+            let shown = 0;
+            imgs.forEach(im => {
+                try {
+                    const m = media[im.imageId != null ? im.imageId : 0] || im;
+                    const url = mediaUrl(m); if (!url) return;
+                    const tl = im.tl || { col: 0, row: 0 };
+                    const x = posAt(ctx.colX, tl.col), y = posAt(ctx.rowY, tl.row);
+                    let w, h;
+                    if (im.ext) { w = im.ext.width; h = im.ext.height; }
+                    else if (im.br) { w = posAt(ctx.colX, im.br.col) - x; h = posAt(ctx.rowY, im.br.row) - y; }
+                    else { w = 96; h = 96; }
+                    if (!(w > 0 && h > 0)) return;
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.style.left = (ctx.rnW + x) + 'px';
+                    img.style.top = (ctx.rulerH + y) + 'px';
+                    img.style.width = w + 'px';
+                    img.style.height = h + 'px';
+                    layer.appendChild(img);
+                    shown++;
+                } catch (e) { }
+            });
+            if (!shown) toast('Workbook contains images that could not be rendered.', 'warn');
+        }
+
+        /* ---------------- search ---------------- */
+        function clearHits() {
+            document.querySelectorAll('#grid td.hit').forEach(td => td.classList.remove('hit', 'active'));
+            state.hits = []; state.hitIdx = 0;
+            $('#qCnt').textContent = '';
+            $('#qPrev').disabled = $('#qNext').disabled = true;
+        }
+        function focusHit() {
+            state.hits.forEach(td => td.classList.remove('active'));
+            const td = state.hits[state.hitIdx];
+            if (!td) return;
+            td.classList.add('active');
+            td.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+            $('#qCnt').textContent = `${state.hitIdx + 1}/${state.hits.length}`;
+            $('#qPrev').disabled = $('#qNext').disabled = state.hits.length < 2;
+        }
+        function runSearch() {
+            const q = $('#q').value.trim().toLowerCase();
+            clearHits();
+            if (!q) return;
+            document.querySelectorAll('#grid td[data-r]').forEach(td => {
+                if (td.textContent.toLowerCase().includes(q)) { td.classList.add('hit'); state.hits.push(td); }
+            });
+            if (state.hits.length) { state.hitIdx = 0; focusHit(); }
+            else $('#qCnt').textContent = '0/0';
+        }
+
+        /* ---------------- controls ---------------- */
+        function syncGlBtn() { $('#glBtn').setAttribute('aria-pressed', String(!!state.gl)); }
+        $('#glBtn').addEventListener('click', () => { state.gl = !state.gl; syncGlBtn(); renderSheet(state.active); });
+        $('#zIn').addEventListener('click', () => { state.zoom = Math.min(1.6, +(state.zoom + .1).toFixed(1)); renderSheet(state.active); });
+        $('#zOut').addEventListener('click', () => { state.zoom = Math.max(.5, +(state.zoom - .1).toFixed(1)); renderSheet(state.active); });
+
+        let qT;
+        $('#q').addEventListener('input', () => { clearTimeout(qT); qT = setTimeout(runSearch, 160); });
+        $('#q').addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); if (state.hits.length) { state.hitIdx = (state.hitIdx + (e.shiftKey ? -1 : 1) + state.hits.length) % state.hits.length; focusHit(); } }
+            if (e.key === 'Escape') { e.stopPropagation(); $('#q').value = ''; clearHits(); }
+        });
+        $('#qNext').addEventListener('click', () => { if (state.hits.length) { state.hitIdx = (state.hitIdx + 1) % state.hits.length; focusHit(); } });
+        $('#qPrev').addEventListener('click', () => { if (state.hits.length) { state.hitIdx = (state.hitIdx - 1 + state.hits.length) % state.hits.length; focusHit(); } });
+
+        $('#openBtn').addEventListener('click', () => $('#fileInput').click());
+        $('#browseBtn').addEventListener('click', () => $('#fileInput').click());
+        $('#fileInput').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
+
+        let dragDepth = 0;
+        window.addEventListener('dragenter', e => {
+            if (![...e.dataTransfer.types].includes('Files')) return;
+            dragDepth++; $('#dragOverlay').classList.add('show'); $('#dropCard')?.classList.add('drag');
+        });
+        window.addEventListener('dragleave', () => {
+            if (--dragDepth <= 0) { dragDepth = 0; $('#dragOverlay').classList.remove('show'); $('#dropCard')?.classList.remove('drag'); }
+        });
+        window.addEventListener('dragover', e => e.preventDefault());
+        window.addEventListener('drop', e => {
+            e.preventDefault(); dragDepth = 0;
+            $('#dragOverlay').classList.remove('show'); $('#dropCard')?.classList.remove('drag');
+            if (!pwResolve) addFiles([...e.dataTransfer.files]);
+        });
+        window.addEventListener('keydown', e => {
+            if (pwResolve) { if (e.key === 'Escape') closePw(null, false); return; }
+            if (hist.open && e.key === 'Escape') { setHistOpen(false); return; }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); $('#fileInput').click(); }
+            if (e.key === '/' && state.mode === 'preview' && document.activeElement !== $('#q')) { e.preventDefault(); $('#q').focus(); }
+            if (e.key === 'Escape' && state.mode === 'preview') showList();
+        });
+
+        /* ================================================================
+           EXPORT HISTORY SIDE PANEL — the tenant's saved exports.
+           Fed by deceased-service GET /export-history via the query params:
+             ?history=<endpoint>&token=<jwt>&tenant=<slug>&uploads=<origin>
+           ================================================================ */
+        const hist = { url: null, token: '', tenant: '', uploads: '', open: false, items: [], loading: false };
+
+        function histAbsUrl(fileUrl) {
+            if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+            const base = hist.uploads && /^https?:\/\//i.test(hist.uploads) ? hist.uploads : location.origin;
+            return `${base.replace(/\/+$/, '')}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+        }
+
+        async function loadHistory() {
+            if (!hist.url || hist.loading) return;
+            hist.loading = true;
+            $('#histList').innerHTML = '<div class="hist-empty">Loading export history…</div>';
+            try {
+                const headers = {};
+                if (hist.token) headers['Authorization'] = `Bearer ${hist.token}`;
+                if (hist.tenant) headers['x-tenant-slug'] = hist.tenant;
+                const res = await fetch(hist.url, { headers });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const json = await res.json();
+                hist.items = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []);
+                renderHistory();
+            } catch (err) {
+                $('#histList').innerHTML = `<div class="hist-empty">Could not load history — ${esc(err && err.message ? err.message : 'unknown error')}</div>`;
+            } finally { hist.loading = false; }
+        }
+
+        function renderHistory() {
+            const list = $('#histList');
+            if (!hist.items.length) {
+                list.innerHTML = '<div class="hist-empty">No exports saved yet for this tenant.<br>Generate one from Deceased Records → Export.</div>';
+                return;
+            }
+            const activeName = state.previewIdx >= 0 ? (state.files[state.previewIdx] || {}).name : null;
+            list.innerHTML = hist.items.map((it, i) => {
+                const name = it.fileName || it.file_name || 'export.xlsx';
+                const when = fmtWhen(new Date(it.modifiedAt || it.modified_at || it.generated_at || Date.now()).getTime());
+                const size = fmtKB(it.size || it.file_size || 0);
+                return `<button class="hist-item${name === activeName ? ' on' : ''}" data-i="${i}">
+                    <span class="hn">${esc(name)}</span>
+                    <span class="hm mono"><span>${when}</span><span>${size}</span></span>
+                    <span class="hopen">↗</span>
+                </button>`;
+            }).join('');
+            list.querySelectorAll('.hist-item').forEach(btn => {
+                btn.addEventListener('click', () => openHistoryItem(hist.items[+btn.dataset.i]));
+            });
+        }
+
+        async function openHistoryItem(it) {
+            if (!it) return;
+            const name = String(it.fileName || it.file_name || 'export.xlsx').replace(/[\\/:*?"<>|]/g, '_');
+            try {
+                showLoad('Fetching export…');
+                const res = await fetch(histAbsUrl(it.fileUrl || it.file_url || it.url || ''), { credentials: 'omit' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const blob = await res.blob();
+                hideLoad();
+
+                /* replace any previous copy so re-opens stay tidy */
+                const dup = state.files.findIndex(f => f.name === name);
+                if (dup >= 0) state.files.splice(dup, 1);
+
+                const file = new File([blob], name, {
+                    type: blob.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    lastModified: Date.now(),
+                });
+                await addFiles([file]);
+                const idx = state.files.findIndex(f => f.name === name);
+                if (idx < 0) return;
+
+                /* openByIndex prompts for the password/pin when the workbook is
+                   encrypted, otherwise previews straight away */
+                await openByIndex(idx);
+                renderHistory();
+            } catch (err) {
+                hideLoad();
+                toast(`Could not open “${name}” — ${err && err.message ? err.message : 'unknown error'}.`, 'error');
+            }
+        }
+
+        function setHistOpen(open) {
+            hist.open = open;
+            $('#histPanel').hidden = !open;
+            if (open) renderHistory();
+        }
+
+        $('#histBtn').addEventListener('click', () => setHistOpen(!hist.open));
+        $('#histClose').addEventListener('click', () => setHistOpen(false));
+        $('#histRefresh').addEventListener('click', loadHistory);
+
+        /* ================================================================
+           URL BOOT — open a server-generated export straight from the
+           shared uploads folder:
+             /xlsx-preview.html?file=<uploads URL>&name=<file.xlsx>
+           Used by the deceased-records Excel export controller, which saves
+           the workbook into /uploads/<tenant>/deceased-reports/.
+           ================================================================ */
+        (async function bootFromUrl() {
+            try {
+                const qs = new URLSearchParams(location.search);
+
+                /* history side panel wiring — also works without ?file= */
+                hist.url = qs.get('history');
+                hist.token = qs.get('token') || '';
+                hist.tenant = qs.get('tenant') || '';
+                hist.uploads = qs.get('uploads') || '';
+                if (hist.url) {
+                    hist.url = new URL(hist.url, location.href).href;
+                    $('#histBtn').hidden = false;
+                    setHistOpen(true);
+                    loadHistory();
+                }
+
+                const fileUrl = qs.get('file');
+                if (!fileUrl) return;
+
+                const rawName = qs.get('name') || decodeURIComponent(fileUrl.split('?')[0].split('/').pop() || 'workbook.xlsx');
+                const name = String(rawName).replace(/[\\/:*?"<>|]/g, '_') || 'workbook.xlsx';
+                if (!/\.xlsx$/i.test(name)) { toast('The linked export is not an .xlsx file.', 'warn'); return; }
+
+                showLoad('Fetching export…');
+                const res = await fetch(fileUrl, { credentials: 'omit' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const blob = await res.blob();
+                hideLoad();
+
+                const file = new File([blob], name, {
+                    type: blob.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    lastModified: Date.now(),
+                });
+                await addFiles([file]);
+                await openByIndex(0);
+            } catch (err) {
+                hideLoad();
+                toast('Could not load the linked export — ' + (err && err.message ? err.message : 'unknown error') + '. You can still open the file from your device.', 'error');
+            }
+        })();
+    </script>
+</body>
+
+</html>

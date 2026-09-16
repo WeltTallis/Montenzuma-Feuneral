@@ -246,8 +246,7 @@ const BODY_CHECKOUT_SERVICE_MIGRATIONS: Migration[] = [
       time_of_removal VARCHAR(20),
       permit_number VARCHAR(100),
       mode_of_transport VARCHAR(100),
-      final_destination VARCHAR(255),
-      plate_number VARCHAR(50),
+      plate_number VARCHAR(100),
       terms_accepted BOOLEAN DEFAULT FALSE,
       everything_paid BOOLEAN DEFAULT FALSE,
       signature TEXT,
@@ -266,13 +265,8 @@ const BODY_CHECKOUT_SERVICE_MIGRATIONS: Migration[] = [
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
   {
-    // Final destination + vehicle plate number were added to the release form
-    // after the original table shipped — existing tenant databases get the
-    // columns here (CREATE above covers fresh installs; IF NOT EXISTS keeps
-    // this idempotent on MariaDB).
-    name: '073_add_destination_plate_to_body_releases',
-    sql: `ALTER TABLE body_releases ADD COLUMN IF NOT EXISTS final_destination VARCHAR(255) NULL AFTER mode_of_transport;
-ALTER TABLE body_releases ADD COLUMN IF NOT EXISTS plate_number VARCHAR(50) NULL AFTER final_destination`,
+    name: '073_add_plate_number_to_body_releases',
+    sql: 'ALTER TABLE body_releases ADD COLUMN IF NOT EXISTS plate_number VARCHAR(100) DEFAULT NULL AFTER mode_of_transport',
   },
 ];
 

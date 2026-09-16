@@ -1,8 +1,7 @@
-import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
-import { useTenantStore } from '../../../modules/seo/useTenantStore';
+﻿import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { getTenantSlug as getStoredTenantSlug, getAuthToken } from '../../../utils/globalAuth';
+import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 import { ToastContainer, toast } from 'react-toastify';
 import InOurCare from '../../common/InOurCare';
@@ -19,7 +18,7 @@ import {
   AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin
 } from '../../../utils/icons/icons';
 
-// --- Color Palette ----------------------------------
+// ─── Color Palette ──────────────────────────────────
 const COLORS = {
   ink: '#1A1A1A',
   bone: '#FAF8F4',
@@ -76,7 +75,7 @@ const Container = styled.div`
 
 const FormSheet = styled.div`
   width: 100%;
-  max-width: 2200px;
+  max-width: 900px;
   margin: 0 auto;
   background: ${COLORS.white};
   border-radius: 0;
@@ -107,7 +106,7 @@ const ContentWrapper = styled.div`
   z-index: 1;
 `;
 
-/* --- Natural Borderless Header -- */
+/* ─── Natural Borderless Header ── */
 const HeaderWrapper = styled.header`
   padding: 2.5rem 3rem;
   position: relative;
@@ -426,6 +425,16 @@ const InputLg = styled(Input)`
   height: 3rem;
   font-size: 1.05rem;
   font-weight: 500;
+
+  /* Green "record found in the database" state — mirrors the search tick so it
+     is obvious at a glance that the admission number matched a record. */
+  ${p => p.$found && `
+    border-bottom: 2px solid ${COLORS.green};
+    background: rgba(34, 197, 94, 0.07);
+    border-radius: 4px 4px 0 0;
+    padding-left: 0.5rem;
+    color: ${COLORS.ink};
+  `}
 `;
 
 const Select = styled.select`
@@ -505,6 +514,205 @@ const ErrorMessage = styled.span`
   margin-top: 0.3rem;
   display: block;
   font-family: 'Saira', sans-serif;
+`;
+
+/* Green "length of stay" pill — same green as the database-search tick so the
+   counter reads as part of the same verified-record language. */
+const InCareBadge = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  /* Full-width strip so it lines up exactly with the Released By field below. */
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.35rem 0.6rem;
+  margin-bottom: 0.85rem;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  color: ${COLORS.green};
+  font-family: 'Saira', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  max-width: 100%;
+
+  svg { flex-shrink: 0; }
+
+  @media (max-width: 768px) {
+    white-space: normal;
+    text-align: left;
+  }
+`;
+
+const FieldHint = styled.span`
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.7rem;
+  color: ${COLORS.muted};
+  font-family: 'Saira', sans-serif;
+  line-height: 1.4;
+`;
+
+/* Declaration carries no fill — it sits directly on the sheet like a
+   printed record (background colour intentionally removed). */
+const ConsentCard = styled.div`
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 2rem 2.25rem 1.6rem;
+  background: transparent;
+  border: 1px solid ${COLORS.line};
+  border-radius: 6px;
+
+  @media (max-width: 600px) {
+    padding: 1.5rem 1.25rem 1.3rem;
+  }
+`;
+
+const ConsentTitle = styled.h3`
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: ${COLORS.brass};
+`;
+
+/* ─── Declaration pieces (mirrors the official "Consent & Declaration" record) ─── */
+
+/* Document-style top rule — thick over thin, like an official record */
+const DeclarationRule = styled.div`
+  height: 7px;
+  max-width: 120px;
+  margin: -0.35rem auto 0.35rem;
+  border-top: 2.5px solid ${COLORS.ink};
+  border-bottom: 1px solid ${COLORS.ink};
+`;
+
+const LeadIn = styled.p`
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: ${COLORS.brass};
+`;
+
+const ClauseList = styled.ol`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+`;
+
+const Clause = styled.li`
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 0.98rem;
+  font-weight: 450;
+  line-height: 1.65;
+  color: ${COLORS.ink};
+
+  @media (max-width: 600px) {
+    font-size: 0.92rem;
+  }
+`;
+
+const ClauseNo = styled.span`
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: ${COLORS.brass};
+  flex: none;
+  width: 1.4rem;
+  text-align: right;
+`;
+
+const ClauseFacility = styled.span`
+  font-weight: 600;
+  color: ${COLORS.brass};
+`;
+
+const ConsentDivider = styled.div`
+  height: 1px;
+  background: ${COLORS.line};
+  margin: 1.4rem 0 1.2rem;
+`;
+
+const AcceptLabel = styled.label`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+`;
+
+const AcceptText = styled.span`
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: ${COLORS.ink};
+  padding-top: 0.1rem;
+`;
+
+const AcceptSmall = styled.small`
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: ${COLORS.gray};
+`;
+
+/* Square declaration checkbox — fills verdigris with a bone tick when checked */
+const AcceptBox = styled.input`
+  appearance: none;
+  -webkit-appearance: none;
+  width: 21px;
+  height: 21px;
+  flex: none;
+  margin-top: 0.05rem;
+  position: relative;
+  border: 1.5px solid ${COLORS.ink};
+  border-radius: 3px;
+  background: ${COLORS.white};
+  cursor: pointer;
+  transition: all .15s ease;
+
+  &:hover { border-color: ${COLORS.verdigris}; }
+  &:checked { background: ${COLORS.verdigris}; border-color: ${COLORS.verdigris}; }
+  &:checked::after {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 3px;
+    width: 5px;
+    height: 10px;
+    border: solid ${COLORS.bone};
+    border-width: 0 2.5px 2.5px 0;
+    transform: rotate(45deg);
+  }
+  &:focus-visible { outline: 2px solid ${COLORS.brassLight}; outline-offset: 2px; }
+`;
+
+const ConsentError = styled.p`
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: ${COLORS.red};
 `;
 
 const SigCanvasWrap = styled.div`
@@ -752,7 +960,7 @@ const ClearSigButton = styled.button`
   }
 `;
 
-/* --- Woodland Elegance Footer ------------------------------- */
+/* ─── Woodland Elegance Footer ─────────────────────────────── */
 const ElegantFooter = styled.footer`
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Karla:wght@400;500;700&display=swap');
 
@@ -927,6 +1135,27 @@ const formatHeaderDate = (value) => {
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 };
 
+/* Days spent in our care — calendar days from admission to release (or today).
+   Mirrors getDaysInMorgue() in the deceased profile so both screens agree:
+   a body admitted today counts as 0 elapsed days. */
+const getDaysInCare = (admittedFrom, until) => {
+  if (!admittedFrom) return null;
+  const raw = String(admittedFrom);
+  const start = new Date(raw.length <= 10 ? `${raw}T00:00:00` : raw);
+  if (Number.isNaN(start.getTime())) return null;
+
+  let end = new Date();
+  if (until) {
+    const rawUntil = String(until);
+    const parsedUntil = new Date(rawUntil.length <= 10 ? `${rawUntil}T00:00:00` : rawUntil);
+    if (!Number.isNaN(parsedUntil.getTime())) end = parsedUntil;
+  }
+
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.floor((startOfDay(end) - startOfDay(start)) / (1000 * 60 * 60 * 24));
+  return Math.max(0, days);
+};
+
 // Barcode component strictly configured for absolute visibility
 const Barcode = ({ value }) => {
   const canvasRef = useRef(null);
@@ -956,22 +1185,20 @@ const Barcode = ({ value }) => {
 const DeceasedReleaseForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id } = useParams();
 
-  const { id, slug: urlTenantSlug } = useParams();
-
-  // Get tenant data from the Zustand store (populated by TenantResolver)
-  const { tenantData } = useTenantStore();
-
-  // Resolve the EXACT tenant: URL slug (set by the receptionist portal link
-  // /tenant/<slug>/release-form/new) wins, then the stored slug. Never fall
-  // back to 'default' — that would submit release records under the wrong tenant.
   const getTenantSlug = () => {
-    const exact = urlTenantSlug && urlTenantSlug !== 'default' && urlTenantSlug !== 'dashboard'
-      && urlTenantSlug !== 'undefined' && urlTenantSlug !== 'null'
-      ? urlTenantSlug : '';
-    return exact || getStoredTenantSlug() || '';
+    return localStorage.getItem('tenantSlug') ||
+      localStorage.getItem('tenant_slug') ||
+      (() => {
+        try {
+          const user = JSON.parse(localStorage.getItem('user') || '{}');
+          return user.tenantSlug || user.tenant?.slug || 'default';
+        } catch {
+          return 'default';
+        }
+      })();
   };
-
 
   const sigPadRef1 = useRef(null);
   const searchTimer = useRef(null);
@@ -990,8 +1217,7 @@ const DeceasedReleaseForm = () => {
   const [releaseId, setReleaseId] = useState('');
   const [releasedRecord, setReleasedRecord] = useState(null);
 
-  // Pass tenantData from store to resolveTenantBranding so it uses the EXACT tenant
-  const branding = useMemo(() => resolveTenantBranding(tenantData), [tenantData]);
+  const branding = useMemo(() => resolveTenantBranding(), []);
 
   const {
     name: tenantName,
@@ -1041,7 +1267,10 @@ const DeceasedReleaseForm = () => {
 
   const initialFormData = {
     admission_number: location.state?.permitNumber || '',
-    date_admitted: new Date().toISOString().split('T')[0],
+    // Date admitted is not captured on the release form — it is read-only data
+    // that arrives with the searched record (used for the "days in our care"
+    // badge), never typed here.
+    date_admitted: '',
     time_received: getCurrentTime(),
     full_name: '',
     gender: '',
@@ -1053,6 +1282,8 @@ const DeceasedReleaseForm = () => {
     contact_person: '',
     next_kin: '',
     relationship: '',
+    // ID type is internal — the release record always files it as 'National ID';
+    // users are never asked to choose a type on this form.
     id_type: 'National ID',
     id_number: '',
     tel_number: '',
@@ -1061,7 +1292,8 @@ const DeceasedReleaseForm = () => {
     released_by: getLoggedInUserName(),
     permit_number: '',
     mode_of_transport: 'hearse',
-    final_destination: '',
+    // Plate number of the vehicle removing the body (hearse, van or the
+    // family's own car) — recorded with the release for the official record.
     plate_number: '',
     terms_accepted: false,
     everything_paid: false,
@@ -1078,6 +1310,13 @@ const DeceasedReleaseForm = () => {
       release_time: getCurrentTime(),
     }));
   }, []);
+
+  // Length of stay shown in the green "N days in our care" badge above the
+  // Released By field: admission date → release date (or today when blank).
+  const daysInCare = useMemo(
+    () => getDaysInCare(formData.date_admitted, formData.release_date),
+    [formData.date_admitted, formData.release_date]
+  );
 
   useEffect(() => {
     const fetchDeceasedList = async () => {
@@ -1168,7 +1407,9 @@ const DeceasedReleaseForm = () => {
     const { name, value, type, checked } = e.target;
 
     let processedValue = value;
-    if (name === 'admission_number') {
+    if (name === 'admission_number' || name === 'plate_number') {
+      // Plates and admission numbers are official identifiers — always stored
+      // uppercase (e.g. "KCA 123A").
       processedValue = value.toUpperCase();
     }
 
@@ -1230,6 +1471,10 @@ const DeceasedReleaseForm = () => {
     const foundAdmissionNumber = String(deceased.admission_number || '').trim().toUpperCase();
     lastSearchedRef.current = foundAdmissionNumber;
 
+    // Next of kin on the record — kept separate from the officer who physically
+    // releases the body (the "Released By" field in the sign-off section).
+    const kinName = deceased.contact_person || deceased.next_kin || deceased.next_of_kin || '';
+
     setFormData(prev => ({
       ...prev,
       admission_number: prev.admission_number || foundAdmissionNumber,
@@ -1239,8 +1484,12 @@ const DeceasedReleaseForm = () => {
       date_of_death: deceased.date_of_death || '',
       cause_of_death: deceased.cause_of_death || '',
       place_of_death: deceased.place_of_death || deceased.death_location || '',
-      id_number: deceased.national_id || deceased.id_number || deceased.nationalId || '',
-      tel_number: deceased.tell_no || deceased.tel_number || deceased.phone_number || deceased.contact || '',
+      next_kin: kinName,
+      contact_person: deceased.contact_person || deceased.next_kin || '',
+      relationship: deceased.relationship || deceased.kin_relationship || '',
+      // NOTE: the ID number and the primary telephone belong to the person
+      // collecting the body — they are never auto-filled from the searched
+      // record and must always be keyed in manually.
       date_admitted: deceased.date_admitted || prev.date_admitted,
       permit_number: deceased.permit_number || deceased.permit_no || '',
     }));
@@ -1305,13 +1554,16 @@ const DeceasedReleaseForm = () => {
     const newErrors = {};
     if (!formData.admission_number) newErrors.admission_number = 'Admission number is required';
     if (!formData.full_name.trim()) newErrors.full_name = 'Full name is required';
-    if (!formData.gender) newErrors.gender = 'Gender is required';
-    if (!formData.date_admitted) newErrors.date_admitted = 'Date admitted is required';
+    // Gender and date of death are read-only — they arrive with the searched
+    // record rather than being chosen or typed on this form.
+    // Date admitted is no longer captured on the release form — it arrives with
+    // the searched record and is only used for the "days in our care" badge.
     if (!formData.release_date) newErrors.release_date = 'Release date is required';
     if (!formData.released_by.trim()) newErrors.released_by = 'Released by is required';
-    if (!formData.next_kin.trim()) newErrors.next_kin = 'Name of the person collecting the body is required';
-    if (!/^\d{7,9}$/.test(formData.id_number.trim())) newErrors.id_number = 'Enter a valid National ID number (7-9 digits)';
+    if (!formData.next_kin.trim()) newErrors.next_kin = 'Next of kin is required';
+    if (!formData.id_number.trim()) newErrors.id_number = 'ID number is required';
     if (!formData.tel_number.trim()) newErrors.tel_number = 'Telephone number is required';
+    if (!formData.plate_number.trim()) newErrors.plate_number = 'Vehicle plate number is required';
     if (!formData.terms_accepted) newErrors.terms_accepted = 'You must accept the terms';
 
     if (formData.tel_number && !/^(\+254|0)[17]\d{8}$/.test(formData.tel_number.replace(/\s/g, ''))) {
@@ -1351,19 +1603,16 @@ const DeceasedReleaseForm = () => {
       const payload = {
         ...formData,
         admission_number: String(formData.admission_number || '').toUpperCase(),
-        id_type: 'National ID',
-        id_number: formData.id_number.trim(),
-        tell_number: formData.tel_number.trim(),
-        final_destination: formData.final_destination.trim(),
-        plate_number: formData.plate_number.trim(),
-        released_by: formData.released_by.trim(),
         time_received: freshTime,
         release_time: freshTime,
         age: formData.age ? parseInt(formData.age, 10) : null,
+        // Body status is a database value only — it is never surfaced in the
+        // release form UI.
         body_status: 'Released',
         verified_by: formData.verified_by || getLoggedInUserEmail() || null,
         signature: signatureData,
         name_of_deceased: formData.full_name,
+        tell_number: formData.tel_number,
       };
 
       const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.BODYCHECKOUT.CHECKOUT}`, {
@@ -1382,6 +1631,10 @@ const DeceasedReleaseForm = () => {
         throw new Error(result.message || 'Release failed');
       }
 
+      notify.success(
+        'Release Successful',
+        `${formData.full_name || 'The record'} has been released successfully.`
+      );
       if (result.data && result.data.release_id) {
         setReleaseId(result.data.release_id);
       }
@@ -1404,7 +1657,7 @@ const DeceasedReleaseForm = () => {
         verified_by: getLoggedInUserEmail(),
         time_received: getCurrentTime(),
         release_time: getCurrentTime(),
-        date_admitted: new Date().toISOString().split('T')[0],
+        date_admitted: '',
         release_date: new Date().toISOString().split('T')[0],
       });
       sigPadRef1.current?.clear();
@@ -1430,7 +1683,7 @@ const DeceasedReleaseForm = () => {
       verified_by: getLoggedInUserEmail(),
       time_received: getCurrentTime(),
       release_time: getCurrentTime(),
-      date_admitted: new Date().toISOString().split('T')[0],
+      date_admitted: '',
       release_date: new Date().toISOString().split('T')[0],
     });
     setErrors({});
@@ -1468,7 +1721,7 @@ const DeceasedReleaseForm = () => {
     );
   }
 
-  // -- Success view --
+  // ── Success view ──
   // After a successful release the vigil page takes over — a candle lit in
   // the deceased's memory. "Done" returns the user to the portal dashboard.
   if (showSuccess) {
@@ -1507,7 +1760,7 @@ const DeceasedReleaseForm = () => {
         <Watermark>OFFICIAL RECORD</Watermark>
 
         <ContentWrapper>
-          {/* ---- NATURAL BORDERLESS HEADER ---- */}
+          {/* ──── NATURAL BORDERLESS HEADER ──── */}
           <HeaderWrapper>
             <HeaderMain>
 
@@ -1517,7 +1770,7 @@ const DeceasedReleaseForm = () => {
                   <GreetingWelcome>Welcome to</GreetingWelcome>
                   <TextSlider>
                     <TextTrack>
-                      <Phrase>{tenantName}</Phrase>
+                      <Phrase>{tenantName || 'Lee Funeral Home'}</Phrase>
                       <Phrase>Sorry for your loss</Phrase>
                       <Phrase>With deepest sympathy</Phrase>
                       <Phrase>May they rest in peace</Phrase>
@@ -1530,15 +1783,15 @@ const DeceasedReleaseForm = () => {
                   <SectionLabel>Facility Information</SectionLabel>
                   <ContactItem>
                     <PinIcon />
-                    {displayAddress}
+                    {displayAddress || fallback.address || fallback.location}
                   </ContactItem>
                   <ContactItem>
                     <MailIcon />
-                    {displayEmail}
+                    {displayEmail || fallback.email}
                   </ContactItem>
                   <ContactItem>
                     <PhoneIcon />
-                    {displayPhone}
+                    {displayPhone || fallback.phone}
                   </ContactItem>
                 </FacilityInfo>
               </ColLeft>
@@ -1587,6 +1840,7 @@ const DeceasedReleaseForm = () => {
                             handleAdmissionSearch(formData.admission_number);
                           }
                         }}
+                        $found={hasValue(formData.admission_number) && isFound}
                         placeholder="Start typing to search the database..."
                         autoComplete="off"
                         autoCorrect="off"
@@ -1616,61 +1870,6 @@ const DeceasedReleaseForm = () => {
                     </InputFieldWrapper>
                     {errors.admission_number && <ErrorMessage>{errors.admission_number}</ErrorMessage>}
                   </Col2>
-                  <Col>
-                    <Label>Date Admitted <span style={{ color: COLORS.red }}>*</span></Label>
-                    <InputFieldWrapper>
-                      <InputLg
-                        type="date"
-                        name="date_admitted"
-                        value={formData.date_admitted}
-                        onChange={handleChange}
-                      />
-                      {hasValue(formData.date_admitted) && (
-                        <TickIconWrapper>
-                          <Check size={16} strokeWidth={2.5} />
-                        </TickIconWrapper>
-                      )}
-                    </InputFieldWrapper>
-                    {errors.date_admitted && <ErrorMessage>{errors.date_admitted}</ErrorMessage>}
-                  </Col>
-                </Row>
-
-                <Row>
-                  <Col>
-                    <Label>Permit Number</Label>
-                    <InputFieldWrapper>
-                      <Input
-                        type="text"
-                        name="permit_number"
-                        value={formData.permit_number}
-                        onChange={handleChange}
-                        placeholder="Permit/Reference Number"
-                      />
-                      {hasValue(formData.permit_number) && (
-                        <TickIconWrapper>
-                          <Check size={16} strokeWidth={2.5} />
-                        </TickIconWrapper>
-                      )}
-                    </InputFieldWrapper>
-                  </Col>
-                  <Col>
-                    <Label>Released By <span style={{ color: COLORS.red }}>*</span></Label>
-                    <InputFieldWrapper>
-                      <Input
-                        type="text"
-                        name="released_by"
-                        value={formData.released_by}
-                        onChange={handleChange}
-                        placeholder="Name of person releasing the body"
-                      />
-                      {hasValue(formData.released_by) && (
-                        <TickIconWrapper>
-                          <Check size={16} strokeWidth={2.5} />
-                        </TickIconWrapper>
-                      )}
-                    </InputFieldWrapper>
-                    {errors.released_by && <ErrorMessage>{errors.released_by}</ErrorMessage>}
-                  </Col>
                 </Row>
               </Section>
 
@@ -1701,24 +1900,22 @@ const DeceasedReleaseForm = () => {
                     {errors.full_name && <ErrorMessage>{errors.full_name}</ErrorMessage>}
                   </Col2>
                   <Col>
-                    <Label>Gender <span style={{ color: COLORS.red }}>*</span></Label>
+                    <Label>Gender</Label>
                     <InputFieldWrapper>
-                      <Select
+                      <Input
+                        type="text"
                         name="gender"
-                        value={formData.gender}
-                        onChange={handleChange}
-                      >
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                      </Select>
+                        value={formData.gender || '—'}
+                        readOnly
+                        title="Auto-filled from the deceased record"
+                      />
                       {hasValue(formData.gender) && (
-                        <TickIconWrapper>
+                        <TickIconWrapper style={{ color: COLORS.green }}>
                           <Check size={16} strokeWidth={2.5} />
                         </TickIconWrapper>
                       )}
                     </InputFieldWrapper>
-                    {errors.gender && <ErrorMessage>{errors.gender}</ErrorMessage>}
+                    <FieldHint>Auto-filled from the deceased record.</FieldHint>
                   </Col>
                 </Row>
 
@@ -1747,14 +1944,16 @@ const DeceasedReleaseForm = () => {
                         type="date"
                         name="date_of_death"
                         value={formData.date_of_death}
-                        onChange={handleChange}
+                        readOnly
+                        title="Auto-filled from the deceased record"
                       />
                       {hasValue(formData.date_of_death) && (
-                        <TickIconWrapper>
+                        <TickIconWrapper style={{ color: COLORS.green }}>
                           <Check size={16} strokeWidth={2.5} />
                         </TickIconWrapper>
                       )}
                     </InputFieldWrapper>
+                    <FieldHint>Auto-filled from the deceased record.</FieldHint>
                   </Col>
                 </Row>
 
@@ -1793,17 +1992,20 @@ const DeceasedReleaseForm = () => {
                       )}
                     </InputFieldWrapper>
                   </Col>
+                </Row>
+
+                <Row>
                   <Col>
-                    <Label>Body Status</Label>
+                    <Label>Permit Number</Label>
                     <InputFieldWrapper>
                       <Input
                         type="text"
-                        name="body_status"
-                        value={formData.body_status || 'Released'}
-                        readOnly
-                        disabled
+                        name="permit_number"
+                        value={formData.permit_number}
+                        onChange={handleChange}
+                        placeholder="Permit/Reference Number"
                       />
-                      {hasValue(formData.body_status) && (
+                      {hasValue(formData.permit_number) && (
                         <TickIconWrapper>
                           <Check size={16} strokeWidth={2.5} />
                         </TickIconWrapper>
@@ -1822,14 +2024,14 @@ const DeceasedReleaseForm = () => {
 
                 <Row>
                   <Col2>
-                    <Label>Authorizing Party / Person Collecting Body <span style={{ color: COLORS.red }}>*</span></Label>
+                    <Label>Next of Kin Full Name <span style={{ color: COLORS.red }}>*</span></Label>
                     <InputFieldWrapper>
                       <Input
                         type="text"
                         name="next_kin"
                         value={formData.next_kin}
                         onChange={handleChange}
-                        placeholder="Enter the person collecting the body"
+                        placeholder="Full name of authorizing party"
                       />
                       {hasValue(formData.next_kin) && (
                         <TickIconWrapper>
@@ -1858,9 +2060,11 @@ const DeceasedReleaseForm = () => {
                   </Col>
                 </Row>
 
-                        <Row>
-                          <Col>
-                            <Label>National ID Number <span style={{ color: COLORS.red }}>*</span></Label>
+                <Row>
+                  {/* ID type is no longer a user-facing choice — the release
+                      record always files it internally as 'National ID'. */}
+                  <Col2>
+                    <Label>ID Number <span style={{ color: COLORS.red }}>*</span></Label>
                     <InputFieldWrapper>
                       <Input
                         type="text"
@@ -1876,7 +2080,7 @@ const DeceasedReleaseForm = () => {
                       )}
                     </InputFieldWrapper>
                     {errors.id_number && <ErrorMessage>{errors.id_number}</ErrorMessage>}
-                  </Col>
+                  </Col2>
                 </Row>
 
                 <Row>
@@ -1964,73 +2168,91 @@ const DeceasedReleaseForm = () => {
                       )}
                     </InputFieldWrapper>
                   </Col>
-                  <Col>
-                    <Label>Final Destination / Location</Label>
+                </Row>
+
+                <Row>
+                  <Col2>
+                    <Label>Vehicle Plate Number <span style={{ color: COLORS.red }}>*</span></Label>
                     <InputFieldWrapper>
-                      <InputLg
+                      <Input
                         type="text"
-                        name="final_destination"
-                        value={formData.final_destination}
+                        name="plate_number"
+                        value={formData.plate_number}
                         onChange={handleChange}
-                        placeholder="e.g., Home — Kiambu Road, or Kariakor Cemetery"
+                        placeholder="e.g., KCA 123A"
                       />
-                      {hasValue(formData.final_destination) && (
+                      {hasValue(formData.plate_number) && (
                         <TickIconWrapper>
                           <Check size={16} strokeWidth={2.5} />
                         </TickIconWrapper>
                       )}
                     </InputFieldWrapper>
-                  </Col>
-                  {(formData.mode_of_transport === 'hearse' || formData.mode_of_transport === 'private') && (
-                    <Col>
-                      <Label>Vehicle Plate Number</Label>
-                      <InputFieldWrapper>
-                        <InputLg
-                          type="text"
-                          name="plate_number"
-                          value={formData.plate_number}
-                          onChange={handleChange}
-                          placeholder="e.g., KDA 123A"
-                        />
-                        {hasValue(formData.plate_number) && (
-                          <TickIconWrapper>
-                            <Check size={16} strokeWidth={2.5} />
-                          </TickIconWrapper>
-                        )}
-                      </InputFieldWrapper>
-                    </Col>
-                  )}
+                    {errors.plate_number && <ErrorMessage>{errors.plate_number}</ErrorMessage>}
+                  </Col2>
                 </Row>
 
                 <Row>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        name="terms_accepted"
-                        checked={formData.terms_accepted}
-                        onChange={handleChange}
-                        style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', accentColor: COLORS.verdigris }}
-                      />
-                      <span style={{ fontSize: '0.8rem', color: COLORS.gray, lineHeight: '1.5' }}>
-                        I hereby authorize the release and transportation of the deceased. I certify that I am the legally authorized next of kin or representative and have the right to make this authorization.
-                      </span>
-                    </label>
-                    {errors.terms_accepted && <ErrorMessage>{errors.terms_accepted}</ErrorMessage>}
+                  <ConsentCard>
+                    <ConsentTitle>Consent and Declaration</ConsentTitle>
+                    <DeclarationRule aria-hidden="true" />
 
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        name="everything_paid"
-                        checked={formData.everything_paid}
-                        onChange={handleChange}
-                        style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', accentColor: COLORS.verdigris }}
-                      />
-                      <span style={{ fontSize: '0.8rem', color: COLORS.gray, lineHeight: '1.5' }}>
-                        I confirm that all outstanding charges and payments have been settled.
-                      </span>
-                    </label>
-                  </div>
+                    <LeadIn>By signing below, I declare and confirm that:</LeadIn>
+
+                    <ClauseList>
+                      <Clause>
+                        <ClauseNo>1.</ClauseNo>
+                        <span>The information I have provided in this form is true and correct.</span>
+                      </Clause>
+                      <Clause>
+                        <ClauseNo>2.</ClauseNo>
+                        <span>I am the legally authorized next of kin, or a duly appointed representative of the deceased.</span>
+                      </Clause>
+                      <Clause>
+                        <ClauseNo>3.</ClauseNo>
+                        <span>
+                          I authorize <ClauseFacility>{tenantName || 'the facility'}</ClauseFacility> to
+                          release the deceased into my custody and permit their transportation.
+                        </span>
+                      </Clause>
+                      <Clause>
+                        <ClauseNo>4.</ClauseNo>
+                        <span>After the release, I take full responsibility for the deceased and all arrangements that follow.</span>
+                      </Clause>
+                    </ClauseList>
+
+                    <ConsentDivider />
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+                      <AcceptLabel>
+                        <AcceptBox
+                          type="checkbox"
+                          name="terms_accepted"
+                          checked={formData.terms_accepted}
+                          onChange={handleChange}
+                        />
+                        <AcceptText>
+                          I have read and accept this Consent and Declaration.
+                          <AcceptSmall>Signing this form makes it part of the official record of the deceased.</AcceptSmall>
+                        </AcceptText>
+                      </AcceptLabel>
+                      {errors.terms_accepted && (
+                        <ConsentError>⚠ Please tick the box above to confirm before submitting.</ConsentError>
+                      )}
+
+                      <AcceptLabel>
+                        <AcceptBox
+                          type="checkbox"
+                          name="everything_paid"
+                          checked={formData.everything_paid}
+                          onChange={handleChange}
+                        />
+                        <AcceptText>
+                          I confirm that all outstanding charges and payments have been settled.
+                          <AcceptSmall>Every invoice on this record must be cleared before the release is completed.</AcceptSmall>
+                        </AcceptText>
+                      </AcceptLabel>
+                    </div>
+                  </ConsentCard>
                 </Row>
               </Section>
 
@@ -2045,7 +2267,11 @@ const DeceasedReleaseForm = () => {
                   <SignOffGrid>
                     <GridSig>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Label>Authorizing Signature <span style={{ color: COLORS.red }}>*</span></Label>
+                        <Label>
+                          Authorizing Signature
+                          {hasValue(formData.full_name) ? ` of ${formData.full_name}` : ' of the deceased'}
+                          <span style={{ color: COLORS.red }}> *</span>
+                        </Label>
                         <ClearSigButton type="button" onClick={() => sigPadRef1.current?.clear()}>
                           Clear Pad
                         </ClearSigButton>
@@ -2059,7 +2285,17 @@ const DeceasedReleaseForm = () => {
 
                     <GridRight>
                       <GridName>
-                        <Label>Released By Officer <span style={{ color: COLORS.red }}>*</span></Label>
+                        {daysInCare !== null && (
+                          <InCareBadge
+                            title={`${formData.full_name || 'The deceased'} — ${daysInCare} day${daysInCare === 1 ? '' : 's'} in our care`}
+                          >
+                            <Check size={13} strokeWidth={3} />
+                            {daysInCare === 0
+                              ? 'In our care today'
+                              : `${daysInCare} day${daysInCare === 1 ? '' : 's'} in our care`}
+                          </InCareBadge>
+                        )}
+                        <Label>Released By <span style={{ color: COLORS.red }}>*</span></Label>
                         <InputFieldWrapper>
                           <Input
                             type="text"
@@ -2075,13 +2311,14 @@ const DeceasedReleaseForm = () => {
                           )}
                         </InputFieldWrapper>
                         {errors.released_by && <ErrorMessage>{errors.released_by}</ErrorMessage>}
+                        <FieldHint>Officer releasing the body.</FieldHint>
                       </GridName>
 
                       <StampWrapper>
                         <OfficialStamp
                           tenantName={tenantName}
-                          tenantPhone={displayPhone}
-                          tenantLocation={displayLocation}
+                          tenantPhone={displayPhone || fallback.phone}
+                          tenantLocation={displayLocation || fallback.location}
                           recordLabel="OFFICIAL RELEASE RECORD"
                         />
                       </StampWrapper>
@@ -2119,7 +2356,7 @@ const DeceasedReleaseForm = () => {
 
           {/* Timestamp strip — the official generation record, kept ABOVE the new footer */}
           <RecordInfoStrip>
-            {tenantName} — Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+            {tenantName || 'This Funeral Home'} — Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
             <br />- Official Release Record -
           </RecordInfoStrip>
 
@@ -2141,7 +2378,7 @@ const DeceasedReleaseForm = () => {
             </FooterValues>
 
             <FooterBar>
-              <span>© {new Date().getFullYear()} {tenantName}</span>
+              <span>© {new Date().getFullYear()} {tenantName || 'This Funeral Home'}</span>
               <span>Official Release Record</span>
             </FooterBar>
           </ElegantFooter>
@@ -2152,4 +2389,3 @@ const DeceasedReleaseForm = () => {
 };
 
 export default DeceasedReleaseForm;
-
