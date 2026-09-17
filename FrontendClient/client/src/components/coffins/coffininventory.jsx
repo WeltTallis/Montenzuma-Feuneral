@@ -2538,7 +2538,7 @@ const CoffinDashboard = () => {
           activeNav={tab}
           onNavChange={setTab}
           branchSelector={
-            branches.length > 1
+            branches.length > 0
               ? {
                 value: currentBranch || '',
                 onChange: (e) => {
@@ -2550,46 +2550,26 @@ const CoffinDashboard = () => {
               : null
           }
           headerActions={
-            tab === 'inventory' ? (
-              <>
-                <button
-                  style={{ ...styles.btn, ...styles.btnP, whiteSpace: 'nowrap' }}
-                  onClick={() =>
-                    setModal({ open: true, type: 'coffin', data: { stock: 0, price: 0 } })
-                  }
-                >
-                  <i className="fa-solid fa-plus"></i> Add Coffin
-                </button>
-                <button
-                  style={{ ...styles.btn, ...styles.btnW, whiteSpace: 'nowrap' }}
-                  onClick={() => openFindStock()}
-                  title="Search and request stock from other branches"
-                >
-                  <i className="fa-solid fa-network-wired"></i> Find Stock in Other Branches
-                </button>
-              </>
-            ) : tab === 'transfers' ? (
-              <button
-                style={{
-                  padding: '8px 14px',
-                  border: `1px solid ${S.border}`,
-                  borderRadius: 8,
-                  background: '#fff',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: S.text,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  transition: S.transition,
-                  whiteSpace: 'nowrap',
-                }}
-                onClick={fetchAllData}
-              >
-                <i className="fa-solid fa-arrows-rotate" style={{ fontSize: 12 }}></i> Refresh
+            <>
+              <button className="cb-tb-btn" onClick={fetchAllData} title="Refresh data">
+                <i className="fa-solid fa-arrows-rotate"></i> Refresh
               </button>
-            ) : null
+              <button className="cb-tb-btn" onClick={() => openFindStock()} title="Search other branches">
+                <i className="fa-solid fa-network-wired"></i> Find Stock
+              </button>
+              <button className="cb-tb-btn" onClick={() => setModal({ open: true, type: 'coffin', data: { stock: 0, price: 0 } })} title="Add new coffin">
+                <i className="fa-solid fa-plus"></i> Add Coffin
+              </button>
+              <div className="cb-divider" />
+              <button className="cb-tb-new" onClick={() => {
+                const now = new Date();
+                const hh = String(now.getHours()).padStart(2, '0');
+                const mm = String(now.getMinutes()).padStart(2, '0');
+                setModal({ open: true, type: 'booking', data: { service_date: todayKey(), service_time: hh + ':' + mm } });
+              }}>
+                <i className="fa-solid fa-calendar-plus"></i> New Reservation
+              </button>
+            </>
           }
         >
           {tab === 'inventory' && renderInventory()}

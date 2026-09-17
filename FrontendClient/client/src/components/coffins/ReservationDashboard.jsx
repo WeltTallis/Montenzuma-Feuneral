@@ -307,12 +307,15 @@ export default function ReservationDashboard(props) {
 
     '.cb-main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:' + CARD + ';position:relative;overflow:hidden}',
 
-    '.cb-tb{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;border-bottom:1px solid ' + BRD + ';background:' + CARD + ';flex-shrink:0;gap:8px}',
+    '.cb-tb{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;border-bottom:1px solid ' + BRD + ';background:' + CARD + ';flex-shrink:0;gap:12px;min-height:52px}',
     '.cb-tb-left{display:flex;align-items:center;gap:8px}',
     '.cb-tb-nav{display:flex;gap:2px}',
     '.cb-tb-nb{width:30px;height:30px;border:1px solid ' + BRD + ';background:' + CARD + ';color:' + TX3 + ';border-radius:7px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;transition:all .12s}',
     '.cb-tb-nb:hover{border-color:' + ACC + ';color:' + ACC + '}',
     '.cb-tb-right{display:flex;align-items:center;gap:5px}',
+    '.cb-divider{width:1px;height:24px;background:' + BRD + ';margin:0 4px}',
+    '.cb-nav-select{height:30px;padding:0 10px;border:1px solid ' + BRD + ';border-radius:7px;background:' + CARD + ';color:' + TX + ';font-size:11px;font-weight:700;font-family:' + FONT + ';cursor:pointer;min-width:140px;outline:none}',
+    '.cb-nav-select:hover{border-color:' + ACC + '}',
     '.cb-tb-btn{height:30px;padding:0 12px;border:1px solid ' + BRD + ';background:' + CARD + ';color:' + TX2 + ';border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;font-family:' + FONT + ';transition:all .12s;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}',
     '.cb-tb-btn:hover{border-color:' + ACC + ';color:' + ACC + '}',
     '.cb-tb-btn.sq{width:30px;padding:0;justify-content:center}',
@@ -413,10 +416,6 @@ export default function ReservationDashboard(props) {
       {/* Toolbar */}
       <div className="cb-tb">
         <div className="cb-tb-left">
-          <div className="cb-tb-nav">
-            <button className="cb-tb-nb" onClick={function () { navigate(-1); }}>{IC.cl}</button>
-            <button className="cb-tb-nb" onClick={function () { navigate(1); }}>{IC.cr}</button>
-          </div>
           {effTabs && effTabs.length > 0 && (
             <div className="cb-nav-pills">
               {effTabs.map(function (t) {
@@ -437,17 +436,14 @@ export default function ReservationDashboard(props) {
               {branchSelector.options.map(function (o) { return <option key={o.value} value={o.value}>{o.label}</option>; })}
             </select>
           )}
+          {branchSelector && <div className="cb-divider" />}
           {headerActions}
           {!showAltSection && (
             <React.Fragment>
-              <button className="cb-tb-btn sq" onClick={doRefresh} title="Refresh" style={{ opacity: refreshing ? 0.5 : 1 }}>{IC.rf}</button>
               <button className="cb-tb-btn" onClick={goToday}>Today</button>
               <div className="cb-tb-views">
                 {['day', 'week', 'month'].map(function (v) { return <button key={v} className={'cb-tb-v' + (view === v ? ' on' : '')} onClick={function () { setView(v); setClickedDay(null); }}>{v}</button>; })}
               </div>
-              <button className="cb-tb-new" onClick={function () { if (onNewReservation) onNewReservation(); else showToast('New reservation form'); }}>{IC.pl} New Reservation</button>
-              {!reservationsOnly && <button className="cb-tb-btn" onClick={function () { if (onInventory) onInventory(); else if (selfNav) setAltView('inventory'); else showToast('Inventory not configured'); }}>{IC.grid} Inventory</button>}
-              {!reservationsOnly && <button className="cb-tb-btn" onClick={function () { if (onTransfer) onTransfer(); else if (selfNav) setAltView('transfers'); else showToast('Transfer not configured'); }}>{IC.tr} Transfer</button>}
             </React.Fragment>
           )}
         </div>

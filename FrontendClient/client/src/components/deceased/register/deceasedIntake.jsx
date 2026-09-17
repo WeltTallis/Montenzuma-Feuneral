@@ -16,8 +16,99 @@ import InOurCare from '../../common/InOurCare';
 
 import {
   Check, Loader2, CheckCircle, X, FileText, User, RotateCcw, ShieldCheck,
-  AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin
+  AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin, Pause, PlusCircle
 } from '../../../utils/icons/icons';
+
+// ─── IndexedDB Helper Utilities ─────────────────────────────
+const DB_NAME = 'MortuaryIntakeDB';
+const DB_VERSION = 2; // Upgraded to handle new queue store
+const DRAFT_STORE = 'pendingRegistrations';
+const QUEUE_STORE = 'offlineQueue';
+
+const openDB = () => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(DRAFT_STORE)) {
+        db.createObjectStore(DRAFT_STORE, { keyPath: 'draftId' });
+      }
+      if (!db.objectStoreNames.contains(QUEUE_STORE)) {
+        db.createObjectStore(QUEUE_STORE, { keyPath: 'syncId' });
+      }
+    };
+  });
+};
+
+const saveDraftToDB = async (draft) => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DRAFT_STORE, 'readwrite');
+    const store = tx.objectStore(DRAFT_STORE);
+    const request = store.put(draft);
+    request.onsuccess = () => resolve(true);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+const getAllDraftsFromDB = async () => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DRAFT_STORE, 'readonly');
+    const store = tx.objectStore(DRAFT_STORE);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+const deleteDraftFromDB = async (draftId) => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DRAFT_STORE, 'readwrite');
+    const store = tx.objectStore(DRAFT_STORE);
+    const request = store.delete(draftId);
+    request.onsuccess = () => resolve(true);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+const saveToOfflineQueue = async (item) => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(QUEUE_STORE, 'readwrite');
+    const store = tx.objectStore(QUEUE_STORE);
+    const request = store.put(item);
+    request.onsuccess = () => resolve(true);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+const getAllFromQueue = async () => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(QUEUE_STORE, 'readonly');
+    const store = tx.objectStore(QUEUE_STORE);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+const deleteFromQueue = async (syncId) => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(QUEUE_STORE, 'readwrite');
+    const store = tx.objectStore(QUEUE_STORE);
+    const request = store.delete(syncId);
+    request.onsuccess = () => resolve(true);
+    request.onerror = () => reject(request.error);
+  });
+};
+// ─── End IndexedDB Helpers ─────────────────────────────────
+
 
 // ─── Color Palette ──
 const COLORS = {
@@ -98,7 +189,6 @@ const ContentWrapper = styled.div`
   z-index: 1;
 `;
 
-/* ─── Natural Borderless Header ── */
 const HeaderWrapper = styled.header`
   padding: 2.5rem 3rem;
   position: relative;
@@ -698,6 +788,146 @@ const BlackButton = styled.button`
   }
 `;
 
+const PauseButton = styled.button`
+  background: ${COLORS.ink}; /* Black background */
+  color: ${COLORS.bone};
+  border: 1px solid ${COLORS.ink};
+  border-radius: 4px;
+  padding: 1rem 2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Saira', sans-serif;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  position: relative;
+
+  &:hover {
+    background: #333;
+    border-color: #333;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    background: ${COLORS.gray};
+    border-color: ${COLORS.gray};
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+  }
+
+  @media (max-width: 600px) {
+    width: 100%;
+  }
+`;
+
+const DropdownPanel = styled.div`
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  background: ${COLORS.white};
+  border: 1px solid ${COLORS.line};
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  z-index: 100;
+  overflow: hidden;
+
+  @media (max-width: 600px) {
+    width: 100%;
+  }
+`;
+
+const DropdownItem = styled.button`
+  width: 100%;
+  background: #f8f6f1;
+  border: none;
+  border-bottom: 1px solid ${COLORS.line};
+  padding: 1rem;
+  text-align: left;
+  font-family: 'Saira', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: ${COLORS.brass};
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  
+  &:hover {
+    background: #efeade;
+  }
+`;
+
+const DropdownRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid ${COLORS.line};
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const DraftInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+`;
+
+const DraftName = styled.span`
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: ${COLORS.ink};
+`;
+
+const DraftMeta = styled.span`
+  font-size: 0.7rem;
+  color: ${COLORS.muted};
+  font-family: 'JetBrains Mono', monospace;
+`;
+
+const DraftActions = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const DraftBtn = styled.button`
+  background: transparent;
+  border: 1px solid ${COLORS.brass};
+  color: ${COLORS.brass};
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  transition: all 0.2s;
+
+  &:hover {
+    background: ${COLORS.brass};
+    color: ${COLORS.bone};
+  }
+
+  &.delete {
+    border-color: ${COLORS.red};
+    color: ${COLORS.red};
+    &:hover {
+      background: ${COLORS.red};
+      color: ${COLORS.bone};
+    }
+  }
+`;
+
 const ClearSigButton = styled.button`
   font-size: 0.7rem;
   font-weight: 600;
@@ -730,7 +960,6 @@ const ElegantFooter = styled.footer`
   border-top: none;
   box-sizing: border-box;
 
-  /* soft ring watermark */
   &::before {
     content: '';
     position: absolute;
@@ -838,8 +1067,6 @@ const FooterBar = styled.div`
   }
 `;
 
-/* Timestamp strip — sits ABOVE the elegant footer, keeping the
-   official generation record visible without cluttering it. */
 const RecordInfoStrip = styled.div`
   font-size: 0.65rem;
   letter-spacing: 0.11em;
@@ -857,8 +1084,6 @@ const RecordInfoStrip = styled.div`
   }
 `;
 
-// Contact glyphs — new brand icon set (register/svg/{location, call, mail}.svg),
-// inlined with fill="currentColor" so they inherit the brass color from ContactItem CSS.
 const PinIcon = () => (
   <svg viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M25.497 6.503l.001-.003-.004.005L3.5 15.901l11.112 1.489 1.487 11.11 9.396-21.992.005-.006z" />
@@ -876,7 +1101,7 @@ const PhoneIcon = () => (
 );
 
 const MailIcon = () => (
-  <svg viewBox="0 -3.5 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+  <svg viewBox="0 0 -3.5 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <g transform="translate(-414.000000, -261.000000)">
       <path d="M430,275.916 L426.684,273.167 L415.115,285.01 L444.591,285.01 L433.235,273.147 L430,275.916 L430,275.916 Z M434.89,271.89 L445.892,283.329 C445.955,283.107 446,282.877 446,282.634 L446,262.862 L434.89,271.89 L434.89,271.89 Z M414,262.816 L414,282.634 C414,282.877 414.045,283.107 414.108,283.329 L425.147,271.927 L414,262.816 L414,262.816 Z M445,261 L415,261 L430,273.019 L445,261 L445,261 Z" />
     </g>
@@ -891,7 +1116,6 @@ const formatHeaderDate = (value) => {
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 };
 
-// Barcode component strictly configured for absolute visibility
 const Barcode = ({ value }) => {
   const canvasRef = useRef(null);
 
@@ -922,13 +1146,8 @@ const DeceasedRegistrationForm = () => {
   const location = useLocation();
 
   const { slug: urlTenantSlug } = useParams();
-
-  // Get tenant data from the Zustand store (populated by TenantResolver)
   const { tenantData } = useTenantStore();
 
-  // Resolve the EXACT tenant: URL slug (set by the receptionist portal link
-  // /tenant/<slug>/deceased/register) wins, then the stored slug. Never fall
-  // back to 'default' — that would submit intake records under the wrong tenant.
   const getTenantSlug = () => {
     const exact = urlTenantSlug && urlTenantSlug !== 'default' && urlTenantSlug !== 'dashboard'
       && urlTenantSlug !== 'undefined' && urlTenantSlug !== 'null'
@@ -950,7 +1169,11 @@ const DeceasedRegistrationForm = () => {
   const [signedSignature, setSignedSignature] = useState('');
   const [lastSignedName, setLastSignedName] = useState('');
 
-  // Pass tenantData from store to resolveTenantBranding so it uses the EXACT tenant
+  // State for Pause Dropdown & Offline Drafts
+  const [currentDraftId, setCurrentDraftId] = useState(null);
+  const [pausedDrafts, setPausedDrafts] = useState([]);
+  const [isPauseDropdownOpen, setIsPauseDropdownOpen] = useState(false);
+
   const branding = useMemo(() => resolveTenantBranding(tenantData), [tenantData]);
 
   const {
@@ -981,7 +1204,6 @@ const DeceasedRegistrationForm = () => {
     return `${hours}:${minutes}`;
   };
 
-  // Get dynamic greeting based on current hour
   const getGreetingTime = () => {
     const hours = new Date().getHours();
     if (hours < 12) return 'Good morning';
@@ -1015,8 +1237,57 @@ const DeceasedRegistrationForm = () => {
 
   const [formData, setFormData] = useState(initialFormData);
 
+  const fetchPausedDrafts = async () => {
+    try {
+      const drafts = await getAllDraftsFromDB();
+      setPausedDrafts(drafts);
+    } catch (error) {
+      console.error('Failed to fetch paused drafts:', error);
+    }
+  };
+
+  // Offline sync logic
+  const syncOfflineData = async () => {
+    try {
+      const queue = await getAllFromQueue();
+      if (queue.length === 0) return;
+      
+      notify.info('Syncing Data', `Uploading ${queue.length} offline records...`);
+      const tenantSlug = getTenantSlug();
+      const token = getAuthToken();
+
+      for (const item of queue) {
+        try {
+          const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.CREATE}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-tenant-slug': tenantSlug,
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(item.payload),
+          });
+          
+          if (response.ok) {
+            await deleteFromQueue(item.syncId);
+          }
+        } catch (e) { 
+          // Silently fail, will retry next time
+        }
+      }
+      notify.success('Sync Complete', 'Offline records uploaded successfully.');
+    } catch(e) { console.error(e) }
+  };
+
   useEffect(() => {
     setFormData(prev => ({ ...prev, time_received: getCurrentTime() }));
+    fetchPausedDrafts();
+    syncOfflineData(); // Attempt sync on mount
+
+    const handleOnline = () => syncOfflineData();
+    window.addEventListener('online', handleOnline);
+    
+    return () => window.removeEventListener('online', handleOnline);
   }, []);
 
   useEffect(() => {
@@ -1105,34 +1376,76 @@ const DeceasedRegistrationForm = () => {
     setIsSubmitting(true);
     setMessage({ type: '', text: '' });
 
+    const freshTime = getCurrentTime();
+    const signatureData = sigPadRef1.current?.toDataURL();
+
+    const payload = {
+      full_name: formData.full_name,
+      cause_of_death: formData.cause_of_death,
+      national_id: formData.id_number,
+      received_from: formData.received_from,
+      age: formData.age ? parseInt(formData.age, 10) : 0,
+      time_received: freshTime,
+      body_status: formData.body_status || 'Normal Condition',
+      contact_person: formData.contact_person,
+      tell_no: formData.tel_number,
+      gender: formData.gender,
+      date_of_death: formData.date_of_death || null,
+      place_of_death: formData.place_of_death || null,
+      id_type: 'National ID',
+      alternative_phone: formData.alternative_phone || null,
+      receiving_officer: formData.receiving_officer.trim(),
+      verified_by: formData.verified_by || getLoggedInUserEmail() || null,
+      relationship: formData.relationship || null,
+      permit_no: formData.permit_number || null,
+      date_admitted: formData.date_admitted,
+      signature: signatureData,
+    };
+
+    // --- OFFLINE DETECTION ---
+    if (!navigator.onLine) {
+      try {
+        const syncId = `sync-${Date.now()}`;
+        await saveToOfflineQueue({ syncId, payload, savedAt: new Date().toISOString() });
+        
+        notify.success('Saved Offline', 'No internet. Record saved locally. Will sync automatically when back online.');
+        
+        setRegisteredName(formData.full_name);
+        setVigilData({
+          name: formData.full_name,
+          passed: formData.date_of_death,
+          reference: 'PENDING SYNC',
+        });
+        setShowSuccess(true);
+
+        // If this was a resumed draft, delete it from paused drafts
+        if (currentDraftId) {
+          await deleteDraftFromDB(currentDraftId);
+          setCurrentDraftId(null);
+          fetchPausedDrafts();
+        }
+
+        setFormData({
+          ...initialFormData,
+          verified_by: getLoggedInUserEmail(),
+          time_received: getCurrentTime(),
+          date_admitted: new Date().toISOString().split('T')[0],
+        });
+        setAdmissionId('');
+        sigPadRef1.current?.clear();
+        setErrors({});
+      } catch (error) {
+        notify.error('Offline Save Failed', 'Could not save the record locally.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // --- ONLINE SUBMISSION ---
     try {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken();
-      const signatureData = sigPadRef1.current?.toDataURL();
-      const freshTime = getCurrentTime();
-
-      const payload = {
-        full_name: formData.full_name,
-        cause_of_death: formData.cause_of_death,
-        national_id: formData.id_number,
-        received_from: formData.received_from,
-        age: formData.age ? parseInt(formData.age, 10) : 0,
-        time_received: freshTime,
-        body_status: formData.body_status || 'Normal Condition',
-        contact_person: formData.contact_person,
-        tell_no: formData.tel_number,
-        gender: formData.gender,
-        date_of_death: formData.date_of_death || null,
-        place_of_death: formData.place_of_death || null,
-        id_type: 'National ID',
-        alternative_phone: formData.alternative_phone || null,
-        receiving_officer: formData.receiving_officer.trim(),
-        verified_by: formData.verified_by || getLoggedInUserEmail() || null,
-        relationship: formData.relationship || null,
-        permit_no: formData.permit_number || null,
-        date_admitted: formData.date_admitted,
-        signature: signatureData,
-      };
 
       const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.CREATE}`, {
         method: 'POST',
@@ -1148,6 +1461,13 @@ const DeceasedRegistrationForm = () => {
 
       if (!response.ok) {
         throw new Error(result.message || 'Registration failed');
+      }
+
+      // Delete draft if it was resumed
+      if (currentDraftId) {
+        await deleteDraftFromDB(currentDraftId);
+        setCurrentDraftId(null);
+        fetchPausedDrafts();
       }
 
       setRegisteredName(formData.full_name);
@@ -1180,6 +1500,70 @@ const DeceasedRegistrationForm = () => {
     }
   };
 
+  // --- PAUSE SESSION LOGIC ---
+  const handlePauseSession = async () => {
+    try {
+      const draftId = currentDraftId || `draft-${Date.now()}`;
+      const signatureData = sigPadRef1.current?.toDataURL() || '';
+      
+      const draft = {
+        draftId,
+        formData,
+        admissionId,
+        signatureData,
+        pausedAt: new Date().toISOString()
+      };
+
+      await saveDraftToDB(draft);
+      notify.success('Session Paused', 'You can resume this registration later.');
+      
+      handleClear();
+      setCurrentDraftId(null);
+      setIsPauseDropdownOpen(false);
+      fetchPausedDrafts();
+    } catch (error) {
+      console.error('Failed to pause session:', error);
+      notify.error('Failed to pause', 'Could not save the session to the browser.');
+    }
+  };
+
+  const handleResumeDraft = (draft) => {
+    setFormData(draft.formData);
+    setAdmissionId(draft.admissionId);
+    setCurrentDraftId(draft.draftId);
+    setIsPauseDropdownOpen(false);
+    
+    // Wait for component to re-render with new data, then load signature
+    setTimeout(() => {
+      try {
+        if (draft.signatureData && sigPadRef1.current) {
+          sigPadRef1.current.clear();
+          if (typeof sigPadRef1.current.fromDataURL === 'function') {
+            sigPadRef1.current.fromDataURL(draft.signatureData);
+          }
+        }
+      } catch (e) { 
+        console.error("Failed to load signature", e); 
+      }
+    }, 100);
+    
+    notify.info('Resuming Session', `Loaded paused registration for ${draft.formData.full_name || 'Unknown'}.`);
+  };
+
+  const handleDeleteDraft = async (draftId) => {
+    try {
+      await deleteDraftFromDB(draftId);
+      if (currentDraftId === draftId) {
+        handleClear();
+        setCurrentDraftId(null);
+      }
+      fetchPausedDrafts();
+      notify.success('Draft Deleted', 'The paused session has been removed.');
+    } catch (error) {
+      notify.error('Delete Failed', 'Could not delete the draft.');
+    }
+  };
+
   const handleClear = () => {
     setFormData({
       ...initialFormData,
@@ -1208,9 +1592,6 @@ const DeceasedRegistrationForm = () => {
     );
   }
 
-  // ── Vigil success view ──
-  // After a successful admission a candle is lit in the deceased's memory.
-  // "Done" returns the user to the portal dashboard.
   if (showSuccess) {
     return (
       <InOurCare
@@ -1232,11 +1613,8 @@ const DeceasedRegistrationForm = () => {
         <Watermark>OFFICIAL RECORD</Watermark>
 
         <ContentWrapper>
-          {/* ──── NATURAL BORDERLESS HEADER ──── */}
           <HeaderWrapper>
             <HeaderMain>
-
-              {/* Left Column: Greeting & Info */}
               <ColLeft>
                 <GreetingBlock>
                   <GreetingWelcome>Welcome to</GreetingWelcome>
@@ -1268,7 +1646,6 @@ const DeceasedRegistrationForm = () => {
                 </FacilityInfo>
               </ColLeft>
 
-              {/* Right Column: Date & Verification */}
               <ColRight>
                 <DateDisplay>
                   <DateLabel>Record Date</DateLabel>
@@ -1283,7 +1660,6 @@ const DeceasedRegistrationForm = () => {
                   <DeceasedName>{formData.full_name || '—'}</DeceasedName>
                 </VerificationBlock>
               </ColRight>
-
             </HeaderMain>
           </HeaderWrapper>
 
@@ -1331,44 +1707,6 @@ const DeceasedRegistrationForm = () => {
                       )}
                     </InputFieldWrapper>
                     {errors.date_admitted && <ErrorMessage>{errors.date_admitted}</ErrorMessage>}
-                  </Col>
-                </Row>
-
-                <Row>
-                  <Col>
-                    <Label>Permit Number</Label>
-                    <InputFieldWrapper>
-                      <Input
-                        type="text"
-                        name="permit_number"
-                        value={formData.permit_number}
-                        onChange={handleChange}
-                        placeholder="Permit/Reference Number"
-                      />
-                      {hasValue(formData.permit_number) && (
-                        <TickIconWrapper>
-                          <Check size={16} strokeWidth={2.5} />
-                        </TickIconWrapper>
-                      )}
-                    </InputFieldWrapper>
-                  </Col>
-                  <Col>
-                    <Label>Received From</Label>
-                    <InputFieldWrapper>
-                      <Input
-                        type="text"
-                        name="received_from"
-                        value={formData.received_from}
-                        onChange={handleChange}
-                        placeholder="Hospital, Home, Police, Other"
-                      />
-                      {hasValue(formData.received_from) && (
-                        <TickIconWrapper>
-                          <Check size={16} strokeWidth={2.5} />
-                        </TickIconWrapper>
-                      )}
-                    </InputFieldWrapper>
-                    {errors.received_from && <ErrorMessage>{errors.received_from}</ErrorMessage>}
                   </Col>
                 </Row>
               </Section>
@@ -1510,6 +1848,45 @@ const DeceasedRegistrationForm = () => {
                     </InputFieldWrapper>
                   </Col>
                 </Row>
+
+                {/* MOVED: Permit Number & Received From */}
+                <Row>
+                  <Col>
+                    <Label>Permit Number</Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="permit_number"
+                        value={formData.permit_number}
+                        onChange={handleChange}
+                        placeholder="Permit/Reference Number"
+                      />
+                      {hasValue(formData.permit_number) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                  </Col>
+                  <Col>
+                    <Label>Received From <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="received_from"
+                        value={formData.received_from}
+                        onChange={handleChange}
+                        placeholder="Hospital, Home, Police, Other"
+                      />
+                      {hasValue(formData.received_from) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                    {errors.received_from && <ErrorMessage>{errors.received_from}</ErrorMessage>}
+                  </Col>
+                </Row>
               </Section>
 
               {/* Section 3 */}
@@ -1635,7 +2012,6 @@ const DeceasedRegistrationForm = () => {
                           Clear Pad
                         </ClearSigButton>
                       </div>
-                      {/* The Signature Pad now ALWAYS renders and stays open */}
                       <SigCanvasWrap>
                         <ReusableSignaturePad
                           ref={sigPadRef1}
@@ -1675,9 +2051,49 @@ const DeceasedRegistrationForm = () => {
                 </SignOffContainer>
               </Section>
 
-              {/* Three Action Buttons */}
+              {/* Action Buttons */}
               <ActionsContainer>
-
+                {/* Pause Dropdown Wrapper */}
+                <div style={{ position: 'relative' }}>
+                  <PauseButton 
+                    type="button" 
+                    onClick={() => {
+                      if (pausedDrafts.length > 0) {
+                        setIsPauseDropdownOpen(!isPauseDropdownOpen);
+                      } else {
+                        handlePauseSession();
+                      }
+                    }} 
+                    disabled={isSubmitting}
+                  >
+                    <Pause size={16} />
+                    {pausedDrafts.length > 0 ? `Paused Sessions (${pausedDrafts.length})` : 'Pause & Save'}
+                  </PauseButton>
+                  
+                  {isPauseDropdownOpen && pausedDrafts.length > 0 && (
+                    <DropdownPanel>
+                      <DropdownItem onClick={handlePauseSession}>
+                        <PlusCircle size={14} /> Save Current Session
+                      </DropdownItem>
+                      {pausedDrafts.map(draft => (
+                        <DropdownRow key={draft.draftId}>
+                          <DraftInfo>
+                            <DraftName>{draft.formData.full_name || 'Unknown Name'}</DraftName>
+                            <DraftMeta>Paused: {new Date(draft.pausedAt).toLocaleTimeString()}</DraftMeta>
+                          </DraftInfo>
+                          <DraftActions>
+                            <DraftBtn onClick={() => handleResumeDraft(draft)}>
+                              <User size={12} /> Resume
+                            </DraftBtn>
+                            <DraftBtn className="delete" onClick={() => handleDeleteDraft(draft.draftId)}>
+                              <X size={12} /> 
+                            </DraftBtn>
+                          </DraftActions>
+                        </DropdownRow>
+                      ))}
+                    </DropdownPanel>
+                  )}
+                </div>
 
                 <GoldButton type="button" onClick={handleClear} disabled={isSubmitting}>
                   Reset Inputs
@@ -1702,13 +2118,11 @@ const DeceasedRegistrationForm = () => {
             </form>
           </FormBody>
 
-          {/* Timestamp strip — the official generation record, kept ABOVE the new footer */}
           <RecordInfoStrip>
             {tenantName} — Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
             <br />- Official Intake Record -
           </RecordInfoStrip>
 
-          {/* Footer — Woodland Elegance */}
           <ElegantFooter>
             <LeafMark>
               <svg viewBox="0 0 24 24" fill="none" stroke="#EDE9DB" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="21" height="21">

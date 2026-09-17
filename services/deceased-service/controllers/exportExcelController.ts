@@ -53,6 +53,21 @@ const solid = (color: string) => ({ type: 'pattern' as const, pattern: 'solid' a
  *  though the runtime accepts it (documented addImage pattern) — bridge once. */
 const excelBuffer = (b: Buffer) => b as unknown as NonNullable<ExcelJS.Image['buffer']>;
 
+/** Merge a range without ever letting a layout overlap abort the export.
+ *  ExcelJS throws "Cannot merge already merged cells" the moment the requested
+ *  range intersects an existing merge — one cosmetic collision must never cost
+ *  the user their report, so the merge is dropped and the value still lands in
+ *  the top-left cell of the range. The warning keeps the layout bug visible. */
+function safeMerge(worksheet: ExcelJS.Worksheet, range: string): boolean {
+  try {
+    worksheet.mergeCells(range);
+    return true;
+  } catch (err: any) {
+    Logger.warn({ message: `Excel merge skipped — range overlaps an existing merge: ${range}`, error: err?.message });
+    return false;
+  }
+}
+
 type Status = 'Released' | 'Admitted' | 'Pending';
 function normalizeStatus(raw: any): Status {
   const s = String(raw || 'Pending').toLowerCase();
@@ -342,14 +357,14 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     }
 
     // Classification line
-    worksheet.mergeCells('B4:E4');
+    safeMerge(worksheet, 'B4:E4');
     const cls = worksheet.getCell('B4');
     cls.value = 'OFFICIAL REGISTRY EXTRACT · STRICTLY CONFIDENTIAL';
     cls.font = { name: FONT_SANS, size: 7.5, bold: true, color: argb(COLORS.brass) };
     cls.alignment = { vertical: 'middle' };
 
     // Title — serif with italic accent word
-    worksheet.mergeCells('B5:E5');
+    safeMerge(worksheet, 'B5:E5');
     const title = worksheet.getCell('B5');
     title.value = {
       richText: [
@@ -360,33 +375,33 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     title.alignment = { vertical: 'middle' };
 
     // Facility + generated line
-    worksheet.mergeCells('B6:E6');
+    safeMerge(worksheet, 'B6:E6');
     const fac = worksheet.getCell('B6');
     fac.value = `${facility} · Mortuary Management Suite`;
     fac.font = { name: FONT_SANS, size: 9, color: argb(COLORS.gray) };
     fac.alignment = { vertical: 'middle' };
 
-    worksheet.mergeCells('B7:E7');
+    safeMerge(worksheet, 'B7:E7');
     const gen = worksheet.getCell('B7');
     gen.value = `Generated ${fmtDate(now)} · ${fmtTime(now)} · ${author}`;
     gen.font = { name: FONT_SANS, size: 8, color: argb(COLORS.muted) };
     gen.alignment = { vertical: 'middle' };
 
     // Tracking ID + expiry (the only ink blue in the letterhead)
-    worksheet.mergeCells('G1:H1');
+    safeMerge(worksheet, 'G1:H1');
     const tLbl = worksheet.getCell('G1');
     tLbl.value = 'TRACKING ID';
     tLbl.font = { name: FONT_SANS, size: 7, bold: true, color: argb(COLORS.muted) };
     tLbl.alignment = { horizontal: 'right', vertical: 'bottom' };
 
-    worksheet.mergeCells('G2:H2');
+    safeMerge(worksheet, 'G2:H2');
     const tId = worksheet.getCell('G2');
     tId.value = track;
     tId.font = { name: FONT_MONO, size: 11, bold: true, color: argb(COLORS.inkBlue) };
     tId.alignment = { horizontal: 'right', vertical: 'middle' };
     tId.border = { bottom: { style: 'mediumDashed', color: argb(COLORS.brassLight) } };
 
-    worksheet.mergeCells('G3:H3');
+    safeMerge(worksheet, 'G3:H3');
     const tExp = worksheet.getCell('G3');
     tExp.value = {
       richText: [
@@ -428,7 +443,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       ? `${fmtDate(new Date(startDate))} — ${fmtDate(new Date(endDate))}`
       : 'All records';
 
-    worksheet.mergeCells(`A${ROW.period}:H${ROW.period}`);
+    safeMerge(worksheet, `A${ROW.period}:H${ROW.period}`);
     const period = worksheet.getCell(`A${ROW.period}`);
     period.value = {
       richText: [
@@ -532,7 +547,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     let lastRow: number;
     if (records.length === 0) {
       lastRow = ROW.dataStart;
-      worksheet.mergeCells(`A${lastRow}:H${lastRow}`);
+      safeMerge(worksheet, `A${lastRow}:H${lastRow}`);
       const empty = worksheet.getCell(`A${lastRow}`);
       empty.value = 'NO RECORDS FOUND FOR THE SELECTED PERIOD';
       empty.font = { name: FONT_SANS, size: 9, italic: true, color: argb(COLORS.muted) };
@@ -543,7 +558,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     }
 
     const endNum = lastRow + 1;
-    worksheet.mergeCells(`A${endNum}:H${endNum}`);
+    safeMerge(worksheet, `A${endNum}:H${endNum}`);
     const endCell = worksheet.getCell(`A${endNum}`);
     endCell.value = `—  END OF EXTRACT · ${records.length} RECORD${records.length === 1 ? '' : 'S'} · REF ${track} · EXPIRES ${fmtStamp(expires)}  —`;
     endCell.font = { name: FONT_SANS, size: 7.5, bold: true, color: argb(COLORS.muted) };
@@ -564,7 +579,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     stampLines.forEach(([text, font], i) => {
       const rowNum = f0 + i;
       worksheet.getRow(rowNum).height = stampHeights[i];
-      worksheet.mergeCells(`C${rowNum}:E${rowNum}`);
+      safeMerge(worksheet, `C${rowNum}:E${rowNum}`);
       const cell = worksheet.getCell(`C${rowNum}`);
       cell.value = text;
       cell.font = { ...font, color: argb(COLORS.inkBlue) };
@@ -589,19 +604,19 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       worksheet.addImage(qrId, { tl: { col: 6.1, row: f0 - 1 }, ext: { width: 92, height: 92 } });
 
       const capRow = f0 + 5;
-      worksheet.mergeCells(`G${capRow}:H${capRow}`);
+      safeMerge(worksheet, `G${capRow}:H${capRow}`);
       const cap = worksheet.getCell(`G${capRow}`);
       cap.value = 'SCAN TO VERIFY';
       cap.font = { name: FONT_SANS, size: 7, bold: true, color: argb(COLORS.ink) };
       cap.alignment = { horizontal: 'center', vertical: 'middle' };
 
-      worksheet.mergeCells(`G${capRow + 1}:H${capRow + 1}`);
+      safeMerge(worksheet, `G${capRow + 1}:H${capRow + 1}`);
       const qurl = worksheet.getCell(`G${capRow + 1}`);
       qurl.value = `lf.services/v/${ref}`;
       qurl.font = { name: FONT_MONO, size: 7.5, color: argb(COLORS.gray) };
       qurl.alignment = { horizontal: 'center', vertical: 'middle' };
 
-      worksheet.mergeCells(`G${capRow + 2}:H${capRow + 2}`);
+      safeMerge(worksheet, `G${capRow + 2}:H${capRow + 2}`);
       const qexp = worksheet.getCell(`G${capRow + 2}`);
       qexp.value = `Expires ${fmtDate(expires)} · 23:59`;
       qexp.font = { name: FONT_SANS, size: 7, color: argb(COLORS.muted) };
@@ -610,12 +625,17 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       var baseRowNum = capRow + 4;
     } else {
       // graceful fallback if `qrcode` isn't installed — print the verify URL instead
-      worksheet.mergeCells(`G${f0 + 2}:H${f0 + 2}`);
+      safeMerge(worksheet, `G${f0 + 2}:H${f0 + 2}`);
       const alt = worksheet.getCell(`G${f0 + 2}`);
       alt.value = verifyUrl;
       alt.font = { name: FONT_MONO, size: 8, color: argb(COLORS.inkBlue) };
       alt.alignment = { horizontal: 'center', vertical: 'middle' };
-      var baseRowNum = f0 + 4;
+      // The certification stamp owns rows f0..f0+4 (C:E on each), so the base
+      // line must start BELOW it. It used to sit on f0+4, which collided with
+      // the stamp's final row merge (C{f0+4}:E{f0+4}) and made every export
+      // fail with "Cannot merge already merged cells" whenever the QR package
+      // was unavailable. f0+6 leaves one blank row, matching the QR branch.
+      var baseRowNum = f0 + 6;
     }
 
     /* ---------------- BASE LINE ---------------- */
@@ -624,19 +644,19 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     for (let c = 1; c <= COLS; c++) {
       baseRow.getCell(c).border = { top: { style: 'thin', color: argb(COLORS.line) } };
     }
-    worksheet.mergeCells(`A${baseRowNum}:C${baseRowNum}`);
+    safeMerge(worksheet, `A${baseRowNum}:C${baseRowNum}`);
     const bLeft = worksheet.getCell(`A${baseRowNum}`);
     bLeft.value = `© ${now.getFullYear()} ${facility}`;
     bLeft.font = { name: FONT_SANS, size: 7.5, bold: true, color: argb(COLORS.muted) };
     bLeft.alignment = { vertical: 'middle' };
 
-    worksheet.mergeCells(`D${baseRowNum}:F${baseRowNum}`);
+    safeMerge(worksheet, `D${baseRowNum}:F${baseRowNum}`);
     const bMid = worksheet.getCell(`D${baseRowNum}`);
     bMid.value = 'STRICTLY CONFIDENTIAL — HANDLE WITH DIGNITY';
     bMid.font = { name: FONT_SANS, size: 7.5, color: argb(COLORS.muted) };
     bMid.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    worksheet.mergeCells(`G${baseRowNum}:H${baseRowNum}`);
+    safeMerge(worksheet, `G${baseRowNum}:H${baseRowNum}`);
     const bRight = worksheet.getCell(`G${baseRowNum}`);
     bRight.value = {
       richText: [

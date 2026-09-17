@@ -73,7 +73,7 @@ export default function PremiumReporting() {
   }, []);
 
   return (
-    <section style={{ position: 'relative', padding: 'clamp(4rem, 8vw, 7rem) 0', overflow: 'hidden', background: '#000000' }}>
+    <section style={{ position: 'relative', padding: 'clamp(4rem, 8vw, 7rem) 0', overflow: 'hidden', background: '#000000', width: '100vw', marginLeft: 'calc(50% - 50vw)' }}>
       {/* Atmospheric Glows */}
       <div style={{
         position: 'absolute', borderRadius: '50%', filter: 'blur(120px)', zIndex: 0, pointerEvents: 'none',
@@ -84,26 +84,28 @@ export default function PremiumReporting() {
         bottom: '-10%', right: '-10%', width: '600px', height: '600px', background: 'rgba(169, 143, 110, 0.15)',
       }} />
 
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 1.5rem', position: 'relative', zIndex: 10 }}>
+      {/* Content container: keeps the same 1200px measure as the rest of the page
+          while the black band runs edge to edge */}
+      <div className="wrap" style={{ position: 'relative', zIndex: 10 }}>
 
-        {/* Top Attention Grabber */}
-        <div style={{ textAlign: 'center', marginBottom: '6rem' }}>
-          <Reveal>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.75rem',
-              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.5rem 1.25rem', borderRadius: '9999px', marginBottom: '2rem',
-            }}>
-              <span style={{
-                width: '8px', height: '8px', background: '#ffffff', borderRadius: '50%', display: 'inline-block',
-                animation: 'prPulse 2s infinite',
-              }} />
-              <span style={{
-                fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', color: '#f5f5f5', textTransform: 'uppercase',
-              }}>Premium document workspace</span>
-            </div>
-          </Reveal>
-          <Reveal delay={100}>
-            <h2 style={{
+      {/* Top Attention Grabber (full edge-to-edge width) */}
+      <div style={{ position: 'relative', zIndex: 10, paddingLeft: '1.5rem', paddingRight: '1.5rem', marginBottom: '6rem', textAlign: 'center' }}>
+        <Reveal>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.75rem',
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.5rem 1.25rem', borderRadius: '9999px', marginBottom: '2rem',
+          }}>
+            <span style={{
+              width: '8px', height: '8px', background: '#ffffff', borderRadius: '50%', display: 'inline-block',
+              animation: 'prPulse 2s infinite',
+            }} />
+            <span style={{
+              fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', color: '#f5f5f5', textTransform: 'uppercase',
+            }}>Premium document workspace</span>
+          </div>
+        </Reveal>
+        <Reveal delay={100}>
+          <h2 style={{
               fontFamily: "'Fraunces', serif",
               fontSize: 'clamp(2.2rem, 5vw, 4rem)',
               fontWeight: 300, lineHeight: 1.1, marginBottom: '1.5rem', letterSpacing: '-0.02em', color: '#ffffff',
@@ -358,3 +360,4 @@ export default function PremiumReporting() {
     </section>
   );
 }
+

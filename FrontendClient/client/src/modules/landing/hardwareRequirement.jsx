@@ -75,29 +75,6 @@ const Reveal = ({ delay = 0, children, ...rest }) => {
   );
 };
 
-/* Top bar */
-
-const TopBarTab = styled.header`
-  background: ${C.black};
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.05rem clamp(1.25rem, 4vw, 3.5rem);
-  border-bottom: 1px solid ${C.bline};
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.62rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(247, 243, 234, 0.65);
-
-  .brand { display: flex; align-items: center; gap: 0.6rem; color: ${C.paper}; font-weight: 600; }
-  .mark { width: 7px; height: 7px; background: ${C.terra}; display: inline-block; }
-  .mid { color: ${C.brass2}; }
-
-  @media (max-width: 680px) { .mid { display: none; } }
-`;
-
 /* Hero */
 
 const HeroTab = styled.section`
@@ -152,160 +129,6 @@ const HeroP = styled.p`
   color: rgba(247, 243, 234, 0.68);
 
   strong { font-weight: 600; color: ${C.paper}; }
-`;
-
-/* Kit manifest */
-
-const Manifest = styled.div`
-  margin-top: 2.4rem;
-  border: 1px solid ${C.bline2};
-  outline: 1px solid ${C.bline};
-  outline-offset: 4px;
-  background: rgba(247, 243, 234, 0.03);
-`;
-
-const ManifestHead = styled.div`
-  display: flex;
-  justify-content: space-between;
-  padding: 0.7rem 1.1rem;
-  border-bottom: 1px solid ${C.bline};
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.58rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(247, 243, 234, 0.55);
-
-  b { color: ${C.paper}; font-weight: 600; }
-`;
-
-const MRow = styled.div`
-  display: grid;
-  grid-template-columns: 26px 1fr auto auto;
-  align-items: center;
-  gap: 0.9rem;
-  padding: 0.95rem 1.1rem;
-  border-bottom: 1px solid ${C.bline};
-
-  @media (max-width: 520px) {
-    grid-template-columns: 20px 1fr auto;
-    gap: 0.6rem;
-  }
-`;
-
-const MNo = styled.span`
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.6rem;
-  color: ${C.brass2};
-`;
-
-const MItem = styled.div`
-  strong {
-    display: block;
-    font-weight: 600;
-    font-size: 0.92rem;
-    letter-spacing: -0.01em;
-    color: ${C.paper};
-  }
-  .sub {
-    display: block;
-    margin-top: 0.3rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.55rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: ${C.brass2};
-  }
-`;
-
-const Chip = styled.span`
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.55rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: 0.34em 0.65em;
-  border: 1px solid ${C.bline2};
-  color: rgba(247, 243, 234, 0.85);
-  white-space: nowrap;
-
-  &.req { border-color: rgba(247, 243, 234, 0.85); color: ${C.paper}; }
-`;
-
-const MQty = styled.span`
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem;
-  color: rgba(247, 243, 234, 0.75);
-  min-width: 2ch;
-  text-align: right;
-
-  &.on { color: ${C.terra2}; font-weight: 600; }
-
-  @media (max-width: 520px) { display: none; }
-`;
-
-const SwitchLabel = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-
-  input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-
-  .track {
-    width: 42px;
-    height: 22px;
-    border: 1px solid rgba(247, 243, 234, 0.55);
-    border-radius: 999px;
-    position: relative;
-    transition: background 0.25s, border-color 0.25s;
-    flex-shrink: 0;
-  }
-  .knob {
-    position: absolute;
-    top: 2px;
-    left: 3px;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: ${C.paper};
-    transition: transform 0.28s cubic-bezier(0.22,1,0.36,1), background 0.25s;
-  }
-  input:checked + .track { background: ${C.terra}; border-color: ${C.terra}; }
-  input:checked + .track .knob { transform: translateX(20px); background: ${C.black}; }
-  input:focus-visible + .track { outline: 2px solid ${C.terra2}; outline-offset: 3px; }
-
-  .text {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.55rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: rgba(247, 243, 234, 0.7);
-  }
-
-  @media (max-width: 520px) { .text { display: none; } }
-`;
-
-const MTotal = styled.div`
-  padding: 0.85rem 1.1rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.58rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(247, 243, 234, 0.7);
-`;
-
-const MNote = styled.p`
-  margin: 0 1.1rem;
-  max-height: ${({ show }) => (show ? '6em' : '0')};
-  opacity: ${({ show }) => (show ? 1 : 0)};
-  overflow: hidden;
-  border-left: 2px solid ${C.terra2};
-  padding: ${({ show }) => (show ? '0.8rem 0.9rem' : '0 0.9rem')};
-  margin-bottom: ${({ show }) => (show ? '1rem' : '0')};
-  font-size: 0.8rem;
-  line-height: 1.6;
-  color: rgba(247, 243, 234, 0.72);
-  transition: max-height 0.45s cubic-bezier(0.22,1,0.36,1), opacity 0.4s, padding 0.45s, margin 0.45s;
 `;
 
 /* Features */
@@ -494,8 +317,9 @@ const ReqHead = styled.div`
     font-size: clamp(2.2rem, 4.2vw, 3.6rem);
     line-height: 1.04;
     letter-spacing: -0.02em;
+    color: #FFFFFF;
   }
-  h2 em { font-style: italic; color: ${C.brass2}; }
+  h2 em { font-style: italic; color: inherit; }
 
   aside {
     font-size: 0.92rem;
@@ -726,7 +550,6 @@ const MARQUEE_ITEMS = [
 /* Main component */
 
 const HardwareRequirementSection = () => {
-  const [stylus, setStylus] = useState(false);
   const [imgFail, setImgFail] = useState(false);
   const plateRef = useRef(null);
 
@@ -758,12 +581,6 @@ const HardwareRequirementSection = () => {
     <>
       <GlobalStyles />
 
-      <TopBarTab>
-        <span className="brand"><span className="mark" />Restpoint · Death care, digitally</span>
-        <span className="mid">Hardware specification · Materials</span>
-        <span>Spec No. 07 · Rev. C</span>
-      </TopBarTab>
-
       <main>
         <HeroTab>
           <HeroInner>
@@ -786,50 +603,6 @@ const HardwareRequirementSection = () => {
                   Plus a <strong>pressure-sensitive stylus</strong>, an add-on for facilities
                   that want every signature in ink.
                 </HeroP>
-              </Reveal>
-
-              <Reveal delay={0.24}>
-                <Manifest>
-                  <ManifestHead><b>Kit manifest</b><span>Per facility</span></ManifestHead>
-
-                  <MRow>
-                    <MNo>01</MNo>
-                    <MItem>
-                      <strong>FrontDesk Tablet</strong>
-                      <span className="sub">iPad or Android · facility's choice</span>
-                    </MItem>
-                    <Chip className="req">Required</Chip>
-                    <MQty>×1</MQty>
-                  </MRow>
-
-                  <MRow>
-                    <MNo>02</MNo>
-                    <MItem>
-                      <strong>Precision Stylus</strong>
-                      <span className="sub">Pressure tip · Palm rejection</span>
-                    </MItem>
-                    <SwitchLabel aria-label="Add precision stylus to kit">
-                      <input
-                        type="checkbox"
-                        checked={stylus}
-                        onChange={(e) => setStylus(e.target.checked)}
-                      />
-                      <span className="track"><span className="knob" /></span>
-                      <span className="text">{stylus ? 'Added' : 'Add stylus'}</span>
-                    </SwitchLabel>
-                    <MQty className={stylus ? 'on' : ''}>{stylus ? '×1' : '0'}</MQty>
-                  </MRow>
-
-                  <MTotal>
-                    {stylus
-                      ? 'Manifest total: 2 items · signature-grade'
-                      : 'Manifest total: 1 item · stylus not included'}
-                  </MTotal>
-
-                  <MNote show={stylus}>
-                    One stylus per tablet. Ships paired and pre-registered to your facility.
-                  </MNote>
-                </Manifest>
               </Reveal>
 
               <Reveal delay={0.32}>
@@ -943,10 +716,8 @@ const HardwareRequirementSection = () => {
                   One per tablet.
                 </p>
                 <div className="status">
-                  <span className={`lchip add ${stylus ? 'on' : ''}`}>
-                    {stylus ? 'Specified' : 'Add-on'}
-                  </span>
-                  <span className={`qty ${stylus ? 'on' : ''}`}>{stylus ? '×1' : '×0'}</span>
+                  <span className="lchip add">Add-on</span>
+                  <span className="qty">×0</span>
                 </div>
               </LedgerRow>
             </Reveal>
