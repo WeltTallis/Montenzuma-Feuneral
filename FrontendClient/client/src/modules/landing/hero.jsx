@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import styled, { keyframes, createGlobalStyle } from "styled-components";
+import styled, { keyframes, createGlobalStyle, css } from "styled-components";
 
 /* ── Global Fonts ── */
 const GlobalFonts = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;500;600&family=Saira:wght@400;500;600;700&display=swap');
 `;
 
 /* ── Colors ── */
@@ -37,20 +37,22 @@ const HeroGrid = styled.div`
   @media (max-width: 900px) { grid-template-columns: 1fr; gap: 3.5rem; }
 `;
 
-/* ══════════ TEXT SIDE — redesigned ══════════ */
-const HeroText = styled.div`animation: ${slideUpFade} 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0;`;
+/* ══════════ TEXT SIDE ══════════ */
+const HeroText = styled.div`
+  animation: ${slideUpFade} 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  ${props => props.hidden && css`
+    opacity: 0;
+    transform: translateY(-40px);
+    pointer-events: none;
+  `}
+`;
 
 const HeroTitle = styled.h1`
   font-family: 'Fraunces', serif; font-size: clamp(2.3rem, 4vw, 3.4rem);
   line-height: 1.12; letter-spacing: -0.025em; font-weight: 300; color: ${gray}; margin: 0 0 1.5rem; max-width: 560px;
 `;
 const TitleBold = styled.span`display: block; color: ${ink}; font-weight: 600;`;
-
-/* Rotating word — natural inline width, re-animates on change */
-const RotWord = styled.span`
-  display: inline-block; font-style: italic; font-weight: 500; color: ${accent};
-  animation: ${wordIn} 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-`;
 
 const HeroDesc = styled.p`
   font-size: 1.02rem; max-width: 470px; margin: 0 0 2.5rem; color: ${gray};
@@ -77,57 +79,47 @@ const BtnGhost = styled(Btn)`
   &:hover { background: ${ink}; color: #FFFFFF; border-color: ${ink}; transform: translateY(-2px); }
 `;
 
-const HeroStats = styled.div`
-  display: flex; border-top: 1px solid ${line}; padding-top: 1.6rem; max-width: 470px;
-`;
+const HeroStats = styled.div`display: flex; border-top: 1px solid ${line}; padding-top: 1.6rem; max-width: 470px;`;
 const StatItem = styled.div`
   flex: 1; padding-right: 1rem;
   &:nth-child(2) { border-left: 1px solid ${line}; padding-left: 1.1rem; }
   &:last-child { border-left: 1px solid ${line}; padding-left: 1.1rem; padding-right: 0; }
   @media (max-width: 380px) { &:nth-child(2), &:last-child { padding-left: 0.7rem; } }
 `;
-const StatNum = styled.span`
-  display: block; font-family: 'Fraunces', serif; font-size: 1.55rem; font-weight: 600;
-  color: ${ink}; line-height: 1; margin-bottom: 0.45rem;
-`;
-const StatLabel = styled.span`
-  font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: ${gray};
-  text-transform: uppercase; letter-spacing: 0.1em; line-height: 1.5; display: block;
-`;
+const StatNum = styled.span`display: block; font-family: 'Fraunces', serif; font-size: 1.55rem; font-weight: 600; color: ${ink}; line-height: 1; margin-bottom: 0.45rem;`;
+const StatLabel = styled.span`font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: ${gray}; text-transform: uppercase; letter-spacing: 0.1em; line-height: 1.5; display: block;`;
 
-/* ══════════ VISUAL SIDE — tablet exactly as it was ══════════ */
-const HeroVisual = styled.div`
-  position: relative; display: flex; justify-content: center; align-items: center; height: 100%; perspective: 1600px;
-`;
+/* ══════════ VISUAL SIDE ══════════ */
+const HeroVisual = styled.div`position: relative; display: flex; justify-content: center; align-items: center; height: 100%; perspective: 1600px;`;
 
-/* Responsive scaler: reserves the correct layout box for the scaled tablet
-   so it never overflows the viewport on small screens. */
 const TabletScale = styled.div`
-  --s: 1;
-  width: calc(380px * var(--s));
-  height: calc(540px * var(--s));
-  flex-shrink: 0;
-  @media (max-width: 900px) { --s: 0.9; }
-  @media (max-width: 430px) { --s: 0.75; }
-  @media (max-width: 350px) { --s: 0.65; }
+  --s: 1; width: calc(380px * var(--s)); height: calc(540px * var(--s)); flex-shrink: 0;
+  @media (max-width: 900px) { --s: 0.9; } @media (max-width: 430px) { --s: 0.75; } @media (max-width: 350px) { --s: 0.65; }
 `;
 
+/* Crucial: Must drop scale transform when expanded so fixed positioning works relative to viewport */
 const TabletScaleInner = styled.div`
-  width: 380px;
-  height: 540px;
-  transform: scale(var(--s));
-  transform-origin: top left;
-  transform-style: preserve-3d;
+  width: 380px; height: 540px; transform: scale(var(--s)); transform-origin: top left; transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.7, 0, 0.3, 1);
+  ${props => props.isExpanded && css`transform: scale(1);`}
 `;
 
 const TabletFloatWrapper = styled.div`
   animation: ${slideRightFade} 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards, ${floatTablet} 8s ease-in-out infinite 1.5s; 
   opacity: 0; width: 380px; height: 540px; transform-style: preserve-3d;
+  transition: width 0.8s cubic-bezier(0.7, 0, 0.3, 1), height 0.8s cubic-bezier(0.7, 0, 0.3, 1);
+  z-index: 10;
+
+  ${props => props.isExpanded && css`
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; max-width: 100vw;
+    transform: none !important; animation: none !important; opacity: 1 !important; z-index: 1000;
+  `}
 `;
 
 const Tablet3DFlipper = styled.div`
   width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 1s cubic-bezier(0.7, 0, 0.3, 1);
-  transform: ${props => props.isFlipped ? "rotateY(180deg)" : "rotateY(0deg)"};
+  /* Prevent 3D flip when expanded so the form layer faces forward perfectly */
+  transform: ${props => props.isExpanded ? "rotateY(0deg)" : (props.isFlipped ? "rotateY(180deg)" : "rotateY(0deg)")};
 `;
 
 const TabletFace = styled.div`
@@ -135,9 +127,52 @@ const TabletFace = styled.div`
   &.back { transform: rotateY(180deg); }
 `;
 
-const TabletFrame = styled.div`width: 100%; height: 100%; background: #050507; border-radius: 32px; padding: 12px; position: relative; box-shadow: 0 50px 100px -20px rgba(21,23,26,0.5), 0 30px 60px -30px rgba(199,123,94,0.15), inset 0 0 0 2px rgba(255,255,255,0.05); &::before { content: ''; position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; background: #1a1b1c; border-radius: 50%; z-index: 100; }`;
-const TabletScreen = styled.div`width: 100%; height: 100%; background: #050507; border-radius: 22px; overflow: hidden; position: relative; font-family: 'Space Grotesk', sans-serif; color: #e8e8eb;`;
+const TabletFrame = styled.div`
+  width: 100%; height: 100%; background: #050507; border-radius: 32px; padding: 12px; position: relative; 
+  box-shadow: 0 50px 100px -20px rgba(21,23,26,0.5), 0 30px 60px -30px rgba(199,123,94,0.15), inset 0 0 0 2px rgba(255,255,255,0.05); 
+  transition: border-radius 0.8s ease, padding 0.8s ease, box-shadow 0.8s ease;
+  &::before { content: ''; position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; background: #1a1b1c; border-radius: 50%; z-index: 100; transition: opacity 0.3s; }
+  ${props => props.isExpanded && css`
+    border-radius: 0; padding: 0; box-shadow: none;
+    &::before { opacity: 0; }
+  `}
+`;
 
+const TabletScreen = styled.div`
+  width: 100%; height: 100%; background: #050507; border-radius: 22px; overflow: hidden; position: relative; font-family: 'Space Grotesk', sans-serif; color: #e8e8eb;
+  transition: border-radius 0.8s ease, overflow-y 0.3s ease;
+  ${props => props.isExpanded && css`border-radius: 0; overflow-y: auto;`}
+`;
+
+/* ── Form Layer ── */
+const FormLayer = styled.div`
+  position: absolute; inset: 0; background: ${bone}; color: ${ink};
+  opacity: 0; pointer-events: none; transition: opacity 0.4s ease 0.3s; z-index: 20; overflow-y: auto;
+  font-family: 'Saira', sans-serif;
+  &.active { opacity: 1; pointer-events: all; }
+`;
+
+const FormHeader = styled.div`padding: 2.5rem 3rem 1.5rem; border-bottom: 1px solid ${line}; display: flex; justify-content: space-between; align-items: center;`;
+const FormGreeting = styled.div`color: #999999; font-size: 0.75rem; font-weight: 500;`;
+const FormTitle = styled.div`font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 600; margin-top: 2px;`;
+const FormDate = styled.div`text-align: right; font-size: 0.8rem; color: ${brass}; font-weight: 500;`;
+
+const FormBody = styled.div`padding: 2rem 3rem; max-width: 1000px; margin: 0 auto;`;
+const FormSection = styled.div`margin-bottom: 3rem;`;
+const SectionHead = styled.div`background: ${ink}; color: ${bone}; padding: 0.75rem 1.25rem; border-radius: 4px; display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem;`;
+const SectionNum = styled.div`font-size: 0.75rem; color: rgba(250,248,244,0.4); font-family: 'JetBrains Mono', monospace;`;
+const SectionTitle = styled.div`font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;`;
+
+const FormRow = styled.div`display: flex; gap: 1.5rem; margin-bottom: 1.5rem; @media (max-width: 768px) { flex-direction: column; }`;
+const FormCol = styled.div`flex: 1; ${props => props.flex && css`flex: ${props.flex};`}`;
+const FormLabel = styled.label`display: block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: ${brass}; margin-bottom: 0.5rem;`;
+const FormInput = styled.input`
+  width: 100%; height: 2.75rem; border: none; border-bottom: 1px solid #ccc; outline: none; background: transparent; font-size: 0.95rem; color: ${ink}; font-family: 'Saira', sans-serif;
+  &:focus { border-bottom: 1px solid ${ink}; }
+`;
+const SigBox = styled.div`height: 12rem; border: 1px dashed ${gray}; border-radius: 4px; background: #FAF8F4; display: flex; align-items: center; justify-content: center; color: #999999; font-size: 0.8rem;`;
+
+/* ── Portal UI ── */
 const PortalUI = styled.div`padding: 28px 24px; height: 100%; display: flex; flex-direction: column; background: radial-gradient(circle at top right, rgba(0,217,255,0.05), transparent 40%), #050507;`;
 const PTop = styled.div`display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;`;
 const PWordmark = styled.div`text-align: center; flex: 1;`;
@@ -188,22 +223,10 @@ const FlpWordmarkName = styled.div`font-family: 'Fraunces',serif; font-size: 14p
 const FlpWordmarkSub = styled.div`font-size: 8px; font-weight: 500; letter-spacing: 0.28em; color: rgba(255,255,255,0.2); text-transform: uppercase; margin-top: 4px;`;
 
 const PortalCardsData = [
-  {
-    num: "01", title: "Body Admission", desc: "Respectful reception & formal registration of the deceased", magenta: false,
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 12h4m-4-4h4m0 13v-3a2 2 0 0 0-4 0v3" /><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" /><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /></svg>
-  },
-  {
-    num: "02", title: "Body Release", desc: "Dignified coordination of the final departure", magenta: true,
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m16 17l5-5l-5-5m5 5H9m0 9H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
-  },
-  {
-    num: "03", title: "Flower Arrangements", desc: "Bespoke floral tributes, wreaths & memorial displays", magenta: false,
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1" /><circle cx="12" cy="8" r="2" /><path d="M12 10v12m0 0c4.2 0 7-1.667 7-5c-4.2 0-7 1.667-7 5m0 0c-4.2 0-7-1.667-7-5c4.2 0 7 1.667 7 5" /></svg>
-  },
-  {
-    num: "04", title: "Postmortem Records", desc: "Secure access to medical documentation & reports", magenta: true,
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5M10 9H8m8 4H8m8 4H8" /></svg>
-  }
+  { num: "01", title: "Body Admission", desc: "Open the real deceased registration preview", path: "/preview/body-intake", magenta: false, icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 12h4m-4-4h4m0 13v-3a2 2 0 0 0-4 0v3" /><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" /><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /></svg> },
+  { num: "02", title: "Body Release", desc: "Open the real body release preview", path: "/preview/release-form", magenta: true, icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m16 17l5-5l-5-5m5 5H9m0 9H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg> },
+  { num: "03", title: "Flower Arrangements", desc: "Bespoke floral tributes, wreaths & memorial displays", magenta: false, icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1" /><circle cx="12" cy="8" r="2" /><path d="M12 10v12m0 0c4.2 0 7-1.667 7-5c-4.2 0-7 1.667-7 5m0 0c-4.2 0-7-1.667-7-5c4.2 0 7 1.667 7 5" /></svg> },
+  { num: "04", title: "Postmortem Records", desc: "Secure access to medical documentation & reports", magenta: true, icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5M10 9H8m8 4H8m8 4H8" /></svg> }
 ];
 
 const FloralData = [
@@ -221,45 +244,18 @@ const statsData = [
 
 export default function Hero() {
   const [isFlipped, setIsFlipped] = useState(false);
-  const [currentFlower, setCurrentFlower] = useState(0);
-  const [fading, setFading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [activeForm, setActiveForm] = useState(null);
+  const [hideText, setHideText] = useState(false);
+
+  const [admForm, setAdmForm] = useState({ name: '', gender: '', age: '', dod: '', from: '', officer: '' });
+  const [relForm, setRelForm] = useState({ to: '', rel: '', date: '', trans: '', officer: '' });
+
   const navigate = useNavigate();
 
-  /* Cross-fade helper */
-  const selectFlower = (i) => {
-    if (i === currentFlower) return;
-    setFading(true);
-    setTimeout(() => {
-      setCurrentFlower(i);
-      setFading(false);
-    }, 380);
-  };
-
-  /* Keep the product preview moving without distracting from the core message. */
   useEffect(() => {
-    const flipInterval = setInterval(() => {
-      setIsFlipped((prev) => !prev);
-    }, 6000);
-
-    return () => {
-      clearInterval(flipInterval);
-    };
-  }, []);
-
-  /* Auto-advance floral tributes with proper cleanup */
-  useEffect(() => {
-    let fadeTimer;
-    const flowerInterval = setInterval(() => {
-      setFading(true);
-      fadeTimer = setTimeout(() => {
-        setCurrentFlower((prev) => (prev + 1) % FloralData.length);
-        setFading(false);
-      }, 380);
-    }, 4000);
-    return () => {
-      clearInterval(flowerInterval);
-      clearTimeout(fadeTimer);
-    };
+    const flipInterval = setInterval(() => setIsFlipped(prev => !prev), 6000);
+    return () => clearInterval(flipInterval);
   }, []);
 
   return (
@@ -273,12 +269,11 @@ export default function Hero() {
           <HeroGrid>
 
             {/* ── TEXT ── */}
-            <HeroText>
-
+            <HeroText hidden={hideText}>
               <HeroTitle>
                 For funeral homes where every detail matters.
                 <TitleBold>
-                  One exceptional experience from intake to farewell.
+                  One exceptional experience.
                 </TitleBold>
               </HeroTitle>
 
@@ -310,17 +305,19 @@ export default function Hero() {
               </HeroStats>
             </HeroText>
 
-            {/* ── TABLET — exactly as it was, text comes first on mobile ── */}
+            {/* ── TABLET ── */}
             <HeroVisual>
               <TabletScale>
-                <TabletScaleInner>
-                  <TabletFloatWrapper>
-                    <Tablet3DFlipper isFlipped={isFlipped}>
+                <TabletScaleInner isExpanded={isExpanded}>
+                  <TabletFloatWrapper isExpanded={isExpanded}>
+                    <Tablet3DFlipper isFlipped={isFlipped} isExpanded={isExpanded}>
 
-                      {/* FRONT FACE: RECEPTION PORTAL */}
+                      {/* FRONT FACE: PORTAL */}
                       <TabletFace className="front">
-                        <TabletFrame>
-                          <TabletScreen>
+                        <TabletFrame isExpanded={isExpanded}>
+                          <TabletScreen isExpanded={isExpanded}>
+                            
+                            {/* Portal UI */}
                             <PortalUI>
                               <PTop>
                                 <div style={{ width: "40px" }}></div>
@@ -353,7 +350,7 @@ export default function Hero() {
 
                               <PGrid>
                                 {PortalCardsData.map((c, i) => (
-                                  <PCard key={i} className={c.magenta ? "magenta" : ""}>
+                                  <PCard key={i} className={c.magenta ? "magenta" : ""} onClick={() => c.path && navigate(c.path)} role={c.path ? "button" : undefined} tabIndex={c.path ? 0 : undefined}>
                                     <PCorner className={`${c.magenta ? "magenta" : ""} tl`} />
                                     <PCorner className={`${c.magenta ? "magenta" : ""} tr`} />
                                     <PCorner className={`${c.magenta ? "magenta" : ""} bl`} />
@@ -363,29 +360,92 @@ export default function Hero() {
                                     <PCardTitle>{c.title}</PCardTitle>
                                     <PCardDesc>{c.desc}</PCardDesc>
                                     <PCont className={c.magenta ? "magenta" : ""}>
-                                      Continue
+                                      {c.path ? 'Open real preview' : 'Continue'}
                                       <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M7 7h10v10M7 17L17 7" /></svg>
                                     </PCont>
                                   </PCard>
                                 ))}
                               </PGrid>
                             </PortalUI>
+
+                            {/* ADMISSION FORM LAYER */}
+                            <FormLayer className={activeForm === 'admission' ? 'active' : ''}>
+                              <FormHeader>
+                                <div>
+                                  <FormGreeting>Welcome to Rest Point</FormGreeting>
+                                  <FormTitle>Deceased Registration</FormTitle>
+                                </div>
+                                <FormDate>Record Date: Oct 24, 2023</FormDate>
+                              </FormHeader>
+                              <FormBody>
+                                <FormSection>
+                                  <SectionHead><SectionNum>01</SectionNum><SectionTitle>Receiving & Facility</SectionTitle></SectionHead>
+                                  <FormRow>
+                                    <FormCol flex={2}><FormLabel>Full Name *</FormLabel><FormInput type="text" value={admForm.name} readOnly /></FormCol>
+                                    <FormCol><FormLabel>Gender *</FormLabel><FormInput type="text" value={admForm.gender} readOnly /></FormCol>
+                                  </FormRow>
+                                  <FormRow>
+                                    <FormCol flex={0.5}><FormLabel>Age</FormLabel><FormInput type="text" value={admForm.age} readOnly /></FormCol>
+                                    <FormCol><FormLabel>Date of Death</FormLabel><FormInput type="text" value={admForm.dod} readOnly /></FormCol>
+                                    <FormCol><FormLabel>Received From</FormLabel><FormInput type="text" value={admForm.from} readOnly /></FormCol>
+                                  </FormRow>
+                                </FormSection>
+                                <FormSection>
+                                  <SectionHead><SectionNum>04</SectionNum><SectionTitle>Verification & Sign-off</SectionTitle></SectionHead>
+                                  <FormRow>
+                                    <FormCol flex={2}><FormLabel>Officer Signature *</FormLabel><SigBox>Sign within boundaries</SigBox></FormCol>
+                                    <FormCol><FormLabel>Receiving Officer *</FormLabel><FormInput type="text" value={admForm.officer} readOnly /></FormCol>
+                                  </FormRow>
+                                </FormSection>
+                              </FormBody>
+                            </FormLayer>
+
+                            {/* RELEASE FORM LAYER */}
+                            <FormLayer className={activeForm === 'release' ? 'active' : ''}>
+                              <FormHeader>
+                                <div>
+                                  <FormGreeting>Rest Point Portal</FormGreeting>
+                                  <FormTitle>Body Release Form</FormTitle>
+                                </div>
+                                <FormDate>Record Date: Oct 24, 2023</FormDate>
+                              </FormHeader>
+                              <FormBody>
+                                <FormSection>
+                                  <SectionHead><SectionNum>01</SectionNum><SectionTitle>Release Details</SectionTitle></SectionHead>
+                                  <FormRow>
+                                    <FormCol flex={2}><FormLabel>Released To *</FormLabel><FormInput type="text" value={relForm.to} readOnly /></FormCol>
+                                    <FormCol><FormLabel>Relationship</FormLabel><FormInput type="text" value={relForm.rel} readOnly /></FormCol>
+                                  </FormRow>
+                                  <FormRow>
+                                    <FormCol><FormLabel>Collection Date</FormLabel><FormInput type="text" value={relForm.date} readOnly /></FormCol>
+                                    <FormCol><FormLabel>Transport</FormLabel><FormInput type="text" value={relForm.trans} readOnly /></FormCol>
+                                  </FormRow>
+                                </FormSection>
+                                <FormSection>
+                                  <SectionHead><SectionNum>04</SectionNum><SectionTitle>Authorization</SectionTitle></SectionHead>
+                                  <FormRow>
+                                    <FormCol flex={2}><FormLabel>Authorizer Signature *</FormLabel><SigBox>Sign within boundaries</SigBox></FormCol>
+                                    <FormCol><FormLabel>Authorizing Officer *</FormLabel><FormInput type="text" value={relForm.officer} readOnly /></FormCol>
+                                  </FormRow>
+                                </FormSection>
+                              </FormBody>
+                            </FormLayer>
+
                           </TabletScreen>
                         </TabletFrame>
                       </TabletFace>
 
-                      {/* BACK FACE: FLORAL ARRANGEMENTS */}
+                      {/* BACK FACE: FLORAL (Static floral image to avoid clutter, matching original) */}
                       <TabletFace className="back">
-                        <TabletFrame>
-                          <TabletScreen>
+                        <TabletFrame isExpanded={isExpanded}>
+                          <TabletScreen isExpanded={isExpanded}>
                             <FloralUI>
-                              <FlpHero src={FloralData[currentFlower].img} alt="Floral Tribute" fading={fading ? 1 : 0} loading="lazy" decoding="async" />
+                              <FlpHero src={FloralData[0].img} alt="Floral Tribute" fading={0} loading="lazy" decoding="async" />
                               <FlpOverlay />
-
                               <FlpStrip>
                                 {FloralData.map((f, i) => (
-                                  <FlpStory key={i} onClick={() => selectFlower(i)}>
-                                    <FlpRing className={i === currentFlower ? "unseen" : "seen"}>
+                                  <FlpStory key={i}>
+                                    <FlpRing className={i === 0 ? "unseen" : "seen"}>
                                       <FlpRingInner>
                                         <img src={f.img} alt={f.label} loading="lazy" decoding="async" />
                                       </FlpRingInner>
@@ -394,12 +454,10 @@ export default function Hero() {
                                   </FlpStory>
                                 ))}
                               </FlpStrip>
-
                               <FlpTitleBlock>
                                 <FlpNameTag>Floral Tributes</FlpNameTag>
-                                <FlpHeadline fading={fading ? 1 : 0}>{FloralData[currentFlower].title}</FlpHeadline>
+                                <FlpHeadline fading={0}>{FloralData[0].title}</FlpHeadline>
                               </FlpTitleBlock>
-
                               <FlpWordmark>
                                 <FlpWordmarkName>Memorial Florals</FlpWordmarkName>
                                 <FlpWordmarkSub>Est. since care began</FlpWordmarkSub>

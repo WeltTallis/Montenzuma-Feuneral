@@ -1,3 +1,5 @@
+import env from './config/env';
+
 /**
  * Scanner Bridge — shared helpers.
  *
@@ -88,16 +90,10 @@ export const buildStartScanMessage = ({ deceasedId, documentName, category, extr
   const token = read('authToken') || read('accessToken');
   const tenantSlug = read('tenantSlug') || read('tenant_slug');
 
-  // API gateway base — must match how DocumentsTab talks to the documents-service.
-  let apiBase = 'http://localhost:5000/api/v1/restpoint';
-  try {
-    if (typeof window !== 'undefined' && window.location) {
-      const isProd = window.location.protocol === 'https:';
-      apiBase = isProd
-        ? `${window.location.origin}/api/v1/restpoint`
-        : `${window.location.origin}/api/v1/restpoint`; // vite proxy → localhost:5000 gateway
-    }
-  } catch { /* keep default */ }
+  // The bridge is local, but document uploads must use the same canonical
+  // gateway as the rest of the app. In production this is the cloud API;
+  // localhost is used only by local development builds.
+  const apiBase = env.FULL_API_URL;
 
   return {
     action: 'START_SCAN',

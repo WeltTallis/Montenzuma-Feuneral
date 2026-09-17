@@ -1,7 +1,7 @@
 import React from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import { QRCodeSVG } from 'qrcode.react';
-import { C, getInitials, formatDate } from './theme';
+import { C, getInitials, formatDate, getDaysInMorgue } from './theme';
 import { getTenantSlug } from '../../../utils/globalAuth';
 
 /* ─── Pulse animation for active timeline dots ─── */
@@ -135,37 +135,49 @@ const NotifTime = styled.div`
   margin-top: 2px;
 `;
 
-/* ─── Redesigned Vertical Timeline ─── */
+/* ─── Horizontal mortuary progress stepper ─── */
 const TimelineContainer = styled.div`
   position: relative;
-  padding-left: 8px;
   margin-top: 8px;
+  display: flex;
+  gap: 0;
+  padding: 8px 0 4px;
 
   &::before {
     content: '';
     position: absolute;
-    left: 15px;
-    top: 12px;
-    bottom: 12px;
-    width: 2px;
+    left: 8%;
+    right: 8%;
+    top: 25px;
+    height: 2px;
     background: ${C.borderLight};
     border-radius: 2px;
+  }
+
+  @media (max-width: 560px) {
+    overflow-x: auto;
+    padding-bottom: 10px;
   }
 `;
 
 const TimelineItemRow = styled.div`
   position: relative;
-  padding: 10px 0 28px 48px;
+  flex: 1 1 0;
+  min-width: 92px;
+  padding: 0 4px;
+  text-align: center;
+  z-index: 1;
 
-  &:last-child { padding-bottom: 8px; }
+  @media (max-width: 560px) {
+    flex: 0 0 112px;
+  }
 `;
 
 const TimelineDot = styled.div`
-  position: absolute;
-  left: 0;
-  top: 12px;
-  width: 18px;
-  height: 18px;
+  position: relative;
+  margin: 0 auto 10px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: white;
   border: 5px solid #d1d5db;
@@ -189,21 +201,21 @@ const TimelineDot = styled.div`
 
 const TimelineContent = styled.div`
   background: #fff;
-  padding: 4px 0;
+  padding: 0;
 `;
 
 const TimelineText = styled.div`
-  font-size: 15px;
+  font-size: 11px;
   font-weight: 600;
   color: ${C.gray};
-  line-height: 1.4;
+  line-height: 1.25;
 
   ${({ $completed }) => $completed && `color: ${C.success};`}
   ${({ $active }) => $active && `color: ${C.warning};`}
 `;
 
 const TimelineTime = styled.div`
-  font-size: 13px;
+  font-size: 10px;
   color: ${C.lightGray};
   font-weight: 500;
   margin-top: 4px;
@@ -275,6 +287,12 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
   const isFemale = sex.toLowerCase() === 'female';
   const documentCount = Array.isArray(deceased?.documents) ? deceased.documents.length : 0;
   const releaseData = deceased?.releaseData || null;
+  const daysInCare = getDaysInMorgue(deceased?.date_admitted || deceased?.created_at);
+  const dailyRate = Number(deceased?.charges?.per_day ?? deceased?.charges?.dailyRate ?? deceased?.charges?.storage_rate ?? 0);
+  const chargeSource = deceased?.charges?.source === 'home_default' || deceased?.charges?.is_default
+    ? 'Home default'
+    : 'Deceased-specific';
+  const estimatedCareTotal = daysInCare * dailyRate;
 
   // ── Correct deceased ID & admission number ───────────────────────────
   // The deceased is looked up by ID, so we always resolve the canonical
@@ -282,14 +300,14 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
   const deceasedId = deceased?.deceased_id || deceased?.id || deceased?.deceasedId;
   const admissionNo = deceased?.admission_number || deceased?.admission_no;
 
-  // ─── QR code encodes the profile URL keyed by the deceased ID ──────
-  // Scanning the QR tag attached to the body opens this deceased's
-  // profile page, looked up by ID via the ?id= query parameter.
   const tenantSlug = getTenantSlug();
   const profileUrl = typeof window !== 'undefined' && tenantSlug && deceasedId
     ? `${window.location.origin}/tenant/${encodeURIComponent(tenantSlug)}/deceased?id=${encodeURIComponent(deceasedId)}`
     : '';
 
+  // ─── QR code encodes the profile URL keyed by the deceased ID ──────
+  // Scanning the QR tag attached to the body opens this deceased's
+  // profile page, looked up by ID via the ?id= query parameter.
   return (
     <SidebarCard>
       <SidebarHeader>
@@ -312,6 +330,26 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
           <StorageBadge $released={bodyStatus === 'Released'}>
             {bodyStatus === 'Released' && '✓ '}{bodyStatus === 'In Morgue' || bodyStatus === 'Active' ? 'In Storage' : 'Released'}
           </StorageBadge>
+        </ChargeRow>
+      </SidebarSection>
+
+      <SidebarSection>
+        <h3>Care Charges</h3>
+        <ChargeRow>
+          <span>Days in care</span>
+          <strong>{daysInCare} day{daysInCare === 1 ? '' : 's'}</strong>
+        </ChargeRow>
+        <ChargeRow>
+          <span>Daily rate</span>
+          <strong>{dailyRate ? `KES ${dailyRate.toLocaleString()}` : 'Not set'}</strong>
+        </ChargeRow>
+        <ChargeRow>
+          <span>Rate source</span>
+          <strong>{dailyRate ? chargeSource : 'Not configured'}</strong>
+        </ChargeRow>
+        <ChargeRow $highlight>
+          <span>Estimated care total</span>
+          <strong>{`KES ${estimatedCareTotal.toLocaleString()}`}</strong>
         </ChargeRow>
       </SidebarSection>
 

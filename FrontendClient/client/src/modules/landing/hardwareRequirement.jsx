@@ -79,7 +79,7 @@ const Reveal = ({ delay = 0, children, ...rest }) => {
 
 const HeroTab = styled.section`
   background: ${C.black};
-  color: ${C.paper};
+  color: #FFFFFF !important;
 `;
 
 const HeroInner = styled.div`
@@ -317,7 +317,7 @@ const ReqHead = styled.div`
     font-size: clamp(2.2rem, 4.2vw, 3.6rem);
     line-height: 1.04;
     letter-spacing: -0.02em;
-    color: #FFFFFF;
+    color: #FFFFFF !important;
   }
   h2 em { font-style: italic; color: inherit; }
 
@@ -581,7 +581,7 @@ const HardwareRequirementSection = () => {
     <>
       <GlobalStyles />
 
-      <main>
+      <main className="hardware-requirement">
         <HeroTab>
           <HeroInner>
 

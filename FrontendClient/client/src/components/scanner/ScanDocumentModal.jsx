@@ -135,16 +135,26 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
   const [message, setMessage] = useState('');
   const [document, setDocument] = useState(null);
   const [bridgeUrl, setBridgeUrl] = useState('');
+  const [bridgeInfo, setBridgeInfo] = useState(null);
   const [documentName, setDocumentName] = useState(() => defaultScanName(deceasedName));
-  const [category, setCategory] = useState('Scan');
 
   useEffect(() => { probe(); }, []);
 
   const probe = async () => {
     const result = await probeBridge(4000);
-    if (result.ok) { setBridgeUrl(result.url); setPhase('ready'); }
+    if (result.ok) { setBridgeUrl(result.url); setBridgeInfo(result.info || null); setPhase('ready'); }
     else setPhase('unavailable');
   };
+
+  const detectedScannerName = bridgeInfo?.scannerName
+    || bridgeInfo?.scanner_name
+    || bridgeInfo?.deviceName
+    || bridgeInfo?.device_name
+    || bridgeInfo?.bridge?.scannerName
+    || bridgeInfo?.bridge?.name;
+  const scannerName = typeof detectedScannerName === 'string' && detectedScannerName.trim()
+    ? detectedScannerName
+    : 'Scanner Bridge connected';
 
   const startScan = () => {
     if (!deceasedId) { notify.error('Scan failed', 'Missing deceased ID'); return; }
@@ -161,7 +171,7 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
     }
 
     ws.onopen = () => {
-      const payload = buildStartScanMessage({ deceasedId, documentName: documentName || undefined, category });
+      const payload = buildStartScanMessage({ deceasedId, documentName: documentName || undefined });
       ws.send(JSON.stringify(payload));
     };
 
@@ -228,18 +238,6 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
           style={{ display: 'block', width: '100%', marginTop: 4, padding: '8px 10px', border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: "'Source Sans 3', sans-serif", fontSize: 13 }}
         />
       </label>
-      <label style={{ fontSize: 12, fontWeight: 600, color: C.dark }}>
-        Category
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          style={{ display: 'block', width: '100%', marginTop: 4, padding: '8px 10px', border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: "'Source Sans 3', sans-serif", fontSize: 13 }}
-        >
-          {['Scan', 'General', 'Death Certificate', 'Medical', 'Police Report', 'ID / Passport', 'Release Forms', 'Other'].map((o) => (
-            <option key={o} value={o}>{o}</option>
-          ))}
-        </select>
-      </label>
     </div>
   );
 
@@ -283,7 +281,7 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
           <>
             <StatusBox $kind="info">
               <Printer size={16} />
-              Scanner Bridge connected{bridgeUrl ? ` — ${bridgeUrl.replace(/^ws:\/\//, '')}` : ''}.
+              {scannerName}{bridgeUrl ? ` — ${bridgeUrl.replace(/^wss?:\/\//, '')}` : ''}.
             </StatusBox>
             <div style={{ background: C.bgField, border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: '12px 14px', marginTop: 10, fontSize: 13, color: C.dark }}>
               Place the document(s) face-up in the scanner tray, then press

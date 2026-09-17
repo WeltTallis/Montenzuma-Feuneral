@@ -150,7 +150,7 @@ const DocumentsTab = ({ documents, deceasedId }) => {
 
   const normalizeDocument = (doc = {}) => {
     const documentId = doc.document_id ?? doc.documentId ?? doc.id ?? null;
-    const name = doc.original_name || doc.originalName || doc.name || doc.file_name || doc.fileName || doc.stored_name || doc.storedName || 'Untitled Document';
+    const name = doc.original_name || doc.originalName || doc.name || doc.file_name || doc.fileName || doc.stored_name || doc.storedName || `Document-${documentId || 'record'}`;
     const type = doc.category || doc.mime_type || doc.mimeType || doc.type || 'General';
     const uploadedAt = doc.uploaded_at || doc.uploadedAt || doc.created_at || doc.createdAt || null;
 
@@ -309,7 +309,7 @@ const DocumentsTab = ({ documents, deceasedId }) => {
               const uploadDate = doc.uploadedAt || doc.uploaded_at || doc.created_at || doc.createdAt;
               return (
               <tr key={doc.documentId ?? doc.document_id ?? i}>
-                <td style={{ fontWeight: 600 }}>{doc.originalName || 'Untitled Document'}</td>
+                <td style={{ fontWeight: 600 }}>{doc.originalName || `Document-${doc.documentId || 'record'}`}</td>
                 <td><StatusTag $info>{doc.category || doc.mimeType || 'General'}</StatusTag></td>
                 <td>{uploadDate ? formatDate(uploadDate) : '—'}</td>
                 <td style={{ textAlign: 'right' }}>

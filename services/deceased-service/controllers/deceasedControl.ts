@@ -262,6 +262,11 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
                 // Table is known to exist — just query, no DDL overhead.
                 chargeRows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
             }
+            let chargeIsDefault = false;
+            if (!chargeRows || chargeRows.length === 0) {
+                chargeRows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', ['__DEFAULT__'])) || [];
+                chargeIsDefault = chargeRows.length > 0;
+            }
             if (chargeRows && chargeRows.length > 0) {
                 const cs = chargeRows[0];
                 deceased.charges = {
@@ -272,6 +277,8 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
                     rate_profile: cs.rate_profile ?? 'standard',
                     charge_type: cs.charge_type ?? 'daily',
                     usd_rate: Number(cs.usd_rate ?? 130),
+                    is_default: chargeIsDefault,
+                    source: chargeIsDefault ? 'home_default' : 'deceased_specific',
                     updated_at: cs.updated_at ?? null
                 };
             }

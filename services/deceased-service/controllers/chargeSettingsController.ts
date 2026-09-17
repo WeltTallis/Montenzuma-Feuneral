@@ -1,12 +1,14 @@
 import { Request, Response } from 'express';
 import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../shared/dbConfig';
 import Logger from '../../../packages/shared-logger/src/index';
+import redisService from '../../../packages/shared-services/dist/redisService';
 
 interface TenantRequest extends Request {
     tenantSlug?: string;
 }
 
 const nowNairobi = (): string => new Date().toISOString();
+const HOME_DEFAULT_KEY = '__DEFAULT__';
 
 const getTenantSlugFromReq = (req: TenantRequest): string =>
     ((req.headers['x-slug'] as string) || (req.headers['x-tenant-slug'] as string) || (req as any).tenantSlug || 'system_shared');
@@ -50,8 +52,13 @@ export const getChargeSettings = async (req: TenantRequest, res: Response): Prom
     try {
         const { id } = req.params;
         await ensureChargeSettingsTable(dbName);
-        const rows: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
-        return res.status(200).json({ success: true, data: toCamel(rows[0]) });
+        let rows: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
+        let isDefault = false;
+        if (rows.length === 0) {
+            rows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [HOME_DEFAULT_KEY])) || [];
+            isDefault = rows.length > 0;
+        }
+        return res.status(200).json({ success: true, data: { ...toCamel(rows[0]), isDefault } });
     } catch (error: any) {
         console.error('Error loading charge settings:', error);
         return res.status(500).json({ success: false, message: error.message || 'Failed to load charge settings' });
@@ -75,6 +82,11 @@ export const updateChargeSettings = async (req: TenantRequest, res: Response): P
         const dailyRate = Number(b.dailyRate ?? 3000);
         const hourlyRate = Number(b.hourlyRate ?? 125);
         const usdRate = Number(b.usdRate ?? 130);
+        const settingsKey = b.isHomeDefault ? HOME_DEFAULT_KEY : id;
+
+        if (chargeType === 'daily' && (!Number.isFinite(dailyRate) || dailyRate <= 0)) {
+            return res.status(400).json({ success: false, message: 'A positive daily rate is required.' });
+        }
 
         await ensureChargeSettingsTable(dbName);
         await safeTenantExecute(dbName, `
@@ -85,13 +97,17 @@ export const updateChargeSettings = async (req: TenantRequest, res: Response): P
                 rate_profile = VALUES(rate_profile), currency = VALUES(currency), charge_type = VALUES(charge_type),
                 daily_rate = VALUES(daily_rate), hourly_rate = VALUES(hourly_rate), usd_rate = VALUES(usd_rate),
                 updated_by = VALUES(updated_by), updated_at = VALUES(updated_at)
-        `, [id, rateProfile, currency, chargeType, dailyRate, hourlyRate, usdRate,
+        `, [settingsKey, rateProfile, currency, chargeType, dailyRate, hourlyRate, usdRate,
             req.headers['x-user-name'] as string || null, now, now]);
 
-        Logger.info({ message: 'Charge settings updated', deceasedId: id, tenantSlug });
+        // A default rate affects every profile without a specific override;
+        // clear the tenant profile cache for both default and specific updates.
+        await redisService.clearServiceCache('deceased-service', tenantSlug);
 
-        const rows: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
-        return res.status(200).json({ success: true, message: 'Charge settings updated successfully', data: toCamel(rows[0]) });
+        Logger.info({ message: 'Charge settings updated', deceasedId: settingsKey, tenantSlug });
+
+        const rows: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [settingsKey])) || [];
+        return res.status(200).json({ success: true, message: 'Charge settings updated successfully', data: { ...toCamel(rows[0]), isDefault: settingsKey === HOME_DEFAULT_KEY } });
     } catch (error: any) {
         console.error('Error updating charge settings:', error);
         return res.status(500).json({ success: false, message: error.message || 'Failed to update charge settings' });

@@ -395,7 +395,7 @@ export default function App() {
         {
             dark: true,
             to: true,
-            category: 'NEW Â· INTEGRATED',
+            category: 'NEW - INTEGRATED',
             accent: C.brass,
             title: 'Leave Management',
             excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve and track time off in real time ” no spreadsheets, no external HR tools.',
@@ -412,7 +412,7 @@ export default function App() {
         {
             dark: true,
             to: true,
-            category: 'NEW Â· SUPPORT CENTER',
+            category: 'NEW - SUPPORT CENTER',
             accent: C.brass,
             title: 'Real-Time Customer Support',
             excerpt: 'Submit issues directly through the platform and our support agents receive, respond, and resolve them in real time ” with full status tracking and communication history.',

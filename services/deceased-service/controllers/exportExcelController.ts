@@ -353,7 +353,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     const logoBuf = await withTimeout(fetchLogo(), 4000);
     if (logoBuf) {
       const imgId = workbook.addImage({ buffer: excelBuffer(logoBuf), extension: 'png' });
-      worksheet.addImage(imgId, { tl: { col: 0.15, row: 0.1 }, ext: { width: 150, height: 50 } });
+      worksheet.addImage(imgId, { tl: { col: 0.15, row: 0.1 }, ext: { width: 84, height: 28 } });
     }
 
     // Classification line

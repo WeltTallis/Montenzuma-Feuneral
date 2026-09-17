@@ -330,6 +330,13 @@
             animation: histIn .18s ease-out;
         }
 
+        /* .hist sets its own display:flex, which overrides the UA's default
+           [hidden] { display:none } — without this the close button (and the
+           initial hidden state) can never actually hide the panel. */
+        .hist[hidden] {
+            display: none;
+        }
+
         @keyframes histIn {
             from { transform: translateX(26px); opacity: 0; }
             to { transform: none; opacity: 1; }
@@ -1512,7 +1519,9 @@
             const it = new Uint8Array(4), dv = new DataView(it.buffer);
             for (let i = 0; i < spin; i++) {
                 dv.setUint32(0, i, true);
-                h = F(h.clone().concat(u8ToWA(it)));
+                /* ECMA-376 iterative hashing: H(n) = Hash(iterator_le32 + H(n-1))
+                   — xlsx-populate and Excel both hash the iterator FIRST. */
+                h = F(u8ToWA(it).clone().concat(h));
                 if ((i & 16383) === 16383) await tick();
             }
             return h;
@@ -1539,7 +1548,12 @@
         }
         function parseAgileXml(xml) {
             const doc = new DOMParser().parseFromString(xml, 'text/xml');
-            const g = t => doc.getElementsByTagName(t)[0];
+            /* Producers namespace-prefix the Agile EncryptionInfo tags
+               (e.g. xlsx-populate / MS Office write <c:encryptedKey>), and
+               getElementsByTagName only matches the literal (prefixed) name —
+               so look up by LOCAL name to stay producer-agnostic. */
+            const g = t => doc.getElementsByTagNameNS('*', t)[0]
+                || Array.from(doc.getElementsByTagName('*')).find(el => el.localName === t);
             const kd = g('keyData'), ek = g('encryptedKey');
             if (!kd || !ek) throw errX('BAD_ENCRYPTION_INFO');
             const a = (el, n, d) => { const v = el.getAttribute(n); return v == null ? d : v; };
@@ -1560,7 +1574,7 @@
         }
         const BK = {
             verifierHashInput: [0xfe, 0xa7, 0xd2, 0x76, 0x3b, 0x4b, 0x9e, 0x79],
-            verifierHashValue: [0x96, 0x7e, 0x64, 0x8f, 0x46, 0x1f, 0x1f, 0x93],
+            verifierHashValue: [0xd7, 0xaa, 0x0f, 0x6d, 0x30, 0x61, 0x34, 0x4e],
             keyValue: [0x14, 0x6e, 0x0b, 0xe7, 0xab, 0xac, 0xd0, 0xd6],
         };
         async function decryptAgile(pkg, infoXml, password) {
@@ -1572,20 +1586,27 @@
             showLoad(`Deriving key (${P.enc.spinCount.toLocaleString()} iterations)…`);
             const H = await deriveH(F, encSalt, password, P.enc.spinCount);
 
-            const viIn = aesDec(keyFrom(H, BK.verifierHashInput, F, P.enc.keyBits),
-                ivFrom(encSalt, BK.verifierHashInput, F, P.enc.blockSize),
-                P.enc.verifierInput);
-            const calc = F(u8ToWA(viIn)).toString(CryptoJS.enc.Hex).slice(0, P.enc.hashSize * 2);
-            const stored = waToU8(aesDec(keyFrom(H, BK.verifierHashValue, F, P.enc.keyBits),
-                ivFrom(encSalt, BK.verifierHashValue, F, P.enc.blockSize),
-                P.enc.verifierValue));
-            let storedHex = '';
-            for (const b of stored.subarray(0, P.enc.hashSize)) storedHex += b.toString(16).padStart(2, '0');
-            if (calc !== storedHex) throw errX('WRONG_PASSWORD');
+            /* The ECMA-376 spec derives the verifier / key-value IVs by hashing
+               the salt with the block key — but xlsx-populate (which produces
+               this platform's PIN-protected exports) encrypts those fields with
+               the RAW salt as the IV. Try the spec derivation first, then the
+               raw-salt variant, so workbooks from both producers open. */
+            const verifierIVs = (bk) => [ivFrom(encSalt, bk, F, P.enc.blockSize), encSalt];
 
-            const fileKey = u8ToWA(aesDec(keyFrom(H, BK.keyValue, F, P.keyData.keyBits),
-                ivFrom(encSalt, BK.keyValue, F, P.enc.blockSize),
-                P.enc.keyValue));
+            let fileKey = null;
+            for (let m = 0; m < 2 && !fileKey; m++) {
+                const viIn = aesDec(keyFrom(H, BK.verifierHashInput, F, P.enc.keyBits),
+                    verifierIVs(BK.verifierHashInput)[m], P.enc.verifierInput);
+                const calc = F(u8ToWA(viIn)).toString(CryptoJS.enc.Hex).slice(0, P.enc.hashSize * 2);
+                const stored = waToU8(aesDec(keyFrom(H, BK.verifierHashValue, F, P.enc.keyBits),
+                    verifierIVs(BK.verifierHashValue)[m], P.enc.verifierValue));
+                let storedHex = '';
+                for (const b of stored.subarray(0, P.enc.hashSize)) storedHex += b.toString(16).padStart(2, '0');
+                if (calc !== storedHex) continue;   /* wrong password OR the other producer's IV convention */
+                fileKey = u8ToWA(aesDec(keyFrom(H, BK.keyValue, F, P.keyData.keyBits),
+                    verifierIVs(BK.keyValue)[m], P.enc.keyValue));
+            }
+            if (!fileKey) throw errX('WRONG_PASSWORD');
 
             const origLen = new DataView(pkg.buffer, pkg.byteOffset, 8).getUint32(0, true);
             const ct = pkg.subarray(8);

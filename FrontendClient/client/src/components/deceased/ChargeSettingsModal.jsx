@@ -577,6 +577,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
         dailyRate,
         hourlyRate,
         usdRate,
+        isHomeDefault: false,
       };
 
       const response = await api.put(ENDPOINTS.DECEASED.UPDATE_CHARGE_SETTINGS(deceasedId), apiData);
@@ -716,6 +717,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
                   ? 'Charged once for each day in care.'
                   : 'Charged for every hour in care.'}
               </Hint>
+              <Hint>This setting applies only to this deceased record. Home defaults are managed in Settings.</Hint>
             </Group>
 
             {/* FX (USD only) */}

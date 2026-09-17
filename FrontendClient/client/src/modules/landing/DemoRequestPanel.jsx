@@ -53,7 +53,7 @@ const DemoRequestPanel = () => {
 
     const payload = {
       type: 'trial_request',
-      subject: '14-day free trial request',
+      subject: '21-day free trial request',
       message: [
         `Funeral Home: ${form.funeralHomeName.trim()}`,
         `Location: ${form.location.trim()}`,
@@ -61,7 +61,7 @@ const DemoRequestPanel = () => {
         `Phone: ${form.phone.trim()}`,
         `Branch Type: ${branchType || 'single'}`,
         branchType === 'multi' && form.branches.trim() ? `Branches: ${form.branches.trim()}` : '',
-        'Trial: 14-day free trial',
+        'Trial: 21-day free trial',
       ].filter(Boolean).join('\n'),
       tenantName: 'Restpoint Landing Page',
       userEmail: form.email.trim(),
@@ -540,22 +540,8 @@ const DemoRequestPanel = () => {
             <div className="drp-check-list">
               <div className="drp-check">
                 <i className="fas fa-check-circle" aria-hidden="true" />
-                <span>14-Day Free Trial</span>
+                <span>21-Day Free Trial</span>
               </div>
-              <div className="drp-check">
-                <i className="fas fa-check-circle" aria-hidden="true" />
-                <span>Or 29 Days at just 5,000 KSH</span>
-              </div>
-              <div className="drp-check">
-                <i className="fas fa-check-circle" aria-hidden="true" />
-                <span>Guided setup by a specialist</span>
-              </div>
-            </div>
-            <div className="drp-divider">
-              <p className="drp-quote">
-                "Our team will personally handle your data migration and staff training. You focus on the families, we handle the software."
-              </p>
-              <p className="drp-quote-author">— Amara, Client Success Lead</p>
             </div>
           </div>
         </div>

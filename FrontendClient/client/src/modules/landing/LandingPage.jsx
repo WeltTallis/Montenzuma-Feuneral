@@ -258,7 +258,7 @@ const FloralPreview = () => {
 };
 
 const Showcase = ({ no, title, desc, reverse, children }) => (
-  <Reveal className="showcase-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center', marginBottom: '7rem' }}>
+  <Reveal className={`showcase-mobile${no === '07' ? ' floral-showcase' : ''}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center', marginBottom: '7rem' }}>
     <div className="showcase-text" style={{ order: reverse ? 2 : 1, paddingRight: reverse ? '0' : '2rem', paddingLeft: reverse ? '2rem' : '0' }}>
       <div className="mono-label" style={{ color: C.verdigris, fontSize: '0.78rem', marginBottom: '1.2rem' }}>Module {no}</div>
       <h2 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', marginBottom: '1.2rem', lineHeight: 1.25 }}>{title}</h2>
@@ -284,9 +284,9 @@ export default function App() {
   };
 
   const landingModules = [
-    { dark: true, to: true, category: 'NEW ï¿½ INTEGRATED', accent: C.brass, title: 'Leave Management', excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve, and track time off in real time - no spreadsheets or external HR tools.', status: 'NOW LIVE' },
+    { dark: true, to: true, category: 'NEW - INTEGRATED', accent: C.brass, title: 'Leave Management', excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve, and track time off in real time - no spreadsheets or external HR tools.', status: 'NOW LIVE' },
     { static: true, category: 'PREMIUM FLORAL BOOKING', accent: C.verdigris, title: 'High-End Funeral Flowers', excerpt: 'We built a premium floral booking flow for funeral homes: families browse refined tribute arrangements, the system recommends elegant options based on the service style and season, and each order is sent directly to the florist with no confusion. This is crafted for funeral homes that take pride in dignified, high-end floral presentation.', status: 'RECEPTIONIST PORTAL' },
-    { dark: true, to: true, category: 'NEW ï¿½ SUPPORT CENTER', accent: C.brass, title: 'Real-time Customer Support', excerpt: 'Submit issues directly through the platform and our support agents receive, respond to, and resolve them in real time with full status tracking and communication history.', status: 'NOW LIVE' },
+    { dark: true, to: true, category: 'NEW - SUPPORT CENTER', accent: C.brass, title: 'Real-time Customer Support', excerpt: 'Submit issues directly through the platform and our support agents receive, respond to, and resolve them in real time with full status tracking and communication history.', status: 'NOW LIVE' },
   ];
 
   const marqueeItems = ['Case Management', 'Family Portal', 'Smart Dispatch', 'Fleet Tracking', 'Funeral Insurance', 'Real-time Support', 'Billing & Invoicing', 'Analytics & Reports', 'Welfare Schemes'];
@@ -304,6 +304,10 @@ export default function App() {
         .landing-page header, .landing-page header *,
         .landing-page .footer-container, .landing-page .footer-container * { font-family: 'Saira', sans-serif !important; }
         .landing-page h1, .landing-page h2, .landing-page h3, .landing-page h4, .landing-page h5, .landing-page h6 { font-family: 'Cormorant Garamond', serif !important; font-weight: 600; color: ${C.ink}; }
+        .landing-page .lockin-title,
+        .landing-page .portal-title,
+        .landing-page .hardware-requirement h1,
+        .landing-page .hardware-requirement h2 { color: #FFFFFF !important; }
         h1 { font-size: clamp(2rem, 6.5vw, 4.6rem); line-height: 1.05; margin-bottom: 1.4rem; }
         h2 { font-size: clamp(1.9rem, 4vw, 2.5rem); line-height: 1.2; }
         p { line-height: 1.7; font-size: 1rem; }
@@ -454,13 +458,14 @@ export default function App() {
         /* -- Sections -- */
         .section { padding: clamp(4rem,8vw,6rem) 0; }
         .showcase-mobile { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; margin-bottom: 7rem; }
+        .floral-showcase { padding-top: 3rem; }
         .about-section { background: ${C.bone}; padding: clamp(3rem,6vw,4rem) 0; border-top: 1px solid ${C.line}; }
         .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
         .lockin-section { position: relative; padding: clamp(5rem,10vw,7rem) 0; overflow: hidden; border-top: 1px solid ${C.line}; }
         .lockin-bg { position: absolute; inset: 0; background-image: url('/lockin.webp'); background-size: cover; background-position: center; background-attachment: fixed; }
         .lockin-section::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg,rgba(12,12,12,0.78) 0%,rgba(21,23,26,0.86) 100%); }
         .lockin-content { position: relative; z-index: 1; }
-        .lockin-title { font-size: clamp(2rem,5vw,2.8rem); font-weight: 700; color: ${C.bone}; margin-bottom: 1.25rem; line-height: 1.2; }
+        .lockin-title { font-size: clamp(2rem,5vw,2.8rem); font-weight: 700; color: #FFFFFF !important; margin-bottom: 1.25rem; line-height: 1.2; }
         .lockin-desc { font-size: 1.05rem; color: rgba(250,248,244,0.82); line-height: 1.8; margin-bottom: 1.25rem; }
         .lockin-sub { font-size: 1.15rem; font-family: 'Cormorant Garamond',serif; font-weight: 600; color: ${C.brassLight}; line-height: 1.7; margin-bottom: 2.5rem; }
         .lockin-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 1.5rem; margin-top: 2.5rem; text-align: left; }
@@ -504,6 +509,7 @@ export default function App() {
         @media(max-width:768px) {
           html { font-size: 17px; }
           .showcase-mobile { grid-template-columns: 1fr !important; gap: 2rem !important; margin-bottom: 4rem !important; }
+          .floral-showcase { padding-top: 1.5rem; }
           .showcase-mobile .showcase-text { order: 2 !important; padding: 0 !important; }
           .showcase-mobile .showcase-visual { order: 1 !important; justify-content: center !important; }
           .insurance-content { max-width: 100%; }
@@ -558,15 +564,21 @@ export default function App() {
             <PremiumReporting />
             <Showcase no="07" title="The Right Flowers. Right in Front of Them." reverse={false} desc={
               <>
-                Families shouldn't have to search the internet for hours trying to figure out what flowers are right for the moment.
-                <br /><br />
-                Give them a tablet at the front desk. Show them a curated selection of arrangements.
-                <br /><br />
-                Once they choose, the booking appears instantly in the software. Your florist gets notified right away.
-                <br /><br />
-                They can even add custom details on the spot, like ribbon colors, specific flower preferences, or personalized messages.
-                <br /><br />
-
+                <strong style={{ display: 'block', fontSize: '1.18rem', color: C.ink, lineHeight: 1.45, marginBottom: '1.2rem' }}>
+                  Make the right tribute easier to choose.
+                </strong>
+                <span style={{ display: 'block', marginBottom: '1rem' }}>
+                  Families should not have to search the internet for hours to find flowers that fit the moment.
+                </span>
+                <span style={{ display: 'block', marginBottom: '1rem' }}>
+                  Put a curated collection at the front desk. They browse, compare, and choose with confidence.
+                </span>
+                <span style={{ display: 'block', marginBottom: '1rem' }}>
+                  The booking appears instantly in Rest Point, and your florist is notified right away.
+                </span>
+                <span style={{ display: 'block' }}>
+                  Add ribbon colors, flower preferences, and personal messages while the family is still there.
+                </span>
               </>
             }>
               <FloralPreview />

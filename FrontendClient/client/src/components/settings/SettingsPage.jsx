@@ -62,6 +62,9 @@ export default function SettingsPage() {
     const [formError, setFormError] = useState('');
     const [error, setError] = useState(null);
     const [assigningBranch, setAssigningBranch] = useState(null);
+    const [homeCharges, setHomeCharges] = useState({ chargeType: 'daily', currency: 'KES', dailyRate: '', hourlyRate: '', usdRate: '130' });
+    const [homeChargesLoading, setHomeChargesLoading] = useState(false);
+    const [homeChargesSaving, setHomeChargesSaving] = useState(false);
 
     const [userForm, setUserForm] = useState({
         email: '',
@@ -149,6 +152,55 @@ export default function SettingsPage() {
             setError(`Failed to load settings: ${message}`);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadHomeCharges = async () => {
+        setHomeChargesLoading(true);
+        try {
+            const response = await api.get(ENDPOINTS.DECEASED.CHARGE_SETTINGS('__DEFAULT__'));
+            const data = response.data?.data || {};
+            setHomeCharges({
+                chargeType: data.chargeType || 'daily',
+                currency: data.currency || 'KES',
+                dailyRate: data.dailyRate || '',
+                hourlyRate: data.hourlyRate || '',
+                usdRate: data.usdRate || '130',
+            });
+        } catch (err) {
+            console.error('Failed to load home charge settings:', err);
+        } finally {
+            setHomeChargesLoading(false);
+        }
+    };
+
+    const saveHomeCharges = async (event) => {
+        event.preventDefault();
+        const dailyRate = Number(homeCharges.dailyRate || 0);
+        const hourlyRate = Number(homeCharges.hourlyRate || 0);
+        if (homeCharges.chargeType === 'daily' && dailyRate <= 0) {
+            setError('Enter a positive default daily charge.');
+            return;
+        }
+        if (homeCharges.chargeType === 'hourly' && hourlyRate <= 0) {
+            setError('Enter a positive default hourly charge.');
+            return;
+        }
+        setHomeChargesSaving(true);
+        try {
+            await api.put(ENDPOINTS.DECEASED.UPDATE_CHARGE_SETTINGS('__DEFAULT__'), {
+                rateProfile: 'standard',
+                ...homeCharges,
+                dailyRate,
+                hourlyRate,
+                usdRate: Number(homeCharges.usdRate || 0),
+                isHomeDefault: true,
+            });
+            setError(null);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to save default care charges.');
+        } finally {
+            setHomeChargesSaving(false);
         }
     };
 
@@ -266,6 +318,9 @@ export default function SettingsPage() {
     // the Users & Roles tab and the "Add User" functionality.
     const isAdmin = isUserManager(currentUser) || isUserManager(resolveStoredUser());
     const isManager = isAdmin;
+    useEffect(() => {
+        if (activeTab === 'charges' && isManager) loadHomeCharges();
+    }, [activeTab, isManager]);
     const storedBranding = getTenantBrandingFromStorage();
     const rawLogoUrl = settings?.logoUrl || settings?.logo_url || settings?.logo || storedBranding.logoUrl;
     const companyLogo = rawLogoUrl
@@ -415,6 +470,25 @@ export default function SettingsPage() {
                             Users & Roles
                         </button>
                     )}
+                    {isManager && (
+                        <button
+                            onClick={() => setActiveTab('charges')}
+                            style={{
+                                padding: '0.75rem 1.25rem',
+                                background: 'none',
+                                border: 'none',
+                                borderBottom: `2px solid ${activeTab === 'charges' ? THEME.colors.brass : 'transparent'}`,
+                                color: activeTab === 'charges' ? THEME.colors.ink : THEME.colors.gray,
+                                fontSize: '0.88rem',
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                fontFamily: "'Inter', sans-serif",
+                                marginBottom: '-1px',
+                            }}
+                        >
+                            Care Charges
+                        </button>
+                    )}
                     {isMultiTenant && (
                         <button
                             onClick={() => setActiveTab('branches')}
@@ -536,6 +610,54 @@ export default function SettingsPage() {
                                 </div>
                             )}
                         </div>
+                    )}
+
+                    {activeTab === 'charges' && isManager && (
+                        <form onSubmit={saveHomeCharges}>
+                            <h3 style={{ fontFamily: "'Inter', sans-serif", fontSize: '1.1rem', fontWeight: 600, color: THEME.colors.ink, marginBottom: '0.4rem' }}>
+                                Funeral Home Default Care Charge
+                            </h3>
+                            <p style={{ fontSize: '0.85rem', color: THEME.colors.gray, marginBottom: '1.25rem', maxWidth: 620 }}>
+                                This rate applies per day to deceased records that do not have their own specific charge setting. Individual deceased rates remain independent.
+                            </p>
+                            {homeChargesLoading ? (
+                                <p style={{ color: THEME.colors.gray, fontSize: '0.88rem' }}>Loading default charges...</p>
+                            ) : (
+                                <div style={{ maxWidth: 520, display: 'grid', gap: '1rem' }}>
+                                    <label style={{ display: 'grid', gap: '0.4rem', fontSize: '0.78rem', color: THEME.colors.gray }}>
+                                        Charge frequency
+                                        <select
+                                            value={homeCharges.chargeType}
+                                            onChange={(event) => setHomeCharges((prev) => ({ ...prev, chargeType: event.target.value }))}
+                                            style={{ padding: '0.7rem', border: `1px solid ${THEME.colors.line}`, borderRadius: 5, fontFamily: "'Inter', sans-serif" }}
+                                        >
+                                            <option value="daily">Per day</option>
+                                            <option value="hourly">Per hour</option>
+                                        </select>
+                                    </label>
+                                    <label style={{ display: 'grid', gap: '0.4rem', fontSize: '0.78rem', color: THEME.colors.gray }}>
+                                        {homeCharges.chargeType === 'daily' ? 'Default daily rate (KES)' : 'Default hourly rate (KES)'}
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={homeCharges.chargeType === 'daily' ? homeCharges.dailyRate : homeCharges.hourlyRate}
+                                            onChange={(event) => setHomeCharges((prev) => ({
+                                                ...prev,
+                                                [prev.chargeType === 'daily' ? 'dailyRate' : 'hourlyRate']: event.target.value,
+                                            }))}
+                                            style={{ padding: '0.7rem', border: `1px solid ${THEME.colors.line}`, borderRadius: 5, fontSize: '1rem' }}
+                                        />
+                                    </label>
+                                    <button
+                                        type="submit"
+                                        disabled={homeChargesSaving}
+                                        style={{ justifySelf: 'start', padding: '0.7rem 1.25rem', background: THEME.colors.brass, color: THEME.colors.white, border: 'none', borderRadius: 5, fontWeight: 600, cursor: homeChargesSaving ? 'wait' : 'pointer' }}
+                                    >
+                                        {homeChargesSaving ? 'Saving...' : 'Save Home Default'}
+                                    </button>
+                                </div>
+                            )}
+                        </form>
                     )}
 
                     {activeTab === 'branches' && isMultiTenant && (

@@ -21,7 +21,7 @@ const Section = styled.section`
 const HeaderWrap = styled.div`
   width: 100%;
   max-width: 1200px;
-  margin: 0 0 3rem;
+  margin: 0 0 2.25rem;
   text-align: left;
 
   /* Match the grid's widths so the header starts exactly above the first card */
@@ -30,12 +30,12 @@ const HeaderWrap = styled.div`
 `;
 
 const SectionLabel = styled.div`
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: #8A8F98;
-  margin-bottom: 1rem;
+  color: rgba(255,255,255,0.62) !important;
+  margin-bottom: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -45,24 +45,24 @@ const SectionLabel = styled.div`
     content: '';
     width: 24px;
     height: 1px;
-    background: #2A2A2A;
+    background: rgba(255,255,255,0.24);
   }
 `;
 
 const SectionTitle = styled.h2`
   font-family: 'Fraunces', 'Playfair Display', serif;
-  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-size: clamp(2rem, 4vw, 2.7rem);
   font-weight: 600;
-  color: #FFFFFF;
+  color: #FFFFFF !important;
   line-height: 1.2;
   letter-spacing: -0.02em;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 `;
 
 const SectionDesc = styled.p`
-  font-size: 1.05rem;
-  color: #8A8F98;
-  line-height: 1.6;
+  font-size: 1rem;
+  color: rgba(255,255,255,0.62);
+  line-height: 1.7;
   max-width: 720px;
 `;
 
@@ -72,7 +72,7 @@ const SectionDesc = styled.p`
 const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr); /* Straight line on big screens */
-  gap: 16px; /* Tighter gap for a sleeker look */
+  gap: 18px;
   width: 100%;
   max-width: 1200px;
   
@@ -92,14 +92,14 @@ const Grid = styled.div`
 ─────────────────────────────────────────────────────────── */
 const Card = styled.div`
   height: 340px; /* Smaller, sleeker height */
-  border-radius: 16px; /* Slightly smaller radius */
+  border-radius: 10px;
   overflow: hidden;
   position: relative;
   cursor: pointer;
   background-image: url(${p => p.$img});
   background-size: cover;
   background-position: center;
-  border: 1px solid rgba(255,255,255,0.05); /* Subtle edge */
+  border: 1px solid rgba(255,255,255,0.14);
   
   opacity: 0;
   transform: translateY(20px) scale(0.98);
@@ -116,8 +116,8 @@ const Card = styled.div`
 
   &:hover {
     transform: translateY(0) scale(1.03);
-    border-color: ${p => p.$accent}55;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 15px ${p => p.$accent}22;
+    border-color: rgba(255,255,255,0.48);
+    box-shadow: 0 18px 38px rgba(0,0,0,0.48);
   }
 `;
 
@@ -127,15 +127,14 @@ const Overlay = styled.div`
   background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.92) 100%);
 `;
 
-const AccentDot = styled.div`
+const CardDot = styled.div`
   position: absolute; 
   top: 16px; 
   left: 16px;
   width: 6px; 
   height: 6px; 
   border-radius: 50%;
-  background: ${p => p.$accent};
-  box-shadow: 0 0 10px ${p => p.$accent};
+  background: rgba(255,255,255,0.86);
   z-index: 2;
 `;
 
@@ -172,7 +171,7 @@ const SubLabel = styled.p`
   font-weight: 600;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: ${p => p.$accent};
+  color: rgba(255,255,255,0.68);
   margin-bottom: 6px;
 `;
 
@@ -186,7 +185,7 @@ const Title = styled.h2`
 `;
 
 /* ───────────────────────────────────────────────────────────
-   DATA - Platform Colors & Floral Image Included
+  DATA - Preview cards
 ─────────────────────────────────────────────────────────── */
 const CARDS = [
   {
@@ -194,7 +193,6 @@ const CARDS = [
     sub: 'Admission & Registration',
     title: 'Body Intake',
     img: 'https://i.pinimg.com/736x/4d/97/3d/4d973d1e3be9a1fb3a504d0218854797.jpg', 
-    accent: '#C9A227', // Gold
     preview: '/preview/body-intake',
   },
   {
@@ -202,7 +200,6 @@ const CARDS = [
     sub: 'Authorization & Transfer',
     title: 'Body Release',
     img: 'https://coleman-milne.co.uk/wp-content/uploads/2022/12/Etive-Video-Cover.png', 
-    accent: '#7db8a0', // Soft Verdigris Green
     preview: '/preview/release-form',
   },
   {
@@ -210,7 +207,6 @@ const CARDS = [
     sub: 'Front Desk & Walk-ins',
     title: 'Reception Portal',
     img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=900&fit=crop&auto=format', 
-    accent: '#A98F6E', // Brass Light
     preview: '/preview/reception-portal',
   },
   {
@@ -218,7 +214,6 @@ const CARDS = [
     sub: 'Service Florals & Orders',
     title: 'Floral Arrangement',
     img: 'https://i.pinimg.com/1200x/6f/59/16/6f5916baed8c05713704a10a015ac372.jpg', // New Floral Image
-    accent: '#722F37', // Wine Burgundy
     preview: '/preview/florals',
   },
 ];
@@ -267,7 +262,6 @@ export default function ModuleGridSection() {
             key={card.id}
             id={`card-${card.id}`}
             $img={card.img}
-            $accent={card.accent}
             style={{ '--delay': `${index * 100}ms` }}
             onClick={() => handleCardClick(card)}
             role="button"
@@ -282,7 +276,7 @@ export default function ModuleGridSection() {
           >
             <Overlay />
             
-            <AccentDot $accent={card.accent} />
+            <CardDot />
             
             <ArrowBtn>
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
@@ -291,7 +285,7 @@ export default function ModuleGridSection() {
             </ArrowBtn>
 
             <CardContent>
-              <SubLabel $accent={card.accent}>{card.sub}</SubLabel>
+              <SubLabel>{card.sub}</SubLabel>
               <Title>{card.title}</Title>
             </CardContent>
           </Card>

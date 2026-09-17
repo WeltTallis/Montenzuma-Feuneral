@@ -91,12 +91,12 @@ html { scroll-behavior: smooth; }
 
 .mission-title {
   font-family: 'Fraunces', serif;
-  font-size: clamp(2.8rem, 6vw, 5rem);
+  font-size: clamp(2.15rem, 4.2vw, 3.55rem);
   font-weight: 300;
-  line-height: 0.98;
+  line-height: 1.05;
   letter-spacing: -0.035em;
   color: var(--ink);
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.75rem;
 }
 
 .mission-title em {
@@ -207,7 +207,7 @@ html { scroll-behavior: smooth; }
   font-family: 'Fraunces', serif;
   font-size: 1.5rem;
   font-weight: 400;
-  color: var(--bone);
+  color: #FFFFFF !important;
   line-height: 1.2;
   margin-bottom: 1rem;
 }
@@ -263,7 +263,7 @@ html { scroll-behavior: smooth; }
 }
 
 @media (max-width: 560px) {
-  .mission-title { font-size: 2.5rem; }
+  .mission-title { font-size: 2.15rem; }
   .mission-desc { font-size: 1rem; }
   .highlight-text { font-size: 1.2rem; }
 }
