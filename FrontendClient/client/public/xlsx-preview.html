@@ -2240,7 +2240,18 @@
                 const headers = {};
                 if (hist.token) headers['Authorization'] = `Bearer ${hist.token}`;
                 if (hist.tenant) headers['x-tenant-slug'] = hist.tenant;
-                const res = await fetch(hist.url, { headers });
+                let res;
+                try {
+                    res = await fetch(hist.url, { headers });
+                } catch (err) {
+                    /* Same origin-fallback as fetchExport(): the history URL may
+                       point at a dev host (http://localhost:5000) that the browser
+                       can't reach — the gateway serves the same path on THIS origin. */
+                    const u = new URL(hist.url, location.href);
+                    if (u.origin !== location.origin && /^https?:$/i.test(u.protocol)) {
+                        res = await fetch(u.pathname + u.search, { headers });
+                    } else throw err;
+                }
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const json = await res.json();
                 hist.items = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []);
@@ -2277,8 +2288,7 @@
             const name = String(it.fileName || it.file_name || 'export.xlsx').replace(/[\\/:*?"<>|]/g, '_');
             try {
                 showLoad('Fetching export…');
-                const res = await fetch(histAbsUrl(it.fileUrl || it.file_url || it.url || ''), { credentials: 'omit' });
-                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const res = await fetchExport(histAbsUrl(it.fileUrl || it.file_url || it.url || ''));
                 const blob = await res.blob();
                 hideLoad();
 
@@ -2308,6 +2318,30 @@
             hist.open = open;
             $('#histPanel').hidden = !open;
             if (open) renderHistory();
+        }
+
+        /* Fetch an export with a safety net: when the linked file URL points at
+           a different host than this page (e.g. http://localhost:5000 baked
+           into a frontend bundle built with dev env vars), the browser either
+           blocks it as mixed content or cannot reach that host — every open
+           would die with "Failed to fetch". The nginx in front of this page
+           serves the very same /uploads/... path on THIS origin, so on failure
+           retry the same path here. */
+        async function fetchExport(url) {
+            try {
+                const res = await fetch(url, { credentials: 'omit' });
+                if (res.ok) return res;
+                throw new Error('HTTP ' + res.status);
+            } catch (err) {
+                try {
+                    const u = new URL(url, location.href);
+                    if (u.origin !== location.origin && /^https?:$/i.test(u.protocol)) {
+                        const res2 = await fetch(u.pathname + u.search, { credentials: 'omit' });
+                        if (res2.ok) return res2;
+                    }
+                } catch { /* report the original error below */ }
+                throw err;
+            }
         }
 
         $('#histBtn').addEventListener('click', () => setHistOpen(!hist.open));
@@ -2345,8 +2379,7 @@
                 if (!/\.xlsx$/i.test(name)) { toast('The linked export is not an .xlsx file.', 'warn'); return; }
 
                 showLoad('Fetching export…');
-                const res = await fetch(fileUrl, { credentials: 'omit' });
-                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const res = await fetchExport(fileUrl);
                 const blob = await res.blob();
                 hideLoad();
 

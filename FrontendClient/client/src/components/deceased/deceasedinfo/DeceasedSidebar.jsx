@@ -163,13 +163,13 @@ const TimelineContainer = styled.div`
 const TimelineItemRow = styled.div`
   position: relative;
   flex: 1 1 0;
-  min-width: 92px;
-  padding: 0 4px;
+  min-width: 0;
+  padding: 0 2px;
   text-align: center;
   z-index: 1;
 
   @media (max-width: 560px) {
-    flex: 0 0 112px;
+    flex: 0 0 92px;
   }
 `;
 
@@ -205,20 +205,24 @@ const TimelineContent = styled.div`
 `;
 
 const TimelineText = styled.div`
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: ${C.gray};
   line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 
   ${({ $completed }) => $completed && `color: ${C.success};`}
   ${({ $active }) => $active && `color: ${C.warning};`}
 `;
 
 const TimelineTime = styled.div`
-  font-size: 10px;
+  font-size: 9px;
   color: ${C.lightGray};
   font-weight: 500;
   margin-top: 4px;
+  white-space: nowrap;
 
   ${({ $completed }) => $completed && `color: ${C.success}; opacity: 0.8;`}
     ${({ $active }) => $active && `color: ${C.warning}; opacity: 0.9;`}
@@ -370,7 +374,7 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
         <TimelineItemRow $completed={true}>
           <TimelineDot $completed={true} />
           <TimelineContent>
-            <TimelineText $completed={true}>Admitted to Morgue</TimelineText>
+            <TimelineText $completed={true}>Admitted</TimelineText>
             <TimelineTime $completed={true}>{formatDate(deceased?.created_at)}</TimelineTime>
           </TimelineContent>
         </TimelineItemRow>
@@ -378,32 +382,20 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
           <TimelineDot $completed={postmortem?.status === 'completed'} $active={postmortem?.status === 'pending' || postmortem?.status === 'in_progress'} />
           <TimelineContent>
             <TimelineText $completed={postmortem?.status === 'completed'} $active={postmortem?.status === 'pending' || postmortem?.status === 'in_progress'}>
-              Postmortem {postmortem ?
-                (postmortem.status === 'completed' ? '✓ Completed' :
-                 postmortem.status === 'pending' ? 'In Progress' :
-                 postmortem.status === 'in_progress' ? 'In Progress' : 'Requested') :
-                'Not Requested'}
+              Postmortem
             </TimelineText>
             <TimelineTime $completed={postmortem?.status === 'completed'} $active={postmortem?.status === 'pending' || postmortem?.status === 'in_progress'}>
               {postmortem?.status === 'completed' ? formatDate(postmortem.completed_at || postmortem.updated_at) :
-               postmortem?.status === 'pending' || postmortem?.status === 'in_progress' ? 'Awaiting Results' :
-               postmortem ? formatDate(postmortem.requested_at || postmortem.created_at) : '—'}
+               postmortem ? 'Pending' : '—'}
             </TimelineTime>
-          </TimelineContent>
-        </TimelineItemRow>
-        <TimelineItemRow $completed={releaseData && releaseData.release_id} $active={bodyStatus === 'In Morgue' || bodyStatus === 'Active'}>
-          <TimelineDot $completed={releaseData && releaseData.release_id} $active={bodyStatus === 'In Morgue' || bodyStatus === 'Active'} />
-          <TimelineContent>
-            <TimelineText $completed={releaseData && releaseData.release_id}>{releaseData && releaseData.release_id ? '✓ Body Released' : 'In Storage (' + (bodyStatus || 'Normal') + ')'}</TimelineText>
-            <TimelineTime $completed={releaseData && releaseData.release_id} $active={!releaseData && (bodyStatus === 'In Morgue' || bodyStatus === 'Active')}>{releaseData && releaseData.release_id ? 'Complete' : 'Currently Active'}</TimelineTime>
           </TimelineContent>
         </TimelineItemRow>
         <TimelineItemRow $completed={releaseData && releaseData.release_id} $active={!releaseData}>
           <TimelineDot $completed={releaseData && releaseData.release_id} $active={!releaseData} />
           <TimelineContent>
-            <TimelineText $completed={releaseData && releaseData.release_id}>{releaseData && releaseData.release_id ? '✓ Released to Family' : 'Released to Family'}</TimelineText>
+            <TimelineText $completed={releaseData && releaseData.release_id}>Released</TimelineText>
             <TimelineTime $completed={releaseData && releaseData.release_id} $active={!releaseData}>
-              {releaseData && releaseData.release_id ? `${formatDate(releaseData.created_at)}` : 'Pending'}
+              {releaseData && releaseData.release_id ? formatDate(releaseData.created_at) : 'Pending'}
             </TimelineTime>
           </TimelineContent>
         </TimelineItemRow>
