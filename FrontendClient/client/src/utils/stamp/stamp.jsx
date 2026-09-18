@@ -11,8 +11,8 @@ import styled, { keyframes } from 'styled-components';
  */
 
 const COLORS = {
-  stampBlue: '#0f33e7', // Vibrant, true rubber-stamp royal blue
-  stampRed: '#DC2626',  // Vivid crimson red for the date
+  stampBlue: '#0f33e7', 
+  stampRed:  '#b91c1c', // Muted deep red for the date (less harsh)
 };
 
 const stampAnimation = keyframes`
@@ -43,7 +43,7 @@ const StyledSVG = styled.svg`
   animation: ${stampAnimation} 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
   
   /* Soft, realistic ink transfer shadow */
-  filter: drop-shadow(1px 1px 0px rgba(29, 91, 216, 0.25));
+  filter: drop-shadow(1px 1px 0px rgba(36, 65, 124, 0.35));
 `;
 
 const OfficialStamp = ({
@@ -62,21 +62,30 @@ const OfficialStamp = ({
   const truncate = (text, maxLen) =>
     text && text.length > maxLen ? text.slice(0, maxLen - 1) + '…' : text;
 
-  const stampName = truncate((tenantName || 'FUNERAL HOME').toUpperCase(), 22);
-  const stampLocation = truncate((tenantLocation || 'NAIROBI, KENYA').toUpperCase(), 24);
-  const stampPhone = truncate(`TEL: ${tenantPhone || '+254 700 000 000'}`, 22);
+  const name = (tenantName || 'FUNERAL HOME').toUpperCase().trim();
+  const stampName = truncate(name, 34);
+  const stampLocation = truncate((tenantLocation || 'NAIROBI, KENYA').toUpperCase(), 28);
+  const stampPhone = truncate(`TEL: ${tenantPhone || '+254 700 000 000'}`, 26);
+  const stampAddress = truncate((adress || '').toUpperCase(), 28);
+
+  // Dynamically fit the tenant name along the top arc:
+  // shrink font size and letter-spacing as the name gets longer,
+  // so big funeral-home names never overflow the stamp.
+  const nameLen = stampName.length;
+  const nameFontSize = nameLen <= 12 ? 20 : nameLen <= 16 ? 18 : nameLen <= 20 ? 16 : nameLen <= 26 ? 14 : 12.5;
+  const nameLetterSpacing = nameLen <= 12 ? 4.5 : nameLen <= 16 ? 3.5 : nameLen <= 20 ? 2.5 : nameLen <= 26 ? 1.8 : 1.2;
 
   return (
     <StampWrapper>
       <StyledSVG width="340" height="230" viewBox="0 0 340 230">
         <defs>
-          {/* TOP ARCS: Properly spaced from borders */}
-          <path id="topOuterArc" d="M 35,115 A 135,70 0 0,1 305,115" />
-          <path id="topInnerArc" d="M 60,115 A 110,52 0 0,1 280,115" />
-          
+          {/* TOP ARCS: Wider sweep for long funeral-home names */}
+          <path id="topOuterArc" d="M 30,115 A 140,74 0 0,1 310,115" />
+          <path id="topInnerArc" d="M 55,115 A 115,54 0 0,1 285,115" />
+
           {/* BOTTOM ARCS: Properly spaced from borders */}
-          <path id="bottomInnerArc" d="M 60,115 A 110,48 0 0,0 280,115" />
-          <path id="bottomOuterArc" d="M 35,115 A 135,62 0 0,0 305,115" />
+          <path id="bottomInnerArc" d="M 55,115 A 115,52 0 0,0 285,115" />
+          <path id="bottomOuterArc" d="M 30,115 A 140,66 0 0,0 310,115" />
 
           {/* Subtle ink texture filter */}
           <filter id="cleanGrunge" x="-10%" y="-10%" width="120%" height="120%">
@@ -92,10 +101,10 @@ const OfficialStamp = ({
           <ellipse cx="170" cy="115" rx="150" ry="95" fill="none" stroke={stampBlue} strokeWidth="4.5" />
           
           {/* Inner Border - Moved further out to avoid text */}
-          <ellipse cx="170" cy="115" rx="125" ry="67" fill="none" stroke={stampBlue} strokeWidth="1s" />
+          <ellipse cx="170" cy="115" rx="125" ry="67" fill="none" stroke={stampBlue} strokeWidth="1.5" />
 
           {/* Top Outer Text (Tenant Name) */}
-          <text fill={stampBlue} fontSize="18" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="4.5">
+          <text fill={stampBlue} fontSize={nameFontSize} fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing={nameLetterSpacing}>
             <textPath href="#topOuterArc" startOffset="50%" textAnchor="middle">
               {stampName}
             </textPath>
@@ -121,17 +130,19 @@ const OfficialStamp = ({
           <polygon points="98,115 101,120 106,120 102,123 104,128 98,125 92,128 94,123 90,120 95,120" fill={stampBlue} />
           <polygon points="242,115 245,120 250,120 246,123 248,128 242,125 236,128 238,123 234,120 239,120" fill={stampBlue} />
 
-          {/* Bottom Inner Text (Location) */}
-          <text fill={stampBlue} fontSize="10.5" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="2">
-            <textPath href="#bottomInnerArc" startOffset="50%" textAnchor="middle">
-              {stampLocation}
-            </textPath>
-          </text>
+          {/* Bottom Inner Text (Address) */}
+          {stampAddress && (
+            <text fill={stampBlue} fontSize="10.5" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="1.6">
+              <textPath href="#bottomInnerArc" startOffset="50%" textAnchor="middle">
+                {stampAddress}
+              </textPath>
+            </text>
+          )}
 
-          {/* Bottom Outer Text (Phone) */}
-          <text fill={stampBlue} fontSize="12" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="2">
+          {/* Bottom Outer Text (Location / Phone) */}
+          <text fill={stampBlue} fontSize="12" fontWeight="bold" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="1.8">
             <textPath href="#bottomOuterArc" startOffset="50%" textAnchor="middle">
-              {stampPhone}
+              {stampPhone} · {stampLocation}
             </textPath>
           </text>
         </g>

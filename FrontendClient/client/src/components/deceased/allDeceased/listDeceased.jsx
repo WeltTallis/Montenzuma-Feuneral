@@ -1436,8 +1436,7 @@ const DeceasedListPage = () => {
 
   // Origin where the shared /uploads folder is served from. The global
   // uploader saves exports at /uploads/<slug>/exports/deceased-reports/… —
-  // absolute URLs are needed because the Workbook Vault previewer is a
-  // standalone page that fetches the file itself.
+  // absolute URLs are needed when the API lives on a different origin.
   const uploadsOrigin = () => {
     const api = import.meta.env.VITE_API_URL || '';
     if (/^https?:\/\//i.test(api)) {
@@ -1446,28 +1445,37 @@ const DeceasedListPage = () => {
     return window.location.origin;
   };
 
-  // Open a generated export in the browser-based Excel viewer
-  // (public/xlsx-preview.html — "Workbook Vault"). The viewer lists the
-  // tenant's export history in its side panel, prompts for the PIN when the
-  // workbook is PIN-protected, then previews it instantly — nothing is
-  // downloaded to the device.
-  const openXlsxPreview = (fileUrl, fileName) => {
+  // Download a server-saved export (the /uploads/... URL returned by the
+  // export API) straight to the user's device — no browser preview tab.
+  // Fetches it as a blob first so the file keeps its real name even when the
+  // uploads origin differs from the app origin; falls back to a plain anchor
+  // (browsers always download .xlsx — they can't render it) if fetch fails.
+  const downloadExportFile = async (fileUrl, fileName) => {
     if (!fileUrl) return false;
-    const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
-    const tenantSlug = getTenantSlug() || '';
     const absFileUrl = /^https?:\/\//i.test(fileUrl)
       ? fileUrl
       : `${uploadsOrigin()}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
-    const params = new URLSearchParams({
-      file: absFileUrl,
-      name: fileName || 'export.xlsx',
-      history: `${API_GATEWAY_URL}/deceased/export-history`,
-      token: token || '',
-      tenant: tenantSlug || '',
-      uploads: uploadsOrigin(),
-    });
-    window.open(`/xlsx-preview.html?${params.toString()}`, '_blank', 'noopener');
-    return true;
+    try {
+      const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
+      const res = await fetch(absFileUrl, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      downloadExportBlob(await res.blob(), fileName || 'export.xlsx');
+      return true;
+    } catch {
+      // CORS/network fallback — point a plain anchor at the file; the
+      // spreadsheet content type makes every browser download it.
+      const link = document.createElement('a');
+      link.href = absFileUrl;
+      link.download = fileName || 'export.xlsx';
+      link.target = '_blank';
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return true;
+    }
   };
 
   // Close the export result notification modal.
@@ -1475,11 +1483,13 @@ const DeceasedListPage = () => {
     setExportNotify(null);
   }, []);
 
-  // "Open in the browser Excel viewer" action from the notify modal —
-  // prefers the server-provided /uploads URL (instant preview), and falls
-  // back to downloading the blob when the file was streamed inline.
-  const openExportFileInBrowser = useCallback(() => {
-    if (exportNotify?.fileUrl && openXlsxPreview(exportNotify.fileUrl, exportNotify.fileName)) return;
+  // "Download to device" action from the notify modal — re-saves the file
+  // from the server /uploads URL, or re-downloads the streamed blob.
+  const downloadExportCopy = useCallback(() => {
+    if (exportNotify?.fileUrl) {
+      downloadExportFile(exportNotify.fileUrl, exportNotify.fileName);
+      return;
+    }
     const blob = exportNotify?.blob;
     if (!blob) return;
     downloadExportBlob(blob, exportNotify?.fileName || `Deceased_Records_${todayKey()}.xlsx`);
@@ -1502,7 +1512,7 @@ const DeceasedListPage = () => {
     setShowExport(false);
     setExportNotify({
       type: 'success',
-      message: `${fileName || 'Deceased records export'} was generated successfully.${pinProtected ? ' The file is PIN-protected — you will be asked for the PIN before it opens.' : ''}`,
+      message: `${fileName || 'Deceased records export'} was generated successfully and saved to your device.${pinProtected ? ' It is PIN-protected — Excel will ask for the PIN when you open it.' : ''}`,
       blob: blob || null,
       fileUrl: fileUrl || null,
       fileName: fileName || '',
@@ -1563,7 +1573,9 @@ const DeceasedListPage = () => {
 
       if (isFileResponse(contentType)) {
         loadExportHistory();
-        showExportSuccess(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`), pin.length > 0);
+        const fileName = filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`);
+        showExportSuccess(response.data, fileName, pin.length > 0);
+        downloadExportBlob(response.data, fileName);
         return;
       }
 
@@ -1571,12 +1583,12 @@ const DeceasedListPage = () => {
 
       // Synchronous export: the backend PIN-encrypts (when requested), saves
       // the workbook to the shared global uploads folder via the global
-      // uploader and hands back its /uploads/... URL. Open it straight in
-      // the browser Excel viewer — no polling, no download needed.
+      // uploader and hands back its /uploads/... URL. Download it straight
+      // to the device — no polling, no browser preview.
       if (data?.success && data?.fileUrl) {
         loadExportHistory();
         showExportSuccess(null, data.fileName, !!data.pinProtected, data.fileUrl);
-        openXlsxPreview(data.fileUrl, data.fileName);
+        downloadExportFile(data.fileUrl, data.fileName);
         return;
       }
 
@@ -2110,16 +2122,13 @@ const DeceasedListPage = () => {
                           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                             <a
                               className="h-link"
-                              href="#view"
+                              href="#download"
                               onClick={(e) => {
                                 e.preventDefault();
-                                openXlsxPreview(h.fileUrl, h.fileName);
+                                downloadExportFile(h.fileUrl, h.fileName);
                               }}
                             >
-                              <i className="fas fa-eye"></i> View in browser
-                            </a>
-                            <a className="h-link" href={h.fileUrl} target="_blank" rel="noreferrer">
-                              <i className="fas fa-download"></i> Download
+                              <i className="fas fa-download"></i> Download to device
                             </a>
                           </div>
                         ) : (
@@ -2135,7 +2144,7 @@ const DeceasedListPage = () => {
             </ModalBody>
             <ModalFooter>
               <div style={{ fontSize: 11, color: C.gray, marginRight: 'auto' }}>
-                {exporting ? (exportPin ? 'Encrypting & uploading via global uploader…' : 'Generating & uploading via global uploader…') : 'Exports open instantly in the browser Excel viewer'}
+                {exporting ? (exportPin ? 'Encrypting & uploading via global uploader…' : 'Generating & uploading via global uploader…') : 'Exports download straight to your device — no browser preview'}
               </div>
               <Btn $ghost onClick={() => setShowExport(false)} disabled={exporting}>Cancel</Btn>
               <Btn $export onClick={handleExport} disabled={exporting}>
@@ -2169,11 +2178,11 @@ const DeceasedListPage = () => {
                 <NotifyActions>
                   <Btn
                     $export
-                    onClick={openExportFileInBrowser}
+                    onClick={downloadExportCopy}
                     style={{ whiteSpace: 'normal', height: 'auto', minHeight: 42, padding: '10px 18px' }}
                   >
-                    <i className="fas fa-arrow-up-right-from-square"></i>
-                    Open in the browser Excel viewer
+                    <i className="fas fa-download"></i>
+                    Download to device
                   </Btn>
                 </NotifyActions>
               )}

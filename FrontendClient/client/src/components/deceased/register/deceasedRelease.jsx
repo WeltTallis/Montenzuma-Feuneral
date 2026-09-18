@@ -8,7 +8,7 @@ import InOurCare from '../../common/InOurCare';
 import styled, { keyframes } from 'styled-components';
 import { ENDPOINTS } from '../../../api/endpoints';
 
-import OfficialStamp from '../../stamp/stamp';
+import OfficialStamp from '../../../utils/stamp/stamp';
 import env from '../../../utils/config/env';
 import bwipjs from '@bwip-js/browser';
 import notify from '@/utils/notify';

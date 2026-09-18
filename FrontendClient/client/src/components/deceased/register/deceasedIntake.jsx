@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { ENDPOINTS } from '../../../api/endpoints';
-import OfficialStamp from '../../stamp/stamp';
+import OfficialStamp from '../../../utils/stamp/stamp';
 import env from '../../../utils/config/env';
 import notify from '../../../utils/notify';
 import bwipjs from '@bwip-js/browser';
