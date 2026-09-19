@@ -21,6 +21,12 @@ const C = {
   danger: '#ef4444',
   purple: '#8b5cf6',
   cardBg: '#03071E',
+  // ─── HTML-template status badge colors ───
+  stActiveColor: '#00296B',
+  stPmReqColor: '#E36414',
+  stPmDoneColor: '#5F0F40',
+  stReleasedColor: '#03071E',
+  stTransferredColor: '#03071E',
 };
 
 const formatDateStr = (d) => {
@@ -173,6 +179,202 @@ const CC = styled.div`position:absolute;top:.22rem;right:.22rem;width:14px;heigh
 
 const CB = styled.div`margin-top:.12rem;font-size:.42rem;font-weight:500;color:rgba(255,255,255,.18);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
 
+/* ───────── HTML-TEMPLATE CARD DESIGN ───────── */
+
+const StepHeader = styled.div`
+  display:flex;align-items:center;gap:.5rem;margin-bottom:1.25rem;
+`;
+const StepDot = styled.div`
+  width:22px;height:22px;border-radius:50%;
+  background:${C.primary};color:#fff;
+  font-size:12px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+`;
+const StepTitle = styled.div`
+  font-size:14px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.04em;color:#475569;
+  span{font-weight:500;color:${C.textMuted};text-transform:none}
+`;
+
+const SectionHeader = styled.div`
+  display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;
+`;
+const SectionDot = styled.div`
+  width:8px;height:8px;border-radius:50%;
+  background:${p => p.$green ? '#10b981' : '#ef4444'};
+`;
+const SectionLabel = styled.span`
+  font-size:.75rem;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.05em;
+`;
+const SectionCount = styled.span`
+  font-size:.65rem;font-weight:700;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:10px;
+`;
+
+const HearseGrid = styled.div`
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:.6rem;
+`;
+
+const HearseCard = styled.button`
+  display:flex;flex-direction:column;gap:.5rem;
+  padding:.7rem;border-radius:12px;cursor:pointer;
+  transition:all .15s ease;text-align:left;width:100%;
+  border:1.5px solid transparent;
+  ${p => p.$booked
+    ? `background:#fef2f2;border-color:#fee2e2;cursor:not-allowed;opacity:.75`
+    : p.$selected
+      ? `background:#eff6ff;border-color:${C.primary};box-shadow:0 4px 14px rgba(26,95,122,.15);transform:translateY(-2px)`
+      : p.$neutral
+        ? `background:#fff;border-color:${C.border};
+           &:hover{border-color:#cbd5e1;background:#f8fafc;transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.05)}`
+        : `background:#f0fdf4;border-color:#dcfce7;
+           &:hover{border-color:#86efac;background:#dcfce7;transform:translateY(-2px);box-shadow:0 4px 12px rgba(16,185,129,.1)}`}
+`;
+
+const CardTop = styled.div`
+  display:flex;align-items:flex-start;gap:.55rem;
+`;
+const Avatar = styled.div`
+  width:34px;height:34px;border-radius:10px;
+  color:#fff;font-size:14px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  text-transform:uppercase;flex-shrink:0;
+`;
+const InfoBlock = styled.div`
+  flex:1;min-width:0;display:flex;flex-direction:column;gap:.12rem;
+`;
+const HearseName = styled.span`
+  font-size:.82rem;font-weight:700;color:#111827;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+`;
+const PlateBox = styled.span`
+  font-size:.64rem;font-weight:700;color:#334155;
+  background:#fff;border:1px solid #cbd5e1;
+  padding:1px 5px;border-radius:4px;
+`;
+
+const CardBottom = styled.div`
+  display:flex;align-items:center;justify-content:space-between;gap:.35rem;
+  margin-top:auto;
+`;
+const RightControls = styled.div`
+  display:flex;align-items:center;gap:.4rem;flex-shrink:0;
+`;
+const AvailPill = styled.span`
+  font-size:.6rem;font-weight:800;padding:.18rem .5rem;
+  border-radius:999px;text-transform:uppercase;
+  ${p => p.$free
+    ? 'background:#d1fae5;color:#059669'
+    : p.$unknown
+      ? 'background:#f1f5f9;color:#64748b'
+      : 'background:#fee2e2;color:#dc2626'}
+`;
+const StatusBadge = styled.span`
+  font-size:.58rem;font-weight:700;padding:.15rem .38rem;
+  border-radius:4px;text-transform:uppercase;letter-spacing:.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  display:inline-flex;align-items:center;gap:3px;
+  ${p => p.$cls === 'st-active'
+    ? `color:${C.stActiveColor};background:rgba(0,41,107,.1)`
+    : p.$cls === 'st-pmReq'
+      ? `color:${C.stPmReqColor};background:rgba(227,100,20,.1)`
+      : p.$cls === 'st-pmDone'
+      ? `color:${C.stPmDoneColor};background:rgba(95,15,64,.1)`
+      : p.$cls === 'st-released'
+      ? `color:${C.stReleasedColor};background:rgba(3,7,30,.1)`
+      : `color:${C.stTransferredColor};background:rgba(3,7,30,.1)`}
+  &::before{content:'';width:4px;height:4px;border-radius:50%;flex-shrink:0
+    ${p => p.$cls === 'st-active'
+      ? `background:${C.stActiveColor}`
+      : p.$cls === 'st-pmReq'
+        ? `background:${C.stPmReqColor}`
+        : p.$cls === 'st-pmDone'
+          ? `background:${C.stPmDoneColor}`
+          : `background:${C.stReleasedColor}`}
+  }
+`;
+const RadioBtn = styled.span`
+  width:18px;height:18px;border-radius:50%;
+  border:2px solid #cbd5e1;display:inline-flex;
+  align-items:center;justify-content:center;transition:all .2s;background:#fff;flex-shrink:0;
+  &::after{content:'';width:9px;height:9px;border-radius:50%;
+    background:${C.primary};transform:scale(0);transition:transform .2s}
+`;
+const CardSelectedRadio = styled(RadioBtn)`
+  border-color:${C.primary};
+  &::after{background:${C.primary};transform:scale(1)}
+`;
+const CardBookedRadio = styled(RadioBtn)`
+  border-color:#fecdd3;background:#fff1f2;
+`;
+
+const ServiceChargeBox = styled.div`
+  margin-top:.75rem;padding:.85rem;border-radius:10px;
+  background:#f0fdf4;border:1.5px solid #dcfce7;
+`;
+const ChargeRow = styled.div`
+  display:flex;justify-content:space-between;font-size:.72rem;
+  color:#374151;padding:.12rem 0;
+  &:first-child{font-weight:600;color:#111827}
+  &:not(:first-child){border-top:1px solid #dcfce7}
+`;
+
+/* ─── Vehicle status → badge metadata (colors from the design system) ─── */
+const statusMeta = (h) => {
+  const s = String(h?.status || '').toLowerCase();
+  if (['active', 'available', 'in_morgue'].includes(s)) return { cls: 'st-active', label: 'Active / In Morgue', color: '#00296B' };
+  if (['pm_requested', 'pm_request', 'maintenance_requested', 'pending_pm', 'maintenance', 'out_of_service', 'disabled'].includes(s)) return { cls: 'st-pmReq', label: 'PM Requested', color: '#E36414' };
+  if (['pm_done', 'serviced', 'maintenance_done'].includes(s)) return { cls: 'st-pmDone', label: 'PM Done', color: '#5F0F40' };
+  if (s === 'released') return { cls: 'st-released', label: 'Released', color: '#6b7280' };
+  if (s === 'transferred') return { cls: 'st-transferred', label: 'Transferred', color: '#03071E' };
+  return { cls: 'st-active', label: (h?.status || 'Active').replace(/_/g, ' '), color: '#00296B' };
+};
+
+/* ─── One hearse card (matches the horizontal template design) ─── */
+function HearseCardTpl({ h, state, hasD, selected, onPick }) {
+  const st = state || {};
+  const booked = hasD && st.status === 'booked';
+  const maint = hasD && st.status === 'maintenance';
+  const blocked = booked || maint;
+  const meta = statusMeta(h);
+  const letter = (String(h.hearse_name || h.plate_number || 'H').trim().charAt(0) || 'H').toUpperCase();
+  const charge = Number(h.min_charge_ksh) || Number(h.service_charge_ksh) || 0;
+
+  let pill;
+  if (hasD && booked) pill = { label: '✕ Booked', mode: 'booked' };
+  else if (hasD && maint) pill = { label: '✕ Unavailable', mode: 'booked' };
+  else if (hasD) pill = { label: '✓ Free', mode: 'free' };
+  else pill = { label: '· Pick dates', mode: 'unknown' };
+
+  const Radio = blocked ? CardBookedRadio : (selected ? CardSelectedRadio : RadioBtn);
+
+  return (
+    <HearseCard type="button" $booked={blocked} $selected={selected} $neutral={!hasD && !blocked}
+      onClick={e => { e.preventDefault(); onPick(); }}>
+      <CardTop>
+        <Avatar style={{ background: meta.color }}>{letter}</Avatar>
+        <InfoBlock>
+          <HearseName title={h.hearse_name || 'Unnamed'}>{h.hearse_name || 'Unnamed Hearse'}</HearseName>
+          <PlateBox>{h.plate_number || h.number_plate || '—'}</PlateBox>
+        </InfoBlock>
+        <RightControls><Radio /></RightControls>
+      </CardTop>
+      <CardBottom>
+        <StatusBadge $cls={meta.cls} title={meta.label}>{meta.label}</StatusBadge>
+        <AvailPill $free={pill.mode === 'free'} $unknown={pill.mode === 'unknown'}>{pill.label}</AvailPill>
+      </CardBottom>
+      {booked && st.bookedFor && st.bookedFor.length > 0 && (
+        <span style={{ fontSize: '.58rem', fontWeight: 600, color: '#b91c1c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {st.bookedFor.map(b => b.date).join(', ')}
+        </span>
+      )}
+      {charge > 0 && <span style={{ fontSize: '.6rem', fontWeight: 700, color: '#059669' }}>KSH {charge.toLocaleString()} / day</span>}
+    </HearseCard>
+  );
+}
+
+
 const Warn = styled.div`padding:.55rem .7rem;border-radius:5px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;font-size:.72rem;font-weight:600;display:flex;align-items:center;gap:.35rem;animation:${fadeIn}.15s;`;
 
 const SBar = styled.div`display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem;`;
@@ -194,10 +396,10 @@ export default function BookNewHearseModal({
   open = false, initialDates = [], hearses = [], branches = [],
   onClose, onCreated, showToast,
 }) {
-  const scrollRef = useRef(null);
+    const scrollRef = useRef(null);
   const [sL, setSL] = useState(false);
   const [sR, setSR] = useState(false);
-  const [form, setForm] = useState({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: [], branch_id: '', booking_date: '' });
+  const [form, setForm] = useState({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: [], branch_id: '', booking_date: '', service_charge: 0 });
   const [dates, setDates] = useState([]);
   const [pkOpen, setPkOpen] = useState(false);
   const [tmpDates, setTmpDates] = useState([]);
@@ -206,6 +408,9 @@ export default function BookNewHearseModal({
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [fleet, setFleet] = useState({});
+  const [checkError, setCheckError] = useState(null);
+
+  const EXCLUDED = ['maintenance', 'out_of_service', 'disabled'];
 
   const updArrows = useCallback(() => {
     const el = scrollRef.current;
@@ -233,44 +438,121 @@ export default function BookNewHearseModal({
     setDates(d);
     const u = JSON.parse(localStorage.getItem('user') || '{}');
     const db = u?.dbName || u?.branchDbName || '';
-    setForm({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: d, branch_id: u?.branch_id || '', branch_code: db.split('-').pop() || '', booking_date: d[0] || '' });
-    setTmpDates([]); setPkOpen(false); setFleet({}); setSL(false); setSR(false);
+    setForm({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: d, branch_id: u?.branch_id || '', branch_code: db.split('-').pop() || '', booking_date: d[0] || '', service_charge: 0 });
+    setTmpDates([]); setPkOpen(false); setFleet({}); setSL(false); setSR(false); setCheckError(null);
   }, [open, initialDates]);
 
   const checkFleet = useCallback(async (d) => {
-    if (!d || !d.length) { setFleet({}); return; }
+    if (!d || !d.length) { setFleet({}); setCheckError(null); return; }
     setChecking(true);
+    setCheckError(null);
     try {
       const hdr = getAuthHeaders();
-      const res = await Promise.all(d.map(async (date) => {
-        try { const r = await fetch(`${API_BASE_URL}/availability/check-by-date?date=${date}`, { headers: hdr }); if (!r.ok) return null; const j = await r.json(); return { date, avail: j.available_hearses || [], booked: j.booked_hearses || [] }; } catch { return null; }
+      // DTO flow: select a date → backend returns ALL hearses with availability
+      const results = await Promise.all(d.map(async (date) => {
+        try {
+          const r = await fetch(`${API_BASE_URL}/availability/check-by-date?date=${date}`, { headers: hdr });
+          if (!r.ok) return null;
+          const j = await r.json();
+          return { date, avail: j.available_hearses || [], booked: j.booked_hearses || [] };
+        } catch {
+          return null;
+        }
       }));
+
+      // Build fleet map from the full hearse list (prop includes charges + model)
       const m = {};
-      (hearses || []).forEach(h => { m[String(h.id)] = { status: 'available', bookedFor: [] }; });
-      res.forEach(day => {
-        if (!day) return;
-        (hearses || []).forEach(h => { if (['maintenance', 'out_of_service', 'disabled'].includes(h.status)) m[String(h.id)] = { status: 'maintenance', bookedFor: [] }; });
-        (day.booked || []).forEach(bh => { const id = String(bh.hearse_id); if (!m[id]) return; if (!m[id].bookedFor.some(x => x.date === day.date)) m[id].bookedFor.push({ date: day.date, client: bh.client_name || bh.booking_code || 'Booked' }); m[id].status = 'booked'; });
-        const ak = new Set((day.avail || []).map(a => String(a.id)));
-        (hearses || []).forEach(h => { const k = String(h.id); if (m[k].status === 'maintenance') return; if (!ak.has(k)) m[k].status = 'booked'; });
+      (hearses || []).forEach(h => {
+        m[String(h.id)] = {
+          status: 'available',
+          bookedFor: [],
+          hearse: {
+            id: h.id,
+            hearse_code: h.hearse_code,
+            hearse_name: h.hearse_name || h.plate_number || '',
+            plate_number: h.plate_number || '',
+            model: h.model || '',
+            capacity: h.capacity,
+            status: h.status || 'available',
+            min_charge_ksh: Number(h.min_charge_ksh) || 0,
+            max_charge_ksh: Number(h.max_charge_ksh) || 0,
+            service_charge_ksh: Number(h.min_charge_ksh) || 0,
+          }
+        };
       });
+
+      // Surface an error when ALL date-queries failed (no silent fallback)
+      const okCount = results.filter(r => r !== null).length;
+      if (okCount === 0 && d.length > 0 && showToast) {
+        showToast('Availability service unreachable — hearses shown as available; verify before booking.', 'error');
+        setCheckError('Availability service unreachable. Verify selection before booking.');
+      }
+
+      results.forEach(day => {
+        if (!day) return;
+        // Enrich with the full DTO (status_badge, service_charge_ksh, model…)
+        (day.avail || []).forEach(a => {
+          const key = String(a.id);
+          if (!m[key]) m[key] = { status: 'available', bookedFor: [], hearse: {} };
+          m[key].hearse = { ...m[key].hearse, ...a };
+          if (m[key].status !== 'maintenance') m[key].status = 'available';
+        });
+        // Booked hearses for this date
+        (day.booked || []).forEach(bh => {
+          const id = String(bh.hearse_id || bh.id);
+          if (!m[id]) m[id] = { status: 'booked', bookedFor: [], hearse: { ...bh } };
+          m[id].status = 'booked';
+          if (!m[id].bookedFor.some(x => x.date === day.date)) {
+            m[id].bookedFor.push({ date: day.date, client: bh.client_name || bh.booking_code || 'Booked' });
+          }
+          m[id].hearse = { ...m[id].hearse, ...bh };
+        });
+      });
+
+      // Maintenance / out-of-service hearses are never bookable
+      (hearses || []).forEach(h => {
+        const key = String(h.id);
+        if (m[key] && EXCLUDED.includes(h.status)) {
+          m[key].status = 'maintenance';
+        }
+      });
+
       setFleet(m);
-    } catch { }
+    } catch (e) {
+      if (showToast) showToast('Failed to check hearse availability', 'error');
+      const m = {};
+      (hearses || []).forEach(h => { m[String(h.id)] = { status: EXCLUDED.includes(h.status) ? 'maintenance' : 'available', bookedFor: [], hearse: { ...h } }; });
+      setFleet(m);
+      setCheckError('Availability check failed. Please try selecting dates again.');
+    }
     setChecking(false);
-  }, [hearses]);
+  }, [hearses, showToast, EXCLUDED]);
 
   useEffect(() => { if (open) checkFleet(dates); }, [open, dates, checkFleet]);
 
+  const computeCharge = (h) => {
+    const perDay = Number(h?.min_charge_ksh) || Number(h?.service_charge_ksh) || 0;
+    const days = (dates || []).length;
+    return Math.round((perDay * days) * 100) / 100;
+  };
+
   const pick = (h) => {
-    if (dates.length > 0) { const s = fleet[String(h.id)]; if (s && s.status !== 'available') { showToast(`${h.hearse_name || 'This hearse'} is not available on the selected date(s).`, 'error'); return; } }
-    setForm(p => ({ ...p, hearse_id: h.id }));
+    if (dates.length > 0) {
+      const s = fleet[String(h.id)];
+      if (s && s.status !== 'available') {
+        showToast(`${h.hearse_name || 'This hearse'} is not available on the selected date(s).`, 'error');
+        return;
+      }
+    }
+    const charge = computeCharge(h);
+    setForm(p => ({ ...p, hearse_id: h.id, service_charge: charge }));
   };
 
   const togDate = (ds) => { setTmpDates(p => p.includes(ds) ? p.filter(d => d !== ds) : [...p, ds].sort()); };
 
   const confirmDates = () => {
     setDates(tmpDates);
-    setForm(p => ({ ...p, booking_dates: tmpDates, booking_date: tmpDates[0] || '' }));
+    setForm(p => ({ ...p, booking_dates: tmpDates, booking_date: tmpDates[0] || '', service_charge: 0 }));
     setPkOpen(false);
     if (form.hearse_id) { const s = fleet[String(form.hearse_id)]; if (s && s.status !== 'available') setForm(p => ({ ...p, hearse_id: '' })); }
   };
@@ -288,26 +570,53 @@ export default function BookNewHearseModal({
       if (u?.email) hdr['x-user-email'] = u.email;
       hdr['x-user-name'] = u?.full_name || u?.username || u?.name || 'System';
       const fd = dates.length > 0 ? dates[0] + 'T00:00:00' : new Date().toISOString();
-      const body = { hearse_id: form.hearse_id, client_name: form.client_name, client_phone: form.client_phone || '', from_location: form.from_location, to_location: form.to_location, destination: form.to_location, from_timestamp: fd, booking_date: fd, booking_dates: dates, booked_by: getLocalUserName() || u?.email || 'System', branch_id: form.branch_id || u?.branch_id || '', branch_code: form.branch_code || u?.branch_code || '' };
+      // Recompute the total service charge at submit time (rate/day × days)
+      // so a hearse picked before a date change is still charged correctly.
+      const selH = (hearses || []).find(x => String(x.id) === String(form.hearse_id)) || {};
+      const perDay = Number(selH.min_charge_ksh) || Number(selH.service_charge_ksh) || 0;
+      const svcCharge = Math.round(perDay * dates.length * 100) / 100;
+      const body = { hearse_id: form.hearse_id, client_name: form.client_name, client_phone: form.client_phone || '', from_location: form.from_location, to_location: form.to_location, destination: form.to_location, from_timestamp: fd, booking_date: fd, booking_dates: dates, booked_by: getLocalUserName() || u?.email || 'System', branch_id: form.branch_id || u?.branch_id || '', branch_code: form.branch_code || u?.branch_code || '', service_charge: svcCharge };
       const r = await fetch(`${API_BASE_URL}/hearse-bookings`, { method: 'POST', headers: hdr, body: JSON.stringify(body) });
       if (!r.ok) { const ed = await r.json().catch(() => ({})); if (r.status === 409) throw new Error(ed.message || 'Just booked by another user.'); throw new Error(ed.message || `HTTP ${r.status}`); }
-      showToast('Booking created successfully!', 'success'); setFleet({}); if (onClose) onClose(); if (onCreated) await onCreated();
+      showToast(`Booking created — Total Service Charge KSH ${svcCharge.toLocaleString()}!`, 'success'); setFleet({}); if (onClose) onClose(); if (onCreated) await onCreated();
     } catch (err) { showToast('Failed: ' + err.message, 'error'); }
     setLoading(false);
-  }, [form, dates, fleet, showToast, onClose, onCreated]);
+  }, [form, dates, fleet, hearses, showToast, onClose, onCreated]);
 
   const bOpts = branches.length > 0 ? branches : [];
-  const avCount = Object.values(fleet).filter(s => s.status === 'available').length;
-  const bkCount = Object.values(fleet).filter(s => s.status === 'booked').length;
-  const mtCount = Object.values(fleet).filter(s => s.status === 'maintenance').length;
   const hasD = dates.length > 0;
   const hasHearses = hearses.length > 0;
-  const showArr = hasHearses && !checking;
-  // When dates are selected, ONLY available hearses render — booked,
-  // maintenance or out-of-service hearses are hidden from the carousel.
-  const visibleHearses = hasD
-    ? (hearses || []).filter(h => { const s = fleet[String(h.id)]; return !s || s.status === 'available'; })
-    : (hearses || []);
+
+  // Day-availability counts across the fleet map
+  const fleetVals = Object.values(fleet);
+  const avCount = fleetVals.filter(s => s.status === 'available').length;
+  const bkCount = fleetVals.filter(s => s.status === 'booked').length;
+  const mtCount = fleetVals.filter(s => s.status === 'maintenance').length;
+
+  // Split the fleet for the two-section (Available / Booked) layout.
+  // ALL hearses are shown — booked ones are visible but not selectable,
+  // so the user always sees why a hearse can't be chosen.
+  const sortByName = (a, b) => String(a.hearse_name || a.plate_number || '').localeCompare(String(b.hearse_name || b.plate_number || ''));
+  let availList = [];
+  let bookedList = [];
+  let allList = [];
+  if (hasD) {
+    availList = (hearses || []).filter(h => { const s = fleet[String(h.id)]; return !s || s.status === 'available'; }).sort(sortByName);
+    bookedList = (hearses || []).filter(h => { const s = fleet[String(h.id)]; return s && (s.status === 'booked' || s.status === 'maintenance'); }).sort(sortByName);
+  } else {
+    allList = (hearses || []).slice().sort(sortByName);
+  }
+
+  // Total service charge for the currently selected hearse
+  const selHearse = (hearses || []).find(x => String(x.id) === String(form.hearse_id)) || {};
+  const selPerDay = Number(selHearse.min_charge_ksh) || Number(selHearse.service_charge_ksh) || 0;
+  const selTotal = Math.round(selPerDay * dates.length * 100) / 100;
+
+  const pickBlocked = (h) => {
+    const s = fleet[String(h.id)] || {};
+    const when = (s.bookedFor || []).map(b => `${b.date}${b.client ? ` (${b.client})` : ''}`).join(', ');
+    showToast(`${h.hearse_name || 'This hearse'} is not available on the selected date(s)${when ? ` — booked: ${when}` : ''}.`, 'error');
+  };
 
   const calDays = () => {
     const ts = formatDateStr(new Date()); const f = new Date(pkY, pkM, 1); const so = f.getDay(); const d = [];
@@ -342,72 +651,77 @@ export default function BookNewHearseModal({
 
             <Divider />
 
-            {/* ─── Hearse carousel — ALWAYS visible with #03071E bg ─── */}
+            {/* ─── Hearse selection — date-driven, two-section template design ─── */}
             <div style={{ marginBottom: '.85rem' }}>
-              <Label style={{ marginBottom: '.35rem' }}>Select Hearse *</Label>
+              <StepHeader>
+                <StepDot>2</StepDot>
+                <StepTitle>Available hearses <span>{hasD ? `${(hearses || []).length} vehicles found` : 'select dates first'}</span></StepTitle>
+              </StepHeader>
 
-              {!hasD && <Warn><span>ⓘ</span>Select dates above to check availability.</Warn>}
+              {checkError && <Warn><span>⚠</span>{checkError}</Warn>}
 
               {checking && <div style={{ padding: '.8rem', textAlign: 'center', color: C.textMuted, fontSize: '.76rem' }}><Sp />Checking availability…</div>}
 
-              {hasD && !checking && (
-                <SBar>
-                  <div style={{ display: 'flex', gap: '.6rem' }}>
-                    <SD $c="#10b981">{avCount} avail</SD>
-                    <SD $c="#ef4444">{bkCount} booked</SD>
-                    {mtCount > 0 && <SD $c="#8b5cf6">{mtCount} maint</SD>}
-                  </div>
-                  <div style={{ fontSize: '.58rem', color: C.textMuted }}>Scroll →</div>
-                </SBar>
+              {!checking && !hasHearses && <div style={{ padding: '1rem', textAlign: 'center', color: C.textMuted, fontSize: '.76rem' }}>No hearses registered yet.</div>}
+
+              {!checking && hasHearses && hasD && availList.length === 0 && bookedList.length === 0 && (
+                <Warn><span>ⓘ</span>No hearses to show for the selected date(s).</Warn>
               )}
 
-              {hasD && !checking && visibleHearses.length === 0 && (
-                <Warn><span>ⓘ</span>All hearses are booked or under maintenance on the selected date(s). Try different dates.</Warn>
+              {!checking && hasHearses && hasD && availList.length > 0 && (
+                <div style={{ marginBottom: '1.1rem' }}>
+                  <SectionHeader>
+                    <SectionDot $green />
+                    <SectionLabel>Available Hearses</SectionLabel>
+                    <SectionCount>{availList.length}</SectionCount>
+                  </SectionHeader>
+                  <HearseGrid>
+                    {availList.map(h => (
+                      <HearseCardTpl key={h.id} h={h} state={fleet[String(h.id)]} hasD={hasD} selected={String(h.id) === String(form.hearse_id)} onPick={() => pick(h)} />
+                    ))}
+                  </HearseGrid>
+                </div>
               )}
 
-              {showArr && visibleHearses.length > 0 && (
-                <ScrollWrap>
-                  <Arrow type="button" $dir="left" disabled={!sL} onClick={e => { e.preventDefault(); e.stopPropagation(); doScroll('l'); }}><ChevronLeft size={13} /></Arrow>
-                  <ScrollTrack ref={scrollRef}>
-                    {visibleHearses.map(h => {
-                      const sel = String(h.id) === String(form.hearse_id);
-                      const st = fleet[String(h.id)];
-                      const bk = hasD && st && st.status === 'booked';
-                      const mt = hasD && st && st.status === 'maintenance';
-                      const off = bk || mt;
-
-                      let dc, lc, lb;
-                      if (bk) { dc = '#dc2626'; lc = '#ffffff'; lb = 'Booked'; }
-                      else if (mt) { dc = '#8b5cf6'; lc = '#c4b5fd'; lb = 'Maint.'; }
-                      else if (hasD) { dc = '#10b981'; lc = '#6ee7b7'; lb = 'Available'; }
-
-                      return (
-                        <Card key={h.id} type="button" $sel={sel} $bk={bk} $off={off} onClick={e => { e.preventDefault(); pick(h); }}>
-                          {sel && <CC>✓</CC>}
-                          <CardIn>
-                            <CN title={h.hearse_name || 'Unnamed'}>{h.hearse_name || 'Unnamed Hearse'}</CN>
-                            <CP><span style={{ fontSize: '.65rem' }}>🚛</span>{h.plate_number || h.number_plate || '—'}</CP>
-                            <CM>
-                              {h.model && <CT>{h.model}</CT>}
-                              {h.capacity && <CT>{h.capacity} seats</CT>}
-                            </CM>
-                            {hasD && (
-                              <CR>
-                                <CD $d={dc} $c={lc}>{lb}</CD>
-                                {sel && <CS>Selected</CS>}
-                              </CR>
-                            )}
-                            {bk && st.bookedFor.length > 0 && <CB>{st.bookedFor.map(b => b.date).join(', ')}</CB>}
-                          </CardIn>
-                        </Card>
-                      );
-                    })}
-                  </ScrollTrack>
-                  <Arrow type="button" $dir="right" disabled={!sR} onClick={e => { e.preventDefault(); e.stopPropagation(); doScroll('r'); }}><ChevronRight size={13} /></Arrow>
-                </ScrollWrap>
+              {!checking && hasHearses && hasD && bookedList.length > 0 && (
+                <div style={{ marginBottom: '1.1rem' }}>
+                  <SectionHeader>
+                    <SectionDot />
+                    <SectionLabel>Booked / Unavailable</SectionLabel>
+                    <SectionCount>{bookedList.length}</SectionCount>
+                  </SectionHeader>
+                  <HearseGrid>
+                    {bookedList.map(h => (
+                      <HearseCardTpl key={h.id} h={h} state={fleet[String(h.id)]} hasD={hasD} selected={false} onPick={() => pickBlocked(h)} />
+                    ))}
+                  </HearseGrid>
+                </div>
               )}
 
-              {!hasHearses && <div style={{ padding: '1rem', textAlign: 'center', color: C.textMuted, fontSize: '.76rem' }}>No hearses registered yet.</div>}
+              {!checking && hasHearses && !hasD && allList.length > 0 && (
+                <div style={{ marginBottom: '1.1rem' }}>
+                  <SectionHeader>
+                    <SectionDot $green />
+                    <SectionLabel>All Hearses</SectionLabel>
+                    <SectionCount>{allList.length}</SectionCount>
+                  </SectionHeader>
+                  <HearseGrid>
+                    {allList.map(h => (
+                      <HearseCardTpl key={h.id} h={h} state={fleet[String(h.id)]} hasD={false} selected={String(h.id) === String(form.hearse_id)} onPick={() => pick(h)} />
+                    ))}
+                  </HearseGrid>
+                </div>
+              )}
+
+              {/* ─── Total service charge summary ─── */}
+              {hasD && !!form.hearse_id && selTotal > 0 && (
+                <ServiceChargeBox>
+                  <ChargeRow><span>Hearse</span><span>{selHearse.hearse_name || '—'} ({selHearse.plate_number || '—'})</span></ChargeRow>
+                  <ChargeRow><span>Rate / day</span><span>KSH {selPerDay.toLocaleString()}</span></ChargeRow>
+                  <ChargeRow><span>Days booked</span><span>{dates.length} — {dates.join(', ')}</span></ChargeRow>
+                  <ChargeRow><span style={{ fontWeight: 800, textTransform: 'uppercase' }}>Total Service Charge</span><span style={{ fontWeight: 800, color: '#059669' }}>KSH {selTotal.toLocaleString()}</span></ChargeRow>
+                </ServiceChargeBox>
+              )}
             </div>
 
             <Divider />

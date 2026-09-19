@@ -11,6 +11,11 @@ import {
     toDateKey,
     attemptHearseReservation
 } from '../utilities/hearseAvailability';
+import {
+    hearseStatusBadge,
+    HearseAvailabilityItemDto,
+    HearseBookingRequestDto
+} from '../models/hearseBookingDto';
 
 // Types
 interface HearseBooking {
@@ -223,6 +228,25 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
         }
         const bookingDatesJson = JSON.stringify(finalBookingDates);
 
+        // ===== Service charge (total for the booking) =====
+        // The frontend sends service_charge (already computed from the hearse's
+        // min_charge_ksh × number of days via the DTO). If absent, try to
+        // compute it from the hearse record; fall back to 0.
+        let serviceCharge: number = Number(req.body.service_charge) || 0;
+        if (serviceCharge === 0 && hearse_id) {
+            try {
+                const [hRow] = await safeQuery(
+                    'SELECT min_charge_ksh FROM hearses WHERE id = ?',
+                    [hearse_id]
+                );
+                if (hRow) {
+                    serviceCharge = (Number(hRow.min_charge_ksh) || 0) * finalBookingDates.length;
+                }
+            } catch (hearseErr) {
+                // Non-critical — service charge stays 0
+            }
+        }
+
         // ===== Deceased validation =====
         let deceasedNote = '';
         if (deceased_id && deceased_id.trim() !== '') {
@@ -295,8 +319,8 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
              client_name, client_phone, destination,
              from_location, to_location,
              booking_date, booking_dates, status, created_at, updated_at,
-             branch_id, branch_slug, booked_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          branch_id, branch_slug, booked_by, service_charge)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const insertParams = [
@@ -312,12 +336,13 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
             finalTo,
             finalBookingDates[0],
             bookingDatesJson,
-            bookingStatus,
+                        bookingStatus,
             now,
             now,
             branchIdVal,
             branchSlugVal,
-            createdByName
+            createdByName,
+            serviceCharge
         ];
 
         const selectBookingQuery = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`;
@@ -423,7 +448,7 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
                 res.status(201).json({
                     status: 'success',
                     message: 'Hearse booking created successfully and hearse status updated.',
-                    booking: { ...bookedRow, booking_code: booking_code, status: bookingStatus }
+                    booking: { ...bookedRow, booking_code: booking_code, status: bookingStatus, service_charge: serviceCharge, total_service_charge: serviceCharge }
                 });
                 return;
 
@@ -503,7 +528,7 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
                                     res.status(201).json({
                 status: 'success',
                 message: 'Hearse booking created successfully.',
-                booking: { ...booking, booking_code: booking_code, status: bookingStatus }
+                booking: { ...booking, booking_code: booking_code, status: bookingStatus, service_charge: serviceCharge, total_service_charge: serviceCharge }
             });
         }
 
@@ -829,20 +854,69 @@ export const checkAvailabilityByDate = asyncHandler(async (req: Request, res: Re
             return;
         }
 
-        const allHearses = await safeQuery('SELECT id, hearse_code, hearse_name, plate_number, status FROM hearses', []);
-        const bookings = await safeQuery(`SELECT hb.id, hb.booking_code, hb.status, hb.booking_dates, h.id AS hearse_id, h.plate_number, h.hearse_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.status NOT IN ('cancelled', 'completed') AND hb.booking_dates LIKE ?`, [`%"${date}"%`]);
+                const allHearses = await safeQuery(
+            `SELECT id, hearse_code, hearse_name, plate_number, model, capacity,
+                    status, branch_id, branch_name, image,
+                    min_charge_ksh, max_charge_ksh
+             FROM hearses`,
+            []
+        ) as any[];
+        const bookings = await safeQuery(`SELECT hb.id, hb.booking_code, hb.client_name, hb.status, hb.booking_dates, h.id AS hearse_id, h.hearse_code, h.hearse_name, h.plate_number, h.model, h.capacity, h.status AS hearse_status, h.min_charge_ksh, h.max_charge_ksh, h.image FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.status NOT IN ('cancelled', 'completed') AND hb.booking_dates LIKE ?`, [`%"${date}"%`]);
 
+                const EXCLUDED = ['maintenance', 'out_of_service', 'disabled', 'pending_inspection'];
         const bookedHearseIds = [...new Set(bookings.map((b: any) => b.hearse_id).filter(Boolean))];
+
         // Date-based availability: DO NOT rely on the global hearse status flag.
         // A hearse may be 'booked' for one date but free on another; only
         // maintenance/out-of-service hearses are excluded outright.
-        const availableHearses = allHearses.filter(
-            (h: any) =>
-                !bookedHearseIds.includes(h.id) &&
-                !['maintenance', 'out_of_service', 'disabled', 'pending_inspection'].includes(h.status)
-        );
+        const toDto = (h: any, isBooked: boolean): HearseAvailabilityItemDto => {
+            const badge = hearseStatusBadge(h.status || h.hearse_status || '');
+            return {
+                id: h.id,
+                hearse_code: h.hearse_code || '',
+                hearse_name: h.hearse_name || h.plate_number || '',
+                plate_number: h.plate_number || '',
+                model: h.model || '',
+                capacity: Number(h.capacity) || 0,
+                status: h.status || h.hearse_status || '',
+                branch_id: h.branch_id ?? null,
+                branch_name: h.branch_name ?? null,
+                image: h.image ?? null,
+                service_charge_ksh: Number(h.min_charge_ksh) || 0,
+                min_charge_ksh: Number(h.min_charge_ksh) || 0,
+                max_charge_ksh: Number(h.max_charge_ksh) || 0,
+                status_badge: badge,
+                is_booked: isBooked,
+            };
+        };
 
-        res.status(200).json({ status: 'success', date: date, available_hearses: availableHearses, booked_hearses: bookings, total_available: availableHearses.length, total_booked: bookings.length });
+        const availableHearses: HearseAvailabilityItemDto[] = allHearses
+            .filter((h: any) =>
+                !bookedHearseIds.includes(h.id) &&
+                !EXCLUDED.includes(h.status)
+            )
+            .map((h: any) => toDto(h, false));
+
+        // booked_hearses: booking rows joined with hearse data, mapped to DTOs
+        // plus the booking metadata the UI needs (client name / booking code).
+        const bookedHearses = bookings
+            .filter((b: any) => b.hearse_id)
+            .map((b: any) => ({
+                ...toDto(b, true),
+                booking_id: b.id,
+                booking_code: b.booking_code,
+                client_name: b.client_name,
+                booking_dates: b.booking_dates ? JSON.parse(b.booking_dates) : [],
+            }));
+
+        res.status(200).json({
+            status: 'success',
+            date: date,
+            available_hearses: availableHearses,
+            booked_hearses: bookedHearses,
+            total_available: availableHearses.length,
+            total_booked: bookedHearses.length,
+        });
     } catch (error) {
         res.status(500).json({ status: 'error', message: 'Failed to check availability.' });
     }

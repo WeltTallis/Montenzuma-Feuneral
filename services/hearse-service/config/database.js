@@ -94,6 +94,7 @@ const initializeHearseDatabase = async () => {
         \`booked_by\` VARCHAR(200),
         \`booked_by_email\` VARCHAR(200),
         \`booked_by_name\` VARCHAR(200),
+        \`service_charge\` DECIMAL(10,2) DEFAULT 0.00,
         \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (\`hearse_id\`) REFERENCES \`hearses\`(\`id\`) ON DELETE RESTRICT,

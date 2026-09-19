@@ -1,1 +1,2 @@
 [BRIDGE] no scanner device detected - connect the scanner or set SCANNER_NAME.
+[BRIDGE] scan failed for deceased LEE-EDGSQQMP5G355UQ7XAZ2026: NAPS2: No device was specified. Either use "--profile" to specify a profile with a device, or use "--device" to choose a particular device (and "--listdevices" to see available choices).
