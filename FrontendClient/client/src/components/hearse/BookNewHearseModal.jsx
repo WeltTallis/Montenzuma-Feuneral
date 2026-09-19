@@ -7,6 +7,14 @@ const API_BASE_URL = import.meta.env.PROD
   ? 'https://restpoint.co.ke/api/v1/restpoint'
   : (env.FULL_API_URL || 'http://localhost:5000/api/v1/restpoint');
 
+// Hearse statuses that are never bookable, whatever the date.
+// Module-level ON PURPOSE: this array is a dependency of the memoised
+// availability loader below. As a component-local `const` it was a brand new
+// array on every render, so the useCallback identity changed on every render and
+// the loader effect re-ran continuously — each pass firing another burst of
+// availability requests (the "too many requests" symptom).
+const EXCLUDED = ['maintenance', 'out_of_service', 'disabled'];
+
 const C = {
   primary: '#1a5f7a',
   primaryLight: '#2c8ac9',
@@ -280,18 +288,18 @@ const StatusBadge = styled.span`
     : p.$cls === 'st-pmReq'
       ? `color:${C.stPmReqColor};background:rgba(227,100,20,.1)`
       : p.$cls === 'st-pmDone'
-      ? `color:${C.stPmDoneColor};background:rgba(95,15,64,.1)`
-      : p.$cls === 'st-released'
-      ? `color:${C.stReleasedColor};background:rgba(3,7,30,.1)`
-      : `color:${C.stTransferredColor};background:rgba(3,7,30,.1)`}
+        ? `color:${C.stPmDoneColor};background:rgba(95,15,64,.1)`
+        : p.$cls === 'st-released'
+          ? `color:${C.stReleasedColor};background:rgba(3,7,30,.1)`
+          : `color:${C.stTransferredColor};background:rgba(3,7,30,.1)`}
   &::before{content:'';width:4px;height:4px;border-radius:50%;flex-shrink:0
     ${p => p.$cls === 'st-active'
-      ? `background:${C.stActiveColor}`
-      : p.$cls === 'st-pmReq'
-        ? `background:${C.stPmReqColor}`
-        : p.$cls === 'st-pmDone'
-          ? `background:${C.stPmDoneColor}`
-          : `background:${C.stReleasedColor}`}
+    ? `background:${C.stActiveColor}`
+    : p.$cls === 'st-pmReq'
+      ? `background:${C.stPmReqColor}`
+      : p.$cls === 'st-pmDone'
+        ? `background:${C.stPmDoneColor}`
+        : `background:${C.stReleasedColor}`}
   }
 `;
 const RadioBtn = styled.span`
@@ -374,7 +382,6 @@ function HearseCardTpl({ h, state, hasD, selected, onPick }) {
   );
 }
 
-
 const Warn = styled.div`padding:.55rem .7rem;border-radius:5px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;font-size:.72rem;font-weight:600;display:flex;align-items:center;gap:.35rem;animation:${fadeIn}.15s;`;
 
 const SBar = styled.div`display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem;`;
@@ -396,7 +403,7 @@ export default function BookNewHearseModal({
   open = false, initialDates = [], hearses = [], branches = [],
   onClose, onCreated, showToast,
 }) {
-    const scrollRef = useRef(null);
+  const scrollRef = useRef(null);
   const [sL, setSL] = useState(false);
   const [sR, setSR] = useState(false);
   const [form, setForm] = useState({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: [], branch_id: '', booking_date: '', service_charge: 0 });
@@ -409,8 +416,6 @@ export default function BookNewHearseModal({
   const [checking, setChecking] = useState(false);
   const [fleet, setFleet] = useState({});
   const [checkError, setCheckError] = useState(null);
-
-  const EXCLUDED = ['maintenance', 'out_of_service', 'disabled'];
 
   const updArrows = useCallback(() => {
     const el = scrollRef.current;
@@ -442,23 +447,60 @@ export default function BookNewHearseModal({
     setTmpDates([]); setPkOpen(false); setFleet({}); setSL(false); setSR(false); setCheckError(null);
   }, [open, initialDates]);
 
+  // Guard so an older, slower response can never overwrite a newer one.
+  const fleetReqRef = useRef(0);
+
+  // ── Availability loader ──────────────────────────────────────────────────
+  // ONE request now answers EVERY selected date (batch endpoint). The previous
+  // implementation issued a parallel fetch per date via Promise.all, so a
+  // multi-day selection produced a burst of requests; combined with an unstable
+  // callback that re-ran this effect on every render it reached hundreds of
+  // calls — the "too many requests" symptom.
   const checkFleet = useCallback(async (d) => {
-    if (!d || !d.length) { setFleet({}); setCheckError(null); return; }
+    const days = Array.isArray(d) ? d.filter(Boolean) : [];
+    if (!days.length) { setFleet({}); setCheckError(null); return; }
+
+    const reqId = ++fleetReqRef.current;
     setChecking(true);
     setCheckError(null);
+
     try {
       const hdr = getAuthHeaders();
-      // DTO flow: select a date → backend returns ALL hearses with availability
-      const results = await Promise.all(d.map(async (date) => {
-        try {
-          const r = await fetch(`${API_BASE_URL}/availability/check-by-date?date=${date}`, { headers: hdr });
-          if (!r.ok) return null;
+      let dayResults = [];
+
+      // 1) Preferred: ONE batch request covering every selected date.
+      try {
+        const r = await fetch(`${API_BASE_URL}/availability/check-by-dates`, {
+          method: 'POST',
+          headers: { ...hdr, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dates: days }),
+        });
+        if (r.ok) {
           const j = await r.json();
-          return { date, avail: j.available_hearses || [], booked: j.booked_hearses || [] };
-        } catch {
-          return null;
+          if (Array.isArray(j?.days) && j.days.length) {
+            dayResults = j.days.map(x => ({ date: x.date, avail: x.available_hearses || [], booked: x.booked_hearses || [] }));
+          } else if (j?.date) {
+            // Older deploy answering with the single-date shape
+            dayResults = [{ date: j.date, avail: j.available_hearses || [], booked: j.booked_hearses || [] }];
+          }
         }
-      }));
+      } catch { /* fall back to the per-date endpoint below */ }
+
+      // 2) Fallback: one SEQUENTIAL request per date. Sequential (not parallel)
+      //    so a backend without the batch route degrades gracefully instead of
+      //    recreating the request burst.
+      if (!dayResults.length) {
+        for (const date of days) {
+          try {
+            const r = await fetch(`${API_BASE_URL}/availability/check-by-date?date=${encodeURIComponent(date)}`, { headers: hdr });
+            if (!r.ok) continue;
+            const j = await r.json();
+            dayResults.push({ date, avail: j.available_hearses || [], booked: j.booked_hearses || [] });
+          } catch { /* skip this day */ }
+        }
+      }
+
+      if (reqId !== fleetReqRef.current) return; // superseded by a newer check
 
       // Build fleet map from the full hearse list (prop includes charges + model)
       const m = {};
@@ -481,14 +523,13 @@ export default function BookNewHearseModal({
         };
       });
 
-      // Surface an error when ALL date-queries failed (no silent fallback)
-      const okCount = results.filter(r => r !== null).length;
-      if (okCount === 0 && d.length > 0 && showToast) {
-        showToast('Availability service unreachable — hearses shown as available; verify before booking.', 'error');
+      // Surface an error when NOTHING could be checked (no silent fallback)
+      if (dayResults.length === 0) {
+        if (showToast) showToast('Availability service unreachable — hearses shown as available; verify before booking.', 'error');
         setCheckError('Availability service unreachable. Verify selection before booking.');
       }
 
-      results.forEach(day => {
+      dayResults.forEach(day => {
         if (!day) return;
         // Enrich with the full DTO (status_badge, service_charge_ksh, model…)
         (day.avail || []).forEach(a => {
@@ -519,16 +560,31 @@ export default function BookNewHearseModal({
 
       setFleet(m);
     } catch (e) {
+      if (reqId !== fleetReqRef.current) return;
       if (showToast) showToast('Failed to check hearse availability', 'error');
       const m = {};
       (hearses || []).forEach(h => { m[String(h.id)] = { status: EXCLUDED.includes(h.status) ? 'maintenance' : 'available', bookedFor: [], hearse: { ...h } }; });
       setFleet(m);
       setCheckError('Availability check failed. Please try selecting dates again.');
+    } finally {
+      if (reqId === fleetReqRef.current) setChecking(false);
     }
-    setChecking(false);
-  }, [hearses, showToast, EXCLUDED]);
+  }, [hearses, showToast]);
 
-  useEffect(() => { if (open) checkFleet(dates); }, [open, dates, checkFleet]);
+  // Keep the latest loader in a ref, so the effect below always calls fresh
+  // props WITHOUT depending on the callback identity (which was the loop).
+  const checkFleetRef = useRef(checkFleet);
+  useEffect(() => { checkFleetRef.current = checkFleet; }, [checkFleet]);
+
+  // Re-check ONLY when the modal opens or the selected dates actually change.
+  // The primitive key is deliberate: `dates` / `initialDates` are re-created on
+  // every parent render, so depending on those arrays (or on the callback) made
+  // this effect fire on every render and hammer the availability endpoints.
+  const datesKey = Array.isArray(dates) ? dates.join('|') : '';
+  useEffect(() => {
+    if (!open) return;
+    checkFleetRef.current(datesKey ? datesKey.split('|') : []);
+  }, [open, datesKey]);
 
   const computeCharge = (h) => {
     const perDay = Number(h?.min_charge_ksh) || Number(h?.service_charge_ksh) || 0;

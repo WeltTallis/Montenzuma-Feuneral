@@ -4,6 +4,7 @@ import { Chart, registerables } from "chart.js";
 import { fetchReleasesFeed, fetchPostmortemsFeed } from "../../api/dashboardFeedApi";
 import { fetchAllBranchDeceased } from "../../api/dashboardDataApi";
 Chart.register(...registerables);
+const ChartJS = Chart;
 
 /* ════════════════════════════════════════════════════════════════
    Deceased dashboard quad — "Funeral Home Dashboard · Branch View".

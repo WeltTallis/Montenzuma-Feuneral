@@ -101,6 +101,49 @@ export interface HearseAvailabilityResponseDto {
     total_booked: number;
 }
 
+/**
+ * One day of a MULTI-DATE availability result.
+ * A hearse is "available" for that day when it has no active booking covering it.
+ */
+export interface HearseDayAvailabilityDto {
+    /** The date key queried, YYYY-MM-DD */
+    date: string;
+    /** Every non-maintenance hearse that is free on `date` */
+    available_hearses: HearseAvailabilityItemDto[];
+    /** Active booking rows covering `date`, joined with hearse data */
+    booked_hearses: (HearseAvailabilityItemDto & {
+        booking_id: number | null;
+        booking_code: string | null;
+        client_name: string | null;
+        booking_dates: string[];
+    })[];
+    total_available: number;
+    total_booked: number;
+}
+
+/**
+ * Response for `GET/POST /availability/check-by-dates`.
+ *
+ * Returns availability for ALL dates in a single round-trip, so the UI never
+ * has to fan out one request per selected date (which flooded the gateway with
+ * hundreds of parallel calls for month-long date ranges).
+ */
+export interface HearseMultiDateAvailabilityResponseDto {
+    status: 'success';
+    /** Every date that was queried, sorted, de-duplicated */
+    dates: string[];
+    /** Per-day results — one entry per requested date */
+    days: HearseDayAvailabilityDto[];
+    /** The full fleet, so the UI can render cards without a second call */
+    hearses: HearseAvailabilityItemDto[];
+    /** Dates from the request that were not valid calendar keys */
+    invalid_dates: string[];
+    /** Dates from the request that are before today */
+    past_dates: string[];
+    /** Number of dates actually evaluated */
+    matched_count: number;
+}
+
 // ─── Booking ─────────────────────────────────────────────────────
 
 /**

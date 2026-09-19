@@ -1,6 +1,6 @@
 import express from 'express';
 import { registerHearse, updateHearse, deleteHearse, getAllHearses, getAvailableHearses, upload } from '../controllers/registerHearse';
-import { makeHearseBooking, checkHearseAvailability, getAllHearseBookings, assignDriverToBooking, updateBookingStatus, postponeHearseBooking, getAllDrivers, getBookingsByDriver, getDriverDashboard, getAvailabilityAcrossBranches, checkAvailabilityByDate } from '../controllers/bookHerse';
+import { makeHearseBooking, checkHearseAvailability, getAllHearseBookings, assignDriverToBooking, updateBookingStatus, postponeHearseBooking, getAllDrivers, getBookingsByDriver, getDriverDashboard, getAvailabilityAcrossBranches, checkAvailabilityByDate, checkAvailabilityByDates } from '../controllers/bookHerse';
 import { getHearseFleetAnalytics, getHearsePeriodAnalytics } from '../controllers/hearseAnalytics';
 // @ts-ignore - authMiddleware is JavaScript, not TypeScript
 import { protect } from '../../app-global/middlewares/authMiddleware';
@@ -30,6 +30,11 @@ router.get('/drivers/:driver_id/dashboard', protect, getDriverDashboard);
 // Availability
 router.get('/availability', protect, getAvailabilityAcrossBranches);
 router.get('/availability/check-by-date', protect, checkAvailabilityByDate);
+// Multi-date availability: ONE request for every selected day (replaces the
+// per-day fan-out). Exposed on POST for long date ranges (no URL length limit)
+// and on GET for convenience/bookmarking.
+router.post('/availability/check-by-dates', protect, checkAvailabilityByDates);
+router.get('/availability/check-by-dates', protect, checkAvailabilityByDates);
 
 // Analytics
 router.get('/analytics/fleet', protect, getHearseFleetAnalytics);

@@ -14,7 +14,9 @@ import {
 import {
     hearseStatusBadge,
     HearseAvailabilityItemDto,
-    HearseBookingRequestDto
+    HearseBookingRequestDto,
+    HearseDayAvailabilityDto,
+    HearseMultiDateAvailabilityResponseDto
 } from '../models/hearseBookingDto';
 
 // Types
@@ -844,7 +846,83 @@ export const getAvailabilityAcrossBranches = asyncHandler(async (req: Request, r
 });
 
 /**
- * Check availability by date
+ * Hearse statuses that can never be booked, on ANY date.
+ * A hearse whose global status is 'booked' is deliberately NOT here: it may be
+ * booked for one day and free on another (see checkAvailabilityByDate).
+ */
+const AVAILABILITY_EXCLUDED_STATUSES = ['maintenance', 'out_of_service', 'disabled', 'pending_inspection'];
+
+/** Hard cap on how many days one availability request may ask about. */
+const MAX_AVAILABILITY_DATES = 62;
+
+/**
+ * Map a hearse row (or a booking row joined with hearse columns) to the
+ * availability DTO the frontend cards render.
+ */
+const toAvailabilityDto = (h: any, isBooked: boolean): HearseAvailabilityItemDto => {
+    const badge = hearseStatusBadge(h.status || h.hearse_status || '');
+    return {
+        id: h.id,
+        hearse_code: h.hearse_code || '',
+        hearse_name: h.hearse_name || h.plate_number || '',
+        plate_number: h.plate_number || '',
+        model: h.model || '',
+        capacity: Number(h.capacity) || 0,
+        status: h.status || h.hearse_status || '',
+        branch_id: h.branch_id ?? null,
+        branch_name: h.branch_name ?? null,
+        image: h.image ?? null,
+        service_charge_ksh: Number(h.min_charge_ksh) || 0,
+        min_charge_ksh: Number(h.min_charge_ksh) || 0,
+        max_charge_ksh: Number(h.max_charge_ksh) || 0,
+        status_badge: badge,
+        is_booked: isBooked,
+    };
+};
+
+/**
+ * Pull every date-ish value out of the request, whichever way the caller sent
+ * it. Accepts (in this precedence order, all merged):
+ *   - POST body:  { dates: [...] } | { date: '...' } | { booking_dates: [...] }
+ *   - query:      ?dates=a,b,c | ?date=a | ?dates[]=a&dates[]=b
+ * Comma- and whitespace-separated strings are split, so a single request can
+ * carry any number of days.
+ */
+const collectRequestedDateInputs = (req: Request): string[] => {
+    const out: string[] = [];
+    const push = (v: any): void => {
+        if (v == null) return;
+        if (Array.isArray(v)) { v.forEach(push); return; }
+        if (typeof v === 'object') {
+            // booking-date objects may carry start/end or a single date
+            if (v.date) push(v.date);
+            if (v.start_date) push(v.start_date);
+            if (v.end_date) push(v.end_date);
+            return;
+        }
+        const str = String(v).trim();
+        if (!str) return;
+        // A comma/space separated list is common for GET requests.
+        if (/[,\s]/.test(str)) { str.split(/[,\s]+/).forEach((part) => push(part)); return; }
+        out.push(str);
+    };
+
+    const body: any = (req as any).body || {};
+    push(body.dates);
+    push(body.date);
+    push(body.booking_dates);
+
+    const query: any = req.query || {};
+    push(query.dates);
+    push(query.date);
+
+    return out;
+};
+
+/**
+ * Check availability for a SINGLE date (original contract).
+ *
+ * Returns every hearse split into available / booked buckets for that day.
  */
 export const checkAvailabilityByDate = asyncHandler(async (req: Request, res: Response) => {
     try {
@@ -863,46 +941,24 @@ export const checkAvailabilityByDate = asyncHandler(async (req: Request, res: Re
         ) as any[];
         const bookings = await safeQuery(`SELECT hb.id, hb.booking_code, hb.client_name, hb.status, hb.booking_dates, h.id AS hearse_id, h.hearse_code, h.hearse_name, h.plate_number, h.model, h.capacity, h.status AS hearse_status, h.min_charge_ksh, h.max_charge_ksh, h.image FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.status NOT IN ('cancelled', 'completed') AND hb.booking_dates LIKE ?`, [`%"${date}"%`]);
 
-                const EXCLUDED = ['maintenance', 'out_of_service', 'disabled', 'pending_inspection'];
         const bookedHearseIds = [...new Set(bookings.map((b: any) => b.hearse_id).filter(Boolean))];
 
         // Date-based availability: DO NOT rely on the global hearse status flag.
         // A hearse may be 'booked' for one date but free on another; only
         // maintenance/out-of-service hearses are excluded outright.
-        const toDto = (h: any, isBooked: boolean): HearseAvailabilityItemDto => {
-            const badge = hearseStatusBadge(h.status || h.hearse_status || '');
-            return {
-                id: h.id,
-                hearse_code: h.hearse_code || '',
-                hearse_name: h.hearse_name || h.plate_number || '',
-                plate_number: h.plate_number || '',
-                model: h.model || '',
-                capacity: Number(h.capacity) || 0,
-                status: h.status || h.hearse_status || '',
-                branch_id: h.branch_id ?? null,
-                branch_name: h.branch_name ?? null,
-                image: h.image ?? null,
-                service_charge_ksh: Number(h.min_charge_ksh) || 0,
-                min_charge_ksh: Number(h.min_charge_ksh) || 0,
-                max_charge_ksh: Number(h.max_charge_ksh) || 0,
-                status_badge: badge,
-                is_booked: isBooked,
-            };
-        };
-
         const availableHearses: HearseAvailabilityItemDto[] = allHearses
             .filter((h: any) =>
                 !bookedHearseIds.includes(h.id) &&
-                !EXCLUDED.includes(h.status)
+                !AVAILABILITY_EXCLUDED_STATUSES.includes(h.status)
             )
-            .map((h: any) => toDto(h, false));
+            .map((h: any) => toAvailabilityDto(h, false));
 
         // booked_hearses: booking rows joined with hearse data, mapped to DTOs
         // plus the booking metadata the UI needs (client name / booking code).
         const bookedHearses = bookings
             .filter((b: any) => b.hearse_id)
             .map((b: any) => ({
-                ...toDto(b, true),
+                ...toAvailabilityDto(b, true),
                 booking_id: b.id,
                 booking_code: b.booking_code,
                 client_name: b.client_name,
@@ -917,6 +973,152 @@ export const checkAvailabilityByDate = asyncHandler(async (req: Request, res: Re
             total_available: availableHearses.length,
             total_booked: bookedHearses.length,
         });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: 'Failed to check availability.' });
+    }
+});
+
+/**
+ * MULTI-DATE availability — one request answers EVERY selected day.
+ *
+ * This is the endpoint the UI uses when a date is clicked. It replaces the old
+ * "one /availability/check-by-date request per selected date" fan-out, which
+ * fired a parallel burst of requests (one per day) and drove the request count
+ * past 200 for long date ranges.
+ *
+ * Accepted inputs (all merged, so any caller style works):
+ *   GET  /availability/check-by-dates?dates=2026-09-23,2026-09-24
+ *   GET  /availability/check-by-dates?date=2026-09-23
+ *   POST /availability/check-by-dates  { "dates": ["2026-09-23", "2026-09-24"] }
+ *
+ * Response:
+ *   - days[]        per-day available/booked buckets (what the UI renders)
+ *   - hearses[]     the whole fleet, so cards render without a second call
+ *   - invalid_dates / past_dates  what was ignored, so the UI can say why
+ *
+ * Cost: exactly TWO queries (fleet + active bookings) regardless of how many
+ * days are requested. Booked days are expanded in JS with the same
+ * normalizeBookingDates()/extractRowDates() helpers the booking transaction
+ * uses, so a booking spanning a date range blocks every day it covers.
+ */
+export const checkAvailabilityByDates = asyncHandler(async (req: Request, res: Response) => {
+    try {
+        const rawInputs = collectRequestedDateInputs(req);
+
+        const todayKey = getKenyaDate();
+        const invalidDates: string[] = [];
+        const pastDates: string[] = [];
+        const dateKeys: string[] = [];
+        const seen = new Set<string>();
+
+        for (const raw of rawInputs) {
+            const key = toDateKey(raw);
+            if (!key) {
+                invalidDates.push(String(raw));
+                continue;
+            }
+            if (seen.has(key)) continue;
+            seen.add(key);
+            if (key < todayKey) pastDates.push(key);
+            dateKeys.push(key);
+        }
+        dateKeys.sort();
+
+        if (dateKeys.length === 0) {
+            res.status(400).json({
+                status: 'error',
+                message: rawInputs.length === 0
+                    ? 'At least one date is required (pass `dates=YYYY-MM-DD,YYYY-MM-DD` or `date=YYYY-MM-DD`).'
+                    : 'No valid calendar dates were supplied.',
+                invalid_dates: invalidDates,
+                past_dates: pastDates,
+            });
+            return;
+        }
+
+        if (dateKeys.length > MAX_AVAILABILITY_DATES) {
+            res.status(400).json({
+                status: 'error',
+                message: `Too many dates requested (max ${MAX_AVAILABILITY_DATES}).`,
+                requested: dateKeys.length,
+            });
+            return;
+        }
+
+        // ── the whole point: ONE fleet query + ONE bookings query total ──
+        const allHearses = await safeQuery(
+            `SELECT id, hearse_code, hearse_name, plate_number, model, capacity,
+                    status, branch_id, branch_name, image,
+                    min_charge_ksh, max_charge_ksh
+             FROM hearses`,
+            []
+        ) as any[];
+
+        const bookings = await safeQuery(
+            `SELECT hb.id, hb.booking_code, hb.client_name, hb.status, hb.booking_dates,
+                    h.id AS hearse_id, h.hearse_code, h.hearse_name, h.plate_number, h.model,
+                    h.capacity, h.status AS hearse_status, h.min_charge_ksh, h.max_charge_ksh, h.image
+             FROM hearse_bookings hb
+             LEFT JOIN hearses h ON hb.hearse_id = h.id
+             WHERE hb.status NOT IN ('cancelled', 'completed')`,
+            []
+        ) as any[];
+
+        // Bucket the active bookings by the requested day each one covers.
+        const requestedSet = new Set(dateKeys);
+        const bookingsByDate = new Map<string, any[]>();
+        for (const booking of bookings) {
+            for (const day of extractRowDates(booking)) {
+                if (!requestedSet.has(day)) continue;
+                const bucket = bookingsByDate.get(day);
+                if (bucket) bucket.push(booking);
+                else bookingsByDate.set(day, [booking]);
+            }
+        }
+
+        const days: HearseDayAvailabilityDto[] = dateKeys.map((day) => {
+            const dayBookings = bookingsByDate.get(day) || [];
+            const bookedHearseIds = new Set(
+                dayBookings.map((b: any) => String(b.hearse_id)).filter(Boolean)
+            );
+
+            const availableHearses = allHearses
+                .filter((h: any) =>
+                    !bookedHearseIds.has(String(h.id)) &&
+                    !AVAILABILITY_EXCLUDED_STATUSES.includes(h.status)
+                )
+                .map((h: any) => toAvailabilityDto(h, false));
+
+            const bookedHearses = dayBookings
+                .filter((b: any) => b.hearse_id)
+                .map((b: any) => ({
+                    ...toAvailabilityDto(b, true),
+                    booking_id: b.id,
+                    booking_code: b.booking_code,
+                    client_name: b.client_name,
+                    booking_dates: normalizeBookingDates(b.booking_dates),
+                }));
+
+            return {
+                date: day,
+                available_hearses: availableHearses,
+                booked_hearses: bookedHearses,
+                total_available: availableHearses.length,
+                total_booked: bookedHearses.length,
+            };
+        });
+
+        const payload: HearseMultiDateAvailabilityResponseDto = {
+            status: 'success',
+            dates: dateKeys,
+            days,
+            hearses: allHearses.map((h: any) => toAvailabilityDto(h, false)),
+            invalid_dates: invalidDates,
+            past_dates: pastDates,
+            matched_count: days.length,
+        };
+
+        res.status(200).json(payload);
     } catch (error) {
         res.status(500).json({ status: 'error', message: 'Failed to check availability.' });
     }

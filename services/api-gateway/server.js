@@ -419,6 +419,12 @@ const SERVICE_ROUTES = {
   'hearse-bookings': SERVICE_URLS.hearse,
   'all-drivers': SERVICE_URLS.hearse,
   'drivers': SERVICE_URLS.hearse,
+  // Hearse availability (single + multi-date). Owned by hearse-service, which
+  // mounts /availability and /availability/check-by-date(s). Without this entry
+  // the gateway saw an unknown first segment and hard-404'd every availability
+  // check with `{"message":"Unknown service: availability"}`, which the booking
+  // modal surfaced as "Availability service unreachable".
+  'availability': SERVICE_URLS.hearse,
 
   'coffins': SERVICE_URLS.coffin,
   'chemicals': SERVICE_URLS.chemicals,
