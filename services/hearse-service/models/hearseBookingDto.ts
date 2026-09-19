@@ -5,15 +5,15 @@
  * Data Transfer Objects for the hearse booking flow.
  *
  * The booking flow is intentionally simple:
- *   1. Caller sends ONLY a date  → HearseAvailabilityRequestDto
- *   2. Backend returns every hearse that is free on that date
- *      (with full details + per-day service charge)  → HearseAvailabilityResponseDto
+ *   1. Caller sends one or more dates → HearseAvailabilityRequestDto / multi-date
+ *   2. Backend returns every hearse that is free on those dates
+ *      (with full details)  → HearseAvailabilityResponseDto
  *   3. Caller picks one hearse, fills client details, and the
  *      backend creates the booking  → HearseBookingRequestDto / HearseBookingResponseDto
  *
- * "Total service charge" = per-day rate (min_charge_ksh) × number of
- * booking days. It is persisted on the booking so the invoice service
- * can pick it up without recomputing.
+ * "Service charge" is OPTIONAL and always a single TOTAL for the whole booking —
+ * there are no min/max daily rates on a hearse. It is persisted on the booking
+ * (when supplied) so the invoice service can pick it up without recomputing.
  */
 
 // ─── Availability ───────────────────────────────────────────────
@@ -73,11 +73,11 @@ export interface HearseAvailabilityItemDto {
     branch_name: string | null;
     /** Image path / URL */
     image: string | null;
-    /** Per-day service charge (KSH) — derived from min_charge_ksh */
+    /**
+     * OPTIONAL total service charge (KSH) for this booking.
+     * 0 when the hearse has no charge configured — never required.
+     */
     service_charge_ksh: number;
-    /** Raw charge range for reference */
-    min_charge_ksh: number;
-    max_charge_ksh: number;
     /** Badge label + css class for the status badge */
     status_badge: HearseStatusBadge;
     /** True when the hearse is already booked on *this* date */
@@ -110,8 +110,10 @@ export interface HearseDayAvailabilityDto {
     date: string;
     /** Every non-maintenance hearse that is free on `date` */
     available_hearses: HearseAvailabilityItemDto[];
-    /** Active booking rows covering `date`, joined with hearse data */
+    /** Active booking rows covering `date`, resolved against the fleet */
     booked_hearses: (HearseAvailabilityItemDto & {
+        /** The hearse id (`id` mirrors this for backwards compatibility) */
+        hearse_id: number;
         booking_id: number | null;
         booking_code: string | null;
         client_name: string | null;
@@ -161,7 +163,10 @@ export interface HearseBookingRequestDto {
     to_location?: string;
     /** One or more YYYY-MM-DD strings (or ISO datetime strings) */
     booking_dates: string[];
-    /** Per-day service charge (KSH) captured at booking time */
+    /**
+     * OPTIONAL total service charge (KSH) for the WHOLE booking.
+     * Omit (or send 0) when no charge applies — it is never required.
+     */
     service_charge?: number;
     special_remarks?: string;
     from_timestamp?: string;

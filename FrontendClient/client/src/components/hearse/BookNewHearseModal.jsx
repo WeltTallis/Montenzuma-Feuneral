@@ -206,10 +206,12 @@ const StepTitle = styled.div`
 
 const SectionHeader = styled.div`
   display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;
+  &::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#e2e8f0 0%,transparent 100%);border-radius:1px}
 `;
 const SectionDot = styled.div`
   width:8px;height:8px;border-radius:50%;
   background:${p => p.$green ? '#10b981' : '#ef4444'};
+  box-shadow:0 0 0 3px ${p => p.$green ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.15)'};
 `;
 const SectionLabel = styled.span`
   font-size:.75rem;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.05em;
@@ -220,94 +222,91 @@ const SectionCount = styled.span`
 
 const HearseGrid = styled.div`
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
-  gap:.6rem;
+  grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+  gap:.7rem;
 `;
 
 const HearseCard = styled.button`
-  display:flex;flex-direction:column;gap:.5rem;
-  padding:.7rem;border-radius:12px;cursor:pointer;
-  transition:all .15s ease;text-align:left;width:100%;
-  border:1.5px solid transparent;
+  display:flex;flex-direction:column;gap:.6rem;
+  padding:.85rem;border-radius:14px;cursor:pointer;
+  transition:all .2s cubic-bezier(.4,0,.2,1);text-align:left;width:100%;
+  border:1px solid transparent;position:relative;overflow:hidden;
   ${p => p.$booked
-    ? `background:#fef2f2;border-color:#fee2e2;cursor:not-allowed;opacity:.75`
+    ? `background:#fff5f5;border-color:#fee2e2;cursor:not-allowed;opacity:.65;box-shadow:0 2px 8px rgba(239,68,68,.03)`
     : p.$selected
-      ? `background:#eff6ff;border-color:${C.primary};box-shadow:0 4px 14px rgba(26,95,122,.15);transform:translateY(-2px)`
+      ? `background:#eff6ff;border-color:${C.primary};box-shadow:0 8px 20px -6px rgba(26,95,122,.25),0 0 0 1px ${C.primary};transform:translateY(-3px);z-index:2`
       : p.$neutral
         ? `background:#fff;border-color:${C.border};
-           &:hover{border-color:#cbd5e1;background:#f8fafc;transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.05)}`
-        : `background:#f0fdf4;border-color:#dcfce7;
-           &:hover{border-color:#86efac;background:#dcfce7;transform:translateY(-2px);box-shadow:0 4px 12px rgba(16,185,129,.1)}`}
+           &:hover{border-color:#cbd5e1;background:#f8fafc;transform:translateY(-3px);box-shadow:0 4px 12px rgba(0,0,0,.05)}`
+        : `background:#f0fdfa;border-color:#d1fae5;
+           &:hover{border-color:#6ee7b7;background:#ecfdf5;transform:translateY(-3px);box-shadow:0 12px 24px -8px rgba(16,185,129,.2)}`}
 `;
 
 const CardTop = styled.div`
-  display:flex;align-items:flex-start;gap:.55rem;
+  display:flex;align-items:center;gap:.65rem;
 `;
 const Avatar = styled.div`
-  width:34px;height:34px;border-radius:10px;
-  color:#fff;font-size:14px;font-weight:700;
+  width:42px;height:42px;border-radius:50%;
+  color:#fff;font-size:16px;font-weight:700;
   display:flex;align-items:center;justify-content:center;
   text-transform:uppercase;flex-shrink:0;
+  box-shadow:0 4px 8px rgba(0,0,0,.1);
+  border:2px solid rgba(255,255,255,.5);
 `;
 const InfoBlock = styled.div`
-  flex:1;min-width:0;display:flex;flex-direction:column;gap:.12rem;
+  flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem;
 `;
 const HearseName = styled.span`
-  font-size:.82rem;font-weight:700;color:#111827;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:.9rem;font-weight:700;color:#0f172a;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;
 `;
 const PlateBox = styled.span`
-  font-size:.64rem;font-weight:700;color:#334155;
-  background:#fff;border:1px solid #cbd5e1;
-  padding:1px 5px;border-radius:4px;
+  font-size:.65rem;font-weight:700;color:#334155;
+  background:#fff;border:1px solid ${C.border};
+  padding:2px 6px;border-radius:5px;align-self:flex-start;
+  letter-spacing:.03em;box-shadow:0 1px 2px rgba(0,0,0,.03);
 `;
 
 const CardBottom = styled.div`
-  display:flex;align-items:center;justify-content:space-between;gap:.35rem;
-  margin-top:auto;
+  display:flex;align-items:center;justify-content:space-between;gap:.4rem;
+  margin-top:auto;padding-top:.5rem;
+  border-top:1px dashed rgba(0,0,0,.05);
 `;
 const RightControls = styled.div`
   display:flex;align-items:center;gap:.4rem;flex-shrink:0;
 `;
 const AvailPill = styled.span`
-  font-size:.6rem;font-weight:800;padding:.18rem .5rem;
-  border-radius:999px;text-transform:uppercase;
+  font-size:.6rem;font-weight:800;padding:.2rem .55rem;
+  border-radius:999px;text-transform:uppercase;letter-spacing:.03em;
+  box-shadow:0 2px 4px rgba(0,0,0,.02);
   ${p => p.$free
-    ? 'background:#d1fae5;color:#059669'
+    ? 'background:#d1fae5;color:#047857;border:1px solid #a7f3d0'
     : p.$unknown
-      ? 'background:#f1f5f9;color:#64748b'
-      : 'background:#fee2e2;color:#dc2626'}
+      ? 'background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0'
+      : 'background:#fee2e2;color:#b91c1c;border:1px solid #fecaca'}
 `;
 const StatusBadge = styled.span`
-  font-size:.58rem;font-weight:700;padding:.15rem .38rem;
-  border-radius:4px;text-transform:uppercase;letter-spacing:.02em;
+  font-size:.6rem;font-weight:700;padding:.2rem .5rem;
+  border-radius:6px;text-transform:uppercase;letter-spacing:.03em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   display:inline-flex;align-items:center;gap:3px;
   ${p => p.$cls === 'st-active'
-    ? `color:${C.stActiveColor};background:rgba(0,41,107,.1)`
+    ? `color:${C.stActiveColor};background:rgba(0,41,107,.08);border:1px solid rgba(0,41,107,.1)`
     : p.$cls === 'st-pmReq'
-      ? `color:${C.stPmReqColor};background:rgba(227,100,20,.1)`
+      ? `color:${C.stPmReqColor};background:rgba(227,100,20,.08);border:1px solid rgba(227,100,20,.1)`
       : p.$cls === 'st-pmDone'
-        ? `color:${C.stPmDoneColor};background:rgba(95,15,64,.1)`
+        ? `color:${C.stPmDoneColor};background:rgba(95,15,64,.08);border:1px solid rgba(95,15,64,.1)`
         : p.$cls === 'st-released'
-          ? `color:${C.stReleasedColor};background:rgba(3,7,30,.1)`
-          : `color:${C.stTransferredColor};background:rgba(3,7,30,.1)`}
-  &::before{content:'';width:4px;height:4px;border-radius:50%;flex-shrink:0
-    ${p => p.$cls === 'st-active'
-    ? `background:${C.stActiveColor}`
-    : p.$cls === 'st-pmReq'
-      ? `background:${C.stPmReqColor}`
-      : p.$cls === 'st-pmDone'
-        ? `background:${C.stPmDoneColor}`
-        : `background:${C.stReleasedColor}`}
-  }
+          ? `color:${C.stReleasedColor};background:rgba(3,7,30,.08);border:1px solid rgba(3,7,30,.1)`
+          : `color:${C.stTransferredColor};background:rgba(3,7,30,.08);border:1px solid rgba(3,7,30,.1)`}
 `;
 const RadioBtn = styled.span`
-  width:18px;height:18px;border-radius:50%;
+  width:20px;height:20px;border-radius:50%;
   border:2px solid #cbd5e1;display:inline-flex;
   align-items:center;justify-content:center;transition:all .2s;background:#fff;flex-shrink:0;
-  &::after{content:'';width:9px;height:9px;border-radius:50%;
-    background:${C.primary};transform:scale(0);transition:transform .2s}
+  box-shadow:0 1px 2px rgba(0,0,0,.05);
+  &::after{content:'';width:10px;height:10px;border-radius:50%;
+    background:${C.primary};transform:scale(0);transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
 `;
 const CardSelectedRadio = styled(RadioBtn)`
   border-color:${C.primary};
@@ -347,7 +346,8 @@ function HearseCardTpl({ h, state, hasD, selected, onPick }) {
   const blocked = booked || maint;
   const meta = statusMeta(h);
   const letter = (String(h.hearse_name || h.plate_number || 'H').trim().charAt(0) || 'H').toUpperCase();
-  const charge = Number(h.min_charge_ksh) || Number(h.service_charge_ksh) || 0;
+  // OPTIONAL: one TOTAL service charge for the booking (0 = not configured).
+  const totalCharge = Number(st.hearse?.service_charge_ksh ?? h.service_charge_ksh) || 0;
 
   let pill;
   if (hasD && booked) pill = { label: '✕ Booked', mode: 'booked' };
@@ -377,7 +377,11 @@ function HearseCardTpl({ h, state, hasD, selected, onPick }) {
           {st.bookedFor.map(b => b.date).join(', ')}
         </span>
       )}
-      {charge > 0 && <span style={{ fontSize: '.6rem', fontWeight: 700, color: '#059669' }}>KSH {charge.toLocaleString()} / day</span>}
+      {totalCharge > 0 && (
+        <span style={{ fontSize: '.62rem', fontWeight: 700, color: '#059669' }}>
+          Total service charge: KSH {totalCharge.toLocaleString()}
+        </span>
+      )}
     </HearseCard>
   );
 }
@@ -467,6 +471,7 @@ export default function BookNewHearseModal({
     try {
       const hdr = getAuthHeaders();
       let dayResults = [];
+      let serverError = '';
 
       // 1) Preferred: ONE batch request covering every selected date.
       try {
@@ -475,14 +480,23 @@ export default function BookNewHearseModal({
           headers: { ...hdr, 'Content-Type': 'application/json' },
           body: JSON.stringify({ dates: days }),
         });
-        if (r.ok) {
-          const j = await r.json();
-          if (Array.isArray(j?.days) && j.days.length) {
+        const j = await r.json().catch(() => null);
+        if (r.ok && j) {
+          if (Array.isArray(j.days) && j.days.length) {
             dayResults = j.days.map(x => ({ date: x.date, avail: x.available_hearses || [], booked: x.booked_hearses || [] }));
           } else if (j?.date) {
             // Older deploy answering with the single-date shape
             dayResults = [{ date: j.date, avail: j.available_hearses || [], booked: j.booked_hearses || [] }];
           }
+          // Dates the backend refused to evaluate (past / malformed) — say so.
+          const past = Array.isArray(j.past_dates) ? j.past_dates : [];
+          const invalid = Array.isArray(j.invalid_dates) ? j.invalid_dates : [];
+          const ignored = [...past, ...invalid];
+          if (ignored.length) setCheckError(`Ignored date(s): ${ignored.join(', ')}.`);
+        } else if (j?.message) {
+          serverError = j.error ? `${j.message} (${j.error})` : String(j.message);
+        } else {
+          serverError = `HTTP ${r.status}`;
         }
       } catch { /* fall back to the per-date endpoint below */ }
 
@@ -493,8 +507,11 @@ export default function BookNewHearseModal({
         for (const date of days) {
           try {
             const r = await fetch(`${API_BASE_URL}/availability/check-by-date?date=${encodeURIComponent(date)}`, { headers: hdr });
-            if (!r.ok) continue;
-            const j = await r.json();
+            const j = await r.json().catch(() => null);
+            if (!r.ok || !j) {
+              if (!serverError) serverError = j?.error ? `${j.message} (${j.error})` : `HTTP ${r.status}`;
+              continue;
+            }
             dayResults.push({ date, avail: j.available_hearses || [], booked: j.booked_hearses || [] });
           } catch { /* skip this day */ }
         }
@@ -502,7 +519,7 @@ export default function BookNewHearseModal({
 
       if (reqId !== fleetReqRef.current) return; // superseded by a newer check
 
-      // Build fleet map from the full hearse list (prop includes charges + model)
+      // Build fleet map from the full hearse list (prop carries model + status)
       const m = {};
       (hearses || []).forEach(h => {
         m[String(h.id)] = {
@@ -516,17 +533,19 @@ export default function BookNewHearseModal({
             model: h.model || '',
             capacity: h.capacity,
             status: h.status || 'available',
-            min_charge_ksh: Number(h.min_charge_ksh) || 0,
-            max_charge_ksh: Number(h.max_charge_ksh) || 0,
-            service_charge_ksh: Number(h.min_charge_ksh) || 0,
+            // OPTIONAL single total service charge — never required
+            service_charge_ksh: Number(h.service_charge_ksh ?? h.service_charge) || 0,
           }
         };
       });
 
       // Surface an error when NOTHING could be checked (no silent fallback)
       if (dayResults.length === 0) {
-        if (showToast) showToast('Availability service unreachable — hearses shown as available; verify before booking.', 'error');
-        setCheckError('Availability service unreachable. Verify selection before booking.');
+        const msg = serverError
+          ? `Availability check failed: ${serverError}`
+          : 'Availability service unreachable. Verify selection before booking.';
+        if (showToast) showToast(msg, 'error');
+        setCheckError(msg);
       }
 
       dayResults.forEach(day => {
@@ -563,7 +582,13 @@ export default function BookNewHearseModal({
       if (reqId !== fleetReqRef.current) return;
       if (showToast) showToast('Failed to check hearse availability', 'error');
       const m = {};
-      (hearses || []).forEach(h => { m[String(h.id)] = { status: EXCLUDED.includes(h.status) ? 'maintenance' : 'available', bookedFor: [], hearse: { ...h } }; });
+      (hearses || []).forEach(h => {
+        m[String(h.id)] = {
+          status: EXCLUDED.includes(h.status) ? 'maintenance' : 'available',
+          bookedFor: [],
+          hearse: { ...h, service_charge_ksh: Number(h.service_charge_ksh ?? h.service_charge) || 0 },
+        };
+      });
       setFleet(m);
       setCheckError('Availability check failed. Please try selecting dates again.');
     } finally {
@@ -576,21 +601,20 @@ export default function BookNewHearseModal({
   const checkFleetRef = useRef(checkFleet);
   useEffect(() => { checkFleetRef.current = checkFleet; }, [checkFleet]);
 
-  // Re-check ONLY when the modal opens or the selected dates actually change.
-  // The primitive key is deliberate: `dates` / `initialDates` are re-created on
-  // every parent render, so depending on those arrays (or on the callback) made
-  // this effect fire on every render and hammer the availability endpoints.
-  const datesKey = Array.isArray(dates) ? dates.join('|') : '';
+  // ── LIVE availability ────────────────────────────────────────────────────
+  // The list must reflect the dates selected RIGHT NOW: while the calendar is
+  // open that is the in-progress selection (tmpDates), otherwise the confirmed
+  // dates. Ticking a day therefore re-checks availability immediately — the
+  // moment the picker is confirmed the cards already show that day's result.
+  const activeDates = pkOpen ? tmpDates : dates;
+  const activeDatesKey = Array.isArray(activeDates) ? activeDates.join('|') : '';
   useEffect(() => {
     if (!open) return;
-    checkFleetRef.current(datesKey ? datesKey.split('|') : []);
-  }, [open, datesKey]);
-
-  const computeCharge = (h) => {
-    const perDay = Number(h?.min_charge_ksh) || Number(h?.service_charge_ksh) || 0;
-    const days = (dates || []).length;
-    return Math.round((perDay * days) * 100) / 100;
-  };
+    const days = activeDatesKey ? activeDatesKey.split('|') : [];
+    // Debounce: ticking several days quickly issues ONE request, not one each.
+    const t = setTimeout(() => { checkFleetRef.current(days); }, 200);
+    return () => clearTimeout(t);
+  }, [open, activeDatesKey]);
 
   const pick = (h) => {
     if (dates.length > 0) {
@@ -600,15 +624,19 @@ export default function BookNewHearseModal({
         return;
       }
     }
-    const charge = computeCharge(h);
-    setForm(p => ({ ...p, hearse_id: h.id, service_charge: charge }));
+    // Service charge is OPTIONAL: pre-fill the TOTAL when the hearse has one
+    // configured, otherwise leave it at 0 (it can be typed in by the user).
+    const total = Number(fleet[String(h.id)]?.hearse?.service_charge_ksh ?? h.service_charge_ksh ?? h.service_charge) || 0;
+    setForm(p => ({ ...p, hearse_id: h.id, service_charge: total }));
   };
 
   const togDate = (ds) => { setTmpDates(p => p.includes(ds) ? p.filter(d => d !== ds) : [...p, ds].sort()); };
 
   const confirmDates = () => {
     setDates(tmpDates);
-    setForm(p => ({ ...p, booking_dates: tmpDates, booking_date: tmpDates[0] || '', service_charge: 0 }));
+    // The total service charge is a whole-booking amount, so a date change keeps
+    // whatever was entered — it is never recalculated from a daily rate.
+    setForm(p => ({ ...p, booking_dates: tmpDates, booking_date: tmpDates[0] || '' }));
     setPkOpen(false);
     if (form.hearse_id) { const s = fleet[String(form.hearse_id)]; if (s && s.status !== 'available') setForm(p => ({ ...p, hearse_id: '' })); }
   };
@@ -616,6 +644,7 @@ export default function BookNewHearseModal({
   const submit = useCallback(async (e) => {
     e.preventDefault();
     if (!form.hearse_id || !form.client_name || !form.from_location || !form.to_location || !dates.length) { showToast('Please fill all required fields and select at least one date', 'error'); return; }
+    if (checking) { showToast('Still checking availability for the selected dates — try again in a moment.', 'error'); return; }
     const s = fleet[String(form.hearse_id)];
     if (s && s.status !== 'available') { showToast(`This hearse is already booked for: ${s.bookedFor.map(b => `${b.date} (${b.client})`).join(', ') || 'the selected date(s)'}.`, 'error'); return; }
     setLoading(true);
@@ -626,18 +655,16 @@ export default function BookNewHearseModal({
       if (u?.email) hdr['x-user-email'] = u.email;
       hdr['x-user-name'] = u?.full_name || u?.username || u?.name || 'System';
       const fd = dates.length > 0 ? dates[0] + 'T00:00:00' : new Date().toISOString();
-      // Recompute the total service charge at submit time (rate/day × days)
-      // so a hearse picked before a date change is still charged correctly.
-      const selH = (hearses || []).find(x => String(x.id) === String(form.hearse_id)) || {};
-      const perDay = Number(selH.min_charge_ksh) || Number(selH.service_charge_ksh) || 0;
-      const svcCharge = Math.round(perDay * dates.length * 100) / 100;
+      // OPTIONAL total service charge (KSH) for the whole booking — sent as
+      // entered; 0 is perfectly valid and the booking still completes.
+      const svcCharge = Math.round((Number(form.service_charge) || 0) * 100) / 100;
       const body = { hearse_id: form.hearse_id, client_name: form.client_name, client_phone: form.client_phone || '', from_location: form.from_location, to_location: form.to_location, destination: form.to_location, from_timestamp: fd, booking_date: fd, booking_dates: dates, booked_by: getLocalUserName() || u?.email || 'System', branch_id: form.branch_id || u?.branch_id || '', branch_code: form.branch_code || u?.branch_code || '', service_charge: svcCharge };
       const r = await fetch(`${API_BASE_URL}/hearse-bookings`, { method: 'POST', headers: hdr, body: JSON.stringify(body) });
       if (!r.ok) { const ed = await r.json().catch(() => ({})); if (r.status === 409) throw new Error(ed.message || 'Just booked by another user.'); throw new Error(ed.message || `HTTP ${r.status}`); }
-      showToast(`Booking created — Total Service Charge KSH ${svcCharge.toLocaleString()}!`, 'success'); setFleet({}); if (onClose) onClose(); if (onCreated) await onCreated();
+      showToast(svcCharge > 0 ? `Booking created — Total Service Charge KSH ${svcCharge.toLocaleString()}!` : 'Booking created!', 'success'); setFleet({}); if (onClose) onClose(); if (onCreated) await onCreated();
     } catch (err) { showToast('Failed: ' + err.message, 'error'); }
     setLoading(false);
-  }, [form, dates, fleet, hearses, showToast, onClose, onCreated]);
+  }, [form, dates, fleet, hearses, checking, showToast, onClose, onCreated]);
 
   const bOpts = branches.length > 0 ? branches : [];
   const hasD = dates.length > 0;
@@ -663,10 +690,11 @@ export default function BookNewHearseModal({
     allList = (hearses || []).slice().sort(sortByName);
   }
 
-  // Total service charge for the currently selected hearse
+  // The selected hearse + the OPTIONAL total service charge for this booking.
+  // There is no daily rate: the charge is a single whole-booking amount that
+  // the user may leave at 0 (it is not required to create the booking).
   const selHearse = (hearses || []).find(x => String(x.id) === String(form.hearse_id)) || {};
-  const selPerDay = Number(selHearse.min_charge_ksh) || Number(selHearse.service_charge_ksh) || 0;
-  const selTotal = Math.round(selPerDay * dates.length * 100) / 100;
+  const selTotal = Math.round((Number(form.service_charge) || 0) * 100) / 100;
 
   const pickBlocked = (h) => {
     const s = fleet[String(h.id)] || {};
@@ -743,7 +771,7 @@ export default function BookNewHearseModal({
                 <div style={{ marginBottom: '1.1rem' }}>
                   <SectionHeader>
                     <SectionDot />
-                    <SectionLabel>Booked / Unavailable</SectionLabel>
+                    <SectionLabel>Booked Hearses</SectionLabel>
                     <SectionCount>{bookedList.length}</SectionCount>
                   </SectionHeader>
                   <HearseGrid>
@@ -769,13 +797,15 @@ export default function BookNewHearseModal({
                 </div>
               )}
 
-              {/* ─── Total service charge summary ─── */}
-              {hasD && !!form.hearse_id && selTotal > 0 && (
+              {/* ─── Selection summary + OPTIONAL total service charge ─── */}
+              {hasD && !!form.hearse_id && (
                 <ServiceChargeBox>
                   <ChargeRow><span>Hearse</span><span>{selHearse.hearse_name || '—'} ({selHearse.plate_number || '—'})</span></ChargeRow>
-                  <ChargeRow><span>Rate / day</span><span>KSH {selPerDay.toLocaleString()}</span></ChargeRow>
                   <ChargeRow><span>Days booked</span><span>{dates.length} — {dates.join(', ')}</span></ChargeRow>
-                  <ChargeRow><span style={{ fontWeight: 800, textTransform: 'uppercase' }}>Total Service Charge</span><span style={{ fontWeight: 800, color: '#059669' }}>KSH {selTotal.toLocaleString()}</span></ChargeRow>
+                  <ChargeRow>
+                    <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>Total Service Charge</span>
+                    <span style={{ fontWeight: 800, color: selTotal > 0 ? '#059669' : C.textMuted }}>{selTotal > 0 ? `KSH ${selTotal.toLocaleString()}` : 'Not set (optional)'}</span>
+                  </ChargeRow>
                 </ServiceChargeBox>
               )}
             </div>
@@ -785,6 +815,11 @@ export default function BookNewHearseModal({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.7rem', marginBottom: '.85rem' }}>
               <div><Label>From Location *</Label><Input placeholder="e.g., Nairobi CBD" value={form.from_location} onChange={e => setForm(p => ({ ...p, from_location: e.target.value }))} required /></div>
               <div><Label>To Location *</Label><Input placeholder="e.g., Karen Memorial Park" value={form.to_location} onChange={e => setForm(p => ({ ...p, to_location: e.target.value }))} required /></div>
+            </div>
+
+            <div style={{ marginBottom: '.85rem' }}>
+              <Label>Total Service Charge (KSH)<Hint>(optional — one amount for the whole booking)</Hint></Label>
+              <Input type="number" min="0" step="0.01" placeholder="e.g., 15000 (leave blank if not set)" value={form.service_charge || ''} onChange={e => setForm(p => ({ ...p, service_charge: e.target.value }))} />
             </div>
 
             <div style={{ marginBottom: '1.2rem' }}>
@@ -819,6 +854,15 @@ export default function BookNewHearseModal({
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(w => <div key={w} style={{ textAlign: 'center', fontSize: '.6rem', fontWeight: 700, color: C.textMuted, padding: '.3rem 0' }}>{w}</div>)}
                 {(() => { const { d: days, ts } = calDays(); return days.map((day, i) => { if (day === null) return <div key={`e${i}`} />; const ds = `${pkY}-${String(pkM + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const isT = ds === ts; const isS = tmpDates.includes(ds); const isP = new Date(ds + 'T00:00:00') < new Date(ts + 'T00:00:00'); return <div key={ds} style={{ textAlign: 'center', padding: '.38rem 0', cursor: isP ? 'not-allowed' : 'pointer', borderRadius: '5px', fontSize: '.78rem', fontWeight: isS ? 700 : 500, background: isS ? C.primary : isT ? '#f0fdf4' : 'transparent', color: isS ? '#fff' : isP ? '#ccc' : isT ? '#059669' : C.text, border: isT && !isS ? '1px solid ' + '#10b981' : '1px solid transparent', transition: 'all .1s' }} onClick={() => !isP && togDate(ds)}>{day}</div> }) })()}
               </div>
+              {/* Live feedback — the availability request now fires on EVERY date
+                  tick (debounced), so this line updates while days are toggled. */}
+              {tmpDates.length > 0 && (
+                <div style={{ marginTop: '.6rem', padding: '.45rem .55rem', borderRadius: '6px', background: checking ? '#f8fafc' : avCount > 0 ? 'rgba(16,185,129,.08)' : 'rgba(239,68,68,.08)', fontSize: '.68rem', fontWeight: 600, color: checking ? C.textMuted : avCount > 0 ? '#047857' : '#b91c1c', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
+                  {checking
+                    ? <><Sp />Checking availability…</>
+                    : <>✓ {avCount} of {(hearses || []).length} hearse{(hearses || []).length === 1 ? '' : 's'} free on the selected date{tmpDates.length === 1 ? '' : 's'}</>}
+                </div>
+              )}
               <PkFoot>
                 <BtnGhost type="button" onClick={() => setPkOpen(false)}>Cancel</BtnGhost>
                 <BtnPrimary type="button" onClick={confirmDates} disabled={!tmpDates.length}>Confirm ({tmpDates.length})</BtnPrimary>

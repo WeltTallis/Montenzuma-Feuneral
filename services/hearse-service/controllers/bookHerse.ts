@@ -230,24 +230,11 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
         }
         const bookingDatesJson = JSON.stringify(finalBookingDates);
 
-        // ===== Service charge (total for the booking) =====
-        // The frontend sends service_charge (already computed from the hearse's
-        // min_charge_ksh × number of days via the DTO). If absent, try to
-        // compute it from the hearse record; fall back to 0.
-        let serviceCharge: number = Number(req.body.service_charge) || 0;
-        if (serviceCharge === 0 && hearse_id) {
-            try {
-                const [hRow] = await safeQuery(
-                    'SELECT min_charge_ksh FROM hearses WHERE id = ?',
-                    [hearse_id]
-                );
-                if (hRow) {
-                    serviceCharge = (Number(hRow.min_charge_ksh) || 0) * finalBookingDates.length;
-                }
-            } catch (hearseErr) {
-                // Non-critical — service charge stays 0
-            }
-        }
+        // ===== Service charge (OPTIONAL total for the whole booking) =====
+        // A hearse has no min/max daily rate — the caller may pass one TOTAL
+        // service charge (KSH) for the booking. It is never required: when it is
+        // absent the booking is simply stored with 0 and can be invoiced later.
+        const serviceCharge: number = Math.round((Number(req.body.service_charge) || 0) * 100) / 100;
 
         // ===== Deceased validation =====
         let deceasedNote = '';
@@ -856,11 +843,31 @@ const AVAILABILITY_EXCLUDED_STATUSES = ['maintenance', 'out_of_service', 'disabl
 const MAX_AVAILABILITY_DATES = 62;
 
 /**
- * Map a hearse row (or a booking row joined with hearse columns) to the
- * availability DTO the frontend cards render.
+ * Today's calendar date (YYYY-MM-DD) in Kenya time.
+ *
+ * `getKenyaDate()` comes from the shared-utils package. Availability must never
+ * answer 500 because of a clock helper, so when the resolved package version
+ * does not export it (or the call throws) we fall back to a plain UTC+3
+ * computation — Africa/Nairobi has no DST, so this is always correct.
+ */
+const kenyaTodayKey = (): string => {
+    try {
+        const value = typeof getKenyaDate === 'function' ? (getKenyaDate as any)() : '';
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    } catch { /* fall through to the manual computation below */ }
+    return new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+};
+
+/**
+ * Map a hearse row to the availability DTO the frontend cards render.
+ *
+ * NOTE: a hearse has NO min/max charge columns — at most ONE optional TOTAL
+ * service charge. `service_charge_ksh` is therefore 0 unless the row exposes a
+ * total, and every caller must treat it as optional (booking never requires it).
  */
 const toAvailabilityDto = (h: any, isBooked: boolean): HearseAvailabilityItemDto => {
     const badge = hearseStatusBadge(h.status || h.hearse_status || '');
+    const totalCharge = Number(h.service_charge_ksh ?? h.service_charge ?? h.total_service_charge) || 0;
     return {
         id: h.id,
         hearse_code: h.hearse_code || '',
@@ -872,11 +879,61 @@ const toAvailabilityDto = (h: any, isBooked: boolean): HearseAvailabilityItemDto
         branch_id: h.branch_id ?? null,
         branch_name: h.branch_name ?? null,
         image: h.image ?? null,
-        service_charge_ksh: Number(h.min_charge_ksh) || 0,
-        min_charge_ksh: Number(h.min_charge_ksh) || 0,
-        max_charge_ksh: Number(h.max_charge_ksh) || 0,
+        service_charge_ksh: totalCharge,
         status_badge: badge,
         is_booked: isBooked,
+    };
+};
+
+/**
+ * Build the available / booked buckets for ONE calendar day.
+ *
+ * `allHearses` and `dayBookings` come from `SELECT *` reads, so the answer never
+ * depends on a specific column list: a database that has not run every migration
+ * (or one carrying extra columns) still gets a correct answer instead of a MySQL
+ * "Unknown column" error that would 500 the whole request.
+ */
+const buildDayBucket = (day: string, allHearses: any[], dayBookings: any[]): HearseDayAvailabilityDto => {
+    const hearseById = new Map<string, any>();
+    for (const h of allHearses) hearseById.set(String(h.id), h);
+
+    const bookedHearseIds = new Set(
+        dayBookings.map((b: any) => String(b.hearse_id)).filter(Boolean)
+    );
+
+    // Date-based availability: DO NOT rely on the global hearse status flag.
+    // A hearse may be 'booked' for one date but free on another; only
+    // maintenance / out-of-service hearses are excluded outright.
+    const availableHearses = allHearses
+        .filter((h: any) =>
+            !bookedHearseIds.has(String(h.id)) &&
+            !AVAILABILITY_EXCLUDED_STATUSES.includes(h.status)
+        )
+        .map((h: any) => toAvailabilityDto(h, false));
+
+    // booked_hearses: the booking row's hearse (from the fleet map) decorated
+    // with the booking metadata the UI shows (client / booking code).
+    const bookedHearses = dayBookings
+        .filter((b: any) => b.hearse_id)
+        .map((b: any) => {
+            const hearse = hearseById.get(String(b.hearse_id)) || {};
+            const hearseId = hearse.id ?? b.hearse_id;
+            return {
+                ...toAvailabilityDto({ ...hearse, id: hearseId }, true),
+                hearse_id: hearseId,
+                booking_id: b.id ?? null,
+                booking_code: b.booking_code ?? null,
+                client_name: b.client_name ?? null,
+                booking_dates: normalizeBookingDates(b.booking_dates),
+            };
+        });
+
+    return {
+        date: day,
+        available_hearses: availableHearses,
+        booked_hearses: bookedHearses,
+        total_available: availableHearses.length,
+        total_booked: bookedHearses.length,
     };
 };
 
@@ -932,49 +989,40 @@ export const checkAvailabilityByDate = asyncHandler(async (req: Request, res: Re
             return;
         }
 
-                const allHearses = await safeQuery(
-            `SELECT id, hearse_code, hearse_name, plate_number, model, capacity,
-                    status, branch_id, branch_name, image,
-                    min_charge_ksh, max_charge_ksh
-             FROM hearses`,
+        const dateKey = toDateKey(date);
+        if (!dateKey) {
+            res.status(400).json({ status: 'error', message: `"${date}" is not a valid calendar date (expected YYYY-MM-DD).` });
+            return;
+        }
+
+        // Schema-agnostic reads (`SELECT *`): availability must never depend on
+        // an exact column list, otherwise a database that has not run every
+        // migration fails with "Unknown column" and 500s the whole check.
+        const allHearses = await safeQuery(`SELECT * FROM hearses`, []) as any[];
+        const activeBookings = await safeQuery(
+            `SELECT * FROM hearse_bookings WHERE status NOT IN ('cancelled', 'completed')`,
             []
         ) as any[];
-        const bookings = await safeQuery(`SELECT hb.id, hb.booking_code, hb.client_name, hb.status, hb.booking_dates, h.id AS hearse_id, h.hearse_code, h.hearse_name, h.plate_number, h.model, h.capacity, h.status AS hearse_status, h.min_charge_ksh, h.max_charge_ksh, h.image FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.status NOT IN ('cancelled', 'completed') AND hb.booking_dates LIKE ?`, [`%"${date}"%`]);
 
-        const bookedHearseIds = [...new Set(bookings.map((b: any) => b.hearse_id).filter(Boolean))];
-
-        // Date-based availability: DO NOT rely on the global hearse status flag.
-        // A hearse may be 'booked' for one date but free on another; only
-        // maintenance/out-of-service hearses are excluded outright.
-        const availableHearses: HearseAvailabilityItemDto[] = allHearses
-            .filter((h: any) =>
-                !bookedHearseIds.includes(h.id) &&
-                !AVAILABILITY_EXCLUDED_STATUSES.includes(h.status)
-            )
-            .map((h: any) => toAvailabilityDto(h, false));
-
-        // booked_hearses: booking rows joined with hearse data, mapped to DTOs
-        // plus the booking metadata the UI needs (client name / booking code).
-        const bookedHearses = bookings
-            .filter((b: any) => b.hearse_id)
-            .map((b: any) => ({
-                ...toAvailabilityDto(b, true),
-                booking_id: b.id,
-                booking_code: b.booking_code,
-                client_name: b.client_name,
-                booking_dates: b.booking_dates ? JSON.parse(b.booking_dates) : [],
-            }));
+        // A booking covers this day when ANY of its normalized dates matches.
+        const dayBookings = activeBookings.filter((b: any) => extractRowDates(b).includes(dateKey));
+        const bucket = buildDayBucket(dateKey, allHearses, dayBookings);
 
         res.status(200).json({
             status: 'success',
-            date: date,
-            available_hearses: availableHearses,
-            booked_hearses: bookedHearses,
-            total_available: availableHearses.length,
-            total_booked: bookedHearses.length,
+            date: dateKey,
+            available_hearses: bucket.available_hearses,
+            booked_hearses: bucket.booked_hearses,
+            total_available: bucket.total_available,
+            total_booked: bucket.total_booked,
         });
     } catch (error) {
-        res.status(500).json({ status: 'error', message: 'Failed to check availability.' });
+        console.error('[hearse-service] /availability/check-by-date failed:', (error as Error)?.message, error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to check availability.',
+            error: (error as Error)?.message,
+        });
     }
 });
 
@@ -1005,7 +1053,7 @@ export const checkAvailabilityByDates = asyncHandler(async (req: Request, res: R
     try {
         const rawInputs = collectRequestedDateInputs(req);
 
-        const todayKey = getKenyaDate();
+        const todayKey = kenyaTodayKey();
         const invalidDates: string[] = [];
         const pastDates: string[] = [];
         const dateKeys: string[] = [];
@@ -1046,21 +1094,13 @@ export const checkAvailabilityByDates = asyncHandler(async (req: Request, res: R
         }
 
         // ── the whole point: ONE fleet query + ONE bookings query total ──
-        const allHearses = await safeQuery(
-            `SELECT id, hearse_code, hearse_name, plate_number, model, capacity,
-                    status, branch_id, branch_name, image,
-                    min_charge_ksh, max_charge_ksh
-             FROM hearses`,
-            []
-        ) as any[];
+        // Both reads are `SELECT *` so the check can never 500 on schema drift
+        // (e.g. a `hearses` table created by migrations that never added the
+        // charge columns) — every column is mapped defensively afterwards.
+        const allHearses = await safeQuery(`SELECT * FROM hearses`, []) as any[];
 
         const bookings = await safeQuery(
-            `SELECT hb.id, hb.booking_code, hb.client_name, hb.status, hb.booking_dates,
-                    h.id AS hearse_id, h.hearse_code, h.hearse_name, h.plate_number, h.model,
-                    h.capacity, h.status AS hearse_status, h.min_charge_ksh, h.max_charge_ksh, h.image
-             FROM hearse_bookings hb
-             LEFT JOIN hearses h ON hb.hearse_id = h.id
-             WHERE hb.status NOT IN ('cancelled', 'completed')`,
+            `SELECT * FROM hearse_bookings WHERE status NOT IN ('cancelled', 'completed')`,
             []
         ) as any[];
 
@@ -1076,37 +1116,9 @@ export const checkAvailabilityByDates = asyncHandler(async (req: Request, res: R
             }
         }
 
-        const days: HearseDayAvailabilityDto[] = dateKeys.map((day) => {
-            const dayBookings = bookingsByDate.get(day) || [];
-            const bookedHearseIds = new Set(
-                dayBookings.map((b: any) => String(b.hearse_id)).filter(Boolean)
-            );
-
-            const availableHearses = allHearses
-                .filter((h: any) =>
-                    !bookedHearseIds.has(String(h.id)) &&
-                    !AVAILABILITY_EXCLUDED_STATUSES.includes(h.status)
-                )
-                .map((h: any) => toAvailabilityDto(h, false));
-
-            const bookedHearses = dayBookings
-                .filter((b: any) => b.hearse_id)
-                .map((b: any) => ({
-                    ...toAvailabilityDto(b, true),
-                    booking_id: b.id,
-                    booking_code: b.booking_code,
-                    client_name: b.client_name,
-                    booking_dates: normalizeBookingDates(b.booking_dates),
-                }));
-
-            return {
-                date: day,
-                available_hearses: availableHearses,
-                booked_hearses: bookedHearses,
-                total_available: availableHearses.length,
-                total_booked: bookedHearses.length,
-            };
-        });
+        const days: HearseDayAvailabilityDto[] = dateKeys.map((day) =>
+            buildDayBucket(day, allHearses, bookingsByDate.get(day) || [])
+        );
 
         const payload: HearseMultiDateAvailabilityResponseDto = {
             status: 'success',
@@ -1120,7 +1132,12 @@ export const checkAvailabilityByDates = asyncHandler(async (req: Request, res: R
 
         res.status(200).json(payload);
     } catch (error) {
-        res.status(500).json({ status: 'error', message: 'Failed to check availability.' });
+        console.error('[hearse-service] /availability/check-by-dates failed:', (error as Error)?.message, error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to check availability.',
+            error: (error as Error)?.message,
+        });
     }
 });
 
