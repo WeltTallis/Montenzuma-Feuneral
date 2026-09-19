@@ -193,7 +193,7 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
                 message: 'Missing required field: destination (or to_location).'
             });
             return;
-        }
+        }        
 
         if (!client_name) {
             res.status(400).json({
