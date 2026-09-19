@@ -1,11 +1,17 @@
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import RouteOptimizer from '../../hearse/RouteOptimizer';
 import React, { useState } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components'; // Added keyframes import
 import bwipjs from '@bwip-js/browser';
 import { C } from './theme';
 
-
+// Scanning line animation
+const scanMove = keyframes`
+  0% { top: 0; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+`;
 
 const BackBtn = styled.button`
   font-size: 13px; font-weight: 600; color: #d93025; cursor: pointer;
@@ -31,19 +37,38 @@ const Btn = styled.button`
   cursor: pointer; border: 1px solid ${C.border}; background: white; color: ${C.dark};
   transition: 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   font-family: 'Source Sans 3', sans-serif;
+  position: relative; /* Required for the scanning line */
+  overflow: hidden; /* Keeps the scanning line inside the button */
+
   &:hover { background: ${C.bgField}; border-color: ${C.gray}; }
   ${p => p.$primary && `background: ${C.black}; color: white; border-color: ${C.black};
     &:hover { background: ${C.dark}; }`}
   ${p => p.$danger && `background: ${C.danger}; color: white; border-color: ${C.danger};
     &:hover { background: #b91c1c; }`}
+  
+  /* Scanning line effect - only applies when $scan prop is true */
+  ${p => p.$scan && `
+    &::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px; 
+      background: rgba(16, 185, 129, 0.8); 
+      box-shadow: 0 0 8px 1px rgba(16, 185, 129, 0.7); 
+      top: 0;
+      animation: ${scanMove} 2s infinite ease-in-out;
+      pointer-events: none; 
+    }
+  `}
 `;
 
 const RouteCalcBtn = styled.button`
   padding: 10px 16px; border-radius: 4px; font-weight: 600; font-size: 13px;
-  cursor: pointer; border: 1px solid #0c2530; background: #0c2530; color: #ffffff;
+  cursor: pointer; border: 1px solid  #5F0F40 ; background:  #5F0F40   ; color: #ffffff;
   transition: 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   font-family: 'Source Sans 3', sans-serif;
-  &:hover { background: #0d2d3a; border-color: #0d2d3a; }
+  &:hover { background: #5F0F40  ; border-color: #5F0F40; }
 `;
 
 
@@ -132,12 +157,7 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
           </div>
         </div>
 
-
-
         <HeaderActions>
-
-
-
           <RefreshBtn onClick={onRefresh}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -146,9 +166,6 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
             Refresh
           </RefreshBtn>
 
-
-
-
           <RouteCalcBtn onClick={() => setShowRouteOptimizer(true)}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -156,12 +173,15 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
             </svg>
             Route Calculations
           </RouteCalcBtn>
-          <Btn onClick={onScanClick} title="Scan a paper document and upload it straight to this profile's documents">
+
+          {/* Added $scan prop here */}
+          <Btn $scan onClick={onScanClick} title="Scan a paper document and upload it straight to this profile's documents">
             <svg width="14" height="14" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="5">
               <path d="M12 22 L52 22 C54 22 56 24 56 26 L56 50 C56 52 54 54 52 54 L12 54 C10 54 8 52 8 50 L8 26 C8 24 10 22 12 22 Z" transform="translate(1,0)"/>
             </svg>
             Scan Docs
           </Btn>
+
           {onChargeSettingsClick && (
             <Btn $primary onClick={onChargeSettingsClick}>⚙️ Charge Settings</Btn>
           )}

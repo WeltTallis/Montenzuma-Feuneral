@@ -41,7 +41,7 @@ const DetailLabel = styled.span`
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #03071E;
+  color: #999;
 `;
 
 const DetailValue = styled.div`
@@ -90,7 +90,7 @@ const OverviewTab = ({ deceased, nextOfKin }) => {
       {/* Deceased Name — blue, top-left */}
       <DetailItem $full style={{ marginBottom: '20px' }}>
         <DetailLabel style={{ fontSize: 11, opacity: 0.55 }}>Deceased Name</DetailLabel>
-        <DetailValue style={{ color: '#03071E', fontSize: 20, fontWeight: 800, fontFamily: 'Merriweather', marginBottom: 8 }}>{deceasedName}</DetailValue>
+        <DetailValue style={{ color: '#00296B', fontSize: 20, fontWeight: 800, fontFamily: 'Merriweather', marginBottom: 8 }}>{deceasedName}</DetailValue>
       </DetailItem>
 
       {/* 01 — Admission */}
