@@ -1,7 +1,7 @@
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import RouteOptimizer from '../../hearse/RouteOptimizer';
 import React, { useState } from 'react';
-import styled, { keyframes } from 'styled-components'; // Added keyframes import
+import styled, { keyframes } from 'styled-components';
 import bwipjs from '@bwip-js/browser';
 import { C } from './theme';
 
@@ -16,7 +16,7 @@ const scanMove = keyframes`
 const BackBtn = styled.button`
   font-size: 13px; font-weight: 600; color: #d93025; cursor: pointer;
   background: none; border: none; display: flex; align-items: center; gap: 6px;
-  margin-bottom: 12px; padding: 14; font-family: 'Source Sans 3', sans-serif;
+  margin-bottom: 12px; padding: 14px; font-family: 'Source Sans 3', sans-serif;
   &:hover { color: #b91c1c; }
 `;
 
@@ -37,8 +37,8 @@ const Btn = styled.button`
   cursor: pointer; border: 1px solid ${C.border}; background: white; color: ${C.dark};
   transition: 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   font-family: 'Source Sans 3', sans-serif;
-  position: relative; /* Required for the scanning line */
-  overflow: hidden; /* Keeps the scanning line inside the button */
+  position: relative; 
+  overflow: hidden; 
 
   &:hover { background: ${C.bgField}; border-color: ${C.gray}; }
   ${p => p.$primary && `background: ${C.black}; color: white; border-color: ${C.black};
@@ -46,19 +46,26 @@ const Btn = styled.button`
   ${p => p.$danger && `background: ${C.danger}; color: white; border-color: ${C.danger};
     &:hover { background: #b91c1c; }`}
   
-  /* Scanning line effect - only applies when $scan prop is true */
+  /* Base scanning line (hidden/paused by default) */
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px; 
+    background: rgba(16, 185, 129, 0.8); 
+    box-shadow: 0 0 8px 1px rgba(16, 185, 129, 0.7); 
+    top: 0;
+    pointer-events: none; 
+    animation: ${scanMove} 2s infinite ease-in-out;
+    animation-play-state: paused; 
+    opacity: 0;
+  }
+
+  /* Play the scanning line only when $scan prop is true */
   ${p => p.$scan && `
     &::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 2px; 
-      background: rgba(16, 185, 129, 0.8); 
-      box-shadow: 0 0 8px 1px rgba(16, 185, 129, 0.7); 
-      top: 0;
-      animation: ${scanMove} 2s infinite ease-in-out;
-      pointer-events: none; 
+      animation-play-state: running;
     }
   `}
 `;
@@ -174,7 +181,6 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
             Route Calculations
           </RouteCalcBtn>
 
-          {/* Added $scan prop here */}
           <Btn $scan onClick={onScanClick} title="Scan a paper document and upload it straight to this profile's documents">
             <svg width="14" height="14" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="5">
               <path d="M12 22 L52 22 C54 22 56 24 56 26 L56 50 C56 52 54 54 52 54 L12 54 C10 54 8 52 8 50 L8 26 C8 24 10 22 12 22 Z" transform="translate(1,0)"/>
