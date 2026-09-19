@@ -1,0 +1,57 @@
+# Builds the macOS .pkg installer for the Restpoint Scanner Bridge on a real
+# macOS runner (pkgbuild/productbuild only exist there — a Windows host cannot
+# produce a valid .pkg, which is why `npm run build:mac` warns and exits early
+# when run locally on Windows).
+#
+# The finished package is committed back into the SPA's public downloads folder,
+# so staff get a real double-clickable .pkg at:
+#   /downloads/macbook/Restpoint-Scanner-Bridge.pkg
+#
+# Trigger: manual (Actions tab) or push a tag like mac-pkg-v1.
+name: Scanner Bridge macOS pkg
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'mac-pkg-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-pkg:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Workspace-root install so services/scanner-bridge can reach the hoisted
+      # pkg binary at node_modules/.bin/pkg (see scripts/build-macos.mjs).
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build the macOS .pkg
+        working-directory: services/scanner-bridge
+        run: npm run build:mac
+
+      - name: Commit the .pkg into the client downloads folder
+        run: |
+          git config user.name "restpoint-pkg-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add FrontendClient/client/public/downloads/macbook/Restpoint-Scanner-Bridge.pkg
+          if git diff --cached --quiet; then
+            echo "No .pkg changes to commit."
+          else
+            git commit -m "chore(scanner-bridge): refresh macOS .pkg [skip ci]"
+            git push
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Restpoint-Scanner-Bridge-macos-pkg
+          path: services/scanner-bridge/dist/Restpoint-Scanner-Bridge.pkg
+          if-no-files-found: error

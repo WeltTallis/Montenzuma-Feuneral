@@ -1,0 +1,11 @@
+[BRIDGE] NAPS2_PATH (folder) -> C:\Program Files\NAPS2\NAPS2.Console.exe
+══════════════════════════════════════════════════════════════
+  Restpoint Scanner Bridge v1.0.0
+  listening   →  ws://0.0.0.0:8081
+  mode        →  real scanner
+  naps2       →  C:\Program Files\NAPS2\NAPS2.Console.exe
+  scanner     →  auto-detect
+  driver      →  wia
+  work dir    →  C:\Users\User\AppData\Local\Temp\restpoint-scanner-bridge
+  To scan + upload send: { action:"START_SCAN", deceasedId, token, tenantSlug, apiBase }
+══════════════════════════════════════════════════════════════
