@@ -104,7 +104,6 @@ const OverviewTab = ({ deceased, nextOfKin }) => {
         <DetailItem><DetailLabel>Received From</DetailLabel><DetailValue>{d.received_from || '—'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Date of Death</DetailLabel><DetailValue>{formatDate(d.date_of_death)}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Place of Death</DetailLabel><DetailValue>{d.place_of_death || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Physician</DetailLabel><DetailValue>{d.physician || d.attending_physician || '—'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Permit Number</DetailLabel><DetailValue $mono>{d.permit_number || '—'}</DetailValue></DetailItem>
         <DetailItem $full><DetailLabel>Cause of Death</DetailLabel><DetailValue>{d.cause_of_death || '—'}</DetailValue></DetailItem>
       </DetailGrid>

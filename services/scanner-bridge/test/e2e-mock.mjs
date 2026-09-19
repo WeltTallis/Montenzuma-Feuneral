@@ -133,7 +133,19 @@ if (captures.length === 0) {
   fail('documents-service never received the upload');
 } else {
   const c = captures[0];
-  if (c.url === `/api/v1/restpoint/documents/upload/${E2E_DECEASED}`) console.log(`  ✔ upload URL correct (${c.url})`); else fail(`upload URL wrong: ${c.url}`);
+  /* The documents-service accepts BOTH forms (see services/documents-service/server.js):
+       POST /documents/upload/{deceasedId}   → id in the path (legacy/gateway form)
+       POST /documents/upload                → id in the multipart body as `deceasedId`
+     The bridge prefers the body form and only falls back to the path form on a 404.
+     Assert the real invariant: the deceased id reaches the service either way. */
+  const pathForm = c.url === `/api/v1/restpoint/documents/upload/${E2E_DECEASED}`;
+  const bodyForm =
+    c.url === '/api/v1/restpoint/documents/upload' &&
+    c.body.includes(Buffer.from('name="deceasedId"')) &&
+    c.body.includes(Buffer.from(E2E_DECEASED));
+  if (pathForm) console.log(`  ✔ upload URL carries the deceased id (${c.url})`);
+  else if (bodyForm) console.log(`  ✔ upload ${c.url} + deceasedId "${E2E_DECEASED}" in multipart body`);
+  else fail(`deceased id not transmitted — url: ${c.url}, body carries deceasedId: ${c.body.includes(Buffer.from('deceasedId'))}`);
   if (c.method === 'POST') console.log('  ✔ upload method POST'); else fail(`method ${c.method}`);
   if (c.authorization === 'Bearer test-bearer-token') console.log('  ✔ Authorization header forwarded'); else fail(`Authorization header: ${c.authorization}`);
   if (c.tenantSlug === 'e2e-tenant') console.log('  ✔ x-tenant-slug header forwarded'); else fail(`x-tenant-slug: ${c.tenantSlug}`);

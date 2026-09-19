@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
-import axios from 'axios';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
@@ -11,6 +10,7 @@ import {
   todayKey,
 } from '../../../utils/dates/parseDates';
 import 'react-toastify/dist/ReactToastify.css';
+import axios from 'axios';
 
 const API_GATEWAY_URL = import.meta.env.VITE_API_URL || '/api/v1/restpoint';
 const BASE_URL = `${API_GATEWAY_URL}/deceased`;

@@ -1,26 +1,29 @@
-import { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import HorizontalCalendar from "../../components/views/horizontalCalender";
+import { Chart, registerables } from "chart.js";
 import { fetchReleasesFeed, fetchPostmortemsFeed } from "../../api/dashboardFeedApi";
 import { fetchAllBranchDeceased } from "../../api/dashboardDataApi";
+Chart.register(...registerables);
 
 /* ════════════════════════════════════════════════════════════════
-   Deceased dashboard — "Havenwood" style.
+   Deceased dashboard quad — "Funeral Home Dashboard · Branch View".
 
    Same props contract as before (events, loading, dateKey, deceased,
    onPickDate, onSelect) so ModuleDashboard wiring & the existing
    DeceasedSidePanel (untouched) keep working. Rows open the side
-   panel via onSelect.
+   panel via onSelect with the same id conventions
+   (in-<adm_no> / rel-<adm_no> / pm-<adm_no> / pm-req-*).
 
-   Visual = Havenwood reference: glow KPI tiles + a 2x2 card grid with
-   a smooth multi-branch SVG trend, per-branch bar charts, filter
-   chips and a clean ledger.
+   Visual = the branch-view reference: Merriweather + Source Sans 3,
+   ink & paper palette with the brand status colors, stat cards with
+   colored icon tiles, a horizontal dot-calendar strip and the 2x2
+   quad grid — Analytics (Chart.js) · Deceased Intake · Releases &
+   Transfers · Postmortem Requests.
    ════════════════════════════════════════════════════════════════ */
 
 /* ── constants & helpers ── */
 const MO = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const WD = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const DOWS = ["S", "M", "T", "W", "T", "F", "S"];
+const DOWS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const PM_RE = /(postmortem|post-mortem|autopsy)/i;
 const RELEASED_RE = /(released|dispatched|completed|buried)/i;
 
@@ -60,243 +63,183 @@ const pmMetaOf = (r) => {
   return { key: keyOf(pm?.requested_at || pm?.created_at || r?.postmortem_date || r?.date_admitted || r?.created_at), completed };
 };
 
-const prettyDate = (k) => { const [y, m, d] = String(k).split("-").map(Number); if (!y || !m || !d) return { day: "", short: "" }; const dt = new Date(y, m - 1, d); return { day: WD[dt.getDay()], short: `${d} ${MO[m - 1]}` }; };
-const initialOf = (name) => { const s = String(name || "").trim(); if (!s) return "?"; const tail = s.includes("\u00b7") ? s.split("\u00b7").pop() : s; return (tail.trim().charAt(0) || "?").toUpperCase(); };
+const initialsOf = (name) => String(name || "?").trim().split(/\s+/).map((n) => n.charAt(0)).join("").slice(0, 2).toUpperCase() || "?";
+
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const PALETTE = ["#22C55E", "#F97316", "#EF4444", "#8B5CF6", "#0EA5E9", "#F59E0B"];
 
 /* branch present in the data */
 const branchOf = (r) => (r?.branch_name || r?.branch || "Main") || "Main";
 
-/* ═══════ Havenwood design tokens + CSS ═══════ */
+/* ── design status config (Funeral Home Branch View) ── */
+const STATUS_CFG = {
+  active:      { label: "Active / In Morgue", color: "#00296B", bg: "rgba(0, 41, 107, 0.1)" },
+  pmReq:       { label: "PM Requested",       color: "#E36414", bg: "rgba(227, 100, 20, 0.1)" },
+  pmDone:      { label: "PM Done",            color: "#5F0F40", bg: "rgba(95, 15, 64, 0.1)" },
+  released:    { label: "Released",           color: "#03071E", bg: "rgba(3, 7, 30, 0.1)" },
+  transferred: { label: "Transferred",        color: "#03071E", bg: "rgba(3, 7, 30, 0.1)" },
+};
+const statusKeyOf = (r) => {
+  const st = String(r?.status || r?.admission_status || "").toLowerCase();
+  if (isReleased(r)) return /transfer/.test(st) ? "transferred" : "released";
+  const pm = pmMetaOf(r);
+  if (pm?.completed) return "pmDone";
+  if (pm || r?.body_status === "Pending Autopsy") return "pmReq";
+  return "active";
+};
+const dotColorOf = (r) => ({ active: "#00296B", pmReq: "#E36414", pmDone: "#5F0F40", released: "#03071E", transferred: "#03071E" }[statusKeyOf(r)] || "#cccccc");
+
+const fmtDate = (k) => {
+  const [y, m, d] = String(k || "").split("-").map(Number);
+  if (!y || !m || !d) return "—";
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+};
+const daysSince = (k) => {
+  const [y, m, d] = String(k || "").split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return Math.ceil(Math.abs(new Date() - new Date(y, m - 1, d)) / 86400000);
+};
+
+/* ═══════ Funeral Home Dashboard · Branch View — design tokens + CSS ═══════ */
 
 const CSS = `
-.hw *{box-sizing:border-box;margin:0;padding:0}
-.hw{--page:#F0F2F7;--card:#fff;--line:#E5E8EF;--line2:#D6DBE4;--ink:#111827;--sub:#6B7280;--faint:#9CA3AF;--soft:#F7F8FB;--blue:#2563EB;--blue-d:#1D4ED8;--blue-s:#EFF6FF;--green:#16A34A;--green-s:#F0FDF4;--amber:#D97706;--amber-s:#FFFBEB;--red:#DC2626;--red-s:#FEF2F2;--violet:#7C3AED;--violet-s:#F5F3FF;--sh:0 1px 2px rgba(17,24,39,.04),0 8px 24px -12px rgba(17,24,39,.14);color:var(--ink);font-family:'Inter',system-ui,sans-serif;min-height:100%;-webkit-font-smoothing:antialiased}
-.hw .mono{font-family:'IBM Plex Mono',monospace}
-.hw ::-webkit-scrollbar{width:7px;height:7px}
-.hw ::-webkit-scrollbar-thumb{background:#CBD2DD;border-radius:8px}
-.hw button{cursor:pointer;font-family:inherit}
-.hw-back{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer;color:var(--blue-d);font:600 12px 'Inter',sans-serif;box-shadow:0 1px 2px rgba(17,24,39,.05);margin-bottom:14px;transition:background .15s,box-shadow .15s}
-.hw-back:hover{background:var(--blue-s);box-shadow:0 2px 6px rgba(29,78,216,.15)}
-.hw-back .hw-arr{font-size:15px;line-height:1;flex:none}
-.hw .hw-top{display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap}
-.hw-tiles{display:flex;gap:12px;flex:1;flex-wrap:wrap;justify-content:space-between}
-.hw-tile{position:relative;overflow:hidden;color:#fff;border-radius:18px;padding:15px 17px 14px;flex:1;min-width:186px;max-width:320px;display:flex;flex-direction:column;transition:transform .18s,box-shadow .18s}
-.hw-tile:hover{transform:translateY(-3px)}
-.hw-tb{background:linear-gradient(135deg,#3B82F6,#8B5CF6);box-shadow:0 10px 24px -10px rgba(99,102,241,.6)}
-.hw-tg{background:linear-gradient(135deg,#10B981,#22C55E);box-shadow:0 10px 24px -10px rgba(34,197,94,.55)}
-.hw-to{background:linear-gradient(135deg,#F97316,#EF4444);box-shadow:0 10px 24px -10px rgba(239,68,68,.55)}
-.hw-td2{background:#0F172A;box-shadow:0 10px 24px -10px rgba(15,23,42,.45)}
-.hw-t-top{display:flex;align-items:center;gap:8px;position:relative}
-.hw-t-ic{width:24px;height:24px;border-radius:8px;background:rgba(255,255,255,.2);display:grid;place-items:center;flex:none}
-.hw-t-label{font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;opacity:.9}
-.hw-t-mid{display:flex;align-items:center;gap:12px;margin-top:9px;position:relative}
-.hw-t-num{font-size:31px;font-weight:800;letter-spacing:-.03em;line-height:1;flex:1;position:relative}
-.hw-gauge{flex:none;position:relative;filter:drop-shadow(0 2px 6px rgba(15,23,42,.22))}
-.hw-gauge text{font:600 9px 'IBM Plex Mono',monospace;fill:#fff}
-.hw-t-sub{font:500 10px 'Inter',sans-serif;opacity:.85;margin-top:8px;position:relative}
-.hw-latest{font-size:16.5px;font-weight:800;letter-spacing:-.01em;line-height:1.25;flex:1;position:relative;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hw-tile.hw-tclick{cursor:pointer}
-.hw-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}
-.hw-panel{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);display:flex;flex-direction:column;overflow:hidden;min-width:0}
-.hw-p-head{display:flex;align-items:center;gap:11px;padding:15px 18px 13px;border-bottom:1px solid var(--line)}
-.hw-p-ic{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex:none}
-.hw-i-blue{background:var(--blue-s);color:var(--blue)}
-.hw-i-violet{background:var(--violet-s);color:var(--violet)}
-.hw-i-green{background:var(--green-s);color:var(--green)}
-.hw-i-amber{background:var(--amber-s);color:var(--amber)}
-.hw-p-title{font-size:15px;font-weight:700;letter-spacing:-.01em}
-.hw-p-title small{display:block;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-top:2px}
-.hw-p-meta{margin-left:auto;font:600 10.5px 'IBM Plex Mono',monospace;color:var(--faint);white-space:nowrap}
-.hw-p-meta b{color:var(--ink)}
-.hw-p-body{padding:16px 18px 18px;flex:1;display:flex;flex-direction:column;min-height:0;min-width:0}
-.hw-empty{color:var(--faint);font-style:italic;font-size:12.5px;padding:12px 2px}
-.hw-col label{color:var(--faint)}
-.hw .mac{max-width:100%;width:100%}
-@media(max-width:900px){.hw-grid{grid-template-columns:1fr}}
+.fhq *{box-sizing:border-box;margin:0;padding:0}
+.fhq{
+  --black:#0a0a0a;--dark:#1a1a1a;--mid:#444444;--gray:#777777;--lightGray:#aaaaaa;
+  --border:#e0e0e0;--borderLight:#efefef;--bgField:#f7f7f5;--bgSection:#fafaf9;--bgApp:#ececec;
+  --exportBtn:#0F3040;--success:#047857;--successBg:#ecfdf5;--warning:#b45309;--warningBg:#fffbeb;
+  --danger:#dc2626;--dangerBg:#fef2f2;--info:#1e3a8a;--infoBg:#e0e7ff;
+  --cBlue:#00296B;--cOrange:#E36414;--cPurple:#5F0F40;--cPink:#DD2D4A;--cNavy:#03071E;--accent:#DD2D4A;
+  background:var(--bgApp);border-radius:14px;padding:24px;color:var(--dark);
+  font-family:'Source Sans 3',-apple-system,sans-serif;font-size:14px;line-height:1.5;min-height:200px;
+  animation:fhqFadeIn .25s ease-out;
+}
+.fhq *::before,.fhq *::after{box-sizing:border-box}
+.fhq ::-webkit-scrollbar{width:6px;height:6px}
+.fhq ::-webkit-scrollbar-thumb{background:#dddddd;border-radius:4px}
+.fhq ::-webkit-scrollbar-track{background:transparent}
+.fhq button{cursor:pointer;font-family:'Source Sans 3',sans-serif}
+@keyframes fhqFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fhqSpin{to{transform:rotate(360deg)}}
+@keyframes fhqPulse{0%,100%{opacity:1}50%{opacity:.3}}
+/* ── Header ── */
+.fhq .page-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:16px}
+.fhq .page-header h1{font-family:'Merriweather',serif;font-size:28px;color:var(--black);font-weight:900;margin:0}
+.fhq .page-header p{color:var(--gray);font-size:15px;margin-top:4px}
+.fhq .header-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.fhq .filter-wrapper{position:relative;display:flex;align-items:center;min-width:220px}
+.fhq .filter-select{height:42px;width:100%;border-radius:10px;border:1px solid var(--border);background:var(--bgField);padding:0 36px 0 16px;font-size:14px;font-weight:600;font-family:'Source Sans 3',sans-serif;color:var(--dark);transition:all .25s ease;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer}
+.fhq .filter-select:focus{background:#fff;border-color:var(--accent);box-shadow:0 0 0 4px rgba(221,45,74,.1)}
+.fhq .icon-right{position:absolute;right:14px;color:var(--gray);pointer-events:none;font-size:12px;display:flex}
+/* ── Buttons ── */
+.fhq .btn{height:42px;padding:0 20px;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;border:1px solid transparent;transition:all .2s ease;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:'Source Sans 3',sans-serif;white-space:nowrap}
+.fhq .btn-danger{background:var(--danger);color:#fff;box-shadow:0 4px 12px rgba(220,38,38,.2);border:none}
+.fhq .btn-danger:hover{background:#b91c1c;transform:translateY(-1px)}
+.fhq .btn-primary{background:var(--black);color:#fff;border:none}
+.fhq .btn-primary:hover{background:var(--dark)}
+.fhq .btn-sm{height:32px;padding:0 16px;font-size:13px;border-radius:8px}
+.fhq .spin{display:inline-flex;animation:fhqSpin .8s linear infinite}
+/* ── Stats Grid ── */
+.fhq .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+.fhq .stat-card{background:#fff;border:1px solid var(--borderLight);border-radius:12px;padding:20px;display:flex;align-items:center;gap:16px;box-shadow:0 4px 12px rgba(0,0,0,.03)}
+.fhq .stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0}
+.fhq .stat-info h3{margin:0;font-size:24px;font-weight:800;color:var(--black);font-family:'Source Sans 3',sans-serif;line-height:1.1}
+.fhq .stat-info span{font-size:13px;color:var(--gray);font-weight:500}
+/* ── Banners ── */
+.fhq .fhq-banner{display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;margin-bottom:20px}
+.fhq .fhq-banner.info{background:var(--infoBg);color:var(--info)}
+.fhq .fhq-banner.error{background:var(--dangerBg);color:var(--danger)}
+/* ── Horizontal Calendar (CoffinBook style) ── */
+.fhq .calendar-container{background:#fff;border:1px solid var(--borderLight);border-radius:16px;padding:20px 24px;margin-bottom:24px;box-shadow:0 4px 15px rgba(0,0,0,.04)}
+.fhq .cal-nav{display:flex;align-items:center;justify-content:space-between;padding:0 0 16px;border-bottom:1px solid var(--borderLight);margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.fhq .cal-title{font-family:'Merriweather',serif;font-size:18px;font-weight:700;color:var(--black);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fhq .day-chip{display:inline-flex;align-items:center;gap:6px;font-family:'Source Sans 3',sans-serif;font-size:11px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:20px;padding:4px 10px;cursor:pointer}
+.fhq .day-chip:hover{background:#b92039}
+.fhq .cal-nav-actions{display:flex;gap:8px}
+.fhq .cal-nav-btn{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:8px;background:var(--bgField);color:var(--mid);cursor:pointer;font-size:12px;line-height:1;transition:all .15s;flex-shrink:0}
+.fhq .cal-nav-btn:hover{background:var(--bgSection);border-color:var(--gray);color:var(--black)}
+.fhq .cal-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px}
+.fhq .cal-day{flex:1 0 50px;min-width:50px;padding:8px 4px;border-radius:10px;border:1px solid transparent;background:var(--bgField);text-align:center;cursor:pointer;transition:all .15s ease;display:flex;flex-direction:column;align-items:center;gap:4px}
+.fhq .cal-day:hover{background:#fff;border-color:var(--border);box-shadow:0 2px 4px rgba(0,0,0,.05)}
+.fhq .cal-day.today{border:1px solid var(--danger)}
+.fhq .cal-day.selected{background:var(--danger);color:#fff;transform:scale(1.05);box-shadow:0 4px 12px rgba(220,38,38,.3)}
+.fhq .cal-day-name{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--gray);letter-spacing:.05em}
+.fhq .cal-day.selected .cal-day-name{color:rgba(255,255,255,.8)}
+.fhq .cal-day-num{font-size:16px;font-weight:700;color:var(--dark);font-family:'Merriweather',serif}
+.fhq .cal-day.selected .cal-day-num{color:#fff}
+.fhq .cal-dots{display:flex;gap:2px;height:5px;align-items:center}
+.fhq .cal-dot{width:5px;height:5px;border-radius:50%}
+.fhq .cal-day.loading{opacity:.55;pointer-events:none}
+/* ── 2x2 Quad Grid ── */
+.fhq .quad-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;align-items:stretch}
+@media(max-width:1100px){.fhq .quad-grid{grid-template-columns:1fr}}
+/* ── List Card & Table ── */
+.fhq .list-card{background:#fff;border:1px solid var(--borderLight);border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.03);display:flex;flex-direction:column;max-height:520px}
+.fhq .list-header{background:var(--bgSection);padding:20px 24px;border-bottom:1px solid var(--borderLight);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.fhq .list-header h2{font-family:'Merriweather',serif;font-size:18px;font-weight:700;color:var(--black);margin:0}
+.fhq .badge-count{background:var(--black);color:#fff;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;white-space:nowrap}
+.fhq .table-wrap{width:100%;overflow-y:auto;overflow-x:auto;flex:1}
+.fhq table{width:100%;border-collapse:collapse;min-width:420px}
+.fhq thead th{text-align:left;padding:14px 24px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);border-bottom:1px solid var(--borderLight);background:var(--bgSection);white-space:nowrap;position:sticky;top:0;z-index:10}
+.fhq thead th:last-child{text-align:right}
+.fhq tbody tr{border-bottom:1px solid var(--borderLight);cursor:pointer;transition:background .15s}
+.fhq tbody tr:last-child{border-bottom:none}
+.fhq tbody tr:hover{background:var(--bgField)}
+.fhq td{padding:16px 24px;font-size:14px;color:var(--dark);vertical-align:middle}
+.fhq td:last-child{text-align:right}
+.fhq .name-cell{display:flex;align-items:center;gap:12px}
+.fhq .avatar{width:38px;height:38px;border-radius:50%;background:var(--black);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+.fhq .avatar.female{background:var(--cPurple)}
+.fhq .meta{font-size:12px;color:var(--gray);margin-top:2px}
+.fhq .status-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:5px;font-size:12px;font-weight:700;text-transform:capitalize;white-space:nowrap}
+.fhq .status-badge::before{content:'';width:6px;height:6px;background:currentColor;border-radius:50%}
+.fhq .empty-row{text-align:center;padding:40px;color:var(--gray);font-style:italic}
+/* ── Analytics Charts Container ── */
+.fhq .charts-container{padding:24px;display:grid;grid-template-columns:1fr 1.5fr;gap:24px;height:100%}
+@media(max-width:1400px){.fhq .charts-container{grid-template-columns:1fr}}
+.fhq .chart-box{display:flex;flex-direction:column;min-width:0}
+.fhq .chart-title{font-family:'Merriweather',serif;font-size:14px;font-weight:700;color:var(--dark);margin-bottom:16px}
+.fhq .chart-canvas-wrap{flex:1;position:relative;min-height:200px;max-height:280px}
 `;
-const CSS4 = `
-.hw-analytics{border:1px solid var(--line);border-radius:12px;padding:13px 14px 12px;margin-top:12px;background:linear-gradient(180deg,#fff,var(--soft))}
-.hw-ana-head{display:flex;align-items:center;gap:7px;font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--sub);margin-bottom:12px}
-.hw-ana-head .pulse{width:7px;height:7px;border-radius:50%;background:var(--violet);box-shadow:0 0 8px -1px var(--violet)}
-.hw-ana-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.hw-ana-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px 8px;min-width:0}
-.hw-ana-title{font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);display:flex;align-items:center;justify-content:space-between}
-.hw-ana-title b{color:var(--ink);font-weight:800}
-.hw-ana-bars{position:relative;height:62px;margin-top:6px;border-bottom:1px solid var(--line)}
-.hw-ana-x{display:flex;gap:10px;margin-top:5px;font:500 8px 'IBM Plex Mono',monospace;color:var(--faint)}
-.hw-ana-x span{display:inline-flex;align-items:center;gap:4px}
-.hw-ana-x i{width:7px;height:7px;border-radius:2px}
-.hw-seg{display:flex;height:12px;border-radius:6px;overflow:hidden;margin-top:8px;background:var(--line)}
-.hw-seg b{display:block;height:100%;min-width:2px}
-.hw-seg-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:7px}
-.hw-seg-legend span{display:inline-flex;align-items:center;gap:4px;font:500 8px 'IBM Plex Mono',monospace;color:var(--sub)}
-.hw-seg-legend i{width:7px;height:7px;border-radius:50%}
-.hw-ana-pm{display:flex;flex-direction:column;gap:7px;margin-top:8px}
-.hw-ana-pm .row{display:flex;align-items:center;gap:6px;font:600 8px 'IBM Plex Mono',monospace;color:var(--sub)}
-.hw-ana-pm .row .bar{flex:1;height:7px;border-radius:4px;background:var(--line);overflow:hidden}
-.hw-ana-pm .row .bar i{display:block;height:100%;border-radius:4px}
-.hw-ana-pm .row .bar i.pend{background:var(--amber)}
-.hw-ana-pm .row .bar i.done{background:var(--green)}
-.hw-ana-pm .row b{color:var(--ink);min-width:16px;text-align:right}
-.hw-ana-donut{display:flex;align-items:center;gap:10px;margin-top:6px}
-.hw-ana-donut svg{flex:none}
-.hw-ana-donut .dl{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.hw-ana-donut .dl span{display:flex;align-items:center;gap:5px;font:500 8px 'IBM Plex Mono',monospace;color:var(--sub)}
-.hw-ana-donut .dl i{width:7px;height:7px;border-radius:50%;flex:none}
-.hw-ana-donut .dl b{margin-left:auto;color:var(--ink)}
-@media(max-width:560px){.hw-ana-grid{grid-template-columns:1fr}}
-`;
-const CSS2 = `
-.hw-trend{border:1px solid var(--line);border-radius:12px;padding:11px 13px 8px;margin-bottom:12px}
-.hw-trend-head{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap}
-.hw-trend-title{font-size:12.5px;font-weight:700}
-.hw-trend-legend{margin-left:auto;display:flex;gap:12px;flex-wrap:wrap}
-.hw-trend-legend span{display:inline-flex;align-items:center;gap:6px;font:500 9.5px 'IBM Plex Mono',monospace;color:var(--sub)}
-.hw-trend-legend i{width:8px;height:8px;border-radius:50%}
-.hw-trend-svg{height:112px;width:100%}
-.hw-trend-svg svg{display:block;width:100%;height:100%}
-.hw-trend-x{display:flex;padding:2px 4px 0;font:500 8.5px 'IBM Plex Mono',monospace;color:var(--faint)}
-.hw-trend-x span{flex:1;text-align:center}
-.hw-trend-x span.today{color:var(--ink);font-weight:700}
-.hw-charts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:4px}
-.hw-chart-wrap{border:1px solid var(--line);border-radius:12px;padding:11px 11px 7px;transition:opacity .25s;min-width:0}
-.hw-chart-wrap.dim{opacity:.35}
-.hw-chart-top{display:flex;align-items:center;gap:6px;margin-bottom:8px}
-.hw-chart-branch{background:none;border:none;padding:0;color:var(--ink);font:700 12px 'Inter',sans-serif;display:inline-flex;align-items:center;gap:7px;cursor:pointer;flex:1;min-width:0}
-.hw-chart-branch:hover{text-decoration:underline;text-underline-offset:3px}
-.hw-cdot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none;box-shadow:0 0 8px -1px var(--c)}
-.hw-chart-week{font:500 9.5px 'IBM Plex Mono',monospace;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hw-chart-body{position:relative;height:72px;border-bottom:1px solid var(--line)}
-.hw-gridline{position:absolute;left:0;right:0;border-top:1px dashed var(--line);pointer-events:none}
-.hw-g1{top:33%}.hw-g2{top:66%}
-.hw-bars{position:absolute;inset:0;display:flex;align-items:flex-end;gap:6px;padding:0 2px}
-.hw-bar{flex:1;position:relative;opacity:.5;border-radius:4px 4px 0 0;height:0;transition:height .8s cubic-bezier(.22,1,.36,1);min-width:0}
-.hw-bar:hover{opacity:.8}
-.hw-bar.today{opacity:1;box-shadow:0 0 14px -3px var(--c)}
-.hw-bar.zero{background:var(--line)!important;opacity:1}
-.hw-bar .v{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink);opacity:0;transition:opacity .15s;pointer-events:none}
-.hw-bar:hover .v{opacity:1}
-.hw-chart-x{display:flex;gap:6px;padding:4px 2px 0}
-.hw-chart-x span{flex:1;text-align:center;font:500 8.5px 'IBM Plex Mono',monospace;color:var(--faint)}
-.hw-chart-x span.today{color:var(--c);font-weight:600}
-`;
-const CSS3 = `
-.hw-trend{border:1px solid var(--line);border-radius:12px;padding:11px 13px 8px;margin-bottom:12px}
-.hw-trend-head{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap}
-.hw-trend-title{font-size:12.5px;font-weight:700}
-.hw-trend-legend{margin-left:auto;display:flex;gap:12px;flex-wrap:wrap}
-.hw-trend-legend span{display:inline-flex;align-items:center;gap:6px;font:500 9.5px 'IBM Plex Mono',monospace;color:var(--sub)}
-.hw-trend-legend i{width:8px;height:8px;border-radius:50%}
-.hw-filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
-.hw-chip{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.04em;padding:5px 12px;border:1px solid var(--line);border-radius:99px;background:#fff;color:var(--sub);transition:all .15s}
-.hw-chip:hover{border-color:var(--ink);color:var(--ink)}
-.hw-chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
-.hw-chip .n{opacity:.55;margin-left:4px}
-.hw-hint{margin-left:auto;font:500 10px 'IBM Plex Mono',monospace;color:var(--faint)}
-.hw-list{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
-.hw-lhead{display:grid;grid-template-columns:minmax(0,1fr) 132px 74px 96px 18px;gap:12px;align-items:center;padding:9px 14px;background:var(--soft);border-bottom:1px solid var(--line);font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
-.hw-lhead span:last-child{width:18px}
-.hw-l_scroll{max-height:320px;overflow:auto}
-.hw-lrow{display:grid;grid-template-columns:minmax(0,1fr) 132px 74px 96px 18px;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--soft);cursor:pointer;transition:background .12s}
-.hw-lrow:last-child{border-bottom:none}
-.hw-lrow:hover{background:var(--blue-s)}
-.hw-lwho{display:flex;align-items:center;gap:11px;min-width:0}
-.hw-ava{width:36px;height:36px;border-radius:10px;color:#fff;font:700 13px 'Inter',sans-serif;display:grid;place-items:center;flex:none;box-shadow:0 2px 6px -2px rgba(17,24,39,.3)}
-.hw-lmain{min-width:0}
-.hw-lmain .nm{font-weight:700;font-size:13.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hw-lmain .sb{font:500 10px 'IBM Plex Mono',monospace;color:var(--sub);margin-top:2px}
-.hw-adm{font:600 11px 'IBM Plex Mono',monospace;color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:7px;padding:4px 8px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hw-ltime{font:600 11.5px 'IBM Plex Mono',monospace;color:var(--blue-d);white-space:nowrap}
-.hw-badge{font:600 9.5px 'IBM Plex Mono',monospace;padding:3px 9px;border-radius:99px;flex:none;white-space:nowrap;justify-self:start}
-.hw-badge i{width:5px;height:5px;border-radius:50%;background:currentColor;margin-right:6px}
-.hw-b-care{background:var(--blue-s);color:var(--blue-d)}
-.hw-b-pm{background:var(--amber-s);color:#B45309}
-.hw-b-rel{background:var(--green-s);color:#15803D}
-.hw-chev{color:#C3C9D4;flex:none}
-@media(max-width:640px){.hw-lhead,.hw-lrow{grid-template-columns:minmax(0,1fr) 96px 18px}.hw-lhead .hw-h-adm,.hw-lhead .hw-h-time,.hw-lrow .hw-adm,.hw-lrow .hw-ltime{display:none}}
-.hw-r-stats{display:flex;gap:22px;padding:0 2px 12px;flex-wrap:wrap}
-.hw-rs .k{display:block;font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:2px}
-.hw-rs .v{font-size:20px;font-weight:800;letter-spacing:-.02em}
-.hw-item{position:relative;display:flex;gap:11px;align-items:center;padding:11px 2px;border-top:1px solid var(--line);cursor:pointer;transition:background .12s;border-radius:8px}
-.hw-item:hover{background:var(--soft)}
-.hw-item:first-child{border-top:none}
-.hw-item .im{flex:1;min-width:0}
-.hw-item .nm{font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hw-item .sb{font:500 10px 'IBM Plex Mono',monospace;color:var(--sub);margin-top:2px}
-.hw-item .when{font:600 10px 'IBM Plex Mono',monospace;color:var(--blue-d);white-space:nowrap}
-.hw-tag{font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:99px;flex:none;white-space:nowrap}
-.hw-text-scroll{overflow:auto;flex:1;min-height:0;display:flex;flex-direction:column}
-.hw-empty{color:var(--faint);font-style:italic;font-size:12.5px;padding:12px 2px}
-@media(max-width:560px){.hw-charts{grid-template-columns:1fr}}
-`;
-/* ── inline SVGs ── */
-const Ic = ({ d, s = 15, sw = 2, className, children }) => (
-  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" className={className}>
+
+/* ── inline SVG icons (Font Awesome stand-ins from the reference design) ── */
+const Ic = ({ d, s = 16, sw = 2, className, children, style }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
     {d ? <path d={d} /> : null}
     {children}
   </svg>
 );
 const ICO = {
-  care: { d: "M5.5 20v-7.5a6.5 6.5 0 0 1 13 0V20" },
-  check: { d: "M9 12l2 2 4-5" },
-  warn: { d: "M10.3 3.9L2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" },
-  clock: { d: "M12 22a10 10 0 1 0 0-20 10 10 0 1 0 0 20z" },
-  calIco: { d: "M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" },
-  intake: { d: "M21 12h-2l-3-8H8l-3 8H3" },
-  shield: { d: "M12 3l7 4v5c0 4.5-3 8.5-7 9-4-.5-7-4.5-7-9V7z" },
-  doc: { d: "M8 7h8M8 11h8M8 15h5" },
-  chev: { d: "M9 6l6 6-6 6" },
-};
-/* ── radial gauge for KPI tiles ── */
-const Gauge = ({ pct, size = 50, track = "rgba(255,255,255,.28)", col = "#fff" }) => {
-  const r = (size - 9) / 2, c = 2 * Math.PI * r;
-  const p = Math.max(0, Math.min(100, Number.isFinite(pct) ? pct : 0));
-  return (
-    <svg className="hw-gauge" width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`${Math.round(p)} percent`}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={track} strokeWidth="4.5" />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col} strokeWidth="4.5" strokeLinecap="round"
-        strokeDasharray={`${(p / 100) * c} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        style={{ transition: "stroke-dasharray .9s cubic-bezier(.22,1,.36,1)" }} />
-      <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central">{Math.round(p)}%</text>
-    </svg>
-  );
+  bed: { children: <><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8" /><path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" /><path d="M2 17h20" /></> },
+  vial: { children: <><path d="M14 2v6a2 2 0 0 0 .24.96l5.5 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.74-2.96l5.5-10.08A2 2 0 0 0 10 8V2" /><path d="M6.5 2h7" /><path d="M7 16h10" /></> },
+  clip: { children: <><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="m9 14 2 2 4-4" /></> },
+  heart: { children: <><path d="M11 14h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 16" /><path d="m7 20 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9" /><path d="m2 15 6 6" /></> },
+  sync: { s: 14, children: <><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></> },
+  chevDown: { s: 12, children: <polyline points="6 9 12 15 18 9" /> },
+  chevLeft: { s: 12, children: <polyline points="15 18 9 12 15 6" /> },
+  chevRight: { s: 12, children: <polyline points="9 18 15 12 9 6" /> },
+  calDay: { s: 12, children: <><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /><circle cx="12" cy="16" r="2" fill="currentColor" stroke="none" /></> },
+  chev: { d: "M9 6l6 6-6 6", s: 14, sw: 2.4 },
 };
 
-/* ── animated number (counts up when value changes) ── */
-const useCountUp = (v) => {
-  const [n, setN] = useState(v);
+/* ── Chart.js hook (renders into a canvas ref, re-runs on deps) ── */
+function useChart(ref, fn, deps) {
+  const cr = useRef(null);
   useEffect(() => {
-    const from = n, to = v, t0 = performance.now(), dur = 550;
-    if (from === to) return undefined;
-    let raf;
-    const step = (t) => {
-      const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
-      setN(Math.round(from + (to - from) * e));
-      if (p < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    if (!ref.current) return undefined;
+    if (cr.current) { cr.current.destroy(); cr.current = null; }
+    ChartJS.defaults.color = "#777777";
+    ChartJS.defaults.borderColor = "#efefef";
+    ChartJS.defaults.font.family = "'Source Sans 3',-apple-system,sans-serif";
+    ChartJS.defaults.font.size = 11;
+    cr.current = new ChartJS(ref.current, fn());
+    return () => { if (cr.current) { cr.current.destroy(); cr.current = null; } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [v]);
-  return n;
-};
-
-const smoothPath = (pts) => {
-  if (pts.length < 2) return "M" + pts.map((p) => p.x + "," + p.y).join(" L");
-  let d = `M${pts[0].x},${pts[0].y}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
-    d += ` C${p1.x + (p2.x - p0.x) / 6},${p1.y + (p2.y - p0.y) / 6} ${p2.x - (p3.x - p1.x) / 6},${p2.y - (p3.y - p1.y) / 6} ${p2.x},${p2.y}`;
-  }
-  return d;
-};
-
-/* ── main component (props contract unchanged) ── */
+  }, deps);
+  return cr;
+}
+/* ═══════════════════ MAIN COMPONENT ═══════════════════ */
 export default function DeceasedQuad({ events = {}, loading = false, dateKey = null, deceased = [], onPickDate, onSelect }) {
   const activeKey = dateKey || todayKeyVal();
-  const pd = prettyDate(activeKey);
   const onPick = typeof onPickDate === "function" ? onPickDate : () => {};
   const onOpen = typeof onSelect === "function" ? onSelect : () => {};
 
@@ -306,10 +249,7 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
   const dashSlug = urlSlug || localStorage.getItem("tenantSlug") || "";
   const backToAllDeceased = () => navigate(`/tenant/${dashSlug}/deceased`);
 
-  /* ── Real postmortem REQUESTS (deceased-service tracker table) ──
-     Same feed the deceased profile's Postmortem tab renders. The legacy
-     embedded-field derivation below only ever matched rows carrying a
-     `postmortem` object, so this panel showed nothing for real requests. */
+  /* ── Real postmortem REQUESTS (deceased-service tracker table) ── */
   const [pmRequests, setPmRequests] = useState([]);
   useEffect(() => {
     let alive = true;
@@ -319,11 +259,7 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
     return () => { alive = false; };
   }, []);
 
-  /* ── Real RELEASES (body-checkout body_releases feed) ──
-     The authoritative list of handovers. Legacy derivation below only matches
-     register rows flagged released (status / dispatch_date / release_date),
-     but released bodies are stored in the body_releases table — so without
-     this feed the Releases panel and the "Released today" KPI stayed empty. */
+  /* ── Real RELEASES (body-checkout body_releases feed) ── */
   const [releaseFeed, setReleaseFeed] = useState([]);
   useEffect(() => {
     let alive = true;
@@ -333,8 +269,7 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
     return () => { alive = false; };
   }, []);
 
-  /* Org-wide deceased across ALL branches — powers the multi-branch trend.
-     The `deceased` prop is branch-scoped; the trend needs every branch. */
+  /* Org-wide deceased across ALL branches — powers the branch filter */
   const [allBranchDeceased, setAllBranchDeceased] = useState([]);
   useEffect(() => {
     let alive = true;
@@ -344,7 +279,33 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
     return () => { alive = false; };
   }, []);
 
-  /* register index for deceased_id → record joins (name / branch / ADM no) */
+  /* refresh button — spins then refetches the multi-branch feed */
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshData = () => {
+    setRefreshing(true);
+    fetchAllBranchDeceased(true)
+      .then((rows) => setAllBranchDeceased(Array.isArray(rows) ? rows : []))
+      .catch(() => {})
+      .finally(() => setRefreshing(false));
+  };
+
+  /* ── Branch filter (command-centre style, instant client-side scoping) ── */
+  const branchOptions = useMemo(() => {
+    const set = [];
+    allBranchDeceased.forEach((r) => { const b = branchOf(r); if (b && !set.includes(b)) set.push(b); });
+    deceased.forEach((r) => { const b = branchOf(r); if (b && !set.includes(b)) set.push(b); });
+    return set;
+  }, [allBranchDeceased, deceased]);
+  const [branchFilter, setBranchFilter] = useState("");
+  /* the `deceased` prop is already scoped by ModuleDashboard's selector;
+     this filter narrows further (or widens to all branches when "All") */
+  const viewData = useMemo(() => {
+    if (!branchFilter) return deceased;
+    const scoped = allBranchDeceased.filter((r) => branchOf(r) === branchFilter);
+    return scoped.length ? scoped : deceased.filter((r) => branchOf(r) === branchFilter);
+  }, [branchFilter, deceased, allBranchDeceased]);
+
+  /* register index for deceased_id → record joins (name / ADM no) */
   const dIndex = useMemo(() => {
     const m = new Map();
     deceased.forEach((r) => {
@@ -355,9 +316,7 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
     return m;
   }, [deceased]);
 
-  /* tracked requests → rich rows: ref · requester · authority · reason · status.
-     exam_status comes from the official postmortem table (joined by the API) —
-     a request whose exam has been completed must show Completed, not Awaiting. */
+  /* tracked requests → rich rows (same shape the old quad produced) */
   const pmReqItems = useMemo(() => pmRequests.map((q) => {
     const rec = dIndex.get(String(q?.deceased_id)) || null;
     const num = rec?.admission_number || "";
@@ -376,511 +335,496 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
       when: cancelled ? "Cancelled" : completed ? "Completed" : sent ? "Sent" : "Requested",
       branch: rec ? branchOf(rec) : "",
       _key: keyOf(q?.created_at || q?.updated_at),
-      /* raw tracker payload — the side panel renders the full request
-         (authority, reason, requester, dates) from this */
+      _rec: rec,
+      _completed: completed,
+      _cancelled: cancelled,
+      /* raw tracker payload — the side panel renders the full request from this */
       pm_request: {
-        id: q?.id,
-        request_ref: q?.request_ref,
-        reason: q?.reason,
-        requesting_authority: q?.requesting_authority,
-        requested_by: q?.requested_by,
-        status: q?.status || "initiated",
-        created_at: q?.created_at,
-        sent_at: q?.sent_at,
-        exam_status: q?.exam_status || null,
-        exam_completed_at: q?.exam_completed_at || null,
+        id: q?.id, request_ref: q?.request_ref, reason: q?.reason,
+        requesting_authority: q?.requesting_authority, requested_by: q?.requested_by,
+        status: q?.status || "initiated", created_at: q?.created_at, sent_at: q?.sent_at,
+        exam_status: q?.exam_status || null, exam_completed_at: q?.exam_completed_at || null,
       },
     };
   }), [pmRequests, dIndex]);
-
   const pmReqNums = useMemo(() => new Set(pmReqItems.map((p) => String(p.meta)).filter(Boolean)), [pmReqItems]);
 
   /* release feed → dashboard row shape (id `rel-<admission>` keeps the
-     ModuleDashboard onSelect lookup working) + admission-number dedupe index */
+     ModuleDashboard onSelect lookup working) */
   const relFeedItems = useMemo(() => releaseFeed.map((q) => {
     const adm = q?.admission_number || q?.admission_no || "";
+    const rk = keyOf(q?.date_of_removal || q?.release_date || q?.created_at);
     return {
       id: adm ? `rel-${adm}` : `rel-feed-${q?.release_id || q?.id}`,
       name: q?.name_of_deceased || q?.deceased_name || q?.full_name || q?.received_by || "Unknown",
       meta: adm,
       sub: q?.next_kin || q?.received_by || q?.mode_of_transport || "",
-      tag: "Released",
-      tagColor: "#10B981",
+      dest: q?.destination || q?.release_to || q?.next_kin || "",
+      tag: "Released", tagColor: "#10B981",
       when: q?.time_of_removal || "",
       branch: branchOf(q),
-      _key: keyOf(q?.date_of_removal || q?.release_date || q?.created_at),
+      _key: rk,
+      _date: rk,
       ...(q || {}),
     };
   }), [releaseFeed]);
   const relFeedNums = useMemo(() => new Set(relFeedItems.map((r) => String(r.meta)).filter(Boolean)), [relFeedItems]);
 
-  /* The `deceased` prop is already branch-scoped by ModuleDashboard's branch
-     filter; keep the release feed in the same scope so a single-branch view
-     doesn't show other branches' handovers. */
+  /* keep the release feed in the same branch scope as the register rows */
   const scopeBranch = useMemo(() => {
     const set = [...new Set(deceased.map((r) => branchOf(r)))].filter(Boolean);
     return set.length === 1 ? set[0] : "";
   }, [deceased]);
   const relFeedScoped = useMemo(
-    () => (scopeBranch ? relFeedItems.filter((r) => branchOf(r) === scopeBranch) : relFeedItems),
-    [relFeedItems, scopeBranch]
+    () => (scopeBranch && !branchFilter ? relFeedItems.filter((r) => branchOf(r) === scopeBranch) : relFeedItems),
+    [relFeedItems, scopeBranch, branchFilter]
   );
 
-  /* latest admission (most recent by date + time) */
-  const latestIntake = useMemo(() => {
-    const cands = deceased.filter((r) => admKeyOf(r));
-    if (!cands.length) return null;
-    return cands.slice().sort((a, b) => `${admKeyOf(b)} ${timeOf(b)}`.localeCompare(`${admKeyOf(a)} ${timeOf(a)}`))[0];
-  }, [deceased]);
-  const latestItem = latestIntake ? { ...latestIntake, id: `in-${latestIntake?.admission_number ?? latestIntake?.id ?? 0}` } : null;
-  const latestWhen = latestIntake
-    ? (admKeyOf(latestIntake) === todayKeyVal()
-        ? (timeOf(latestIntake) || "today")
-        : `${prettyDate(admKeyOf(latestIntake)).short}${timeOf(latestIntake) ? ` · ${timeOf(latestIntake)}` : ""}`)
-    : "";
+  /* ── stat-card numbers (Active Intake · PM Requested · PM Done · Released) ── */
+  /* tracked PM requests are deduped against register rows that already carry
+     postmortem flags, so a body is never counted twice */
+  const viewPmFlagged = useMemo(() => {
+    const set = new Set();
+    viewData.forEach((r) => { if (pmMetaOf(r)) set.add(String(r?.admission_number || "")); });
+    return set;
+  }, [viewData]);
+  const stats = useMemo(() => {
+    let active = 0, pmRequested = 0, pmDone = 0, released = 0;
+    viewData.forEach((r) => {
+      const k = statusKeyOf(r);
+      if (k === "active") active += 1;
+      else if (k === "pmReq") pmRequested += 1;
+      else if (k === "pmDone") { pmDone += 1; pmRequested += 1; }
+      else released += 1;
+    });
+    pmReqItems.forEach((p) => {
+      if (p._cancelled || viewPmFlagged.has(String(p.meta))) return;
+      if (p._completed) pmDone += 1; else pmRequested += 1;
+    });
+    const relFromFeed = relFeedScoped.filter((r) => {
+      const adm = String(r.meta || "");
+      return !adm || !viewData.some((v) => String(v?.admission_number || "") === adm && isReleased(v));
+    }).length;
+    released += relFromFeed;
+    return { total: viewData.length + relFromFeed, active, pmRequested, pmDone, released };
+  }, [viewData, pmReqItems, relFeedScoped, viewPmFlagged]);
 
-  /* items for the selected day */
-  const items = useMemo(() => {
-    const intakes = deceased.filter((r) => admKeyOf(r) === activeKey).map((r, i) => ({
-      id: `in-${r?.admission_number ?? r?.id ?? i}`, name: r?.full_name || "Unknown",
-      meta: r?.admission_number || "", sub: branchOf(r), tag: String(r?.status || r?.admission_status || "Admitted"), branch: branchOf(r),
-    }));
-    const releases = [
-      /* real handovers from the body-checkout feed first (authoritative) */
-      ...relFeedScoped.filter((r) => r._key === activeKey).map(({ _key, ...rest }) => rest),
-      /* legacy derived rows (only where no feed row covers them) */
-      ...deceased
-        .filter((r) => isReleased(r) && relKeyOf(r) === activeKey && !relFeedNums.has(String(r?.admission_number || "")))
-        .map((r, i) => ({
-          id: `rel-${r?.admission_number ?? r?.id ?? i}`, name: r?.full_name || "Unknown",
-          meta: r?.admission_number || "", sub: r?.destination || r?.release_to || r?.next_kin || "",
-          tag: String(r?.status || r?.admission_status || "Released"), when: esc(r?.release_date || r?.dispatch_date || ""),
-        })),
-    ];
-    const postmortems = [
-      /* real tracked requests first — the authoritative feed */
-      ...pmReqItems.filter((p) => p._key === activeKey).map(({ _key, ...rest }) => rest),
-      /* legacy derived rows (only where no tracked request covers them) */
-      ...deceased
-        .map((r, i) => ({ r, i, pm: pmMetaOf(r) }))
-        .filter(({ r, pm }) => pm && pm.key === activeKey && !pmReqNums.has(String(r?.admission_number || "")))
-        .map(({ r, i, pm }) => ({
-          id: `pm-${r?.admission_number ?? r?.id ?? i}`, name: r?.full_name || "Unknown",
-          meta: r?.admission_number || "", sub: r?.cause_of_death || r?.body_status || "",
-          tag: pm.completed ? "Completed" : "Pending", tagColor: pm.completed ? "#16A34A" : "#D97706", when: pm.completed ? "Completed" : "Requested",
-        })),
-    ];
-    return { intakes, releases, postmortems };
-  }, [deceased, activeKey, pmReqItems, pmReqNums, relFeedScoped, relFeedNums]);
-
-  const inCare = deceased.filter((r) => !isReleased(r)).length;
-  const relToday =
-    relFeedScoped.filter((r) => r._key === todayKeyVal()).length +
-    deceased.filter((r) => isReleased(r) && relKeyOf(r) === todayKeyVal()).length;
-  const pmPendingCount =
-    pmReqItems.filter((p) => p.tag !== "Cancelled").length +
-    deceased.filter((r) => { const pm = pmMetaOf(r); return pm && !pm.completed && !pmReqNums.has(String(r?.admission_number || "")); }).length;
-
-  /* last 7 days */
+  /* ── last 7 days ── */
   const last7 = useMemo(() => {
     const a = []; const t = new Date(); t.setHours(0, 0, 0, 0);
     for (let i = 6; i >= 0; i--) { const d = new Date(t); d.setDate(t.getDate() - i); a.push(d); }
     return a;
   }, []);
-
-  /* ── gauge metrics for the top cards ── */
-  const total = deceased.length;
-  const inCarePct = total ? (inCare / total) * 100 : 0;
-  const relWeek =
-    relFeedScoped.filter((r) => { const k = r?._key; return k && last7.some((d) => dk(d) === k); }).length +
-    deceased.filter((r) => {
-      if (!isReleased(r)) return false;
-      const k = relKeyOf(r);
-      return k && last7.some((d) => dk(d) === k);
-    }).length;
-  const relPct = relWeek ? (relToday / relWeek) * 100 : relToday > 0 ? 100 : 0;
-  const pmTotal = pmReqItems.length + deceased.filter((r) => pmMetaOf(r) && !pmReqNums.has(String(r?.admission_number || ""))).length;
-  const pmPct = pmTotal ? (pmPendingCount / pmTotal) * 100 : 0;
-  const tToday = deceased.filter((r) => admKeyOf(r) === todayKeyVal()).length;
-  const tWeek = last7.reduce((acc, d) => acc + deceased.filter((r) => admKeyOf(r) === dk(d)).length, 0);
-  const tPct = tWeek ? (tToday / tWeek) * 100 : tToday > 0 ? 100 : 0;
-  const nInCare = useCountUp(inCare);
-  const nRelToday = useCountUp(relToday);
-  const nPM = useCountUp(pmPendingCount);
-
-  /* distinct branches present in admissions (cap at 3) — from org-wide data */
-  const branches = useMemo(() => {
-    const set = [];
-    allBranchDeceased.forEach((r) => { const b = branchOf(r); if (!set.includes(b)) set.push(b); });
-    if (set.length === 0) set.push("Main");
-    return set.slice(0, 3);
-  }, [allBranchDeceased]);
-  const series = useMemo(() => branches.map((b) => last7.map((d) => allBranchDeceased.filter((r) => branchOf(r) === b && admKeyOf(r) === dk(d)).length)), [allBranchDeceased, last7, branches]);
-  const seriesAll = useMemo(() => last7.map((d) => allBranchDeceased.filter((r) => admKeyOf(r) === dk(d)).length), [allBranchDeceased, last7]);
-  const trendMax = Math.max(1, ...seriesAll, ...series.flat());
-  const [fbranch, setFbranch] = useState("ALL");
-  const branchColor = (b, i) => PALETTE[(i === undefined ? branches.indexOf(b) : i) % PALETTE.length];
-
-  const click = (e, item) => { e.stopPropagation(); onOpen(item); };
-
-  /* SVG trend builder — same geometry as the reference HTML */
-  const buildTrend = () => {
-    const W = 320, H = 112, L = 30, R = 8, T = 12, B = 8;
-    const niceMax = trendMax <= 4 ? 4 : trendMax <= 6 ? 6 : trendMax <= 8 ? 8 : Math.ceil(trendMax / 2) * 2;
-    const x = (i) => L + (i * (W - L - R)) / 6;
-    const y = (v) => T + (1 - v / niceMax) * (H - T - B);
-    let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">`;
-    [niceMax, niceMax / 2, 0].forEach((gv) => {
-      const solid = gv === 0;
-      s += `<line x1="${L}" y1="${y(gv)}" x2="${W - R}" y2="${y(gv)}" stroke="${solid ? "#E5E8EF" : "#EEF1F6"}" ${solid ? "" : 'stroke-dasharray="4 4"'} vector-effect="non-scaling-stroke"/>`;
-      s += `<text x="${L - 7}" y="${y(gv) + 3}" text-anchor="end" font-size="9" fill="#9CA3AF" font-family="IBM Plex Mono">${gv}</text>`;
-    });
-    branches.forEach((b, bi) => {
-      const col = branchColor(b, bi);
-      const pts = series[bi].map((v, i) => ({ x: x(i), y: y(v) }));
-      s += `<path d="${smoothPath(pts)}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linecap="round" style="filter:drop-shadow(0 2px 4px rgba(17,24,39,.15))" vector-effect="non-scaling-stroke"/>`;
-      pts.forEach((p, i) => { s += `<circle cx="${p.x}" cy="${p.y}" r="3.4" fill="${col}" stroke="#fff" stroke-width="1.6" vector-effect="non-scaling-stroke"><title>${b} · ${WD[last7[i].getDay()]} ${last7[i].getDate()} — ${series[bi][i]}</title></circle>`; });
-    });
-    s += "</svg>";
-    return s;
-  };
-
-  /* ── horizontal calendar ─────────────────────────────────────────────
-     DeceasedQuad receives `events` as a { 'YYYY-MM-DD': [{n,t,c}] } map
-     (Mini-calendar shape). The HorizontalCalendar widget wants an array of
-     { id, date (Date), title, color }. We convert here so the existing
-     ModuleDashboard wiring (miniEvents → events) keeps working unchanged. */
-  const CAL_FILLS = { red: "#DC2626", blue: "#2563EB", green: "#16A34A", orange: "#F97316", purple: "#8B5CF6" };
-  const hCalEvents = useMemo(() => {
-    const arr = [];
-    Object.entries(events || {}).forEach(([k, list]) => {
-      if (!Array.isArray(list)) return;
-      const [y, m, d] = String(k).split("-").map(Number);
-      if (!y || !m || !d) return;
-      list.forEach((ev, i) => arr.push({
-        id: `${k}-${i}`,
-        date: new Date(y, m - 1, d),
-        title: ev?.n || "Event",
-        color: CAL_FILLS[ev?.c] || "#2563EB",
-      }));
-    });
-    return arr;
-  }, [events]);
-
-  /* selected day as a Date (the HorizontalCalendar highlights it) */
-  const selDate = useMemo(() => {
-    const [y, m, d] = String(activeKey).split("-").map(Number);
-    return y && m && d ? new Date(y, m - 1, d) : new Date();
-  }, [activeKey]);
-
-  const onHorizPick = (date) => {
-    if (!date || typeof onPick !== "function") return;
-    onPick(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`);
-  };
-
-  /* ── compact analytics block (fills the space under the horizontal strip) ── */
-  const admSeries7 = useMemo(
-    () => last7.map((d) => deceased.filter((r) => admKeyOf(r) === dk(d)).length),
-    [deceased, last7]
-  );
+  const admSeries7 = useMemo(() => last7.map((d) => viewData.filter((r) => admKeyOf(r) === dk(d)).length), [viewData, last7]);
   const relSeries7 = useMemo(() => last7.map((d) => {
     const k = dk(d);
     return relFeedScoped.filter((r) => r._key === k).length
-      + deceased.filter((r) => isReleased(r) && relKeyOf(r) === k && !relFeedNums.has(String(r?.admission_number || ""))).length;
-  }), [deceased, last7, relFeedScoped, relFeedNums]);
-  const anaMax = Math.max(1, ...admSeries7, ...relSeries7);
+      + viewData.filter((r) => isReleased(r) && relKeyOf(r) === k && !relFeedNums.has(String(r?.admission_number || ""))).length;
+  }), [viewData, last7, relFeedScoped, relFeedNums]);
 
-  const bodySeg = useMemo(() => {
-    let care = 0, pmHold = 0, rel = 0;
-    deceased.forEach((r) => {
-      if (isReleased(r)) { rel++; return; }
-      const pm = pmMetaOf(r);
-      if (pm && !pm.completed && !pmReqNums.has(String(r?.admission_number || ""))) pmHold++;
-      else care++;
+  /* status breakdown for the doughnut (same dedupe as the stat cards) */
+  const statusSeg = useMemo(() => {
+    let care = 0, pm = 0, rel = 0;
+    viewData.forEach((r) => {
+      const k = statusKeyOf(r);
+      if (k === "active") care += 1;
+      else if (k === "pmReq" || k === "pmDone") pm += 1;
+      else rel += 1;
     });
-    return { care, pmHold, rel };
-  }, [deceased, pmReqNums]);
-  const bodyTotal = Math.max(1, bodySeg.care + bodySeg.pmHold + bodySeg.rel);
+    pmReqItems.forEach((p) => { if (!p._cancelled && !viewPmFlagged.has(String(p.meta))) pm += 1; });
+    return { care, pm, rel };
+  }, [viewData, pmReqItems, viewPmFlagged]);
 
-  const pmDone = Math.max(0, pmTotal - pmPendingCount);
-  const pmTotalSafe = Math.max(1, pmTotal);
-  const pmDonePct = (pmDone / pmTotalSafe) * 100;
-  const pmPendPct = (pmPendingCount / pmTotalSafe) * 100;
+  /* ── calendar state (horizontal strip) ── */
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const calStartMonth = useMemo(() => {
+    const [y, m] = String(activeKey).split("-").map(Number);
+    return (y && m) ? m - 1 : new Date().getMonth();
+  }, [activeKey]);
+  const calStartYear = useMemo(() => {
+    const [y] = String(activeKey).split("-").map(Number);
+    return y || new Date().getFullYear();
+  }, [activeKey]);
+  /* the strip jumps to the picked day's month when it changes via the mini calendar */
+  useEffect(() => {
+    if (calMonth !== calStartMonth || calYear !== calStartYear) { setCalMonth(calStartMonth); setCalYear(calStartYear); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey]);
 
-  const genderStats = useMemo(() => {
-    let m = 0, f = 0, o = 0;
-    deceased.forEach((r) => {
-      const g = String(r?.sex || r?.gender || "").toLowerCase();
-      if (g.indexOf("m") === 0) m++;
-      else if (g.indexOf("f") === 0) f++;
-      else o++;
-    });
-    return { m, f, o };
-  }, [deceased]);
-
-  /* 7-day grouped bars (Admissions blue · Releases green) */
-  const buildAnaBars = () => {
-    const W = 250, H = 62, n = Math.min(7, admSeries7.length);
-    const slot = (W - 8) / n, bw = Math.min(6, Math.max(3, slot / 2 - 2));
-    let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">`;
-    for (let i = 0; i < n; i++) {
-      const cx = 4 + i * slot + slot / 2;
-      const a = admSeries7[i], r = relSeries7[i];
-      const ah = Math.max(2, (a / anaMax) * (H - 8));
-      const rh = Math.max(2, (r / anaMax) * (H - 8));
-      s += `<rect x="${cx - bw - 1}" y="${H - 4 - ah}" width="${bw}" height="${ah}" rx="1.5" fill="#2563EB" opacity=".85"><title>Admissions ${a}</title></rect>`;
-      s += `<rect x="${cx + 1}" y="${H - 4 - rh}" width="${bw}" height="${rh}" rx="1.5" fill="#10B981" opacity=".85"><title>Releases ${r}</title></rect>`;
-    }
-    s += "</svg>";
-    return s;
+  const changeMonth = (dir) => {
+    let m = calMonth + dir, y = calYear;
+    if (m > 11) { m = 0; y += 1; }
+    if (m < 0) { m = 11; y -= 1; }
+    setCalMonth(m); setCalYear(y);
   };
-
-  /* Gender donut SVG */
-  const buildGenderDonut = () => {
-    const R = 20, C = 2 * Math.PI * R;
-    const gt = Math.max(1, genderStats.m + genderStats.f + genderStats.o);
-    const md = (genderStats.m / gt) * C, fd = (genderStats.f / gt) * C;
-    const od = Math.max(0, C - md - fd);
-    let off = 0;
-    const parts = [];
-    [[genderStats.m, "#2563EB", md], [genderStats.f, "#EC4899", fd], [genderStats.o, "#94A3B8", od]].forEach(([v, col, len]) => {
-      if (len <= 0) return;
-      parts.push(`<circle cx="22" cy="22" r="${R}" fill="none" stroke="${col}" stroke-width="7" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" stroke-linecap="round"><title>${v}</title></circle>`);
-      off += len;
-    });
-    return `<svg width="44" height="44" viewBox="0 0 44 44" role="img" aria-label="Gender breakdown">${parts.join("")}</svg>`;
+  const goToday = () => {
+    const t = new Date();
+    setCalYear(t.getFullYear()); setCalMonth(t.getMonth());
+    onPick(todayKeyVal());
   };
+  const pickDay = (y, m, d) => onPick(`${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
 
+  /* ── events map for calendar dots: { 'YYYY-MM-DD': [colors, …] } ──
+     merges the ModuleDashboard miniEvents feed (class colors) with the
+     deceased register + release feed (status colors) */
+  const CAL_CLASS_COLOR = { red: "#DC2626", blue: "#00296B", green: "#047857", orange: "#E36414", purple: "#5F0F40" };
+  const calDots = useMemo(() => {
+    const map = {};
+    const add = (k, color) => {
+      if (!k || map[k]?.length >= 3) return;
+      if (!map[k]) map[k] = [];
+      if (!map[k].includes(color)) map[k].push(color);
+    };
+    Object.entries(events || {}).forEach(([k, list]) => {
+      if (!Array.isArray(list)) return;
+      list.forEach((ev) => add(k, CAL_CLASS_COLOR[ev?.c] || "#00296B"));
+    });
+    viewData.forEach((r) => { add(admKeyOf(r), dotColorOf(r)); });
+    relFeedScoped.forEach((r) => { if (r._key) add(r._key, "#03071E"); });
+    return map;
+  }, [events, viewData, relFeedScoped]);
+
+  /* ── Chart.js — Status Breakdown doughnut ── */
+  const statusRef = useRef(null);
+  useChart(statusRef, () => ({
+    type: "doughnut",
+    data: {
+      labels: ["In Care", "Postmortem", "Released"],
+      datasets: [{
+        data: [statusSeg.care, statusSeg.pm, statusSeg.rel],
+        backgroundColor: ["#00296B", "#E36414", "#03071E"],
+        borderWidth: 0, hoverOffset: 4,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "55%",
+      plugins: { legend: { position: "bottom", labels: { font: { family: "'Source Sans 3',sans-serif", size: 12 }, color: "#1a1a1a", boxWidth: 15, padding: 15 } } },
+    },
+  }), [statusSeg.care, statusSeg.pm, statusSeg.rel]);
+
+  /* ── Chart.js — 7-Day Activity (Intake vs Releases) ── */
+  const activityRef = useRef(null);
+  useChart(activityRef, () => ({
+    type: "bar",
+    data: {
+      labels: last7.map((d) => ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][d.getDay()]),
+      datasets: [
+        { label: "Intake", data: admSeries7, backgroundColor: "#00296B", borderRadius: 4, barPercentage: 0.6 },
+        { label: "Releases", data: relSeries7, backgroundColor: "#DD2D4A", borderRadius: 4, barPercentage: 0.6 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom", labels: { font: { family: "'Source Sans 3',sans-serif", size: 12 }, color: "#1a1a1a", boxWidth: 15, padding: 15 } } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1, color: "#777777", font: { family: "'Source Sans 3',sans-serif" } }, grid: { color: "#efefef" } },
+        x: { ticks: { color: "#777777", font: { family: "'Source Sans 3',sans-serif" } }, grid: { display: false } },
+      },
+    },
+  }), [admSeries7, relSeries7]);
+
+  /* ── Quad table lists ── */
+  /* 02 · Deceased Intake — bodies currently in the morgue (newest first) */
+  const intakeList = useMemo(
+    () => viewData
+      .filter((r) => admKeyOf(r) && !isReleased(r))
+      .slice()
+      .sort((a, b) => String(admKeyOf(b)).localeCompare(String(admKeyOf(a))))
+      .slice(0, 100),
+    [viewData]
+  );
+  /* 03 · Releases & Transfers — real handovers first, then legacy derivations */
+  const releaseList = useMemo(() => {
+    const rows = [
+      ...relFeedScoped.map((r) => ({
+        id: r.id, name: r.name, meta: r.meta, branch: r.branch,
+        date: r._date, dest: r.dest || r.sub || "",
+        status: "Released",
+        raw: r,
+      })),
+      ...viewData
+        .filter((r) => isReleased(r) && !relFeedNums.has(String(r?.admission_number || "")))
+        .map((r, i) => ({
+          id: `rel-${r?.admission_number ?? r?.id ?? i}`, name: r?.full_name || "Unknown",
+          meta: r?.admission_number || "", branch: branchOf(r),
+          date: relKeyOf(r) || admKeyOf(r), dest: r?.destination || r?.release_to || r?.next_kin || r?.dispatched_to || "",
+          status: /transfer/i.test(String(r?.status || r?.admission_status || "")) ? "Transferred" : "Released",
+          raw: r,
+        })),
+    ];
+    return rows
+      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+      .slice(0, 100);
+  }, [relFeedScoped, relFeedNums, viewData]);
+  /* 04 · Postmortem Requests — tracked requests first, then legacy derivations */
+  const pmList = useMemo(() => {
+    const rows = [
+      ...pmReqItems.map((p) => ({
+        id: p.id, name: p.name, meta: p.meta, branch: p.branch,
+        date: p._key, status: p._cancelled ? "Cancelled" : p._completed ? "PM Done" : "Requested",
+        sub: p.sub, pm_request: p.pm_request,
+      })),
+      ...viewData
+        .map((r, i) => ({ r, i, pm: pmMetaOf(r) }))
+        .filter(({ r, pm }) => pm && !pmReqNums.has(String(r?.admission_number || "")))
+        .map(({ r, i, pm }) => ({
+          id: `pm-${r?.admission_number ?? r?.id ?? i}`, name: r?.full_name || "Unknown",
+          meta: r?.admission_number || "", branch: branchOf(r),
+          date: pm.key, status: pm.completed ? "PM Done" : "Requested",
+          sub: r?.cause_of_death || "", 
+        })),
+    ];
+    return rows
+      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+      .slice(0, 100);
+  }, [pmReqItems, pmReqNums, viewData]);
+
+  const click = (e, item) => { e.stopPropagation(); onOpen(item); };
+
+  /* ═══════════════════ RENDER ═══════════════════ */
   return (
-    <div className="hw">
-      <style>{CSS + CSS2 + CSS3 + CSS4}</style>
+    <div className="fhq">
+      <style>{CSS}</style>
 
-      {/* Back to the normal All-Deceased list */}
-      <button className="hw-back" type="button" onClick={backToAllDeceased} title="Go to All Deceased">
-        <span className="hw-arr" aria-hidden="true">‹</span>
-        <span>All Deceased</span>
-      </button>
+      {/* ── Header ── */}
+      <header className="page-header">
+        <div>
+          <h1>Funeral Home Dashboard</h1>
+          <p>Select a branch to view isolated intake, releases, and postmortem requests.</p>
+        </div>
+        <div className="header-actions">
+          {branchOptions.length > 0 && (
+            <div className="filter-wrapper" style={{ maxWidth: 260 }}>
+              <select className="filter-select" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} aria-label="Branch filter">
+                <option value="">All Branches</option>
+                {branchOptions.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+              <span className="icon-right"><Ic {...ICO.chevDown} /></span>
+            </div>
+          )}
+          <button className="btn btn-danger" onClick={refreshData} title="Refresh data">
+            <span className={refreshing ? "spin" : ""}><Ic {...ICO.sync} /></span> Refresh
+          </button>
+        </div>
+      </header>
 
-      {/* ── top KPI cards (glow gradient) ── */}
-      <div className="hw-top">
-        <div className="hw-tiles">
-          <div className="hw-tile hw-tb">
-            <div className="hw-t-top"><span className="hw-t-ic"><Ic d={ICO.care.d} s={12} /></span><span className="hw-t-label">In care</span></div>
-            <div className="hw-t-mid"><div className="hw-t-num">{nInCare}</div><Gauge pct={inCarePct} /></div>
-            <div className="hw-t-sub">{total ? `${Math.round(inCarePct)}% of ${total} in register · ${branches.length} branch${branches.length > 1 ? "es" : ""}` : `across ${branches.length} branch${branches.length > 1 ? "es" : ""}`}</div>
-          </div>
-          <div className="hw-tile hw-tg">
-            <div className="hw-t-top"><span className="hw-t-ic"><Ic d={ICO.check.d} s={12} /></span><span className="hw-t-label">Released today</span></div>
-            <div className="hw-t-mid"><div className="hw-t-num">{nRelToday}</div><Gauge pct={relPct} /></div>
-            <div className="hw-t-sub">{relWeek ? `${nRelToday} of ${relWeek} handovers this week` : relToday > 0 ? "first handover today" : "no handovers yet this week"}</div>
-          </div>
-          <div className="hw-tile hw-to">
-            <div className="hw-t-top"><span className="hw-t-ic"><Ic d={ICO.warn.d} s={11} /></span><span className="hw-t-label">PM pending</span></div>
-            <div className="hw-t-mid"><div className="hw-t-num">{nPM}</div><Gauge pct={pmPct} /></div>
-            <div className="hw-t-sub">{pmTotal ? `${nPM} of ${pmTotal} requests awaiting` : "no postmortem requests"}</div>
-          </div>
-          <div
-            className={"hw-tile hw-td2" + (latestItem ? " hw-tclick" : "")}
-            onClick={latestItem ? (e) => { e.stopPropagation(); onOpen(latestItem); } : undefined}
-            title={latestItem ? `Open ${latestIntake?.full_name || "record"}` : undefined}
-          >
-            <div className="hw-t-top"><span className="hw-t-ic"><Ic d={ICO.intake.d} s={12} /></span><span className="hw-t-label">Latest intake</span></div>
-            <div className="hw-t-mid"><div className="hw-latest">{latestIntake ? (latestIntake?.full_name || "Unknown") : "No admissions yet"}</div><Gauge pct={tPct} /></div>
-            <div className="hw-t-sub">{latestIntake ? `${latestIntake?.admission_number || "—"} · ${latestWhen} · ${branchOf(latestIntake)}` : "new records appear here"}</div>
-          </div>
+      {/* ── Quick Stats Dashboard ── */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: "#00296B" }}><Ic {...ICO.bed} /></div>
+          <div className="stat-info"><h3>{stats.active}</h3><span>Active Intake (Branch)</span></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: "#E36414" }}><Ic {...ICO.vial} /></div>
+          <div className="stat-info"><h3>{stats.pmRequested}</h3><span>Postmortem Requested</span></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: "#5F0F40" }}><Ic {...ICO.clip} /></div>
+          <div className="stat-info"><h3>{stats.pmDone}</h3><span>Postmortem Completed</span></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: "#03071E" }}><Ic {...ICO.heart} /></div>
+          <div className="stat-info"><h3>{stats.released}</h3><span>Released / Transferred</span></div>
         </div>
       </div>
 
-      <div className="hw-grid">
+      {loading && (
+        <div className="fhq-banner info"><Ic {...ICO.sync} /> <span>Fetching live deceased records from the backend…</span></div>
+      )}
 
-        {/* ── 01 · Calendar ── */}
-        <section className="hw-panel">
-          <div className="hw-p-head">
-            <span className="hw-p-ic hw-i-blue"><Ic d={ICO.calIco.d} s={15} /></span>
-            <div className="hw-p-title">Calendar<small>Daily activity · Analytics</small></div>
-            <span className="hw-p-meta">{pd.day} <b>{pd.short}</b></span>
+      {/* ── Horizontal Calendar (CoffinBook style with dots) ── */}
+      <div className="calendar-container">
+        <div className="cal-nav">
+          <span className="cal-title">
+            {MO[calMonth]} {calYear}
+            {activeKey !== todayKeyVal() && (
+              <button className="day-chip" onClick={goToday} title="Back to today">✕ {fmtDate(activeKey)}</button>
+            )}
+          </span>
+          <div className="cal-nav-actions">
+            <button className="cal-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month"><Ic {...ICO.chevLeft} /></button>
+            <button className="cal-nav-btn" onClick={goToday} aria-label="Go to today" title="Today"><Ic {...ICO.calDay} /></button>
+            <button className="cal-nav-btn" onClick={() => changeMonth(1)} aria-label="Next month"><Ic {...ICO.chevRight} /></button>
           </div>
-          <div className="hw-p-body">
-            <div style={{ width: "100%" }}>
-              <HorizontalCalendar
-                eventsData={hCalEvents}
-                selectedDate={selDate}
-                onDateSelect={onHorizPick}
-              />
-
-              {/* Analytics — 7-day multi-branch trend + per-branch bars */}
-              <div className="hw-trend">
-                <div className="hw-trend-head">
-                  <span className="hw-trend-title">7-day trend · all branches</span>
-                  <div className="hw-trend-legend">
-                    {branches.map((b, i) => (
-                      <span key={b}><i style={{ background: branchColor(b, i) }} />{esc(b)}</span>
-                    ))}
-                  </div>
-                </div>
-                <div className="hw-trend-svg" dangerouslySetInnerHTML={{ __html: buildTrend() }} />
-                <div className="hw-trend-x">
-                  {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
+        </div>
+        <div className="cal-strip">
+          {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+            const key = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            const dObj = new Date(calYear, calMonth, day);
+            const isToday = key === todayKeyVal();
+            const isSelected = key === activeKey;
+            const dots = calDots[key] || [];
+            return (
+              <div
+                key={day}
+                className={`cal-day${isToday ? " today" : ""}${isSelected ? " selected" : ""}${loading ? " loading" : ""}`}
+                onClick={() => pickDay(calYear, calMonth, day)}
+                title={dots.length ? `${day} ${MO[calMonth]} — ${dots.length} event type${dots.length > 1 ? "s" : ""}` : undefined}
+              >
+                <div className="cal-day-name">{DOWS[dObj.getDay()]}</div>
+                <div className="cal-day-num">{day}</div>
+                <div className="cal-dots">
+                  {dots.map((c, i) => (
+                    <span key={i} className="cal-dot" style={{ background: isSelected ? "rgba(255,255,255,0.8)" : c }} />
+                  ))}
                 </div>
               </div>
+            );
+          })}
+        </div>
+      </div>
 
-              <div className="hw-charts">
-                {branches.map((b, bi) => {
-                  const data = series[bi]; const max = Math.max(3, ...data); const col = branchColor(b, bi);
-                  const dim = fbranch !== "ALL" && fbranch !== b;
-                  const wk = data.reduce((a, x) => a + x, 0);
+      {/* ── 2x2 Quad Grid ── */}
+      <div className="quad-grid">
+
+        {/* 1 · Analytics & Summary (WITH CHARTS) */}
+        <div className="list-card">
+          <div className="list-header">
+            <h2>Branch Analytics</h2>
+            <span className="badge-count" style={{ background: "#00296B" }}>Live Metrics</span>
+          </div>
+          <div className="table-wrap" style={{ overflow: "hidden" }}>
+            <div className="charts-container">
+              <div className="chart-box">
+                <div className="chart-title">Status Breakdown</div>
+                <div className="chart-canvas-wrap"><canvas ref={statusRef} /></div>
+              </div>
+              <div className="chart-box">
+                <div className="chart-title">7-Day Activity (Intake vs Releases)</div>
+                <div className="chart-canvas-wrap"><canvas ref={activityRef} /></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2 · Deceased Intake */}
+        <div className="list-card">
+          <div className="list-header">
+            <h2>Deceased Intake</h2>
+            <span className="badge-count">{intakeList.length}</span>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Deceased Name</th><th>Date Admitted</th><th>Days in Morgue</th><th>Action</th></tr>
+              </thead>
+              <tbody>
+                {intakeList.length === 0 ? (
+                  <tr><td colSpan={4} className="empty-row">No active intake records for this branch</td></tr>
+                ) : intakeList.map((r, i) => {
+                  const female = String(r?.sex || r?.gender || "").toLowerCase().indexOf("f") === 0;
+                  const days = daysSince(admKeyOf(r));
+                  const item = { ...r, id: `in-${r?.admission_number ?? r?.id ?? i}`, full_name: r?.full_name || "Unknown" };
                   return (
-                    <div key={b} className={"hw-chart-wrap" + (dim ? " dim" : "")} style={{ "--c": col }}>
-                      <div className="hw-chart-top">
-                        <button className="hw-chart-branch" onClick={() => setFbranch(fbranch === b ? "ALL" : b)} title="Filter ledger by this branch">
-                          <i className="hw-cdot" />{esc(b)}
-                        </button>
-                        <span className="hw-chart-week">{wk} this week</span>
-                      </div>
-                      <div className="hw-chart-body">
-                        <i className="hw-gridline hw-g1" /><i className="hw-gridline hw-g2" />
-                        <div className="hw-bars">
-                          {data.map((v, i) => (
-                            <div key={i}
-                              className={"hw-bar" + (i === 6 ? " today" : "") + (v === 0 ? " zero" : "")}
-                              style={{ background: col, height: v === 0 ? 2 : Math.max(6, (v / max) * 80) + "%" }}
-                              title={`${WD[last7[i].getDay()]} ${last7[i].getDate()} ${MO[last7[i].getMonth()]} — ${v} ${v === 1 ? "admission" : "admissions"}`}>
-                              <span className="v">{v || ""}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="hw-chart-x">
-                        {last7.map((d, i) => (<span key={i} className={i === 6 ? "today" : ""}>{DOWS[d.getDay()]}</span>))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── 02 · Intake : analytics cards + intake ledger ── */}
-        <section className="hw-panel">
-          <div className="hw-p-head">
-            <span className="hw-p-ic hw-i-violet"><Ic d={ICO.intake.d} s={15} /></span>
-            <div className="hw-p-title">Intake<small>Admissions by branch</small></div>
-            <span className="hw-p-meta">7 days <b>{seriesAll.reduce((a, b) => a + b, 0)}</b></span>
-          </div>
-          <div className="hw-p-body">
-
-            <div className="hw-filters">
-              <button className={"hw-chip" + (fbranch === "ALL" ? " on" : "")} onClick={() => setFbranch("ALL")}>All <span className="n">{deceased.length}</span></button>
-              {branches.map((b) => (
-                <button key={b} className={"hw-chip" + (fbranch === b ? " on" : "")} onClick={() => setFbranch(fbranch === b ? "ALL" : b)}>
-                  {esc(b)} <span className="n">{deceased.filter((r) => branchOf(r) === b).length}</span>
-                </button>
-              ))}
-              <span className="hw-hint">click a row for details</span>
-            </div>
-            <div className="hw-list">
-              <div className="hw-lhead">
-                <span>Name</span>
-                <span className="hw-h-adm">Adm no</span>
-                <span className="hw-h-time">Intake</span>
-                <span>Status</span>
-                <span></span>
-              </div>
-              <div className="hw-l_scroll">
-                {(() => {
-                  const rows = deceased
-                    .filter((r) => fbranch === "ALL" || branchOf(r) === fbranch)
-                    .slice()
-                    .sort((a, b) => String(admKeyOf(b)).localeCompare(String(admKeyOf(a))));
-                  if (!rows.length) return <div className="hw-empty">No admissions recorded.</div>;
-                  return rows.map((r, i) => {
-                    const b = branchOf(r);
-                    const released = isReleased(r);
-                    const pm = pmMetaOf(r);
-                    const badge = released ? { cls: "hw-b-rel", txt: "Released" } : pm ? { cls: "hw-b-pm", txt: "PM hold" } : { cls: "hw-b-care", txt: "In care" };
-                    /* item.id must stay prefixed ("in-<adm_no>") — ModuleDashboard
-                       parses it to locate the record and open DeceasedSidePanel. */
-                    const item = { ...r, id: `in-${r?.admission_number ?? r?.id ?? i}`, full_name: r?.full_name || "Unknown" };
-                    return (
-                      <div key={r?.admission_number ?? r?.id ?? i} className="hw-lrow" onClick={() => onOpen(item)}>
-                        <div className="hw-lwho">
-                          <span className="hw-ava" style={{ background: branchColor(b) }}>{initialOf(r?.full_name)}</span>
-                          <div className="hw-lmain">
-                            <div className="nm">{esc(r?.full_name || "Unknown")}</div>
-                            <div className="sb">{esc(b)}</div>
+                    <tr key={item.id} onClick={() => onOpen(item)}>
+                      <td>
+                        <div className="name-cell">
+                          <div className={`avatar${female ? " female" : ""}`}>{initialsOf(r?.full_name)}</div>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{esc(r?.full_name || "Unknown")}</div>
+                            <div className="meta">{esc(branchOf(r))} · {esc(r?.admission_number || "—")}</div>
                           </div>
                         </div>
-                        <span className="hw-adm" title="Admission number">{esc(r?.admission_number || "—")}</span>
-                        <span className="hw-ltime" title="Intake time">{timeOf(r) || "—"}</span>
-                        <span className={"hw-badge " + badge.cls}><i />{badge.txt}</span>
-                        <Ic className="hw-chev" d={ICO.chev.d} s={14} sw={2.4} />
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
+                      </td>
+                      <td>{fmtDate(admKeyOf(r))}{timeOf(r) ? <div className="meta">{timeOf(r)}</div> : null}</td>
+                      <td>{days != null ? `${days} days` : "—"}</td>
+                      <td><button className="btn btn-sm btn-primary" onClick={(e) => click(e, item)}>View Profile</button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </section>
+        </div>
 
-        {/* ── 03 · Releases ── */}
-        <section className="hw-panel">
-          <div className="hw-p-head">
-            <span className="hw-p-ic hw-i-green"><Ic d={ICO.shield.d} s={15} /></span>
-            <div className="hw-p-title">Releases<small>Handover queue</small></div>
-            <span className="hw-p-meta">Today <b>{relToday}</b></span>
+        {/* 3 · Releases & Transfers */}
+        <div className="list-card">
+          <div className="list-header">
+            <h2>Releases &amp; Transfers</h2>
+            <span className="badge-count" style={{ background: "#03071E" }}>{releaseList.length}</span>
           </div>
-          <div className="hw-p-body">
-            <div className="hw-r-stats">
-              <div className="hw-rs"><span className="k">In care now</span><span className="v">{inCare}</span></div>
-              <div className="hw-rs"><span className="k">Released today</span><span className="v">{relToday}</span></div>
-              <div className="hw-rs"><span className="k">On this day</span><span className="v">{items.releases.length}</span></div>
-            </div>
-            <div className="hw-text-scroll">
-              {items.releases.length === 0 ? (
-                <div className="hw-empty">No releases recorded for this day.</div>
-              ) : items.releases.map((r) => (
-                <div key={r.id} className="hw-item" onClick={(e) => click(e, r)}>
-                  <div className="im">
-                    <div className="nm">{esc(r.name)}</div>
-                    <div className="sb">{esc(r.meta || "—")} · {esc(r.branch || branchOf(r) || "—")}</div>
-                    {r.sub ? <div className="sb">Next of kin: {esc(r.sub)}</div> : null}
-                  </div>
-                  <span className="when">{r.when || ""}</span>
-                  <span className="hw-tag" style={{ background: "#F0FDF4", color: "#15803D" }}>{esc(r.tag || "Released")}</span>
-                  <Ic className="hw-chev" d={ICO.chev.d} s={14} sw={2.4} />
-                </div>
-              ))}
-            </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Deceased Name</th><th>Release Date</th><th>Destination</th><th>Action</th></tr>
+              </thead>
+              <tbody>
+                {releaseList.length === 0 ? (
+                  <tr><td colSpan={4} className="empty-row">No releases or transfers logged</td></tr>
+                ) : releaseList.map((r) => {
+                  const item = { ...(r.raw || {}), id: r.id, name: r.name, meta: r.meta, admission_number: r.meta, full_name: r.name };
+                  const badge = r.status === "Transferred" ? STATUS_CFG.transferred : STATUS_CFG.released;
+                  return (
+                    <tr key={r.id} onClick={() => onOpen(item)}>
+                      <td>
+                        <div className="name-cell">
+                          <div className="avatar">{initialsOf(r.name)}</div>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{esc(r.name)}</div>
+                            <div className="meta">{esc(r.meta || "—")}{r.branch ? ` · ${esc(r.branch)}` : ""}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{fmtDate(r.date)}</td>
+                      <td>
+                        <span className="status-badge" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>
+                        <div className="meta" style={{ marginTop: 4 }}>{esc(r.dest || "N/A")}</div>
+                      </td>
+                      <td><button className="btn btn-sm btn-primary" onClick={(e) => click(e, item)}>View Profile</button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </section>
+        </div>
 
-        {/* ── 04 · Postmortem ── */}
-        <section className="hw-panel">
-          <div className="hw-p-head">
-            <span className="hw-p-ic hw-i-amber"><Ic d={ICO.doc.d} s={15} /></span>
-            <div className="hw-p-title">Postmortem Requests<small>Approvals &amp; scheduling</small></div>
-            <span className="hw-p-meta">Pending <b>{pmPendingCount}</b></span>
+        {/* 4 · Postmortem Requests */}
+        <div className="list-card">
+          <div className="list-header">
+            <h2>Postmortem Requests</h2>
+            <span className="badge-count" style={{ background: "#E36414" }}>{pmList.filter((p) => p.status !== "PM Done" && p.status !== "Cancelled").length}</span>
           </div>
-          <div className="hw-p-body">
-            <div className="hw-text-scroll">
-              {items.postmortems.length === 0 ? (
-                <div className="hw-empty">No postmortem activity on this day.</div>
-              ) : items.postmortems.map((p) => (
-                <div key={p.id} className="hw-item" onClick={(e) => click(e, p)}>
-                  <div className="im">
-                    <div className="nm">{esc(p.name)}</div>
-                    <div className="sb">{esc(p.meta || "—")} · {esc(p.sub || "—")}</div>
-                  </div>
-                  <span className="when">{p.when}</span>
-                  <span className="hw-tag" style={{ background: p.tagColor === "#16A34A" ? "#F0FDF4" : "#FFFBEB", color: p.tagColor }}>{esc(p.tag)}</span>
-                  <Ic className="hw-chev" d={ICO.chev.d} s={14} sw={2.4} />
-                </div>
-              ))}
-            </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Deceased Name</th><th>Date Requested</th><th>Current Status</th><th>Action</th></tr>
+              </thead>
+              <tbody>
+                {pmList.length === 0 ? (
+                  <tr><td colSpan={4} className="empty-row">No postmortem requests for this branch</td></tr>
+                ) : pmList.map((p) => {
+                  const badge = p.status === "PM Done" ? STATUS_CFG.pmDone : p.status === "Cancelled" ? { label: "Cancelled", color: "#6B7280", bg: "rgba(107,114,128,.12)" } : STATUS_CFG.pmReq;
+                  const item = p.pm_request
+                    ? { id: p.id, name: p.name, meta: p.meta, pm_request: p.pm_request }
+                    : { id: p.id, name: p.name, meta: p.meta };
+                  return (
+                    <tr key={p.id} onClick={() => onOpen(item)}>
+                      <td>
+                        <div className="name-cell">
+                          <div className="avatar" style={{ background: "#E36414" }}>{initialsOf(p.name)}</div>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{esc(p.name)}</div>
+                            <div className="meta">{esc(p.meta || "—")}{p.branch ? ` · ${esc(p.branch)}` : ""}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{fmtDate(p.date)}</td>
+                      <td>
+                        <span className="status-badge" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>
+                        {p.sub ? <div className="meta" style={{ marginTop: 4, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{esc(p.sub)}</div> : null}
+                      </td>
+                      <td><button className="btn btn-sm btn-primary" onClick={(e) => click(e, item)}>View Request</button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </section>
+        </div>
+
       </div>
     </div>
   );

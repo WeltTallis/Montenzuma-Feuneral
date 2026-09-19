@@ -1,26 +1,4 @@
-/**
- * ─────────────────────────────────────────────────────────────────────────────
- *  Restpoint Scanner Bridge Agent
- * ─────────────────────────────────────────────────────────────────────────────
- *  A small, always-running background agent for the reception computer.
- *  Exposes a LOCAL WebSocket server (default ws://localhost:8081) that the
- *  Restpoint web app connects to when a user clicks **Scan Docs** on a
- *  deceased profile. On `START_SCAN` the agent:
- *
- *    1. Drives the physical scanner (TWAIN / WIA / eSCL via the NAPS2 CLI,
- *       or a custom SCAN_COMMAND) and produces a single (multi-page) PDF.
- *    2. Uploads the PDF DIRECTLY to the documents-service:
- *         POST {apiBase}/documents/upload/{deceasedId}
- *       using the auth token + tenant slug the web app passed along.
- *    3. Streams SCANNING → UPLOADING → COMPLETE back to the browser so the
- *       UI can show a live "Scanning…" modal.
- *
- *  BUILT IN TYPESCRIPT → compiled by `npm run build` into ONE self-contained
- *  executable: dist/agent.js. That single file is what ships to production.
- * ─────────────────────────────────────────────────────────────────────────────
- */
-'use strict';
-
+// ── runtime imports — MUST come first: the constants below run at load time ──
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync, SpawnSyncReturns } from 'node:child_process';
@@ -30,12 +8,139 @@ const APP_VERSION = '1.0.0';
 
 const truthy = (v?: string): boolean => /^(1|true|yes|on)$/i.test(String(v || '').trim());
 
+// ── load .env / .env.local if present (doesn't need dotenv package) ──────────
+// A real environment variable always wins over the file, so one-off runs / the
+// tests can override anything (BRIDGE_PORT, MOCK_SCAN, NAPS2_PATH, …) without
+// editing the file.
+(function loadEnv() {
+
+  const cwd = process.cwd();
+  
+  for (const name of ['.env.local', '.env']) {
+    const p = path.join(cwd, name);
+    if (fs.existsSync(p)) {
+      for (const line of fs.readFileSync(p, 'utf8').split(/\r?\n/)) {
+        const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)/);
+        if (!m) continue;
+        let v = m[2].trim();
+        if (v.startsWith('"') && v.endsWith('"')) v = v.slice(1, -1);
+        if (v.startsWith("'") && v.endsWith("'")) v = v.slice(1, -1);
+        if (process.env[m[1]] === undefined) process.env[m[1]] = v;
+      }
+    }
+  }
+})();
+
+// ─ NAPS2 path discovery ────────────────────────────────────────────────────
+// On Windows the real binary is NAPS2.Console.exe (the old naps2.exe alias was
+// removed in 6.x+). NAPS2_PATH may point at the executable OR at its install
+// folder — e.g. NAPS2_PATH="C:\Program Files\NAPS2" is enough, because a folder
+// is probed for every known binary name below. When NAPS2_PATH is unset the
+// usual install locations are auto-discovered, and only then does the bridge
+// fall back to a bare `naps2.exe` / `naps2` (PATH lookup).
+const NAPS2_CANDIDATES_WIN = [
+  'NAPS2.Console.exe',   // 6.x / 7.x / 8.x default
+  'NAPS2.exe',           // older installs / aliases
+  'NAPS2Console.exe',
+];
+const NAPS2_SEARCH_DIRS_WIN = [
+  'C:\\Program Files\\NAPS2',
+  'C:\\Program Files (x86)\\NAPS2',
+  process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs\\NAPS2') : '',
+  'C:\\NAPS2',
+  'C:\\Users\\Public\\Desktop',
+];
+const isWin = process.platform === 'win32';
+
+/** First NAPS2 binary that exists inside `dir`, or null when there is none. */
+function pickBinaryInDir(dir: string): string | null {
+  for (const name of NAPS2_CANDIDATES_WIN) {
+    const candidate = path.join(dir, name);
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+    } catch { /* unreadable path — keep probing */ }
+  }
+  return null;
+}
+
+/**
+ * Resolve the NAPS2 CLI this bridge invokes:
+ *   1. NAPS2_PATH — explicit override; a FILE or a FOLDER. On Windows the
+ *      ".exe" suffix may be omitted.
+ *   2. Auto-discovery in the usual Windows install folders.
+ *   3. A bare `naps2.exe` / `naps2`, which relies on PATH.
+ */
+function findNaps2Binary(): string {
+  const envRaw = String(process.env.NAPS2_PATH || '').trim();
+
+  if (envRaw) {
+    try {
+      if (fs.existsSync(envRaw)) {
+        const st = fs.statSync(envRaw);
+        if (st.isFile()) {
+          console.log(`[BRIDGE] NAPS2_PATH (file) -> ${envRaw}`);
+          return envRaw;
+        }
+        if (st.isDirectory()) {
+          const inside = pickBinaryInDir(envRaw);
+          if (inside) {
+            console.log(`[BRIDGE] NAPS2_PATH (folder) -> ${inside}`);
+            return inside;
+          }
+          console.warn(`[BRIDGE] NAPS2_PATH folder "${envRaw}" has no known NAPS2 binary — using the folder as-is.`);
+          return envRaw;
+        }
+      }
+    } catch { /* unreadable — fall through to the ".exe" probe */ }
+
+    // Allow NAPS2_PATH to omit the ".exe" extension on Windows.
+    if (isWin && !/\.exe$/i.test(envRaw)) {
+      const withExe = `${envRaw}.exe`;
+      try {
+        if (fs.existsSync(withExe) && fs.statSync(withExe).isFile()) {
+          console.log(`[BRIDGE] NAPS2_PATH -> ${withExe}`);
+          return withExe;
+        }
+      } catch { /* ignore */ }
+    }
+
+    console.warn(`[BRIDGE] NAPS2_PATH "${envRaw}" not found on disk — using it as-is (it must be on PATH).`);
+    return envRaw;
+  }
+
+  if (isWin) {
+    for (const dir of NAPS2_SEARCH_DIRS_WIN) {
+      if (!dir) continue;
+      try { if (!fs.existsSync(dir)) continue; } catch { continue; }
+      const found = pickBinaryInDir(dir);
+      if (found) {
+        console.log(`[BRIDGE] auto-discovered NAPS2 at ${found}`);
+        return found;
+      }
+    }
+  }
+
+  const fallback = isWin ? 'naps2.exe' : 'naps2';
+  console.warn(`[BRIDGE] could not locate NAPS2 — falling back to "${fallback}" (it must be on PATH).`);
+  return fallback;
+}
+
+/** The concrete NAPS2 binary this bridge runs — resolved exactly once, at start-up. */
+const NAPS2_BIN = findNaps2Binary();
+/**
+ * Alias kept so the custom SCAN_COMMAND `{NAPS2}` token and the log lines keep
+ * working; it always points at the resolved binary above.
+ */
+const NAPS2_PATH = NAPS2_BIN;
+/** Surfaced by PING so the web app / support can see what this bridge will run. */
+export const resolvedNaps2Path = NAPS2_BIN;
+// ─ Network ─────────────────────────────────────────────────────────────────
 const BRIDGE_HOST = process.env.BRIDGE_HOST || '127.0.0.1'; // Bind locally for security
 const BRIDGE_PORT = Number(process.env.BRIDGE_PORT || 8081);
 const MOCK_MODE = truthy(process.env.MOCK_SCAN);
 const ALLOW_SHUTDOWN = truthy(process.env.BRIDGE_ALLOW_SHUTDOWN);
 
-const NAPS2_PATH = process.env.NAPS2_PATH || (process.platform === 'win32' ? 'naps2.exe' : 'naps2');
+// ── Scanner settings ────────────────────────────────────────────────────────
 const SCANNER_NAME = (process.env.SCANNER_NAME || '').trim();
 const DEFAULT_FORMAT = (process.env.SCANNER_DEFAULT_FORMAT || 'pdf').toLowerCase();
 const DEFAULT_RESOLUTION = Number(process.env.SCANNER_DEFAULT_DPI || 300);
@@ -47,6 +152,30 @@ const SCAN_COMMAND_EXTRA = (process.env.SCAN_COMMAND_EXTRA || '').trim();
 const SCANNER_STDIO = process.env.SCANNER_STDIO === 'inherit' ? 'inherit' : 'pipe';
 const SCAN_TIMEOUT_MS = Math.max(10000, Number(process.env.SCAN_TIMEOUT_MS || 120000));
 const ALLOWED_ORIGINS = (process.env.BRIDGE_ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+// ── NAPS2 6.x–8.x CLI options ───────────────────────────────────────────────
+// The installed NAPS2 has NO "scan" / "list" verbs — the console tool is purely
+// flag driven:
+//   NAPS2.Console.exe -o out.pdf --dpi 300 --bitdepth color
+//                     [--source glass|feeder|duplex] [--driver wia] [--device "…"]
+//                     [--noprofile | -p "profile"] [-n pages] -v -f
+const SCANNER_DRIVER = (process.env.SCANNER_DRIVER || (isWin ? 'wia' : '')).trim().toLowerCase();
+const SCANNER_SOURCE = (process.env.SCANNER_SOURCE || (DEFAULT_DUPLEX ? 'duplex' : '')).trim().toLowerCase();
+/** Optional named NAPS2 profile; when empty the bridge uses --noprofile (deterministic flags). */
+const SCANNER_PROFILE = (process.env.SCANNER_PROFILE || '').trim();
+/** When SCANNER_NAME is empty, bind to the first device the driver reports. */
+const SCANNER_AUTO_DETECT = process.env.SCANNER_AUTO_DETECT === undefined ? true : truthy(process.env.SCANNER_AUTO_DETECT);
+/** Drivers probed by GET_SCANNERS (escl does network discovery — opt in only). */
+const SCANNER_DRIVERS = (process.env.SCANNER_DRIVERS || (SCANNER_DRIVER ? `${SCANNER_DRIVER},twain` : 'wia,twain'))
+  .split(',').map((d) => d.trim().toLowerCase()).filter((d) => /^(wia|twain|escl|sane|apple)$/.test(d));
+
+/** Map the app's colour words onto NAPS2's --bitdepth values (color|gray|bw). */
+function bitDepthFor(mode?: string): string {
+  const m = String(mode || '').toLowerCase();
+  if (m === 'gray' || m === 'grey' || m === 'grayscale' || m === 'greyscale') return 'gray';
+  if (m === 'bw' || m === 'b&w' || m === 'mono' || m === 'monochrome' || m === 'blackwhite' || m === 'black-and-white') return 'bw';
+  return 'color';
+}
 
 function systemTempDir(): string {
     return process.env.TEMP || process.env.TMP || (process.platform === 'win32' ? 'C:\\Windows\\Temp' : '/tmp');
@@ -159,14 +288,15 @@ interface ScanOptions {
 /** Substitute {TOKENS} in a custom SCAN_COMMAND template. */
 function substituteTokens(o: ScanOptions): string {
     const map: Record<string, string> = {
-        '{NAPS2}': NAPS2_PATH,
+        '{NAPS2}': '"' + NAPS2_BIN + '"',
         '{OUTPUT}': `"${o.output}"`,
         '{FORMAT}': o.format || DEFAULT_FORMAT,
         '{RESOLUTION}': String(o.resolution || DEFAULT_RESOLUTION),
-        '{MODE}': o.colorMode ? `--mode ${o.colorMode}` : '',
-        '{DUPLEX}': o.duplex ? '--duplex' : '',
-        '{SOURCE}': o.source && o.source !== 'auto' ? `--source ${o.source}` : '',
-        '{SCANNER}': SCANNER_NAME ? `--scanner "${SCANNER_NAME}"` : '',
+        '{MODE}': o.colorMode ? ('--bitdepth ' + bitDepthFor(o.colorMode)) : '',
+        '{DUPLEX}': o.duplex ? '--source duplex' : '',
+        '{SOURCE}': (o.source && o.source !== 'auto') ? ('--source ' + o.source) : '',
+        '{SCANNER}': SCANNER_NAME ? ('--device "' + SCANNER_NAME + '"') : '',
+        '{DRIVER}': SCANNER_DRIVER ? ('--driver ' + SCANNER_DRIVER) : '',
     };
     let cmd = SCAN_COMMAND;
     for (const [k, v] of Object.entries(map)) {
@@ -175,18 +305,32 @@ function substituteTokens(o: ScanOptions): string {
     return cmd;
 }
 
-/** Default NAPS2 invocation argv. */
+/**
+ * Default NAPS2 invocation. NAPS2 6.x-8.x has NO "scan" verb - it is purely
+ * flag driven:
+ *   -o <file> --dpi N --bitdepth color|gray|bw [--source glass|feeder|duplex]
+ *   [--driver wia] [--device "name"] [--noprofile | -p profile] [-n pages] -v -f
+ */
 function defaultScanArgv(o: ScanOptions): string[] {
-    const args: string[] = [NAPS2_PATH, 'scan'];
-    args.push('--output', o.output);
-    args.push('--format', o.format || DEFAULT_FORMAT);
-    args.push('--resolution', String(o.resolution || DEFAULT_RESOLUTION));
-    args.push('--mode', o.colorMode || DEFAULT_COLOR_MODE);
-    if (o.duplex) args.push('--duplex');
-    if (o.source && o.source !== 'auto') args.push('--source', o.source);
-    if (o.pages && o.pages > 1) args.push('--pages', String(o.pages));
-    if (SCANNER_NAME) args.push('--scanner', SCANNER_NAME);
+    const args: string[] = [NAPS2_BIN, '-o', o.output];
+    args.push('--dpi', String(o.resolution || DEFAULT_RESOLUTION));
+    args.push('--bitdepth', bitDepthFor(o.colorMode || DEFAULT_COLOR_MODE));
+
+    // Paper source: the per-scan override wins, then the env default, then duplex.
+    const source = String(o.source || SCANNER_SOURCE || (o.duplex ? 'duplex' : '')).toLowerCase();
+    if (source && source !== 'auto') args.push('--source', source);
+
+    // NAPS2 8.x requires an explicit driver before a device may be selected.
+    if (SCANNER_DRIVER) args.push('--driver', SCANNER_DRIVER);
+    const device = resolveScannerName();
+    if (device) args.push('--device', device);
+
+    if (SCANNER_PROFILE) args.push('-p', SCANNER_PROFILE);
+    else args.push('--noprofile'); // deterministic flags instead of the GUI's last-used profile
+
+    if (o.pages && o.pages > 1) args.push('-n', String(o.pages));
     if (SCAN_COMMAND_EXTRA) args.push(...splitShell(SCAN_COMMAND_EXTRA));
+    args.push('-v', '-f'); // verbose progress + overwrite a leftover temp file
     return args;
 }
 
@@ -197,7 +341,22 @@ function buildScanArgv(o: ScanOptions): string[] {
 
 /** Run the scanner CLI synchronously; success is validated by the produced file. */
 function execScanner(o: ScanOptions): { ok: boolean; stderr: string; error?: string } {
+    // Fail fast — before device discovery, which can take a few seconds — with an
+    // actionable message when the NAPS2 binary cannot be located at all. Custom
+    // SCAN_COMMANDs may drive a different tool, so they are left alone.
+    if (!SCAN_COMMAND) {
+        const looksLikePath = NAPS2_BIN.includes('/') || NAPS2_BIN.includes('\\');
+        if (looksLikePath && !fs.existsSync(NAPS2_BIN)) {
+            return {
+                ok: false,
+                stderr: '',
+                error: 'NAPS2 was not found at ' + JSON.stringify(NAPS2_BIN) + ' - set NAPS2_PATH to NAPS2.Console.exe or to its install folder (e.g. C:\\Program Files\\NAPS2).',
+            };
+        }
+    }
+
     const argv = buildScanArgv(o);
+
     console.log(`[BRIDGE] running: ${argv.map((a) => (a.includes(' ') ? `"${a}"` : a)).join(' ')}`);
 
     try {
@@ -217,7 +376,12 @@ function execScanner(o: ScanOptions): { ok: boolean; stderr: string; error?: str
             return { ok: false, stderr, error: r.error.message };
         }
         if (r.status !== 0) {
-            return { ok: false, stderr, error: `Scanner command exited with code ${r.status}.` };
+            // Surface NAPS2's own diagnostic (it prints e.g. "The selected scanner
+            // could not be found." on stdout) instead of a bare exit code.
+            const lines = (stdout + '\n' + stderr).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+            const noise = /^(usage|naps2\.console|at least one of)/i;
+            const detail = lines.filter((l) => !noise.test(l)).pop() || '';
+            return { ok: false, stderr, error: detail ? ('NAPS2: ' + detail) : ('Scanner command exited with code ' + r.status + '.') };
         }
 
         return { ok: true, stderr };
@@ -363,22 +527,74 @@ function sendJson(socket: WebSocket, payload: Record<string, unknown>): void {
     }
 }
 
+/** Device names NAPS2 reports for `driver` (empty array when there are none). */
+function listDevices(driver: string): string[] {
+    const names: string[] = [];
+    try {
+        const r: SpawnSyncReturns<Buffer> = spawnSync(NAPS2_BIN, ['--driver', driver, '--listdevices'], {
+            stdio: 'pipe', timeout: 8000, encoding: 'buffer'
+        });
+        const out = decodeOut(r.stdout) + decodeOut(r.stderr);
+        for (const raw of out.split(/\r?\n/)) {
+            const line = raw.trim();
+            if (!line) continue;
+            if (/^(usage|error|the --driver|at least one|no device|unknown)/i.test(line)) continue;
+            const name = line.replace(/^(wia|twain|escl|sane|apple)\s*:\s*/i, '').trim();
+            if (name) names.push(name);
+        }
+    } catch (e) {
+        console.warn('[BRIDGE] ' + driver + ' device discovery failed: ' + (e as Error).message);
+    }
+    return names;
+}
+
+let _scannerName: string | null = null;
+/**
+ * The device to hand NAPS2 as --device. NAPS2 8.x refuses to scan without one
+ * ("No device was specified."), so unless SCANNER_NAME pins a device we bind to
+ * the first one the driver reports (cached after the first probe).
+ */
+function resolveScannerName(): string {
+    if (SCANNER_NAME) return SCANNER_NAME;
+    if (!SCANNER_AUTO_DETECT) return '';
+    if (_scannerName !== null) return _scannerName;
+    _scannerName = '';
+    for (const driver of SCANNER_DRIVERS) {
+        const devices = listDevices(driver);
+        if (devices.length) {
+            _scannerName = devices[0];
+            console.log('[BRIDGE] auto-detected scanner: ' + _scannerName + ' (' + driver + ')');
+            break;
+        }
+    }
+    if (!_scannerName) console.warn('[BRIDGE] no scanner device detected - connect the scanner or set SCANNER_NAME.');
+    return _scannerName;
+}
+
+/**
+ * Ask NAPS2 for the connected devices. NAPS2 6+/8.x has no "list" verb: use
+ * --listdevices, which only works together with an explicit --driver. eSCL does
+ * network discovery and can hang, so it is opt-in via SCANNER_DRIVERS.
+ */
 function getScanners(): unknown[] {
     if (MOCK_MODE) {
         const name = SCANNER_NAME || 'HP ScanJet Pro 2600 f1 (mock)';
         return [{ id: 'mock-1', name, location: 'Reception computer', available: true, mock: true }];
     }
-    try {
-        const r: SpawnSyncReturns<Buffer> = spawnSync(NAPS2_PATH, ['list'], { stdio: 'pipe', timeout: 8000, encoding: 'buffer' });
-        const lines = decodeOut(r.stdout).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-        const scanners = lines
-            .map((line, i) => ({ id: `naps2-${i}`, name: line, available: true }))
-            .filter((s) => !/^usage|^error|not found|command not found/i.test(String(s.name)));
-        if (scanners.length) return scanners;
-    } catch (e) {
-        console.warn(`[BRIDGE] scanner discovery failed: ${(e as Error).message}`);
+
+    const seen = new Set<string>();
+    const scanners: Array<Record<string, unknown>> = [];
+
+    for (const driver of SCANNER_DRIVERS) {
+        for (const name of listDevices(driver)) {
+            const key = name.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            scanners.push({ id: driver + '-' + scanners.length, name, driver, available: true });
+        }
     }
-    return [];
+    if (!scanners.length) console.warn('[BRIDGE] no scanner devices found - check the USB/network connection and SCANNER_DRIVER.');
+    return scanners;
 }
 
 async function handleStartScan(socket: WebSocket, msg: Record<string, any>): Promise<void> {
@@ -395,6 +611,9 @@ async function handleStartScan(socket: WebSocket, msg: Record<string, any>): Pro
     const output = path.join(SCAN_DIR, `scan-${Date.now()}-${Math.round(Math.random() * 1e6)}${extForFormat(format)}`);
 
     try {
+
+
+
         sendJson(socket, { status: 'SCANNING', progress: 5, message: 'Warming up the scanner…', mock: MOCK_MODE });
 
         // Beat for the browser to render the "Scanning…" state before the driver spins up.
@@ -408,6 +627,7 @@ async function handleStartScan(socket: WebSocket, msg: Record<string, any>): Pro
             pages: msg?.pages,
             source: msg?.source,
             format,
+            
         });
 
         sendJson(socket, { status: 'SCANNING', progress: 100, message: 'Pages scanned — uploading to Restpoint documents…' });
@@ -425,9 +645,14 @@ async function handleStartScan(socket: WebSocket, msg: Record<string, any>): Pro
             format,
         });
 
+
+
         const document = (serverRes?.success ? serverRes?.data : serverRes) || {};
         sendJson(socket, { status: 'COMPLETE', message: 'Document scanned and uploaded successfully!', document, server: serverRes });
         console.log(`[BRIDGE] ✔ scanned + uploaded: ${fileName} (deceased ${deceasedId})`);
+
+
+        
     } catch (e) {
         const message = (e as Error).message || String(e);
         console.error(`[BRIDGE] scan failed for deceased ${deceasedId}: ${message}`);
@@ -437,6 +662,7 @@ async function handleStartScan(socket: WebSocket, msg: Record<string, any>): Pro
         try { if (fs.existsSync(output)) fs.unlinkSync(output); } catch { /* keep going */ }
     }
 }
+
 
 function handleMessage(socket: WebSocket, raw: unknown): void {
     let msg: Record<string, any>;
@@ -455,6 +681,7 @@ function handleMessage(socket: WebSocket, raw: unknown): void {
                 type: 'pong', status: 'OK', version: APP_VERSION,
                 bridge: 'restpoint-scanner-bridge', mock: MOCK_MODE,
                 scanner: SCANNER_NAME || null, busy, time: Date.now(),
+                naps2: resolvedNaps2Path, driver: SCANNER_DRIVER || null, device: _scannerName || null,
             });
             return;
 
@@ -512,13 +739,20 @@ const shutdown = () => {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
+// Resolve the device in the background so the first scan (and the PING payload)
+// already knows which scanner to use.
+if (!MOCK_MODE) setTimeout(() => { try { resolveScannerName(); } catch { /* logged inside */ } }, 750);
 console.log('══════════════════════════════════════════════════════════════');
 console.log(`  Restpoint Scanner Bridge v${APP_VERSION}`);
 console.log(`  listening   →  ws://${BRIDGE_HOST}:${BRIDGE_PORT}`);
 console.log(`  mode        →  ${MOCK_MODE ? 'MOCK (no hardware)' : 'real scanner'}`);
-console.log(`  scanner     →  ${SCANNER_NAME || 'auto-detect (NAPS2)'}`);
+console.log(`  naps2       →  ${resolvedNaps2Path}`);
+if (!MOCK_MODE && !fs.existsSync(resolvedNaps2Path)) {
+    console.warn(`  ⚠  ${resolvedNaps2Path} does not exist — set NAPS2_PATH to NAPS2.Console.exe`);
+}
+console.log(`  scanner     →  ${SCANNER_NAME || 'auto-detect'}`);
+console.log(`  driver      →  ${SCANNER_DRIVER || 'auto'}`);
 console.log(`  work dir    →  ${SCAN_DIR}`);
 console.log('  To scan + upload send: { action:"START_SCAN", deceasedId, token, tenantSlug, apiBase }');
 console.log('══════════════════════════════════════════════════════════════');
-
 export { };

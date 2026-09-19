@@ -72,7 +72,7 @@ var IC = {
 };
 
 function pad2(n) { return String(n).padStart(2, '0'); }
-function mapStatus(s) { var v = String(s || '').toLowerCase(); if (v === 'booked' || v === 'approved' || v === 'confirmed') return 'confirmed'; if (v === 'completed' || v === 'delivered' || v === 'done') return 'completed'; if (v === 'cancelled' || v === 'rejected' || v === 'canceled') return 'cancelled'; return 'pending'; }
+function mapStatus(s) { var v = String(s || '').toLowerCase(); if (v === 'active' || v === 'booked' || v === 'approved' || v === 'confirmed' || v === 'reserved') return 'confirmed'; if (v === 'completed' || v === 'delivered' || v === 'done') return 'completed'; if (v === 'cancelled' || v === 'canceled' || v === 'rejected') return 'cancelled'; return 'pending'; }
 function parseServiceDate(raw) { if (!raw) return null; var m = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return new Date(+m[1], +m[2] - 1, +m[3]); var d = new Date(raw); return isNaN(d.getTime()) ? null : d; }
 function extractTime(raw) { if (!raw) return ''; var m = String(raw).match(/T(\d{2}):(\d{2})/); if (m) return m[1] + ':' + m[2]; if (/^\d{1,2}:\d{2}/.test(String(raw))) return String(raw).slice(0, 5); return ''; }
 function usd(n) { return 'KES ' + Number(n || 0).toLocaleString(); }

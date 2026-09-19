@@ -280,7 +280,16 @@ export default function DayBreakdownPanel({
           : `Coffin order · ${o?.client_name || o?.coffin_name || "booking"}`,
         meta: o?.order_id || o?.id || "",
         sub: o?.coffin_name || o?.branch_name || "",
-        tag: String(o?.status || "Booking"),
+        /* coffin bookings are stored as 'active' (live reservation) — show the
+           same friendly labels the Reservation Dashboard uses */
+        tag: (function (s) {
+          const v = String(s || "").toLowerCase();
+          if (v === "active" || v === "booked" || v === "approved" || v === "confirmed" || v === "reserved") return "Confirmed";
+          if (v === "completed" || v === "delivered" || v === "done") return "Completed";
+          if (v === "cancelled" || v === "canceled" || v === "rejected") return "Cancelled";
+          if (v === "pending") return "Pending";
+          return s ? String(s) : "Booking";
+        })(o?.status),
       }));
 
     return [

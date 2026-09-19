@@ -347,7 +347,6 @@ export default function DeceasedSidePanel({ booking, onClose }) {
     { label: "Received From", value: d.received_from },
     { label: "Date of Death", value: formatDate(d.date_of_death) },
     { label: "Place of Death", value: d.place_of_death },
-    { label: "Physician", value: d.physician || d.attending_physician },
     { label: "Permit Number", value: d.permit_number, mono: true },
     { label: "Cause of Death", value: d.cause_of_death, full: true },
   ];
@@ -739,10 +738,6 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                     <div className="profile-detail-item">
                       <span className="profile-detail-label">Place of Death</span>
                       <div className="profile-detail-value">{d.place_of_death || '—'}</div>
-                    </div>
-                    <div className="profile-detail-item">
-                      <span className="profile-detail-label">Physician</span>
-                      <div className="profile-detail-value empty">{d.physician || d.attending_physician || '—'}</div>
                     </div>
                     <div className="profile-detail-item full-3">
                       <span className="profile-detail-label">Cause of Death</span>

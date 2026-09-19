@@ -308,7 +308,6 @@ const DeceasedDetailPage = () => {
           admission_time: backendData.time_received,
           admitted_by: backendData.receiving_officer,
           time_of_death: null,
-          attending_physician: backendData.physician,
           embalmed: backendData.admission_status === 'embalmed',
           embalmed_date: null,
           storage_location: backendData.chamber_assigned,
