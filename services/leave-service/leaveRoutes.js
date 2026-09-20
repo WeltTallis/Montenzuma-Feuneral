@@ -51,14 +51,44 @@ const documentUpload = multer({
 // Apply for leave
 router.post('/apply', applyForLeave);
 
-// Get all leaves (Admin)
+// ============================================
+// GET ROUTES — ORDER IS CRITICAL
+// ============================================
+// Express matches routes in REGISTRATION ORDER and the param route below
+// ('/:id') matches ANY single path segment — including 'all', 'balances' and
+// 'my-leaves'. While '/:id' was declared first every one of those requests was
+// swallowed by getLeaveById, which looked for a leave request whose primary
+// key was the literal string 'all' / 'balances' / 'my-leaves', found nothing
+// and answered 404 "Leave request not found".
+//
+// Effect on the HR dashboard: /leaves/all and /leaves/balances always came
+// back 404, so the page rendered real KPI numbers next to permanently empty
+// tables ("No leave requests submitted yet", "No employees found yet") — the
+// contradictory, unreadable dashboard that was reported. /leaves/my-leaves was
+// 404 too, so employees saw an empty "My leaves" list.
+//
+// Keep every static GET route ABOVE '/:id' (two-segment routes such as
+// '/stats/overview' were safe, but they stay here for one obvious rule).
 router.get('/all', getAllLeaves);
-
-// Get my leaves (Employee)
 router.get('/my-leaves', getMyLeaves);
 
-// Get leave by ID
+// Leave balances
+router.get('/balances', getAllLeaveBalances);
+router.get('/balance/:user_id', getLeaveBalance);
+
+// Dashboard & stats
+router.get('/stats/overview', getLeaveStats);
+router.get('/users/on-leave', getUsersOnLeave);
+
+// Employee manual day additions (HR employee leave panel)
+router.get('/admin/additions/:user_id', getUserDayAdditions);
+
+// Get a single leave request by ID — MUST stay last among the GET routes.
 router.get('/:id', getLeaveById);
+
+// ============================================
+// WRITE ROUTES
+// ============================================
 
 // Update leave status (Approve/Reject)
 router.patch('/:id/status', updateLeaveStatus);
@@ -79,33 +109,10 @@ router.post('/admin/add-days', addLeaveDays);
 // Remove leave days addition
 router.delete('/admin/add-days/:id', removeLeaveDays);
 
-// List an employee's manual leave-day additions (HR employee leave panel)
-router.get('/admin/additions/:user_id', getUserDayAdditions);
-
 // Record holiday compensation
 router.post('/admin/holiday-compensation', recordHolidayCompensation);
 
 // Register a new employee (grants default 26 annual leave days)
 router.post('/admin/employees', addEmployee);
-
-// ============================================
-// LEAVE BALANCES
-// ============================================
-
-// Get leave balance for a user
-router.get('/balance/:user_id', getLeaveBalance);
-
-// Get all leave balances (Admin)
-router.get('/balances', getAllLeaveBalances);
-
-// ============================================
-// DASHBOARD & STATS
-// ============================================
-
-// Get leave statistics
-router.get('/stats/overview', getLeaveStats);
-
-// Get users currently on leave
-router.get('/users/on-leave', getUsersOnLeave);
 
 module.exports = router;

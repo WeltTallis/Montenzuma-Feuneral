@@ -48,17 +48,16 @@ const Shell = styled.div`
     flex-direction: column;
     align-items: center;
     -webkit-font-smoothing: antialiased;
-    padding: 40px 16px;
+    padding: 0px 0px;
 `;
 
 const Card = styled.div`
     max-width: 860px;
     width: 100%;
     background: ${C.cream};
-    border-radius: 20px;
-    box-shadow: 0 30px 80px -20px rgba(20, 26, 23, 0.15), 0 10px 30px -10px rgba(20, 26, 23, 0.05);
+
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.8);
+
     animation: ${fadeIn} 0.5s ${C.ease} both;
 
     @media (max-width: 600px) {
