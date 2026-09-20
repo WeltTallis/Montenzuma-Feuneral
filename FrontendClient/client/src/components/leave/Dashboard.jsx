@@ -32,7 +32,7 @@ import {
   User, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Loader2,
   RefreshCw, Check, X, ChevronRight, ChevronLeft, ChevronFirst, ChevronLast, Plus,
   Trash2, Search, BarChart3, PieChartIcon, TrendingUp, Hourglass, Flag,
-  Briefcase, Download, Eye, ListChecks, LayoutDashboard,
+  Briefcase, Download, Eye, ListChecks,
 } from '../../utils/icons/icons';
 import LeaveCalendar from './LeaveCalendar';
 
@@ -246,41 +246,6 @@ const PageActions = styled.div`
   align-items: center;
   gap: 0.4rem;
   flex-wrap: wrap;
-`;
-
-/* ── Section switcher — pinned to the top of the page ──────────────────────── */
-const ViewBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-  padding: 0.45rem;
-  border: 1px solid ${COLORS.border};
-  border-radius: 12px;
-  background: ${COLORS.white};
-  margin-bottom: 1rem;
-`;
-const ViewTab = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  padding: 0.4rem 0.75rem;
-  font-size: 0.78rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  background: transparent;
-  color: ${COLORS.textSecondary};
-  transition: background 0.15s ease, color 0.15s ease;
-  &:hover { background: ${COLORS.bg}; color: ${COLORS.text}; }
-  &:focus-visible { outline: 2px solid ${COLORS.primary}; outline-offset: 1px; }
-  ${(p) => (p.$on ? `
-    background: ${COLORS.primary};
-    color: #fff;
-    &:hover { background: ${COLORS.primaryLight}; color: #fff; }
-  ` : '')}
 `;
 
 /* ── Notices, skeletons, cards ────────────────────────────────────────────── */
@@ -1498,7 +1463,7 @@ const LeaveDashboard = () => {
     <Page>
       <PageHead>
         <div>
-          <PageTitle>Leave Management</PageTitle>
+          <PageTitle>Leave</PageTitle>
           <PageMeta>
             {tenantSlug || 'your organisation'}
             {updatedAt
@@ -1513,28 +1478,6 @@ const LeaveDashboard = () => {
           <Btn className="primary" onClick={goApply}><Plus size={14} /> Apply leave</Btn>
         </PageActions>
       </PageHead>
-
-      {/* Section switcher — always on top, one click isolates a section */}
-      <ViewBar role="tablist" aria-label="Dashboard sections">
-        <ViewTab $on={view === 'all'} onClick={() => setView('all')} role="tab" aria-selected={view === 'all'}>
-          <LayoutDashboard size={14} /> All sections
-        </ViewTab>
-        <ViewTab $on={view === 'overview'} onClick={() => setView('overview')} role="tab" aria-selected={view === 'overview'}>
-          <BarChart3 size={14} /> Overview
-        </ViewTab>
-        <ViewTab $on={view === 'approvals'} onClick={() => setView('approvals')} role="tab" aria-selected={view === 'approvals'}>
-          <ListChecks size={14} /> Approvals
-        </ViewTab>
-        <ViewTab $on={view === 'employees'} onClick={() => setView('employees')} role="tab" aria-selected={view === 'employees'}>
-          <Users size={14} /> Employees
-        </ViewTab>
-        <ViewTab $on={view === 'history'} onClick={() => setView('history')} role="tab" aria-selected={view === 'history'}>
-          <History size={14} /> History
-        </ViewTab>
-        <ViewTab $on={view === 'calendar'} onClick={() => setView('calendar')} role="tab" aria-selected={view === 'calendar'}>
-          <CalendarDays size={14} /> Calendar
-        </ViewTab>
-      </ViewBar>
 
       {error && (
         <Notice $tone="error">

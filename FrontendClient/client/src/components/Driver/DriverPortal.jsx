@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-    Car, RefreshCw, CheckCircle, Phone, LogOut, Calendar, Clock, 
-    AlertCircle, Truck, Loader2, Zap, Navigation, ArrowRight, Route, 
-    Sun, Moon, CloudSun, User, Shield, Timer, CalendarDays, MapPin 
+import {
+    Car, RefreshCw, CheckCircle, Phone, LogOut, Calendar, Clock,
+    AlertCircle, Truck, Loader2, Zap, Navigation, ArrowRight, Route,
+    Sun, Moon, CloudSun, User, Shield, Timer, CalendarDays, MapPin,
+    Plus
 } from '../../utils/icons/icons';
 import { useSocket } from '../../utils/context/socketContext';
 import env from '../../utils/config/env';
@@ -86,7 +87,7 @@ function relativeDate(dateStr) {
     if (diffDays > 4) return { label: fullDate, sub: timeStr, urgency: 'later', full: fullDate, color: '#64748B' };
     if (diffDays === -1) return { label: 'Yesterday', sub: timeStr, urgency: 'past', full: fullDate, color: '#64748B' };
     if (diffDays < -1) return { label: `${Math.abs(diffDays)} days ago`, sub: fullDate, urgency: 'past', full: fullDate, color: '#475569' };
-    
+
     return { label: fullDate, sub: timeStr, urgency: 'later', full: fullDate, color: '#64748B' };
 }
 
@@ -575,6 +576,32 @@ const LeaveCard = ({ leave }) => {
     );
 };
 
+const ApplyLeaveBtn = ({ children, onClick }) => (
+    <button
+        onClick={onClick}
+        style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '8px 16px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+            color: '#fff',
+            border: 'none',
+            fontWeight: 600,
+            fontSize: '.78rem',
+            cursor: 'pointer',
+            fontFamily: 'Inter, sans-serif',
+            boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.2), 0 2px 4px -1px rgba(59, 130, 246, 0.1)', // Completed boxShadow
+            transition: 'all 0.2s ease-in-out'
+        }}
+    >
+        {children}
+    </button>
+);
+
+
+
 const Empty = ({ icon: Icon, title, sub }) => (
     <div style={{ textAlign: 'center', padding: '64px 28px', background: T.surface, borderRadius: 20, border: `1px dashed ${T.border}` }}>
         <div style={{ width: 60, height: 60, borderRadius: '50%', background: T.surface2, border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', color: T.textMute }}>
@@ -748,7 +775,7 @@ const DriverPortal = () => {
             </header>
 
             <main style={{ maxWidth: 520, margin: '0 auto', padding: '24px 18px 120px' }}>
-                
+
                 {/* ─── GREETING ─── */}
                 <div className="anim-up" style={{ marginBottom: 28 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
@@ -823,12 +850,25 @@ const DriverPortal = () => {
                 <div className="anim-up" style={{ animationDelay: '.12s' }}>
                     {tab === 'bookings' ? (
                         loadingB ? <Loading text="Loading trips..." /> :
-                        active.length === 0 ? <Empty icon={Car} title="All Clear" sub="No trips in the next 24 hours and no open past trips right now. You'll be notified when a new one is assigned." /> :
-                        active.map((b, i) => <TripCard key={b.booking_id} booking={b} onStatusChange={changeStatus} i={i} overdue={overdueIds.has(b.booking_id)} />)
+                            active.length === 0 ? <Empty icon={Car} title="All Clear" sub="No trips in the next 24 hours and no open past trips right now. You'll be notified when a new one is assigned." /> :
+                                active.map((b, i) => <TripCard key={b.booking_id} booking={b} onStatusChange={changeStatus} i={i} overdue={overdueIds.has(b.booking_id)} />)
                     ) : (
                         loadingL ? <Loading text="Loading leaves..." /> :
-                        leaves.length === 0 ? <Empty icon={Calendar} title="No Leaves" sub="No leave requests submitted yet." /> :
-                        leaves.map((l, i) => <div key={l.id || i} className="anim-up" style={{ animationDelay: `${i * .04}s` }}><LeaveCard leave={l} /></div>)
+                            leaves.length === 0 ? (
+                                <Empty icon={Calendar} title="No Leaves" sub="No leave requests submitted yet." extra={
+                                    <ApplyLeaveBtn onClick={() => navigate(`/tenant/${slug}/leaves/apply`)}>
+                                        <Plus size={14} /> Apply for Leave
+                                    </ApplyLeaveBtn>
+                                } />
+                            ) : (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                    <span style={{ fontSize: '.8rem', fontWeight: 600, color: T.textMute, fontFamily: "'Inter',sans-serif" }}>Your Leave Requests</span>
+                                    <ApplyLeaveBtn onClick={() => navigate(`/tenant/${slug}/leaves/apply`)}>
+                                        <Plus size={14} /> Apply for Leave
+                                    </ApplyLeaveBtn>
+                                </div>
+                            ) |
+                            leaves.map((l, i) => <div key={l.id || i} className="anim-up" style={{ animationDelay: `${i * .04}s` }}><LeaveCard leave={l} /></div>)
                     )}
                 </div>
 
