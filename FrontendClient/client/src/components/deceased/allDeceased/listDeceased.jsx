@@ -166,23 +166,6 @@ const AppContainer = styled.div`
   }
 `;
 
-const PageHeader = styled.div`
-  margin-bottom: 24px;
-  
-  h1 {
-    font-family: 'Merriweather', serif;
-    font-size: 28px;
-    color: ${C.black};
-    font-weight: 900;
-    margin: 0;
-  }
-  p {
-    color: ${C.gray};
-    font-size: 15px;
-    margin-top: 4px;
-  }
-`;
-
 // ─── Sleek Top Toolbar ──────────────────────────────────────────────
 const Toolbar = styled.div`
   background: white;
@@ -1784,12 +1767,6 @@ const DeceasedListPage = () => {
       <GlobalFonts />
       <AppContainer>
         <ToastContainer position="top-right" autoClose={3000} />
-
-        {/* Header */}
-        <PageHeader>
-          <h1>Deceased Records</h1>
-          <p>Manage and track all deceased records across your facility</p>
-        </PageHeader>
 
         {/* Sleek Toolbar */}
         <Toolbar>

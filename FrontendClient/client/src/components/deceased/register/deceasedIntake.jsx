@@ -670,6 +670,31 @@ const ActionsContainer = styled.div`
     flex-direction: column-reverse;
     gap: 0.75rem;
   }
+
+  /* ── Tablet (601px – 1024px): two buttons per row ────────────────────
+     Each action button occupies 50% of the row (minus half the gap), so
+     TWO buttons fill 100% of the width instead of all four being squeezed
+     onto a single line. Combined with flex-wrap this gives a tidy 2 × 2
+     grid; the small slack in the basis keeps rounding from ever pushing a
+     button onto a row of its own. Smaller horizontal padding gives every
+     half-width label (e.g. "Paused Sessions (2)") room to breathe. */
+  @media (min-width: 601px) and (max-width: 1024px) {
+    justify-content: flex-start;
+    gap: 0.75rem;
+
+    > * {
+      flex: 1 1 calc(50% - 0.5rem);
+      min-width: 0;
+    }
+
+    /* The Pause control is wrapped in a plain <div> (position: relative so
+       its dropdown anchors correctly) — stretch it to fill its 50% slot. */
+    > div > button,
+    > button {
+      width: 100%;
+      padding: 1rem 1.25rem;
+    }
+  }
 `;
 
 const PrimaryButton = styled.button`
