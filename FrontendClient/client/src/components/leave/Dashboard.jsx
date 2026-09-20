@@ -1,37 +1,33 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    HR LEAVE MANAGEMENT DASHBOARD  (route: /tenant/:slug/leaves)
 
-   The previous version stacked five vague tiles ("Total Leaves", "Pending
-   Review", "Approved"…) above four raw tables, so the numbers could not be
-   tied to anything an HR officer actually has to do. This version answers
-   three questions in order, top to bottom:
+   Layout — plain header, no banner, no tab navigation; every section stays
+   visible so nothing important is hidden behind a click:
 
-     1. WHAT NEEDS ME NOW?  → hero KPIs + a plain-English insight strip +
-                              an approvals inbox with search / filter /
-                              sort / bulk approve
-     2. WHAT IS THE PATTERN? → status donut, 6-month request trend and a
-                              leave-type mix showing counts AND days
-     3. WHO IS OUT / WHO IS
-        ENTITLED TO WHAT?  → today's coverage, the next 14 days, a searchable
-                              employee balance table, full history with
-                              pagination, and the calendar
+     1. Compact header        → title, last-updated time, Refresh, Apply leave
+     2. Analytics             → status donut, 6-month trend, leave-type mix
+     3. Approvals inbox       → search / filter / sort / bulk approve / export
+     4. Coverage & balances   → on leave today, next 14 days, own balance
+     5. Employees & balances  → searchable table, click a row for the drawer
+     6. Leave history         → search / filter / paginate / export
+     7. Calendar
 
    Everything is derived from the endpoints the leave service already exposes
    (stats/overview, all, balances, users/on-leave, balance/:id, additions/:id)
    — no new API surface and no new dependencies.
    ═══════════════════════════════════════════════════════════════════════════ */
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { api, ENDPOINTS } from '../../api';
 import { getUserId, getTenantSlug, getParentTenantSlug } from '../../utils/globalAuth';
 import notify from '../../utils/notify';
 import {
-  Calendar, CalendarDays, CalendarClock, Clock, Timer, History, Users, UserCheck,
+  Calendar, CalendarDays, Clock, Timer, History, Users, UserCheck,
   User, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Loader2,
   RefreshCw, Check, X, ChevronRight, ChevronLeft, ChevronFirst, ChevronLast, Plus,
-  Trash2, Search, BarChart3, PieChartIcon, TrendingUp, Percent, Hourglass, Flag,
-  Briefcase, Info, Download, Eye, ShieldCheck, ListChecks,
+  Trash2, Search, BarChart3, PieChartIcon, TrendingUp, Hourglass, Flag,
+  Briefcase, Download, Eye, ListChecks,
 } from '../../utils/icons/icons';
 import LeaveCalendar from './LeaveCalendar';
 
@@ -222,143 +218,30 @@ const Page = styled.div`
   animation: ${fadeUp} 0.25s ease-out;
 `;
 
-/* ── Hero ─────────────────────────────────────────────────────────────────── */
-const Hero = styled.div`
-  position: relative;
-  overflow: hidden;
-  border-radius: 18px;
-  padding: 1.4rem 1.5rem 1.5rem 1.5rem;
-  margin-bottom: 1rem;
-  background:
-    radial-gradient(1000px 340px at 92% -30%, rgba(59, 130, 246, 0.42), transparent 60%),
-    linear-gradient(135deg, #0A2463 0%, #133a80 55%, #1A3A7A 100%);
-  box-shadow: 0 14px 34px rgba(10, 36, 99, 0.22);
-`;
-
-const HeroTop = styled.div`
+/* ── Compact page header (plain, no banner) ───────────────────────────────── */
+const PageHead = styled.div`
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 1.15rem;
+  padding: 0.1rem 0.1rem 0.8rem 0.1rem;
+  border-bottom: 1px solid ${COLORS.border};
+  margin-bottom: 1rem;
 `;
-
-const HeroEyebrow = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.72);
-  margin-bottom: 0.35rem;
-`;
-
-const HeroTitle = styled.h1`
+const PageTitle = styled.h1`
   margin: 0;
-  font-size: 1.6rem;
-  line-height: 1.15;
+  font-size: 1.12rem;
   font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.01em;
+  color: ${COLORS.text};
 `;
-
-const HeroSub = styled.p`
-  margin: 0.35rem 0 0 0;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.78);
-  max-width: 64ch;
-`;
-
-const HeroActions = styled.div`
+const PageMeta = styled.div`font-size: 0.78rem; color: ${COLORS.textSecondary}; margin-top: 0.18rem;`;
+const PageActions = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   flex-wrap: wrap;
 `;
-
-const HeroBtn = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border-radius: 10px;
-  padding: 0.5rem 0.9rem;
-  font-size: 0.81rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  transition: background 0.15s ease;
-  &:hover { background: rgba(255, 255, 255, 0.22); }
-  &:disabled { opacity: 0.55; cursor: not-allowed; }
-  &.solid {
-    background: #fff;
-    color: ${COLORS.primary};
-    border-color: #fff;
-    font-weight: 700;
-  }
-  &.solid:hover { background: rgba(255, 255, 255, 0.9); }
-`;
-
-const LivePill = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
-  padding: 0.3rem 0.6rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-`;
-
-const LiveDot = styled.span`
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #34D399;
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25);
-`;
-
-const KpiRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-  @media (max-width: 1024px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  @media (max-width: 560px) { grid-template-columns: 1fr; }
-`;
-
-const Kpi = styled.div`
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 14px;
-  padding: 0.85rem 0.95rem;
-`;
-const KpiTop = styled.div`display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.45rem;`;
-const KpiIcon = styled.span`
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: ${(p) => p.$bg || 'rgba(255, 255, 255, 0.18)'};
-  color: #fff;
-  flex-shrink: 0;
-`;
-const KpiLabel = styled.div`
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.82);
-`;
-const KpiValue = styled.div`font-size: 1.75rem; font-weight: 800; color: #fff; line-height: 1.05;`;
-const KpiFoot = styled.div`font-size: 0.72rem; color: rgba(255, 255, 255, 0.75); margin-top: 0.2rem; line-height: 1.35;`;
 
 
 /* ── Notices, skeletons, cards ────────────────────────────────────────────── */
@@ -425,53 +308,6 @@ const Split = styled.div`
   grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
   gap: 1rem;
   @media (max-width: 1150px) { grid-template-columns: 1fr; }
-`;
-
-/* ── Insight strip (plain-English summaries) ──────────────────────────────── */
-const Insights = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-`;
-const Insight = styled.div`
-  display: flex;
-  gap: 0.7rem;
-  padding: 0.85rem 0.95rem;
-  border-radius: 14px;
-  border: 1px solid ${(p) => (p.$tone === 'good' ? 'rgba(16, 185, 129, 0.35)'
-    : p.$tone === 'warn' ? 'rgba(245, 158, 11, 0.38)' : 'rgba(59, 130, 246, 0.28)')};
-  background: ${(p) => (p.$tone === 'good' ? 'rgba(16, 185, 129, 0.06)'
-    : p.$tone === 'warn' ? 'rgba(245, 158, 11, 0.07)' : 'rgba(59, 130, 246, 0.05)')};
-`;
-const InsightIcon = styled.span`
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(16, 24, 40, 0.06);
-  color: ${(p) => (p.$tone === 'good' ? COLORS.success : p.$tone === 'warn' ? '#B45309' : COLORS.info)};
-`;
-const InsightTitle = styled.div`font-size: 0.86rem; font-weight: 700; color: ${COLORS.text};`;
-const InsightBody = styled.div`font-size: 0.8rem; color: ${COLORS.textSecondary}; line-height: 1.45; margin-top: 0.12rem;`;
-const InsightBtn = styled.button`
-  margin-top: 0.5rem;
-  border: 1px solid ${COLORS.border};
-  background: ${COLORS.white};
-  color: ${COLORS.primary};
-  border-radius: 8px;
-  padding: 0.3rem 0.6rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  &:hover { background: ${COLORS.bg}; }
 `;
 
 /* ── Chips ────────────────────────────────────────────────────────────────── */
@@ -605,40 +441,6 @@ const Btn = styled.button`
   &.primary:hover { background: ${COLORS.primaryLight}; }
   &.ok { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.4); color: #047857; }
   &.danger { background: rgba(231, 76, 60, 0.08); border-color: rgba(231, 76, 60, 0.35); color: #B91C1C; }
-`;
-const Tabs = styled.div`
-  display: flex;
-  gap: 0.25rem;
-  padding: 0.4rem;
-  background: ${COLORS.white};
-  border: 1px solid ${COLORS.border};
-  border-radius: 14px;
-  overflow-x: auto;
-  margin-bottom: 1rem;
-`;
-const Tab = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  border: 0;
-  background: ${(p) => (p.$on ? COLORS.primary : 'transparent')};
-  color: ${(p) => (p.$on ? '#fff' : COLORS.textSecondary)};
-  border-radius: 10px;
-  padding: 0.55rem 0.95rem;
-  font-size: 0.83rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s ease;
-  &:hover { background: ${(p) => (p.$on ? COLORS.primary : COLORS.bg)}; }
-`;
-const TabCount = styled.span`
-  font-size: 0.7rem;
-  font-weight: 800;
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  background: ${(p) => (p.$on ? 'rgba(255, 255, 255, 0.22)' : COLORS.bg)};
-  color: ${(p) => (p.$on ? '#fff' : COLORS.textSecondary)};
 `;
 
 const TableScroll = styled.div`overflow-x: auto;`;
@@ -1101,7 +903,6 @@ const LeaveDashboard = () => {
   const navigate = useNavigate();
   const me = getUserId();
   const tenantSlug = getParentTenantSlug() || getTenantSlug() || currentTenantSlug();
-  const inboxRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1124,8 +925,7 @@ const LeaveDashboard = () => {
   const [sortMode, setSortMode] = useState('oldest');
   const [selected, setSelected] = useState([]);
 
-  // Tabs + history controls
-  const [tab, setTab] = useState('inbox');
+  // History controls
   const [empQ, setEmpQ] = useState('');
   const [histQ, setHistQ] = useState('');
   const [histStatus, setHistStatus] = useState('all');
@@ -1418,10 +1218,6 @@ const LeaveDashboard = () => {
     notify.success('Export ready', `${rows.length} row(s) downloaded as CSV.`);
   };
 
-  const jumpToInbox = () => {
-    setTab('inbox');
-    if (inboxRef.current) inboxRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
   const goApply = () => navigate('apply');
 
 
@@ -1448,10 +1244,6 @@ const LeaveDashboard = () => {
   const usingStatsOnly = records.length === 0;
   const totalRequests = usingStatsOnly ? safeNum(stats.total) : records.length;
   const pendingCount = statusCounts.pending;
-  const decidedCount = statusCounts.approved + statusCounts.rejected;
-  const approvalRate = decidedCount > 0
-    ? Math.round((statusCounts.approved / decidedCount) * 100)
-    : null;
   const approvedDays = useMemo(() => records
     .filter((r) => String(r.status || '').toLowerCase() === 'approved')
     .reduce((n, r) => n + safeNum(r.days), 0), [records]);
@@ -1484,16 +1276,6 @@ const LeaveDashboard = () => {
     }
     return rows;
   }, [pendingQueue, q, typeFilter, priorityFilter, sortMode]);
-
-  const oldestPending = useMemo(() => pendingQueue.reduce((worst, r) => {
-    const a = daysSince(r.created_at);
-    if (a === null) return worst;
-    if (!worst || a > worst.days) return { days: a, row: r };
-    return worst;
-  }, null), [pendingQueue]);
-
-  const emergencyPending = pendingQueue
-    .filter((r) => String(r.priority || '').toLowerCase() === 'emergency').length;
 
   /* ── Derived: today's coverage + next 14 days ──────────────────────────── */
   const onLeaveList = useMemo(() => onLeaveToday.map((u) => ({
@@ -1656,71 +1438,6 @@ const LeaveDashboard = () => {
     });
   }, [pendingQueue]);
 
-  /* ── Derived: plain-English insights (the "what needs me now?" strip) ──── */
-  const insights = useMemo(() => {
-    const out = [];
-
-    if (pendingCount > 0) {
-      const oldestAge = oldestPending ? oldestPending.days : null;
-      const who = oldestPending
-        ? (oldestPending.row.name || oldestPending.row.email || 'an employee')
-        : '';
-      out.push({
-        key: 'queue',
-        tone: oldestAge !== null && oldestAge >= 3 ? 'warn' : 'info',
-        icon: AlertCircle,
-        title: `${pendingCount} request${pendingCount === 1 ? '' : 's'} waiting for a decision`,
-        body: oldestPending
-          ? `Oldest: ${who} · ${typeMeta(oldestPending.row.leave_type).label} · submitted ${humanSpan(oldestAge)} ago.${emergencyPending > 0 ? ` ${emergencyPending} flagged emergency.` : ''}`
-          : 'Open the approvals inbox below to review them.',
-        action: { label: 'Review approvals', onClick: jumpToInbox },
-      });
-    } else {
-      out.push({
-        key: 'queue',
-        tone: 'good',
-        icon: CheckCircle,
-        title: 'Approvals inbox is clear',
-        body: `${totalRequests} request(s) on record and nothing is waiting for you right now.`,
-      });
-    }
-
-    if (employees.length > 0) {
-      const pct = Math.round((onLeaveList.length / employees.length) * 100);
-      out.push({
-        key: 'coverage',
-        tone: pct >= 30 ? 'warn' : 'info',
-        icon: Users,
-        title: `${onLeaveList.length} of ${employees.length} staff are on leave today (${pct}%)`,
-        body: next14Total > 0
-          ? `${next14Total} approved request(s) start within 14 days — first on ${fmtShort(upcoming[0].day)}. Plan cover accordingly.`
-          : 'No approved leave starts in the next 14 days, so cover stays stable.',
-      });
-    }
-
-    if (usingStatsOnly) {
-      out.push({
-        key: 'data',
-        tone: 'info',
-        icon: Info,
-        title: 'Showing summary figures only',
-        body: 'The individual leave records could not be loaded, so the request tables and charts are empty. Press Refresh to retry.',
-      });
-    } else if (approvalRate !== null) {
-      out.push({
-        key: 'rate',
-        tone: approvalRate >= 70 ? 'good' : 'info',
-        icon: Percent,
-        title: `Approval rate ${approvalRate}%`,
-        body: `${statusCounts.approved} approved vs ${statusCounts.rejected} rejected · ${round1(approvedDays)} approved day(s) booked · ${round1(avgRequestDays)} day(s) per request on average.`,
-      });
-    }
-
-    return out.slice(0, 3);
-  }, [pendingCount, oldestPending, emergencyPending, employees.length, onLeaveList.length,
-    next14Total, upcoming, usingStatsOnly, approvalRate, statusCounts, approvedDays,
-    avgRequestDays, totalRequests]);
-
   const allQueueSelected = filteredQueue.length > 0
     && filteredQueue.every((r) => selected.includes(r.id));
   const toggleAllQueue = () => setSelected(allQueueSelected ? [] : filteredQueue.map((r) => r.id));
@@ -1730,83 +1447,23 @@ const LeaveDashboard = () => {
 
   return (
     <Page>
-      <Hero>
-        <HeroTop>
-          <div>
-            <HeroEyebrow><ShieldCheck size={13} /> HR · Leave management</HeroEyebrow>
-            <HeroTitle>Leave Management</HeroTitle>
-            <HeroSub>
-              Everything about staff leave for <strong>{tenantSlug || 'your organisation'}</strong> in one place:
-              what is waiting for your decision, who is away today, and how every employee&apos;s allowance stands.
-            </HeroSub>
-          </div>
-          <HeroActions>
-            <LivePill>
-              <LiveDot />
-              {updatedAt
-                ? `Updated ${updatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
-                : 'Loading…'}
-            </LivePill>
-            <HeroBtn onClick={refresh} disabled={refreshing}>
-              {refreshing ? <Spin><Loader2 size={15} /></Spin> : <RefreshCw size={15} />} Refresh
-            </HeroBtn>
-            <HeroBtn className="solid" onClick={goApply}><Plus size={15} /> Apply leave</HeroBtn>
-          </HeroActions>
-        </HeroTop>
-
-        <KpiRow>
-          <Kpi>
-            <KpiTop>
-              <KpiIcon $bg="rgba(245, 158, 11, 0.9)"><Clock size={16} /></KpiIcon>
-              <KpiLabel>Pending approvals</KpiLabel>
-            </KpiTop>
-            <KpiValue>{loading ? '—' : pendingCount}</KpiValue>
-            <KpiFoot>
-              {pendingCount === 0
-                ? 'Nothing waiting — inbox is clear'
-                : (oldestPending ? `Oldest waiting ${humanSpan(oldestPending.days)}` : 'Awaiting your decision')}
-              {emergencyPending > 0 ? ` · ${emergencyPending} emergency` : ''}
-            </KpiFoot>
-          </Kpi>
-
-          <Kpi>
-            <KpiTop>
-              <KpiIcon $bg="rgba(59, 130, 246, 0.9)"><UserCheck size={16} /></KpiIcon>
-              <KpiLabel>On leave today</KpiLabel>
-            </KpiTop>
-            <KpiValue>{loading ? '—' : onLeaveList.length}</KpiValue>
-            <KpiFoot>
-              {employees.length > 0
-                ? `of ${employees.length} staff (${Math.round((onLeaveList.length / employees.length) * 100)}%)`
-                : 'staff approved as away right now'}
-            </KpiFoot>
-          </Kpi>
-
-          <Kpi>
-            <KpiTop>
-              <KpiIcon $bg="rgba(13, 148, 136, 0.9)"><CalendarClock size={16} /></KpiIcon>
-              <KpiLabel>Starts next 14 days</KpiLabel>
-            </KpiTop>
-            <KpiValue>{loading ? '—' : next14Total}</KpiValue>
-            <KpiFoot>
-              {upcoming.length > 0 ? `First one on ${fmtShort(upcoming[0].day)}` : 'No approved leave starting soon'}
-            </KpiFoot>
-          </Kpi>
-
-          <Kpi>
-            <KpiTop>
-              <KpiIcon $bg="rgba(16, 185, 129, 0.9)"><Percent size={16} /></KpiIcon>
-              <KpiLabel>Approval rate</KpiLabel>
-            </KpiTop>
-            <KpiValue>{loading ? '—' : (approvalRate === null ? 'n/a' : `${approvalRate}%`)}</KpiValue>
-            <KpiFoot>
-              {decidedCount > 0
-                ? `${statusCounts.approved} approved · ${statusCounts.rejected} rejected`
-                : 'No decided requests yet'}
-            </KpiFoot>
-          </Kpi>
-        </KpiRow>
-      </Hero>
+      <PageHead>
+        <div>
+          <PageTitle>Leave Management</PageTitle>
+          <PageMeta>
+            {tenantSlug || 'your organisation'}
+            {updatedAt
+              ? ` · updated ${updatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+              : ''}
+          </PageMeta>
+        </div>
+        <PageActions>
+          <Btn onClick={refresh} disabled={refreshing}>
+            {refreshing ? <Spin><Loader2 size={14} /></Spin> : <RefreshCw size={14} />} Refresh
+          </Btn>
+          <Btn className="primary" onClick={goApply}><Plus size={14} /> Apply leave</Btn>
+        </PageActions>
+      </PageHead>
 
       {error && (
         <Notice $tone="error">
@@ -1823,32 +1480,12 @@ const LeaveDashboard = () => {
 
       {loading ? (
         <>
-          <Skeleton $h="88px" />
           <Skeleton $h="250px" />
-          <Skeleton $h="330px" />
+          <Skeleton $h="340px" />
+          <Skeleton $h="300px" />
         </>
       ) : (
         <>
-          <Insights>
-            {insights.map((it) => {
-              const Ico = it.icon;
-              return (
-                <Insight key={it.key} $tone={it.tone}>
-                  <InsightIcon $tone={it.tone}><Ico size={17} /></InsightIcon>
-                  <div style={{ minWidth: 0 }}>
-                    <InsightTitle>{it.title}</InsightTitle>
-                    <InsightBody>{it.body}</InsightBody>
-                    {it.action && (
-                      <InsightBtn onClick={it.action.onClick}>
-                        {it.action.label} <ChevronRight size={13} />
-                      </InsightBtn>
-                    )}
-                  </div>
-                </Insight>
-              );
-            })}
-          </Insights>
-
           <Grid3 style={{ marginBottom: '1rem' }}>
             <Section>
               <CardHead>
@@ -1987,7 +1624,7 @@ const LeaveDashboard = () => {
           </Grid3>
 
           <Split style={{ marginBottom: '1rem' }}>
-            <div ref={inboxRef}>
+            <div>
               <Section>
                 <CardHead>
                   <CardHeadLeft>
@@ -2331,51 +1968,20 @@ const LeaveDashboard = () => {
 
           </Split>
 
-          <Tabs role="tablist" aria-label="Leave views">
-            <Tab
-              $on={tab === 'people'}
-              onClick={() => setTab('people')}
-              role="tab"
-              aria-selected={tab === 'people'}
-            >
-              <Briefcase size={15} /> Employees &amp; balances
-              <TabCount $on={tab === 'people'}>{employeeRows.length}</TabCount>
-            </Tab>
-            <Tab
-              $on={tab === 'history'}
-              onClick={() => setTab('history')}
-              role="tab"
-              aria-selected={tab === 'history'}
-            >
-              <History size={15} /> Leave history
-              <TabCount $on={tab === 'history'}>{historyRows.length}</TabCount>
-            </Tab>
-            <Tab
-              $on={tab === 'calendar'}
-              onClick={() => setTab('calendar')}
-              role="tab"
-              aria-selected={tab === 'calendar'}
-            >
-              <Calendar size={15} /> Calendar
-              <TabCount $on={tab === 'calendar'}>{records.length}</TabCount>
-            </Tab>
-          </Tabs>
-
-          {tab === 'people' && (
-            <Section>
-              <CardHead>
-                <CardHeadLeft>
-                  <Briefcase size={17} color={COLORS.primary} />
-                  <div>
-                    <CardTitle>Employees &amp; balances</CardTitle>
-                    <CardSub>
-                      {employeeRows.length} employee(s)
-                      {lowBalanceCount > 0 ? ` · ${lowBalanceCount} low or exhausted` : ''}
-                      {' · click a row to open their leave dashboard'}
-                    </CardSub>
-                  </div>
-                </CardHeadLeft>
-              </CardHead>
+          <Section>
+            <CardHead>
+              <CardHeadLeft>
+                <Briefcase size={17} color={COLORS.primary} />
+                <div>
+                  <CardTitle>Employees &amp; balances</CardTitle>
+                  <CardSub>
+                    {employeeRows.length} employee(s)
+                    {lowBalanceCount > 0 ? ` · ${lowBalanceCount} low or exhausted` : ''}
+                    {' · click a row to open their leave dashboard'}
+                  </CardSub>
+                </div>
+              </CardHeadLeft>
+            </CardHead>
               <Toolbar>
                 <SearchBox>
                   <Search size={15} />
@@ -2482,9 +2088,7 @@ const LeaveDashboard = () => {
               )}
 
             </Section>
-          )}
 
-          {tab === 'history' && (
             <Section>
               <CardHead>
                 <CardHeadLeft>
@@ -2636,9 +2240,7 @@ const LeaveDashboard = () => {
               )}
 
             </Section>
-          )}
 
-          {tab === 'calendar' && (
             <Section>
               <CardHead>
                 <CardHeadLeft>
@@ -2669,7 +2271,6 @@ const LeaveDashboard = () => {
                 />
               </CardBody>
             </Section>
-          )}
 
 
         </>
