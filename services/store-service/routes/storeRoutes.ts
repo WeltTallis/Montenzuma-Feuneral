@@ -1,4 +1,6 @@
 import { Router } from 'express';
+// @ts-ignore - authMiddleware is CommonJS JavaScript, not TypeScript
+import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware.js';
 import {
   getItems,
   getCategories,
@@ -14,9 +16,6 @@ import {
 } from '../controllers/storeController.ts';
 
 const router = Router();
-
-const { protect, authorizeAny } = require('../../../services/app-global/middlewares/authMiddleware');
-
 
 // All routes are protected with JWT authentication
 router.use(protect);

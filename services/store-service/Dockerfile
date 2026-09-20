@@ -58,6 +58,14 @@ WORKDIR /usr/src/app/services/store-service
 COPY --from=prod-deps --chown=nodejs:nodejs /usr/src/app/services/store-service/node_modules ./node_modules
 COPY --chown=nodejs:nodejs services/store-service/ ./
 
+# routes/storeRoutes.ts imports the shared CommonJS auth middleware via
+# '../../../services/app-global/middlewares/authMiddleware.js', which resolves
+# to /usr/src/app/services/app-global — exactly like every other service image,
+# so it must be present in the runtime layer or boot fails with
+# ERR_MODULE_NOT_FOUND. (authMiddleware needs jsonwebtoken, which is declared
+# in this service's dependencies for the same reason.)
+COPY --chown=nodejs:nodejs services/app-global/ /usr/src/app/services/app-global/
+
 USER nodejs
 
 EXPOSE 5000
