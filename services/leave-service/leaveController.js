@@ -74,7 +74,7 @@ const generateLeaveRef = (fullName) => {
 const calculateLeaveBalance = async (dbName, userId, tenantSlug) => {
     try {
         // Get initial balance from users table
-        const [userRows] = await safeTenantQuery(
+        const userRows = await safeTenantQuery(
             dbName,
             'SELECT annual_leave_balance, full_name, email FROM users WHERE user_id = ?',
             [userId]
@@ -99,7 +99,7 @@ const calculateLeaveBalance = async (dbName, userId, tenantSlug) => {
             additionQuery += ' AND tenant_slug = ?';
             additionParams.push(tenantSlug);
         }
-        const [additionRows] = await safeTenantQuery(dbName, additionQuery, additionParams);
+        const additionRows = await safeTenantQuery(dbName, additionQuery, additionParams);
         const manualAdditions = parseFloat(additionRows[0]?.total) || 0;
 
         // Get holiday compensations (filtered by tenant_slug if provided)
@@ -109,7 +109,7 @@ const calculateLeaveBalance = async (dbName, userId, tenantSlug) => {
             holidayQuery += ' AND tenant_slug = ?';
             holidayParams.push(tenantSlug);
         }
-        const [holidayRows] = await safeTenantQuery(dbName, holidayQuery, holidayParams);
+        const holidayRows = await safeTenantQuery(dbName, holidayQuery, holidayParams);
         const holidayCompensations = parseInt(holidayRows[0]?.count) || 0;
 
         // Get leave taken (only approved annual leave, filtered by tenant_slug if provided)
@@ -119,7 +119,7 @@ const calculateLeaveBalance = async (dbName, userId, tenantSlug) => {
             takenQuery += ' AND tenant_slug = ?';
             takenParams.push(tenantSlug);
         }
-        const [takenRows] = await safeTenantQuery(dbName, takenQuery, takenParams);
+        const takenRows = await safeTenantQuery(dbName, takenQuery, takenParams);
         const leaveTaken = parseFloat(takenRows[0]?.total) || 0;
 
         // Get pending leave days (pending annual leave, filtered by tenant_slug if provided)
@@ -129,7 +129,7 @@ const calculateLeaveBalance = async (dbName, userId, tenantSlug) => {
             pendingQuery += ' AND tenant_slug = ?';
             pendingParams.push(tenantSlug);
         }
-        const [pendingRows] = await safeTenantQuery(dbName, pendingQuery, pendingParams);
+        const pendingRows = await safeTenantQuery(dbName, pendingQuery, pendingParams);
         const pendingDays = parseFloat(pendingRows[0]?.total) || 0;
 
         // Calculate current balance
@@ -224,7 +224,7 @@ const applyForLeave = async (req, res) => {
         const leaveId = result.insertId;
 
         // Get the created leave request
-        const [leaveRows] = await safeTenantQuery(
+        const leaveRows = await safeTenantQuery(
             dbName,
             `SELECT lr.*, u.full_name AS name, u.email 
        FROM leave_requests lr 
@@ -302,7 +302,7 @@ const getAllLeaves = async (req, res) => {
 
         query += ' ORDER BY lr.created_at DESC';
 
-        const [rows] = await safeTenantQuery(dbName, query, params);
+        const rows = await safeTenantQuery(dbName, query, params);
 
         // Ensure rows is always an array
         const leavesArray = Array.isArray(rows) ? rows : (rows ? [rows] : []);
@@ -357,7 +357,7 @@ const getMyLeaves = async (req, res) => {
 
         query += ' ORDER BY lr.created_at DESC';
 
-        const [rows] = await safeTenantQuery(dbName, query, params);
+        const rows = await safeTenantQuery(dbName, query, params);
 
         return res.status(200).json({
             status: 'success',
@@ -395,7 +395,7 @@ const getLeaveById = async (req, res) => {
             params.push(tenantSlug);
         }
 
-        const [rows] = await safeTenantQuery(dbName, query, params);
+        const rows = await safeTenantQuery(dbName, query, params);
 
         if (!rows || rows.length === 0) {
             return res.status(404).json({
@@ -444,7 +444,7 @@ const updateLeaveStatus = async (req, res) => {
             leaveQuery += ' AND tenant_slug = ?';
             leaveParams.push(tenantSlug);
         }
-        const [leaveRows] = await safeTenantQuery(dbName, leaveQuery, leaveParams);
+        const leaveRows = await safeTenantQuery(dbName, leaveQuery, leaveParams);
 
         if (!leaveRows || leaveRows.length === 0) {
             return res.status(404).json({
@@ -478,7 +478,7 @@ const updateLeaveStatus = async (req, res) => {
         }
 
         // Get updated leave request
-        const [updatedRows] = await safeTenantQuery(
+        const updatedRows = await safeTenantQuery(
             dbName,
             `SELECT lr.*, u.full_name AS name, u.email 
        FROM leave_requests lr 
@@ -524,7 +524,7 @@ const cancelLeave = async (req, res) => {
             leaveQuery += ' AND tenant_slug = ?';
             leaveParams.push(tenantSlug);
         }
-        const [leaveRows] = await safeTenantQuery(dbName, leaveQuery, leaveParams);
+        const leaveRows = await safeTenantQuery(dbName, leaveQuery, leaveParams);
 
         if (!leaveRows || leaveRows.length === 0) {
             return res.status(404).json({
@@ -545,7 +545,7 @@ const cancelLeave = async (req, res) => {
         );
 
         // Get updated leave request
-        const [updatedRows] = await safeTenantQuery(
+        const updatedRows = await safeTenantQuery(
             dbName,
             `SELECT lr.*, u.full_name AS name, u.email 
        FROM leave_requests lr 
@@ -603,7 +603,7 @@ const uploadDocument = async (req, res) => {
         );
 
         // Get updated leave request
-        const [rows] = await safeTenantQuery(
+        const rows = await safeTenantQuery(
             dbName,
             `SELECT lr.*, u.full_name AS name, u.email 
        FROM leave_requests lr 
@@ -659,14 +659,14 @@ const getLeaveStats = async (req, res) => {
         const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : 'WHERE 1=1';
 
         // Total leaves
-        const [totalRows] = await safeTenantQuery(
+        const totalRows = await safeTenantQuery(
             dbName,
             `SELECT COUNT(*) as total FROM leave_requests lr ${whereClause}`,
             params
         );
 
         // Leaves by status
-        const [statusRows] = await safeTenantQuery(
+        const statusRows = await safeTenantQuery(
             dbName,
             `SELECT status, COUNT(*) as count 
        FROM leave_requests lr 
@@ -676,7 +676,7 @@ const getLeaveStats = async (req, res) => {
         );
 
         // Leaves by type
-        const [typeRows] = await safeTenantQuery(
+        const typeRows = await safeTenantQuery(
             dbName,
             `SELECT leave_type, COUNT(*) as count, SUM(days) as total_days 
        FROM leave_requests lr 
@@ -690,7 +690,7 @@ const getLeaveStats = async (req, res) => {
         const byType = Array.isArray(typeRows) ? typeRows : [];
 
         // Pending approvals
-        const [pendingRows] = await safeTenantQuery(
+        const pendingRows = await safeTenantQuery(
             dbName,
             `SELECT COUNT(*) as pending FROM leave_requests lr ${whereClause} AND lr.status = 'pending'`,
             [...params, 'pending']
@@ -704,7 +704,7 @@ const getLeaveStats = async (req, res) => {
             onLeaveConditions.push('tenant_slug = ?');
             onLeaveParams.push(tenantSlug);
         }
-        const [onLeaveRows] = await safeTenantQuery(
+        const onLeaveRows = await safeTenantQuery(
             dbName,
             `SELECT COUNT(*) as on_leave FROM leave_requests lr WHERE ${onLeaveConditions.join(' AND ')}`,
             onLeaveParams
@@ -753,7 +753,7 @@ const getUsersOnLeave = async (req, res) => {
 
         query += ' ORDER BY lr.start_date ASC';
 
-        const [rows] = await safeTenantQuery(dbName, query, params);
+        const rows = await safeTenantQuery(dbName, query, params);
 
         // Ensure rows is always an array
         const usersArray = Array.isArray(rows) ? rows : (rows ? [rows] : []);
@@ -812,7 +812,7 @@ const addLeaveDays = async (req, res) => {
         const additionId = result.insertId;
 
         // Get the created record
-        const [additionRows] = await safeTenantQuery(
+        const additionRows = await safeTenantQuery(
             dbName,
             `SELECT lda.*, u.full_name AS name, u.email 
        FROM leave_day_additions lda 
@@ -852,7 +852,7 @@ const removeLeaveDays = async (req, res) => {
 
     try {
         // Get the addition record
-        const [additionRows] = await safeTenantQuery(
+        const additionRows = await safeTenantQuery(
             dbName,
             'SELECT * FROM leave_day_additions WHERE id = ?',
             [additionId]
@@ -924,7 +924,7 @@ const getUserDayAdditions = async (req, res) => {
 
         query += ' ORDER BY lda.created_at DESC, lda.id DESC';
 
-        const [rows] = await safeTenantQuery(dbName, query, params);
+        const rows = await safeTenantQuery(dbName, query, params);
         const additionsArray = Array.isArray(rows) ? rows : (rows ? [rows] : []);
 
         return res.status(200).json({
@@ -971,7 +971,7 @@ const recordHolidayCompensation = async (req, res) => {
         const compensationId = result.insertId;
 
         // Get the created record
-        const [compensationRows] = await safeTenantQuery(
+        const compensationRows = await safeTenantQuery(
             dbName,
             `SELECT hc.*, u.full_name AS name, u.email 
        FROM holiday_compensations hc 
@@ -1018,7 +1018,7 @@ const addEmployee = async (req, res) => {
         }
 
         // Check if email already exists
-        const [existingRows] = await safeTenantQuery(
+        const existingRows = await safeTenantQuery(
             dbName,
             'SELECT user_id FROM users WHERE email = ?',
             [email]
@@ -1042,7 +1042,7 @@ const addEmployee = async (req, res) => {
         }
 
         // Inspect available columns so the insert works across tenant schema variants
-        const [colsRows] = await safeTenantQuery(dbName, 'SHOW COLUMNS FROM users');
+        const colsRows = await safeTenantQuery(dbName, 'SHOW COLUMNS FROM users');
         const availableCols = (Array.isArray(colsRows) ? colsRows : []).map(c => c.Field);
 
         const insertCols = ['email', 'password_hash', 'full_name'];
@@ -1090,7 +1090,7 @@ const addEmployee = async (req, res) => {
         const userId = result.insertId;
 
         // Get the created employee
-        const [userRows] = await safeTenantQuery(
+        const userRows = await safeTenantQuery(
             dbName,
             'SELECT user_id, full_name AS name, email, phone, role, annual_leave_balance FROM users WHERE user_id = ?',
             [userId]
@@ -1151,7 +1151,7 @@ const getAllLeaveBalances = async (req, res) => {
 
     try {
         // Get all users
-        const [users] = await safeTenantQuery(
+        const users = await safeTenantQuery(
             dbName,
             'SELECT user_id, full_name, email, annual_leave_balance FROM users ORDER BY full_name ASC'
         );

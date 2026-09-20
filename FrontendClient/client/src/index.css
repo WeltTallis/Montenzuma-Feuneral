@@ -68,6 +68,16 @@ body {
     color: #111827;
     background: #ffffff;
 
+
+
+    --ink: #141A17;
+    --pine: #1E3A32;
+
+    --paper: #FFFFFF;
+
+    --error: #8B1A1A;
+
+
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 
@@ -245,7 +255,7 @@ ol {
     /* Fallback */
     background: rgba(255, 255, 255, 0.9);
 
-  
+
     /* Safari */
     -webkit-backdrop-filter: blur(10px);
 
@@ -306,8 +316,5 @@ select:focus-visible {
 input,
 textarea,
 [contenteditable="true"] {
-  caret-color: var(--ox);
+    caret-color: var(--ox);
 }
-
-
-

@@ -1,20 +1,22 @@
+import { resolveBranchName, isMultiDay, getBookingDateRange, getMultiDayColor } from './viewerShared';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import styled, { keyframes } from 'styled-components';
-import { useSocket } from '../../utils/context/socketContext';
-import env from '../../utils/config/env';
-import HearseCalendar from './HearseCalendar';
-import DayTimeline from './DayTimeline';
-import useAuthStore from '../../utils/store/useAuthStore';
-import { getTenantHeaders } from '../../api/endpoints';
 import { getTenantId, getBranchId, getBranchSlug } from '../../utils/globalAuth';
+import { useSocket } from '../../utils/context/socketContext';
+import useAuthStore from '../../utils/store/useAuthStore';
+import BookNewHearseModal from './BookNewHearseModal';
+import { getTenantHeaders } from '../../api/endpoints';
+import styled, { keyframes } from 'styled-components';
+import HearseCalendar from './HearseCalendar';
+import env from '../../utils/config/env';
+import DayTimeline from './DayTimeline';
+import notify from '../../utils/notify';
 import {
   Truck, Car, Clock, Check, Search, Plus, RefreshCw, MoreVertical,
   ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, List, Grid, X,
   Calendar, MapPin, Phone, User, Filter
 } from '../../utils/icons/icons';
-import { resolveBranchName, isMultiDay, getBookingDateRange, getMultiDayColor } from './viewerShared';
-import BookNewHearseModal from './BookNewHearseModal';
-import notify from '../../utils/notify';
+
+
 
 const API_BASE_URL = import.meta.env.PROD
   ? 'https://restpoint.co.ke/api/v1/restpoint'
@@ -1154,6 +1156,22 @@ const HearseBookings = () => {
                         {selectedBooking.plate_number}
                       </div>
                     )}
+                  </DetailValue>
+                </DetailItem>
+                <DetailItem>
+                  <DetailLabel>Total Service Charge</DetailLabel>
+                  <DetailValue
+                    style={{
+                      fontWeight: 700,
+                      color: Number(selectedBooking.service_charge ?? selectedBooking.total_service_charge ?? selectedBooking.total_charge) > 0
+                        ? COLORS.successDark
+                        : COLORS.textMuted,
+                    }}
+                  >
+                    {(() => {
+                      const charge = Number(selectedBooking.service_charge ?? selectedBooking.total_service_charge ?? selectedBooking.total_charge) || 0;
+                      return charge > 0 ? `KSH ${charge.toLocaleString()}` : 'Not set (optional)';
+                    })()}
                   </DetailValue>
                 </DetailItem>
                 <DetailItem>

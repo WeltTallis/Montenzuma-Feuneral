@@ -7,59 +7,59 @@ import env from '../../utils/config/env';
 
 // ─── Google Fonts ────────────────────────────────────────────
 const GlobalStyles = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Outfit:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Karla:wght@400;500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800&display=swap');
   @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
 `;
 
 // ─── Design tokens ────────────────────────────────────────────
 const C = {
-    ink:       '#16211E',
-    pine:      '#1F3D33',
-    moss:      '#3E6257',
-    gold:      '#C6A15B',
-    goldSoft:  '#F3EBD9',
-    cream:     '#F6F4EE',
-    paper:     '#FFFFFF',
-    line:      '#E6E1D5',
-    lineSoft:  '#EFECE3',
-    muted:     '#8B8677',
-    text:      '#232A27',
-    ease:      'cubic-bezier(.32, .72, .24, 1)',
-    success:   '#1a6641',
-    successBg: '#edf7f1',
-    error:     '#9b2335',
-    errorBg:   '#fdf2f4',
+    ink: '#141A17',   /* Deep Charcoal Green for text */
+    pine: '#1E3A32',   /* Rich Pine Green for active/hover */
+    moss: '#3A5A50',   /* Muted Moss Green for labels */
+    brass: '#A68A4D',   /* Muted Brass/Gold for accents */
+    brassSoft: '#F4EFE1',   /* Very soft warm cream */
+    cream: '#F9F8F4',   /* Linen white for card background */
+    paper: '#FFFFFF',
+    line: '#E5E1D4',   /* Soft warm border color */
+    lineSoft: '#EFECE3',
+    muted: '#7A756A',   /* Warm grey for muted text */
+    text: '#2C3330',
+    ease: 'cubic-bezier(.32, .72, .24, 1)',
+    success: '#1A6641',
+    successBg: '#EAF5EE',
+    error: '#9b2335',   /* Requested color for primary action */
+    errorBg: '#FBF1F1',
 };
 
 const BASE_URL = env.FULL_API_URL;
 
 // ─── Animations ────────────────────────────────────────────────
-const fadeIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`;
-const spin   = keyframes`to{transform:rotate(360deg)}`;
-const shake  = keyframes`0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}`;
+const fadeIn = keyframes`from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}`;
+const spin = keyframes`to{transform:rotate(360deg)}`;
+const shake = keyframes`0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}`;
 
 // ─── Layout ────────────────────────────────────────────────────
 const Shell = styled.div`
-    font-family: 'Outfit', sans-serif;
-    background: ${C.cream};
+    font-family: 'Saira', sans-serif;
+    background: radial-gradient(circle at top center, #F2F0EA 0%, #EAE7DE 100%);
     color: ${C.text};
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     -webkit-font-smoothing: antialiased;
+    padding: 40px 16px;
 `;
 
 const Card = styled.div`
-    max-width: 2200px;
+    max-width: 860px;
     width: 100%;
-    background: ${C.paper};
-    border-radius: 10px;
-    box-shadow: 0 24px 60px -20px rgba(22,33,30,0.18);
+    background: ${C.cream};
+    border-radius: 20px;
+    box-shadow: 0 30px 80px -20px rgba(20, 26, 23, 0.15), 0 10px 30px -10px rgba(20, 26, 23, 0.05);
     overflow: hidden;
-    border: 1px solid ${C.line};
-    margin: 40px 20px 0;
-    animation: ${fadeIn} 0.4s ${C.ease} both;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    animation: ${fadeIn} 0.5s ${C.ease} both;
 
     @media (max-width: 600px) {
         margin: 0;
@@ -70,18 +70,19 @@ const Card = styled.div`
 
 // ─── Condolence Banner ──────────────────────────────────────────
 const Banner = styled.div`
-    background: ${C.goldSoft};
-    padding: 18px 40px;
+    background: ${C.pine};
+    padding: 20px 40px;
     text-align: center;
-    border-bottom: 1px solid ${C.line};
+    border-bottom: 4px solid ${C.brass};
 
     p {
-        font-family: 'Fraunces', serif;
-        font-size: 15px;
-        color: ${C.moss};
-        font-weight: 500;
+        font-family: 'Saira', sans-serif;
+        font-size: 16px;
+        color: rgba(255, 255, 255, 0.95);
+        font-weight: 300;
         font-style: italic;
-        line-height: 1.4;
+        line-height: 1.5;
+        letter-spacing: 0.01em;
         margin: 0;
     }
 
@@ -91,180 +92,144 @@ const Banner = styled.div`
 // ─── Document Header (QR + timestamp) ──────────────────────────
 const DocHeader = styled.header`
     background: ${C.paper};
-    padding: 28px 40px;
+    padding: 32px 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 20px;
+    gap: 24px;
     border-bottom: 1px solid ${C.lineSoft};
 
     @media (max-width: 600px) {
         flex-direction: column;
-        padding: 20px;
+        padding: 24px;
         align-items: center;
         text-align: center;
     }
 `;
 
-const HeaderLeft  = styled.div`display:flex;flex-direction:column;gap:14px;`;
-const ReqIdBadge  = styled.div`font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:${C.ink};letter-spacing:.02em;display:flex;align-items:center;gap:10px;i{color:${C.gold};font-size:14px}`;
-const Timestamps  = styled.div`display:flex;flex-direction:column;gap:7px;`;
-const MetaItem    = styled.div`font-size:13px;color:${C.text};display:flex;align-items:center;gap:9px;i{color:${C.muted};font-size:12px;width:15px;text-align:center}span{font-weight:600;color:${C.ink};font-variant-numeric:tabular-nums}`;
-const QrWrapper   = styled.div`display:flex;flex-direction:column;align-items:center;gap:8px;`;
-const QrBox       = styled.div`width:156px;height:156px;padding:8px;border:1px solid ${C.line};border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.05);`;
-const QrLabel     = styled.span`font-size:10px;text-transform:uppercase;letter-spacing:.15em;color:${C.pine};font-weight:700;`;
+const HeaderLeft = styled.div`display:flex;flex-direction:column;gap:16px;`;
+const ReqIdBadge = styled.div`
+    font-family: 'Saira', sans-serif;
+    font-size: 20px; font-weight: 600; color: ${C.ink};
+    letter-spacing: -.01em; display:flex; align-items:center; gap:12px;
+    i { color: ${C.brass}; font-size: 16px; }
+`;
+const Timestamps = styled.div`display:flex; gap:20px; @media (max-width: 600px){ justify-content:center; }`;
+const MetaItem = styled.div`
+    font-size: 13px; color: ${C.muted}; display:flex; align-items:center; gap:8px;
+    i { color: ${C.brass}; font-size: 12px; }
+    span { font-weight: 600; color: ${C.text}; font-variant-numeric: tabular-nums; }
+`;
+
+const QrWrapper = styled.div`display:flex;flex-direction:column;align-items:center;gap:10px;`;
+const QrBox = styled.div`
+    width: 110px; height: 110px; padding: 8px;
+    border: 1px solid ${C.line}; border-radius: 12px;
+    background: ${C.paper}; display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 6px 16px rgba(20, 26, 23, 0.06);
+`;
+const QrLabel = styled.span`
+    font-size: 10px; text-transform: uppercase; letter-spacing: .18em;
+    color: ${C.moss}; font-weight: 700;
+`;
 
 // ─── Title ──────────────────────────────────────────────────────
 const TitleSection = styled.div`
-    padding: 28px 40px 20px;
+    padding: 36px 40px 24px;
     text-align: center;
-    border-bottom: 1px solid ${C.lineSoft};
+    background: ${C.cream};
 
-    h1 { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: ${C.ink}; margin: 0 0 5px; }
-    p  { font-size: 13px; color: ${C.muted}; font-style: italic; margin: 0; }
+    h1 { font-family: 'Saira', sans-serif; font-size: 28px; font-weight: 700; color: ${C.ink}; margin: 0 0 8px; letter-spacing: -.02em; }
+    p  { font-size: 14px; color: ${C.muted}; font-style: italic; margin: 0; }
 
-    @media (max-width: 600px) { padding: 20px; }
+    @media (max-width: 600px) { padding: 24px 20px; }
 `;
 
 // ─── Step indicator ─────────────────────────────────────────────
 const Steps = styled.div`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    padding: 18px 40px;
-    background: ${C.cream};
-    border-bottom: 1px solid ${C.line};
+    display: flex; align-items: center; justify-content: center;
+    gap: 0; padding: 0 40px 32px; background: ${C.cream};
 `;
 
 const Step = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: ${p => p.$active ? C.pine : p.$done ? C.gold : C.muted};
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
+    color: ${p => p.$active ? C.ink : p.$done ? C.brass : C.muted};
+    position: relative; z-index: 1;
 `;
 
 const StepNum = styled.div`
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    background: ${p => p.$active ? C.pine : p.$done ? C.gold : C.lineSoft};
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    background: ${p => p.$active ? C.ink : p.$done ? C.brass : C.paper};
     color: ${p => (p.$active || p.$done) ? '#fff' : C.muted};
-    flex-shrink: 0;
+    border: 3px solid ${p => p.$active || p.$done ? C.cream : C.lineSoft};
+    box-shadow: ${p => p.$active ? '0 4px 10px rgba(20, 26, 23, 0.15)' : p.$done ? '0 4px 10px rgba(166, 138, 77, 0.3)' : 'none'};
+    transition: all 0.3s ease;
 `;
 
 const StepLine = styled.div`
-    flex: 1;
-    height: 1px;
-    background: ${p => p.$done ? C.gold : C.line};
-    margin: 0 12px;
-    max-width: 60px;
+    flex: 1; height: 2px; background: ${p => p.$done ? C.brass : C.line};
+    margin: 0 -12px 20px; max-width: 100px; border-radius: 2px;
 `;
 
 // ─── Form body ──────────────────────────────────────────────────
 const Body = styled.div`
-    padding: 28px 40px;
+    padding: 32px 40px;
+    background: ${C.paper};
+    border-top: 1px solid ${C.lineSoft};
 
-    @media (max-width: 600px) { padding: 20px; }
+    @media (max-width: 600px) { padding: 24px 20px; }
 `;
 
 const FormGroup = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    margin-bottom: 20px;
+    display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;
 `;
 
 const Label = styled.label`
-    font-size: 11px;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    font-weight: 700;
-    color: ${C.moss};
-    display: flex;
-    align-items: center;
-    gap: 7px;
-
-    i { color: ${C.gold}; font-size: 11px; }
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 700; color: ${C.moss}; display: flex; align-items: center; gap: 8px;
+    i { color: ${C.brass}; font-size: 11px; }
 `;
 
 const Input = styled.input`
-    background: ${C.cream};
-    border: 1px solid ${p => p.$error ? C.error : C.line};
-    border-radius: 8px;
-    padding: 13px 15px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 14px;
-    color: ${C.text};
-    transition: all .2s ${C.ease};
-    outline: none;
-    width: 100%;
-    box-sizing: border-box;
+    background: #FBFAF6; border: 1px solid ${p => p.$error ? C.error : C.line};
+    border-radius: 10px; padding: 15px 16px;
+    font-family: 'Saira', sans-serif; font-size: 15px; color: ${C.ink};
+    transition: all .2s ${C.ease}; outline: none; width: 100%; box-sizing: border-box;
     animation: ${p => p.$shake ? shake : 'none'} .4s ease;
 
     &::placeholder { color: #a7a294; }
-    &:focus { background: ${C.paper}; border-color: ${C.pine}; box-shadow: 0 0 0 4px rgba(31,61,51,.06); }
-    &:read-only { opacity: .7; cursor: default; }
+    &:focus { background: ${C.paper}; border-color: ${C.moss}; box-shadow: 0 0 0 4px rgba(58, 90, 80, 0.1); }
 `;
 
 const Select = styled.select`
-    background: ${C.cream};
-    border: 1px solid ${C.line};
-    border-radius: 8px;
-    padding: 13px 15px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 14px;
-    color: ${C.text};
-    outline: none;
-    width: 100%;
-    box-sizing: border-box;
-    cursor: pointer;
-    transition: all .2s ${C.ease};
+    background: #FBFAF6; border: 1px solid ${C.line}; border-radius: 10px;
+    padding: 15px 16px; font-family: 'Saira', sans-serif; font-size: 15px;
+    color: ${C.ink}; outline: none; width: 100%; box-sizing: border-box;
+    cursor: pointer; transition: all .2s ${C.ease};
 
-    &:focus { background: ${C.paper}; border-color: ${C.pine}; box-shadow: 0 0 0 4px rgba(31,61,51,.06); }
+    &:focus { background: ${C.paper}; border-color: ${C.moss}; box-shadow: 0 0 0 4px rgba(58, 90, 80, 0.1); }
 `;
 
 const Textarea = styled.textarea`
-    background: ${C.cream};
-    border: 1px solid ${C.line};
-    border-radius: 8px;
-    padding: 13px 15px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 14px;
-    color: ${C.text};
-    transition: all .2s ${C.ease};
-    outline: none;
-    width: 100%;
-    box-sizing: border-box;
-    resize: vertical;
-    min-height: 110px;
-    line-height: 1.55;
+    background: #FBFAF6; border: 1px solid ${C.line}; border-radius: 10px;
+    padding: 15px 16px; font-family: 'Saira', sans-serif; font-size: 15px;
+    color: ${C.ink}; transition: all .2s ${C.ease}; outline: none;
+    width: 100%; box-sizing: border-box; resize: vertical; min-height: 120px; line-height: 1.6;
 
     &::placeholder { color: #a7a294; }
-    &:focus { background: ${C.paper}; border-color: ${C.pine}; box-shadow: 0 0 0 4px rgba(31,61,51,.06); }
+    &:focus { background: ${C.paper}; border-color: ${C.moss}; box-shadow: 0 0 0 4px rgba(58, 90, 80, 0.1); }
 `;
 
 // ─── Alert boxes ────────────────────────────────────────────────
 const Alert = styled.div`
-    padding: 14px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    background: ${p => p.$type === 'success' ? C.successBg : p.$type === 'error' ? C.errorBg : C.goldSoft};
-    color:       ${p => p.$type === 'success' ? C.success    : p.$type === 'error' ? C.error    : C.pine};
-    border: 1px solid ${p => p.$type === 'success' ? '#a3d4b5' : p.$type === 'error' ? '#e5b5bc' : C.line};
+    padding: 16px 20px; border-radius: 12px; font-size: 14px; margin-bottom: 24px;
+    display: flex; align-items: flex-start; gap: 12px;
+    background: ${p => p.$type === 'success' ? C.successBg : p.$type === 'error' ? C.errorBg : '#F2F5F2'};
+    color:       ${p => p.$type === 'success' ? C.success : p.$type === 'error' ? C.error : C.pine};
+    border: 1px solid ${p => p.$type === 'success' ? '#C5DfCf' : p.$type === 'error' ? '#E6C8C8' : '#D9E2DC'};
 
     i { flex-shrink: 0; margin-top: 1px; }
     strong { font-weight: 700; }
@@ -272,223 +237,129 @@ const Alert = styled.div`
 
 // ─── Found case card ─────────────────────────────────────────────
 const CaseCard = styled.div`
-    background: ${C.cream};
-    border: 1px solid ${C.line};
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 20px;
-    animation: ${fadeIn} .3s ease both;
+    background: #F4F8F6; border: 1px solid #DCE5E0; border-radius: 12px;
+    padding: 20px; margin-bottom: 24px; animation: ${fadeIn} .3s ease both;
 `;
 
 const CaseRow = styled.div`
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    padding: 5px 0;
-    border-bottom: 1px solid ${C.lineSoft};
-
+    display: flex; justify-content: space-between; font-size: 14px;
+    padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.05);
     &:last-child { border-bottom: none; }
-
     span:first-child { color: ${C.muted}; font-weight: 500; }
     span:last-child  { color: ${C.ink};   font-weight: 600; }
 `;
 
 // ─── Buttons ────────────────────────────────────────────────────
 const FormFooter = styled.div`
-    border-top: 1px solid ${C.lineSoft};
-    padding: 20px 40px;
-    background: #fbfaf7;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
+    border-top: 1px solid ${C.lineSoft}; padding: 24px 40px;
+    background: #FBFAF6; display: flex; justify-content: flex-end; gap: 12px;
 
     @media (max-width: 600px) {
-        padding: 16px 20px;
-        flex-direction: column;
+        padding: 16px 20px; flex-direction: column-reverse;
+        button { width: 100%; justify-content: center; }
     }
 `;
 
 const Btn = styled.button`
-    padding: 13px 26px;
-    border-radius: 8px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all .2s ${C.ease};
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    border: 1px solid transparent;
-    text-transform: uppercase;
-    letter-spacing: .05em;
+    padding: 14px 28px; border-radius: 10px;
+    font-family: 'Saira', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all .2s ${C.ease};
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid transparent; text-transform: uppercase; letter-spacing: .05em;
 
     &:disabled { opacity: .6; cursor: not-allowed; transform: none !important; }
 
     ${p => p.$ghost && `
-        background: ${C.paper};
-        border-color: ${C.line};
-        color: ${C.muted};
+        background: ${C.paper}; border-color: ${C.line}; color: ${C.muted};
         &:hover:not(:disabled) { border-color: ${C.moss}; color: ${C.pine}; }
     `}
 
+    /* Updated to requested #9b2335 color */
     ${p => p.$primary && `
-        background: ${C.ink};
-        color: #EDEAE0;
-        box-shadow: 0 4px 12px rgba(22,33,30,.15);
-        &:hover:not(:disabled) { background: ${C.pine}; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(31,61,51,.2); }
-        i { color: ${C.gold}; }
-    `}
-
-    ${p => p.$success && `
-        background: ${C.success};
-        color: #fff;
-        box-shadow: 0 4px 12px rgba(26,102,65,.2);
+        background: #9b2335; color: #fff;
+        box-shadow: 0 6px 16px rgba(155, 35, 53, 0.25);
+        &:hover:not(:disabled) { background: #801c2b; transform: translateY(-1px); box-shadow: 0 8px 20px rgba(155, 35, 53, 0.3); }
+        i { color: rgba(255,255,255,0.9); }
     `}
 `;
 
 const Spinner = styled.div`
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,.3);
-    border-top-color: #fff;
-    animation: ${spin} .8s linear infinite;
-    flex-shrink: 0;
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
+    animation: ${spin} .8s linear infinite; flex-shrink: 0;
 `;
 
 // ─── Woodland Elegance Footer ─────────────────────────────────────
 const ElegantFooter = styled.footer`
-    position: relative;
-    width: 100%;
-    overflow: hidden;
-    background: #2F3A32;
-    color: #E9EBDD;
-    text-align: center;
-    padding: 56px 20px 0;
-    border-top: none;
-    box-sizing: border-box;
+    position: relative; width: 100%; overflow: hidden;
+    background: #141A17; color: #E9EBDD; text-align: center;
+    padding: 64px 20px 0; border-top: none; box-sizing: border-box;
 
-    &::before {
-        content: '';
-        position: absolute;
-        left: 50%;
-        bottom: -260px;
-        transform: translateX(-50%);
-        width: 520px;
-        height: 520px;
-        border-radius: 50%;
-        border: 1.5px solid rgba(233,235,221,.10);
-        pointer-events: none;
+    &::before, &::after {
+        content: ''; position: absolute; left: 50%; transform: translateX(-50%);
+        border-radius: 50%; pointer-events: none;
     }
-    &::after {
-        content: '';
-        position: absolute;
-        left: 50%;
-        bottom: -320px;
-        transform: translateX(-50%);
-        width: 680px;
-        height: 680px;
-        border-radius: 50%;
-        border: 1px solid rgba(233,235,221,.06);
-        pointer-events: none;
-    }
+    &::before { bottom: -260px; width: 520px; height: 520px; border: 1.5px solid rgba(233,235,221,.10); }
+    &::after { bottom: -320px; width: 680px; height: 680px; border: 1px solid rgba(233,235,221,.06); }
 
     @media (max-width: 560px) { padding: 44px 20px 0; }
 `;
 
 const LeafMark = styled.div`
-    width: 44px;
-    height: 44px;
-    margin: 0 auto 18px;
-    border-radius: 50%;
-    background: rgba(237,233,219,.12);
-    border: 1px solid rgba(237,233,219,.25);
-    display: grid;
-    place-items: center;
+    width: 48px; height: 48px; margin: 0 auto 20px; border-radius: 50%;
+    background: rgba(255,255,255,.05); border: 1px solid rgba(233,235,221,.15);
+    display: grid; place-items: center;
 `;
 
 const FooterTagline = styled.p`
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-style: italic;
-    font-weight: 500;
-    font-size: 1.25rem;
-    line-height: 1.5;
-    color: rgba(237,233,219,.82);
-    max-width: 44ch;
-    margin: 0 auto;
+    font-family: 'Saira', sans-serif; font-style: italic; font-weight: 300;
+    font-size: 1.3rem; line-height: 1.5; color: rgba(233,235,221,.85);
+    max-width: 44ch; margin: 0 auto;
 `;
 
 const FooterValues = styled.div`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    margin: 30px auto 0;
-    max-width: 420px;
-
-    &::before, &::after {
-        content: '';
-        flex: 1;
-        height: 1px;
-        background: rgba(237,233,219,.16);
-    }
+    display: flex; align-items: center; justify-content: center;
+    gap: 16px; margin: 32px auto 0; max-width: 420px;
+    &::before, &::after { content: ''; flex: 1; height: 1px; background: rgba(233,235,221,.16); }
 `;
 
 const FooterValueLabel = styled.span`
-    font-family: 'Karla','Segoe UI',sans-serif;
-    font-weight: 700;
-    font-size: .64rem;
-    letter-spacing: .26em;
-    text-transform: uppercase;
-    color: rgba(205,209,191,.55);
+    font-family: 'Saira', sans-serif; font-weight: 700; font-size: .64rem;
+    letter-spacing: .26em; text-transform: uppercase; color: rgba(205,209,191,.65);
 `;
 
 const FooterValueDot = styled.b`
-    font-family: 'Cormorant Garamond',Georgia,serif;
-    font-weight: 600;
-    font-size: 1rem;
-    color: rgba(205,209,191,.85);
+    font-family: 'Saira', sans-serif; font-weight: 600; font-size: 1rem; color: rgba(205,209,191,.85);
 `;
 
 const FooterBar = styled.div`
-    margin-top: 44px;
-    border-top: 1px solid rgba(237,233,219,.12);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    padding: 18px 32px;
-    font-family: 'Karla','Segoe UI',sans-serif;
-    font-weight: 500;
-    font-size: .76rem;
-    color: rgba(237,233,219,.42);
+    margin-top: 48px; border-top: 1px solid rgba(233,235,221,.12);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px; flex-wrap: wrap; padding: 20px 32px;
+    font-family: 'Saira', sans-serif; font-weight: 500; font-size: .76rem;
+    color: rgba(233,235,221,.45);
 
     @media (max-width: 560px) {
-        flex-direction: column;
-        gap: 6px;
-        padding: 16px 20px;
-        text-align: center;
+        flex-direction: column; gap: 6px; padding: 16px 20px; text-align: center;
     }
 `;
 
 // ─── Component ──────────────────────────────────────────────────
 export default function PostmortemRequestForm() {
     const { slug } = useParams();
-    const tenantSlug  = slug || (typeof localStorage !== 'undefined' && localStorage.getItem('tenantSlug')) || 'system_shared';
-    const verifyUrl   = `${typeof window !== 'undefined' ? window.location.origin : ''}/tenant/${tenantSlug}/postmortem-verify`;
+    const tenantSlug = slug || (typeof localStorage !== 'undefined' && localStorage.getItem('tenantSlug')) || 'system_shared';
+    const verifyUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/tenant/${tenantSlug}/postmortem-verify`;
 
     const [currentDate, setCurrentDate] = useState('');
     const [currentTime, setCurrentTime] = useState('');
 
     // Step 1 state — lookup
-    const [identifier, setIdentifier]   = useState('');
+    const [identifier, setIdentifier] = useState('');
     const [lookupError, setLookupError] = useState('');
     const [isSearching, setIsSearching] = useState(false);
-    const [foundCase, setFoundCase]     = useState(null); // null = not found yet
-    const [shakeId, setShakeId]         = useState(false);
-    const [searchType, setSearchType]   = useState('phone'); // phone, id_number, admission_number
+    const [foundCase, setFoundCase] = useState(null); // null = not found yet
+    const [shakeId, setShakeId] = useState(false);
+    const [searchType, setSearchType] = useState('phone'); // phone, id_number, admission_number
 
     // Step 2 state — request form
     const [form, setForm] = useState({ reason: '', requested_by: '', priority: 'normal' });
@@ -575,11 +446,11 @@ export default function PostmortemRequestForm() {
             const res = await axios.post(
                 `${BASE_URL}/public/postmortem/request`,
                 {
-                    deceased_id:  foundCase.deceased_id,
-                    reason:       form.reason,
+                    deceased_id: foundCase.deceased_id,
+                    reason: form.reason,
                     requested_by: form.requested_by,
-                    priority:     form.priority,
-                    source:       'family_reception', // tag so staff know it came from the portal
+                    priority: form.priority,
+                    source: 'family_reception', // tag so staff know it came from the portal
                 },
                 { headers: { 'x-tenant-slug': tenantSlug } }
             );
@@ -627,7 +498,7 @@ export default function PostmortemRequestForm() {
                             <QrBox>
                                 <QRCodeSVG
                                     value={verifyUrl}
-                                    size={140}
+                                    size={90}
                                     level="H"
                                     includeMargin={false}
                                     bgColor="#FFFFFF"
@@ -644,7 +515,7 @@ export default function PostmortemRequestForm() {
                         <p>Complete all fields accurately to authorize the procedure.</p>
                     </TitleSection>
 
-                    {/* ── Step indicator ── */}
+                    {/* ─── Step indicator ─── */}
                     <Steps>
                         <Step $active={!step1Done} $done={step1Done}>
                             <StepNum $active={!step1Done} $done={step1Done}>{step1Done ? '✓' : '1'}</StepNum>
@@ -698,7 +569,7 @@ export default function PostmortemRequestForm() {
                                     </Select>
                                 </FormGroup>
 
-                                <FormGroup>
+                                <FormGroup style={{ marginBottom: 0 }}>
                                     <Label htmlFor="identifier">
                                         <i className="fas fa-search" /> {searchType === 'phone' ? 'Phone Number' : searchType === 'id_number' ? 'ID Number' : 'Admission Number'}
                                     </Label>
@@ -853,10 +724,10 @@ export default function PostmortemRequestForm() {
                         </>
                     )}
 
-                    {/* ── Woodland Elegance Footer (same as deceased intake) ── */}
+                    {/* ── Woodland Elegance Footer ── */}
                     <ElegantFooter>
                         <LeafMark>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#EDE9DB" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="21" height="21">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#EDE9DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
                                 <path d="M4 20C4 10.5 10.5 4 20 4c0 9.5-6.5 16-16 16Z" />
                                 <path d="M4 20c4-6.5 8.5-10 13-12.5" />
                             </svg>

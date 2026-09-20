@@ -541,6 +541,115 @@ const HistLine = styled.div`
   gap: 0.5rem;
 `;
 
+/* ── Leave request detail modal (click any leave request) ───────────── */
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+`;
+const ModalCard = styled.div`
+  width: min(580px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: ${COLORS.white};
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+`;
+const ModalHead = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1.05rem 1.2rem;
+  border-bottom: 1px solid ${COLORS.border};
+  background: ${COLORS.bg};
+  border-radius: 14px 14px 0 0;
+`;
+const ModalTitle = styled.div`
+  flex: 1;
+  min-width: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: ${COLORS.text};
+`;
+const ModalSub = styled.div`
+  font-size: 0.76rem;
+  color: ${COLORS.textSecondary};
+  margin-top: 0.1rem;
+`;
+const ModalBody = styled.div`
+  padding: 1.1rem 1.2rem 1.4rem 1.2rem;
+`;
+const FieldGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+  @media (max-width: 560px) { grid-template-columns: 1fr; }
+`;
+const FieldLabel = styled.div`
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: ${COLORS.textSecondary};
+  margin-bottom: 0.15rem;
+`;
+const FieldValue = styled.div`
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: ${COLORS.text};
+`;
+const ReasonBox = styled.div`
+  background: ${COLORS.bg};
+  border: 1px solid ${COLORS.border};
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  font-size: 0.86rem;
+  color: ${COLORS.text};
+  white-space: pre-wrap;
+`;
+const DocLink = styled.a`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: ${COLORS.primary};
+  text-decoration: none;
+  border: 1px solid ${COLORS.border};
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  &:hover { background: ${COLORS.bg}; }
+`;
+const ModalActions = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1.15rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid ${COLORS.border};
+`;
+const DecideBtn = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+  background: ${COLORS.success};
+  &:hover { opacity: 0.9; }
+  &.reject { background: ${COLORS.danger}; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+`;
+
 /* ── Main component (HR Dashboard) ──────────────────────────────────── */
 const LeaveDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -562,6 +671,7 @@ const LeaveDashboard = () => {
   const [addSaving, setAddSaving] = useState(false);
   const [removingId, setRemovingId] = useState(null);
   const [detailActionId, setDetailActionId] = useState(null);
+  const [viewRequest, setViewRequest] = useState(null);   // leave request opened in the detail modal
 
   // ── Multi-tenant: leave data lives in the PARENT tenant's main DB ──
   // Send the parent slug explicitly (same pattern as ApplyLeave/MyLeaves) so
@@ -655,7 +765,7 @@ const LeaveDashboard = () => {
       setRequests(prev);
       setError(e?.friendlyMessage || 'Could not update that request. It may have already been processed.');
       setActingId(null);
-      return;
+      return false;
     }
     // Refresh is best-effort: a failure here must not undo a successful action.
     try {
@@ -665,6 +775,7 @@ const LeaveDashboard = () => {
     } finally {
       setActingId(null);
     }
+    return true;
   }, [requests, refresh, tenantHeaders]);
 
   const approve = (id) => actionOn(id, 'approved', null);
@@ -777,6 +888,19 @@ const LeaveDashboard = () => {
     const notes = window.prompt('Rejection reason (optional):');
     if (notes === null) return;
     decideInPanel(id, 'rejected', notes.trim() || 'Not specified');
+  };
+
+  // Approve / reject from the request-detail modal (same endpoint as the queue).
+  // The modal only closes when the API call actually succeeded.
+  const approveFromModal = async (id) => {
+    const ok = await actionOn(id, 'approved', null);
+    if (ok) setViewRequest(null);
+  };
+  const rejectFromModal = async (id) => {
+    const notes = window.prompt('Rejection reason (optional):') ?? '';
+    if (notes === null) return;
+    const ok = await actionOn(id, 'rejected', notes.trim() || 'Not specified');
+    if (ok) setViewRequest(null);
   };
 
   // Derived
@@ -895,7 +1019,7 @@ const LeaveDashboard = () => {
                         </thead>
                         <tbody>
                           {pendingQueue.map((l) => (
-                            <tr key={l.id}>
+                            <ClickRow key={l.id} onClick={() => setViewRequest(l)} title="View full request details">
                               <td>
                                 <Row style={{ padding: 0, borderBottom: 0 }}><Avatar>{l.name ? String(l.name)[0] : '?'}</Avatar>{l.name || l.email || 'User'}</Row>
                               </td>
@@ -903,7 +1027,7 @@ const LeaveDashboard = () => {
                               <td>{fmtDate(l.start_date)} → {fmtDate(l.end_date)}</td>
                               <td>{safeNum(l.days)}</td>
                               <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.reason || ''}>{l.reason || <Pill>No reason</Pill>}</td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <ActionCell>
                                   <SmallBtn className="approve" onClick={() => approve(l.id)} disabled={actingId === l.id}>
                                     {actingId === l.id ? <Loader2 size={12} /> : <Check size={14} />} Approve
@@ -913,7 +1037,7 @@ const LeaveDashboard = () => {
                                   </SmallBtn>
                                 </ActionCell>
                               </td>
-                            </tr>
+                            </ClickRow>
                           ))}
                         </tbody>
                       </Table>
