@@ -2318,6 +2318,7 @@ const LeaveDashboard = () => {
               )}
 
             </Section>
+            )}
 
             {showCalendar && (
             <Section>
