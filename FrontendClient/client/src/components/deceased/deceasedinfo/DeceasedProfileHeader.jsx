@@ -16,7 +16,7 @@ const scanMove = keyframes`
 const BackBtn = styled.button`
   font-size: 13px; font-weight: 600; color: #d93025; cursor: pointer;
   background: none; border: none; display: flex; align-items: center; gap: 6px;
-  margin-bottom: 12px; padding: 14px; font-family: 'Source Sans 3', sans-serif;
+  margin-bottom: 12px; padding: 8px; font-family: 'Source Sans 3', sans-serif;
   &:hover { color: #b91c1c; }
 `;
 
@@ -95,8 +95,8 @@ const BarcodeBox = styled.div`
   background: transparent; border: none; padding: 0; box-shadow: none;
 `;
 const BarcodeCode = styled.span`
-  font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700;
-  letter-spacing: 0.08em; color: #000000; white-space: nowrap;
+  font-family: 'Courier New', monospace; font-size: 10px; font-weight: 800;
+  letter-spacing: 0.08em; color: #00296B; white-space: nowrap;
 `;
 
 const Barcode = ({ value }) => {
@@ -183,7 +183,7 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
 
           <Btn $scan onClick={onScanClick} title="Scan a paper document and upload it straight to this profile's documents">
             <svg width="14" height="14" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="5">
-              <path d="M12 22 L52 22 C54 22 56 24 56 26 L56 50 C56 52 54 54 52 54 L12 54 C10 54 8 52 8 50 L8 26 C8 24 10 22 12 22 Z" transform="translate(1,0)"/>
+              <path d="M12 22 L52 22 C54 22 56 24 56 26 L56 50 C56 52 54 54 52 54 L12 54 C10 54 8 52 8 50 L8 26 C8 24 10 22 12 22 Z" transform="translate(1,0)" />
             </svg>
             Scan Docs
           </Btn>

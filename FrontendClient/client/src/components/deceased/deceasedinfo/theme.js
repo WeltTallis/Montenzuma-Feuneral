@@ -21,7 +21,7 @@ export const C = {
   warningBgTranslucent: 'rgba(251, 191, 36, 0.08)',
   danger: '#ef4444',
   dangerBg: '#fef2f2',
-  info: '#3b82f6',
+  info: '#00296B',
   infoBg: '#dbeafe',
   brown: '#8b5e3c',
   activeBg: 'rgba(251, 191, 36, 0.08)',

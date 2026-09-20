@@ -11,3 +11,5 @@
 ══════════════════════════════════════════════════════════════
 [BRIDGE] running: "C:\Program Files\NAPS2\NAPS2.Console.exe" -o C:\Users\User\AppData\Local\Temp\restpoint-scanner-bridge\scan-1789828273290-210162.pdf --dpi 300 --bitdepth color --driver wia --noprofile -v -f
 [BRIDGE] scanner stdout: No device was specified. Either use "--profile" to specify a profile with a device, or use "--device" to choose a particular device (and "--listdevices" to see available choices).
+[BRIDGE] running: "C:\Program Files\NAPS2\NAPS2.Console.exe" -o C:\Users\User\AppData\Local\Temp\restpoint-scanner-bridge\scan-1789885687653-358878.pdf --dpi 300 --bitdepth color --driver wia --noprofile -v -f
+[BRIDGE] scanner stdout: No device was specified. Either use "--profile" to specify a profile with a device, or use "--device" to choose a particular device (and "--listdevices" to see available choices).

@@ -190,95 +190,94 @@ const CB = styled.div`margin-top:.12rem;font-size:.42rem;font-weight:500;color:r
 /* ───────── HTML-TEMPLATE CARD DESIGN ───────── */
 
 const StepHeader = styled.div`
-  display:flex;align-items:center;gap:.5rem;margin-bottom:1.25rem;
+  display:flex;align-items:center;gap:.6rem;margin-bottom:1.25rem;
 `;
 const StepDot = styled.div`
   width:22px;height:22px;border-radius:50%;
   background:${C.primary};color:#fff;
-  font-size:12px;font-weight:800;
+  font-size:11px;font-weight:800;
   display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 8px rgba(26,95,122,.3);
 `;
 const StepTitle = styled.div`
-  font-size:14px;font-weight:800;text-transform:uppercase;
-  letter-spacing:.04em;color:#475569;
-  span{font-weight:500;color:${C.textMuted};text-transform:none}
+  font-size:13px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.04em;color:#334155;
+  span{color:#64748b;font-weight:600;text-transform:none;letter-spacing:0;margin-left:.4rem;font-size:11px}
 `;
 
 const SectionHeader = styled.div`
-  display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;
+  display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem;
   &::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#e2e8f0 0%,transparent 100%);border-radius:1px}
 `;
 const SectionDot = styled.div`
   width:8px;height:8px;border-radius:50%;
   background:${p => p.$green ? '#10b981' : '#ef4444'};
-  box-shadow:0 0 0 3px ${p => p.$green ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.15)'};
+  box-shadow:0 0 0 2px ${p => p.$green ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.15)'};
 `;
 const SectionLabel = styled.span`
-  font-size:.75rem;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.05em;
+  font-size:.7rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;
 `;
 const SectionCount = styled.span`
-  font-size:.65rem;font-weight:700;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:10px;
+  font-size:.6rem;font-weight:700;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:10px;border:1px solid #e2e8f0;
 `;
 
 const HearseGrid = styled.div`
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
-  gap:.7rem;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:.6rem;
 `;
 
 const HearseCard = styled.button`
-  display:flex;flex-direction:column;gap:.6rem;
-  padding:.85rem;border-radius:14px;cursor:pointer;
-  transition:all .2s cubic-bezier(.4,0,.2,1);text-align:left;width:100%;
+  display:flex;flex-direction:column;gap:.5rem;
+  padding:.6rem .7rem;border-radius:10px;cursor:pointer;
+  transition:all .2s ease;text-align:left;width:100%;
   border:1px solid transparent;position:relative;overflow:hidden;
   ${p => p.$booked
-    ? `background:#fff5f5;border-color:#fee2e2;cursor:not-allowed;opacity:.65;box-shadow:0 2px 8px rgba(239,68,68,.03)`
+    ? `background:#fff5f5;border-color:#fee2e2;cursor:not-allowed;opacity:.6`
     : p.$selected
-      ? `background:#eff6ff;border-color:${C.primary};box-shadow:0 8px 20px -6px rgba(26,95,122,.25),0 0 0 1px ${C.primary};transform:translateY(-3px);z-index:2`
+      ? `background:#eff6ff;border-color:${C.primary};box-shadow:0 6px 14px -4px rgba(26,95,122,.2);opacity:1;transform:translateY(-2px)`
       : p.$neutral
         ? `background:#fff;border-color:${C.border};
-           &:hover{border-color:#cbd5e1;background:#f8fafc;transform:translateY(-3px);box-shadow:0 4px 12px rgba(0,0,0,.05)}`
-        : `background:#f0fdfa;border-color:#d1fae5;
-           &:hover{border-color:#6ee7b7;background:#ecfdf5;transform:translateY(-3px);box-shadow:0 12px 24px -8px rgba(16,185,129,.2)}`}
+           &:hover{border-color:#cbd5e1;background:#f8fafc;transform:translateY(-2px);box-shadow:0 4px 10px rgba(0,0,0,.05)}`
+        : `background:#f0fdfa;border-color:#d1fae5;box-shadow:0 1px 4px rgba(16,185,129,.05);
+           &:hover{border-color:#6ee7b7;background:#ecfdf5;transform:translateY(-2px);box-shadow:0 8px 16px -6px rgba(16,185,129,.2)}`}
 `;
 
 const CardTop = styled.div`
-  display:flex;align-items:center;gap:.65rem;
+  display:flex;align-items:center;gap:.5rem;
 `;
 const Avatar = styled.div`
-  width:42px;height:42px;border-radius:50%;
-  color:#fff;font-size:16px;font-weight:700;
+  width:30px;height:30px;border-radius:8px;
+  color:#fff;font-size:12px;font-weight:700;
   display:flex;align-items:center;justify-content:center;
   text-transform:uppercase;flex-shrink:0;
-  box-shadow:0 4px 8px rgba(0,0,0,.1);
-  border:2px solid rgba(255,255,255,.5);
+  box-shadow:0 2px 4px rgba(0,0,0,.1);
 `;
 const InfoBlock = styled.div`
-  flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem;
+  flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem;
 `;
 const HearseName = styled.span`
-  font-size:.9rem;font-weight:700;color:#0f172a;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;
+  font-size:.75rem;font-weight:700;color:#0f172a;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;
 `;
 const PlateBox = styled.span`
-  font-size:.65rem;font-weight:700;color:#334155;
-  background:#fff;border:1px solid ${C.border};
-  padding:2px 6px;border-radius:5px;align-self:flex-start;
-  letter-spacing:.03em;box-shadow:0 1px 2px rgba(0,0,0,.03);
+  font-size:.55rem;font-weight:700;color:#475569;
+  background:#fff;border:1px solid #e2e8f0;
+  padding:1px 4px;border-radius:3px;align-self:flex-start;
+  letter-spacing:.03em;
 `;
 
 const CardBottom = styled.div`
-  display:flex;align-items:center;justify-content:space-between;gap:.4rem;
-  margin-top:auto;padding-top:.5rem;
-  border-top:1px dashed rgba(0,0,0,.05);
+  display:flex;align-items:center;justify-content:space-between;gap:.3rem;
+  margin-top:auto;padding-top:.35rem;
+  border-top:1px dashed rgba(0,0,0,.06);
 `;
 const RightControls = styled.div`
-  display:flex;align-items:center;gap:.4rem;flex-shrink:0;
+  display:flex;align-items:center;gap:.35rem;flex-shrink:0;
 `;
 const AvailPill = styled.span`
-  font-size:.6rem;font-weight:800;padding:.2rem .55rem;
+  font-size:.5rem;font-weight:800;padding:.15rem .4rem;
   border-radius:999px;text-transform:uppercase;letter-spacing:.03em;
-  box-shadow:0 2px 4px rgba(0,0,0,.02);
   ${p => p.$free
     ? 'background:#d1fae5;color:#047857;border:1px solid #a7f3d0'
     : p.$unknown
@@ -286,8 +285,8 @@ const AvailPill = styled.span`
       : 'background:#fee2e2;color:#b91c1c;border:1px solid #fecaca'}
 `;
 const StatusBadge = styled.span`
-  font-size:.6rem;font-weight:700;padding:.2rem .5rem;
-  border-radius:6px;text-transform:uppercase;letter-spacing:.03em;
+  font-size:.52rem;font-weight:700;padding:.12rem .35rem;
+  border-radius:4px;text-transform:uppercase;letter-spacing:.03em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   display:inline-flex;align-items:center;gap:3px;
   ${p => p.$cls === 'st-active'
@@ -301,11 +300,10 @@ const StatusBadge = styled.span`
           : `color:${C.stTransferredColor};background:rgba(3,7,30,.08);border:1px solid rgba(3,7,30,.1)`}
 `;
 const RadioBtn = styled.span`
-  width:20px;height:20px;border-radius:50%;
+  width:14px;height:14px;border-radius:50%;
   border:2px solid #cbd5e1;display:inline-flex;
   align-items:center;justify-content:center;transition:all .2s;background:#fff;flex-shrink:0;
-  box-shadow:0 1px 2px rgba(0,0,0,.05);
-  &::after{content:'';width:10px;height:10px;border-radius:50%;
+  &::after{content:'';width:7px;height:7px;border-radius:50%;
     background:${C.primary};transform:scale(0);transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
 `;
 const CardSelectedRadio = styled(RadioBtn)`
@@ -373,13 +371,13 @@ function HearseCardTpl({ h, state, hasD, selected, onPick }) {
         <AvailPill $free={pill.mode === 'free'} $unknown={pill.mode === 'unknown'}>{pill.label}</AvailPill>
       </CardBottom>
       {booked && st.bookedFor && st.bookedFor.length > 0 && (
-        <span style={{ fontSize: '.58rem', fontWeight: 600, color: '#b91c1c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <span title={st.bookedFor.map(b => b.date).join(', ')} style={{ fontSize: '.52rem', fontWeight: 600, color: '#b91c1c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
           {st.bookedFor.map(b => b.date).join(', ')}
         </span>
       )}
       {totalCharge > 0 && (
-        <span style={{ fontSize: '.62rem', fontWeight: 700, color: '#059669' }}>
-          Total service charge: KSH {totalCharge.toLocaleString()}
+        <span title={`Total service charge: KSH ${totalCharge.toLocaleString()}`} style={{ fontSize: '.55rem', fontWeight: 700, color: '#059669', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+          Total: KSH {totalCharge.toLocaleString()}
         </span>
       )}
     </HearseCard>
