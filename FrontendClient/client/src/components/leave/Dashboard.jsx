@@ -1,16 +1,21 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    HR LEAVE MANAGEMENT DASHBOARD  (route: /tenant/:slug/leaves)
 
-   Layout — plain header, no banner, no tab navigation; every section stays
-   visible so nothing important is hidden behind a click:
+   Layout — plain header with a section switcher pinned at the top:
 
      1. Compact header        → title, last-updated time, Refresh, Apply leave
-     2. Analytics             → status donut, 6-month trend, leave-type mix
-     3. Approvals inbox       → search / filter / sort / bulk approve / export
-     4. Coverage & balances   → on leave today, next 14 days, own balance
+     2. Section switcher      → All · Overview · Approvals · Employees ·
+                                History · Calendar. "All" keeps every section
+                                visible; picking one shows that section alone
+                                (e.g. Employees → only the employees table,
+                                History → only the leave history table).
+
+     3. Analytics             → status donut, 6-month trend, leave-type mix
+     4. Approvals inbox       → search / filter / sort / bulk approve / export
+        (side column:         → on leave today, next 14 days, own balance)
      5. Employees & balances  → searchable table, click a row for the drawer
      6. Leave history         → search / filter / paginate / export
-     7. Calendar
+     7. Calendar              → compact month grid, periods list scrolls
 
    Everything is derived from the endpoints the leave service already exposes
    (stats/overview, all, balances, users/on-leave, balance/:id, additions/:id)
@@ -27,7 +32,7 @@ import {
   User, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Loader2,
   RefreshCw, Check, X, ChevronRight, ChevronLeft, ChevronFirst, ChevronLast, Plus,
   Trash2, Search, BarChart3, PieChartIcon, TrendingUp, Hourglass, Flag,
-  Briefcase, Download, Eye, ListChecks,
+  Briefcase, Download, Eye, ListChecks, LayoutDashboard,
 } from '../../utils/icons/icons';
 import LeaveCalendar from './LeaveCalendar';
 
@@ -243,6 +248,40 @@ const PageActions = styled.div`
   flex-wrap: wrap;
 `;
 
+/* ── Section switcher — pinned to the top of the page ──────────────────────── */
+const ViewBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  padding: 0.45rem;
+  border: 1px solid ${COLORS.border};
+  border-radius: 12px;
+  background: ${COLORS.white};
+  margin-bottom: 1rem;
+`;
+const ViewTab = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  background: transparent;
+  color: ${COLORS.textSecondary};
+  transition: background 0.15s ease, color 0.15s ease;
+  &:hover { background: ${COLORS.bg}; color: ${COLORS.text}; }
+  &:focus-visible { outline: 2px solid ${COLORS.primary}; outline-offset: 1px; }
+  ${(p) => (p.$on ? `
+    background: ${COLORS.primary};
+    color: #fff;
+    &:hover { background: ${COLORS.primaryLight}; color: #fff; }
+  ` : '')}
+`;
 
 /* ── Notices, skeletons, cards ────────────────────────────────────────────── */
 const Notice = styled.div`
@@ -910,6 +949,12 @@ const LeaveDashboard = () => {
   const [error, setError] = useState('');
   const [warning, setWarning] = useState('');
 
+  /* Section switcher — which part of the landing page is on display.
+     'all' keeps every section visible; the other values isolate one
+     section (e.g. 'employees' → only the Employees table shows,
+     'history' → only the Leave history table shows). */
+  const [view, setView] = useState('all');
+
   const [stats, setStats] = useState({ total: 0, pending: 0, on_leave: 0, by_status: [], by_type: [] });
   const [records, setRecords] = useState([]);        // every leave request in the tenant
   const [onLeaveToday, setOnLeaveToday] = useState([]);
@@ -1442,8 +1487,12 @@ const LeaveDashboard = () => {
     && filteredQueue.every((r) => selected.includes(r.id));
   const toggleAllQueue = () => setSelected(allQueueSelected ? [] : filteredQueue.map((r) => r.id));
 
-
-
+  /* ── Section visibility (driven by the switcher at the top) ─────────────── */
+  const showOverview = view === 'all' || view === 'overview';
+  const showApprovals = view === 'all' || view === 'approvals';
+  const showEmployees = view === 'all' || view === 'employees';
+  const showHistory = view === 'all' || view === 'history';
+  const showCalendar = view === 'all' || view === 'calendar';
 
   return (
     <Page>
@@ -1464,6 +1513,28 @@ const LeaveDashboard = () => {
           <Btn className="primary" onClick={goApply}><Plus size={14} /> Apply leave</Btn>
         </PageActions>
       </PageHead>
+
+      {/* Section switcher — always on top, one click isolates a section */}
+      <ViewBar role="tablist" aria-label="Dashboard sections">
+        <ViewTab $on={view === 'all'} onClick={() => setView('all')} role="tab" aria-selected={view === 'all'}>
+          <LayoutDashboard size={14} /> All sections
+        </ViewTab>
+        <ViewTab $on={view === 'overview'} onClick={() => setView('overview')} role="tab" aria-selected={view === 'overview'}>
+          <BarChart3 size={14} /> Overview
+        </ViewTab>
+        <ViewTab $on={view === 'approvals'} onClick={() => setView('approvals')} role="tab" aria-selected={view === 'approvals'}>
+          <ListChecks size={14} /> Approvals
+        </ViewTab>
+        <ViewTab $on={view === 'employees'} onClick={() => setView('employees')} role="tab" aria-selected={view === 'employees'}>
+          <Users size={14} /> Employees
+        </ViewTab>
+        <ViewTab $on={view === 'history'} onClick={() => setView('history')} role="tab" aria-selected={view === 'history'}>
+          <History size={14} /> History
+        </ViewTab>
+        <ViewTab $on={view === 'calendar'} onClick={() => setView('calendar')} role="tab" aria-selected={view === 'calendar'}>
+          <CalendarDays size={14} /> Calendar
+        </ViewTab>
+      </ViewBar>
 
       {error && (
         <Notice $tone="error">
@@ -1486,6 +1557,7 @@ const LeaveDashboard = () => {
         </>
       ) : (
         <>
+          {showOverview && (
           <Grid3 style={{ marginBottom: '1rem' }}>
             <Section>
               <CardHead>
@@ -1622,7 +1694,9 @@ const LeaveDashboard = () => {
               </CardBody>
             </Section>
           </Grid3>
+          )}
 
+          {showApprovals && (
           <Split style={{ marginBottom: '1rem' }}>
             <div>
               <Section>
@@ -1967,7 +2041,9 @@ const LeaveDashboard = () => {
             </Stack>
 
           </Split>
+          )}
 
+          {showEmployees && (
           <Section>
             <CardHead>
               <CardHeadLeft>
@@ -2088,7 +2164,9 @@ const LeaveDashboard = () => {
               )}
 
             </Section>
+            )}
 
+            {showHistory && (
             <Section>
               <CardHead>
                 <CardHeadLeft>
@@ -2241,6 +2319,7 @@ const LeaveDashboard = () => {
 
             </Section>
 
+            {showCalendar && (
             <Section>
               <CardHead>
                 <CardHeadLeft>
@@ -2271,7 +2350,7 @@ const LeaveDashboard = () => {
                 />
               </CardBody>
             </Section>
-
+            )}
 
         </>
       )}

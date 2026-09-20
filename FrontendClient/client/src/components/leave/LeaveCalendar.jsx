@@ -141,8 +141,21 @@ const DayMarker = styled.span`
   cursor: ${(p) => (p.$interactive ? 'pointer' : 'default')};
 `;
 
+const DayCell = styled.div`
+  height: 40px;
+  padding: 2px;
+  border-bottom: 1px solid ${COLORS.border};
+  border-right: 1px solid ${COLORS.border};
+  position: relative;
+  background: ${(p) => (p.$today ? '#eff4ff' : COLORS.white)};
+`;
+
+/* The leave-periods list can grow with every employee's leave; cap its height
+   and scroll internally so the calendar card stays a sensible size. */
 const Timeline = styled.div`
-  padding: 1rem;
+  padding: 0.75rem 1rem;
+  max-height: 240px;
+  overflow-y: auto;
 `;
 
 const PeriodRow = styled.div`
@@ -240,15 +253,6 @@ const SectionLabel = styled.div`
 const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-`;
-
-const DayCell = styled.div`
-  height: 54px;
-  padding: 3px;
-  border-bottom: 1px solid ${COLORS.border};
-  border-right: 1px solid ${COLORS.border};
-  position: relative;
-  background: ${(p) => (p.$today ? '#eff4ff' : COLORS.white)};
 `;
 
 /* ═══════════════════════════════════════════════════════════════
