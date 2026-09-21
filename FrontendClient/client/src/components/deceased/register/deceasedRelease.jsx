@@ -1,7 +1,8 @@
 ﻿import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
+import { useTenantStore } from '../../../modules/seo/useTenantStore';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
+import { getTenantSlug as getStoredTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 import { ToastContainer, toast } from 'react-toastify';
 import InOurCare from '../../common/InOurCare';
@@ -1154,19 +1155,14 @@ const Barcode = ({ value }) => {
 const DeceasedReleaseForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { id } = useParams();
+  const { id, slug: urlTenantSlug } = useParams();
+  const { tenantData } = useTenantStore();
 
   const getTenantSlug = () => {
-    return localStorage.getItem('tenantSlug') ||
-      localStorage.getItem('tenant_slug') ||
-      (() => {
-        try {
-          const user = JSON.parse(localStorage.getItem('user') || '{}');
-          return user.tenantSlug || user.tenant?.slug || 'default';
-        } catch {
-          return 'default';
-        }
-      })();
+    const exact = urlTenantSlug && urlTenantSlug !== 'default' && urlTenantSlug !== 'dashboard'
+      && urlTenantSlug !== 'undefined' && urlTenantSlug !== 'null'
+      ? urlTenantSlug : '';
+    return exact || getStoredTenantSlug() || '';
   };
 
   const sigPadRef1 = useRef(null);
@@ -1186,7 +1182,7 @@ const DeceasedReleaseForm = () => {
   const [releaseId, setReleaseId] = useState('');
   const [releasedRecord, setReleasedRecord] = useState(null);
 
-  const branding = useMemo(() => resolveTenantBranding(), []);
+  const branding = useMemo(() => resolveTenantBranding(tenantData), [tenantData]);
 
   const {
     name: tenantName,
@@ -1741,7 +1737,7 @@ const DeceasedReleaseForm = () => {
                   <GreetingWelcome>Welcome to</GreetingWelcome>
                   <TextSlider>
                     <TextTrack>
-                      <Phrase>{tenantName || 'Lee Funeral Home'}</Phrase>
+                      <Phrase>{tenantName}</Phrase>
                       <Phrase>Sorry for your loss</Phrase>
                       <Phrase>With deepest sympathy</Phrase>
                       <Phrase>May they rest in peace</Phrase>

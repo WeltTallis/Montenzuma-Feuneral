@@ -3,17 +3,17 @@
 
    Layout — single top navigation bar (no title line):
 
-     Top bar → All · Overview · Approvals · Employees · History · Calendar
-               + Refresh + Apply leave. "All" keeps every section visible;
-               picking one shows that section alone (e.g. Employees → only
+     Top bar → Overview · Approvals · Employees · History · Calendar
+               + Refresh + Apply leave. 
+               Picking one shows that section alone (e.g. Employees → only
                the employees table, History → only the leave history table).
 
-     3. Analytics             → status donut, 6-month trend, leave-type mix
-     4. Approvals inbox       → search / filter / sort / bulk approve / export
+     1. Overview             → status donut, 6-month trend, leave-type mix
+     2. Approvals inbox      → search / filter / sort / bulk approve / export
         (side column:         → on leave today, next 14 days, own balance)
-     5. Employees & balances  → searchable table, click a row for the drawer
-     6. Leave history         → search / filter / paginate / export
-     7. Calendar              → compact month grid, periods list scrolls
+     3. Employees & balances  → searchable table, click a row for the drawer
+     4. Leave history         → search / filter / paginate / export
+     5. Calendar              → compact month grid, periods list scrolls
 
    Everything is derived from the endpoints the leave service already exposes
    (stats/overview, all, balances, users/on-leave, balance/:id, additions/:id)
@@ -30,7 +30,7 @@ import {
   User, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Loader2,
   RefreshCw, Check, X, ChevronRight, ChevronLeft, ChevronFirst, ChevronLast, Plus,
   Trash2, Search, BarChart3, PieChartIcon, TrendingUp, Hourglass, Flag,
-  Briefcase, Download, Eye, ListChecks, LayoutDashboard,
+  Briefcase, Download, Eye, ListChecks,
 } from '../../utils/icons/icons';
 import LeaveCalendar from './LeaveCalendar';
 
@@ -759,8 +759,6 @@ const ModalActions = styled.div`
 `;
 
 
-
-
 /* ── Charts (hand-rolled — no chart library needed for these) ─────────────── */
 const DonutWrap = styled.div`display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap;`;
 const DonutSvg = styled.svg`width: 172px; height: 172px; flex-shrink: 0;`;
@@ -800,18 +798,26 @@ const TrendTrack = styled.div`
   flex: 1;
   display: flex;
   align-items: flex-end;
-  background: linear-gradient(180deg, rgba(10, 36, 99, 0.03), rgba(10, 36, 99, 0.07));
+  background: transparent; /* Removed heavy background track for a sleek look */
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
 `;
 const TrendBar = styled.div`
   width: 100%;
+  max-width: 26px; /* Sleek, narrow bars */
+  margin: 0 auto;
   height: ${(p) => `${p.$h}%`};
-  border-radius: 8px;
+  border-radius: 6px 6px 0 0; /* Smooth rounded tops */
   background: ${(p) => (p.$dim
-    ? 'rgba(148, 163, 184, 0.4)'
-    : `linear-gradient(180deg, ${COLORS.primaryLight}, ${COLORS.primary})`)};
-  transition: height 0.25s ease;
+    ? 'rgba(148, 163, 184, 0.3)'
+    : `linear-gradient(180deg, ${COLORS.primaryLight} 0%, ${COLORS.primary} 100%)`)};
+  transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s; /* Bouncy smooth slide up */
+  box-shadow: ${(p) => p.$dim ? 'none' : `0 4px 10px rgba(10, 36, 99, 0.15)`};
+  transform-origin: bottom;
+  
+  &:hover {
+    background: ${(p) => (p.$dim ? 'rgba(148, 163, 184, 0.4)' : `linear-gradient(180deg, #2A4A8A 0%, #0A2463 100%)`)};
+  }
 `;
 const TrendLabel = styled.span`font-size: 0.72rem; color: ${COLORS.textSecondary}; font-weight: 600;`;
 
@@ -931,17 +937,16 @@ const LeaveDashboard = () => {
   const [warning, setWarning] = useState('');
 
   /* ── Top navigation bar — sections of the leave dashboard ─────────────────────
-     'all' keeps every section visible; any other value isolates one section
+     Defaults to 'overview'. Picking any value isolates that specific section
      (e.g. 'employees' → only the Employees table, 'history' → only History). */
-  const [view, setView] = useState('all');
+  const [view, setView] = useState('overview');
 
   const navSections = useMemo(() => [
-    { value: 'all',         label: 'All',         icon: LayoutDashboard },
-    { value: 'overview',    label: 'Overview',    icon: BarChart3 },
-    { value: 'approvals',   label: 'Approvals',   icon: CheckCircle },
-    { value: 'employees',   label: 'Employees',   icon: Users },
-    { value: 'history',     label: 'History',     icon: History },
-    { value: 'calendar',    label: 'Calendar',    icon: Calendar },
+    { value: 'overview', label: 'Overview', icon: BarChart3 },
+    { value: 'approvals', label: 'Approvals', icon: CheckCircle },
+    { value: 'employees', label: 'Employees', icon: Users },
+    { value: 'history', label: 'History', icon: History },
+    { value: 'calendar', label: 'Calendar', icon: Calendar },
   ], []);
 
   const [stats, setStats] = useState({ total: 0, pending: 0, on_leave: 0, by_status: [], by_type: [] });
@@ -985,9 +990,6 @@ const LeaveDashboard = () => {
   }, [tenantSlug, me]);
 
   const load = useCallback(async (signal) => {
-    // Every endpoint is loaded independently: one failing call must never blank
-    // the whole dashboard. Anything that fails is reported as a partial-data
-    // warning while the rest of the page stays live and truthful.
     const [statsRes, allRes, onLeaveRes, empRes, balRes] = await Promise.all([
       api.get(ENDPOINTS.LEAVE.STATS, { ...tenantHeaders, signal }).catch(() => null),
       api.get(ENDPOINTS.LEAVE.ALL, { ...tenantHeaders, signal }).catch(() => null),
@@ -1059,8 +1061,6 @@ const LeaveDashboard = () => {
 
     setActingId(list.length === 1 ? list[0] : null);
     const before = records;
-    // Optimistic flip so the queue reacts instantly; rolled back only if the
-    // leave service rejects every single change.
     setRecords((prev) => prev.map((r) => (list.includes(r.id)
       ? { ...r, status, rejection_reason: notes || r.rejection_reason }
       : r)));
@@ -1103,9 +1103,6 @@ const LeaveDashboard = () => {
     return failed === 0;
   }, [records, tenantHeaders, me, refresh]);
 
-  /* window.prompt returns null when the officer cancels — and cancelling must
-     NOT reject the request (the old code coerced null to '' and then tested
-     `notes === null`, so cancelling silently rejected with "Not specified"). */
   const askReason = (title) => {
     const answer = window.prompt(title);
     if (answer === null) return null;
@@ -1158,7 +1155,6 @@ const LeaveDashboard = () => {
     setUserDetail(null);
   };
 
-  /* HR credits extra annual-leave days (carry-over, bonus days, corrections). */
   const submitAddDays = async () => {
     if (!selectedUser) return;
     const n = Number(addDaysForm.days);
@@ -1253,8 +1249,6 @@ const LeaveDashboard = () => {
 
   const goApply = () => navigate('apply');
 
-
-
   /* ── Derived: status split (records win; stats/overview is the fallback) ─ */
   const statusCounts = useMemo(() => {
     const out = { pending: 0, approved: 0, rejected: 0, cancelled: 0 };
@@ -1314,8 +1308,6 @@ const LeaveDashboard = () => {
   const onLeaveList = useMemo(() => onLeaveToday.map((u) => ({
     key: u.id || u.user_id || u.email || `onleave-${Math.random()}`,
     user_id: u.user_id,
-    // The API aliases `users.full_name AS name` — the old dashboard read only
-    // `u.full_name`, so every name/avatar in "Out today" was blank.
     name: u.name || u.full_name || u.email || 'Employee',
     email: u.email,
     leave_type: u.leave_type,
@@ -1459,10 +1451,8 @@ const LeaveDashboard = () => {
   const histCurrent = Math.min(histPage, histPages);
   const histPageRows = historyRows.slice((histCurrent - 1) * PAGE_SIZE, histCurrent * PAGE_SIZE);
 
-  /* Filters change the result set → always fall back to page 1. */
   useEffect(() => { setHistPage(1); }, [histQ, histStatus, histType]);
 
-  /* A bulk action clears `selected`; drop ids that are no longer pending. */
   useEffect(() => {
     const valid = new Set(pendingQueue.map((r) => r.id));
     setSelected((prev) => {
@@ -1476,17 +1466,14 @@ const LeaveDashboard = () => {
   const toggleAllQueue = () => setSelected(allQueueSelected ? [] : filteredQueue.map((r) => r.id));
 
   /* ── Section visibility (driven by the top nav) ─────────────────────────── */
-  const showOverview = view === 'all' || view === 'overview';
-  const showApprovals = view === 'all' || view === 'approvals';
-  const showEmployees = view === 'all' || view === 'employees';
-  const showHistory = view === 'all' || view === 'history';
-  const showCalendar = view === 'all' || view === 'calendar';
+  const showOverview = view === 'overview';
+  const showApprovals = view === 'approvals';
+  const showEmployees = view === 'employees';
+  const showHistory = view === 'history';
+  const showCalendar = view === 'calendar';
 
   return (
     <Page>
-      {/* Single top bar — all navigation + actions live here, no title line.
-          "All" keeps every section visible; the other buttons isolate
-          a single section: History alone, Employees alone, etc. */}
       <TopNavBar role="tablist" aria-label="Leave dashboard sections">
         {navSections.map((s) => {
           const Icon = s.icon;
@@ -1498,7 +1485,7 @@ const LeaveDashboard = () => {
               onClick={() => setView(s.value)}
               role="tab"
               aria-selected={active}
-              aria-label={`Show ${s.label} only`}
+              aria-label={`Show ${s.label}`}
             >
               <TopNavIcon><Icon size={16} /></TopNavIcon>
               <TopNavLabel>{s.label}</TopNavLabel>
@@ -1534,368 +1521,44 @@ const LeaveDashboard = () => {
       ) : (
         <>
           {showOverview && (
-          <Grid3 style={{ marginBottom: '1rem' }}>
-            <Section>
-              <CardHead>
-                <CardHeadLeft>
-                  <PieChartIcon size={17} color={COLORS.primary} />
-                  <div>
-                    <CardTitle>Status breakdown</CardTitle>
-                    <CardSub>All {totalRequests} request(s) on record</CardSub>
-                  </div>
-                </CardHeadLeft>
-              </CardHead>
-              <CardBody>
-                {totalRequests === 0 ? (
-                  <Empty>
-                    <PieChartIcon size={22} />
-                    <p>No leave requests recorded yet.</p>
-                  </Empty>
-                ) : (
-                  <DonutWrap>
-                    <Donut
-                      slices={statusSlices}
-                      centerValue={totalRequests}
-                      centerLabel="REQUESTS"
-                      ariaLabel={`${totalRequests} leave requests by status`}
-                    />
-                    <Legend>
-                      {statusSlices.map((s) => (
-                        <LegendRow key={s.key}>
-                          <LegendDot $c={s.color} />
-                          <LegendLabel>{s.label}</LegendLabel>
-                          <LegendValue>{s.value}</LegendValue>
-                          <LegendPct>
-                            {totalRequests ? Math.round((s.value / totalRequests) * 100) : 0}%
-                          </LegendPct>
-                        </LegendRow>
-                      ))}
-                    </Legend>
-                  </DonutWrap>
-                )}
-              </CardBody>
-            </Section>
-
-            <Section>
-              <CardHead>
-                <CardHeadLeft>
-                  <TrendingUp size={17} color={COLORS.primary} />
-                  <div>
-                    <CardTitle>Requests per month</CardTitle>
-                    <CardSub>Last 6 months · hover a column for detail</CardSub>
-                  </div>
-                </CardHeadLeft>
-              </CardHead>
-              <CardBody>
-                {records.length === 0 ? (
-                  <Empty>
-                    <BarChart3 size={22} />
-                    <p>No dated records to trend yet.</p>
-                  </Empty>
-                ) : (
-                  <>
-                    <TrendChart points={months} />
-                    <KeyStats>
-                      <KeyStat>
-                        <KeyStatLabel>Approved days booked</KeyStatLabel>
-                        <KeyStatValue>{round1(approvedDays)}</KeyStatValue>
-                      </KeyStat>
-                      <KeyStat>
-                        <KeyStatLabel>Avg days / request</KeyStatLabel>
-                        <KeyStatValue>{round1(avgRequestDays)}</KeyStatValue>
-                      </KeyStat>
-                      <KeyStat>
-                        <KeyStatLabel>Busiest month</KeyStatLabel>
-                        <KeyStatValue>
-                          {months.reduce((m, p) => (p.value > m.value ? p : m), months[0]).label}
-                          {' · '}
-                          {months.reduce((m, p) => (p.value > m.value ? p : m), months[0]).value}
-                        </KeyStatValue>
-                      </KeyStat>
-                    </KeyStats>
-                  </>
-                )}
-              </CardBody>
-            </Section>
-
-            <Section>
-              <CardHead>
-                <CardHeadLeft>
-                  <BarChart3 size={17} color={COLORS.primary} />
-                  <div>
-                    <CardTitle>Leave type mix</CardTitle>
-                    <CardSub>Requests and days per leave type</CardSub>
-                  </div>
-                </CardHeadLeft>
-              </CardHead>
-              <CardBody>
-                {typeMix.length === 0 ? (
-                  <Empty>
-                    <BarChart3 size={22} />
-                    <p>No leave types recorded yet.</p>
-                  </Empty>
-                ) : (
-                  <>
-                    <MixList>
-                      {typeMix.slice(0, 7).map((t) => {
-                        const meta = typeMeta(t.type);
-                        const w = maxTypeCount ? Math.round((t.count / maxTypeCount) * 100) : 0;
-                        return (
-                          <MixRow key={t.type}>
-                            <MixLabel><MixDot $c={meta.color} />{meta.label}</MixLabel>
-                            <MixTrack><MixFill $w={w} $c={meta.color} /></MixTrack>
-                            <MixMeta>
-                              <MixStrong>{t.count}</MixStrong> req · {round1(t.days)} days
-                            </MixMeta>
-                          </MixRow>
-                        );
-                      })}
-                    </MixList>
-                    <KeyStats>
-                      <KeyStat>
-                        <KeyStatLabel>Most used type</KeyStatLabel>
-                        <KeyStatValue>{typeMeta(typeMix[0].type).label}</KeyStatValue>
-                      </KeyStat>
-                      <KeyStat>
-                        <KeyStatLabel>Requests / employees</KeyStatLabel>
-                        <KeyStatValue>{totalRequests} / {employees.length}</KeyStatValue>
-                      </KeyStat>
-                      <KeyStat>
-                        <KeyStatLabel>Days booked in total</KeyStatLabel>
-                        <KeyStatValue>{round1(typeMix.reduce((n, t) => n + t.days, 0))}</KeyStatValue>
-                      </KeyStat>
-                    </KeyStats>
-                  </>
-                )}
-              </CardBody>
-            </Section>
-          </Grid3>
-          )}
-
-          {showApprovals && (
-          <Split style={{ marginBottom: '1rem' }}>
-            <div>
+            <Grid3 style={{ marginBottom: '1rem' }}>
               <Section>
                 <CardHead>
                   <CardHeadLeft>
-                    <ListChecks size={17} color={COLORS.primary} />
+                    <PieChartIcon size={17} color={COLORS.primary} />
                     <div>
-                      <CardTitle>Approvals inbox</CardTitle>
-                      <CardSub>
-                        {pendingCount === 0
-                          ? 'Nothing is waiting for a decision'
-                          : `${filteredQueue.length} of ${pendingCount} pending request(s) shown`}
-                      </CardSub>
-                    </div>
-                  </CardHeadLeft>
-                  <Btn
-                    onClick={() => exportCsv(filteredQueue, 'pending')}
-                    disabled={filteredQueue.length === 0}
-                  >
-                    <Download size={14} /> Export CSV
-                  </Btn>
-                </CardHead>
-
-                <Toolbar>
-                  <SearchBox>
-                    <Search size={15} />
-                    <input
-                      type="search"
-                      placeholder="Search name, reason, reference…"
-                      value={q}
-                      onChange={(e) => setQ(e.target.value)}
-                      aria-label="Search pending requests"
-                    />
-                  </SearchBox>
-                  <Select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    aria-label="Filter by leave type"
-                  >
-                    {TYPE_FILTERS.map((t) => (
-                      <option key={t} value={t}>{t === 'all' ? 'All types' : typeMeta(t).label}</option>
-                    ))}
-                  </Select>
-                  <Select
-                    value={priorityFilter}
-                    onChange={(e) => setPriorityFilter(e.target.value)}
-                    aria-label="Filter by priority"
-                  >
-                    {PRIORITY_FILTERS.map((p) => (
-                      <option key={p} value={p}>{p === 'all' ? 'Any priority' : priorityMeta(p).label}</option>
-                    ))}
-                  </Select>
-                  <Select
-                    value={sortMode}
-                    onChange={(e) => setSortMode(e.target.value)}
-                    aria-label="Sort pending requests"
-                  >
-                    <option value="oldest">Longest waiting first</option>
-                    <option value="newest">Newest first</option>
-                    <option value="longest">Longest leave first</option>
-                  </Select>
-                </Toolbar>
-
-                {selected.length > 0 && (
-                  <BulkBar>
-                    <span>{selected.length} selected — each request is approved individually</span>
-                    <Btn className="ok" onClick={approveSelected}>
-                      <Check size={14} /> Approve selected
-                    </Btn>
-                    <Btn onClick={() => setSelected([])}><X size={14} /> Clear</Btn>
-                  </BulkBar>
-                )}
-
-                {filteredQueue.length === 0 ? (
-                  <Empty>
-                    {pendingCount === 0 ? <CheckCircle size={22} /> : <Search size={22} />}
-                    <p>
-                      {pendingCount === 0
-                        ? 'Every leave request has been decided — the inbox is empty.'
-                        : 'No pending request matches the current filters.'}
-                    </p>
-                    {pendingCount === 0 && totalRequests === 0 && (
-                      <p>Requests appear here the moment an employee applies for leave.</p>
-                    )}
-                  </Empty>
-                ) : (
-                  <TableScroll>
-                    <Table>
-                      <thead>
-                        <tr>
-                          <th style={{ width: 34 }}>
-                            <Tick
-                              checked={allQueueSelected}
-                              onChange={toggleAllQueue}
-                              aria-label="Select every pending request"
-                            />
-                          </th>
-                          <th>Employee</th>
-                          <th>Type</th>
-                          <th>Dates</th>
-                          <th>Days</th>
-                          <th>Priority</th>
-                          <th>Waiting</th>
-                          <th style={{ width: 200 }}>Decision</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredQueue.map((l) => {
-                          const age = daysSince(l.created_at);
-                          const rowBusy = actingId === l.id;
-                          return (
-                            <ClickRow
-                              key={l.id}
-                              onClick={() => setViewRequest(l)}
-                              title="Open the full request"
-                            >
-                              <td onClick={(e) => e.stopPropagation()}>
-                                <Tick
-                                  checked={selected.includes(l.id)}
-                                  onChange={() => toggleSelected(l.id)}
-                                  aria-label={`Select request ${l.id}`}
-                                />
-                              </td>
-                              <td>
-                                <PersonCell>
-                                  <Avatar>{initials(l.name, l.email)}</Avatar>
-                                  <div style={{ minWidth: 0 }}>
-                                    <Name>{l.name || l.email || 'Employee'}</Name>
-                                    <SubName>Submitted {fmtShort(l.created_at)}</SubName>
-                                  </div>
-                                </PersonCell>
-                              </td>
-                              <td>
-                                <TypeChip>
-                                  <PillDot $c={typeMeta(l.leave_type).color} />
-                                  {typeMeta(l.leave_type).label}
-                                  {safeNum(l.is_half_day) ? ' · half day' : ''}
-                                </TypeChip>
-                              </td>
-                              <td>{fmtRange(l.start_date, l.end_date)}</td>
-                              <td style={{ fontWeight: 700 }}>{round1(l.days)}</td>
-                              <td>
-                                <PriorityFlag $p={l.priority}>
-                                  <Flag size={11} />{priorityMeta(l.priority).label}
-                                </PriorityFlag>
-                              </td>
-                              <td>
-                                <SubName>
-                                  {age === null ? '—' : (age <= 0 ? 'Today' : humanSpan(age))}
-                                </SubName>
-                                {age !== null && age >= 3 && (
-                                  <MiniTag style={{ marginTop: 2 }}>
-                                    <Hourglass size={11} /> ageing
-                                  </MiniTag>
-                                )}
-                              </td>
-                              <td onClick={(e) => e.stopPropagation()}>
-                                <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end' }}>
-                                  <Btn className="ok" onClick={() => approve(l.id)} disabled={rowBusy}>
-                                    {rowBusy ? <Spin><Loader2 size={13} /></Spin> : <Check size={13} />} Approve
-                                  </Btn>
-                                  <Btn className="danger" onClick={() => reject(l.id)} disabled={rowBusy}>
-                                    <XCircle size={13} /> Reject
-                                  </Btn>
-                                </div>
-                              </td>
-                            </ClickRow>
-                          );
-                        })}
-                      </tbody>
-                    </Table>
-                  </TableScroll>
-                )}
-
-              </Section>
-            </div>
-
-            <Stack>
-              <Section>
-                <CardHead>
-                  <CardHeadLeft>
-                    <UserCheck size={17} color={COLORS.primary} />
-                    <div>
-                      <CardTitle>On leave today</CardTitle>
-                      <CardSub>
-                        {onLeaveList.length === 0 ? 'Full team available' : 'Approved and currently away'}
-                      </CardSub>
+                      <CardTitle>Status breakdown</CardTitle>
+                      <CardSub>All {totalRequests} request(s) on record</CardSub>
                     </div>
                   </CardHeadLeft>
                 </CardHead>
                 <CardBody>
-                  {onLeaveList.length === 0 ? (
-                    <Empty style={{ padding: '1.4rem 0.5rem' }}>
-                      <CheckCircle size={22} />
-                      <p>Nobody is on leave today — full cover available.</p>
+                  {totalRequests === 0 ? (
+                    <Empty>
+                      <PieChartIcon size={22} />
+                      <p>No leave requests recorded yet.</p>
                     </Empty>
                   ) : (
-                    <CoverList>
-                      {onLeaveList.map((u) => {
-                        const back = daysUntil(u.end_date);
-                        return (
-                          <CoverRow key={u.key}>
-                            <Avatar $c={typeMeta(u.leave_type).color}>
-                              {initials(u.name, u.email)}
-                            </Avatar>
-                            <CoverListInner style={{ flex: 1 }}>
-                              <Name>{u.name}</Name>
-                              <SubName>
-                                {typeMeta(u.leave_type).label} · {fmtRange(u.start_date, u.end_date)}
-                              </SubName>
-                            </CoverListInner>
-                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                              <StatusPill $status="approved">
-                                <PillDot $c={COLORS.success} />On leave
-                              </StatusPill>
-                              <SubName style={{ marginTop: 2 }}>
-                                {back === null ? '' : (back <= 0 ? 'Last day today' : `Back in ${humanSpan(back)}`)}
-                              </SubName>
-                            </div>
-                          </CoverRow>
-                        );
-                      })}
-                    </CoverList>
+                    <DonutWrap>
+                      <Donut
+                        slices={statusSlices}
+                        centerValue={totalRequests}
+                        centerLabel="REQUESTS"
+                        ariaLabel={`${totalRequests} leave requests by status`}
+                      />
+                      <Legend>
+                        {statusSlices.map((s) => (
+                          <LegendRow key={s.key}>
+                            <LegendDot $c={s.color} />
+                            <LegendLabel>{s.label}</LegendLabel>
+                            <LegendValue>{s.value}</LegendValue>
+                            <LegendPct>
+                              {totalRequests ? Math.round((s.value / totalRequests) * 100) : 0}%
+                            </LegendPct>
+                          </LegendRow>
+                        ))}
+                      </Legend>
+                    </DonutWrap>
                   )}
                 </CardBody>
               </Section>
@@ -1903,137 +1566,461 @@ const LeaveDashboard = () => {
               <Section>
                 <CardHead>
                   <CardHeadLeft>
-                    <CalendarDays size={17} color={COLORS.primary} />
+                    <TrendingUp size={17} color={COLORS.primary} />
                     <div>
-                      <CardTitle>Starting in the next 14 days</CardTitle>
-                      <CardSub>{next14Total} approved request(s) to plan cover for</CardSub>
+                      <CardTitle>Requests per month</CardTitle>
+                      <CardSub>Last 6 months · hover a column for detail</CardSub>
                     </div>
                   </CardHeadLeft>
                 </CardHead>
                 <CardBody>
-                  {upcoming.length === 0 ? (
-                    <Empty style={{ padding: '1.4rem 0.5rem' }}>
-                      <CalendarDays size={22} />
-                      <p>No approved leave starts in the next two weeks.</p>
+                  {records.length === 0 ? (
+                    <Empty>
+                      <BarChart3 size={22} />
+                      <p>No dated records to trend yet.</p>
                     </Empty>
                   ) : (
-                    <div>
-                      {upcoming.map((g) => {
-                        const dayDate = new Date(`${g.day}T12:00:00`);
-                        return (
-                          <UpcomingDay key={g.day}>
-                            <DayBadge>
-                              <DayNum>{dayDate.getDate()}</DayNum>
-                              <DayMon>{dayDate.toLocaleDateString('en-GB', { month: 'short' })}</DayMon>
-                            </DayBadge>
-                            <CoverListInner style={{ flex: 1 }}>
-                              {g.items.map((r) => (
-                                <div
-                                  key={r.id}
-                                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => setViewRequest(r)}
-                                    style={{
-                                      border: 0,
-                                      background: 'none',
-                                      padding: 0,
-                                      cursor: 'pointer',
-                                      fontSize: '0.82rem',
-                                      fontWeight: 700,
-                                      color: COLORS.primary,
-                                      textAlign: 'left',
-                                    }}
-                                  >
-                                    {r.name || r.email || 'Employee'}
-                                  </button>
-                                  <MiniTag>{typeMeta(r.leave_type).label}</MiniTag>
-                                  <span style={{ fontSize: '0.74rem', color: COLORS.textSecondary }}>
-                                    {round1(r.days)} day(s) off
-                                  </span>
-                                </div>
-                              ))}
-                            </CoverListInner>
-                          </UpcomingDay>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardBody>
-              </Section>
-
-              <Section>
-                <CardHead>
-                  <CardHeadLeft>
-                    <User size={17} color={COLORS.primary} />
-                    <div>
-                      <CardTitle>My leave balance</CardTitle>
-                      <CardSub>Your own annual leave position</CardSub>
-                    </div>
-                  </CardHeadLeft>
-                </CardHead>
-                <CardBody>
-                  {balance ? (
                     <>
-                      <MiniGrid>
-                        <MiniStat>
-                          <MSLabel>Entitlement</MSLabel>
-                          <MSValue>{round1(balance.initial)}</MSValue>
-                        </MiniStat>
-                        <MiniStat>
-                          <MSLabel>Taken</MSLabel>
-                          <MSValue>{round1(balance.leaveTaken)}</MSValue>
-                        </MiniStat>
-                        <MiniStat $hl>
-                          <MSLabel>Available</MSLabel>
-                          <MSValue $hl>{round1(balance.currentBalance)}</MSValue>
-                        </MiniStat>
-                      </MiniGrid>
+                      <TrendChart points={months} />
                       <KeyStats>
                         <KeyStat>
-                          <KeyStatLabel>Pending days</KeyStatLabel>
-                          <KeyStatValue>{round1(balance.pendingDays)}</KeyStatValue>
+                          <KeyStatLabel>Approved days booked</KeyStatLabel>
+                          <KeyStatValue>{round1(approvedDays)}</KeyStatValue>
                         </KeyStat>
                         <KeyStat>
-                          <KeyStatLabel>Manual additions</KeyStatLabel>
-                          <KeyStatValue>{round1(balance.manualAdditions)}</KeyStatValue>
+                          <KeyStatLabel>Avg days / request</KeyStatLabel>
+                          <KeyStatValue>{round1(avgRequestDays)}</KeyStatValue>
                         </KeyStat>
                         <KeyStat>
-                          <KeyStatLabel>Holiday credit</KeyStatLabel>
-                          <KeyStatValue>{round1(balance.holidayCompensations)}</KeyStatValue>
+                          <KeyStatLabel>Busiest month</KeyStatLabel>
+                          <KeyStatValue>
+                            {months.reduce((m, p) => (p.value > m.value ? p : m), months[0]).label}
+                            {' · '}
+                            {months.reduce((m, p) => (p.value > m.value ? p : m), months[0]).value}
+                          </KeyStatValue>
                         </KeyStat>
                       </KeyStats>
                     </>
-                  ) : (
-                    <Empty style={{ padding: '1.4rem 0.5rem' }}>
-                      <User size={22} />
-                      <p>Sign in as a registered user to load your personal balance.</p>
-                    </Empty>
                   )}
                 </CardBody>
               </Section>
 
-            </Stack>
+              <Section>
+                <CardHead>
+                  <CardHeadLeft>
+                    <BarChart3 size={17} color={COLORS.primary} />
+                    <div>
+                      <CardTitle>Leave type mix</CardTitle>
+                      <CardSub>Requests and days per leave type</CardSub>
+                    </div>
+                  </CardHeadLeft>
+                </CardHead>
+                <CardBody>
+                  {typeMix.length === 0 ? (
+                    <Empty>
+                      <BarChart3 size={22} />
+                      <p>No leave types recorded yet.</p>
+                    </Empty>
+                  ) : (
+                    <>
+                      <MixList>
+                        {typeMix.slice(0, 7).map((t) => {
+                          const meta = typeMeta(t.type);
+                          const w = maxTypeCount ? Math.round((t.count / maxTypeCount) * 100) : 0;
+                          return (
+                            <MixRow key={t.type}>
+                              <MixLabel><MixDot $c={meta.color} />{meta.label}</MixLabel>
+                              <MixTrack><MixFill $w={w} $c={meta.color} /></MixTrack>
+                              <MixMeta>
+                                <MixStrong>{t.count}</MixStrong> req · {round1(t.days)} days
+                              </MixMeta>
+                            </MixRow>
+                          );
+                        })}
+                      </MixList>
+                      <KeyStats>
+                        <KeyStat>
+                          <KeyStatLabel>Most used type</KeyStatLabel>
+                          <KeyStatValue>{typeMeta(typeMix[0].type).label}</KeyStatValue>
+                        </KeyStat>
+                        <KeyStat>
+                          <KeyStatLabel>Requests / employees</KeyStatLabel>
+                          <KeyStatValue>{totalRequests} / {employees.length}</KeyStatValue>
+                        </KeyStat>
+                        <KeyStat>
+                          <KeyStatLabel>Days booked in total</KeyStatLabel>
+                          <KeyStatValue>{round1(typeMix.reduce((n, t) => n + t.days, 0))}</KeyStatValue>
+                        </KeyStat>
+                      </KeyStats>
+                    </>
+                  )}
+                </CardBody>
+              </Section>
+            </Grid3>
+          )}
 
-          </Split>
+          {showApprovals && (
+            <Split style={{ marginBottom: '1rem' }}>
+              <div>
+                <Section>
+                  <CardHead>
+                    <CardHeadLeft>
+                      <ListChecks size={17} color={COLORS.primary} />
+                      <div>
+                        <CardTitle>Approvals inbox</CardTitle>
+                        <CardSub>
+                          {pendingCount === 0
+                            ? 'Nothing is waiting for a decision'
+                            : `${filteredQueue.length} of ${pendingCount} pending request(s) shown`}
+                        </CardSub>
+                      </div>
+                    </CardHeadLeft>
+                    <Btn
+                      onClick={() => exportCsv(filteredQueue, 'pending')}
+                      disabled={filteredQueue.length === 0}
+                    >
+                      <Download size={14} /> Export CSV
+                    </Btn>
+                  </CardHead>
+
+                  <Toolbar>
+                    <SearchBox>
+                      <Search size={15} />
+                      <input
+                        type="search"
+                        placeholder="Search name, reason, reference…"
+                        value={q}
+                        onChange={(e) => setQ(e.target.value)}
+                        aria-label="Search pending requests"
+                      />
+                    </SearchBox>
+                    <Select
+                      value={typeFilter}
+                      onChange={(e) => setTypeFilter(e.target.value)}
+                      aria-label="Filter by leave type"
+                    >
+                      {TYPE_FILTERS.map((t) => (
+                        <option key={t} value={t}>{t === 'all' ? 'All types' : typeMeta(t).label}</option>
+                      ))}
+                    </Select>
+                    <Select
+                      value={priorityFilter}
+                      onChange={(e) => setPriorityFilter(e.target.value)}
+                      aria-label="Filter by priority"
+                    >
+                      {PRIORITY_FILTERS.map((p) => (
+                        <option key={p} value={p}>{p === 'all' ? 'Any priority' : priorityMeta(p).label}</option>
+                      ))}
+                    </Select>
+                    <Select
+                      value={sortMode}
+                      onChange={(e) => setSortMode(e.target.value)}
+                      aria-label="Sort pending requests"
+                    >
+                      <option value="oldest">Longest waiting first</option>
+                      <option value="newest">Newest first</option>
+                      <option value="longest">Longest leave first</option>
+                    </Select>
+                  </Toolbar>
+
+                  {selected.length > 0 && (
+                    <BulkBar>
+                      <span>{selected.length} selected — each request is approved individually</span>
+                      <Btn className="ok" onClick={approveSelected}>
+                        <Check size={14} /> Approve selected
+                      </Btn>
+                      <Btn onClick={() => setSelected([])}><X size={14} /> Clear</Btn>
+                    </BulkBar>
+                  )}
+
+                  {filteredQueue.length === 0 ? (
+                    <Empty>
+                      {pendingCount === 0 ? <CheckCircle size={22} /> : <Search size={22} />}
+                      <p>
+                        {pendingCount === 0
+                          ? 'Every leave request has been decided — the inbox is empty.'
+                          : 'No pending request matches the current filters.'}
+                      </p>
+                      {pendingCount === 0 && totalRequests === 0 && (
+                        <p>Requests appear here the moment an employee applies for leave.</p>
+                      )}
+                    </Empty>
+                  ) : (
+                    <TableScroll>
+                      <Table>
+                        <thead>
+                          <tr>
+                            <th style={{ width: 34 }}>
+                              <Tick
+                                checked={allQueueSelected}
+                                onChange={toggleAllQueue}
+                                aria-label="Select every pending request"
+                              />
+                            </th>
+                            <th>Employee</th>
+                            <th>Type</th>
+                            <th>Dates</th>
+                            <th>Days</th>
+                            <th>Priority</th>
+                            <th>Waiting</th>
+                            <th style={{ width: 200 }}>Decision</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredQueue.map((l) => {
+                            const age = daysSince(l.created_at);
+                            const rowBusy = actingId === l.id;
+                            return (
+                              <ClickRow
+                                key={l.id}
+                                onClick={() => setViewRequest(l)}
+                                title="Open the full request"
+                              >
+                                <td onClick={(e) => e.stopPropagation()}>
+                                  <Tick
+                                    checked={selected.includes(l.id)}
+                                    onChange={() => toggleSelected(l.id)}
+                                    aria-label={`Select request ${l.id}`}
+                                  />
+                                </td>
+                                <td>
+                                  <PersonCell>
+                                    <Avatar>{initials(l.name, l.email)}</Avatar>
+                                    <div style={{ minWidth: 0 }}>
+                                      <Name>{l.name || l.email || 'Employee'}</Name>
+                                      <SubName>Submitted {fmtShort(l.created_at)}</SubName>
+                                    </div>
+                                  </PersonCell>
+                                </td>
+                                <td>
+                                  <TypeChip>
+                                    <PillDot $c={typeMeta(l.leave_type).color} />
+                                    {typeMeta(l.leave_type).label}
+                                    {safeNum(l.is_half_day) ? ' · half day' : ''}
+                                  </TypeChip>
+                                </td>
+                                <td>{fmtRange(l.start_date, l.end_date)}</td>
+                                <td style={{ fontWeight: 700 }}>{round1(l.days)}</td>
+                                <td>
+                                  <PriorityFlag $p={l.priority}>
+                                    <Flag size={11} />{priorityMeta(l.priority).label}
+                                  </PriorityFlag>
+                                </td>
+                                <td>
+                                  <SubName>
+                                    {age === null ? '—' : (age <= 0 ? 'Today' : humanSpan(age))}
+                                  </SubName>
+                                  {age !== null && age >= 3 && (
+                                    <MiniTag style={{ marginTop: 2 }}>
+                                      <Hourglass size={11} /> ageing
+                                    </MiniTag>
+                                  )}
+                                </td>
+                                <td onClick={(e) => e.stopPropagation()}>
+                                  <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end' }}>
+                                    <Btn className="ok" onClick={() => approve(l.id)} disabled={rowBusy}>
+                                      {rowBusy ? <Spin><Loader2 size={13} /></Spin> : <Check size={13} />} Approve
+                                    </Btn>
+                                    <Btn className="danger" onClick={() => reject(l.id)} disabled={rowBusy}>
+                                      <XCircle size={13} /> Reject
+                                    </Btn>
+                                  </div>
+                                </td>
+                              </ClickRow>
+                            );
+                          })}
+                        </tbody>
+                      </Table>
+                    </TableScroll>
+                  )}
+
+                </Section>
+              </div>
+
+              <Stack>
+                <Section>
+                  <CardHead>
+                    <CardHeadLeft>
+                      <UserCheck size={17} color={COLORS.primary} />
+                      <div>
+                        <CardTitle>On leave today</CardTitle>
+                        <CardSub>
+                          {onLeaveList.length === 0 ? 'Full team available' : 'Approved and currently away'}
+                        </CardSub>
+                      </div>
+                    </CardHeadLeft>
+                  </CardHead>
+                  <CardBody>
+                    {onLeaveList.length === 0 ? (
+                      <Empty style={{ padding: '1.4rem 0.5rem' }}>
+                        <CheckCircle size={22} />
+                        <p>Nobody is on leave today — full cover available.</p>
+                      </Empty>
+                    ) : (
+                      <CoverList>
+                        {onLeaveList.map((u) => {
+                          const back = daysUntil(u.end_date);
+                          return (
+                            <CoverRow key={u.key}>
+                              <Avatar $c={typeMeta(u.leave_type).color}>
+                                {initials(u.name, u.email)}
+                              </Avatar>
+                              <CoverListInner style={{ flex: 1 }}>
+                                <Name>{u.name}</Name>
+                                <SubName>
+                                  {typeMeta(u.leave_type).label} · {fmtRange(u.start_date, u.end_date)}
+                                </SubName>
+                              </CoverListInner>
+                              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                <StatusPill $status="approved">
+                                  <PillDot $c={COLORS.success} />On leave
+                                </StatusPill>
+                                <SubName style={{ marginTop: 2 }}>
+                                  {back === null ? '' : (back <= 0 ? 'Last day today' : `Back in ${humanSpan(back)}`)}
+                                </SubName>
+                              </div>
+                            </CoverRow>
+                          );
+                        })}
+                      </CoverList>
+                    )}
+                  </CardBody>
+                </Section>
+
+                <Section>
+                  <CardHead>
+                    <CardHeadLeft>
+                      <CalendarDays size={17} color={COLORS.primary} />
+                      <div>
+                        <CardTitle>Starting in the next 14 days</CardTitle>
+                        <CardSub>{next14Total} approved request(s) to plan cover for</CardSub>
+                      </div>
+                    </CardHeadLeft>
+                  </CardHead>
+                  <CardBody>
+                    {upcoming.length === 0 ? (
+                      <Empty style={{ padding: '1.4rem 0.5rem' }}>
+                        <CalendarDays size={22} />
+                        <p>No approved leave starts in the next two weeks.</p>
+                      </Empty>
+                    ) : (
+                      <div>
+                        {upcoming.map((g) => {
+                          const dayDate = new Date(`${g.day}T12:00:00`);
+                          return (
+                            <UpcomingDay key={g.day}>
+                              <DayBadge>
+                                <DayNum>{dayDate.getDate()}</DayNum>
+                                <DayMon>{dayDate.toLocaleDateString('en-GB', { month: 'short' })}</DayMon>
+                              </DayBadge>
+                              <CoverListInner style={{ flex: 1 }}>
+                                {g.items.map((r) => (
+                                  <div
+                                    key={r.id}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewRequest(r)}
+                                      style={{
+                                        border: 0,
+                                        background: 'none',
+                                        padding: 0,
+                                        cursor: 'pointer',
+                                        fontSize: '0.82rem',
+                                        fontWeight: 700,
+                                        color: COLORS.primary,
+                                        textAlign: 'left',
+                                      }}
+                                    >
+                                      {r.name || r.email || 'Employee'}
+                                    </button>
+                                    <MiniTag>{typeMeta(r.leave_type).label}</MiniTag>
+                                    <span style={{ fontSize: '0.74rem', color: COLORS.textSecondary }}>
+                                      {round1(r.days)} day(s) off
+                                    </span>
+                                  </div>
+                                ))}
+                              </CoverListInner>
+                            </UpcomingDay>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardBody>
+                </Section>
+
+                <Section>
+                  <CardHead>
+                    <CardHeadLeft>
+                      <User size={17} color={COLORS.primary} />
+                      <div>
+                        <CardTitle>My leave balance</CardTitle>
+                        <CardSub>Your own annual leave position</CardSub>
+                      </div>
+                    </CardHeadLeft>
+                  </CardHead>
+                  <CardBody>
+                    {balance ? (
+                      <>
+                        <MiniGrid>
+                          <MiniStat>
+                            <MSLabel>Entitlement</MSLabel>
+                            <MSValue>{round1(balance.initial)}</MSValue>
+                          </MiniStat>
+                          <MiniStat>
+                            <MSLabel>Taken</MSLabel>
+                            <MSValue>{round1(balance.leaveTaken)}</MSValue>
+                          </MiniStat>
+                          <MiniStat $hl>
+                            <MSLabel>Available</MSLabel>
+                            <MSValue $hl>{round1(balance.currentBalance)}</MSValue>
+                          </MiniStat>
+                        </MiniGrid>
+                        <KeyStats>
+                          <KeyStat>
+                            <KeyStatLabel>Pending days</KeyStatLabel>
+                            <KeyStatValue>{round1(balance.pendingDays)}</KeyStatValue>
+                          </KeyStat>
+                          <KeyStat>
+                            <KeyStatLabel>Manual additions</KeyStatLabel>
+                            <KeyStatValue>{round1(balance.manualAdditions)}</KeyStatValue>
+                          </KeyStat>
+                          <KeyStat>
+                            <KeyStatLabel>Holiday credit</KeyStatLabel>
+                            <KeyStatValue>{round1(balance.holidayCompensations)}</KeyStatValue>
+                          </KeyStat>
+                        </KeyStats>
+                      </>
+                    ) : (
+                      <Empty style={{ padding: '1.4rem 0.5rem' }}>
+                        <User size={22} />
+                        <p>Sign in as a registered user to load your personal balance.</p>
+                      </Empty>
+                    )}
+                  </CardBody>
+                </Section>
+
+              </Stack>
+
+            </Split>
           )}
 
           {showEmployees && (
-          <Section>
-            <CardHead>
-              <CardHeadLeft>
-                <Briefcase size={17} color={COLORS.primary} />
-                <div>
-                  <CardTitle>Employees &amp; balances</CardTitle>
-                  <CardSub>
-                    {employeeRows.length} employee(s)
-                    {lowBalanceCount > 0 ? ` · ${lowBalanceCount} low or exhausted` : ''}
-                    {' · click a row to open their leave dashboard'}
-                  </CardSub>
-                </div>
-              </CardHeadLeft>
-            </CardHead>
+            <Section>
+              <CardHead>
+                <CardHeadLeft>
+                  <Briefcase size={17} color={COLORS.primary} />
+                  <div>
+                    <CardTitle>Employees &amp; balances</CardTitle>
+                    <CardSub>
+                      {employeeRows.length} employee(s)
+                      {lowBalanceCount > 0 ? ` · ${lowBalanceCount} low or exhausted` : ''}
+                      {' · click a row to open their leave dashboard'}
+                    </CardSub>
+                  </div>
+                </CardHeadLeft>
+              </CardHead>
               <Toolbar>
                 <SearchBox>
                   <Search size={15} />
@@ -2140,9 +2127,9 @@ const LeaveDashboard = () => {
               )}
 
             </Section>
-            )}
+          )}
 
-            {showHistory && (
+          {showHistory && (
             <Section>
               <CardHead>
                 <CardHeadLeft>
@@ -2294,9 +2281,9 @@ const LeaveDashboard = () => {
               )}
 
             </Section>
-            )}
+          )}
 
-            {showCalendar && (
+          {showCalendar && (
             <Section>
               <CardHead>
                 <CardHeadLeft>
@@ -2327,7 +2314,7 @@ const LeaveDashboard = () => {
                 />
               </CardBody>
             </Section>
-            )}
+          )}
 
         </>
       )}
@@ -2727,4 +2714,3 @@ const LeaveDashboard = () => {
 };
 
 export default LeaveDashboard;
-

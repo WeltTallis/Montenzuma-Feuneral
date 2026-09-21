@@ -1,6 +1,10 @@
 import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../shared/dbConfig';
 import { renderStampOnPDFKit } from '../../../packages/shared-stamps/dist/index';
 import Logger from '../../../packages/shared-logger/src/index';
+// Same tracking helper the /postmortem-requests endpoints use, so a request
+// submitted from the public portal lands in the SAME table the deceased
+// profile reads its "Postmortem Requests" list from.
+import { ensurePostmortemRequestsTable } from './postmortemRequestControl';
 import { Request, Response } from 'express';
 import { DateTime } from 'luxon';
 import PDFDocument from 'pdfkit';
@@ -32,7 +36,7 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
         return res.status(400).json({ success: false, message: 'Valid tenant required. Please provide x-tenant-slug header' });
     }
     try {
-        const { deceased_id, reason, requested_by } = req.body;
+        const { deceased_id, reason, requested_by, requesting_authority, notes, source, priority } = req.body;
         if (!deceased_id || !reason || !requested_by) {
             return res.status(400).json({ success: false, message: 'deceased_id, reason, and requested_by are required' });
         }
@@ -52,6 +56,43 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
         } else {
             const insertQuery = `INSERT INTO postmortem (deceased_id, status, requested_by, requested_at, requesting_authority, examination_summary, created_at, updated_at) VALUES (?, 'pending', ?, ?, ?, ?, ?, ?)`;
             await safeTenantExecute(dbName, insertQuery, [deceased_id, requested_by, now, reason, reason, now, now]);
+        }
+
+        // ── Mirror the request into the tracked postmortem_requests table ─────
+        // The public portal (family / reception form) posts here, but this
+        // controller historically only wrote the official `postmortem` row. The
+        // deceased profile renders its "Postmortem Requests" list from
+        // `postmortem_requests`, so without this mirror a request submitted from
+        // the portal never appeared on the deceased profile. Kept identical to
+        // createPostmortemRequest so both entry points behave the same way.
+        let trackingRequestId: number | null = null;
+        try {
+            await ensurePostmortemRequestsTable(dbName);
+            const requestRef = `PMR-${Date.now()}`;
+            const sourceTag = typeof source === 'string' && source.trim() ? source.trim() : 'postmortem_request_form';
+            const trackingNotes = [
+                typeof notes === 'string' && notes.trim() ? notes.trim() : null,
+                `Source: ${sourceTag}`,
+                typeof priority === 'string' && priority.trim() ? `Priority: ${priority.trim()}` : null,
+            ].filter(Boolean).join(' · ') || null;
+
+            const tracked: any = await safeTenantExecute(dbName, `
+                INSERT INTO postmortem_requests
+                    (deceased_id, request_ref, requested_by, requesting_authority, reason, notes, status, initiated_by, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'initiated', ?, ?, ?)
+            `, [deceased_id, requestRef, requested_by, requesting_authority || null, reason, trackingNotes, requested_by, now, now]);
+            trackingRequestId = tracked?.insertId ?? null;
+        } catch (trackErr: any) {
+            // Never fail a public request just because the tracking row failed.
+            Logger.warn({ message: 'Failed to mirror postmortem request into postmortem_requests', error: trackErr?.message });
+        }
+
+        // Sync the deceased record: the body is now awaiting postmortem examination
+        // (same behaviour as createPostmortemRequest / the "Initiate Request" flow).
+        try {
+            await safeTenantExecute(dbName, `UPDATE deceased SET body_status = 'Postmortem Requested', updated_at = ? WHERE deceased_id = ?`, [now, deceased_id]);
+        } catch (statusErr: any) {
+            Logger.warn({ message: 'Failed to set deceased body_status to Postmortem Requested', error: statusErr?.message });
         }
 
         try {
@@ -88,6 +129,43 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
                     break;
                 } catch (urlError: any) {
                     Logger.warn({ message: `SocketIO URL failed: ${socketioServiceUrl}`, error: urlError.message });
+                }
+            }
+
+            // The notification bell listens for 'notification:postmortem-request-created'
+            // (same event createPostmortemRequest emits) — without it a request sent
+            // from the public portal never appeared in the mortuary team's bell.
+            const trackingPayload = {
+                tenantSlug,
+                data: {
+                    id: trackingRequestId ? `pmr-${trackingRequestId}` : `postmortem-request-${deceased_id}-${Date.now()}`,
+                    requestId: trackingRequestId ? String(trackingRequestId) : '',
+                    deceasedId: deceased_id,
+                    requestedBy: requested_by,
+                    requestingAuthority: requesting_authority || '',
+                    reason,
+                    title: 'Postmortem Request Received',
+                    message: `Postmortem request submitted by ${requested_by}`,
+                    type: 'postmortem_request',
+                    priority: 'high',
+                    fullContent: [
+                        `Deceased ID: ${deceased_id}`,
+                        `Requested By: ${requested_by}`,
+                        requesting_authority ? `Requesting Authority: ${requesting_authority}` : null,
+                        `Reason: ${reason}`,
+                        typeof source === 'string' && source ? `Source: ${source}` : null,
+                        `Date: ${now}`,
+                    ].filter(Boolean).join('\n'),
+                },
+            };
+
+            for (const socketioServiceUrl of candidateUrls) {
+                try {
+                    await axios.post(`${socketioServiceUrl}/emit/postmortem-request-created`, trackingPayload, { timeout: 3000 });
+                    Logger.info({ message: `Emitted postmortem-request-created for ${deceased_id} via ${socketioServiceUrl}` });
+                    break;
+                } catch (urlError: any) {
+                    Logger.warn({ message: `SocketIO URL failed for postmortem-request-created: ${socketioServiceUrl}`, error: urlError.message });
                 }
             }
         } catch (emitError: any) {
@@ -350,7 +428,8 @@ export const getPostmortemByDeceasedId = async (req: TenantRequest, res: Respons
                 id, deceased_id, status, pathologist_name, external_pathologist_name, external_pathologist_mobile, external_pathologist_id,
                 examination_summary, cause_of_death, immediate_cause_of_death, underlying_cause_of_death, contributing_conditions,
                 manner_of_death, requesting_authority, findings, head_findings, chest_findings, abdomen_findings, extremities_findings,
-                toxicology_findings, custom_findings, signature, report_pdf_url, created_at, updated_at
+                toxicology_findings, custom_findings, signature, report_pdf_url, created_at, updated_at,
+                requested_by, requested_at
             FROM postmortem WHERE deceased_id = ?
         `;
 

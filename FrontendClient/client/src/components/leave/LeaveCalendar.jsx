@@ -3,31 +3,33 @@ import styled from 'styled-components';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from '../../utils/icons/icons';
 
 /*
- Leave Range Calendar
-   A self-contained month-view calendar that highlights, for a given
- employee, the period they went on leave (start_date) up to the day
-   they returned / finished (end_date).
+  Leave Range Calendar
+  A self-contained month-view calendar that highlights, for a given
+  employee, the period they went on leave (start_date) up to the day
+  they returned / finished (end_date).
 */
 
 const COLORS = {
   primary: '#0A2463',
   primaryLight: '#1A3A7A',
+  primarySoft: 'rgba(10, 36, 99, 0.05)',
   white: '#FFFFFF',
-  bg: '#F5F7FA',
-  border: '#E8ECF0',
-  text: '#1A1D24',
+  bg: '#F9FAFB',
+  bgAlt: '#F3F4F6',
+  border: '#E5E7EB',
+  text: '#111827',
   textSecondary: '#6B7280',
   success: '#10B981',
   warning: '#F59E0B',
-  danger: '#E74C3C',
+  danger: '#EF4444',
   info: '#3B82F6',
 };
 
 const STATUS_STYLE = {
-  approved: { tint: '#dcfce7', dot: '#22c581', badge: '#f0fdf4', label: '#166534' },
-  pending: { tint: '#fef9c4', dot: '#f59e0b', badge: '#fefceb', label: '#854d0e' },
-  rejected: { tint: '#fee2e2', dot: '#ef4444', badge: '#fef2f2', label: '#991b1b' },
-  cancelled: { tint: '#f1f5f9', dot: '#94a3b8', badge: '#f8fafc', label: '#475569' },
+  approved: { dot: '#10B981', label: '#047857', bg: 'rgba(16, 185, 129, 0.1)' },
+  pending: { dot: '#F59E0B', label: '#B45309', bg: 'rgba(245, 158, 11, 0.1)' },
+  rejected: { dot: '#EF4444', label: '#B91C1C', bg: 'rgba(239, 68, 68, 0.1)' },
+  cancelled: { dot: '#94A3B8', label: '#475569', bg: 'rgba(148, 163, 184, 0.1)' },
 };
 
 const TYPE_LABEL = {
@@ -65,194 +67,274 @@ const formatDateShort = (d) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
+// ─── Styled Components ─────────────────────────────────────────────
+
 const Wrapper = styled.div`
   background: ${COLORS.white};
   border: 1px solid ${COLORS.border};
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 `;
 
 const CalHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.7rem 1rem;
-  border-bottom: 1px solid ${COLORS.border};
-  background: ${COLORS.bg};
+  padding: 1.25rem 1.5rem;
+  background: ${COLORS.white};
 `;
 
 const NavBtn = styled.button`
   background: ${COLORS.white};
   border: 1px solid ${COLORS.border};
-  border-radius: 6px;
-  width: 30px;
-  height: 30px;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: ${COLORS.textSecondary};
   transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+
   &:hover {
     background: ${COLORS.primary};
+    border-color: ${COLORS.primary};
     color: ${COLORS.white};
+    transform: translateY(-1px);
+  }
+  
+  &.today-btn {
+    width: auto;
+    padding: 0 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 600;
   }
 `;
 
 const Title = styled.div`
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: ${COLORS.text};
+  letter-spacing: -0.01em;
 `;
 
 const WeekdaysRow = styled.div`
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: ${COLORS.bg};
+  background: ${COLORS.bgAlt};
+  border-top: 1px solid ${COLORS.border};
   border-bottom: 1px solid ${COLORS.border};
 `;
 
 const WeekdayCell = styled.div`
   text-align: center;
-  padding: 0.45rem 0.25rem;
-  font-size: 0.68rem;
-  font-weight: 600;
+  padding: 0.65rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: ${COLORS.textSecondary};
 `;
 
-
-const DayNum = styled.div`
-  font-size: 0.7rem;
-  font-weight: ${(p) => (p.$today ? '700' : '500')};
-  color: ${(p) =>
-    p.$today ? COLORS.primary : p.$muted ? COLORS.textSecondary : COLORS.text};
-  padding: 2px 4px;
-`;
-
-const DayMarker = styled.span`
-  display: block;
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  margin-top: 2px;
-  background: ${(p) => p.$color || COLORS.info};
-  cursor: ${(p) => (p.$interactive ? 'pointer' : 'default')};
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: ${COLORS.border}; /* Acts as grid lines */
+  gap: 1px; 
+  border-bottom: 1px solid ${COLORS.border};
 `;
 
 const DayCell = styled.div`
-  height: 40px;
-  padding: 2px;
-  border-bottom: 1px solid ${COLORS.border};
-  border-right: 1px solid ${COLORS.border};
+  height: 54px;
+  padding: 4px;
   position: relative;
-  background: ${(p) => (p.$today ? '#eff4ff' : COLORS.white)};
+  background: ${(p) => (p.$today ? COLORS.primarySoft : COLORS.white)};
+  transition: background 0.15s;
+  
+  &:hover {
+    background: ${(p) => (p.$today ? COLORS.primarySoft : COLORS.bg)};
+  }
 `;
 
-/* The leave-periods list can grow with every employee's leave; cap its height
-   and scroll internally so the calendar card stays a sensible size. */
-const Timeline = styled.div`
-  padding: 0.75rem 1rem;
-  max-height: 240px;
+const DayNum = styled.div`
+  font-size: 0.85rem;
+  font-weight: ${(p) => (p.$today ? '700' : '500')};
+  color: ${(p) =>
+    p.$today ? COLORS.primary : COLORS.text};
+  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  ${(p) => p.$today && `background: rgba(10, 36, 99, 0.1);`}
+`;
+
+const MarkerContainer = styled.div`
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px;
+`;
+
+const DayMarker = styled.div`
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: ${(p) => p.$color};
+  cursor: ${(p) => (p.$interactive ? 'pointer' : 'default')};
+  transition: transform 0.15s;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
+`;
+
+const ExtraLeaveText = styled.div`
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: ${COLORS.textSecondary};
+  padding-left: 4px;
+`;
+
+// ─── Timeline Section ─────────────────────────────────────────────
+
+const TimelineWrapper = styled.div`
+  padding: 1.5rem;
+  background: ${COLORS.bg};
+`;
+
+const TimelineHead = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+`;
+
+const TimelineTitle = styled.h4`
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: ${COLORS.text};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+`;
+
+const TimelineScroll = styled.div`
+  max-height: 260px;
   overflow-y: auto;
+  padding-right: 0.5rem;
+  
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
 `;
 
-const PeriodRow = styled.div`
+const PeriodCard = styled.div`
+  background: ${COLORS.white};
+  border: 1px solid ${COLORS.border};
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  cursor: ${(p) => (p.$clickable ? 'pointer' : 'default')};
+  
+  &:hover {
+    border-color: ${COLORS.primaryLight};
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+  }
+`;
+
+const PeriodHeader = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.75rem;
+`;
+
+const PeriodDot = styled.span`
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: ${(p) => p.$color};
+`;
+
+const PeriodLabel = styled.div`
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: ${COLORS.text};
+  flex: 1;
+`;
+
+const PeriodDaysBadge = styled.span`
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  background: ${(p) => p.$bg};
+  color: ${(p) => p.$color};
 `;
 
 const PeriodBarWrap = styled.div`
-  flex: 1;
-  height: 18px;
-  background: ${COLORS.bg};
-  border-radius: 9px;
+  height: 10px;
+  background: ${COLORS.bgAlt};
+  border-radius: 5px;
   overflow: hidden;
   position: relative;
-  min-width: 60px;
 `;
 
 const PeriodBar = styled.div`
   position: absolute;
   top: 0;
   bottom: 0;
-  border-radius: 9px;
-  background: ${(p) => p.$color || COLORS.info};
-`;
-
-const PeriodDot = styled.span`
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: ${(p) => p.$color || COLORS.info};
-  flex-shrink: 0;
-`;
-
-const PeriodLabel = styled.div`
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: ${COLORS.text};
-  min-width: 90px;
+  border-radius: 5px;
+  background: ${(p) => p.$color};
+  transition: width 0.3s ease, left 0.3s ease;
 `;
 
 const PeriodDates = styled.div`
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: ${COLORS.textSecondary};
-  white-space: nowrap;
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: space-between;
 `;
 
-const PeriodDays = styled.span`
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: ${(p) => p.$color || COLORS.info};
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 3rem 1rem;
+  color: ${COLORS.textSecondary};
 `;
 
 const Legend = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0.6rem 1rem;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
   border-top: 1px solid ${COLORS.border};
-  background: ${COLORS.bg};
-  font-size: 0.76rem;
+  background: ${COLORS.white};
+  font-size: 0.75rem;
   color: ${COLORS.textSecondary};
 `;
 
 const LegendItem = styled.span`
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
+  font-weight: 500;
 `;
 
 const LegendDot = styled.span`
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   display: inline-block;
   background: ${(p) => p.$color};
-`;
-
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 2.5rem 1rem;
-  color: ${COLORS.textSecondary};
-`;
-
-const SectionLabel = styled.div`
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: ${COLORS.textSecondary};
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 0.4rem;
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
 `;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -343,8 +425,6 @@ const LeaveCalendar = ({ leaves = [], onLeaveClick }) => {
     }
   };
 
-
-
   const goToToday = () => {
     setViewYear(today.getFullYear());
     setViewMonth(today.getMonth());
@@ -352,7 +432,6 @@ const LeaveCalendar = ({ leaves = [], onLeaveClick }) => {
 
   // Timeline spans across the earliest start -> latest end of all ranges
   const timelineSpan = useMemo(() => {
-
     if (ranges.length === 0) return { minStart: null, maxEnd: null, spanMs: 0 };
     const minStart = ranges.reduce(
       (a, x) => (x.start < a ? x.start : a),
@@ -362,26 +441,24 @@ const LeaveCalendar = ({ leaves = [], onLeaveClick }) => {
       (a, x) => (x.end > a ? x.end : a),
       ranges[0].end,
     );
-
     return { minStart, maxEnd, spanMs: maxEnd.getTime() - minStart.getTime() };
-
   }, [ranges]);
 
   return (
     <Wrapper>
       <CalHeader>
         <NavBtn onClick={prevMonth} aria-label="Previous month">
-          <ChevronLeft size={16} />
+          <ChevronLeft size={18} />
         </NavBtn>
         <Title>
           {monthName} {viewYear}
         </Title>
-        <div style={{ display: 'flex', gap: '0.35rem' }}>
-          <NavBtn onClick={goToToday} aria-label="Today">
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <NavBtn className="today-btn" onClick={goToToday} aria-label="Today">
             Today
           </NavBtn>
           <NavBtn onClick={nextMonth} aria-label="Next month">
-            <ChevronRight size={16} />
+            <ChevronRight size={18} />
           </NavBtn>
         </div>
       </CalHeader>
@@ -394,23 +471,18 @@ const LeaveCalendar = ({ leaves = [], onLeaveClick }) => {
 
       <Grid>
         {cells.map((cell, i) => {
-          if (cell.blank) return <DayCell key={`blank-${i}`} />;
+          if (cell.blank) return <DayCell key={`blank-${i}`} style={{ background: COLORS.bg }} />;
+
           const isToday = cell.ymd === todayYmd;
           const dayRanges = rangesForDay(cell.ymd);
           const visible = dayRanges.slice(0, 2);
           const extra = dayRanges.length - visible.length;
+
           return (
             <DayCell key={cell.ymd} $today={isToday}>
               <DayNum $today={isToday}>{cell.date.getDate()}</DayNum>
               {dayRanges.length > 0 && (
-                <div
-                  style={{
-                    marginTop: 2,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 1,
-                  }}
-                >
+                <MarkerContainer>
                   {visible.map((r) => (
                     <DayMarker
                       key={r.id}
@@ -426,11 +498,9 @@ const LeaveCalendar = ({ leaves = [], onLeaveClick }) => {
                     />
                   ))}
                   {extra > 0 && (
-                    <DayNum $muted style={{ fontSize: '0.6rem' }}>
-                      +{extra}
-                    </DayNum>
+                    <ExtraLeaveText>+{extra} more</ExtraLeaveText>
                   )}
-                </div>
+                </MarkerContainer>
               )}
             </DayCell>
           );
@@ -438,50 +508,56 @@ const LeaveCalendar = ({ leaves = [], onLeaveClick }) => {
       </Grid>
 
       {/* Timeline: leave ranges shown from start date up to the day they returned */}
-      <Timeline>
-        <SectionLabel>Leave Periods</SectionLabel>
+      <TimelineWrapper>
+        <TimelineHead>
+          <TimelineTitle>Leave Periods</TimelineTitle>
+        </TimelineHead>
+
         {ranges.length === 0 ? (
           <EmptyState>
             <CalendarIcon size={32} style={{ marginBottom: '0.5rem', opacity: 0.3 }} />
-            <p style={{ margin: 0, fontSize: '0.85rem' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: '500' }}>
               No leave history found for this employee.
             </p>
           </EmptyState>
         ) : (
-          ranges.map((r) => {
-            const { minStart, spanMs } = timelineSpan;
-            const leftPct =
-              spanMs > 0
-                ? ((r.start.getTime() - minStart.getTime()) / spanMs) * 100
-                : 0;
-            const widthPct =
-              spanMs > 0 ? ((r.end.getTime() - r.start.getTime()) / spanMs) * 100 : 0;
-            return (
-              <PeriodRow
-                key={r.id}
-                onClick={onLeaveClick ? () => onLeaveClick(r.leave) : undefined}
-                style={onLeaveClick ? { cursor: 'pointer' } : undefined}
-                title={onLeaveClick ? 'Open leave record' : undefined}
-              >
-                <PeriodDot $color={r.style.dot} />
-                <PeriodLabel>{r.title}</PeriodLabel>
-                <PeriodBarWrap>
-                  <PeriodBar
-                    $color={r.style.dot}
-                    style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 4)}%` }}
-                  />
-                </PeriodBarWrap>
-                <PeriodDates>
-                  {formatDateShort(r.start)} → {formatDateShort(r.end)}
-                </PeriodDates>
-                <PeriodDays $color={r.style.dot}>
-                  {r.days} day{r.days !== 1 ? 's' : ''}
-                </PeriodDays>
-              </PeriodRow>
-            );
-          })
+          <TimelineScroll>
+            {ranges.map((r) => {
+              const { minStart, spanMs } = timelineSpan;
+              const leftPct = spanMs > 0 ? ((r.start.getTime() - minStart.getTime()) / spanMs) * 100 : 0;
+              const widthPct = spanMs > 0 ? ((r.end.getTime() - r.start.getTime()) / spanMs) * 100 : 0;
+
+              return (
+                <PeriodCard
+                  key={r.id}
+                  $clickable={Boolean(onLeaveClick)}
+                  onClick={onLeaveClick ? () => onLeaveClick(r.leave) : undefined}
+                >
+                  <PeriodHeader>
+                    <PeriodDot $color={r.style.dot} />
+                    <PeriodLabel>{r.title}</PeriodLabel>
+                    <PeriodDaysBadge $bg={r.style.bg} $color={r.style.label}>
+                      {r.days} day{r.days !== 1 ? 's' : ''}
+                    </PeriodDaysBadge>
+                  </PeriodHeader>
+
+                  <PeriodBarWrap>
+                    <PeriodBar
+                      $color={r.style.dot}
+                      style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 4)}%` }}
+                    />
+                  </PeriodBarWrap>
+
+                  <PeriodDates>
+                    <span>Start: {formatDateShort(r.start)}</span>
+                    <span>End: {formatDateShort(r.end)}</span>
+                  </PeriodDates>
+                </PeriodCard>
+              );
+            })}
+          </TimelineScroll>
         )}
-      </Timeline>
+      </TimelineWrapper>
 
       <Legend>
         <LegendItem>
@@ -496,13 +572,7 @@ const LeaveCalendar = ({ leaves = [], onLeaveClick }) => {
         <LegendItem>
           <LegendDot $color={STATUS_STYLE.cancelled.dot} /> Cancelled
         </LegendItem>
-        <span
-          style={{
-            marginLeft: 'auto',
-            color: COLORS.textSecondary,
-            fontSize: '0.72rem',
-          }}
-        >
+        <span style={{ marginLeft: 'auto', fontWeight: 600 }}>
           {ranges.length} leave{ranges.length !== 1 ? 's' : ''}
         </span>
       </Legend>

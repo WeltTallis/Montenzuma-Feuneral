@@ -232,6 +232,25 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
       : ownRequests.length > 0 ? ownRequests
         : (requestsProp || ownRequests);
 
+  // Requests submitted through the public family/reception portal historically
+  // only landed on the official `postmortem` row (no `postmortem_requests`
+  // entry), so fall back to that record when nothing is tracked yet — the
+  // profile must never claim "no requests" for a request that was made.
+  const derivedRequest = visibleRequests.length === 0 && (pm.requested_by || pm.requested_at)
+    ? {
+      id: `pm-row-${deceasedId || 'unknown'}`,
+      request_ref: 'Postmortem request on record',
+      requested_by: pm.requested_by || '—',
+      requesting_authority: pm.requesting_authority || '',
+      reason: pm.examination_summary || '',
+      status: pm.status === 'completed' ? 'sent' : 'initiated',
+      created_at: pm.requested_at || pm.created_at,
+      derived: true,
+    }
+    : null;
+
+  const listedRequests = derivedRequest ? [derivedRequest] : visibleRequests;
+
   const [showRequestForm, setShowRequestForm] = useState(false);
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [actingRequestId, setActingRequestId] = useState(null);
@@ -527,11 +546,11 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
         </ModalOverlay>
       )}
 
-      {visibleRequests.length === 0 ? (
+      {listedRequests.length === 0 ? (
         <EmptyNote>No postmortem requests tracked yet.</EmptyNote>
       ) : (
         <div style={{ marginBottom: 24 }}>
-          {visibleRequests.map((r) => (
+          {listedRequests.map((r) => (
             <div
               key={r.id}
               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderBottom: `1px solid ${C.borderLight || '#eeeceb'}`, flexWrap: 'wrap' }}
@@ -547,19 +566,30 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
                   <br />
                   Reason: {r.reason || '—'} · Initiated {formatDate(r.created_at)}
                   {r.sent_at ? ` · Sent ${formatDate(r.sent_at)}` : ''}
+                  {r.notes ? ` · ${r.notes}` : ''}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {r.status === 'initiated' && (
+                {r.derived ? (
+                  // Legacy / portal request that only exists on the postmortem row —
+                  // no tracked id to act on, so show read-only context instead.
+                  <span style={{ fontSize: 11, color: C.gray }}>
+                    {r.status === 'initiated' ? 'Awaiting mortuary review' : 'Examination on record'}
+                  </span>
+                ) : (
                   <>
-                    <Btn $primary onClick={() => sendRequest(r.id)} disabled={actingRequestId === r.id}>
-                      {actingRequestId === r.id ? 'Sending...' : 'Mark as Sent'}
-                    </Btn>
-                    <Btn onClick={() => cancelRequest(r.id)} disabled={actingRequestId === r.id}>Cancel</Btn>
+                    {r.status === 'initiated' && (
+                      <>
+                        <Btn $primary onClick={() => sendRequest(r.id)} disabled={actingRequestId === r.id}>
+                          {actingRequestId === r.id ? 'Sending...' : 'Mark as Sent'}
+                        </Btn>
+                        <Btn onClick={() => cancelRequest(r.id)} disabled={actingRequestId === r.id}>Cancel</Btn>
+                      </>
+                    )}
+                    {r.status === 'sent' && (
+                      <span style={{ fontSize: 11, color: C.gray }}>Awaiting examination</span>
+                    )}
                   </>
-                )}
-                {r.status === 'sent' && (
-                  <span style={{ fontSize: 11, color: C.gray }}>Awaiting examination</span>
                 )}
               </div>
             </div>

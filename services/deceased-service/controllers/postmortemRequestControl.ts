@@ -50,7 +50,7 @@ const emitPostmortemEvent = async (event: string, tenantSlug: string, data: Reco
 };
 
 
-const ensurePostmortemRequestsTable = async (dbName: string): Promise<void> => {
+export const ensurePostmortemRequestsTable = async (dbName: string): Promise<void> => {
     const sql = `
         CREATE TABLE IF NOT EXISTS postmortem_requests (
             id INT AUTO_INCREMENT PRIMARY KEY,
