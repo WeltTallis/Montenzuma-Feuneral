@@ -346,7 +346,18 @@ const FooterBar = styled.div`
 // ─── Component ──────────────────────────────────────────────────
 export default function PostmortemRequestForm() {
     const { slug } = useParams();
-    const tenantSlug = slug || (typeof localStorage !== 'undefined' && localStorage.getItem('tenantSlug')) || 'system_shared';
+    // Resolve tenant slug from multiple sources, in priority order.
+    // The backend rejects 'system_shared' for postmortem requests (autopsyControl.ts:31),
+    // so we try harder to find a real tenant slug before falling back.
+    const tenantSlug =
+        slug ||
+        (typeof localStorage !== 'undefined' && localStorage.getItem('tenantSlug')) ||
+        (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('tenantSlug')) ||
+        (typeof localStorage !== 'undefined' && localStorage.getItem('selectedTenant')) ||
+        'system_shared';
+
+    console.log('[PostmortemRequestForm] Resolved tenantSlug:', tenantSlug);
+
     const verifyUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/tenant/${tenantSlug}/postmortem-verify`;
 
     const [currentDate, setCurrentDate] = useState('');
@@ -398,9 +409,14 @@ export default function PostmortemRequestForm() {
         }
 
         try {
-            const res = await axios.get(`${BASE_URL}/public/postmortem/search?${params.toString()}`, {
+            // Use /deceased/public/postmortem/search (gateway routes /deceased → deceased-service,
+            // and the deceased-service registers both /public/postmortem/search and
+            // /deceased/public/postmortem/search for gateway compatibility).
+            const res = await axios.get(`${BASE_URL}/deceased/public/postmortem/search?${params.toString()}`, {
                 headers: { 'x-tenant-slug': tenantSlug },
             });
+
+            console.log('[PostmortemRequestForm] Search response:', JSON.stringify(res.data, null, 2));
 
             const record = res.data?.data?.deceased || res.data?.deceased || res.data?.data;
             if (record && (record.deceased_id || record.full_name)) {
@@ -411,9 +427,12 @@ export default function PostmortemRequestForm() {
                 setTimeout(() => setShakeId(false), 500);
             }
         } catch (err) {
+            console.error('[PostmortemRequestForm] Search error:', err.response?.data || err.message);
             const msg = err.response?.data?.message;
             if (err.response?.status === 404) {
                 setLookupError('No matching deceased record found. Please check the details and try again.');
+            } else if (err.response?.status === 400 && msg?.includes('tenant')) {
+                setLookupError('Tenant configuration issue. Please contact the system administrator.');
             } else {
                 setLookupError(msg || 'Unable to search at this time. Please try again shortly.');
             }
@@ -441,9 +460,11 @@ export default function PostmortemRequestForm() {
         setSubmitResult(null);
 
         try {
-            // POST to the public route (no Bearer token needed)
+            // POST to the public route (no Bearer token needed).
+            // Use /deceased/public/postmortem/request — the gateway routes /deceased →
+            // deceased-service, which has router.post('/deceased/public/postmortem/request', requestPostmortem).
             const res = await axios.post(
-                `${BASE_URL}/public/postmortem/request`,
+                `${BASE_URL}/deceased/public/postmortem/request`,
                 {
                     deceased_id: foundCase.deceased_id,
                     reason: form.reason,
@@ -454,6 +475,8 @@ export default function PostmortemRequestForm() {
                 { headers: { 'x-tenant-slug': tenantSlug } }
             );
 
+            console.log('[PostmortemRequestForm] Submit response:', JSON.stringify(res.data, null, 2));
+
             if (res.data?.success) {
                 setSubmitResult({ ok: true, msg: res.data?.message || 'Postmortem request submitted successfully.' });
                 setForm({ reason: '', requested_by: '', priority: 'normal' });
@@ -461,7 +484,18 @@ export default function PostmortemRequestForm() {
                 setSubmitResult({ ok: false, msg: res.data?.message || 'Submission failed. Please try again.' });
             }
         } catch (err) {
-            const msg = err.response?.data?.message || 'Failed to submit postmortem request. Please try again.';
+            console.error('[PostmortemRequestForm] Submit error:', err.response?.data || err.message);
+            const errData = err.response?.data;
+            let msg;
+            if (errData?.message) {
+                msg = errData.message;
+                // Provide a friendlier message for known error patterns
+                if (errData.message.includes('Valid tenant required') || errData.message.includes('tenant')) {
+                    msg = 'Unable to process this request for the current tenant. Please contact the system administrator.';
+                }
+            } else {
+                msg = 'Failed to submit postmortem request. Please try again.';
+            }
             setSubmitResult({ ok: false, msg });
         } finally {
             setIsSubmitting(false);

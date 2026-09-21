@@ -1,14 +1,12 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   HR LEAVE MANAGEMENT DASHBOARD  (route: /tenant/:slug/leaves)
+   HR LEAVE DASHBOARD  (route: /tenant/:slug/leaves)
 
-   Layout — plain header with a section switcher pinned at the top:
+   Layout — single top navigation bar (no title line):
 
-     1. Compact header        → title, last-updated time, Refresh, Apply leave
-     2. Section switcher      → All · Overview · Approvals · Employees ·
-                                History · Calendar. "All" keeps every section
-                                visible; picking one shows that section alone
-                                (e.g. Employees → only the employees table,
-                                History → only the leave history table).
+     Top bar → All · Overview · Approvals · Employees · History · Calendar
+               + Refresh + Apply leave. "All" keeps every section visible;
+               picking one shows that section alone (e.g. Employees → only
+               the employees table, History → only the leave history table).
 
      3. Analytics             → status donut, 6-month trend, leave-type mix
      4. Approvals inbox       → search / filter / sort / bulk approve / export
@@ -32,7 +30,7 @@ import {
   User, FileText, CheckCircle, XCircle, AlertCircle, AlertTriangle, Loader2,
   RefreshCw, Check, X, ChevronRight, ChevronLeft, ChevronFirst, ChevronLast, Plus,
   Trash2, Search, BarChart3, PieChartIcon, TrendingUp, Hourglass, Flag,
-  Briefcase, Download, Eye, ListChecks,
+  Briefcase, Download, Eye, ListChecks, LayoutDashboard,
 } from '../../utils/icons/icons';
 import LeaveCalendar from './LeaveCalendar';
 
@@ -223,29 +221,48 @@ const Page = styled.div`
   animation: ${fadeUp} 0.25s ease-out;
 `;
 
-/* ── Compact page header (plain, no banner) ───────────────────────────────── */
-const PageHead = styled.div`
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  padding: 0.1rem 0.1rem 0.8rem 0.1rem;
-  border-bottom: 1px solid ${COLORS.border};
-  margin-bottom: 1rem;
-`;
-const PageTitle = styled.h1`
-  margin: 0;
-  font-size: 1.12rem;
-  font-weight: 800;
-  color: ${COLORS.text};
-`;
-const PageMeta = styled.div`font-size: 0.78rem; color: ${COLORS.textSecondary}; margin-top: 0.18rem;`;
-const PageActions = styled.div`
+/* ── Top navigation bar (module-level so it never remounts on state change) ── */
+const TopNavBar = styled.nav`
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.25rem;
   flex-wrap: wrap;
+  background: ${COLORS.white};
+  border: 1px solid ${COLORS.border};
+  border-radius: 12px;
+  padding: 0.4rem 0.5rem;
+  margin: 0 0 1.25rem 0;
+  box-shadow: 0 1px 2px rgba(10, 36, 99, 0.04);
+`;
+const TopNavItem = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border: 0;
+  background: transparent;
+  color: ${(p) => (p.$active ? COLORS.primary : COLORS.textSecondary)};
+  font-size: 0.85rem;
+  font-weight: ${(p) => (p.$active ? 700 : 500)};
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  ${(p) => (p.$active
+    ? `background: ${COLORS.primarySoft}; box-shadow: inset 0 0 0 1px ${COLORS.primary};`
+    : `&:hover { background: rgba(10, 36, 99, 0.06); }`
+  )}
+  &:focus-visible {
+    outline: 2px solid ${COLORS.primary};
+    outline-offset: 2px;
+  }
+`;
+const TopNavIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+`;
+const TopNavLabel = styled.span`
+  white-space: nowrap;
 `;
 
 /* ── Notices, skeletons, cards ────────────────────────────────────────────── */
@@ -910,15 +927,22 @@ const LeaveDashboard = () => {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [updatedAt, setUpdatedAt] = useState(null);
   const [error, setError] = useState('');
   const [warning, setWarning] = useState('');
 
-  /* Section switcher — which part of the landing page is on display.
-     'all' keeps every section visible; the other values isolate one
-     section (e.g. 'employees' → only the Employees table shows,
-     'history' → only the Leave history table shows). */
+  /* ── Top navigation bar — sections of the leave dashboard ─────────────────────
+     'all' keeps every section visible; any other value isolates one section
+     (e.g. 'employees' → only the Employees table, 'history' → only History). */
   const [view, setView] = useState('all');
+
+  const navSections = useMemo(() => [
+    { value: 'all',         label: 'All',         icon: LayoutDashboard },
+    { value: 'overview',    label: 'Overview',    icon: BarChart3 },
+    { value: 'approvals',   label: 'Approvals',   icon: CheckCircle },
+    { value: 'employees',   label: 'Employees',   icon: Users },
+    { value: 'history',     label: 'History',     icon: History },
+    { value: 'calendar',    label: 'Calendar',    icon: Calendar },
+  ], []);
 
   const [stats, setStats] = useState({ total: 0, pending: 0, on_leave: 0, by_status: [], by_type: [] });
   const [records, setRecords] = useState([]);        // every leave request in the tenant
@@ -987,7 +1011,6 @@ const LeaveDashboard = () => {
     setWarning(missing.length
       ? `Could not load ${missing.join(', ')}. Everything else on this page is live — press Refresh to retry.`
       : '');
-    setUpdatedAt(new Date());
   }, [tenantHeaders, me]);
 
   useEffect(() => {
@@ -1452,7 +1475,7 @@ const LeaveDashboard = () => {
     && filteredQueue.every((r) => selected.includes(r.id));
   const toggleAllQueue = () => setSelected(allQueueSelected ? [] : filteredQueue.map((r) => r.id));
 
-  /* ── Section visibility (driven by the switcher at the top) ─────────────── */
+  /* ── Section visibility (driven by the top nav) ─────────────────────────── */
   const showOverview = view === 'all' || view === 'overview';
   const showApprovals = view === 'all' || view === 'approvals';
   const showEmployees = view === 'all' || view === 'employees';
@@ -1461,23 +1484,33 @@ const LeaveDashboard = () => {
 
   return (
     <Page>
-      <PageHead>
-        <div>
-          <PageTitle>Leave</PageTitle>
-          <PageMeta>
-            {tenantSlug || 'your organisation'}
-            {updatedAt
-              ? ` · updated ${updatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
-              : ''}
-          </PageMeta>
-        </div>
-        <PageActions>
-          <Btn onClick={refresh} disabled={refreshing}>
-            {refreshing ? <Spin><Loader2 size={14} /></Spin> : <RefreshCw size={14} />} Refresh
-          </Btn>
-          <Btn className="primary" onClick={goApply}><Plus size={14} /> Apply leave</Btn>
-        </PageActions>
-      </PageHead>
+      {/* Single top bar — all navigation + actions live here, no title line.
+          "All" keeps every section visible; the other buttons isolate
+          a single section: History alone, Employees alone, etc. */}
+      <TopNavBar role="tablist" aria-label="Leave dashboard sections">
+        {navSections.map((s) => {
+          const Icon = s.icon;
+          const active = view === s.value;
+          return (
+            <TopNavItem
+              key={s.value}
+              $active={active}
+              onClick={() => setView(s.value)}
+              role="tab"
+              aria-selected={active}
+              aria-label={`Show ${s.label} only`}
+            >
+              <TopNavIcon><Icon size={16} /></TopNavIcon>
+              <TopNavLabel>{s.label}</TopNavLabel>
+            </TopNavItem>
+          );
+        })}
+        <div style={{ flex: 1 }} />
+        <Btn onClick={refresh} disabled={refreshing}>
+          {refreshing ? <Spin><Loader2 size={14} /></Spin> : <RefreshCw size={14} />} Refresh
+        </Btn>
+        <Btn className="primary" onClick={goApply}><Plus size={14} /> Apply leave</Btn>
+      </TopNavBar>
 
       {error && (
         <Notice $tone="error">
