@@ -74,28 +74,16 @@ const C = {
 
 // ─── Status Configuration ───────────────────────────────────────────
 const STATUS_CONFIG = {
-  active: { label: 'Active', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
-  'in morgue': { label: 'In Morgue', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
-  'postmortem requested': { label: 'Postmortem Requested', color: C.cOrange, bg: 'rgba(227, 100, 20, 0.1)' },
-  'pending autopsy': { label: 'Postmortem Done', color: C.cPurple, bg: 'rgba(95, 15, 64, 0.1)' },
-  'postmortem done': { label: 'Postmortem Done', color: C.cPurple, bg: 'rgba(95, 15, 64, 0.1)' },
-  pending: { label: 'Pending', color: C.cPink, bg: 'rgba(221, 45, 74, 0.1)' },
+  'under care': { label: 'Under Care', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
   released: { label: 'Released', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
-  completed: { label: 'Released', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
-  complete: { label: 'Released', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
-  buried: { label: 'Buried', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
-  transferred: { label: 'Transferred', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
-  'in care': { label: 'In Care', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
-  embalmed: { label: 'In Care', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
-  // Last-resort chip for a status the map has never seen. The label is filled
-  // in from the record itself (see getStatusInfo) so a list NEVER renders the
-  // meaningless word "Unknown" over a real record.
-  default: { label: 'Unknown', color: '#6b7280', bg: '#f3f4f6' }
+  completed: { label: 'Completed', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
+  admitted: { label: 'Admitted', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
+  default: { label: 'Under Care', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
 };
 
-/* Read a raw status string back to the operator: 'post_mortem requested' →
-   'Post Mortem Requested'. Used for values the alias map has not seen yet
-   (e.g. a status written by another service) so the register stays readable. */
+/* Read a raw status string back to the operator. Used for values the alias
+   map has not seen yet (e.g. a status written by another service) so the
+   register stays readable. */
 const humanizeStatus = (raw) => String(raw || '')
   .replace(/[_-]+/g, ' ')
   .replace(/\s+/g, ' ')
@@ -105,9 +93,8 @@ const humanizeStatus = (raw) => String(raw || '')
 
 const getStatusInfo = (statusStr) => {
   const raw = String(statusStr ?? '').trim();
-  // A record carrying no status at all is a body still in our care — show the
-  // register's own default rather than an empty/"Unknown" badge.
-  if (!raw) return STATUS_CONFIG.active;
+  // A record carrying no status at all is a body under our care.
+  if (!raw) return STATUS_CONFIG['under care'];
 
   const normalized = raw
     .toLowerCase()
@@ -116,37 +103,41 @@ const getStatusInfo = (statusStr) => {
     .trim();
 
   const aliases = {
-    active: STATUS_CONFIG.active,
-    admitted: STATUS_CONFIG.active,
-    received: STATUS_CONFIG.active,
-    'under care': STATUS_CONFIG.active,
-    'in care': STATUS_CONFIG.active,
-    'in morgue': STATUS_CONFIG.active,
-    morgue: STATUS_CONFIG.active,
-    embalmed: STATUS_CONFIG.active,
-    pending: STATUS_CONFIG.pending,
-    'postmortem requested': STATUS_CONFIG['postmortem requested'],
-    'post mortem requested': STATUS_CONFIG['postmortem requested'],
-    'pending autopsy': STATUS_CONFIG['postmortem requested'],
-    'postmortem done': STATUS_CONFIG['postmortem done'],
-    'post mortem done': STATUS_CONFIG['postmortem done'],
-    completed: STATUS_CONFIG.completed,
+    // Under Care
+    active: STATUS_CONFIG['under care'],
+    // Admitted
+    admitted: STATUS_CONFIG.admitted,
+    received: STATUS_CONFIG['under care'],
+    'under care': STATUS_CONFIG['under care'],
+    'in care': STATUS_CONFIG['under care'],
+    'in morgue': STATUS_CONFIG['under care'],
+    morgue: STATUS_CONFIG['under care'],
+    embalmed: STATUS_CONFIG['under care'],
+    pending: STATUS_CONFIG['under care'],
+    // Postmortem (still under care)
+    'postmortem requested': STATUS_CONFIG['under care'],
+    'post mortem requested': STATUS_CONFIG['under care'],
+    'pending autopsy': STATUS_CONFIG['under care'],
+    'postmortem done': STATUS_CONFIG['under care'],
+    'post mortem done': STATUS_CONFIG['under care'],
+    // Released
     released: STATUS_CONFIG.released,
     'released to family': STATUS_CONFIG.released,
-    transferred: STATUS_CONFIG.transferred,
-    transfer: STATUS_CONFIG.transferred,
+    transferred: STATUS_CONFIG.released,
+    transfer: STATUS_CONFIG.released,
     dispatched: STATUS_CONFIG.released,
-    buried: STATUS_CONFIG.buried,
+    buried: STATUS_CONFIG.released,
     'ready for collection': STATUS_CONFIG.released,
     ready: STATUS_CONFIG.released,
+    // Completed
+    completed: STATUS_CONFIG.completed,
+    complete: STATUS_CONFIG.completed,
     default: STATUS_CONFIG.default,
   };
 
   if (aliases[normalized]) return aliases[normalized];
 
-  // Loose match for compound values ('released to the family', 'in morgue —
-  // awaiting collection'). Guarded against 1–2 character strings so a stray
-  // value cannot match a key by coincidence.
+  // Loose match for compound values, guarded against short strings.
   const fallback = normalized.length >= 3
     ? Object.entries(STATUS_CONFIG).find(([key]) => {
       if (key === 'default') return false;
@@ -156,13 +147,8 @@ const getStatusInfo = (statusStr) => {
 
   if (fallback?.[1]) return fallback[1];
 
-  // Unrecognised but non-empty: surface the record's own status text in a
-  // neutral grey chip rather than the word "Unknown".
-  return {
-    label: humanizeStatus(raw),
-    color: STATUS_CONFIG.default.color,
-    bg: STATUS_CONFIG.default.bg,
-  };
+    // Unrecognised but non-empty: default to Under Care.
+  return STATUS_CONFIG['under care'];
 };
 
 // ─── Helper: Format Date to YYYY-MM-DD ──────────────────────────────
@@ -1385,12 +1371,13 @@ const DeceasedListPage = () => {
 
     if (search && !name.includes(searchTerm) && !id.includes(searchTerm) && !adm.includes(searchTerm)) return false;
 
-    if (statusFilter) {
+        if (statusFilter) {
       const statusInfo = getStatusInfo(r.body_status || r.status);
-      if (statusFilter === 'Active' && statusInfo.label !== 'Active' && statusInfo.label !== 'Pending') return false;
-      if (statusFilter === 'Postmortem Requested' && statusInfo.label !== 'Postmortem Requested') return false;
-      if (statusFilter === 'Postmortem Done' && statusInfo.label !== 'Postmortem Done' && statusInfo.label !== 'Pending Autopsy') return false;
-      if (statusFilter === 'Released' && statusInfo.label !== 'Released' && statusInfo.label !== 'Transferred' && statusInfo.label !== 'Buried') return false;
+      // Under Care and Admitted are essentially the same category.
+      if (statusFilter === 'Under Care' && statusInfo.label !== 'Under Care' && statusInfo.label !== 'Admitted') return false;
+      if (statusFilter === 'Admitted' && statusInfo.label !== 'Admitted' && statusInfo.label !== 'Under Care') return false;
+      if (statusFilter === 'Released' && statusInfo.label !== 'Released') return false;
+      if (statusFilter === 'Completed' && statusInfo.label !== 'Completed') return false;
     }
 
     if (genderFilter) {
@@ -1814,12 +1801,12 @@ const DeceasedListPage = () => {
             </SearchWrapper>
 
             <FilterWrapper>
-              <FilterSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                            <FilterSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                 <option value="">All Statuses</option>
-                <option value="Active">Active / In Morgue</option>
-                <option value="Postmortem Requested">Postmortem Requested</option>
-                <option value="Postmortem Done">Postmortem Done</option>
-                <option value="Released">Released / Transferred</option>
+                <option value="Under Care">Under Care</option>
+                <option value="Admitted">Admitted</option>
+                <option value="Released">Released</option>
+                <option value="Completed">Completed</option>
               </FilterSelect>
               <SelectArrow className="fas fa-chevron-down" />
             </FilterWrapper>
