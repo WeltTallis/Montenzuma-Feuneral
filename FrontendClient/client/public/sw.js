@@ -1,5 +1,8 @@
 // Service Worker for Rest Point PWA
-const CACHE_VERSION = 'v1'; // Increment this to force cache refresh
+// v2 — forces every client to drop its old caches on activation so the
+// fixed deceased-release form branding and the revived install prompt
+// actually load. Bump this version on every deploy that changes code.
+const CACHE_VERSION = 'v2'; // Increment this to force cache refresh
 const STATIC_CACHE = `restpoint-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `restpoint-dynamic-${CACHE_VERSION}`;
 const CACHE_NAME = `restpoint-${CACHE_VERSION}`;
@@ -93,7 +96,10 @@ self.addEventListener('fetch', (event) => {
         }
     }
 
-    // For static assets (JS, CSS, images, fonts), use cache-first strategy
+    // For static assets (JS, CSS, images, fonts), use stale-while-revalidate:
+    // serve cached instantly but ALWAYS refresh the copy in the background, so
+    // a new deploy is picked up on the next navigation instead of being served
+    // stale for weeks (this is what kept the old release-form branding alive).
     if (request.destination === 'script' ||
         request.destination === 'style' ||
         request.destination === 'image' ||

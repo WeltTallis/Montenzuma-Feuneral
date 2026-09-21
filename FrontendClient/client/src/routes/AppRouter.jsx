@@ -287,12 +287,42 @@ const TenantResolver = () => {
 
   useEffect(() => {
     let cancelled = false;
+
+    // ── Persist resolved tenant branding to localStorage ──────────────────
+    // getTenantBrandingFromStorage() (the intake/release forms' last-resort
+    // fallback) reads these exact keys, but nothing ever wrote them — so any
+    // form that rendered before the Zustand store resolved showed blank
+    // tenant details. Writing them here keeps that fallback chain real.
+    const persistTenantBranding = (data, settings = {}) => {
+      try {
+        const pick = (...vals) => {
+          for (const v of vals) {
+            if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+          }
+          return '';
+        };
+        const map = {
+          tenantName: pick(data?.name, data?.tenantName, settings?.tenantName),
+          tenantEmail: pick(data?.email, settings?.email, settings?.tenantEmail),
+          tenantPhone: pick(data?.phone, settings?.phone, settings?.tenantPhone),
+          tenantLocation: pick(data?.location, settings?.location, settings?.tenantLocation),
+          tenantCountry: pick(data?.country, settings?.country, settings?.tenantCountry),
+          tenantAddress: pick(data?.address, settings?.address, settings?.tenantAddress),
+          tenantLogoUrl: pick(data?.logoUrl, data?.logo_url, data?.logo, settings?.logoUrl, settings?.logo_url, settings?.logo),
+        };
+        Object.entries(map).forEach(([key, value]) => {
+          if (value) localStorage.setItem(key, String(value));
+        });
+      } catch { /* storage unavailable — branding still works via the store */ }
+    };
+
     const fetchTenant = async () => {
       const memoryCache = (window.__tenantCache ||= {});
       const cached = memoryCache[cacheKey];
       if (cached && Date.now() - cached.timestamp < 300000) {
         if (!cancelled) {
           setTenantData(cached.data);
+          persistTenantBranding(cached.data);
           document.documentElement.style.setProperty('--tenant-primary', cached.data.primaryColor || '#2b5a82');
           document.title = `${cached.data.name || resolvedSlug} | REST POINT`;
         }
@@ -345,6 +375,7 @@ const TenantResolver = () => {
 
           memoryCache[cacheKey] = { data: safeData, timestamp: Date.now() };
           setTenantData(safeData);
+          persistTenantBranding(safeData, settings);
           document.documentElement.style.setProperty('--tenant-primary', safeData.primaryColor || '#2b5a82');
           document.title = `${safeData.name || resolvedSlug} | REST POINT`;
 

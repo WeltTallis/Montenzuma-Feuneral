@@ -240,30 +240,33 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
   const [chargeForm, setChargeForm] = useState({
     charge_type: '',
     amount: '',
-    currency: 'USD',
+    currency: 'KES',
     description: '',
     service_date: todayKey()
   });
+  // KES-first billing — USD stays selectable for foreign payments. Insurance
+  // payments additionally carry the name of the insurance provider.
   const [paymentForm, setPaymentForm] = useState({
     date: todayKey(),
-    currency: 'USD',
+    currency: 'KES',
     payment_method: 'Cash',
     reference: '',
     amount: '',
-    description: ''
+    description: '',
+    insurance_provider: ''
   });
 
   // Keep local mirrors in sync with parent data
   useEffect(() => { setChargeList(initialCharges || []); }, [initialCharges]);
 
-  // Currency-aware billing math (USD-first; KES kept as an option)
+  // Currency-aware billing math (KES-first; USD kept for foreign payments)
   const currencySymbol = (cur) => (cur === 'KES' ? 'KES' : '$');
   const fmtMoney = (amount, cur) =>
     `${currencySymbol(cur)} ${parseFloat(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const CURRENCIES = ['USD', 'KES'];
+  const CURRENCIES = ['KES', 'USD'];
   const sumBy = (rows, cur, getAmount) => rows
-    .filter(r => (r.currency || 'USD') === cur)
+    .filter(r => (r.currency || 'KES') === cur)
     .reduce((s, r) => s + (parseFloat(getAmount(r) || 0) || 0), 0);
 
   const summaryRows = CURRENCIES
@@ -313,6 +316,13 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
       return;
     }
 
+    // An insurance settlement must name the insurer — the provider is stored
+    // with the payment and shown in the payment history.
+    if (paymentForm.payment_method === 'Insurance' && !(paymentForm.insurance_provider || '').trim()) {
+      showToast.error('Please enter the name of the insurance provider');
+      return;
+    }
+
     setIsRecording(true);
     try {
       const tenantSlug = getTenantSlug();
@@ -336,8 +346,11 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
         {
           deceased_id: deceasedId,
           amount: parseFloat(paymentForm.amount),
-          currency: paymentForm.currency || 'USD',
+          currency: paymentForm.currency || 'KES',
           payment_method: paymentForm.payment_method,
+          insurance_provider: paymentForm.payment_method === 'Insurance'
+            ? (paymentForm.insurance_provider || '').trim() || null
+            : null,
           reference: paymentForm.reference,
           payment_date: paymentForm.date,
           description: paymentForm.description || null,
@@ -356,11 +369,12 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
         setShowPaymentModal(false);
         setPaymentForm({
           date: todayKey(),
-          currency: paymentForm.currency || 'USD',
+          currency: paymentForm.currency || 'KES',
           payment_method: 'Cash',
           reference: '',
           amount: '',
-          description: ''
+          description: '',
+          insurance_provider: ''
         });
         await loadPayments();
         if (onDataChanged) onDataChanged();
@@ -392,7 +406,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           deceased_id: deceasedId,
           charge_type: chargeForm.charge_type,
           amount: parseFloat(chargeForm.amount),
-          currency: chargeForm.currency || 'USD',
+          currency: chargeForm.currency || 'KES',
           description: chargeForm.description || null,
           service_date: chargeForm.service_date
         },
@@ -411,7 +425,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
         setChargeForm({
           charge_type: '',
           amount: '',
-          currency: chargeForm.currency || 'USD',
+          currency: chargeForm.currency || 'KES',
           description: '',
           service_date: todayKey()
         });
@@ -472,8 +486,8 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
                   <FormGroup>
                     <FormLabel>Currency</FormLabel>
                     <FormSelect value={paymentForm.currency} onChange={(e) => setPaymentForm({ ...paymentForm, currency: e.target.value })}>
+                      <option value="KES">KES (KSh)</option>
                       <option value="USD">USD ($)</option>
-                      <option value="KES">KES</option>
                     </FormSelect>
                   </FormGroup>
                   <FormGroup>
@@ -483,9 +497,23 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
                       <option>M-Pesa</option>
                       <option>Card</option>
                       <option>Bank Transfer</option>
+                      <option>Insurance</option>
                     </FormSelect>
                   </FormGroup>
                 </FormRow>
+                {paymentForm.payment_method === 'Insurance' && (
+                  <FormRow>
+                    <FormGroup style={{ flex: 2, minWidth: '220px' }}>
+                      <FormLabel>Name of Insurance *</FormLabel>
+                      <FormInput
+                        placeholder="e.g. CIC Insurance, Jubilee Insurance, Britam"
+                        value={paymentForm.insurance_provider}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, insurance_provider: e.target.value })}
+                        required
+                      />
+                    </FormGroup>
+                  </FormRow>
+                )}
                 <FormRow>
                   <FormGroup>
                     <FormLabel>Reference Number</FormLabel>
@@ -522,6 +550,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           <tr>
             <th>Date</th>
             <th>Method</th>
+            <th>Insurance</th>
             <th>Reference</th>
             <th>Description</th>
             <th>Amount</th>
@@ -530,15 +559,16 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
         </thead>
         <tbody>
           {payments.length === 0 ? (
-            <tr><td colSpan={6} style={{ textAlign: 'center', color: C.gray, padding: '24px 0' }}>No payments recorded</td></tr>
+            <tr><td colSpan={7} style={{ textAlign: 'center', color: C.gray, padding: '24px 0' }}>No payments recorded</td></tr>
           ) : payments.map((p, i) => (
             <tr key={i}>
               <td>{formatDate(p.created_at || p.payment_date)}</td>
               <td>
-                <StatusTag $info={p.payment_method === 'M-Pesa'} $warning={p.payment_method === 'Cash'}>
+                <StatusTag $info={p.payment_method === 'M-Pesa'} $warning={p.payment_method === 'Cash'} $success={p.payment_method === 'Insurance'}>
                   {p.payment_method || '—'}
                 </StatusTag>
               </td>
+              <td>{p.insurance_provider || '—'}</td>
               <td>{p.reference || '—'}</td>
               <td>{p.description || p.notes || '—'}</td>
               <td><strong>{fmtMoney(p.amount, p.currency)}</strong></td>

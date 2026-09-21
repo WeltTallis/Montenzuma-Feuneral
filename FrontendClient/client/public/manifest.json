@@ -2,23 +2,31 @@
   "name": "Rest Point - Funeral Home Management Software",
   "short_name": "Rest Point",
   "description": "The operating system for funeral homes that take their reputation seriously",
-  "start_url": "/",
+  "id": "/?restpoint=pwa",
+  "start_url": "/?restpoint=pwa",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#15171A",
+  "background_color": "#03071E",
   "theme_color": "#3D4F47",
   "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/logo.png",
       "sizes": "192x192",
-      "type": "image/ico",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/logo.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "categories": [
@@ -26,5 +34,43 @@
     "productivity"
   ],
   "screenshots": [],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View the main dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Deceased Records",
+      "short_name": "Records",
+      "description": "View deceased records",
+      "url": "/deceased",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Apply Leave",
+      "short_name": "Leave",
+      "description": "Apply for staff leave",
+      "url": "/leaves/apply",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }

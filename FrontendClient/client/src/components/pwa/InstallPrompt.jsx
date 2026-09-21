@@ -6,10 +6,35 @@ import { Download, X, Smartphone } from '../../utils/icons/icons';
 // logout clears the auth storage but NOT cookies, so once the user accepts
 // (or dismisses) the banner it stays quiet — it must not pop up again every
 // time they land on the page or log back in.
-const COOKIE_NAME = 'pwa-install-choice';      // 'accepted' | 'dismissed'
+//
+// v2 of the cookie: the previous name suppressed the banner for 30 days on
+// every browser that had EVER dismissed it, which made the prompt look
+// permanently broken ("no longer showing at all"). Bumping the name ignores
+// those stale cookies so the banner appears again; fresh dismissals under v2
+// are still remembered as intended.
+const COOKIE_NAME = 'pwa-install-choice-v2';   // 'accepted' | 'dismissed'
 const ACCEPT_MAX_AGE = 60 * 60 * 24 * 365;     // accepted  → 1 year (effectively forever)
-const DISMISS_MAX_AGE = 60 * 60 * 24 * 30;     // "Not now" → 30 days
-const SHOW_DELAY_MS = 60 * 1000;               // appear ~1 minute after landing, not instantly
+const DISMISS_MAX_AGE = 60 * 60 * 24 * 7;      // "Not now" → 7 days
+const SHOW_DELAY_MS = 20 * 1000;               // appear shortly after landing, not instantly
+
+// ─── Early capture of beforeinstallprompt ────────────────────────────
+// The browser fires `beforeinstallprompt` exactly ONCE per page load —
+// frequently BEFORE React has finished mounting this component. A listener
+// registered inside useEffect can miss it entirely, leaving the banner
+// unable to appear. So we capture the event at module scope (evaluated as
+// soon as the chunk loads) and hand it to the component when it mounts.
+let capturedInstallEvent = null;
+const earlyInstallListeners = new Set();
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        capturedInstallEvent = e;
+        earlyInstallListeners.forEach((fn) => {
+            try { fn(e); } catch { /* listener errors must not break others */ }
+        });
+    });
+}
 
 const getCookie = (name) => {
     if (typeof document === 'undefined') return null;
@@ -47,18 +72,32 @@ const InstallPrompt = () => {
             return;
         }
 
-        const handler = (e) => {
+        // Shared handler — the event may arrive via the module-scope capture
+        // above (if it fired before this effect ran) or live, right now.
+        const handlePromptEvent = (e) => {
             e.preventDefault();
             setDeferredPrompt(e);
-            // Do NOT pop up immediately on landing — wait ~1 minute so it is
-            // not in the user's face the second the page loads.
+            // Do NOT pop up immediately on landing — wait a few seconds so it
+            // is not in the user's face the second the page loads.
             if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
             delayTimerRef.current = setTimeout(() => {
                 setShowPrompt(true);
             }, SHOW_DELAY_MS);
         };
 
+        // If the event already fired before mount, use the captured one now.
+        if (capturedInstallEvent) {
+            handlePromptEvent(capturedInstallEvent);
+        }
+
+        const handler = (e) => {
+            // Only react to a LIVE event — a captured one is handled above.
+            if (e === capturedInstallEvent) return;
+            handlePromptEvent(e);
+        };
+
         window.addEventListener('beforeinstallprompt', handler);
+        earlyInstallListeners.add(handler);
 
         // Listen for app installed event
         const installedHandler = () => {
@@ -73,6 +112,7 @@ const InstallPrompt = () => {
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handler);
+            earlyInstallListeners.delete(handler);
             window.removeEventListener('appinstalled', installedHandler);
             if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
         };

@@ -35,7 +35,8 @@ const PAYMENT_METHOD_MAP: Record<string, string> = {
     'mpesa': 'mobile_money',
     'm-pesa': 'mobile_money',
     'check': 'check',
-    'cheque': 'check'
+    'cheque': 'check',
+    'insurance': 'insurance'
 };
 const normalizePaymentMethod = (m: any): string => {
     return PAYMENT_METHOD_MAP[String(m || '').toLowerCase().trim()] || 'cash';
@@ -46,7 +47,8 @@ const DISPLAY_METHOD: Record<string, string> = {
     card: 'Card',
     bank_transfer: 'Bank Transfer',
     mobile_money: 'M-Pesa',
-    check: 'Check'
+    check: 'Check',
+    insurance: 'Insurance'
 };
 
 const mapChargeRow = (r: any) => ({ ...r, description: r.description ?? r.notes ?? null });
@@ -101,7 +103,8 @@ const ensurePaymentsTable = async (dbName: string): Promise<void> => {
             phone_number VARCHAR(20),
             amount DECIMAL(15, 2) NOT NULL,
             currency ENUM('KES', 'USD', 'EUR', 'GBP') DEFAULT 'USD',
-            payment_method ENUM('cash', 'card', 'bank_transfer', 'mobile_money', 'check') DEFAULT 'cash',
+            payment_method ENUM('cash', 'card', 'bank_transfer', 'mobile_money', 'check', 'insurance') DEFAULT 'cash',
+            insurance_provider VARCHAR(150) NULL,
             payment_date VARCHAR(255),
             reference_number VARCHAR(100),
             receipt_number VARCHAR(100),
@@ -118,6 +121,7 @@ const ensurePaymentsTable = async (dbName: string): Promise<void> => {
     // Tables created by older migrations may miss these columns - add best-effort.
     const alters = [
         `ALTER TABLE payments ADD COLUMN recorded_by VARCHAR(100) NULL`,
+        `ALTER TABLE payments ADD COLUMN insurance_provider VARCHAR(150) NULL`,
         `ALTER TABLE payments ADD COLUMN currency ENUM('KES', 'USD', 'EUR', 'GBP') DEFAULT 'USD'`
     ];
     for (const alterSQL of alters) {
@@ -129,6 +133,28 @@ const ensurePaymentsTable = async (dbName: string): Promise<void> => {
                 console.warn('[CHARGES] payments ALTER skipped:', err?.message);
             }
         }
+    }
+
+    // Legacy tables carry payment_method as an ENUM without 'insurance' — widen
+    // it once per database. Guarded via information_schema so the DDL does not
+    // re-run on every request.
+    try {
+        const colRows: any[] = (await safeTenantQuery(
+            dbName,
+            `SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'payments' AND COLUMN_NAME = 'payment_method'`,
+            [dbName]
+        )) || [];
+        const columnType = String(colRows[0]?.COLUMN_TYPE || colRows[0]?.column_type || '');
+        if (columnType && !/insurance/i.test(columnType)) {
+            await safeTenantExecute(
+                dbName,
+                `ALTER TABLE payments MODIFY COLUMN payment_method ENUM('cash', 'card', 'bank_transfer', 'mobile_money', 'check', 'insurance') DEFAULT 'cash'`,
+                []
+            );
+        }
+    } catch (err: any) {
+        console.warn('[CHARGES] payments method widen skipped:', err?.message);
     }
 };
 
@@ -297,7 +323,7 @@ export const getPayments = async (req: TenantRequest, res: Response): Promise<Re
 /** POST /payments - record an individual payment for one deceased (USD unless stated) */
 export const recordPayment = async (req: TenantRequest, res: Response): Promise<Response> => {
     try {
-        const { deceased_id, amount, payment_method, reference, payment_date, description, recorded_by, currency } = req.body || {};
+        const { deceased_id, amount, payment_method, reference, payment_date, description, recorded_by, currency, insurance_provider } = req.body || {};
         if (!deceased_id || !amount || parseFloat(amount) <= 0) {
             return res.status(400).json({ success: false, message: 'deceased_id and a positive amount are required' });
         }
@@ -309,16 +335,26 @@ export const recordPayment = async (req: TenantRequest, res: Response): Promise<
         const now = nowNairobi();
         const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
+        const normalizedMethod = normalizePaymentMethod(payment_method);
+        const insuranceProvider = String(insurance_provider || '').trim() || null;
+        if (normalizedMethod === 'insurance' && !insuranceProvider) {
+            return res.status(400).json({
+                success: false,
+                message: 'Insurance provider name is required for insurance payments'
+            });
+        }
+
         const result: any = await safeTenantExecute(dbName, `
             INSERT INTO payments
-                (deceased_id, transaction_id, amount, currency, payment_method, payment_date, reference_number, status, notes, recorded_by, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?)
+                (deceased_id, transaction_id, amount, currency, payment_method, insurance_provider, payment_date, reference_number, status, notes, recorded_by, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?)
         `, [
             deceased_id,
             transactionId,
             parseFloat(amount),
             normalizeCurrency(currency),
-            normalizePaymentMethod(payment_method),
+            normalizedMethod,
+            insuranceProvider,
             payment_date || now,
             reference || null,
             description || null,
