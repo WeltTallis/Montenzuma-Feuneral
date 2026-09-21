@@ -194,6 +194,18 @@ const getLocalUserName = () => {
   } catch { return ''; }
 };
 
+const FLX_RESPONSIVE = `
+@media (max-width: 640px) {
+  .flx-toolbar { flex-direction: column !important; align-items: stretch !important; gap: 8px !important; }
+  .flx-nav { margin-right: 0 !important; flex-wrap: wrap !important; gap: 6px !important; align-items: center !important; }
+  .flx-nav > button { flex: 1 1 100% !important; }
+  .flx-toggle { width: 100% !important; }
+  .flx-toggle > button { flex: 1 1 48% !important; white-space: nowrap !important; }
+  .flx-actions { width: 100% !important; }
+  .flx-actions > button { flex: 1 1 100% !important; white-space: normal !important; }
+}
+`;
+
 const FlowerBookingsNew = () => {
   const { socket, connected } = useSocket()
   const [bookings, setBookings] = useState([]);
@@ -584,8 +596,10 @@ const FlowerBookingsNew = () => {
 
   const renderToolbar = () => {
     const d = calDate;
-    return (
-      <div className="flx-toolbar" style={styles.toolbar}>
+        return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: FLX_RESPONSIVE }} />
+        <div className="flx-toolbar" style={styles.toolbar}>
         <div className="flx-nav" style={styles.nav}>
           <div style={styles.title}>
             <button style={styles.arrowBtn} onClick={() => calNav(-1)}>
@@ -620,7 +634,8 @@ const FlowerBookingsNew = () => {
             Place Booking
           </button>
         </div>
-      </div>
+            </div>
+      </>
     );
   };
 

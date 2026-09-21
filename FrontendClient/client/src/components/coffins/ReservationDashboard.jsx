@@ -406,7 +406,7 @@ export default function ReservationDashboard(props) {
     '@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}',
     '@media(max-width:1100px){.cb-side{width:260px}.cb-sr-item{padding:10px 14px}}',
     '@media(max-width:860px){.cb-side{display:none}.cb-tb{padding:8px 16px}.cb-panel{width:100%;max-width:100%}.cb-sr-item{padding:10px 14px}.cb-sr-ico{width:30px;height:30px}.cb-sr-num{font-size:16px}}',
-    '@media(max-width:640px){.cb-tb-views{display:none}.cb-r{grid-template-columns:3px 1fr 1fr}.cb-r .cb-cell:nth-child(n+5){display:none}.cb-lh{display:none}}',
+    '@media(max-width:640px){.cb-tb{flex-wrap:wrap;gap:6px}.cb-tb-left{flex-wrap:wrap}.cb-tb-views{display:none}.cb-tb-right{flex-wrap:wrap;justify-content:flex-end}.cb-tb-btn,.cb-tb-new,.cb-nav-pill{flex:1 1 100%;white-space:normal;text-align:center}.cb-nav-select{width:100%;min-width:120px}.cb-divider{display:none}.cb-r{grid-template-columns:3px 1fr 1fr}.cb-r .cb-cell:nth-child(n+5){display:none}.cb-lh{display:none}}',
   ].join('\n');
 
   return (

@@ -29,6 +29,7 @@ const Header = styled.div`
   align-items: center;
   gap: 1rem;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
 `;
 
 const BackButton = styled.button`

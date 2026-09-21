@@ -312,6 +312,12 @@ const CardHead = styled.div`
   flex-wrap: wrap;
   padding: 0.9rem 1.1rem;
   border-bottom: 1px solid ${COLORS.border};
+
+  /* Mobile: title on its own row, actions below — no scattered gaps */
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 `;
 const CardHeadLeft = styled.div`display: flex; align-items: center; gap: 0.55rem; min-width: 0;`;
 const CardTitle = styled.h2`margin: 0; font-size: 0.98rem; font-weight: 700; color: ${COLORS.text};`;
@@ -439,8 +445,12 @@ const Select = styled.select`
   color: ${COLORS.text};
   background: ${COLORS.white};
   cursor: pointer;
-  max-width: 200px;
+    max-width: 200px;
   &:focus { outline: none; border-color: ${COLORS.primary}; }
+
+  @media (max-width: 640px) {
+    max-width: 100%;
+  }
 `;
 const Btn = styled.button`
   display: inline-flex;

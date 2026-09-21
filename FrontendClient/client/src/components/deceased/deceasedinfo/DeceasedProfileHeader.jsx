@@ -26,10 +26,24 @@ const ProfileHeader = styled.div`
   padding-left: 12px;
   h2 { font-family: 'Merriweather', serif; font-size: 26px; font-weight: 900; color: ${C.black}; margin: 0 0 4px; }
   p { color: ${C.dark}; font-size: 14px; font-weight: 700; margin: 0; }
+
+  /* Mobile: stack barcode above the action buttons so the buttons never scatter */
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: stretch;
+    align-content: flex-start;
+  }
 `;
 
 const HeaderActions = styled.div`
   display: flex; gap: 12px; flex-wrap: wrap;
+
+  /* Mobile: buttons stack full-width instead of wrapping into scattered rows */
+  @media (max-width: 640px) {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
 `;
 
 const Btn = styled.button`
