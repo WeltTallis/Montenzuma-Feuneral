@@ -365,19 +365,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     `;
     const records: any[] = await safeTenantQuery(dbName, query, params);
 
-    /* ---------------- RELATED-RECORD ENRICHMENT ----------------
-       The register must never print a blank Release Date / Service Type when the
-       release or the service was actually recorded, and the columns that hold
-       them differ per tenant, so every logical field is resolved from all the
-       places it can live:
-         · Release date/time → deceased.dispatch_date (stamped on release) or the
-           signed release record in `body_releases` / `body_checkout`
-         · Next of kin       → `next_of_kin` (deceased.contact_person does not
-           exist in current tenant schemas, so the name used to render as "—")
-         · Service type      → any service/burial column that exists, else the
-           recorded checkout type, else derived from the pathology/embalming
-           state (it used to be blank because nothing writes `burial_type`).
-       Each lookup is guarded: a tenant without the table simply skips it. */
+    /* ---------------- RELATED-RECORD ENRICHMENT ---------------- */
     const keyOf = (v: any) => String(v ?? '').trim().toUpperCase();
 
     const kinByDeceasedId = new Map<string, any>();
@@ -597,7 +585,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     HEADERS.forEach((h, i) => {
       const cell = worksheet.getRow(ROW.header).getCell(i + 1);
       cell.value = h.toUpperCase();
-      cell.font = { name: FONT_SANS, size: 11, bold: true, color: argb(COLORS.bone) }; // Increased to 11pt
+      cell.font = { name: FONT_SANS, size: 11, bold: true, color: argb(COLORS.bone) }; // 11pt Bold
       cell.fill = solid(COLORS.verdigrisDark);
       cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
     });
@@ -606,15 +594,11 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     /* ---------------- DATA ROWS ---------------- */
     const putDate = (row: ExcelJS.Row, col: number, v: any) => {
       const cell = row.getCell(col);
-      // Tenant schemas store dates as DATE, DATETIME or VARCHAR ('2026-08-29',
-      // '2026-08-29 19:01:11', '29/08/2026'), so always parse defensively —
-      // an unparsable value used to be written as an Invalid Date, which Excel
-      // renders as an empty cell.
       const parsed = parseDateValue(v);
       if (parsed) {
         cell.value = parsed;
         cell.numFmt = 'dd mmm yyyy';
-        cell.font = { name: FONT_SANS, size: 11, color: argb(COLORS.gray), bold: true }; // 11pt, bold
+        cell.font = { name: FONT_SANS, size: 11, color: argb(COLORS.gray), bold: true }; // 11pt Bold
       } else {
         cell.value = '—';
         cell.font = { name: FONT_SANS, size: 11, color: argb(COLORS.muted) };
@@ -674,10 +658,10 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       // 7. Intake Date
       putDate(row, 7, item.intakeDate);
 
-      // 8. Release Date — dispatch_date, else the signed release record
+      // 8. Release Date
       putDate(row, 8, item.releaseDate);
 
-      // 9. Release Time — signed release record time, else the release timestamp
+      // 9. Release Time
       const timeCell = row.getCell(9);
       if (item.releaseTime) {
         timeCell.value = item.releaseTime;
@@ -688,15 +672,13 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       }
       timeCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // 10. Service Type (never blank — derived when the tenant has no service column)
+      // 10. Service Type
       const svcCell = row.getCell(10);
       svcCell.value = item.serviceType;
       svcCell.font = { name: FONT_SANS, size: 11, bold: true, color: argb(COLORS.verdigrisDark) };
       svcCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // 11. Status button — the colour is painted inside a white frame (applied
-      // after the hairlines below) so it reads as a compact pill/button instead
-      // of colouring the whole cell and therefore the whole row strip.
+      // 11. Status button
       const stCell = row.getCell(11);
       stCell.value = item.status;
       stCell.font = { name: FONT_SANS, size: 11, bold: true, color: argb(COLORS.bone) };
