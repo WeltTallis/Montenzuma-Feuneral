@@ -112,8 +112,8 @@ COPY --chown=nodejs:nodejs services/billing-service/ ./services/billing-service/
 # Writable runtime dirs (empty — tiny layer; uploads/data are bind-mounted
 # over these in compose). Ownership via chown on EMPTY dirs: never chown -R
 # over copied content, that duplicates the whole layer.
-RUN mkdir -p /usr/src/app/data /usr/src/app/invoices \
- && chown -R nodejs:nodejs /usr/src/app/data /usr/src/app/invoices
+RUN mkdir -p /usr/src/app/data /usr/src/app/invoices /usr/src/app/logs
+ && chown -R nodejs:nodejs /usr/src/app/data /usr/src/app/invoices /usr/src/app/logs
 
 USER nodejs
 

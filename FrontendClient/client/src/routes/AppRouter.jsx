@@ -92,7 +92,6 @@ const DeceasedDetails = lazy(() => import('../components/deceased/deceasedinfo/d
 const FinancialDetailsPage = lazy(() => import('../components/deceased/financialDetails/FinancialDetailsPage'));
 const DashboardPage = lazy(() => import('../components/pages/DashboardPage'));
 const DeceasedInfoSection = lazy(() => import('../components/deceased/deceasedInfoSection'));
-const DeceasedAnalytics = lazy(() => import('../components/deceased/deceasedAnalytics'));
 
 const SettingsPage = lazy(() => import('../components/settings/SettingsPage'));
 const ReleaseFormPage = lazy(() => import('../components/deceased/register/deceasedRelease'));
@@ -452,11 +451,7 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           </Suspense>
         } />
 
-        {/* Deceased Analytics - All authenticated users */}
-        <Route path="deceased/analytics" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedAnalytics /></Layout>
-        } />
-
+        
         {/* Deceased Management - All authenticated users */}
         <Route path="all-deceased" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedList /></Layout>

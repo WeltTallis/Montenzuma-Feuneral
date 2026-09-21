@@ -147,7 +147,7 @@ const getStatusInfo = (statusStr) => {
 
   if (fallback?.[1]) return fallback[1];
 
-    // Unrecognised but non-empty: default to Under Care.
+  // Unrecognised but non-empty: default to Under Care.
   return STATUS_CONFIG['under care'];
 };
 
@@ -1933,8 +1933,8 @@ const DeceasedListPage = () => {
                   const adm = r.admission_number || r.admission_no || '—';
                   const admitted = r.created_at || r.date_admitted || r.admission_date;
                   const days = getDaysInMorgue(admitted);
-                  const statusInfo = getStatusInfo(
-                    r.body_status || r.body_condition || r.admission_status || r.status || r.release_status || 'active'
+                                    const statusInfo = getStatusInfo(
+                    r.body_status || r.admission_status || r.release_status || r.status || 'active'
                   );
                   const sex = r.sex || r.gender || '';
                   const isFemale = sex.toLowerCase() === 'female';
@@ -1986,8 +1986,8 @@ const DeceasedListPage = () => {
                 const adm = r.admission_number || r.admission_no || '—';
                 const admitted = r.created_at || r.date_admitted || r.admission_date;
                 const days = getDaysInMorgue(admitted);
-                const statusInfo = getStatusInfo(
-                  r.body_status || r.body_condition || r.admission_status || r.status || r.release_status || 'active'
+                                const statusInfo = getStatusInfo(
+                  r.body_status || r.admission_status || r.release_status || r.status || 'active'
                 );
                 const sex = r.sex || r.gender || '';
                 const isFemale = sex.toLowerCase() === 'female';

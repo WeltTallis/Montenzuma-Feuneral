@@ -1,5 +1,5 @@
 // Service Worker for Rest Point PWA
-const CACHE_NAME = 'restpoint-v1';
+const CACHE_NAME = 'restpoint-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
