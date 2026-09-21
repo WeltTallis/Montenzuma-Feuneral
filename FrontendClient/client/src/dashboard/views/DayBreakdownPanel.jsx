@@ -92,8 +92,16 @@ const admKeyOf = (r) =>
 const relKeyOf = (r) =>
   keyOf(r?.dispatch_date || r?.release_date);
 
+/* All status signals joined — `status` is the legacy 'active' column and must
+   never mask body_status / admission_status, which flip on release. */
+const statusSignalOf = (r) =>
+  [r?.body_status, r?.admission_status, r?.release_status, r?.status]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
 const isReleased = (r) =>
-  RELEASED_RE.test(String(r?.status || r?.admission_status || "").toLowerCase());
+  RELEASED_RE.test(statusSignalOf(r));
 
 const pmMetaOf = (r) => {
   const pm = r?.postmortem || null;
@@ -231,7 +239,7 @@ export default function DayBreakdownPanel({
         name: r?.full_name || "Unknown",
         meta: r?.admission_number || "",
         sub: r?.branch_name || r?.place_of_death || "",
-        tag: String(r?.status || r?.admission_status || "Admitted"),
+        tag: String(r?.body_status || r?.admission_status || r?.status || "Admitted"),
       }));
 
     /* Releases — real handovers from the body-checkout feed first, with
@@ -247,7 +255,7 @@ export default function DayBreakdownPanel({
           name: r?.full_name || "Unknown",
           meta: r?.admission_number || "",
           sub: r?.destination || r?.release_to || r?.next_kin || "",
-          tag: String(r?.status || r?.admission_status || "Released"),
+          tag: String(r?.body_status || r?.admission_status || r?.status || "Released"),
         })),
     ];
 

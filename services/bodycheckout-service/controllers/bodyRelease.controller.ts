@@ -303,7 +303,10 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
 
     // Emit notification for body release
     try {
-      const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+      // Internal docker address — the socketio container listens on 5000
+      // (5018 is only the host-published port, so the old fallback never
+      // connected and release notifications were silently dropped).
+      const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://restpoint_socketio_service:5000';
       await axios.post(`${socketioServiceUrl}/emit/body-released`, {
         tenantSlug,
         data: {
@@ -326,11 +329,51 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
       Logger.warn(`[RELEASE] Failed to emit body-released notification: ${emitError.message}`);
     }
 
-    // Update deceased status if admission number is provided
+    // ── SYNC THE DECEASED REGISTER (authoritative) ──────────────────────────
+    // The status MUST flip to Released in the same tenant database the release
+    // row was just written to. Relying only on the cross-service call below
+    // left every list and profile showing the OLD status: that call goes over
+    // HTTP, and any failure (wrong internal host/port, service restart,
+    // timeout) was swallowed to the log — so the release looked successful
+    // while the deceased register never changed.
     if (validatedData.admission_number) {
       try {
-        // Call deceased service API to update status
-        const deceasedServiceUrl = process.env.DECEASED_SERVICE_URL || 'http://deceased-service:5003';
+        const admissionNumber = String(validatedData.admission_number).trim();
+        const releaseDate = releaseData.date_of_removal || currentDateTime.slice(0, 10);
+
+        const [syncResult]: any = await db.execute(
+          `UPDATE deceased
+              SET body_status = 'Released',
+                  release_status = 'released',
+                  admission_status = 'released',
+                  dispatch_date = COALESCE(dispatch_date, ?),
+                  updated_at = ?
+            WHERE admission_number = ?
+               OR TRIM(admission_number) = ?`,
+          [releaseDate, currentDateTime, admissionNumber, admissionNumber]
+        );
+
+        const affectedRows = Number(syncResult?.affectedRows || 0);
+        if (affectedRows > 0) {
+          Logger.info(`[RELEASE] Deceased register set to Released for ${admissionNumber} (${affectedRows} row(s))`);
+        } else {
+          Logger.warn(`[RELEASE] No deceased register row matched admission number "${admissionNumber}" — status not synced`);
+        }
+      } catch (syncError: any) {
+        // The release row itself is already stored; report loudly but do not
+        // fail the handover that already happened at the counter.
+        Logger.error(`[RELEASE] Failed to sync deceased register status: ${syncError.message}`);
+      }
+    }
+
+    // ── CACHE INVALIDATION / CANONICAL SYNC (best effort) ───────────────────
+    // Keeps the deceased-service Redis list + detail caches from serving the
+    // pre-release status for up to their TTL.
+    if (validatedData.admission_number) {
+      try {
+        // 5000 is the port INSIDE the container — 5003 is only the host
+        // mapping, so the previous fallback URL could never connect.
+        const deceasedServiceUrl = process.env.DECEASED_SERVICE_URL || 'http://restpoint_deceased_service:5000';
         await axios.post(
           `${deceasedServiceUrl}/deceased/update-status`,
           {
@@ -346,10 +389,11 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
             timeout: 5000
           }
         );
-        Logger.info(`[RELEASE] Updated deceased status to Released via API for admission: ${validatedData.admission_number}`);
-      } catch (error) {
-        Logger.error(`[RELEASE] Failed to update deceased status: ${error.message}`);
-        // Don't fail the release if status update fails
+        Logger.info(`[RELEASE] Deceased service status endpoint acknowledged for admission: ${validatedData.admission_number}`);
+      } catch (error: any) {
+        // Non-fatal: the register was already updated directly above, this
+        // only refreshes the other service's cache.
+        Logger.warn(`[RELEASE] Deceased service status call skipped (${error.message}); register was updated directly.`);
       }
     }
 

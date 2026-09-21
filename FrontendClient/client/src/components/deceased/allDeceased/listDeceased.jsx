@@ -87,12 +87,27 @@ const STATUS_CONFIG = {
   transferred: { label: 'Transferred', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
   'in care': { label: 'In Care', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
   embalmed: { label: 'In Care', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
+  // Last-resort chip for a status the map has never seen. The label is filled
+  // in from the record itself (see getStatusInfo) so a list NEVER renders the
+  // meaningless word "Unknown" over a real record.
   default: { label: 'Unknown', color: '#6b7280', bg: '#f3f4f6' }
 };
 
+/* Read a raw status string back to the operator: 'post_mortem requested' →
+   'Post Mortem Requested'. Used for values the alias map has not seen yet
+   (e.g. a status written by another service) so the register stays readable. */
+const humanizeStatus = (raw) => String(raw || '')
+  .replace(/[_-]+/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toLowerCase()
+  .replace(/\b[a-z]/g, (ch) => ch.toUpperCase());
+
 const getStatusInfo = (statusStr) => {
   const raw = String(statusStr ?? '').trim();
-  if (!raw) return STATUS_CONFIG.default;
+  // A record carrying no status at all is a body still in our care — show the
+  // register's own default rather than an empty/"Unknown" badge.
+  if (!raw) return STATUS_CONFIG.active;
 
   const normalized = raw
     .toLowerCase()
@@ -129,12 +144,25 @@ const getStatusInfo = (statusStr) => {
 
   if (aliases[normalized]) return aliases[normalized];
 
-  const fallback = Object.entries(STATUS_CONFIG).find(([key, value]) => {
-    if (key === 'default') return false;
-    return normalized.includes(key) || key.includes(normalized);
-  });
+  // Loose match for compound values ('released to the family', 'in morgue —
+  // awaiting collection'). Guarded against 1–2 character strings so a stray
+  // value cannot match a key by coincidence.
+  const fallback = normalized.length >= 3
+    ? Object.entries(STATUS_CONFIG).find(([key]) => {
+      if (key === 'default') return false;
+      return normalized.includes(key) || key.includes(normalized);
+    })
+    : null;
 
-  return fallback?.[1] || STATUS_CONFIG.default;
+  if (fallback?.[1]) return fallback[1];
+
+  // Unrecognised but non-empty: surface the record's own status text in a
+  // neutral grey chip rather than the word "Unknown".
+  return {
+    label: humanizeStatus(raw),
+    color: STATUS_CONFIG.default.color,
+    bg: STATUS_CONFIG.default.bg,
+  };
 };
 
 // ─── Helper: Format Date to YYYY-MM-DD ──────────────────────────────

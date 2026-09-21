@@ -1257,6 +1257,9 @@ const DeceasedReleaseForm = () => {
     released_by: getLoggedInUserName(),
     permit_number: '',
     mode_of_transport: 'hearse',
+    // Where the body is being taken after handover (home, cemetery, another
+    // mortuary…) — part of the transportation record for the release.
+    final_destination: '',
     // Plate number of the vehicle removing the body (hearse, van or the
     // family's own car) — recorded with the release for the official record.
     plate_number: '',
@@ -1531,6 +1534,7 @@ const DeceasedReleaseForm = () => {
     if (!formData.id_number.trim()) newErrors.id_number = 'ID number is required';
     if (!formData.tel_number.trim()) newErrors.tel_number = 'Telephone number is required';
     if (!formData.plate_number.trim()) newErrors.plate_number = 'Vehicle plate number is required';
+    if (!formData.final_destination.trim()) newErrors.final_destination = 'Final destination is required';
     if (!formData.terms_accepted) newErrors.terms_accepted = 'You must accept the terms';
 
     if (formData.tel_number && !/^(\+254|0)[17]\d{8}$/.test(formData.tel_number.replace(/\s/g, ''))) {
@@ -1580,6 +1584,9 @@ const DeceasedReleaseForm = () => {
         signature: signatureData,
         name_of_deceased: formData.full_name,
         tell_number: formData.tel_number,
+        // Where the body is going after handover — always sent as a string so
+        // the API contract (final_destination?: string) is never violated.
+        final_destination: String(formData.final_destination || '').trim(),
       };
 
       const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.BODYCHECKOUT.CHECKOUT}`, {
@@ -2138,7 +2145,7 @@ const DeceasedReleaseForm = () => {
                 </Row>
 
                 <Row>
-                  <Col2>
+                  <Col>
                     <Label>Vehicle Plate Number <span style={{ color: COLORS.red }}>*</span></Label>
                     <InputFieldWrapper>
                       <Input
@@ -2155,6 +2162,26 @@ const DeceasedReleaseForm = () => {
                       )}
                     </InputFieldWrapper>
                     {errors.plate_number && <ErrorMessage>{errors.plate_number}</ErrorMessage>}
+                  </Col>
+                  <Col2>
+                    {/* Where the body is taken after handover — home, cemetery,
+                        place of worship or another mortuary. */}
+                    <Label>Final Destination / Location <span style={{ color: COLORS.red }}>*</span></Label>
+                    <InputFieldWrapper>
+                      <Input
+                        type="text"
+                        name="final_destination"
+                        value={formData.final_destination}
+                        onChange={handleChange}
+                        placeholder="e.g., Lang'ata Cemetery, Nairobi"
+                      />
+                      {hasValue(formData.final_destination) && (
+                        <TickIconWrapper>
+                          <Check size={16} strokeWidth={2.5} />
+                        </TickIconWrapper>
+                      )}
+                    </InputFieldWrapper>
+                    {errors.final_destination && <ErrorMessage>{errors.final_destination}</ErrorMessage>}
                   </Col2>
                 </Row>
               </Section>

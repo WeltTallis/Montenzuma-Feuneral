@@ -53,7 +53,16 @@ const timeOf = (r) => {
 };
 
 const relKeyOf = (r) => keyOf(r?.dispatch_date || r?.release_date || r?.date_released);
-const isReleased = (r) => RELEASED_RE.test(String(r?.status || r?.admission_status || "").toLowerCase());
+/* Every status signal the register carries, joined. `status` is a legacy
+   column that stays 'active' forever, so it must never be read FIRST — it
+   masks body_status / admission_status, the fields that actually flip when a
+   body is released (the "status not changing" bug on the dashboard). */
+const statusSignalOf = (r) =>
+  [r?.body_status, r?.admission_status, r?.release_status, r?.status]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+const isReleased = (r) => RELEASED_RE.test(statusSignalOf(r));
 
 const pmMetaOf = (r) => {
   const pm = r?.postmortem || null;
@@ -80,7 +89,7 @@ const STATUS_CFG = {
   transferred: { label: "Transferred",        color: "#03071E", bg: "rgba(3, 7, 30, 0.1)" },
 };
 const statusKeyOf = (r) => {
-  const st = String(r?.status || r?.admission_status || "").toLowerCase();
+  const st = statusSignalOf(r);
   if (isReleased(r)) return /transfer/.test(st) ? "transferred" : "released";
   const pm = pmMetaOf(r);
   if (pm?.completed) return "pmDone";
@@ -551,7 +560,7 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
           id: `rel-${r?.admission_number ?? r?.id ?? i}`, name: r?.full_name || "Unknown",
           meta: r?.admission_number || "", branch: branchOf(r),
           date: relKeyOf(r) || admKeyOf(r), dest: r?.destination || r?.release_to || r?.next_kin || r?.dispatched_to || "",
-          status: /transfer/i.test(String(r?.status || r?.admission_status || "")) ? "Transferred" : "Released",
+          status: /transfer/i.test(statusSignalOf(r)) ? "Transferred" : "Released",
           raw: r,
         })),
     ];

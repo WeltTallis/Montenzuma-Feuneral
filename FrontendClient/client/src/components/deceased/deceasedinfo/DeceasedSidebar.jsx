@@ -304,6 +304,24 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
   const deceasedId = deceased?.deceased_id || deceased?.id || deceased?.deceasedId;
   const admissionNo = deceased?.admission_number || deceased?.admission_no;
 
+  // ── Storage vs released state ────────────────────────────────────────
+  // The register stores more states than "In Morgue"/"Released" (Postmortem
+  // Requested, Postmortem Done, Transferred, Buried, …). Deriving the badge
+  // from the release vocabulary keeps the two sides consistent: a body under
+  // examination used to be labelled "Released" while still in the morgue.
+  const bodyStatusNorm = String(bodyStatus || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ');
+  const RELEASE_STATES = [
+    'released', 'transferred', 'transfer', 'buried', 'dispatched',
+    'completed', 'complete', 'ready for collection', 'collected',
+  ];
+  const isBodyReleased = RELEASE_STATES.some(
+    (state) => bodyStatusNorm === state || bodyStatusNorm.includes(state)
+  );
+
   const tenantSlug = getTenantSlug();
   const profileUrl = typeof window !== 'undefined' && tenantSlug && deceasedId
     ? `${window.location.origin}/tenant/${encodeURIComponent(tenantSlug)}/deceased?id=${encodeURIComponent(deceasedId)}`
@@ -331,8 +349,8 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
         </ChargeRow>
         <ChargeRow>
           <span>Body Storage Status</span>
-          <StorageBadge $released={bodyStatus === 'Released'}>
-            {bodyStatus === 'Released' && '✓ '}{bodyStatus === 'In Morgue' || bodyStatus === 'Active' ? 'In Storage' : 'Released'}
+          <StorageBadge $released={isBodyReleased}>
+            {isBodyReleased ? '✓ Released' : 'In Storage'}
           </StorageBadge>
         </ChargeRow>
       </SidebarSection>

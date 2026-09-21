@@ -33,10 +33,11 @@ const COLORS = {
   goldSoft: 'FFE5C158',
 
   // Brighter Pastel Column Accents (Applied selectively)
-  colPink1: 'FFFFD1DC',   // Bright Pink
-  colPink2: 'FFFFDAB9',   // Bright Peach
-  colYellow1: 'FFFFF9C4', // Bright Yellow
-  colGreen1: 'FFC8E6C9',  // Bright Green
+  colPink1: 'FFFFD1DC',   // Bright Pink (#FFD1DC)
+  colPink2: 'FFFFDAB9',   // Bright Peach (#FFDAB9)
+  colYellow1: 'FFFFF9C4', // Bright Yellow (#FFF9C4)
+  colGreen1: 'FFC8E6C9',  // Bright Green (#C8E6C9)
+  colBlue1: 'FFD1E8FF',   // Bright Blue (#D1E8FF)
 } as const;
 
 const FONT_SERIF = 'Georgia';
@@ -194,18 +195,18 @@ const PILL_FRAME = () => ({
   right: { style: 'thick' as const, color: argb(COLORS.white) },
 });
 
-// Selective Column Backgrounds (Only specific columns get colored)
+// Selective Column Backgrounds (Exactly matches HTML preview)
 const COL_FILLS = [
   COLORS.white,      // 1. Admission No (White)
-  COLORS.white,      // 2. Deceased Name (White)
+  COLORS.colBlue1,   // 2. Deceased Name (Bright Blue)
   COLORS.colGreen1,  // 3. Permit Number (Bright Green)
   COLORS.white,      // 4. Kin ID (White)
-  COLORS.white,      // 5. Phone Number (White)
+  COLORS.colBlue1,   // 5. Phone Number (Bright Blue)
   COLORS.colPink1,   // 6. Next of Kin (Bright Pink)
   COLORS.colPink2,   // 7. Intake Date (Bright Peach)
   COLORS.white,      // 8. Release Date (White)
   COLORS.colYellow1, // 9. Release Time (Bright Yellow)
-  COLORS.white,      // 10. Service Type (White)
+  COLORS.colBlue1,   // 10. Service Type (Bright Blue)
   COLORS.white,      // 11. Status (White)
   COLORS.colGreen1,  // 12. Days in Morgue (Bright Green)
 ];
@@ -639,10 +640,10 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       kinIdCell.font = { name: FONT_MONO, size: 11, color: argb(COLORS.ink), bold: true };
       kinIdCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // 5. Phone Number (11pt)
+      // 5. Phone Number (11pt, bold)
       const phoneCell = row.getCell(5);
       phoneCell.value = item.phoneNumber;
-      phoneCell.font = { name: FONT_SANS, size: 11, color: argb(COLORS.gray) };
+      phoneCell.font = { name: FONT_SANS, size: 11, color: argb(COLORS.gray), bold: true };
       phoneCell.alignment = { vertical: 'middle', indent: 1 };
 
       // 6. Next of Kin (Name: Black/Bold, Relationship: White)

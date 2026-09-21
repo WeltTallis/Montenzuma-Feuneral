@@ -491,6 +491,12 @@ services:
       PORT: 5000
       SERVICE_NAME: bodycheckout-service
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+      # The release flow writes the Released status straight into the tenant DB
+      # and then pokes deceased-service so its Redis list/detail caches are
+      # invalidated. 5000 is the port INSIDE the container — 5003 is only the
+      # host mapping, which is why status updates used to fail silently.
+      DECEASED_SERVICE_URL: http://restpoint_deceased_service:5000
+      SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis

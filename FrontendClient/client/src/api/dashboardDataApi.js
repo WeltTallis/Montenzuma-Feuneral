@@ -352,7 +352,7 @@ export const fetchKpiCardsData = async (date) => {
     });
     const released = deceased.filter((r) => {
       const dk = toKey(r?.dispatch_date || r?.release_date || r?.date_of_death);
-      return dk === key && search(String(r?.status || r?.admission_status || ''), ['released', 'dispatched', 'completed', 'buried']);
+      return dk === key && search(String(r?.body_status || r?.admission_status || r?.status || ''), ['released', 'dispatched', 'completed', 'buried']);
     });
     const dayBookings = await bookingsForDate(key);
     const activeHearseCount = new Set(dayBookings.map((b) => b?.hearse_id || b?.id)).size;
@@ -526,9 +526,14 @@ export const fetchResourceCapacityData = async (date) => {
     const fleetUsed = Math.min(dayBookedHearseIds.size, fleetTotal);
     const fleetPct = Math.round((fleetUsed / fleetTotal) * 100);
 
-    const activeStorage = deceased.filter((r) =>
-      search(String(r?.status || r?.admission_status || ''), ['under care', 'admitted', 'received', 'embalmed'])
-    ).length;
+    const activeStorage = deceased.filter((r) => {
+      const signal = String(r?.body_status || r?.admission_status || r?.status || '').toLowerCase();
+      // Anything not clearly handed over is still occupying storage —
+      // postmortem states included. (The old exact-match list could never
+      // match the register's 'active'/'Postmortem Requested' values, so this
+      // KPI was permanently 0.)
+      return Boolean(signal) && !search(signal, ['released', 'dispatched', 'completed', 'buried', 'transferred']);
+    }).length;
     const storageTotal = Math.max(activeStorage, 30);
     const storagePct = Math.round((Math.min(activeStorage, storageTotal) / storageTotal) * 100);
 
@@ -663,7 +668,7 @@ const PIPELINE_STAGES = [
 ];
 
 const stageFor = (r, key) => {
-  const status = String(r?.status || r?.admission_status || '').toLowerCase();
+  const status = String(r?.body_status || r?.admission_status || r?.status || '').toLowerCase();
   const body = String(r?.body_status || '').toLowerCase();
   if (search(status, ['released', 'dispatched', 'completed', 'buried'])) return 'Completed';
   if (search(body, ['cemetery', 'burial'])) return 'Cemetery';
@@ -682,7 +687,7 @@ export const fetchCasePipelineData = async (date) => {
       .filter((r) => {
         const rk = toKey(r?.date_key || r?.adm_date || r?.date_admitted || r?.created_at);
         // Active pipeline = admitted on the day OR still open today.
-        return rk === key || !search(r?.status || r?.admission_status || '', ['released', 'dispatched', 'completed', 'buried']);
+        return rk === key || !search(String(r?.body_status || r?.admission_status || r?.status || ''), ['released', 'dispatched', 'completed', 'buried']);
       })
       .slice(0, 8)
       .map((r) => ({
@@ -1179,7 +1184,7 @@ export const fetchRecentDeceasedData = async (date) => {
       .filter((r) => toKey(r?.date_key || r?.adm_date || r?.date_admitted || r?.created_at) === key)
       .slice(0, 8)
       .map((r) => {
-        const status = String(r?.admission_status || r?.status || '').toLowerCase();
+        const status = String(r?.body_status || r?.admission_status || r?.status || '').toLowerCase();
         const released = search(status, ['released', 'dispatched', 'completed', 'buried']);
         const pm = String(r?.body_status || '').toLowerCase();
         return {
