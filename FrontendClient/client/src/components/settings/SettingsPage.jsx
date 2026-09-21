@@ -1,5 +1,5 @@
 ﻿
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ENDPOINTS } from '../../api/endpoints';
 import env from '../../utils/config/env';
@@ -49,6 +49,29 @@ const THEME = {
     },
 };
 
+// Shared styling for the editable Organization Information inputs.
+const FIELD_LABEL_STYLE = {
+    display: 'block',
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    color: THEME.colors.gray,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    marginBottom: '0.35rem',
+};
+
+const FIELD_INPUT_STYLE = {
+    width: '100%',
+    padding: '0.6rem 0.7rem',
+    border: `1px solid ${THEME.colors.line}`,
+    borderRadius: '4px',
+    fontSize: '0.88rem',
+    fontFamily: "'Inter', sans-serif",
+    color: THEME.colors.ink,
+    background: THEME.colors.white,
+    outline: 'none',
+};
+
 export default function SettingsPage() {
     const navigate = useNavigate();
     const { slug: urlSlug } = useParams();
@@ -65,6 +88,21 @@ export default function SettingsPage() {
     const [homeCharges, setHomeCharges] = useState({ chargeType: 'daily', currency: 'KES', dailyRate: '', hourlyRate: '', usdRate: '130' });
     const [homeChargesLoading, setHomeChargesLoading] = useState(false);
     const [homeChargesSaving, setHomeChargesSaving] = useState(false);
+
+    // ── Organization information (Settings → Organization) ───────────────────
+    // Name / phone / email / location / country + logo are stored on the
+    // tenant's master record; managers edit them here.
+    const [orgForm, setOrgForm] = useState({
+        tenantName: '',
+        phone: '',
+        email: '',
+        location: '',
+        country: '',
+    });
+    const [orgSaving, setOrgSaving] = useState(false);
+    const [orgStatus, setOrgStatus] = useState(null); // { type: 'success' | 'error', message }
+    const [logoUploading, setLogoUploading] = useState(false);
+    const logoInputRef = useRef(null);
 
     const [userForm, setUserForm] = useState({
         email: '',
@@ -328,6 +366,128 @@ export default function SettingsPage() {
             ? rawLogoUrl
             : `${env.UPLOADS_URL.replace(/\/$/, '')}/${rawLogoUrl.replace(/^\/+/, '')}`)
         : '';
+    // Phone shown in the Organization Information banner: the real tenant
+    // record first, then whatever login stored locally. Never a fake default.
+    const displayPhone = settings?.phone || storedBranding.phone || '';
+
+    // Mirror the loaded tenant record into the editable Organization form.
+    // Runs on first load and again after every successful save.
+    useEffect(() => {
+        if (!settings) return;
+        setOrgForm({
+            tenantName: settings.tenantName || '',
+            phone: settings.phone || storedBranding.phone || '',
+            email: settings.email || '',
+            location: settings.location || '',
+            country: settings.country || '',
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [settings]);
+
+    // Keep the login-time branding keys in sync with the edited organization so
+    // every form/print header (which reads them via getTenantBrandingFromStorage)
+    // shows the NEW name / phone / logo immediately — no re-login needed.
+    const persistBrandingLocally = (patch) => {
+        try {
+            const storageMap = {
+                tenantName: 'tenantName',
+                phone: 'tenantPhone',
+                email: 'tenantEmail',
+                location: 'tenantLocation',
+                country: 'tenantCountry',
+                logoUrl: 'tenantLogoUrl',
+            };
+            Object.entries(storageMap).forEach(([key, storageKey]) => {
+                const value = patch?.[key];
+                // null (e.g. a cleared phone number) must overwrite the stale
+                // stored value with an empty string, not leave the old one.
+                if (value !== undefined) localStorage.setItem(storageKey, value === null ? '' : value);
+            });
+        } catch {
+            // Storage can be unavailable (private mode / quota) — non-fatal.
+        }
+    };
+
+    const saveOrganization = async (event) => {
+        event.preventDefault();
+        setOrgStatus(null);
+
+        const name = orgForm.tenantName.trim();
+        if (name.length < 2) {
+            setOrgStatus({ type: 'error', message: 'Enter the organization name (at least 2 characters).' });
+            return;
+        }
+        const email = orgForm.email.trim();
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setOrgStatus({ type: 'error', message: 'Enter a valid email address.' });
+            return;
+        }
+
+        setOrgSaving(true);
+        try {
+            const response = await api.put(ENDPOINTS.TENANT.UPDATE_SETTINGS(tenantSlug), {
+                tenantName: name,
+                phone: orgForm.phone.trim(),
+                email,
+                location: orgForm.location.trim(),
+                country: orgForm.country.trim(),
+            });
+            const updated = response.data?.data || {};
+            setSettings((prev) => ({ ...prev, ...updated }));
+            persistBrandingLocally(updated);
+            setError(null);
+            setOrgStatus({ type: 'success', message: response.data?.message || 'Organization information saved.' });
+        } catch (err) {
+            setOrgStatus({
+                type: 'error',
+                message: err.response?.data?.message || err.friendlyMessage || 'Failed to save organization information.',
+            });
+        } finally {
+            setOrgSaving(false);
+        }
+    };
+
+    const handleLogoFile = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        setOrgStatus(null);
+
+        if (!/^image\//i.test(file.type)) {
+            setOrgStatus({ type: 'error', message: 'Choose an image file (JPG, PNG, GIF, WEBP or SVG).' });
+            event.target.value = '';
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            setOrgStatus({ type: 'error', message: 'The logo must be 10MB or smaller.' });
+            event.target.value = '';
+            return;
+        }
+
+        setLogoUploading(true);
+        try {
+            const payload = new FormData();
+            payload.append('logo', file);
+            // Content-Type: null lets the BROWSER set multipart/form-data WITH
+            // the boundary. Hand-setting 'multipart/form-data' omits the
+            // boundary and multer rejects the request (400 Boundary not found).
+            const response = await api.post(ENDPOINTS.TENANT.LOGO(tenantSlug), payload, {
+                headers: { 'Content-Type': null },
+            });
+            const nextLogo = response.data?.data?.logoUrl || response.data?.data?.logo_url || '';
+            setSettings((prev) => ({ ...prev, logoUrl: nextLogo, logo_url: nextLogo }));
+            persistBrandingLocally({ logoUrl: nextLogo });
+            setOrgStatus({ type: 'success', message: response.data?.message || 'Logo updated.' });
+        } catch (err) {
+            setOrgStatus({
+                type: 'error',
+                message: err.response?.data?.message || err.friendlyMessage || 'Failed to upload the logo.',
+            });
+        } finally {
+            setLogoUploading(false);
+            // Reset so re-selecting the SAME file fires onChange again.
+            event.target.value = '';
+        }
+    };
 
     if (loading) {
         return (
@@ -343,7 +503,7 @@ export default function SettingsPage() {
     return (
         <div style={{ minHeight: '100vh', background: THEME.colors.bone }}>
             {error && (
-                <div style={{
+                <div className="rp-settings-pad" style={{
                     background: THEME.colors.redBg || '#fdecea',
                     color: THEME.colors.red,
                     borderBottom: '1px solid ' + (THEME.colors.redLine || '#f5c6c2'),
@@ -360,22 +520,79 @@ export default function SettingsPage() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Mobile responsiveness ────────────────────────────────────────────
+           This page is styled almost entirely with inline styles, so the
+           media-query rules below use !important to win over them on small
+           screens. Nothing here applies above the breakpoints, so the desktop
+           layout stays exactly as it was. */
+        @media (max-width: 900px) {
+          .rp-settings-pad { padding-left: 1rem !important; padding-right: 1rem !important; }
+          .rp-settings-header { flex-direction: column !important; align-items: stretch !important; gap: 1rem !important; }
+          .rp-settings-tabs { overflow-x: auto !important; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+          .rp-settings-tabs::-webkit-scrollbar { height: 0; }
+          .rp-settings-tabs button { white-space: nowrap !important; flex: 0 0 auto; padding: 0.7rem 0.9rem !important; }
+          .rp-settings-card { padding: 1rem !important; }
+          .rp-settings-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; }
+          .rp-settings-form { max-width: 100% !important; }
+          .rp-settings-modal { padding: 1rem !important; }
+          .rp-settings-modal-panel { padding: 1.25rem !important; }
+          .rp-settings-table { min-width: 680px; }
+          .rp-settings-actions { flex-direction: column-reverse !important; }
+          .rp-settings-actions > button { width: 100% !important; }
+        }
+        @media (max-width: 560px) {
+          /* The dashboard layout already adds 0.5rem of gutters on phones, so
+             the page keeps only a little of its own to avoid double spacing. */
+          .rp-settings-pad { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+          .rp-settings-grid { grid-template-columns: 1fr !important; }
+          .rp-settings-logo { width: 56px !important; height: 56px !important; padding: 4px !important; }
+          .rp-settings-logo-sm { width: 44px !important; height: 44px !important; padding: 4px !important; }
+          .rp-settings-title { font-size: 1.25rem !important; }
+          .rp-settings-branches { grid-template-columns: 1fr !important; }
+          .rp-settings-inline { flex-direction: column !important; align-items: flex-start !important; }
+        }
       `}</style>
 
             {/* Header */}
             <div style={{ background: THEME.colors.white, borderBottom: `1px solid ${THEME.colors.line}`, padding: '1.5rem 0' }}>
-                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="rp-settings-pad rp-settings-header" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         {companyLogo ? (
                             <img
                                 src={companyLogo}
                                 alt={`${settings?.tenantName || 'Company'} logo`}
+                                className="rp-settings-logo-sm"
                                 style={{ width: 54, height: 54, objectFit: 'contain', border: `1px solid ${THEME.colors.line}`, borderRadius: '8px', padding: '6px', background: THEME.colors.white }}
                                 onError={(event) => { event.currentTarget.style.display = 'none'; }}
                             />
-                        ) : null}
+                        ) : (
+                            // No logo stored yet → placeholder with the org initial
+                            // (instead of nothing) so the header never collapses and
+                            // it's obvious a logo still needs uploading.
+                            <div
+                                className="rp-settings-logo-sm"
+                                aria-hidden="true"
+                                style={{
+                                    width: 54,
+                                    height: 54,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: `1px dashed ${THEME.colors.line}`,
+                                    borderRadius: '8px',
+                                    background: THEME.colors.bone,
+                                    color: THEME.colors.brass,
+                                    fontFamily: "'Inter', sans-serif",
+                                    fontSize: '1.25rem',
+                                    fontWeight: 600,
+                                }}
+                            >
+                                {(settings?.tenantName || 'O').trim().charAt(0).toUpperCase()}
+                            </div>
+                        )}
                         <div>
-                        <h1 style={{ fontFamily: "'Inter', sans-serif", fontSize: '1.5rem', fontWeight: 600, color: THEME.colors.ink, marginBottom: '0.25rem' }}>
+                        <h1 className="rp-settings-title" style={{ fontFamily: "'Inter', sans-serif", fontSize: '1.5rem', fontWeight: 600, color: THEME.colors.ink, marginBottom: '0.25rem' }}>
                             Settings
                         </h1>
                         <p style={{ fontSize: '0.85rem', color: THEME.colors.gray }}>
@@ -405,23 +622,46 @@ export default function SettingsPage() {
             </div>
 
             {/* Organization Info Banner */}
-            <div style={{ maxWidth: '1200px', margin: '2rem auto', padding: '0 2rem' }}>
-                <div style={{
+            <div className="rp-settings-pad" style={{ maxWidth: '1200px', margin: '2rem auto', padding: '0 2rem' }}>
+                <div className="rp-settings-card" style={{
                     padding: '1.25rem 1.5rem',
                     background: THEME.colors.white,
                     border: `1px solid ${THEME.colors.line}`,
                     borderRadius: '8px',
                     marginBottom: '1.5rem',
                 }}>
-                    <h3 style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.95rem', fontWeight: 600, color: THEME.colors.ink, marginBottom: '1rem' }}>
-                        Organization Information
-                    </h3>
+                    <div className="rp-settings-inline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem' }}>
+                        <h3 style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.95rem', fontWeight: 600, color: THEME.colors.ink }}>
+                            Organization Information
+                        </h3>
+                        {isManager && (
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('organization')}
+                                style={{
+                                    padding: '0.45rem 0.9rem',
+                                    background: activeTab === 'organization' ? THEME.colors.bone2 : THEME.colors.white,
+                                    color: THEME.colors.brass,
+                                    border: `1px solid ${THEME.colors.line}`,
+                                    borderRadius: '4px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 500,
+                                    fontFamily: "'Inter', sans-serif",
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Edit information
+                            </button>
+                        )}
+                    </div>
                     {companyLogo && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: `1px solid ${THEME.colors.line}` }}>
+                        <div className="rp-settings-inline" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: `1px solid ${THEME.colors.line}` }}>
                             <img
                                 src={companyLogo}
                                 alt={`${settings?.tenantName || 'Company'} logo`}
+                                className="rp-settings-logo"
                                 style={{ width: 72, height: 72, objectFit: 'contain', border: `1px solid ${THEME.colors.line}`, borderRadius: '8px', padding: '8px', background: THEME.colors.white }}
+                                onError={(event) => { event.currentTarget.style.display = 'none'; }}
                             />
                             <div>
                                 <p style={{ fontSize: '0.72rem', color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Company logo</p>
@@ -429,10 +669,14 @@ export default function SettingsPage() {
                             </div>
                         </div>
                     )}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                    <div className="rp-settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                         <div>
                             <p style={{ fontSize: '0.72rem', color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Organization Name</p>
-                            <p style={{ fontSize: '0.88rem', color: THEME.colors.ink, fontWeight: 500 }}>{settings?.tenantName}</p>
+                            <p style={{ fontSize: '0.88rem', color: THEME.colors.ink, fontWeight: 500 }}>{settings?.tenantName || storedBranding.name || 'Not specified'}</p>
+                        </div>
+                        <div>
+                            <p style={{ fontSize: '0.72rem', color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Phone</p>
+                            <p style={{ fontSize: '0.88rem', color: THEME.colors.ink, fontWeight: 500 }}>{displayPhone || 'Not specified'}</p>
                         </div>
                         <div>
                             <p style={{ fontSize: '0.72rem', color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Location</p>
@@ -450,7 +694,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Tabs */}
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: `1px solid ${THEME.colors.line}` }}>
+                <div className="rp-settings-tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: `1px solid ${THEME.colors.line}` }}>
                     {isManager && (
                         <button
                             onClick={() => setActiveTab('users')}
@@ -468,6 +712,25 @@ export default function SettingsPage() {
                             }}
                         >
                             Users & Roles
+                        </button>
+                    )}
+                    {isManager && (
+                        <button
+                            onClick={() => setActiveTab('organization')}
+                            style={{
+                                padding: '0.75rem 1.25rem',
+                                background: 'none',
+                                border: 'none',
+                                borderBottom: `2px solid ${activeTab === 'organization' ? THEME.colors.brass : 'transparent'}`,
+                                color: activeTab === 'organization' ? THEME.colors.ink : THEME.colors.gray,
+                                fontSize: '0.88rem',
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                fontFamily: "'Inter', sans-serif",
+                                marginBottom: '-1px',
+                            }}
+                        >
+                            Organization
                         </button>
                     )}
                     {isManager && (
@@ -511,12 +774,212 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Tab Content */}
-                <div style={{
+                <div className="rp-settings-card" style={{
                     background: THEME.colors.white,
                     border: `1px solid ${THEME.colors.line}`,
                     borderRadius: '8px',
                     padding: '1.5rem',
                 }}>
+                    {/* ── Organization (edit name / phone / email / location /
+                        country + logo) ─────────────────────────────────────── */}
+                    {activeTab === 'organization' && isManager && (
+                        <div>
+                            <h3 style={{ fontFamily: "'Inter', sans-serif", fontSize: '1.1rem', fontWeight: 600, color: THEME.colors.ink, marginBottom: '0.35rem' }}>
+                                Organization Information
+                            </h3>
+                            <p style={{ fontSize: '0.82rem', color: THEME.colors.gray, marginBottom: '1.25rem' }}>
+                                These details appear on the dashboard, intake/release forms and printed documents.
+                            </p>
+
+                            {orgStatus && (
+                                <div
+                                    role="status"
+                                    style={{
+                                        padding: '0.7rem 0.9rem',
+                                        marginBottom: '1.25rem',
+                                        borderRadius: '4px',
+                                        fontSize: '0.82rem',
+                                        background: orgStatus.type === 'error' ? THEME.colors.redBg : THEME.colors.successBg,
+                                        color: orgStatus.type === 'error' ? THEME.colors.red : THEME.colors.success,
+                                        border: `1px solid ${orgStatus.type === 'error' ? THEME.colors.red : THEME.colors.success}`,
+                                    }}
+                                >
+                                    {orgStatus.message}
+                                </div>
+                            )}
+
+                            {/* Company logo */}
+                            <div className="rp-settings-inline" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', paddingBottom: '1.25rem', borderBottom: `1px solid ${THEME.colors.line}`, flexWrap: 'wrap' }}>
+                                {companyLogo ? (
+                                    <img
+                                        src={companyLogo}
+                                        alt={`${settings?.tenantName || 'Company'} logo`}
+                                        className="rp-settings-logo"
+                                        style={{ width: 72, height: 72, objectFit: 'contain', border: `1px solid ${THEME.colors.line}`, borderRadius: '8px', padding: '8px', background: THEME.colors.white }}
+                                        onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                                    />
+                                ) : (
+                                    <div
+                                        className="rp-settings-logo"
+                                        aria-hidden="true"
+                                        style={{
+                                            width: 72,
+                                            height: 72,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            border: `1px dashed ${THEME.colors.line}`,
+                                            borderRadius: '8px',
+                                            background: THEME.colors.bone,
+                                            color: THEME.colors.brass,
+                                            fontFamily: "'Inter', sans-serif",
+                                            fontSize: '1.5rem',
+                                            fontWeight: 600,
+                                        }}
+                                    >
+                                        {(settings?.tenantName || 'O').trim().charAt(0).toUpperCase()}
+                                    </div>
+                                )}
+                                <div>
+                                    <p style={FIELD_LABEL_STYLE}>Company logo</p>
+                                    <input
+                                        ref={logoInputRef}
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,image/svg+xml"
+                                        onChange={handleLogoFile}
+                                        style={{ display: 'none' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => logoInputRef.current?.click()}
+                                        disabled={logoUploading}
+                                        style={{
+                                            padding: '0.5rem 0.9rem',
+                                            background: THEME.colors.white,
+                                            color: THEME.colors.brass,
+                                            border: `1px solid ${THEME.colors.line}`,
+                                            borderRadius: '4px',
+                                            fontSize: '0.82rem',
+                                            fontWeight: 500,
+                                            fontFamily: "'Inter', sans-serif",
+                                            cursor: logoUploading ? 'wait' : 'pointer',
+                                            opacity: logoUploading ? 0.7 : 1,
+                                        }}
+                                    >
+                                        {logoUploading ? 'Uploading…' : (companyLogo ? 'Replace logo' : 'Upload logo')}
+                                    </button>
+                                    <p style={{ fontSize: '0.75rem', color: THEME.colors.gray, marginTop: '0.4rem' }}>
+                                        JPG, PNG, GIF, WEBP or SVG — up to 10MB.
+                                    </p>
+                                </div>
+                            </div>
+                            <form onSubmit={saveOrganization} className="rp-settings-form" style={{ maxWidth: '560px', display: 'grid', gap: '1rem' }}>
+                                <div>
+                                    <label htmlFor="org-name" style={FIELD_LABEL_STYLE}>Organization name</label>
+                                    <input
+                                        id="org-name"
+                                        type="text"
+                                        required
+                                        minLength={2}
+                                        value={orgForm.tenantName}
+                                        onChange={(event) => setOrgForm((prev) => ({ ...prev, tenantName: event.target.value }))}
+                                        placeholder="e.g. Montenzuma Monalisa Funeral Home"
+                                        style={FIELD_INPUT_STYLE}
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="org-phone" style={FIELD_LABEL_STYLE}>Phone number</label>
+                                    <input
+                                        id="org-phone"
+                                        type="tel"
+                                        inputMode="tel"
+                                        value={orgForm.phone}
+                                        onChange={(event) => setOrgForm((prev) => ({ ...prev, phone: event.target.value }))}
+                                        placeholder="e.g. +254 712 345 678"
+                                        style={FIELD_INPUT_STYLE}
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="org-email" style={FIELD_LABEL_STYLE}>Email</label>
+                                    <input
+                                        id="org-email"
+                                        type="email"
+                                        value={orgForm.email}
+                                        onChange={(event) => setOrgForm((prev) => ({ ...prev, email: event.target.value }))}
+                                        placeholder="e.g. info@example.co.ke"
+                                        style={FIELD_INPUT_STYLE}
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="org-location" style={FIELD_LABEL_STYLE}>Location / address</label>
+                                    <input
+                                        id="org-location"
+                                        type="text"
+                                        value={orgForm.location}
+                                        onChange={(event) => setOrgForm((prev) => ({ ...prev, location: event.target.value }))}
+                                        placeholder="e.g. Nairobi, Kenya"
+                                        style={FIELD_INPUT_STYLE}
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="org-country" style={FIELD_LABEL_STYLE}>Country</label>
+                                    <input
+                                        id="org-country"
+                                        type="text"
+                                        value={orgForm.country}
+                                        onChange={(event) => setOrgForm((prev) => ({ ...prev, country: event.target.value }))}
+                                        placeholder="e.g. Kenya"
+                                        style={FIELD_INPUT_STYLE}
+                                    />
+                                </div>
+                                <div className="rp-settings-actions" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginTop: '0.25rem' }}>
+                                    <button
+                                        type="submit"
+                                        disabled={orgSaving}
+                                        style={{
+                                            padding: '0.65rem 1.25rem',
+                                            background: THEME.colors.brass,
+                                            color: THEME.colors.white,
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            fontSize: '0.88rem',
+                                            fontWeight: 500,
+                                            fontFamily: "'Inter', sans-serif",
+                                            cursor: orgSaving ? 'wait' : 'pointer',
+                                            opacity: orgSaving ? 0.75 : 1,
+                                        }}
+                                    >
+                                        {orgSaving ? 'Saving…' : 'Save changes'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setOrgForm({
+                                            tenantName: settings?.tenantName || '',
+                                            phone: settings?.phone || '',
+                                            email: settings?.email || '',
+                                            location: settings?.location || '',
+                                            country: settings?.country || '',
+                                        })}
+                                        disabled={orgSaving}
+                                        style={{
+                                            padding: '0.65rem 1.1rem',
+                                            background: THEME.colors.white,
+                                            color: THEME.colors.ink,
+                                            border: `1px solid ${THEME.colors.line}`,
+                                            borderRadius: '4px',
+                                            fontSize: '0.88rem',
+                                            fontWeight: 500,
+                                            fontFamily: "'Inter', sans-serif",
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
                     {activeTab === 'users' && isManager && (
                         <div>
                             <h3 style={{ fontFamily: "'Inter', sans-serif", fontSize: '1.1rem', fontWeight: 600, color: THEME.colors.ink, marginBottom: '1rem' }}>
@@ -528,8 +991,8 @@ export default function SettingsPage() {
                                     <p style={{ fontSize: '0.82rem' }}>Click "Add User" to create your first user account</p>
                                 </div>
                             ) : (
-                                <div style={{ overflowX: 'auto' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                                    <table className="rp-settings-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                                         <thead>
                                             <tr style={{ borderBottom: `2px solid ${THEME.colors.line}` }}>
                                                 <th style={{ textAlign: 'left', padding: '0.75rem', fontSize: '0.75rem', fontWeight: 600, color: THEME.colors.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Name</th>
@@ -623,7 +1086,7 @@ export default function SettingsPage() {
                             {homeChargesLoading ? (
                                 <p style={{ color: THEME.colors.gray, fontSize: '0.88rem' }}>Loading default charges...</p>
                             ) : (
-                                <div style={{ maxWidth: 520, display: 'grid', gap: '1rem' }}>
+                                <div className="rp-settings-form" style={{ maxWidth: 520, display: 'grid', gap: '1rem' }}>
                                     <label style={{ display: 'grid', gap: '0.4rem', fontSize: '0.78rem', color: THEME.colors.gray }}>
                                         Charge frequency
                                         <select
@@ -665,7 +1128,7 @@ export default function SettingsPage() {
                             <h3 style={{ fontFamily: "'Inter', sans-serif", fontSize: '1.1rem', fontWeight: 600, color: THEME.colors.ink, marginBottom: '1rem' }}>
                                 Branch Management
                             </h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                            <div className="rp-settings-branches" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
                                 {branches.map((branch) => (
                                     <div key={branch.branch_id} style={{
                                         padding: '1.25rem',
@@ -711,7 +1174,7 @@ export default function SettingsPage() {
 
             {/* Add User Modal */}
             {showAddUserModal && (
-                <div style={{
+                <div className="rp-settings-modal" style={{
                     position: 'fixed',
                     top: 0,
                     left: 0,
@@ -724,7 +1187,7 @@ export default function SettingsPage() {
                     zIndex: 1000,
                     padding: '2rem',
                 }}>
-                    <div style={{
+                    <div className="rp-settings-modal-panel" style={{
                         background: THEME.colors.white,
                         borderRadius: '8px',
                         padding: '2rem',
@@ -925,7 +1388,7 @@ export default function SettingsPage() {
                                 </div>
                             )}
 
-                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+                            <div className="rp-settings-actions" style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
                                 <button
                                     type="button"
                                     onClick={() => setShowAddUserModal(false)}

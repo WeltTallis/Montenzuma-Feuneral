@@ -2056,4 +2056,56 @@ export class TenantModel {
             [status, tenantId]
         );
     }
+
+    /**
+     * Updates the EDITABLE organization profile fields on the master tenants
+     * record (Settings → Organization). Only a strict whitelist of columns can
+     * ever be written — status / slug / db_name / subscription columns are
+     * unreachable from here, so a manipulated payload can never suspend an org
+     * or re-point its database.
+     *
+     * `tenant_name` and `email` are NOT NULL in the schema, so an empty string
+     * for those is ignored by the caller (validated in the route). Optional
+     * columns (phone / location / country / logo_url) accept an empty string,
+     * which is stored as NULL so the UI can fall back to "Not specified".
+     */
+    static async updateProfile(
+        tenantId: string,
+        updates: {
+            tenant_name?: string;
+            phone?: string | null;
+            email?: string;
+            location?: string | null;
+            country?: string | null;
+            logo_url?: string | null;
+        }
+    ): Promise<void> {
+        const whitelist: Array<[keyof typeof updates, string]> = [
+            ['tenant_name', 'tenant_name'],
+            ['phone', 'phone'],
+            ['email', 'email'],
+            ['location', 'location'],
+            ['country', 'country'],
+            ['logo_url', 'logo_url'],
+        ];
+
+        const sets: string[] = [];
+        const values: any[] = [];
+        for (const [key, column] of whitelist) {
+            const value = updates[key];
+            if (value === undefined) continue;
+            sets.push(`${column} = ?`);
+            values.push(value === '' ? null : value);
+        }
+
+        // Nothing recognised in the payload — never issue a bare UPDATE that
+        // would only bump updated_at.
+        if (sets.length === 0) return;
+
+        const serverConn = await getServerPool();
+        await serverConn.query(
+            `UPDATE tenant_tracking.tenants SET ${sets.join(', ')}, updated_at = NOW() WHERE id = ?`,
+            [...values, tenantId]
+        );
+    }
 }

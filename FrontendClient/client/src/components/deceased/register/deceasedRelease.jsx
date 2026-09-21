@@ -416,6 +416,10 @@ const Input = styled.input`
   border-bottom: 1px solid #ccc;
   border-radius: 0;
   outline: none;
+  autoComplete: off;
+  autoCorrect: off;
+  spellCheck: false;
+  autoCapitalize:  off;
   box-shadow: none;
   background: transparent;
   padding: 0 2rem 0 0;

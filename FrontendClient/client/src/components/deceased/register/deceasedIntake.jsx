@@ -498,6 +498,10 @@ const Input = styled.input`
   border-bottom: 1px solid #ccc;
   border-radius: 0;
   outline: none;
+  autoComplete: off;
+  autoCorrect: off;
+  spellCheck: false;
+  autoCapitalize:  off;
   box-shadow: none;
   background: transparent;
   padding: 0 2rem 0 0;
@@ -1312,7 +1316,7 @@ const DeceasedRegistrationForm = () => {
     try {
       const queue = await getAllFromQueue();
       if (queue.length === 0) return;
-      
+
       notify.info('Syncing Data', `Uploading ${queue.length} offline records...`);
       const tenantSlug = getTenantSlug();
       const token = getAuthToken();
@@ -1328,16 +1332,16 @@ const DeceasedRegistrationForm = () => {
             },
             body: JSON.stringify(item.payload),
           });
-          
+
           if (response.ok) {
             await deleteFromQueue(item.syncId);
           }
-        } catch (e) { 
+        } catch (e) {
           // Silently fail, will retry next time
         }
       }
       notify.success('Sync Complete', 'Offline records uploaded successfully.');
-    } catch(e) { console.error(e) }
+    } catch (e) { console.error(e) }
   };
 
   useEffect(() => {
@@ -1347,7 +1351,7 @@ const DeceasedRegistrationForm = () => {
 
     const handleOnline = () => syncOfflineData();
     window.addEventListener('online', handleOnline);
-    
+
     return () => window.removeEventListener('online', handleOnline);
   }, []);
 
@@ -1468,9 +1472,9 @@ const DeceasedRegistrationForm = () => {
       try {
         const syncId = `sync-${Date.now()}`;
         await saveToOfflineQueue({ syncId, payload, savedAt: new Date().toISOString() });
-        
+
         notify.success('Saved Offline', 'No internet. Record saved locally. Will sync automatically when back online.');
-        
+
         setRegisteredName(formData.full_name);
         setVigilData({
           name: formData.full_name,
@@ -1566,7 +1570,7 @@ const DeceasedRegistrationForm = () => {
     try {
       const draftId = currentDraftId || `draft-${Date.now()}`;
       const signatureData = sigPadRef1.current?.toDataURL() || '';
-      
+
       const draft = {
         draftId,
         formData,
@@ -1577,7 +1581,7 @@ const DeceasedRegistrationForm = () => {
 
       await saveDraftToDB(draft);
       notify.success('Session Paused', 'You can resume this registration later.');
-      
+
       handleClear();
       setCurrentDraftId(null);
       setIsPauseDropdownOpen(false);
@@ -1593,7 +1597,7 @@ const DeceasedRegistrationForm = () => {
     setAdmissionId(draft.admissionId);
     setCurrentDraftId(draft.draftId);
     setIsPauseDropdownOpen(false);
-    
+
     // Wait for component to re-render with new data, then load signature
     setTimeout(() => {
       try {
@@ -1603,11 +1607,11 @@ const DeceasedRegistrationForm = () => {
             sigPadRef1.current.fromDataURL(draft.signatureData);
           }
         }
-      } catch (e) { 
-        console.error("Failed to load signature", e); 
+      } catch (e) {
+        console.error("Failed to load signature", e);
       }
     }, 100);
-    
+
     notify.info('Resuming Session', `Loaded paused registration for ${draft.formData.full_name || 'Unknown'}.`);
   };
 
@@ -2116,21 +2120,21 @@ const DeceasedRegistrationForm = () => {
               <ActionsContainer>
                 {/* Pause Dropdown Wrapper */}
                 <div style={{ position: 'relative' }}>
-                  <PauseButton 
-                    type="button" 
+                  <PauseButton
+                    type="button"
                     onClick={() => {
                       if (pausedDrafts.length > 0) {
                         setIsPauseDropdownOpen(!isPauseDropdownOpen);
                       } else {
                         handlePauseSession();
                       }
-                    }} 
+                    }}
                     disabled={isSubmitting}
                   >
                     <Pause size={16} />
                     {pausedDrafts.length > 0 ? `Paused Sessions (${pausedDrafts.length})` : 'Pause & Save'}
                   </PauseButton>
-                  
+
                   {isPauseDropdownOpen && pausedDrafts.length > 0 && (
                     <DropdownPanel>
                       <DropdownItem onClick={handlePauseSession}>
@@ -2147,7 +2151,7 @@ const DeceasedRegistrationForm = () => {
                               <User size={12} /> Resume
                             </DraftBtn>
                             <DraftBtn className="delete" onClick={() => handleDeleteDraft(draft.draftId)}>
-                              <X size={12} /> 
+                              <X size={12} />
                             </DraftBtn>
                           </DraftActions>
                         </DropdownRow>

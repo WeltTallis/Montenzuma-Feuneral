@@ -1,16 +1,19 @@
-﻿import express, { Application, Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-import path from 'path';
-import dotenv from 'dotenv';
-import rateLimit from 'express-rate-limit';
-import * as mysql from 'mysql2/promise';
-import { TenantModel } from './models/Tenant.model';
+﻿
+import { errorHandler, notFoundHandler, asyncHandler } from '../app-global/middlewares/errorHandler';
+import express, { Application, Request, Response, NextFunction } from 'express';
+import { TenantModel, getUploadsBaseDir } from './models/Tenant.model';
 import onboardingRoutes from './routes/onboardingRoutes';
 import systemAdminRoutes from './routes/systemAdminRoutes';
 import blogEngagementRoutes from './routes/blogEngagementRoutes';
 import { UserController } from './controllers/userController';
 import { BranchController } from './controllers/branchController';
-import { errorHandler, notFoundHandler, asyncHandler } from '../app-global/middlewares/errorHandler';
+import rateLimit from 'express-rate-limit';
+import * as mysql from 'mysql2/promise';
+import { upload } from './config/multer';
+import cors from 'cors';
+import path from 'path';
+import * as fs from 'fs';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -143,16 +146,208 @@ app.get('/tenant/:tenantSlug/settings', asyncHandler(async (req: Request, res: R
       data: {
         deploymentType: branchCount > 1 ? 'multi' : 'single',
         branchCount,
+        tenantId: tenant.tenant_id,
         tenantName: tenant.tenant_name,
         tenantSlug: tenant.tenant_slug,
         country: tenant.country,
         location: tenant.location,
-        email: tenant.email
+        email: tenant.email,
+        // Phone + logo used to be omitted here, which is why the Settings page
+        // could never render the company logo or a phone number (the
+        // localStorage branding fallback is often empty right after login).
+        phone: tenant.phone,
+        logoUrl: tenant.logo_url,
+        logo_url: tenant.logo_url,
+        status: tenant.status
       }
     });
   } finally {
     await conn.end();
   }
+}));
+
+// ============================================
+// ORGANIZATION INFORMATION (edit company name / phone / email / location /
+// country + logo). These are the fields shown in Settings → Organization.
+// ============================================
+
+// Small helper: first defined (non-null) value among the accepted aliases.
+const firstDefined = (body: Record<string, any>, keys: string[]) => {
+  for (const key of keys) {
+    const value = body[key];
+    if (value !== undefined && value !== null) return value;
+  }
+  return undefined;
+};
+
+const trimmedString = (value: unknown) => (typeof value === 'string' ? value.trim() : value);
+
+// Update the editable organization information.
+app.put('/tenant/:tenantSlug/settings', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  const body: Record<string, any> = (req.body && typeof req.body === 'object') ? req.body : {};
+  const updates: {
+    tenant_name?: string;
+    phone?: string | null;
+    email?: string;
+    location?: string | null;
+    country?: string | null;
+    logo_url?: string | null;
+  } = {};
+
+  // ── Organization name (required column, so an empty value is rejected) ──
+  const rawName = trimmedString(firstDefined(body, ['tenantName', 'tenant_name', 'name', 'organizationName', 'organization_name']));
+  if (rawName !== undefined) {
+    if (typeof rawName !== 'string' || rawName.length < 2) {
+      return res.status(400).json({ success: false, message: 'Organization name must be at least 2 characters.' });
+    }
+    updates.tenant_name = rawName;
+  }
+
+  // ── Phone (optional: an empty string clears it) ──
+  const rawPhone = trimmedString(firstDefined(body, ['phone', 'tenantPhone', 'tenant_phone']));
+  if (rawPhone !== undefined) {
+    if (typeof rawPhone !== 'string') {
+      return res.status(400).json({ success: false, message: 'Enter a valid phone number.' });
+    }
+    if (rawPhone !== '' && !/^[+()\-.\s\d]{7,25}$/.test(rawPhone)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid phone number (digits, spaces and + - ( ) . only).' });
+    }
+    updates.phone = rawPhone;
+  }
+
+  // ── Email (required column: must stay a valid address) ──
+  const rawEmail = trimmedString(firstDefined(body, ['email', 'tenantEmail', 'tenant_email']));
+  if (rawEmail !== undefined) {
+    if (typeof rawEmail !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid email address.' });
+    }
+    updates.email = rawEmail.toLowerCase();
+  }
+
+  // ── Location / country / logo (optional) ──
+  const rawLocation = trimmedString(firstDefined(body, ['location', 'tenantLocation', 'address']));
+  if (rawLocation !== undefined) {
+    if (typeof rawLocation !== 'string') {
+      return res.status(400).json({ success: false, message: 'Enter a valid location.' });
+    }
+    updates.location = rawLocation;
+  }
+
+  const rawCountry = trimmedString(firstDefined(body, ['country', 'tenantCountry']));
+  if (rawCountry !== undefined) {
+    if (typeof rawCountry !== 'string') {
+      return res.status(400).json({ success: false, message: 'Enter a valid country.' });
+    }
+    updates.country = rawCountry;
+  }
+
+  const rawLogo = trimmedString(firstDefined(body, ['logoUrl', 'logo_url', 'logo']));
+  if (rawLogo !== undefined) {
+    if (typeof rawLogo !== 'string') {
+      return res.status(400).json({ success: false, message: 'Enter a valid logo URL.' });
+    }
+    updates.logo_url = rawLogo;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ success: false, message: 'No organization information to update.' });
+  }
+
+  await TenantModel.updateProfile(tenant.tenant_id, updates);
+
+  // Read the row back so the client always renders exactly what was stored.
+  const updated = await TenantModel.findById(tenant.tenant_id);
+  const current = updated || tenant;
+
+  res.json({
+    success: true,
+    message: 'Organization information updated.',
+    data: {
+      tenantName: current.tenant_name,
+      tenantSlug: current.tenant_slug,
+      phone: current.phone,
+      email: current.email,
+      location: current.location,
+      country: current.country,
+      logoUrl: current.logo_url,
+      logo_url: current.logo_url
+    }
+  });
+}));
+
+// Upload / replace the organization logo.
+//
+// Stored in the SAME canonical folder the onboarding flow uses
+// (<uploads>/tenants/<slug>/logos/) and persisted as a ROOT-RELATIVE
+// `/uploads/...` path — never an internal http://api-gateway URL, which the
+// browser blocks as mixed content on HTTPS pages. nginx serves /uploads/* from
+// the tenant-service static mount, so the relative path resolves on every
+// origin (dev gateway + production).
+const logoUpload = (req: Request, res: Response, next: NextFunction) => {
+  upload.single('logo')(req, res, (err: any) => {
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        message: err.message || 'Logo upload failed. Use a JPG, PNG, GIF, WEBP or SVG image.'
+      });
+    }
+    next();
+  });
+};
+
+app.post('/tenant/:tenantSlug/logo', logoUpload, asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  const file = (req as any).file;
+  if (!file) {
+    return res.status(400).json({ success: false, message: 'Select a logo image to upload (multipart field name: logo).' });
+  }
+
+  let logoPath: string;
+  try {
+    const logoDir = path.join(getUploadsBaseDir(), 'tenants', tenant.tenant_slug, 'logos');
+    await fs.promises.mkdir(logoDir, { recursive: true });
+
+    const ext = (path.extname(file.originalname) || '.png').toLowerCase();
+    const filename = `logo_${Date.now()}${ext}`;
+    const destination = path.join(logoDir, filename);
+
+    try {
+      // Same volume → atomic move.
+      await fs.promises.rename(file.path, destination);
+    } catch {
+      // Different volumes (multer temp dir vs mounted uploads volume) → copy.
+      await fs.promises.copyFile(file.path, destination);
+      await fs.promises.unlink(file.path).catch(() => { /* best effort */ });
+    }
+
+    logoPath = `/uploads/tenants/${tenant.tenant_slug}/logos/${filename}`;
+  } catch (logoErr: any) {
+    // Never leave the temp upload behind when the save failed.
+    try { await fs.promises.unlink(file.path); } catch { /* best effort */ }
+    console.warn('[logo] upload failed:', (logoErr && logoErr.message) || logoErr);
+    return res.status(500).json({ success: false, message: 'Could not save the logo. Please try again.' });
+  }
+
+  await TenantModel.updateProfile(tenant.tenant_id, { logo_url: logoPath });
+
+  res.json({
+    success: true,
+    message: 'Logo updated.',
+    data: { logoUrl: logoPath, logo_url: logoPath }
+  });
 }));
 
 // ============================================
@@ -621,7 +816,10 @@ app.get('/tenant/:tenantSlug/:dbName/settings', asyncHandler(async (req: BranchR
         tenantSlug: tenant.tenant_slug,
         country: tenant.country,
         location: tenant.location,
-        email: tenant.email
+        email: tenant.email,
+        phone: tenant.phone,
+        logoUrl: tenant.logo_url,
+        logo_url: tenant.logo_url
       }
     });
   } finally {
@@ -711,7 +909,10 @@ app.get('/tenant/settings', asyncHandler(async (req: Request, res: Response) => 
           tenantSlug: tenant.tenant_slug,
           country: tenant.country,
           location: tenant.location,
-          email: tenant.email
+          email: tenant.email,
+          phone: tenant.phone,
+          logoUrl: tenant.logo_url,
+          logo_url: tenant.logo_url
         }
       });
     } finally {

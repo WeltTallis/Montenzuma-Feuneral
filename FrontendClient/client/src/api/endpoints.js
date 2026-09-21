@@ -59,6 +59,11 @@ export const ENDPOINTS = {
     LOGIN: '/onboarding/login',
     CONFIG: (slug) => `/tenants/${slug}/config`,
     SETTINGS: (slug) => `/tenant/${slug}/settings`,
+    // Same resource as SETTINGS but named for the write path (Settings →
+    // Organization saves name / phone / email / location / country).
+    UPDATE_SETTINGS: (slug) => `/tenant/${slug}/settings`,
+    // Multipart logo upload (field name: `logo`).
+    LOGO: (slug) => `/tenant/${slug}/logo`,
     USERS: (slug) => `/tenant/${slug}/users`,
     BRANCHES: (slug) => `/tenant/${slug}/branches`,
     CREATE_USER: (slug) => `/tenant/${slug}/users/register`,
