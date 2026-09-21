@@ -32,18 +32,18 @@ const COLORS = {
   gold: 'FFC9A227',
   goldSoft: 'FFE5C158',
 
-  // Custom Pastel Column Accents
-  colPink1: 'FFE8909B',
-  colPink2: 'FFF3B8AC',
-  colYellow1: 'FFF6D3A0',
-  colGreen1: 'FFBFD8A8',
+  // Brighter Pastel Column Accents (Applied selectively)
+  colPink1: 'FFFFD1DC',   // Bright Pink
+  colPink2: 'FFFFDAB9',   // Bright Peach
+  colYellow1: 'FFFFF9C4', // Bright Yellow
+  colGreen1: 'FFC8E6C9',  // Bright Green
 } as const;
 
 const FONT_SERIF = 'Georgia';
 const FONT_MONO = 'Consolas';
 const FONT_SANS = 'Calibri';
 
-const VERIFY_BASE = 'verified...';
+const VERIFY_BASE = 'https://lf.services/verify';
 const EXPIRY_DAYS = 7;
 
 /* ---------------- SMALL HELPERS ---------------- */
@@ -53,6 +53,110 @@ const fmtDate = (d: Date) => `${pad(d.getDate())} ${d.toLocaleDateString('en-GB'
 const fmtStamp = (d: Date) => `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
 const fmtTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const solid = (color: string) => ({ type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: color } });
+
+/* ---------------- VALUE NORMALISERS ---------------- */
+const isBlank = (v: any): boolean =>
+  v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
+
+const firstNonBlank = (...values: any[]): any => {
+  for (const v of values) if (!isBlank(v)) return v;
+  return null;
+};
+
+/** Splits a list into bounded chunks so `IN (?, ?…)` lookups stay small. */
+const chunkArray = <T,>(list: T[], size: number): T[][] => {
+  const out: T[][] = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
+};
+
+/** Parse DATE / DATETIME / 'YYYY-MM-DD[ HH:mm:ss]' / 'DD/MM/YYYY' values into a Date. */
+function parseDateValue(v: any): Date | null {
+  if (isBlank(v)) return null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  if (typeof v === 'number') {
+    const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const raw = String(v).trim();
+
+  const ymd = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (ymd) {
+    const d = new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const isoish = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (isoish) {
+    const d = new Date(
+      Number(isoish[1]),
+      Number(isoish[2]) - 1,
+      Number(isoish[3]),
+      Number(isoish[4]),
+      Number(isoish[5]),
+      isoish[6] ? Number(isoish[6]) : 0
+    );
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const dmy = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (dmy) {
+    const year = dmy[3].length === 2 ? 2000 + Number(dmy[3]) : Number(dmy[3]);
+    const d = new Date(year, Number(dmy[2]) - 1, Number(dmy[1]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const fallback = new Date(raw);
+  return isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function parseTimeValue(v: any): string | null {
+  if (isBlank(v)) return null;
+  if (v instanceof Date) {
+    if (isNaN(v.getTime())) return null;
+    const t = fmtTime(v);
+    return t === '00:00' ? null : t;
+  }
+  const raw = String(v).trim();
+  if (/^0?0:00(:00)?$/.test(raw)) return null;
+  const hm = raw.match(/(\d{1,2}):(\d{2})/);
+  if (!hm) return null;
+  const t = `${pad(Number(hm[1]))}:${hm[2]}`;
+  return t === '00:00' ? null : t;
+}
+
+function meaningfulTime(v: any): string | null {
+  const d = parseDateValue(v);
+  if (!d) return null;
+  if (d.getHours() === 0 && d.getMinutes() === 0) return null;
+  return fmtTime(d);
+}
+
+const SERVICE_LABELS: Record<string, string> = {
+  release: 'Release',
+  released: 'Release',
+  transfer: 'Transfer',
+  transferred: 'Transfer',
+  burial: 'Burial',
+  buried: 'Burial',
+  cremation: 'Cremation',
+  cremate: 'Cremation',
+  autopsy: 'Pathology',
+  postmortem: 'Pathology',
+  'post mortem': 'Pathology',
+  pathology: 'Pathology',
+  memorial: 'Memorial',
+  morgue: 'Morgue',
+  embalming: 'Embalming',
+  embalmed: 'Embalming',
+};
+
+const prettyService = (raw: any): string | null => {
+  if (isBlank(raw)) return null;
+  const s = String(raw).trim();
+  return (SERVICE_LABELS[s.toLowerCase()] || s).toUpperCase();
+};
 
 function safeMerge(worksheet: ExcelJS.Worksheet, range: string): boolean {
   try {
@@ -80,20 +184,30 @@ const STATUS_FILL: Record<Status, string> = {
   'PM Done': 'FF5F0F40',
 };
 
-// Column Backgrounds mapped to exact HTML preview order
+/* Status "button": the pill colour is painted INSIDE a thick white frame, so the
+   fill reads as a compact pill sitting on the row instead of painting the whole
+   cell (and therefore the whole row) background. */
+const PILL_FRAME = () => ({
+  top: { style: 'thick' as const, color: argb(COLORS.white) },
+  bottom: { style: 'thick' as const, color: argb(COLORS.white) },
+  left: { style: 'thick' as const, color: argb(COLORS.white) },
+  right: { style: 'thick' as const, color: argb(COLORS.white) },
+});
+
+// Selective Column Backgrounds (Only specific columns get colored)
 const COL_FILLS = [
-  COLORS.white,      // 1. Admission No
-  COLORS.white,      // 2. Deceased Name
-  COLORS.colGreen1,  // 3. Permit Number (Greenish)
-  COLORS.white,      // 4. Kin ID (Pure White)
-  COLORS.white,      // 5. Phone Number
-  COLORS.colPink1,   // 6. Next of Kin (Pinkish)
-  COLORS.colPink2,   // 7. Intake Date (Light Pink)
-  COLORS.white,      // 8. Release Date
-  COLORS.colYellow1, // 9. Release Time (Soft Yellow)
-  COLORS.white,      // 10. Service Type
-  COLORS.white,      // 11. Status
-  COLORS.colGreen1,  // 12. Days in Morgue (Greenish)
+  COLORS.white,      // 1. Admission No (White)
+  COLORS.white,      // 2. Deceased Name (White)
+  COLORS.colGreen1,  // 3. Permit Number (Bright Green)
+  COLORS.white,      // 4. Kin ID (White)
+  COLORS.white,      // 5. Phone Number (White)
+  COLORS.colPink1,   // 6. Next of Kin (Bright Pink)
+  COLORS.colPink2,   // 7. Intake Date (Bright Peach)
+  COLORS.white,      // 8. Release Date (White)
+  COLORS.colYellow1, // 9. Release Time (Bright Yellow)
+  COLORS.white,      // 10. Service Type (White)
+  COLORS.white,      // 11. Status (White)
+  COLORS.colGreen1,  // 12. Days in Morgue (Bright Green)
 ];
 
 async function encryptWithPin(buffer: Buffer, pin: string): Promise<Buffer> {
@@ -176,22 +290,41 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       }
     };
 
+    const tableExists = async (table: string): Promise<boolean> => {
+      try {
+        const rows = await safeTenantQuery(
+          dbName,
+          `SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? LIMIT 1`,
+          [dbName, table]
+        );
+        return Array.isArray(rows) && rows.length > 0;
+      } catch {
+        return false;
+      }
+    };
+
     const dCols = await tableColumns('deceased');
     const has = (name: string) => dCols.has(String(name).toLowerCase());
     const dcol = (name: string, alias?: string) =>
       has(name) ? `d.${name}${alias ? ` AS ${alias}` : ''}` : `NULL AS ${alias || name}`;
 
-    const serviceExpr = has('service_type')
-      ? `d.service_type AS service_type`
-      : has('burial_type') ? `d.burial_type AS service_type` : `NULL AS service_type`;
+    const RELEASE_DATE_COLS = ['release_date', 'dispatch_date', 'date_of_release', 'date_released', 'released_at', 'discharge_date', 'exit_date'];
+    const RELEASE_TIME_COLS = ['release_time', 'dispatch_time', 'time_of_release', 'released_time'];
+    const SERVICE_COLS = ['service_type', 'burial_type', 'service', 'service_name', 'funeral_type', 'type_of_service'];
 
-    const releaseExpr = has('release_date')
-      ? `d.release_date AS release_date`
-      : has('dispatch_date') ? `d.dispatch_date AS release_date` : `NULL AS release_date`;
+    const coalesceExpr = (candidates: string[], alias: string): string => {
+      const present = candidates.filter((c) => has(c));
+      if (present.length === 0) return `NULL AS ${alias}`;
+      return `COALESCE(${present.map((c) => `d.${c}`).join(', ')}) AS ${alias}`;
+    };
 
-    // Fetch all required fields for the exact column layout
+    const serviceExpr = coalesceExpr(SERVICE_COLS, 'service_type');
+    const releaseExpr = coalesceExpr(RELEASE_DATE_COLS, 'release_date');
+    const releaseTimeExpr = coalesceExpr(RELEASE_TIME_COLS, 'release_time');
+
     const selectParts = [
       dcol('admission_number', 'admission_number'),
+      dcol('deceased_id', 'deceased_id'),
       dcol('full_name', 'full_name'),
       has('permit_number') ? `d.permit_number AS permit_number` : `NULL AS permit_number`,
       has('national_id') ? `d.national_id AS kin_id` : `NULL AS kin_id`,
@@ -200,17 +333,27 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       has('relationship') ? `d.relationship AS kin_relationship` : `NULL AS kin_relationship`,
       dcol('date_admitted', 'intake_date'),
       releaseExpr,
+      releaseTimeExpr,
       serviceExpr,
       dcol('body_status', 'body_status'),
+      dcol('admission_status', 'admission_status'),
+      dcol('release_status', 'release_status'),
       dcol('created_at', 'created_at'),
     ].join(',\n             ');
 
-    let whereClause = '';
+    const conditions: string[] = [];
     const params: any[] = [];
-    if (startDate && endDate && has('created_at')) {
-      whereClause = 'WHERE d.created_at BETWEEN ? AND ?';
-      params.push(startDate, endDate);
+    if (has('created_at')) {
+      if (startDate) {
+        conditions.push('d.created_at >= ?');
+        params.push(startDate);
+      }
+      if (endDate) {
+        conditions.push('d.created_at <= ?');
+        params.push(`${endDate} 23:59:59`);
+      }
     }
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const orderExpr = has('created_at') ? 'd.created_at DESC' : 'd.id DESC';
     const query = `
@@ -221,6 +364,197 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       LIMIT 5000
     `;
     const records: any[] = await safeTenantQuery(dbName, query, params);
+
+    /* ---------------- RELATED-RECORD ENRICHMENT ----------------
+       The register must never print a blank Release Date / Service Type when the
+       release or the service was actually recorded, and the columns that hold
+       them differ per tenant, so every logical field is resolved from all the
+       places it can live:
+         · Release date/time → deceased.dispatch_date (stamped on release) or the
+           signed release record in `body_releases` / `body_checkout`
+         · Next of kin       → `next_of_kin` (deceased.contact_person does not
+           exist in current tenant schemas, so the name used to render as "—")
+         · Service type      → any service/burial column that exists, else the
+           recorded checkout type, else derived from the pathology/embalming
+           state (it used to be blank because nothing writes `burial_type`).
+       Each lookup is guarded: a tenant without the table simply skips it. */
+    const keyOf = (v: any) => String(v ?? '').trim().toUpperCase();
+
+    const kinByDeceasedId = new Map<string, any>();
+    const releaseByAdmission = new Map<string, any>();
+    const checkoutByDeceasedId = new Map<string, any>();
+    const pathologyIds = new Set<string>();
+
+    const recordIds = Array.from(
+      new Set(records.map((r) => (r.deceased_id ? String(r.deceased_id) : '')).filter(Boolean))
+    );
+    const recordAdmissions = Array.from(
+      new Set(records.map((r) => (r.admission_number ? String(r.admission_number) : '')).filter(Boolean))
+    );
+
+    const inList = (values: any[]) => values.map(() => '?').join(',');
+    const enrich = async (table: string, task: () => Promise<void>) => {
+      try {
+        if (!(await tableExists(table))) return;
+        await task();
+      } catch (err: any) {
+        Logger.warn({ message: `Excel export enrichment skipped for ${table}`, error: err?.message });
+      }
+    };
+
+    if (records.length > 0) {
+      await enrich('next_of_kin', async () => {
+        const nkCols = await tableColumns('next_of_kin');
+        const nk = (name: string) => (nkCols.has(name) ? `n.${name}` : 'NULL');
+        const activeFilter = nkCols.has('is_deleted') ? 'AND (n.is_deleted = 0 OR n.is_deleted IS NULL)' : '';
+        const primaryOrder = nkCols.has('is_primary') ? 'n.is_primary DESC,' : '';
+        const idOrder = nkCols.has('id') ? 'n.id ASC' : '1';
+        for (const part of chunkArray(recordIds, 400)) {
+          const kinRows: any[] = await safeTenantQuery(
+            dbName,
+            `SELECT ${nk('deceased_id')} AS deceased_id,
+                    ${nk('full_name')} AS full_name,
+                    ${nk('relationship')} AS relationship,
+                    ${nk('id_number')} AS id_number,
+                    ${nk('contact')} AS contact
+             FROM next_of_kin n
+             WHERE n.deceased_id IN (${inList(part)}) ${activeFilter}
+             ORDER BY ${primaryOrder} ${idOrder}`,
+            part
+          );
+          for (const row of Array.isArray(kinRows) ? kinRows : []) {
+            const key = String(row.deceased_id || '');
+            if (key && !kinByDeceasedId.has(key)) kinByDeceasedId.set(key, row);
+          }
+        }
+      });
+
+      await enrich('body_releases', async () => {
+        const brCols = await tableColumns('body_releases');
+        if (!brCols.has('admission_number')) return;
+        const br = (name: string) => (brCols.has(name) ? `br.${name}` : 'NULL');
+        const dateOrder = brCols.has('date_of_removal') ? 'br.date_of_removal DESC,' : '';
+        const idOrder = brCols.has('id') ? 'br.id DESC' : '1';
+        for (const part of chunkArray(recordAdmissions, 400)) {
+          const releaseRows: any[] = await safeTenantQuery(
+            dbName,
+            `SELECT ${br('admission_number')} AS admission_number,
+                    ${br('date_of_removal')} AS date_of_removal,
+                    ${br('time_of_removal')} AS time_of_removal
+             FROM body_releases br
+             WHERE br.admission_number IN (${inList(part)})
+             ORDER BY ${dateOrder} ${idOrder}`,
+            part
+          );
+          for (const row of Array.isArray(releaseRows) ? releaseRows : []) {
+            const key = keyOf(row.admission_number);
+            if (key && !releaseByAdmission.has(key)) releaseByAdmission.set(key, row);
+          }
+        }
+      });
+
+      await enrich('body_checkout', async () => {
+        const bcCols = await tableColumns('body_checkout');
+        if (!bcCols.has('deceased_id')) return;
+        const bc = (name: string) => (bcCols.has(name) ? `bc.${name}` : 'NULL');
+        const idOrder = bcCols.has('id') ? 'bc.id DESC' : '1';
+        for (const part of chunkArray(recordIds, 400)) {
+          const checkoutRows: any[] = await safeTenantQuery(
+            dbName,
+            `SELECT ${bc('deceased_id')} AS deceased_id,
+                    ${bc('checkout_type')} AS checkout_type,
+                    ${bc('release_date')} AS release_date
+             FROM body_checkout bc
+             WHERE bc.deceased_id IN (${inList(part)})
+             ORDER BY ${idOrder}`,
+            part
+          );
+          for (const row of Array.isArray(checkoutRows) ? checkoutRows : []) {
+            const key = String(row.deceased_id || '');
+            if (key && !checkoutByDeceasedId.has(key)) checkoutByDeceasedId.set(key, row);
+          }
+        }
+      });
+
+      // A case under pathology is reported with "PATHOLOGY" as its service type.
+      for (const pmTable of ['postmortem', 'postmortem_requests']) {
+        await enrich(pmTable, async () => {
+          const pmCols = await tableColumns(pmTable);
+          if (!pmCols.has('deceased_id')) return;
+          const statusFilter = pmCols.has('status')
+            ? "AND (p.status IS NULL OR LOWER(p.status) <> 'cancelled')"
+            : '';
+          for (const part of chunkArray(recordIds, 400)) {
+            const pmRows: any[] = await safeTenantQuery(
+              dbName,
+              `SELECT p.deceased_id FROM \`${pmTable}\` p
+               WHERE p.deceased_id IN (${inList(part)}) ${statusFilter}`,
+              part
+            );
+            for (const row of Array.isArray(pmRows) ? pmRows : []) {
+              if (row.deceased_id) pathologyIds.add(String(row.deceased_id));
+            }
+          }
+        });
+      }
+    }
+
+    /* ---------------- RESOLVE ONE REGISTER ROW PER RECORD ---------------- */
+    const morgueDays = (from: any, to: any): string => {
+      const start = parseDateValue(from);
+      if (!start) return '—';
+      const end = parseDateValue(to) || new Date();
+      const days = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      return `${days} day${days === 1 ? '' : 's'}`;
+    };
+
+    const rows = records.map((item) => {
+      const id = item.deceased_id ? String(item.deceased_id) : '';
+      const kinRow = id ? kinByDeceasedId.get(id) : undefined;
+      const releaseRow = releaseByAdmission.get(keyOf(item.admission_number));
+      const checkoutRow = id ? checkoutByDeceasedId.get(id) : undefined;
+
+      const releaseDate = firstNonBlank(item.release_date, releaseRow?.date_of_removal, checkoutRow?.release_date);
+      const releaseTime = firstNonBlank(
+        parseTimeValue(item.release_time),
+        parseTimeValue(releaseRow?.time_of_removal),
+        meaningfulTime(releaseDate)
+      );
+      const admissionStatus = String(item.admission_status || '').toLowerCase();
+      const serviceType =
+        prettyService(item.service_type) ||
+        prettyService(checkoutRow?.checkout_type) ||
+        (id && pathologyIds.has(id) ? 'PATHOLOGY' : null) ||
+        (admissionStatus.includes('embalm') ? 'EMBALMING' : null) ||
+        'MORGUE';
+
+      return {
+        admissionNumber: firstNonBlank(item.admission_number) || '—',
+        fullName: firstNonBlank(item.full_name) || '—',
+        permitNumber: firstNonBlank(item.permit_number) || '—',
+        kinIdNumber: firstNonBlank(kinRow?.id_number, item.kin_id) || '—',
+        phoneNumber: firstNonBlank(item.phone_number) || '—',
+        kinName: firstNonBlank(item.kin_name, kinRow?.full_name) || '—',
+        kinRelationship: firstNonBlank(item.kin_relationship, kinRow?.relationship) || 'KIN',
+        intakeDate: item.intake_date,
+        releaseDate,
+        releaseTime,
+        serviceType,
+        status: normalizeStatus(firstNonBlank(item.body_status, item.admission_status, item.release_status)),
+        daysInMorgue: morgueDays(item.intake_date, releaseDate),
+      };
+    });
+
+    Logger.info({
+      message: 'Excel export rows resolved',
+      data: {
+        records: rows.length,
+        withReleaseDate: rows.filter((r) => !!r.releaseDate).length,
+        withReleaseTime: rows.filter((r) => !!r.releaseTime).length,
+        withKin: rows.filter((r) => r.kinName !== '—').length,
+        defaultServiceRows: rows.filter((r) => r.serviceType === 'MORGUE').length,
+      },
+    });
 
     /* ---------------- TRACKING / EXPIRATION SYSTEM ---------------- */
     const now = new Date();
@@ -239,158 +573,148 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       properties: { defaultColWidth: 12 },
     });
 
-    // Set 12 Columns
     worksheet.columns = [
-      { width: 20 }, // 1. Admission No
-      { width: 28 }, // 2. Name
-      { width: 20 }, // 3. Permit No
-      { width: 18 }, // 4. Kin ID
-      { width: 18 }, // 5. Phone
-      { width: 26 }, // 6. Next of Kin
-      { width: 16 }, // 7. Intake Date
-      { width: 16 }, // 8. Release Date
-      { width: 12 }, // 9. Release Time
-      { width: 14 }, // 10. Service
-      { width: 14 }, // 11. Status
-      { width: 14 }, // 12. Days in Morgue
+      { width: 22 }, // 1. Admission No
+      { width: 30 }, // 2. Name
+      { width: 22 }, // 3. Permit No
+      { width: 20 }, // 4. Kin ID
+      { width: 20 }, // 5. Phone
+      { width: 28 }, // 6. Next of Kin
+      { width: 18 }, // 7. Intake Date
+      { width: 18 }, // 8. Release Date
+      { width: 14 }, // 9. Release Time
+      { width: 16 }, // 10. Service
+      { width: 16 }, // 11. Status
+      { width: 16 }, // 12. Days in Morgue
     ];
 
     const COLS = 12;
     const ROW = { header: 1, dataStart: 2 };
 
-    /* ---------------- TABLE HEADER (Dark Green, No Bottom Border) ---------------- */
+    /* ---------------- TABLE HEADER ---------------- */
     const HEADERS = ['Admission No.', 'Deceased Name', 'Permit Number', 'Kin ID Number', 'Phone Number', 'Next of Kin', 'Intake Date', 'Release Date', 'Release Time', 'Service Type', 'Status', 'Days in Morgue'];
 
     HEADERS.forEach((h, i) => {
       const cell = worksheet.getRow(ROW.header).getCell(i + 1);
       cell.value = h.toUpperCase();
-      cell.font = { name: FONT_SANS, size: 9, bold: true, color: argb(COLORS.bone) };
+      cell.font = { name: FONT_SANS, size: 11, bold: true, color: argb(COLORS.bone) }; // Increased to 11pt
       cell.fill = solid(COLORS.verdigrisDark);
       cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-      // Removed the invalid 'none' border to fix the TS error
     });
-    worksheet.getRow(ROW.header).height = 28;
+    worksheet.getRow(ROW.header).height = 32;
 
     /* ---------------- DATA ROWS ---------------- */
     const putDate = (row: ExcelJS.Row, col: number, v: any) => {
       const cell = row.getCell(col);
-      if (v) {
-        cell.value = new Date(v);
+      // Tenant schemas store dates as DATE, DATETIME or VARCHAR ('2026-08-29',
+      // '2026-08-29 19:01:11', '29/08/2026'), so always parse defensively —
+      // an unparsable value used to be written as an Invalid Date, which Excel
+      // renders as an empty cell.
+      const parsed = parseDateValue(v);
+      if (parsed) {
+        cell.value = parsed;
         cell.numFmt = 'dd mmm yyyy';
-        cell.font = { name: FONT_SANS, size: 10, color: argb(COLORS.gray) };
+        cell.font = { name: FONT_SANS, size: 11, color: argb(COLORS.gray), bold: true }; // 11pt, bold
       } else {
         cell.value = '—';
-        cell.font = { name: FONT_SANS, size: 10, color: argb(COLORS.muted) };
+        cell.font = { name: FONT_SANS, size: 11, color: argb(COLORS.muted) };
       }
       cell.alignment = { vertical: 'middle', indent: 1 };
     };
 
-    records.forEach((item, idx) => {
+    rows.forEach((item, idx) => {
       const row = worksheet.getRow(ROW.dataStart + idx);
-      row.height = 28;
+      row.height = 32;
 
-      // Apply specific column backgrounds
+      // Apply specific column backgrounds selectively
       for (let c = 1; c <= COLS; c++) {
         row.getCell(c).fill = solid(COL_FILLS[c - 1]);
       }
 
-      // 1. Admission No (mono, brass)
+      // 1. Admission No (mono, brass, bold)
       const admCell = row.getCell(1);
-      admCell.value = item.admission_number || '—';
-      admCell.font = { name: FONT_MONO, size: 10, color: argb(COLORS.brass), bold: true };
+      admCell.value = item.admissionNumber;
+      admCell.font = { name: FONT_MONO, size: 11, color: argb(COLORS.brass), bold: true };
       admCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // 2. Full Name (serif, black)
+      // 2. Full Name (serif, black, bold)
       const nameCell = row.getCell(2);
-      nameCell.value = item.full_name || '—';
-      nameCell.font = { name: FONT_SERIF, size: 12, color: argb(COLORS.ink) };
+      nameCell.value = item.fullName;
+      nameCell.font = { name: FONT_SERIF, size: 12, color: argb(COLORS.ink), bold: true };
       nameCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // 3. Permit Number (mono, BLACK)
+      // 3. Permit Number (mono, BLACK, bold)
       const permitCell = row.getCell(3);
-      permitCell.value = item.permit_number || '—';
-      permitCell.font = { name: FONT_MONO, size: 10, color: argb(COLORS.ink), bold: true };
+      permitCell.value = item.permitNumber;
+      permitCell.font = { name: FONT_MONO, size: 11, color: argb(COLORS.ink), bold: true };
       permitCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // 4. Kin ID (mono, BLACK)
+      // 4. Kin ID (mono, BLACK, bold)
       const kinIdCell = row.getCell(4);
-      kinIdCell.value = item.kin_id || '—';
-      kinIdCell.font = { name: FONT_MONO, size: 10, color: argb(COLORS.ink), bold: true };
+      kinIdCell.value = item.kinIdNumber;
+      kinIdCell.font = { name: FONT_MONO, size: 11, color: argb(COLORS.ink), bold: true };
       kinIdCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // 5. Phone Number
+      // 5. Phone Number (11pt)
       const phoneCell = row.getCell(5);
-      phoneCell.value = item.phone_number || '—';
-      phoneCell.font = { name: FONT_SANS, size: 10, color: argb(COLORS.gray) };
+      phoneCell.value = item.phoneNumber;
+      phoneCell.font = { name: FONT_SANS, size: 11, color: argb(COLORS.gray) };
       phoneCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // 6. Next of Kin (Name: Black, Relationship: White)
+      // 6. Next of Kin (Name: Black/Bold, Relationship: White)
       const kinCell = row.getCell(6);
       kinCell.value = {
         richText: [
-          { font: { name: FONT_SANS, size: 11, color: argb(COLORS.ink), bold: true }, text: item.kin_name || '—' },
-          { font: { name: FONT_SANS, size: 7, bold: true, color: argb('FFFFFFFF') }, text: '\n' + String(item.kin_relationship || 'KIN').toUpperCase() },
+          { font: { name: FONT_SANS, size: 11, color: argb(COLORS.ink), bold: true }, text: item.kinName },
+          { font: { name: FONT_SANS, size: 8, bold: true, color: argb('FFFFFFFF') }, text: '\n' + String(item.kinRelationship).toUpperCase() },
         ],
       };
       kinCell.alignment = { vertical: 'middle', wrapText: true, indent: 1 };
 
       // 7. Intake Date
-      putDate(row, 7, item.intake_date);
+      putDate(row, 7, item.intakeDate);
 
-      // 8. Release Date
-      putDate(row, 8, item.release_date);
+      // 8. Release Date — dispatch_date, else the signed release record
+      putDate(row, 8, item.releaseDate);
 
-      // 9. Release Time
+      // 9. Release Time — signed release record time, else the release timestamp
       const timeCell = row.getCell(9);
-      if (item.release_date) {
-        const d = new Date(item.release_date);
-        if (!isNaN(d.getTime())) {
-          timeCell.value = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-          timeCell.font = { name: FONT_SANS, size: 10, color: argb(COLORS.gray) };
-        } else {
-          timeCell.value = '—';
-          timeCell.font = { name: FONT_SANS, size: 10, color: argb(COLORS.muted) };
-        }
+      if (item.releaseTime) {
+        timeCell.value = item.releaseTime;
+        timeCell.font = { name: FONT_SANS, size: 11, color: argb(COLORS.gray), bold: true };
       } else {
         timeCell.value = '—';
-        timeCell.font = { name: FONT_SANS, size: 10, color: argb(COLORS.muted) };
+        timeCell.font = { name: FONT_SANS, size: 11, color: argb(COLORS.muted) };
       }
       timeCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // 10. Service Type
+      // 10. Service Type (never blank — derived when the tenant has no service column)
       const svcCell = row.getCell(10);
-      svcCell.value = String(item.service_type || '—').toUpperCase();
-      svcCell.font = { name: FONT_SANS, size: 9, bold: true, color: argb(COLORS.verdigrisDark) };
+      svcCell.value = item.serviceType;
+      svcCell.font = { name: FONT_SANS, size: 11, bold: true, color: argb(COLORS.verdigrisDark) };
       svcCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // 11. Status (Solid Pill)
-      const status = normalizeStatus(item.body_status);
+      // 11. Status button — the colour is painted inside a white frame (applied
+      // after the hairlines below) so it reads as a compact pill/button instead
+      // of colouring the whole cell and therefore the whole row strip.
       const stCell = row.getCell(11);
-      stCell.value = status;
-      stCell.font = { name: FONT_SANS, size: 10, bold: true, color: argb(COLORS.bone) };
-      stCell.fill = solid(STATUS_FILL[status]);
-      stCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      stCell.value = item.status;
+      stCell.font = { name: FONT_SANS, size: 11, bold: true, color: argb(COLORS.bone) };
+      stCell.fill = solid(STATUS_FILL[item.status]);
 
-      // 12. Days in Morgue
+      // 12. Days in Morgue (11pt, bold)
       const daysCell = row.getCell(12);
-      let daysInMorgue = '—';
-      if (item.intake_date) {
-        const intake = new Date(item.intake_date);
-        const end = item.release_date ? new Date(item.release_date) : new Date();
-        if (!isNaN(intake.getTime()) && !isNaN(end.getTime())) {
-          const diffTime = Math.abs(end.getTime() - intake.getTime());
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          daysInMorgue = `${diffDays} days`;
-        }
-      }
-      daysCell.value = daysInMorgue;
-      daysCell.font = { name: FONT_SANS, size: 10, bold: true, color: argb('FF132A13') };
-      daysCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      daysCell.value = item.daysInMorgue;
+      daysCell.font = { name: FONT_SANS, size: 11, bold: true, color: argb('FF132A13') };
 
       // hairline bottom on every cell
       for (let c = 1; c <= COLS; c++) {
         row.getCell(c).border = { bottom: { style: 'hair', color: argb(COLORS.lineSoft) } };
       }
+
+      stCell.border = PILL_FRAME();
+      stCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      daysCell.alignment = { vertical: 'middle', horizontal: 'center' };
     });
 
     /* ---------------- EMPTY STATE (If no records) ---------------- */
@@ -400,7 +724,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
       safeMerge(worksheet, `A${lastRow}:L${lastRow}`);
       const empty = worksheet.getCell(`A${lastRow}`);
       empty.value = 'NO RECORDS FOUND FOR THE SELECTED PERIOD';
-      empty.font = { name: FONT_SANS, size: 10, italic: true, color: argb(COLORS.muted) };
+      empty.font = { name: FONT_SANS, size: 11, italic: true, color: argb(COLORS.muted) };
       empty.alignment = { horizontal: 'center', vertical: 'middle' };
       empty.fill = solid(COLORS.bone2);
       worksheet.getRow(lastRow).height = 36;
@@ -409,15 +733,15 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     }
 
     /* ---------------- SLEEK FLAT FOOTER ---------------- */
-    const f0 = lastRow + 2; // Top row of footer
+    const f0 = lastRow + 2;
 
     // Left Side: Facility TM (Blue/Superscript) + Generated By (Blue)
     safeMerge(worksheet, `A${f0}:E${f0}`);
     const authCell = worksheet.getCell(`A${f0}`);
     authCell.value = {
       richText: [
-        { font: { name: FONT_SANS, size: 10, italic: true, bold: true, color: argb(COLORS.brass) }, text: facility },
-        { font: { name: FONT_SANS, size: 8, bold: true, color: argb(COLORS.inkBlue), vertAlign: 'superscript' }, text: ' TM' }
+        { font: { name: FONT_SANS, size: 12, italic: true, bold: true, color: argb(COLORS.brass) }, text: facility },
+        { font: { name: FONT_SANS, size: 9, bold: true, color: argb(COLORS.inkBlue), vertAlign: 'superscript' }, text: ' TM' }
       ]
     };
     authCell.alignment = { horizontal: 'left', vertical: 'middle' };
@@ -426,8 +750,8 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     const genCell = worksheet.getCell(`A${f0 + 1}`);
     genCell.value = {
       richText: [
-        { font: { name: FONT_SANS, size: 9, color: argb(COLORS.gray) }, text: 'Generated by ' },
-        { font: { name: FONT_SANS, size: 9, bold: true, color: argb(COLORS.inkBlue) }, text: author },
+        { font: { name: FONT_SANS, size: 11, color: argb(COLORS.gray) }, text: 'Generated by ' },
+        { font: { name: FONT_SANS, size: 11, bold: true, color: argb(COLORS.inkBlue) }, text: author },
       ],
     };
     genCell.alignment = { horizontal: 'left', vertical: 'middle' };
@@ -436,13 +760,13 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     safeMerge(worksheet, `H${f0}:L${f0}`);
     const trackCell = worksheet.getCell(`H${f0}`);
     trackCell.value = `Tracking ID: ${track} · Expires ${fmtStamp(expires)}`;
-    trackCell.font = { name: FONT_SANS, size: 9, color: argb(COLORS.verdigrisDark), bold: true };
+    trackCell.font = { name: FONT_SANS, size: 11, color: argb(COLORS.verdigrisDark), bold: true };
     trackCell.alignment = { horizontal: 'right', vertical: 'middle' };
 
     safeMerge(worksheet, `H${f0 + 1}:L${f0 + 1}`);
     const sigCell = worksheet.getCell(`H${f0 + 1}`);
     sigCell.value = '— Intake / Release Officer —';
-    sigCell.font = { name: FONT_SERIF, size: 11, italic: true, bold: true, color: argb(COLORS.ink) };
+    sigCell.font = { name: FONT_SERIF, size: 12, italic: true, bold: true, color: argb(COLORS.ink) };
     sigCell.alignment = { horizontal: 'right', vertical: 'middle' };
     // Draw line above signature
     for (let c = 8; c <= 12; c++) {
@@ -453,7 +777,7 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
 
     /* ---------------- DARK BASE LINE ---------------- */
     const baseRow = worksheet.getRow(baseRowNum);
-    baseRow.height = 24;
+    baseRow.height = 28;
     for (let c = 1; c <= COLS; c++) {
       baseRow.getCell(c).fill = solid(COLORS.verdigrisDark);
     }
@@ -461,19 +785,19 @@ export const exportExcelWithCharts = async (req: ExportRequest, res: Response): 
     safeMerge(worksheet, `A${baseRowNum}:C${baseRowNum}`);
     const bLeft = worksheet.getCell(`A${baseRowNum}`);
     bLeft.value = `© ${now.getFullYear()} ${facility}. All Rights Reserved.`;
-    bLeft.font = { name: FONT_SANS, size: 8, bold: true, color: argb('FFD1D5DB') };
+    bLeft.font = { name: FONT_SANS, size: 10, bold: true, color: argb('FFD1D5DB') };
     bLeft.alignment = { vertical: 'middle', indent: 1 };
 
     safeMerge(worksheet, `D${baseRowNum}:I${baseRowNum}`);
     const bMid = worksheet.getCell(`D${baseRowNum}`);
     bMid.value = 'STRICTLY CONFIDENTIAL — HANDLE WITH DIGNITY';
-    bMid.font = { name: FONT_SANS, size: 8, color: argb(COLORS.gold), bold: true };
+    bMid.font = { name: FONT_SANS, size: 10, color: argb(COLORS.gold), bold: true };
     bMid.alignment = { horizontal: 'center', vertical: 'middle' };
 
     safeMerge(worksheet, `J${baseRowNum}:L${baseRowNum}`);
     const bRight = worksheet.getCell(`J${baseRowNum}`);
     bRight.value = `REF: ${track}`;
-    bRight.font = { name: FONT_MONO, size: 8, bold: true, color: argb('FFFFFFFF') };
+    bRight.font = { name: FONT_MONO, size: 10, bold: true, color: argb('FFFFFFFF') };
     bRight.alignment = { horizontal: 'right', vertical: 'middle', indent: 1 };
 
     /* ---------------- VIEW + PAGE SETUP ---------------- */
