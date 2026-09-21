@@ -130,6 +130,17 @@ const COLORS = {
   tickBlue: '#2564eb1b',
 };
 
+/* ─── Sheet gutters ────────────────────────────────────────────────────────
+   Single source of truth for the horizontal padding of the sheet. The header
+   (branding on the left, barcode on the right) and the form body MUST use the
+   same values at the same breakpoints, otherwise the top content drifts out of
+   line with the form's field labels — e.g. a 1280px laptop at 125% Windows
+   scaling reports a 1024px viewport, which used to shrink the body padding to
+   2.5rem while the header stayed at 3rem. */
+const GUTTER = '3rem';          // > 1024px
+const GUTTER_TABLET = '2.5rem'; // ≤ 1024px  (matches FormBody)
+const GUTTER_MOBILE = '1.5rem'; // ≤ 600px   (matches FormBody)
+
 const spin = keyframes`
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -190,13 +201,26 @@ const ContentWrapper = styled.div`
 `;
 
 const HeaderWrapper = styled.header`
-  padding: 2.5rem 3rem;
+  /* Side padding = the sheet gutter, so the branding (left) and the barcode +
+     verification block (right) sit on exactly the same vertical guides as the
+     form's field labels (see FormBody). */
+  padding: 2.5rem ${GUTTER};
   position: relative;
   z-index: 1;
   background: transparent;
 
+  /* Breakpoints mirror FormBody exactly so the header can never drift out of
+     line with the labels on tablet / small-laptop widths. */
+  @media (max-width: 1024px) {
+    padding: 2.25rem ${GUTTER_TABLET};
+  }
+
   @media (max-width: 768px) {
-    padding: 2rem 1.5rem;
+    padding: 2rem ${GUTTER_TABLET};
+  }
+
+  @media (max-width: 600px) {
+    padding: 1.5rem ${GUTTER_MOBILE};
   }
 `;
 
@@ -368,13 +392,15 @@ const DeceasedName = styled.div`
 `;
 
 const FormBody = styled.div`
-  padding: 3rem 3rem 1.5rem 3rem;
+  /* Field labels hang off this gutter — keep it in sync with HeaderWrapper
+     and RecordInfoStrip via GUTTER / GUTTER_TABLET / GUTTER_MOBILE. */
+  padding: 3rem ${GUTTER} 1.5rem ${GUTTER};
 
   @media (max-width: 1024px) {
-    padding: 2.5rem;
+    padding: 2.5rem ${GUTTER_TABLET};
   }
   @media (max-width: 600px) {
-    padding: 1.5rem;
+    padding: 1.5rem ${GUTTER_MOBILE};
   }
 `;
 
@@ -1100,12 +1126,15 @@ const RecordInfoStrip = styled.div`
   font-family: 'JetBrains Mono', monospace;
   text-align: center;
   line-height: 1.7;
-  margin: 2rem 3rem 0;
+  margin: 2rem ${GUTTER} 0;
   padding: 0.9rem 1rem 0.4rem;
   border-top: 1px solid ${COLORS.line};
 
+  @media (max-width: 1024px) {
+    margin: 1.75rem ${GUTTER_TABLET} 0;
+  }
   @media (max-width: 600px) {
-    margin: 1.5rem 1.25rem 0;
+    margin: 1.5rem ${GUTTER_MOBILE} 0;
   }
 `;
 
@@ -1163,7 +1192,14 @@ const Barcode = ({ value }) => {
     }
   }, [value]);
 
-  return <canvas ref={canvasRef} style={{ display: 'block', width: 'auto', height: '40px' }} />;
+  // Flush against the right sheet gutter so the barcode ends on exactly the
+  // same vertical guide as the right edge of the form's last field column.
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ display: 'block', width: 'auto', maxWidth: '100%', height: '40px', marginLeft: 'auto' }}
+    />
+  );
 };
 
 const DeceasedRegistrationForm = () => {
