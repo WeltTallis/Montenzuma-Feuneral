@@ -196,6 +196,7 @@ const getLocalUserName = () => {
 
 const FLX_RESPONSIVE = `
 @media (max-width: 640px) {
+  /* Toolbar: stack nav/buttons, no scattered gaps */
   .flx-toolbar { flex-direction: column !important; align-items: stretch !important; gap: 8px !important; }
   .flx-nav { margin-right: 0 !important; flex-wrap: wrap !important; gap: 6px !important; align-items: center !important; }
   .flx-nav > button { flex: 1 1 100% !important; }
@@ -203,6 +204,16 @@ const FLX_RESPONSIVE = `
   .flx-toggle > button { flex: 1 1 48% !important; white-space: nowrap !important; }
   .flx-actions { width: 100% !important; }
   .flx-actions > button { flex: 1 1 100% !important; white-space: normal !important; }
+
+  /* Horizontal date strip: scrollable rail, shrink day-cells */
+  .flx-strip { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; scrollbar-width: none !important; }
+  .flx-strip::-webkit-scrollbar { display: none !important; }
+  .flx-strip > button { min-width: 56px !important; flex-shrink: 0 !important; }
+
+  /* Full calendar: 7-col grid is too tight → stack as 3-cols so labels+events read */
+  .flx-cal-weekdays { grid-template-columns: repeat(3, 1fr) !important; }
+  .flx-cal-days { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+  .flx-cal-day { min-height: 70px !important; }
 }
 `;
 
@@ -928,10 +939,10 @@ const FlowerBookingsNew = () => {
             </button>
           </div>
         </div>
-        <div style={styles.calWeekdays}>
+                <div className="flx-cal-weekdays" style={styles.calWeekdays}>
           {WEEKDAYS.map(w => <div key={w} style={styles.calWeekday}>{w}</div>)}
         </div>
-        <div style={styles.calDays}>
+        <div className="flx-cal-days" style={styles.calDays}>
           {days.map(day => {
             const dateStr = fmtDateStr(day);
             const outside = day.getMonth() !== month;
@@ -944,6 +955,7 @@ const FlowerBookingsNew = () => {
             return (
               <div
                 key={dateStr}
+                className="flx-cal-day"
                 style={{
                   ...styles.calDay,
                   background: outside ? '#FAF9F7' : isToday ? 'linear-gradient(180deg,rgba(47,79,62,.05),#fff 40%)' : '#fff',

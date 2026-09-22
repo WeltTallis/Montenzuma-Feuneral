@@ -639,19 +639,36 @@ export default function ModuleDashboard({ mod }) {
                         onPickDate={setCalDay}
                         onSelect={(item) => {
                           const isReq = !!item?.pm_request || String(item?.id || "").startsWith("pm-req-");
-                          const num = String(item?.id || "").replace(/^(in|rel|pm)-/, "").replace(/^req-/, "");
+                          const rawId = String(item?.id || "");
+                          /* Which quad card was this row opened from? The id
+                             prefix is the source of truth:
+                             in-<adm> → intake · rel-<adm> → release
+                             pm-<adm> / pm-req-* → postmortem. The side panel
+                             uses this to show ONLY the relevant info. */
+                          const source =
+                            /^in-/.test(rawId) ? "intake" :
+                            /^rel-/.test(rawId) ? "release" :
+                            (isReq || /^pm-/.test(rawId)) ? "postmortem" : null;
+                          const num = rawId.replace(/^(in|rel|pm)-/, "").replace(/^req-/, "");
                           const pool = scopedDeceased;
                           const rec =
                             pool.find((r) => String(r?.admission_number) === num) ||
                             pool.find((r) => String(r?.deceased_id ?? r?.id) === num) ||
                             (item?.admission_number || item?.deceased_id ? item : null);
+                          /* Release rows can exist in the feed without a
+                             matching register row — still open the panel with
+                             the release payload instead of doing nothing. */
+                          if (!rec && source === "release") {
+                            setSelected({ ...item, source: "release" });
+                            return;
+                          }
                           if (isReq && !rec) {
                             // Request with no matching register row — still open,
                             // showing the request details alone.
-                            setSelected({ ...item, pm_request: item.pm_request || item });
+                            setSelected({ ...item, pm_request: item.pm_request || item, source: source || "postmortem" });
                             return;
                           }
-                          if (rec) setSelected(isReq ? { ...rec, pm_request: item.pm_request || item } : rec);
+                          if (rec) setSelected(isReq ? { ...rec, pm_request: item.pm_request || item, source: source || "postmortem" } : { ...rec, source });
                         }}
                       />
                     </div>
@@ -696,8 +713,12 @@ export default function ModuleDashboard({ mod }) {
                         loading={calLoading}
                         onClose={() => setCalDay(null)}
                         onSelect={(item, sectionKey) => {
-                          /* Deceased records + tracked postmortem requests open the side panel */
+                          /* Deceased records + tracked postmortem requests open the side panel.
+                             sectionKey maps 1:1 to the panel `source` so the same
+                             intake-only / release-only rules as the quad apply. */
                           if (sectionKey === "intakes" || sectionKey === "releases" || sectionKey === "postmortems") {
+                            const source = sectionKey === "intakes" ? "intake"
+                              : sectionKey === "releases" ? "release" : "postmortem";
                             const rec = scopedDeceased.find((r) => {
                               const num = r?.admission_number;
                               return num && (
@@ -705,9 +726,12 @@ export default function ModuleDashboard({ mod }) {
                               );
                             });
                             if (rec) {
-                              setSelected(item.pm_request ? { ...rec, pm_request: item.pm_request } : rec);
+                              setSelected(item.pm_request ? { ...rec, pm_request: item.pm_request, source } : { ...rec, source });
                             } else if (item.pm_request) {
-                              setSelected({ ...item, pm_request: item.pm_request });
+                              setSelected({ ...item, pm_request: item.pm_request, source });
+                            } else if (source === "release") {
+                              /* Release row with no register row left — open from the feed item. */
+                              setSelected({ ...item, source });
                             }
                           }
                         }}

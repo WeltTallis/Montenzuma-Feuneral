@@ -111,9 +111,10 @@ const TabBtn = styled.button`
   margin-bottom: -2px;
   white-space: nowrap;
   transition: all 0.15s ease; 
-  font-family: 'Source Sans 3', sans-serif;
+    font-family: 'Source Sans 3', sans-serif;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   
   &:hover { color: #1a1a1a; }
   ${p => p.$active && `

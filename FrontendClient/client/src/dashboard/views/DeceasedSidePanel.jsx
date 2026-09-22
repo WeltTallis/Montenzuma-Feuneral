@@ -15,7 +15,7 @@ import { QRCodeSVG } from "qrcode.react";
 import Loader from "../../components/loader/loader";
 import api from "../../api/axios";
 import { deceasedApi } from "../../api/deceasedApi";
-import { formatDate, getDaysInMorgue, getInitials } from "../../components/deceased/deceasedinfo/theme";
+import { formatDate, formatTime12, getDaysInMorgue, getInitials } from "../../components/deceased/deceasedinfo/theme";
 import env from "../../utils/config/env";
 import { rebaseUploadUrl } from "../../utils/tenantResolver/tenantBranding";
 
@@ -160,10 +160,22 @@ export default function DeceasedSidePanel({ booking, onClose }) {
   const [tab, setTab]           = useState("overview");
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  /* Release record — fetched only when the panel is opened from the
+     Releases card so the release source shows real handover data
+     (the previous static "Release Details" placeholders never did). */
+  const [releaseData, setReleaseData] = useState(null);
+  const [releaseLoading, setReleaseLoading] = useState(false);
 
   // Ref to track if component is still mounted (avoids setState on unmount)
   const mounted = useRef(true);
   useEffect(() => { return () => { mounted.current = false; }; }, []);
+
+  /* Where was this panel opened from? ModuleDashboard threads the quad-card
+     origin (intake / release / postmortem) so the panel can show ONLY the
+     relevant info instead of every tab for every case. */
+  const source = booking?.source || null;
+  const intakeOnly = source === "intake";
+  const releaseOnly = source === "release";
 
   const id = booking?.deceased_id || booking?.id || booking?.admission_number;
 
@@ -186,18 +198,26 @@ export default function DeceasedSidePanel({ booking, onClose }) {
       if (cached.postmortem) setPostmortem(cached.postmortem);
       if (cached.charges) setCharges(cached.charges);
       if (cached.payments) setPayments(cached.payments);
+      if (cached.release) setReleaseData(cached.release);
       setLastRefreshed(new Date());
       return;
     }
 
     // Fire ALL requests in parallel — no waiting between them
     setLoading(true); setError("");
+    /* Body-release handover is only requested for release-context opens —
+       intake/postmortem opens never pay for that extra round-trip. */
+    const admForRelease = booking?.admission_number || booking?.admission_no || id;
+    setReleaseLoading(releaseOnly);
     try {
-      const [deceasedRes, nokRes, pmRes, billingRes] = await Promise.allSettled([
+      const [deceasedRes, nokRes, pmRes, billingRes, relRes] = await Promise.allSettled([
         api.get(`/deceased/deceased-id/${id}`, branchCfg),
         deceasedApi.getNextOfKin(id, branchCfg).catch(() => null),
         api.get(`/deceased/postmortem/${id}`, branchCfg).catch(() => null),
         api.get(`/deceased/billing-summary/${id}`, branchCfg).catch(() => null),
+        releaseOnly
+          ? api.get(`/body-release/by-admission/${encodeURIComponent(admForRelease)}`, branchCfg).catch(() => null)
+          : Promise.resolve(null),
       ]);
 
       if (!mounted.current) return;
@@ -231,6 +251,11 @@ export default function DeceasedSidePanel({ booking, onClose }) {
         }
       }
 
+      // Process release result (release-context opens only)
+      if (relRes.status === "fulfilled" && relRes.value?.data?.success && relRes.value?.data?.data) {
+        setReleaseData(relRes.value.data.data);
+      }
+
       // Update cache & timestamp (pre-compute values for clarity)
       const ts = new Date();
       setLastRefreshed(ts);
@@ -247,6 +272,7 @@ export default function DeceasedSidePanel({ booking, onClose }) {
         postmortem: pmRes.status === "fulfilled" ? (pmRes.value?.data?.data || null) : null,
         charges: _billData?.charges ? (Array.isArray(_billData.charges) ? _billData.charges : [_billData.charges]) : [],
         payments: _billData?.payments ? (Array.isArray(_billData.payments) ? _billData.payments : []) : [],
+        release: relRes.status === "fulfilled" && relRes.value?.data?.success ? (relRes.value?.data?.data || null) : null,
       });
     } catch (e) {
       console.warn("[DeceasedSidePanel] fetch error:", e?.message);
@@ -255,6 +281,7 @@ export default function DeceasedSidePanel({ booking, onClose }) {
       if (mounted.current) {
         setLoading(false);
         setRefreshing(false);
+        setReleaseLoading(false);
       }
     }
   }, [id, booking, branchSlug]);
@@ -448,39 +475,44 @@ export default function DeceasedSidePanel({ booking, onClose }) {
           </div>
         </div>
 
-        {/* Tab bar — Overview / Postmortem / Financials (mirrors the profile tabs) */}
-        <div
-          className="flex gap-1 px-4 border-b"
-          style={{ borderColor: "#eef1f5" }}
-        >
-          {[
-            ["overview", "Overview"],
-            ["postmortem", "Postmortem"],
-            ["financials", "Financials"],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={
-                "px-4 py-2.5 text-[11.5px] font-bold uppercase tracking-wide border-b-2 transition-colors " +
-                (tab === key
-                  ? "text-slate-900"
-                  : "text-slate-400 hover:text-slate-600 border-transparent")
-              }
-              style={{ borderColor: tab === key ? "#0f766e" : "transparent" }}
-            >
-              {label}
-              {key === "financials" && charges.length > 0 && (
-                <span
-                  className="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[9px] font-bold"
-                  style={{ background: "#0f766e18", color: "#0f766e" }}
-                >
-                  {charges.length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        {/* Tab bar — Overview / Postmortem / Financials (mirrors the profile tabs).
+            Intake- and release-context opens render NO tab strip: the panel is
+            scoped to that section's info only, so the tabs are unnecessary
+            chrome ("no other unnecessary things and tabs"). */}
+        {!intakeOnly && !releaseOnly && (
+          <div
+            className="flex gap-1 px-4 border-b"
+            style={{ borderColor: "#eef1f5" }}
+          >
+            {[
+              ["overview", "Overview"],
+              ["postmortem", "Postmortem"],
+              ["financials", "Financials"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={
+                  "px-4 py-2.5 text-[11.5px] font-bold uppercase tracking-wide border-b-2 transition-colors " +
+                  (tab === key
+                    ? "text-slate-900"
+                    : "text-slate-400 hover:text-slate-600 border-transparent")
+                }
+                style={{ borderColor: tab === key ? "#0f766e" : "transparent" }}
+              >
+                {label}
+                {key === "financials" && charges.length > 0 && (
+                  <span
+                    className="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[9px] font-bold"
+                    style={{ background: "#0f766e18", color: "#0f766e" }}
+                  >
+                    {charges.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Body — renders IMMEDIATELY from row data, no loader blocking */}
         <div className="flex-1 overflow-y-auto px-4 py-3.5">
@@ -668,10 +700,15 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                   <div className="profile-header-avatar">{getInitials(fullName)}</div>
                   <div className="profile-header-info">
                     <div className="profile-header-name">{fullName}</div>
-                    <div className="profile-header-meta">Deceased Profile Overview</div>
+                    <div className="profile-header-meta">
+                      {releaseOnly ? "Body Release Record" : intakeOnly ? "Intake Record" : "Deceased Profile Overview"}
+                    </div>
                   </div>
                 </div>
 
+                {/* Admitted → Postmortem → Released stepper is profile-page
+                    chrome; intake/release contexts show their own info only. */}
+                {!intakeOnly && !releaseOnly && (
                 <div className="profile-tracker-container">
                   <div className="profile-tracker">
                     <div className="profile-track-line" />
@@ -695,8 +732,109 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                     </div>
                   </div>
                 </div>
+                )}
 
                 <div className="profile-sidebar-body">
+                  {/* RELEASE context — ONLY the release handover info, nothing else. */}
+                  {releaseOnly ? (
+                    <>
+                      <div className="profile-section-head"><span>01</span> Release Details</div>
+                      <div className="profile-detail-grid">
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Release ID</span>
+                          <div className="profile-detail-value">{releaseData?.release_id || '—'}</div>
+                        </div>
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Released Date</span>
+                          <div className="profile-detail-value">{formatDate(releaseData?.date_of_removal || releaseData?.release_date || releaseData?.created_at || d.dispatch_date || d.release_date || d.date_released) || '—'}</div>
+                        </div>
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Released Time</span>
+                          <div className="profile-detail-value">{releaseData?.time_of_removal ? formatTime12(releaseData.time_of_removal) : (d.dispatch_time ? formatTime12(d.dispatch_time) : '—')}</div>
+                        </div>
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Admission Number</span>
+                          <div className="profile-detail-value">{admissionNo}</div>
+                        </div>
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Permit Number</span>
+                          <div className="profile-detail-value">{releaseData?.permit_number || d.permit_number || '—'}</div>
+                        </div>
+                        <div className="profile-detail-item full-3">
+                          <span className="profile-detail-label">Deceased</span>
+                          <div className="profile-detail-value">{fullName}</div>
+                        </div>
+                      </div>
+
+                      <div className="profile-section-head"><span>02</span> Receiver / Next of Kin</div>
+                      <div className="profile-detail-grid">
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Body Collected By</span>
+                          <div className="profile-detail-value">{releaseData?.next_kin || d.next_kin || k.full_name || k.contact_person || '—'}</div>
+                        </div>
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Relationship</span>
+                          <div className="profile-detail-value">{releaseData?.relationship || k.relationship || '—'}</div>
+                        </div>
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Receiver ID Number</span>
+                          <div className="profile-detail-value">{releaseData?.id_number || k.id_number || k.national_id || '—'}</div>
+                        </div>
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Receiver Phone</span>
+                          <div className="profile-detail-value">{releaseData?.tell_number || k.contact || k.phone_number || k.tel_number || '—'}</div>
+                        </div>
+                        <div className="profile-detail-item full-3">
+                          <span className="profile-detail-label">Receiver Signature</span>
+                          {releaseData?.signature ? (
+                            <div className="profile-detail-value" style={{ marginTop: 4 }}>
+                              <SignatureDisplay path={releaseData.signature} />
+                            </div>
+                          ) : (
+                            <div className="profile-detail-value empty">—</div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="profile-section-head"><span>03</span> Transport &amp; Handover</div>
+                      <div className="profile-detail-grid">
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Mode of Transport</span>
+                          <div className="profile-detail-value">{releaseData?.mode_of_transport || d.mode_of_transport || '—'}</div>
+                        </div>
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Vehicle Plate Number</span>
+                          <div className="profile-detail-value">{releaseData?.plate_number || '—'}</div>
+                        </div>
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Final Destination</span>
+                          <div className="profile-detail-value">{releaseData?.final_destination || releaseData?.destination || releaseData?.release_to || d.destination || d.release_to || d.dispatched_to || '—'}</div>
+                        </div>
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Released By (Staff)</span>
+                          <div className="profile-detail-value">{releaseData?.staff_name || releaseData?.received_by || releaseData?.released_by || d.released_by || '—'}</div>
+                        </div>
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Payments Cleared</span>
+                          <div className="profile-detail-value">{releaseData ? (releaseData.everything_paid ? 'Yes — everything paid' : 'Not marked as fully paid') : '—'}</div>
+                        </div>
+                        <div className="profile-detail-item">
+                          <span className="profile-detail-label">Recorded On</span>
+                          <div className="profile-detail-value">{releaseData?.created_at ? formatDate(releaseData.created_at) : '—'}</div>
+                        </div>
+                      </div>
+
+                      {!releaseData && (
+                        <div
+                          className="rounded-lg px-3 py-4 text-center text-[12px] text-slate-400 bg-slate-50 border border-slate-100"
+                          style={{ marginTop: 14 }}
+                        >
+                          {releaseLoading ? "Loading release details…" : "No body release has been recorded for this deceased yet."}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
                   <div className="profile-section-head"><span>01</span> Admission</div>
                   <div className="profile-detail-grid">
                     <div className="profile-detail-item">
@@ -775,6 +913,10 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                     </div>
                   </div>
 
+                  {/* Static placeholder release block — only meaningful on the
+                      full-profile (unscoped) view; intake opens hide it. */}
+                  {!intakeOnly && (
+                    <>
                   <div className="profile-section-head">Release Details</div>
                   <div className="profile-detail-grid">
                     <div className="profile-detail-item">
@@ -794,6 +936,10 @@ export default function DeceasedSidePanel({ booking, onClose }) {
                       <div className="profile-detail-value">{fullName}</div>
                     </div>
                   </div>
+                    </>
+                  )}
+                    </>
+                  )}
                 </div>
 
                 <div className="profile-sidebar-footer">

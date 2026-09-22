@@ -4,8 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Memorial Document Viewer</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
+<!-- data-cfasync="false" disables Cloudflare Rocket Loader for these scripts so
+     the Tailwind Play CDN can generate utility CSS at the right time and the app
+     script (init/fetch/render) runs in source order. Without this the page ships
+     unstyled and no documents render when served behind Cloudflare. -->
+<script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
+<script data-cfasync="false">
   tailwind.config = {
     darkMode: 'class',
     theme: {
@@ -30,7 +34,7 @@
     }
   }
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" data-cfasync="false"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
   * { font-family: 'Inter', 'Helvetica Neue', sans-serif; -webkit-font-smoothing: antialiased; }
@@ -392,7 +396,7 @@
 
   <div id="toastContainer" class="fixed bottom-6 right-6 z-50 space-y-2"></div>
 
-<script>
+<script data-cfasync="false">
   'use strict';
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';

@@ -180,10 +180,14 @@ const CSS = `
 .fhq .cal-dot{width:5px;height:5px;border-radius:50%}
 .fhq .cal-day.loading{opacity:.55;pointer-events:none}
 /* ── 2x2 Quad Grid ── */
-.fhq .quad-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;align-items:stretch}
-@media(max-width:1100px){.fhq .quad-grid{grid-template-columns:1fr}}
+.fhq .quad-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:stretch}
+@media(max-width:1100px){.fhq .quad-grid{grid-template-columns:minmax(0,1fr)}}
 /* ── List Card & Table ── */
-.fhq .list-card{background:#fff;border:1px solid var(--borderLight);border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.03);display:flex;flex-direction:column;max-height:520px}
+/* Card height is viewport-relative so the quad scales with the screen:
+   big monitors get taller cards (no cramped 520px cap), while the cards
+   still never exceed the visible area. */
+.fhq .list-card{background:#fff;border:1px solid var(--borderLight);border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.03);display:flex;flex-direction:column;max-height:min(520px,62vh)}
+@media(min-width:1600px){.fhq .list-card{max-height:min(680px,72vh)}}
 .fhq .list-header{background:var(--bgSection);padding:20px 24px;border-bottom:1px solid var(--borderLight);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .fhq .list-header h2{font-family:'Merriweather',serif;font-size:18px;font-weight:700;color:var(--black);margin:0}
 .fhq .badge-count{background:var(--black);color:#fff;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;white-space:nowrap}
@@ -204,11 +208,16 @@ const CSS = `
 .fhq .status-badge::before{content:'';width:6px;height:6px;background:currentColor;border-radius:50%}
 .fhq .empty-row{text-align:center;padding:40px;color:var(--gray);font-style:italic}
 /* ── Analytics Charts Container ── */
-.fhq .charts-container{padding:24px;display:grid;grid-template-columns:1fr 1.5fr;gap:24px;height:100%}
-@media(max-width:1400px){.fhq .charts-container{grid-template-columns:1fr}}
-.fhq .chart-box{display:flex;flex-direction:column;min-width:0}
+.fhq .charts-container{padding:24px;display:grid;grid-template-columns:1fr 1.5fr;gap:24px;height:100%;min-height:0}
+@media(max-width:1400px){.fhq .charts-container{grid-template-columns:minmax(0,1fr)}}
+/* Analytics card body must scroll when the stacked charts exceed the card
+   height (charts stack to 2 columns below 1400px) — the wrapper keeps the
+   .table-wrap overflow-y:auto behaviour inherited from the quad cards. */
+.fhq .charts-container .chart-box{display:flex;flex-direction:column;min-width:0;min-height:0}
 .fhq .chart-title{font-family:'Merriweather',serif;font-size:14px;font-weight:700;color:var(--dark);margin-bottom:16px}
-.fhq .chart-canvas-wrap{flex:1;position:relative;min-height:200px;max-height:280px}
+.fhq .chart-canvas-wrap{flex:1;position:relative;min-height:180px;max-height:min(300px,38vh)}
+/* Chart.js responsive sizing needs the canvas to fill its wrapper. */
+.fhq .chart-canvas-wrap canvas{width:100%!important;height:100%!important;display:block}
 `;
 
 /* ── inline SVG icons (Font Awesome stand-ins from the reference design) ── */
@@ -695,7 +704,9 @@ export default function DeceasedQuad({ events = {}, loading = false, dateKey = n
             <h2>Branch Analytics</h2>
             <span className="badge-count" style={{ background: "#00296B" }}>Live Metrics</span>
           </div>
-          <div className="table-wrap" style={{ overflow: "hidden" }}>
+          {/* overflow-y comes from .table-wrap — the stacked charts must be
+              scrollable inside the card, never clipped. */}
+          <div className="table-wrap">
             <div className="charts-container">
               <div className="chart-box">
                 <div className="chart-title">Status Breakdown</div>
