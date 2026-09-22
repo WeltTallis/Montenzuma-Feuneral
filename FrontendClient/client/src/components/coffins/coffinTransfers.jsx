@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { formatDate } from '../../utils/dates/parseDates';
 
-
 const S = {
   primary: '#1d4ed8',
   primaryLight: '#eff6ff',
@@ -25,6 +24,10 @@ const S = {
   shadowSm: '0 1px 2px rgba(0, 0, 0, 0.04)',
   shadowMd: '0 4px 6px rgba(0, 0, 0, 0.06)',
   transition: 'all 0.2s ease',
+
+  // Premium accents for Timeline & Buttons
+  petrol: '#0F3040',
+  gold: '#C9A227',
 };
 
 const getReqStatus = (status) => {
@@ -43,8 +46,8 @@ const getReqStatus = (status) => {
   return map[normalized] || map.pending;
 };
 
-// Big pill action button style factory.
-const btnStyle = (bg, color, border) => ({
+// Premium pill action button style factory.
+const btnStyle = (bg, color, border, shadow) => ({
   padding: '10px 18px',
   borderRadius: 8,
   border: border || 'none',
@@ -56,6 +59,9 @@ const btnStyle = (bg, color, border) => ({
   display: 'inline-flex',
   alignItems: 'center',
   gap: 8,
+  boxShadow: shadow || 'none',
+  transition: 'all 0.2s ease',
+  fontFamily: 'inherit',
 });
 
 const styles = {
@@ -87,20 +93,6 @@ const actionButtonsVisible = (type, status) =>
 
 /**
  * CoffinTransfers — standalone Transfers/Logistics tab for the Coffin dashboard.
- *
- * Direction semantics (REQUEST-centric — fixed):
- *   - from_branch_id = the SOURCE branch that owns/dispatches the coffin
- *   - to_branch_id   = the DESTINATION branch receiving the coffin (the requester)
- *
- * 2-STATUS WORKFLOW (only Approved + Delivered — no "In Transit"):
- *   - Incoming rows (from_branch_id == currentBranch): ANOTHER branch requested
- *     MY stock. This branch is the SOURCE / dispatching branch: it Approves &
- *     Dispatches or Rejects while pending. After approving it waits for the
- *     REQUESTING branch to confirm "Delivered" — it can never mark delivered.
- *   - Outgoing rows (to_branch_id == currentBranch): MY branch SENT the request
- *     (requester/receiver). It can Cancel while pending, is notified on their
- *     bell when the source approves, and is the ONLY side that marks
- *     "Delivered Now" once the source has approved.
  */
 const CoffinTransfers = ({
   stockRequests = [],
@@ -115,11 +107,7 @@ const CoffinTransfers = ({
   const [transferQuery, setTransferQuery] = useState('');
 
   // REQUEST-centric classification (fixed):
-  // Incoming = requests where MY branch is the SOURCE (from_branch_id ==
-  // currentBranch) — another branch asked for MY stock (my fulfilment queue).
   const incomingRequests = stockRequests.filter((r) => r.from_branch_id == currentBranch);
-  // Outgoing = requests MY branch SENT (to_branch_id == currentBranch) — I asked
-  // another branch for stock and am waiting on them.
   const outgoingRequests = stockRequests.filter((r) => r.to_branch_id == currentBranch);
 
   const totalIncoming = incomingRequests.length;
@@ -129,7 +117,6 @@ const CoffinTransfers = ({
     if (!transferQuery) return true;
     const q = transferQuery.toLowerCase();
     const coffin = coffins.find((c) => (c.coffin_id || c.id) == r.coffin_id);
-    // I am the source — the other party is the requesting branch (to_branch_id).
     const branch = branches.find((b) => b.id == r.to_branch_id);
     return (
       String(r.id).includes(q) ||
@@ -137,11 +124,11 @@ const CoffinTransfers = ({
       (branch?.name || '').toLowerCase().includes(q)
     );
   });
+
   const filteredOutgoing = outgoingRequests.filter((r) => {
     if (!transferQuery) return true;
     const q = transferQuery.toLowerCase();
     const coffin = coffins.find((c) => (c.coffin_id || c.id) == r.coffin_id);
-    // I am the requester — the other party is the source branch (from_branch_id).
     const branch = branches.find((b) => b.id == r.from_branch_id);
     return (
       String(r.id).includes(q) ||
@@ -196,35 +183,44 @@ const CoffinTransfers = ({
       },
     ];
 
+  // PREMIUM Timeline Component
   const Timeline = ({ status }) => {
     const steps = timelineSteps(status);
     const completedCount = steps.filter((s) => s.done).length;
     const progressPct =
       completedCount <= 1 ? 0 : ((completedCount - 1) / (steps.length - 1)) * 100;
+
     return (
-      <div style={{ position: 'relative', padding: '0 4px', marginTop: 8 }}>
+      <div style={{ position: 'relative', padding: '20px 0' }}>
+        {/* Background Track */}
         <div
           style={{
             position: 'absolute',
-            top: 14,
-            left: 28,
-            right: 28,
-            height: 2,
+            top: '18px',
+            left: '20px',
+            right: '20px',
+            height: '4px',
             background: S.border,
+            borderRadius: '4px',
             zIndex: 0,
           }}
         ></div>
+        {/* Premium Gradient Fill */}
         <div
           style={{
             position: 'absolute',
-            top: 14,
-            left: 28,
-            height: 2,
-            background: S.success,
+            top: '18px',
+            left: '20px',
+            height: '4px',
+            background: `linear-gradient(90deg, ${S.petrol}, ${S.gold})`,
+            borderRadius: '4px',
             zIndex: 1,
             width: `calc(${progressPct}% - 20px)`,
+            boxShadow: '0 0 8px rgba(201, 162, 39, 0.4)',
+            transition: 'width 0.3s ease',
           }}
         ></div>
+        {/* Steps */}
         <div
           style={{
             display: 'flex',
@@ -240,23 +236,24 @@ const CoffinTransfers = ({
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 8,
-                width: '25%',
+                gap: '12px',
+                width: '33.33%',
                 textAlign: 'center',
               }}
             >
               <div
                 style={{
-                  width: 30,
-                  height: 30,
+                  width: '36px',
+                  height: '36px',
                   borderRadius: '50%',
                   background: '#fff',
-                  border: `3px solid ${s.done ? S.success : S.border}`,
+                  border: `2px solid ${s.done ? S.petrol : S.border}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 11,
+                  fontSize: 14,
                   color: s.done ? '#fff' : S.textLight,
+                  boxShadow: s.done ? '0 4px 10px rgba(15, 48, 64, 0.2)' : 'none',
                   transition: 'all 0.3s',
                 }}
               >
@@ -280,22 +277,18 @@ const CoffinTransfers = ({
     const coffin = coffins.find((c) => (c.coffin_id || c.id) == r.coffin_id);
     const fromBranchRaw = branches.find((b) => b.id == r.from_branch_id);
     const toBranchRaw = branches.find((b) => b.id == r.to_branch_id);
-    // Prefer the friendly stored branch names (e.g. "Nairobi", "Machakos") so users
-    // never see raw ids; fall back to the branches lookup when names aren't stored.
     const origin = { ...(fromBranchRaw || {}), name: r.from_branch_name || fromBranchRaw?.name };
     const dest = { ...(toBranchRaw || {}), name: r.to_branch_name || toBranchRaw?.name };
     const isExpanded = expandedTransferId === r.id;
 
     const waitingHint =
       type === 'incoming'
-        ? // I am the SOURCE / dispatcher (another branch requested my stock).
-          r.status === 'pending'
+        ? r.status === 'pending'
           ? `${dest?.name || 'The requesting branch'} is waiting for your approval`
           : r.status === 'approved'
             ? `Approved — awaiting ${dest?.name || 'the requesting branch'} to confirm delivery`
             : null
-        : // I am the REQUESTER (I asked another branch for stock).
-          r.status === 'pending'
+        : r.status === 'pending'
           ? `Waiting for ${origin?.name || 'the source branch'} to approve & dispatch`
           : r.status === 'approved'
             ? `${origin?.name || 'Source branch'} approved — confirm delivery when the goods arrive`
@@ -435,7 +428,7 @@ const CoffinTransfers = ({
               </div>
             </div>
 
-            {/* Timeline */}
+            {/* Timeline Date */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span
                 style={{
@@ -499,52 +492,26 @@ const CoffinTransfers = ({
                   Shipment Details
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div
-                    style={{
-                      background: '#fff',
-                      padding: '12px 16px',
-                      borderRadius: 8,
-                      border: `1px solid ${S.borderLight}`,
-                    }}
-                  >
+                  <div style={styles.detailCell}>
                     <div style={styles.detailLabel}>Quantity</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: S.text }}>
                       {r.quantity || 1} Unit{r.quantity > 1 ? 's' : ''}
                     </div>
                   </div>
-                  <div
-                    style={{
-                      background: '#fff',
-                      padding: '12px 16px',
-                      borderRadius: 8,
-                      border: `1px solid ${S.borderLight}`,
-                    }}
-                  >
+                  <div style={styles.detailCell}>
                     <div style={styles.detailLabel}>Coffin</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: S.text }}>
                       {coffin?.name || r.coffin_name || 'N/A'}
                     </div>
                   </div>
-                  <div
-                    style={{
-                      background: '#fff',
-                      padding: '12px 16px',
-                      borderRadius: 8,
-                      border: `1px solid ${S.borderLight}`,
-                    }}
-                  >
+                  <div style={styles.detailCell}>
                     <div style={styles.detailLabel}>Expected Date</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: S.text }}>
                       {r.service_date ? formatDate(r.service_date) : 'Not set'}
                     </div>
                   </div>
                   {r.client_name && (
-                    <div
-                      style={{
-                        ...styles.detailCell,
-                        gridColumn: '1 / -1',
-                      }}
-                    >
+                    <div style={{ ...styles.detailCell, gridColumn: '1 / -1' }}>
                       <div style={styles.detailLabel}>Client</div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: S.text }}>
                         {r.client_name}
@@ -553,12 +520,7 @@ const CoffinTransfers = ({
                     </div>
                   )}
                   {r.notes && (
-                    <div
-                      style={{
-                        ...styles.detailCell,
-                        gridColumn: '1 / -1',
-                      }}
-                    >
+                    <div style={{ ...styles.detailCell, gridColumn: '1 / -1' }}>
                       <div style={styles.detailLabel}>Notes</div>
                       <div style={{ fontSize: 13, fontWeight: 500, color: S.textMuted }}>
                         {r.notes}
@@ -614,12 +576,11 @@ const CoffinTransfers = ({
                       flexWrap: 'wrap',
                     }}
                   >
-                    {/* INCOMING = my branch is the SOURCE / dispatcher
-                        (another branch requested my stock). */}
+                    {/* INCOMING = my branch is the SOURCE / dispatcher */}
                     {type === 'incoming' && r.status === 'pending' && (
                       <>
                         <button
-                          style={btnStyle(S.dangerLight, S.danger, true)}
+                          style={btnStyle('#fff', S.danger, `1px solid ${S.border}`)}
                           onClick={(e) => {
                             e.stopPropagation();
                             onStockAction(r.id, 'rejected');
@@ -628,7 +589,7 @@ const CoffinTransfers = ({
                           <i className="fa-solid fa-times"></i> Reject
                         </button>
                         <button
-                          style={btnStyle(S.success, '#fff')}
+                          style={btnStyle(S.petrol, '#fff', 'none', '0 4px 10px rgba(15, 48, 64, 0.15)')}
                           onClick={(e) => {
                             e.stopPropagation();
                             onStockAction(r.id, 'approve');
@@ -654,9 +615,7 @@ const CoffinTransfers = ({
                       </span>
                     )}
 
-                    {/* OUTGOING = my branch is the REQUESTER / receiver
-                        (I asked another branch for stock). Only this side may
-                        write "Delivered". */}
+                    {/* OUTGOING = my branch is the REQUESTER / receiver */}
                     {type === 'outgoing' && r.status === 'pending' && (
                       <button
                         style={btnStyle('#fff', S.danger, `1px solid ${S.border}`)}
@@ -670,7 +629,7 @@ const CoffinTransfers = ({
                     )}
                     {type === 'outgoing' && r.status === 'approved' && (
                       <button
-                        style={btnStyle(S.success, '#fff')}
+                        style={btnStyle(S.petrol, '#fff', 'none', '0 4px 10px rgba(15, 48, 64, 0.15)')}
                         onClick={(e) => {
                           e.stopPropagation();
                           onStockAction(r.id, 'delivered');
@@ -931,6 +890,4 @@ const CoffinTransfers = ({
   );
 };
 
-
-
-export   default  CoffinTransfers
+export default CoffinTransfers;
