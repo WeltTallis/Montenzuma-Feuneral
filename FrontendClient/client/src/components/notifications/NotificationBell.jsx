@@ -255,7 +255,9 @@ const NotificationBell = () => {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextClass) return;
         if (!audioContextRef.current) audioContextRef.current = new AudioContextClass();
-        if (audioContextRef.current.state === 'suspended') audioContextRef.current.resume();
+        if (audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume();
+        }
       } catch { /* audio is optional */ }
     };
 
@@ -282,30 +284,31 @@ const NotificationBell = () => {
       const playChime = () => {
         const now = context.currentTime;
         const master = context.createGain();
+        // FIXED: Increased volume significantly (was 0.035, now 0.3) so it's actually audible
         master.gain.setValueAtTime(0.0001, now);
-        master.gain.exponentialRampToValueAtTime(0.035, now + 0.018);
-        master.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+        master.gain.exponentialRampToValueAtTime(0.3, now + 0.02);
+        master.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
         master.connect(context.destination);
 
         // Soft D5 to A5 chime: short and deliberately low volume.
-        [[587.33, 0], [880, 0.1]].forEach(([frequency, offset]) => {
+        [[587.33, 0], [880, 0.12]].forEach(([frequency, offset]) => {
           const oscillator = context.createOscillator();
           const gain = context.createGain();
           oscillator.type = 'sine';
           oscillator.frequency.setValueAtTime(frequency, now + offset);
+          // FIXED: Increased oscillator volume (was 0.45, now 0.5)
           gain.gain.setValueAtTime(0.0001, now + offset);
-          gain.gain.exponentialRampToValueAtTime(0.45, now + offset + 0.018);
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.24);
+          gain.gain.exponentialRampToValueAtTime(0.5, now + offset + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.3);
           oscillator.connect(gain);
           gain.connect(master);
           oscillator.start(now + offset);
-          oscillator.stop(now + offset + 0.26);
+          oscillator.stop(now + offset + 0.35);
         });
       };
 
       // If the context is suspended (browser autoplay policy), resume it first
-      // and play the chime as soon as it becomes running — previously the code
-      // resumed and returned, so no sound was ever produced.
+      // and play the chime as soon as it becomes running.
       if (context.state === 'suspended') {
         context.resume()
           .then(() => { if (context.state === 'running') playChime(); })
