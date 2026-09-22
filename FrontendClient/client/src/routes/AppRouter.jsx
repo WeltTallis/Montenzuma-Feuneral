@@ -210,6 +210,7 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
     localStorage.removeItem('user');
     localStorage.removeItem('loginTime');
     localStorage.removeItem('tenantSlug');
+    sessionStorage.clear();
     navigate('/login');
   };
 
@@ -774,10 +775,28 @@ const DashboardRedirect = () => {
   );
 };
 
+// Root entry point: send logged-in users straight to their workspace and
+// everyone else (including users who just logged out) straight to the login
+// page — no extra "Log in" click needed.
+const RootRedirect = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    if (token && token !== 'undefined' && token !== 'null') {
+      // DashboardRedirect resolves tenant/branch/role and lands the user
+      // on the right dashboard (system-admin, driver portal, or tenant).
+      navigate('/dashboard', { replace: true });
+    } else {
+      navigate('/login', { replace: true });
+    }
+  }, [navigate]);
+  return <RouteLoadingFallback />;
+};
+
 const AppRouter = () => (
   <Suspense fallback={<RouteLoadingFallback />}>
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<RootRedirect />} />
       <Route path="/solutions/churches" element={<ChurchFuneralWelfare />} />
       <Route path="/solutions/saccos" element={<SACCOFuneralInsurance />} />
       <Route path="/solutions/chamas" element={<ChamaWelfareManagement />} />

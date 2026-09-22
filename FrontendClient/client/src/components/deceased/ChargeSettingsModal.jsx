@@ -12,44 +12,59 @@ import env from '../../utils/config/env';
 // Base API URL (kept for parity with the standalone page)
 const BASE_API = env.API_URL || 'https://restpoint.co.ke/api/v1/restpoint';
 
-// Inject Google Fonts for the refreshed look
+// Fonts match the Scanner Bridge side panel (ScanDocumentModal)
 const GlobalStyle = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 `;
 
-// Restpoint Color Palette
-const Colors = {
-  ink: "#16211E",
-  pine: "#1F3D33",
-  moss: "#3E6257",
-  gold: "#C6A15B",
-  goldSoft: "#F3EBD9",
-  cream: "#F6F4EE",
-  paper: "#FFFFFF",
-  line: "#E6E1D5",
-  lineSoft: "#EFECE3",
-  muted: "#8B8677",
-  text: "#232A27",
-  textLight: "#C4BFAF",
-  ease: "cubic-bezier(.32, .72, .24, 1)"
+/* Palette copied from the Scanner Bridge side panel (components/scanner/ScanDocumentModal.jsx)
+   so this panel looks identical: dark-teal header, white body, sharp corners,
+   grey fields and a black primary action. */
+const C = {
+  black: '#0a0a0a',
+  dark: '#1a1a1a',
+  gray: '#777777',
+  border: '#c8c8c8',
+  borderLight: '#e0e0e0',
+  bgField: '#f7f7f5',
+  white: '#ffffff',
+  success: '#059669',
+  warning: '#d97706',
+  danger: '#dc2626',
+  info: '#2563eb',
+  headFrom: '#0f3040',
+  headTo: '#163f52',
+  headLine: '#0b2936',
 };
+
+const FONT_SANS = "'Source Sans 3', -apple-system, sans-serif";
+const FONT_SERIF = "'Merriweather', Georgia, serif";
 
 const spin = keyframes`
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 `;
 
+const slideIn = keyframes`
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+`;
+
+const fadeIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+
 // ===============================
-// Styled Components
+// Panel chrome — mirrors the Scanner Bridge side panel
 // ===============================
 const Scrim = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(22, 33, 30, .45);
-  backdrop-filter: blur(2px);
+  background: rgba(10, 10, 10, .38);
   opacity: 0;
   visibility: hidden;
-  transition: opacity .35s ${Colors.ease}, visibility .35s;
+  transition: opacity .18s ease-out, visibility .18s;
   z-index: 90;
 
   &.show {
@@ -63,85 +78,102 @@ const Panel = styled.aside`
   top: 0;
   right: 0;
   bottom: 0;
-  width: min(420px, 100vw);
-  background: ${Colors.paper};
-  box-shadow: -24px 0 60px -18px rgba(22, 33, 30, .35);
-  border-radius: 16px 0 0 16px;
-  transform: translateX(calc(100% + 40px));
-  transition: transform .45s ${Colors.ease};
+  width: min(520px, 100vw);
+  height: 100vh;
+  background: ${C.white};
+  border-left: 1px solid ${C.border};
+  box-shadow: -18px 0 44px -18px rgba(10, 10, 10, .35);
   z-index: 100;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  animation: ${slideIn} .2s ease-out;
 
   &.open {
     transform: translateX(0);
   }
-
-  @media (max-width: 480px) {
-    border-radius: 0;
-  }
 `;
 
 const PanelHead = styled.header`
-  padding: 18px 22px 15px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 12px;
+  padding: 18px 24px;
   flex-shrink: 0;
+  background: linear-gradient(135deg, ${C.headFrom} 0%, ${C.headTo} 100%);
+  border-bottom: 1px solid ${C.headLine};
+  box-shadow: 0 8px 18px rgba(15, 48, 64, .16);
+`;
+
+const HeadIcon = styled.span`
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .12);
+  border: 1px solid rgba(255, 255, 255, .18);
+  color: ${C.white};
 `;
 
 const IconBtn = styled.button`
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  border: 1px solid ${Colors.line};
-  background: ${Colors.paper};
-  color: ${Colors.muted};
+  border: 1px solid rgba(255, 255, 255, .28);
+  background: rgba(255, 255, 255, .08);
+  color: ${C.white};
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: all .25s;
+  flex: 0 0 auto;
 
   &:hover {
-    border-color: ${Colors.pine};
-    color: ${Colors.pine};
+    background: rgba(255, 255, 255, .18);
+    border-color: ${C.white};
   }
 `;
 
 const PanelBody = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 18px 22px;
+  padding: 20px 24px;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: ${Colors.line} transparent;
+  scrollbar-color: ${C.border} transparent;
 `;
 
 const ModalFooter = styled.footer`
-  padding: 13px 22px 16px;
-  border-top: 1px solid ${Colors.lineSoft};
+  padding: 14px 24px;
+  border-top: 1px solid ${C.borderLight};
   display: flex;
   gap: 8px;
   flex-shrink: 0;
-  background: ${Colors.paper};
+  background: ${C.white};
 `;
 
 // ===============================
 // Styled Components (rate config form)
 // ===============================
-const PanelKicker = styled.div`
-  font-size: 9.5px;
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  color: ${Colors.gold};
-  font-weight: 600;
-  margin-bottom: 3px;
+const PanelTitle = styled.h2`
+  font-family: ${FONT_SERIF};
+  font-size: 17px;
+  font-weight: 700;
+  color: ${C.white};
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 `;
 
-const PanelTitle = styled.h2`
-  font-family: 'Fraunces', serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: ${Colors.ink};
+const PanelSubtitle = styled.span`
+  display: block;
+  margin: 4px 0 0 52px;
+  color: rgba(255, 255, 255, .72);
+  font: 11px ${FONT_SANS};
+  letter-spacing: .04em;
 `;
 
 const Group = styled.div`
@@ -149,11 +181,11 @@ const Group = styled.div`
 `;
 
 const GroupLabel = styled.div`
-  font-size: 9.5px;
+  font-size: 10px;
   letter-spacing: .16em;
   text-transform: uppercase;
-  color: ${Colors.muted};
-  font-weight: 600;
+  color: ${C.gray};
+  font-weight: 700;
   margin-bottom: 8px;
   display: flex;
   align-items: center;
@@ -163,7 +195,7 @@ const GroupLabel = styled.div`
     content: '';
     flex: 1;
     height: 1px;
-    background: ${Colors.lineSoft};
+    background: ${C.borderLight};
   }
 `;
 
@@ -171,7 +203,9 @@ const Segment = styled.div`
   position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background: ${Colors.cream};
+  background: ${C.bgField};
+  border: 1px solid ${C.borderLight};
+  border-radius: 8px;
   padding: 3px;
 `;
 
@@ -181,9 +215,9 @@ const SegmentIndicator = styled.div`
   bottom: 3px;
   left: 3px;
   width: calc(50% - 3px);
-  background: ${Colors.pine};
-  border-radius: 8px;
-  transition: transform .3s ${Colors.ease};
+  background: ${C.black};
+  border-radius: 6px;
+  transition: transform .25s ease-out;
   transform: ${props => props.$isHourly ? 'translateX(100%)' : 'translateX(0)'};
 `;
 
@@ -198,10 +232,9 @@ const SegmentBtn = styled.button`
   border: none;
   background: none;
   cursor: pointer;
-  font: 600 12.5px 'Outfit', sans-serif;
-  color: ${props => props.$active ? '#F3EFE4' : Colors.muted};
-  transition: color .25s;
-
+  font: 600 12.5px ${FONT_SANS};
+  color: ${props => props.$active ? '#ffffff' : C.gray};
+  transition: color .2s ease-out;
 `;
 
 const CurrencyGrid = styled.div`
@@ -214,11 +247,18 @@ const CurrencyCard = styled.label`
   position: relative;
   padding: 11px 12px;
   cursor: pointer;
-  transition: all .2s ${Colors.ease};
-  background: ${props => props.$selected ? `linear-gradient(150deg, #fff 55%, ${Colors.goldSoft})` : Colors.paper};
+  background: ${C.white};
+  border: 1px solid ${C.border};
+  border-radius: 8px;
+  transition: border-color .2s ease-out, box-shadow .2s ease-out;
+
+  ${props => props.$selected && `
+    border-color: ${C.black};
+    box-shadow: 0 0 0 3px rgba(10, 10, 10, .08);
+  `}
 
   &:hover {
-    border-color: ${Colors.moss};
+    border-color: ${C.black};
   }
 
   input {
@@ -229,16 +269,16 @@ const CurrencyCard = styled.label`
 `;
 
 const CurCode = styled.span`
-  font-family: 'Fraunces', serif;
-  font-size: 14.5px;
-  font-weight: 600;
-  color: ${Colors.ink};
+  font-family: ${FONT_SERIF};
+  font-size: 15px;
+  font-weight: 700;
+  color: ${C.dark};
   display: block;
 `;
 
 const CurName = styled.span`
-  font-size: 10.5px;
-  color: ${Colors.muted};
+  font-size: 11px;
+  color: ${C.gray};
   display: block;
   margin-top: 1px;
 `;
@@ -250,34 +290,34 @@ const CurCheck = styled.span`
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: ${Colors.pine};
-  color: ${Colors.gold};
+  background: ${C.black};
+  color: ${C.white};
   display: grid;
   place-items: center;
   opacity: ${props => props.$selected ? 1 : 0};
   transform: ${props => props.$selected ? 'scale(1)' : 'scale(.5)'};
-  transition: all .2s ${Colors.ease};
+  transition: all .2s ease-out;
 `;
 
 const Control = styled.div`
   display: flex;
   align-items: center;
-  background: ${Colors.cream};
-  border: 1px solid ${Colors.line};
-  border-radius: 10px;
-  transition: all .2s;
+  background: ${C.bgField};
+  border: 1px solid ${C.border};
+  border-radius: 8px;
+  transition: border-color .2s ease-out, box-shadow .2s ease-out;
 
   &:focus-within {
-    border-color: ${Colors.pine};
-    background: ${Colors.paper};
-    box-shadow: 0 0 0 3px rgba(31, 61, 51, .06);
+    border-color: ${C.black};
+    background: ${C.white};
+    box-shadow: 0 0 0 3px rgba(10, 10, 10, .06);
   }
 `;
 
 const ControlPrefix = styled.span`
   padding: 10px 3px 10px 13px;
-  font: 600 12.5px 'Outfit', sans-serif;
-  color: ${Colors.muted};
+  font: 600 12.5px ${FONT_SANS};
+  color: ${C.gray};
   flex-shrink: 0;
 `;
 
@@ -287,37 +327,37 @@ const ControlInput = styled.input`
   border: none;
   background: none;
   outline: none;
-  font: 500 14.5px 'Outfit', sans-serif;
-  color: ${Colors.ink};
+  font: 600 14.5px ${FONT_SANS};
+  color: ${C.dark};
   padding: 10px 4px;
   font-variant-numeric: tabular-nums;
 
   &::placeholder {
-    color: ${Colors.textLight};
-    font-weight: 300;
+    color: ${C.gray};
+    font-weight: 400;
   }
 `;
 
 const ControlSuffix = styled.span`
   padding: 10px 13px 10px 3px;
   font-size: 11.5px;
-  color: ${Colors.muted};
+  color: ${C.gray};
   flex-shrink: 0;
 `;
 
 const Hint = styled.p`
-  font-size: 11px;
-  color: ${Colors.muted};
+  font-size: 12px;
+  color: ${C.gray};
   margin-top: 6px;
   padding-left: 2px;
-  font-weight: 300;
+  font-weight: 400;
 `;
 
 const Summary = styled.div`
-  background: ${Colors.pine};
-  border-radius: 12px;
+  background: linear-gradient(135deg, ${C.headFrom} 0%, ${C.headTo} 100%);
+  border-radius: 8px;
   padding: 16px 18px;
-  color: #EDEAE0;
+  color: ${C.white};
   position: relative;
   overflow: hidden;
 
@@ -329,43 +369,43 @@ const Summary = styled.div`
     width: 130px;
     height: 130px;
     border-radius: 50%;
-    border: 1px solid rgba(198, 161, 91, .28);
+    border: 1px solid rgba(255, 255, 255, .18);
   }
 `;
 
 const SummaryKicker = styled.div`
-  font-size: 9.5px;
+  font-size: 10px;
   letter-spacing: .2em;
   text-transform: uppercase;
-  color: ${Colors.gold};
-  font-weight: 600;
+  color: rgba(255, 255, 255, .72);
+  font-weight: 700;
   margin-bottom: 7px;
 `;
 
 const SummaryRate = styled.div`
-  font-family: 'Fraunces', serif;
+  font-family: ${FONT_SERIF};
   font-size: 22px;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 
   small {
-    font-family: 'Outfit', sans-serif;
+    font-family: ${FONT_SANS};
     font-size: 12px;
-    color: rgba(237, 234, 224, .6);
+    color: rgba(255, 255, 255, .7);
     font-weight: 400;
   }
 `;
 
 const SummaryNote = styled.div`
-  font-size: 11.5px;
-  color: rgba(237, 234, 224, .55);
-  font-weight: 300;
+  font-size: 12px;
+  color: rgba(255, 255, 255, .72);
+  font-weight: 400;
   margin: 3px 0 12px;
 `;
 
 const SummaryRows = styled.div`
-  border-top: 1px solid rgba(237, 234, 224, .14);
+  border-top: 1px solid rgba(255, 255, 255, .16);
 `;
 
 const SummaryRow = styled.div`
@@ -373,7 +413,7 @@ const SummaryRow = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(237, 234, 224, .14);
+  border-bottom: 1px solid rgba(255, 255, 255, .16);
   font-size: 12px;
 
   &:last-child {
@@ -381,56 +421,56 @@ const SummaryRow = styled.div`
   }
 
   span:first-child {
-    color: rgba(237, 234, 224, .6);
-    font-weight: 300;
+    color: rgba(255, 255, 255, .72);
+    font-weight: 400;
   }
 
   span:last-child {
-    font-weight: 600;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
 `;
 
 const PanelFoot = styled.footer`
-  padding: 13px 22px 16px;
-  border-top: 1px solid ${Colors.lineSoft};
+  padding: 14px 24px;
+  border-top: 1px solid ${C.borderLight};
   display: flex;
   gap: 8px;
   flex-shrink: 0;
-  background: ${Colors.paper};
+  background: ${C.white};
 `;
 
 const Btn = styled.button`
   flex: 1;
-  padding: 10px 10px;
-  border-radius: 10px;
-  font: 600 13px 'Outfit', sans-serif;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font: 700 13.5px ${FONT_SANS};
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  transition: all .2s ${Colors.ease};
+  gap: 8px;
+  transition: background .2s ease-out, border-color .2s ease-out, color .2s ease-out;
 `;
 
 const GhostBtn = styled(Btn)`
-  background: none;
-  border: 1px solid ${Colors.line};
-  color: ${Colors.muted};
+  background: ${C.white};
+  border: 1px solid ${C.border};
+  color: ${C.dark};
 
   &:hover {
-    border-color: ${Colors.pine};
-    color: ${Colors.pine};
+    border-color: ${C.black};
+    color: ${C.black};
   }
 `;
 
 const SaveBtn = styled(Btn)`
-  background: ${Colors.ink};
-  color: #F3EFE4;
+  background: ${C.black};
+  color: ${C.white};
   border: none;
 
   &:hover:not(:disabled) {
-    background: #24332e;
+    background: ${C.dark};
   }
 
   &:disabled {
@@ -439,7 +479,7 @@ const SaveBtn = styled(Btn)`
   }
 
   svg {
-    color: ${Colors.gold};
+    color: ${C.white};
   }
 `;
 
@@ -454,8 +494,10 @@ const Strip = styled.div`
   display: flex;
   align-items: center;
   gap: 11px;
-  border-bottom: 1px solid ${Colors.lineSoft};
-  padding-bottom: 16px;
+  background: ${C.bgField};
+  border: 1px solid ${C.borderLight};
+  border-radius: 8px;
+  padding: 12px 14px;
   margin-bottom: 18px;
 `;
 
@@ -463,25 +505,25 @@ const StripAvatar = styled.div`
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: ${Colors.pine};
-  color: ${Colors.gold};
+  background: ${C.headFrom};
+  color: ${C.white};
   display: grid;
   place-items: center;
-  font-family: 'Fraunces', serif;
+  font-family: ${FONT_SERIF};
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   flex-shrink: 0;
 `;
 
 const StripName = styled.div`
   font-weight: 600;
   font-size: 13.5px;
-  color: ${Colors.ink};
+  color: ${C.dark};
 `;
 
 const StripMeta = styled.div`
   font-size: 11.5px;
-  color: ${Colors.muted};
+  color: ${C.gray};
 `;
 
 // Main Component
@@ -627,11 +669,14 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
       <Panel className="open" role="dialog" aria-modal="true" aria-label="Charge configuration">
         <PanelHead>
           <div>
-            <PanelKicker>{deceasedId} · Billing</PanelKicker>
-            <PanelTitle>Charge configuration</PanelTitle>
+            <PanelTitle>
+              <HeadIcon><DollarSign size={20} /></HeadIcon>
+              Charge configuration
+            </PanelTitle>
+            <PanelSubtitle>{deceasedId} · Billing — daily and hourly rates for this record</PanelSubtitle>
           </div>
           <IconBtn onClick={onClose} aria-label="Close">
-            <X size={13} />
+            <X size={14} />
           </IconBtn>
         </PanelHead>
 

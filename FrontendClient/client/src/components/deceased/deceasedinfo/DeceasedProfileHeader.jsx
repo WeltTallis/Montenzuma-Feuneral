@@ -13,6 +13,11 @@ const scanMove = keyframes`
   100% { top: 100%; opacity: 0; }
 `;
 
+// Used by the Refresh button — spins the sync icon while the profile refetches
+const spin = keyframes`
+  to { transform: rotate(360deg); }
+`;
+
 const BackBtn = styled.button`
   font-size: 13px; font-weight: 600; color: #d93025; cursor: pointer;
   background: none; border: none; display: flex; align-items: center; gap: 6px;
@@ -99,6 +104,12 @@ const RefreshBtn = styled.button`
   transition: 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   font-family: 'Source Sans 3', sans-serif;
   &:hover { background: #d97706; border-color: #d97706; }
+
+  /* Keep the button usable but clearly busy while the refetch is in flight */
+  &:disabled { cursor: progress; opacity: 0.75; }
+
+  /* Spin the sync icon only while refreshing */
+  &[data-refreshing='true'] svg { animation: ${spin} 0.8s linear infinite; }
 `;
 
 
@@ -141,7 +152,7 @@ const Barcode = ({ value }) => {
 
 
 
-const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettingsClick, onRefresh, onScanClick }) => {
+const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettingsClick, onRefresh, refreshing = false, onScanClick }) => {
   const navigate = useNavigate();
   // Read the deceased identifier from the query string (?id=XXX); fall back to the path param.
   const [searchParams] = useSearchParams();
@@ -179,12 +190,18 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
         </div>
 
         <HeaderActions>
-          <RefreshBtn onClick={onRefresh}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
+          <RefreshBtn
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            data-refreshing={refreshing ? 'true' : 'false'}
+            title="Reload this profile from the server"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
+              <path d="M21 3v6h-6"></path>
             </svg>
-            Refresh
+            {refreshing ? 'Refreshing…' : 'Refresh'}
           </RefreshBtn>
 
           <RouteCalcBtn onClick={() => setShowRouteOptimizer(true)}>

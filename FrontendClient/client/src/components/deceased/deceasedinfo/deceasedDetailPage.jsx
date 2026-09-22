@@ -1,20 +1,19 @@
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { showToast } from '../../../utils/toast';
-import { ToastContainer } from 'react-toastify';
 
 // Import your existing sub-components
+import ScanDocumentModal from '../../scanner/ScanDocumentModal';
 import DeceasedProfileHeader from './DeceasedProfileHeader';
 import ChargeSettingsModal from '../ChargeSettingsModal';
 import DeceasedSidebar from './DeceasedSidebar';
+import { showToast } from '../../../utils/toast';
+import { ToastContainer } from 'react-toastify';
 import env from '../../../utils/config/env';
 import PostmortemTab from './PostmortemTab';
 import FinancialsTab from './FinancialsTab';
 import DocumentsTab from './DocumentsTab';
-import ScanDocumentModal from '../../scanner/ScanDocumentModal';
 import OverviewTab from './OverviewTab';
 import AuditLogTab from './AuditLogTab';
 import ReleaseTab from './ReleaseTab';
@@ -212,6 +211,7 @@ const DeceasedDetailPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [deceased, setDeceased] = useState(null);
   const [postmortem, setPostmortem] = useState(null);
   const [nextOfKin, setNextOfKin] = useState(null);
@@ -246,7 +246,7 @@ const DeceasedDetailPage = () => {
   }, []);
 
   const fetchData = useCallback(async (forceRefresh = false) => {
-    if (!deceasedId) return;
+    if (!deceasedId) return false;
 
     const safeDeceasedId = encodeURIComponent(deceasedId);
     const cacheKey = `${deceasedId}-${getTenantSlug()}`;
@@ -266,7 +266,7 @@ const DeceasedDetailPage = () => {
         if (cached.payments) setPayments(cached.payments);
         if (cached.requests) setRequests(cached.requests);
         setLoading(false);
-        return;
+        return true;
       }
     } else {
       _deceasedCache.delete(cacheKey);
@@ -369,27 +369,29 @@ const DeceasedDetailPage = () => {
       // 6) Charge settings
       if (csRes.status === 'fulfilled' && csRes.value?.data?.data) {
         const cs = csRes.value.data.data;
-        setDeceased(prev => prev ? { ...prev, charges: {
-          storage_rate: parseFloat(cs.dailyRate ?? cs.daily_rate ?? cs.storage_rate ?? cs.per_day ?? prev?.charges?.storage_rate ?? 500),
-          per_day: parseFloat(cs.dailyRate ?? cs.daily_rate ?? prev?.charges?.per_day ?? 500),
-          per_hour: parseFloat(cs.hourlyRate ?? cs.hourly_rate ?? prev?.charges?.per_hour ?? 125),
-          currency: cs.currency ?? prev?.charges?.currency ?? 'KES',
-          rate_profile: cs.rateProfile ?? cs.rate_profile ?? 'standard',
-          charge_type: cs.chargeType ?? cs.charge_type ?? 'daily',
-          usd_rate: parseFloat(cs.usdRate ?? cs.usd_rate ?? prev?.charges?.usd_rate ?? 130),
-          updated_at: cs.updatedAt ?? cs.updated_at ?? null
-        }} : prev);
+        setDeceased(prev => prev ? {
+          ...prev, charges: {
+            storage_rate: parseFloat(cs.dailyRate ?? cs.daily_rate ?? cs.storage_rate ?? cs.per_day ?? prev?.charges?.storage_rate ?? 500),
+            per_day: parseFloat(cs.dailyRate ?? cs.daily_rate ?? prev?.charges?.per_day ?? 500),
+            per_hour: parseFloat(cs.hourlyRate ?? cs.hourly_rate ?? prev?.charges?.per_hour ?? 125),
+            currency: cs.currency ?? prev?.charges?.currency ?? 'KES',
+            rate_profile: cs.rateProfile ?? cs.rate_profile ?? 'standard',
+            charge_type: cs.chargeType ?? cs.charge_type ?? 'daily',
+            usd_rate: parseFloat(cs.usdRate ?? cs.usd_rate ?? prev?.charges?.usd_rate ?? 130),
+            updated_at: cs.updatedAt ?? cs.updated_at ?? null
+          }
+        } : prev);
       }
 
       // 7) Release data
       if (relRes.status === 'fulfilled' && relRes.value?.data?.data) {
         setDeceased(prev => prev ? { ...prev, releaseData: relRes.value.data.data } : prev);
-      }   
+      }
 
       // 8) Postmortem requests
       if (pmReqRes.status === 'fulfilled' && Array.isArray(pmReqRes.value?.data?.data)) {
         setRequests(pmReqRes.value.data.data);
-      }   
+      }
 
       // Cache for instant repeat loads
       _setCache(cacheKey, {
@@ -401,9 +403,11 @@ const DeceasedDetailPage = () => {
         requests: pmReqRes.status === 'fulfilled' ? (pmReqRes.value?.data?.data || []) : [],
       });
 
+      return true;
     } catch (err) {
       console.error('Error fetching deceased detail:', err);
       showToast.error('Failed to load deceased details');
+      return false;
     } finally {
       if (mounted.current) setLoading(false);
     }
@@ -412,18 +416,23 @@ const DeceasedDetailPage = () => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleRefresh = useCallback(async () => {
-    if (!deceasedId) return;
+    if (!deceasedId || refreshing) return;
+    setRefreshing(true);
     try {
-      setLoading(true);
-      await fetchData(true);
-      showToast('Deceased profile refreshed', 'success');
+      // forceRefresh = true → drops the in-memory cache and re-hits every endpoint
+      const ok = await fetchData(true);
+      if (ok) {
+        showToast.success('Deceased profile refreshed');
+      } else {
+        showToast.error('Failed to refresh deceased profile');
+      }
     } catch (err) {
       console.error('Error refreshing deceased profile:', err);
-      showToast('Failed to refresh deceased profile', 'error');
+      showToast.error('Failed to refresh deceased profile');
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
-  }, [deceasedId, fetchData]);
+  }, [deceasedId, fetchData, refreshing]);
 
   const switchTab = (key) => setActiveTab(key);
 
@@ -449,6 +458,7 @@ const DeceasedDetailPage = () => {
           onTabSwitch={switchTab}
           onChargeSettingsClick={() => setShowChargeModal(true)}
           onRefresh={handleRefresh}
+          refreshing={refreshing}
           onScanClick={() => setShowScanModal(true)}
         />
 

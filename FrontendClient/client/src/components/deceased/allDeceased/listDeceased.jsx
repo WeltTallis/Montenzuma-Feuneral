@@ -68,17 +68,35 @@ const C = {
   cPink: '#DD2D4A',
   cNavy: '#03071E',
 
+  // Flat glossy status palette (approved status-button design)
+  stPending: '#d97706',
+  stBooked: '#00296B',
+  stScheduled: '#E36414',
+  stInProgress: '#0c0b0f',
+  stCompleted: '#5F0F40',
+  stDelivered: '#132A13',
+  stCancelled: '#DD2D4A',
+  stMaintenance: '#03071E',
+
   // Accent / Scrollbar
   accent: '#DD2D4A',
 };
 
 // ─── Status Configuration ───────────────────────────────────────────
+/* Every status renders as a flat glossy status button: sharp corners, white
+   label, white LED dot and a diagonal light sweep (matches the approved
+   status-button design). `filter` keeps the toolbar dropdown working even
+   when two statuses share one colour. */
 const STATUS_CONFIG = {
-  'under care': { label: 'Under Care', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
-  released: { label: 'Released', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
-  completed: { label: 'Completed', color: C.cNavy, bg: 'rgba(3, 7, 30, 0.1)' },
-  admitted: { label: 'Admitted', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
-  default: { label: 'Under Care', color: C.cBlue, bg: 'rgba(0, 41, 107, 0.1)' },
+  'under care': { label: 'Under Care', color: '#ffffff', bg: C.stInProgress, filter: 'under care' },
+  admitted: { label: 'Admitted', color: '#ffffff', bg: C.stBooked, filter: 'admitted' },
+  postmortem: { label: 'Postmortem Requested', color: '#ffffff', bg: C.stScheduled, filter: 'under care' },
+  pending: { label: 'Pending', color: '#ffffff', bg: C.stPending, filter: 'under care' },
+  released: { label: 'Released', color: '#ffffff', bg: C.stDelivered, filter: 'released' },
+  completed: { label: 'Completed', color: '#ffffff', bg: C.stCompleted, filter: 'completed' },
+  cancelled: { label: 'Cancelled', color: '#ffffff', bg: C.stCancelled, filter: 'other' },
+  maintenance: { label: 'Maintenance', color: '#ffffff', bg: C.stMaintenance, filter: 'other' },
+  default: { label: 'Under Care', color: '#ffffff', bg: C.stInProgress, filter: 'under care' },
 };
 
 /* Read a raw status string back to the operator. Used for values the alias
@@ -103,23 +121,28 @@ const getStatusInfo = (statusStr) => {
     .trim();
 
   const aliases = {
-    // Under Care
+    // Under Care / In care
     active: STATUS_CONFIG['under care'],
-    // Admitted
-    admitted: STATUS_CONFIG.admitted,
     received: STATUS_CONFIG['under care'],
     'under care': STATUS_CONFIG['under care'],
     'in care': STATUS_CONFIG['under care'],
     'in morgue': STATUS_CONFIG['under care'],
     morgue: STATUS_CONFIG['under care'],
     embalmed: STATUS_CONFIG['under care'],
-    pending: STATUS_CONFIG['under care'],
-    // Postmortem (still under care)
-    'postmortem requested': STATUS_CONFIG['under care'],
-    'post mortem requested': STATUS_CONFIG['under care'],
-    'pending autopsy': STATUS_CONFIG['under care'],
-    'postmortem done': STATUS_CONFIG['under care'],
-    'post mortem done': STATUS_CONFIG['under care'],
+    // Pending
+    pending: STATUS_CONFIG.pending,
+    'pending release': STATUS_CONFIG.pending,
+    'awaiting release': STATUS_CONFIG.pending,
+    // Admitted / Booked
+    admitted: STATUS_CONFIG.admitted,
+    booked: STATUS_CONFIG.admitted,
+    // Postmortem requested (still under care)
+    postmortem: STATUS_CONFIG.postmortem,
+    'postmortem requested': STATUS_CONFIG.postmortem,
+    'post mortem requested': STATUS_CONFIG.postmortem,
+    'pending autopsy': STATUS_CONFIG.postmortem,
+    'postmortem done': STATUS_CONFIG.postmortem,
+    'post mortem done': STATUS_CONFIG.postmortem,
     // Released
     released: STATUS_CONFIG.released,
     'released to family': STATUS_CONFIG.released,
@@ -132,6 +155,12 @@ const getStatusInfo = (statusStr) => {
     // Completed
     completed: STATUS_CONFIG.completed,
     complete: STATUS_CONFIG.completed,
+    // Cancelled / Maintenance
+    cancelled: STATUS_CONFIG.cancelled,
+    canceled: STATUS_CONFIG.cancelled,
+    maintenance: STATUS_CONFIG.maintenance,
+    'out of service': STATUS_CONFIG.maintenance,
+    'in maintenance': STATUS_CONFIG.maintenance,
     default: STATUS_CONFIG.default,
   };
 
@@ -480,24 +509,39 @@ const AvatarSm = styled.div`
   background: ${p => p.$female ? C.cPurple : C.black};
 `;
 
+/* Flat glossy status button — sharp corners, diagonal light sweep and a
+   glowing white LED dot (matches the approved status-button design). */
 const StatusBadge = styled.span`
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 5px;
+  gap: 8px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 0;
+  font-family: 'Source Sans 3', -apple-system, sans-serif;
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.01em;
   text-transform: capitalize;
   white-space: nowrap;
-  background: ${p => p.$bg};
+  /* base colour + the glossy diagonal sweep layered on top of it */
+  background-color: ${p => p.$bg};
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 40%, rgba(0, 0, 0, 0.15) 100%);
   color: ${p => p.$color};
+  transition: filter 0.2s ease;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
 
   &::before {
     content: '';
-    width: 6px;
-    height: 6px;
-    background: ${p => p.$color};
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
   }
 `;
 
@@ -1316,6 +1360,7 @@ const DeceasedListPage = () => {
       }
 
       setRecords(collected);
+      return true;
     } catch (err) {
       console.error("Error fetching deceased:", err);
       setRecords([]);
@@ -1323,6 +1368,7 @@ const DeceasedListPage = () => {
         setServiceUnavailable(true);
         setUnavailableMessage(err.friendlyMessage);
       }
+      return false;
     } finally {
       setLoading(false);
     }
@@ -1336,10 +1382,15 @@ const DeceasedListPage = () => {
     if (refreshing) return;
     setRefreshing(true);
     try {
-      await fetchDeceased();
-      showToast('Deceased records refreshed', 'success');
+      const ok = await fetchDeceased();
+      if (ok) {
+        showToast.success('Deceased records refreshed');
+      } else {
+        showToast.error('Failed to refresh records. Please try again.');
+      }
     } catch (err) {
-      showToast('Failed to refresh records. Please try again.', 'error');
+      console.error('Error refreshing deceased records:', err);
+      showToast.error('Failed to refresh records. Please try again.');
     } finally {
       setRefreshing(false);
     }
@@ -1372,12 +1423,18 @@ const DeceasedListPage = () => {
     if (search && !name.includes(searchTerm) && !id.includes(searchTerm) && !adm.includes(searchTerm)) return false;
 
         if (statusFilter) {
-      const statusInfo = getStatusInfo(r.body_status || r.status);
-      // Under Care and Admitted are essentially the same category.
-      if (statusFilter === 'Under Care' && statusInfo.label !== 'Under Care' && statusInfo.label !== 'Admitted') return false;
-      if (statusFilter === 'Admitted' && statusInfo.label !== 'Admitted' && statusInfo.label !== 'Under Care') return false;
-      if (statusFilter === 'Released' && statusInfo.label !== 'Released') return false;
-      if (statusFilter === 'Completed' && statusInfo.label !== 'Completed') return false;
+      const { filter } = getStatusInfo(r.body_status || r.status);
+      // Under Care and Admitted overlap by design — a body in our care is
+      // tracked in both groups (same behaviour as before).
+      if (statusFilter === 'under care') {
+        if (filter !== 'under care' && filter !== 'admitted') return false;
+      } else if (statusFilter === 'admitted') {
+        if (filter !== 'admitted' && filter !== 'under care') return false;
+      } else if (statusFilter === 'other') {
+        if (filter !== 'other') return false;
+      } else if (statusFilter !== filter) {
+        return false;
+      }
     }
 
     if (genderFilter) {
@@ -1803,10 +1860,11 @@ const DeceasedListPage = () => {
             <FilterWrapper>
                             <FilterSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                 <option value="">All Statuses</option>
-                <option value="Under Care">Under Care</option>
-                <option value="Admitted">Admitted</option>
-                <option value="Released">Released</option>
-                <option value="Completed">Completed</option>
+                <option value="under care">Under Care</option>
+                <option value="admitted">Admitted</option>
+                <option value="released">Released</option>
+                <option value="completed">Completed</option>
+                <option value="other">Cancelled / Maintenance</option>
               </FilterSelect>
               <SelectArrow className="fas fa-chevron-down" />
             </FilterWrapper>

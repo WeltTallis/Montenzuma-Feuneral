@@ -676,6 +676,7 @@ const ModernSidebar = ({
 
   const handleLogout = useCallback(() => {
     localStorage.clear();
+    sessionStorage.clear();
     onLogout();
     navigate('/login');
   }, [onLogout, navigate]);

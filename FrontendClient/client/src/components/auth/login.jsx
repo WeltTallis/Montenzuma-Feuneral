@@ -170,7 +170,7 @@ export default function LoginPage() {
         body{font-family:'Inter',sans-serif;color:${C.gray};background:${C.bone2};-webkit-font-smoothing:antialiased}
         h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-0.01em;color:${C.ink}}
         
-        .page-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; background: ${C.bone2}; }
+        .page-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; background: ${C.white}; }
         
         /* Toast Container - Minimal padding */
         .Toastify__toast-container {

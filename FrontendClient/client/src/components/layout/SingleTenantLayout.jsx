@@ -31,6 +31,7 @@ export default function SingleTenantLayout({ children }) {
         localStorage.removeItem('user');
         localStorage.removeItem('onboardingData');
         localStorage.removeItem('onboardingComplete');
+        sessionStorage.clear();
         navigate('/login');
         setIsOpen(false);
     };
