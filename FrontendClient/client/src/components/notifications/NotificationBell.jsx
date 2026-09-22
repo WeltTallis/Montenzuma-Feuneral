@@ -259,8 +259,16 @@ const NotificationBell = () => {
       } catch { /* audio is optional */ }
     };
 
-    window.addEventListener('pointerdown', unlockAudio, { once: true, passive: true });
-    return () => window.removeEventListener('pointerdown', unlockAudio);
+    window.addEventListener('pointerdown', unlockAudio, { passive: true });
+    window.addEventListener('click', unlockAudio, { passive: true });
+    window.addEventListener('keydown', unlockAudio, { passive: true });
+    window.addEventListener('touchstart', unlockAudio, { passive: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
   }, []);
 
   const playNotificationSound = useCallback(() => {
@@ -270,32 +278,42 @@ const NotificationBell = () => {
       if (!AudioContextClass) return;
       if (!audioContextRef.current) audioContextRef.current = new AudioContextClass();
       const context = audioContextRef.current;
+
+      const playChime = () => {
+        const now = context.currentTime;
+        const master = context.createGain();
+        master.gain.setValueAtTime(0.0001, now);
+        master.gain.exponentialRampToValueAtTime(0.035, now + 0.018);
+        master.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+        master.connect(context.destination);
+
+        // Soft D5 to A5 chime: short and deliberately low volume.
+        [[587.33, 0], [880, 0.1]].forEach(([frequency, offset]) => {
+          const oscillator = context.createOscillator();
+          const gain = context.createGain();
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(frequency, now + offset);
+          gain.gain.setValueAtTime(0.0001, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.45, now + offset + 0.018);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.24);
+          oscillator.connect(gain);
+          gain.connect(master);
+          oscillator.start(now + offset);
+          oscillator.stop(now + offset + 0.26);
+        });
+      };
+
+      // If the context is suspended (browser autoplay policy), resume it first
+      // and play the chime as soon as it becomes running — previously the code
+      // resumed and returned, so no sound was ever produced.
       if (context.state === 'suspended') {
-        context.resume().catch(() => {});
+        context.resume()
+          .then(() => { if (context.state === 'running') playChime(); })
+          .catch(() => { /* audio is optional */ });
         return;
       }
 
-      const now = context.currentTime;
-      const master = context.createGain();
-      master.gain.setValueAtTime(0.0001, now);
-      master.gain.exponentialRampToValueAtTime(0.035, now + 0.018);
-      master.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
-      master.connect(context.destination);
-
-      // Soft D5 to A5 chime: short and deliberately low volume.
-      [[587.33, 0], [880, 0.1]].forEach(([frequency, offset]) => {
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(frequency, now + offset);
-        gain.gain.setValueAtTime(0.0001, now + offset);
-        gain.gain.exponentialRampToValueAtTime(0.45, now + offset + 0.018);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.24);
-        oscillator.connect(gain);
-        gain.connect(master);
-        oscillator.start(now + offset);
-        oscillator.stop(now + offset + 0.26);
-      });
+      playChime();
     } catch { /* audio is optional */ }
   }, [isMuted]);
 
