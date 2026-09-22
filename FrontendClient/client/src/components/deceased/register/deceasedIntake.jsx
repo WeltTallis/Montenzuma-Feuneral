@@ -13,6 +13,11 @@ import bwipjs from '@bwip-js/browser';
 import axios from 'axios';
 import api from '../../../api/axios';
 import InOurCare from '../../common/InOurCare';
+// Kenya-safe "today" (YYYY-MM-DD in the browser's local/Nairobi clock).
+// The old `new Date().toISOString().split('T')[0]` default sliced the UTC
+// date, which is 3 hours behind Nairobi — an intake captured between 00:00
+// and 02:59 Kenya time stored YESTERDAY's admission date.
+import { todayKey } from '../../../utils/dates/parseDates';
 
 import {
   Check, Loader2, CheckCircle, X, FileText, User, RotateCcw, ShieldCheck,
@@ -1278,7 +1283,7 @@ const DeceasedRegistrationForm = () => {
 
   const initialFormData = {
     admission_number: location.state?.permitNumber || '',
-    date_admitted: new Date().toISOString().split('T')[0],
+    date_admitted: todayKey(),
     time_received: getCurrentTime(),
     full_name: '',
     gender: '',
@@ -1494,7 +1499,7 @@ const DeceasedRegistrationForm = () => {
           ...initialFormData,
           verified_by: getLoggedInUserEmail(),
           time_received: getCurrentTime(),
-          date_admitted: new Date().toISOString().split('T')[0],
+          date_admitted: todayKey(),
         });
         setAdmissionId('');
         sigPadRef1.current?.clear();
@@ -1548,7 +1553,7 @@ const DeceasedRegistrationForm = () => {
         ...initialFormData,
         verified_by: getLoggedInUserEmail(),
         time_received: getCurrentTime(),
-        date_admitted: new Date().toISOString().split('T')[0],
+        date_admitted: todayKey(),
       });
       setAdmissionId('');
       sigPadRef1.current?.clear();
@@ -1634,7 +1639,7 @@ const DeceasedRegistrationForm = () => {
       ...initialFormData,
       verified_by: getLoggedInUserEmail(),
       time_received: getCurrentTime(),
-      date_admitted: new Date().toISOString().split('T')[0],
+      date_admitted: todayKey(),
     });
     setErrors({});
     setMessage({ type: '', text: '' });

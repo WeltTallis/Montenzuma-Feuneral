@@ -11,7 +11,7 @@ import DemoRequestPanel from './DemoRequestPanel';
 import MissionSection from './Mission';
 import SiteNav from './nav';
 import Hero from './hero';
-import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, MapPin, Truck, Activity, Users, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, LifeBuoy } from '../../utils/icons/icons';
+import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, MapPin, Truck, Activity, Users, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, LifeBuoy, FilePlus, Bell } from '../../utils/icons/icons';
 import PremiumReporting from './PremiumReporting';
 
 /* 
@@ -126,32 +126,81 @@ const Marquee = ({ items, speed = 35 }) => (
 /* ---------------------------------------
    MOCK COMPONENTS
    --------------------------------------- */
-const MockDocuments = () => (
-  <div className="mock-inner">
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-      <div><div className="mono-label" style={{ color: C.verdigris }}>CASE FILE</div><div style={{ fontSize: '1.4rem', fontFamily: "'Cormorant Garamond', serif", color: C.ink, marginTop: '0.3rem' }}>Otieno, J.</div></div>
-      <div className="avatar" style={{ background: C.verdigris }}>JO</div>
-    </div>
-    <div className="mock-list-header"><span>Document Name</span><span>Status</span></div>
-    {[{ n: 'Death certificate.pdf', c: C.verdigris, s: 'verified' }, { n: 'Burial permit.pdf', c: C.brass, s: 'pending' }, { n: 'Police abstract.pdf', c: C.accent, s: 'missing' }].map((d, i) => (
-      <div key={i} className="mock-row" style={{ borderBottom: i < 2 ? `1px solid ${C.line}` : 'none' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}><div className="file-icon"><FileText size={16} color={d.c} /></div><span style={{ color: C.ink }}>{d.n}</span></div>
-        <span className={`status-badge ${d.s}`}>{d.s.charAt(0).toUpperCase() + d.s.slice(1)}</span>
+const MockDocuments = () => {
+  const docs = [
+    { n: 'Death certificate.pdf', c: C.verdigris, s: 'verified', meta: 'Uploaded 12 Sep · 1.2 MB' },
+    { n: 'Burial permit.pdf', c: C.brass, s: 'pending', meta: 'Awaiting county registry · 410 KB' },
+    { n: 'Police abstract.pdf', c: C.accent, s: 'missing', meta: 'Requested 14 Sep · with next of kin' },
+  ];
+  const verifiedCount = docs.filter((d) => d.s === 'verified').length;
+  return (
+    <div className="mock-inner">
+      <div className="case-head">
+        <div>
+          <div className="mono-label" style={{ color: C.verdigris }}>Case File</div>
+          <div className="case-name">Otieno, J.</div>
+          <div className="case-meta">RP-2481 · Opened 10 Sep · Nairobi</div>
+        </div>
+        <div className="avatar" style={{ background: C.verdigris }}>JO</div>
       </div>
-    ))}
-  </div>
-);
+      <div className="compliance">
+        <div className="compliance-row"><span>Document compliance</span><span className="compliance-count">{verifiedCount} of {docs.length} verified</span></div>
+        <div className="compliance-track">{docs.map((d, i) => <span key={i} className={`compliance-seg ${d.s}`} />)}</div>
+      </div>
+      <div className="mock-list-header"><span>Document</span><span>Status</span></div>
+      {docs.map((d, i) => (
+        <div key={i} className="mock-row" style={{ borderBottom: i < docs.length - 1 ? `1px solid ${C.line}` : 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <div className="file-icon"><FileText size={16} color={d.c} /></div>
+            <div>
+              <div className="doc-name">{d.n}</div>
+              <div className="doc-meta">{d.meta}</div>
+            </div>
+          </div>
+          <span className={`status-badge ${d.s}`}>{d.s.charAt(0).toUpperCase() + d.s.slice(1)}</span>
+        </div>
+      ))}
+      <div className="doc-actions">
+        <span className="doc-action primary"><FilePlus size={13} /> Request document</span>
+        <span className="doc-action"><Bell size={13} /> Notify family</span>
+      </div>
+    </div>
+  );
+};
 
 const MockDispatch = () => {
   const [distance, setDistance] = useState(38);
   const [rate, setRate] = useState(195);
+  const BASE_FARE = 2500;
+  const MILEAGE_RATE = 85;
+  const mileage = distance * MILEAGE_RATE;
+  const fuel = Math.round((distance / 12) * rate);
+  const total = BASE_FARE + mileage + fuel;
   return (
     <div className="mock-inner">
-      <div style={{ marginBottom: '1.5rem' }}><div className="mono-label" style={{ color: C.brassLight }}>SMART DISPATCH</div><div style={{ fontSize: '1.4rem', fontFamily: "'Cormorant Garamond', serif", color: C.bone, marginTop: '0.3rem' }}>Route Optimization</div></div>
+      <div className="case-head">
+        <div>
+          <div className="mono-label" style={{ color: C.brassLight }}>Smart Dispatch</div>
+          <div className="case-name" style={{ color: C.bone }}>Route Optimization</div>
+          <div className="case-meta" style={{ color: C.grayLight }}>Hearse KDA 471B · Mortuary → service venue</div>
+        </div>
+        <div className="live-chip"><span className="live-dot" />3 units on route</div>
+      </div>
       <div className="map-visual"><div className="map-pin"><MapPin size={16} color={C.bone} /></div><div className="map-line" /><div className="map-pin" style={{ background: C.accent }}><MapPin size={16} color={C.bone} /></div><div className="map-truck"><Truck size={20} color={C.brass} /></div></div>
       <div className="slider-group"><div className="slider-row"><span>Distance (km)</span><span className="slider-value">{distance}</span></div><input type="range" min="2" max="120" value={distance} onChange={(e) => setDistance(+e.target.value)} className="custom-range" /></div>
       <div className="slider-group"><div className="slider-row"><span>Fuel rate (KES/L)</span><span className="slider-value">{rate}</span></div><input type="range" min="150" max="250" value={rate} onChange={(e) => setRate(+e.target.value)} className="custom-range" /></div>
-      <div className="dispatch-footer"><span>Auto billed Trip Cost</span><span className="cost-value">KES {Math.round(distance * 0.12 * rate).toLocaleString()}</span></div>
+      <div className="cost-lines">
+        <div className="cost-line"><span>Base fare</span><span>KES {BASE_FARE.toLocaleString()}</span></div>
+        <div className="cost-line"><span>Mileage · {distance} km × KES {MILEAGE_RATE}</span><span>KES {mileage.toLocaleString()}</span></div>
+        <div className="cost-line"><span>Fuel estimate · {distance} km</span><span>KES {fuel.toLocaleString()}</span></div>
+      </div>
+      <div className="dispatch-footer">
+        <div>
+          <div className="billed-label">Auto-billed to Case RP-2481</div>
+          <div className="billed-sub">Invoice drafted in real time</div>
+        </div>
+        <span className="cost-value">KES {total.toLocaleString()}</span>
+      </div>
     </div>
   );
 };
@@ -257,16 +306,38 @@ const FloralPreview = () => {
   );
 };
 
-const Showcase = ({ no, title, desc, reverse, children }) => (
-  <Reveal className={`showcase-mobile${no === '07' ? ' floral-showcase' : ''}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center', marginBottom: '7rem' }}>
-    <div className="showcase-text" style={{ order: reverse ? 2 : 1, paddingRight: reverse ? '0' : '2rem', paddingLeft: reverse ? '2rem' : '0' }}>
-      <div className="mono-label" style={{ color: C.verdigris, fontSize: '0.78rem', marginBottom: '1.2rem' }}>Module {no}</div>
-      <h2 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', marginBottom: '1.2rem', lineHeight: 1.25 }}>{title}</h2>
-      <p style={{ fontSize: '1.05rem', maxWidth: '480px', color: C.gray, lineHeight: 1.8 }}>{desc}</p>
-    </div>
-    <div className="showcase-visual" style={{ order: reverse ? 1 : 2, display: 'flex', justifyContent: 'center', width: '100%' }}>{children}</div>
-  </Reveal>
-);
+const Showcase = ({ no, title, desc, reverse, points, cta, floral, children }) => {
+  const navigate = useNavigate();
+  const goExplore = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigate('/register');
+  };
+  return (
+    <Reveal className={`showcase-mobile${floral ? ' floral-showcase' : ''}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center', marginBottom: '7rem' }}>
+      <div className="showcase-text" style={{ order: reverse ? 2 : 1, paddingRight: reverse ? '0' : '2rem', paddingLeft: reverse ? '2rem' : '0' }}>
+        <div className="showcase-module">
+          <span className="showcase-no">Module {no}</span>
+          <span className="showcase-rule" />
+        </div>
+        <h2 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', marginBottom: '1.2rem', lineHeight: 1.25 }}>{title}</h2>
+        <p style={{ fontSize: '1.05rem', maxWidth: '480px', color: C.gray, lineHeight: 1.8 }}>{desc}</p>
+        {points && points.length > 0 && (
+          <ul className="showcase-points">
+            {points.map((p, i) => (
+              <li key={i}><span className="showcase-check"><Check size={12} /></span>{p}</li>
+            ))}
+          </ul>
+        )}
+        {cta && (
+          <button className="showcase-cta" onClick={goExplore}>
+            {cta}<ArrowRight size={15} />
+          </button>
+        )}
+      </div>
+      <div className="showcase-visual" style={{ order: reverse ? 1 : 2, display: 'flex', justifyContent: 'center', width: '100%' }}>{children}</div>
+    </Reveal>
+  );
+};
 
 /* ---------------------------------------
    MAIN APP
@@ -455,6 +526,53 @@ export default function App() {
         .map-line { position: absolute; left: 32px; right: 32px; height: 2px; background: linear-gradient(90deg,${C.verdigris},${C.accent}); z-index: 1; }
         .map-truck { position: absolute; left: 40%; background: ${C.ink}; padding: 0.5rem; border-radius: 6px; border: 1px solid ${C.lineDark}; z-index: 3; animation: truckMove 3s infinite alternate ease-in-out; }
 
+        /* -- Features section (professional) -- */
+        .features-head { text-align: center; margin-bottom: 5rem; }
+        .features-pill { display: inline-flex; align-items: center; gap: 0.55rem; padding: 0.5rem 1.15rem; border: 1px solid ${C.line}; border-radius: 999px; background: ${C.bone2}; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: ${C.brass}; margin-bottom: 1.6rem; }
+        .features-pill-dot { width: 7px; height: 7px; border-radius: 50%; background: ${C.verdigris}; animation: subtle-pulse 2.4s infinite; }
+        .features-heading { font-size: clamp(2.1rem, 4.5vw, 3.1rem); line-height: 1.12; max-width: 760px; margin: 0 auto 1.1rem; }
+        .features-heading em { font-style: italic; font-weight: 500; color: ${C.brass}; font-family: 'Cormorant Garamond', serif !important; }
+        .features-sub { max-width: 640px; margin: 0 auto; color: ${C.gray}; }
+        .features-trust { display: flex; align-items: center; justify-content: center; gap: 1.1rem; flex-wrap: wrap; margin-top: 2.2rem; font-size: 0.78rem; text-transform: uppercase; color: ${C.grayDark}; font-weight: 500; }
+        .features-trust-sep { width: 1px; height: 14px; background: ${C.line}; }
+
+        .showcase-module { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 1.3rem; }
+        .showcase-no { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; color: ${C.verdigris}; white-space: nowrap; }
+        .showcase-rule { width: 110px; height: 1px; background: linear-gradient(90deg, ${C.verdigris}66, transparent); }
+        .showcase-points { list-style: none; margin: 1.6rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+        .showcase-points li { display: flex; align-items: flex-start; gap: 0.7rem; font-size: 0.95rem; color: ${C.grayDark}; line-height: 1.55; }
+        .showcase-check { width: 20px; height: 20px; border-radius: 50%; background: ${C.verdigrisTint}; color: ${C.verdigris}; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+        .showcase-cta { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1.9rem; background: none; border: none; border-bottom: 1.5px solid ${C.brass}; padding: 0 0 0.4rem; color: ${C.ink}; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: color 0.3s ease, gap 0.3s ease; }
+        .showcase-cta:hover { color: ${C.brass}; gap: 0.75rem; }
+
+        /* -- Professional app mockups -- */
+        .case-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.4rem; }
+        .case-name { font-size: 1.45rem; font-family: 'Cormorant Garamond', serif; color: ${C.ink}; margin-top: 0.25rem; line-height: 1.2; }
+        .case-meta { font-size: 0.74rem; color: ${C.gray}; margin-top: 0.4rem; line-height: 1.5; }
+        .live-chip { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; color: #7FD1A8; background: rgba(77,155,127,0.14); border: 1px solid rgba(77,155,127,0.35); padding: 0.45rem 0.85rem; border-radius: 999px; white-space: nowrap; }
+        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #6FCFA5; animation: subtle-pulse 2s infinite; }
+        .compliance { background: ${C.bone2}; border: 1px solid ${C.line}; border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 1.4rem; }
+        .compliance-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.78rem; color: ${C.gray}; margin-bottom: 0.65rem; }
+        .compliance-count { color: ${C.verdigris}; font-weight: 600; }
+        .compliance-track { display: flex; gap: 4px; }
+        .compliance-seg { flex: 1; height: 5px; border-radius: 3px; background: ${C.line}; }
+        .compliance-seg.verified { background: ${C.verdigris}; }
+        .compliance-seg.pending { background: ${C.brass}; opacity: 0.5; }
+        .compliance-seg.missing { background: ${C.accent}; opacity: 0.3; }
+        .doc-name { color: ${C.ink}; font-weight: 600; font-size: 0.92rem; }
+        .doc-meta { font-size: 0.72rem; color: ${C.gray}; margin-top: 0.15rem; }
+        .doc-actions { display: flex; gap: 0.6rem; margin-top: 1.3rem; }
+        .doc-action { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; font-weight: 600; padding: 0.55rem 0.95rem; border-radius: 8px; border: 1px solid ${C.line}; color: ${C.grayDark}; background: ${C.bone}; }
+        .doc-action.primary { background: ${C.ink}; color: ${C.bone}; border-color: ${C.ink}; }
+        .cost-lines { margin: 0.4rem 0; }
+        .cost-line { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.82rem; color: ${C.grayLight}; padding: 0.5rem 0; border-bottom: 1px dashed rgba(250,248,244,0.09); }
+        .cost-line span:last-child { color: ${C.bone}; font-weight: 600; font-family: 'Cormorant Garamond', serif !important; font-size: 0.98rem; }
+        .billed-label { font-size: 0.78rem; color: ${C.grayLight}; }
+        .billed-sub { font-size: 0.72rem; color: rgba(250,248,244,0.38); margin-top: 0.2rem; }
+
+        /* Sans-serif metadata & utility text (overrides global serif for data-dense UI) */
+        .case-meta, .compliance-row, .compliance-row *, .doc-meta, .doc-name, .live-chip, .live-chip *, .cost-line, .cost-line span:first-child, .billed-label, .billed-sub, .doc-action, .doc-action *, .showcase-points li, .showcase-points li * { font-family: 'Saira', sans-serif !important; }
+
         /* -- Sections -- */
         .section { padding: clamp(4rem,8vw,6rem) 0; }
         .showcase-mobile { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; margin-bottom: 7rem; }
@@ -516,6 +634,11 @@ export default function App() {
           .modules-grid { grid-template-columns: 1fr; }
           .about-grid { grid-template-columns: 1fr; gap: 2rem; }
           .window-body { padding: 1.5rem; }
+          .features-head { margin-bottom: 3.5rem; }
+          .features-trust { gap: 0.6rem 0.9rem; font-size: 0.7rem; }
+          .features-trust-sep { display: none; }
+          .doc-actions { flex-wrap: wrap; }
+          .showcase-cta { margin-top: 1.5rem; }
           .quickfind-grid { grid-template-columns: 1fr; }
           .unified-bento { grid-template-columns: 1fr !important; }
           .unified-bento-card { grid-column: span 1 !important; }
@@ -529,6 +652,8 @@ export default function App() {
           .wrap { padding-left: 1.2rem !important; padding-right: 1.2rem !important; }
           .btn { padding: 0.85rem 1.3rem !important; font-size: 0.92rem !important; }
           .mono-label { font-size: 0.8rem; }
+          .features-pill { font-size: 0.65rem; padding: 0.45rem 0.9rem; }
+          .cost-value { font-size: 1.5rem; }
           .module-title { font-size: 1.25rem; }
           .module-excerpt { font-size: 1rem; }
         }
@@ -549,20 +674,49 @@ export default function App() {
         <section id="features" className="section">
           <div className="wrap">
             <Reveal>
-              <div style={{ textAlign: 'center', marginBottom: '5rem' }}>
-                <div className="label" style={{ marginBottom: '1rem' }}>Features</div>
-                <h2 style={{ fontSize: 'clamp(2rem, 4.5vw, 3rem)', marginBottom: '1rem' }}>Everything you need to operate with dignity</h2>
-                <p style={{ maxWidth: '600px', margin: '0 auto', color: C.gray }}>From case management to funeral insurance integration, Rest Point provides the tools funeral homes and welfare organizations need to serve families efficiently.</p>
+              <div className="features-head">
+                <div className="features-pill"><span className="features-pill-dot" />Platform Features</div>
+                <h2 className="features-heading">Everything you need to operate <em>with dignity</em></h2>
+                <p className="features-sub">From case management to funeral insurance integration, Rest Point provides the tools funeral homes and welfare organizations need to serve families efficiently.</p>
+                <div className="features-trust">
+                  <span>First call to final settlement</span>
+                  <span className="features-trust-sep" />
+                  <span>Verified documents &amp; compliance</span>
+                  <span className="features-trust-sep" />
+                  <span>Families kept informed</span>
+                </div>
               </div>
             </Reveal>
-            <Showcase no="01" title="Case management that respects your workflow" desc="Track every detail from first call to final settlement. Rest Point keeps case files organized, documents verified, and families informed." reverse={false}>
+            <Showcase
+              no="01"
+              title="Case management that respects your workflow"
+              desc="Track every detail from first call to final settlement. Rest Point keeps case files organized, documents verified, and families informed."
+              reverse={false}
+              points={[
+                'One timeline for every case, from first call to burial',
+                'Document verification with live compliance tracking',
+                'Automatic family updates at every milestone',
+              ]}
+              cta="Explore case management"
+            >
               <AppWindow title="restpoint.app/cases"><MockDocuments /></AppWindow>
             </Showcase>
-            <Showcase no="03" title="Smart dispatch & billing" desc="Optimize hearse routes, calculate costs automatically, and bill with precision. Rest Point turns logistics into a competitive advantage." reverse={false}>
+            <Showcase
+              no="02"
+              title="Smart dispatch & billing"
+              desc="Optimize hearse routes, calculate costs automatically, and bill with precision. Rest Point turns logistics into a competitive advantage."
+              reverse={true}
+              points={[
+                'Live dispatch board with assigned hearses and drivers',
+                'Transparent, auto-calculated trip costing',
+                'Invoices drafted and linked to the case instantly',
+              ]}
+              cta="Explore dispatch & billing"
+            >
               <AppWindow title="restpoint.app/dispatch" dark><MockDispatch /></AppWindow>
             </Showcase>
             <PremiumReporting />
-            <Showcase no="07" title="The Right Flowers. Right in Front of Them." reverse={false} desc={
+            <Showcase no="03" floral title="The Right Flowers. Right in Front of Them." reverse={false} cta="Discover the floral concierge" desc={
               <>
                 <strong style={{ display: 'block', fontSize: '1.18rem', color: C.ink, lineHeight: 1.45, marginBottom: '1.2rem' }}>
                   Make the right tribute easier to choose.

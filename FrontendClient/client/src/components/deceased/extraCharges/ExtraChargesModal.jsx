@@ -3,6 +3,10 @@ import styled, { keyframes } from 'styled-components';
 
 import api from '../../../api/axios';
 import { ENDPOINTS } from '../../../api/endpoints';
+// Kenya-safe "today" — the old `new Date().toISOString().split('T')[0]`
+// default sliced the UTC date (3h behind Nairobi), so a charge captured
+// between 00:00 and 02:59 Kenya time was dated yesterday.
+import { todayKey } from '../../../utils/dates/parseDates';
 
 // Colors matching the app theme
 const Colors = {
@@ -391,7 +395,7 @@ function ExtraChargesModal({ deceased, onClose, onRefresh }) {
         amount: '',
         description: '',
         notes: '',
-        service_date: new Date().toISOString().split('T')[0],
+        service_date: todayKey(),
     });
 
     const handleChange = (e) => {
@@ -434,7 +438,7 @@ function ExtraChargesModal({ deceased, onClose, onRefresh }) {
                     amount: '',
                     description: '',
                     notes: '',
-                    service_date: new Date().toISOString().split('T')[0],
+                    service_date: todayKey(),
                 });
 
                 // Refresh charges list

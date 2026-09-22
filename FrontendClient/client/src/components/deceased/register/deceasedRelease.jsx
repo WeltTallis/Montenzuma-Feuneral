@@ -6,6 +6,12 @@ import { getTenantSlug as getStoredTenantSlug, getAuthToken } from '../../../uti
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 import { ToastContainer, toast } from 'react-toastify';
 import InOurCare from '../../common/InOurCare';
+// Kenya-safe "today" (YYYY-MM-DD in the browser's local/Nairobi clock).
+// The old `new Date().toISOString().split('T')[0]` default sliced the UTC
+// date, which is 3 hours behind Nairobi — a release captured between 00:00
+// and 02:59 Kenya time stored YESTERDAY's date ("Released Date: Sep 21"
+// while the handover happened on Sep 22).
+import { todayKey } from '../../../utils/dates/parseDates';
 import styled, { keyframes } from 'styled-components';
 import { ENDPOINTS } from '../../../api/endpoints';
 
@@ -1292,7 +1298,8 @@ const DeceasedReleaseForm = () => {
     id_type: 'National ID',
     id_number: '',
     tel_number: '',
-    release_date: new Date().toISOString().split('T')[0],
+    // Kenya-local today (never UTC-shifted) — see the import note above.
+    release_date: todayKey(),
     release_time: getCurrentTime(),
     released_by: getLoggedInUserName(),
     permit_number: '',
@@ -1381,7 +1388,7 @@ const DeceasedReleaseForm = () => {
           fillDeceasedIntoForm(result.data);
           setFormData(prev => ({
             ...prev,
-            release_date: new Date().toISOString().split('T')[0],
+            release_date: todayKey(),
             release_time: getCurrentTime(),
           }));
         }

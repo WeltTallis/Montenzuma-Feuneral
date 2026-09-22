@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { X, DollarSign, Calendar, FileText, AlertCircle } from '../../utils/icons/icons';
+// Kenya-safe "today" — the old `new Date().toISOString().split('T')[0]`
+// default sliced the UTC date (3h behind Nairobi), so a charge captured
+// between 00:00 and 02:59 Kenya time was dated yesterday.
+import { todayKey } from '../../../utils/dates/parseDates';
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: scale(0.95); }
@@ -215,7 +219,7 @@ const ExtraChargeForm = ({ deceased, onClose, onSubmit, isLoading }) => {
         amount: '',
         description: '',
         notes: '',
-        service_date: new Date().toISOString().split('T')[0]
+        service_date: todayKey()
     });
 
     const [errors, setErrors] = useState({});

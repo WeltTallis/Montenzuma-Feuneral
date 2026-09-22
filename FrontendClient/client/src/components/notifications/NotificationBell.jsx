@@ -351,20 +351,34 @@ const NotificationBell = () => {
     const batch = [...pendingNotificationsRef.current];
     pendingNotificationsRef.current = [];
 
+    // De-duplicate WITHIN the batch first. The same notification can be pushed
+    // twice in quick succession (duplicate socket deliveries), and both copies
+    // land inside the same debounce window — the existingIds check inside
+    // setNotifications only filters against PREVIOUS state, so both copies used
+    // to show up as separate entries and the unread badge counted them twice.
+    const batchSeen = new Set();
+    const uniqueBatch = batch.filter(n => {
+      const key = String(n.id);
+      if (batchSeen.has(key)) return false;
+      batchSeen.add(key);
+      return true;
+    });
+
     setNotifications(prev => {
       const existingIds = new Set(prev.map(n => String(n.id)));
-      const newNotifs = batch.filter(n => !existingIds.has(String(n.id)));
+      const newNotifs = uniqueBatch.filter(n => !existingIds.has(String(n.id)));
       if (newNotifs.length === 0) return prev;
       const combined = [...newNotifs, ...prev];
       return combined.slice(0, MAX_NOTIFICATIONS);
     });
 
+    // The badge counts ONE unread per unique notification id — never per delivery.
     setUnreadCount(prev => {
-      const newUnread = batch.filter(n => !n.is_read).length;
+      const newUnread = uniqueBatch.filter(n => !n.is_read).length;
       return prev + newUnread;
     });
 
-    if (batch.some(n => !n.is_read)) playNotificationSound();
+    if (uniqueBatch.some(n => !n.is_read)) playNotificationSound();
   }, [playNotificationSound]);
 
   // ─── Real-time Socket Listener ───

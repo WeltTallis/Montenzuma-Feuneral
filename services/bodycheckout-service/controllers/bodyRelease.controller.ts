@@ -126,13 +126,31 @@ const releaseBodySchema = Zod.z.object({
   released_by: Zod.z.string().optional(),
 });
 
+// ─── Kenya-time helpers ──────────────────────────────────────────────────────
+// The whole platform stores timestamps in Kenya wall time (see
+// packages/shared-utils/src/timestamps.ts — getKenyaTimeISO returns
+// 'YYYY-MM-DD HH:mm:ss' for Africa/Nairobi). Africa/Nairobi is UTC+3 with NO
+// daylight saving, so a fixed +3h shift on the UTC clock is always exact.
+const KENYA_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+/** A Date whose UTC fields read as the CURRENT Kenya wall clock. */
+const kenyaNow = (): Date => new Date(Date.now() + KENYA_OFFSET_MS);
+
 // Helper function to format date for MySQL (YYYY-MM-DD)
 const formatDateForMySQL = (dateStr?: string): string | null => {
   if (!dateStr) return null;
+  const s = String(dateStr).trim();
+  // Plain calendar dates ('YYYY-MM-DD…' — what the release form sends) carry
+  // no time component: slice the string directly. Round-tripping them through
+  // new Date() re-encodes in UTC and can shift the calendar day for inputs
+  // outside UTC.
+  const dateMatch = /^(\d{4}-\d{2}-\d{2})/.exec(s);
+  if (dateMatch) return dateMatch[1];
   try {
-    const date = new Date(dateStr);
+    const date = new Date(s);
     if (isNaN(date.getTime())) return null;
-    return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+    // Full ISO instant: read the KENYA calendar day, not the UTC one.
+    return new Date(date.getTime() + KENYA_OFFSET_MS).toISOString().split('T')[0];
   } catch {
     return null;
   }
@@ -147,11 +165,13 @@ const formatDateTimeForMySQL = (date: Date): string => {
 const formatTimeForMySQL = (timeStr?: string): string | null => {
   if (!timeStr) return null;
   try {
-    // If time is in ISO format, extract just the time part
+    // If time is in ISO format, extract just the time part (in KENYA time —
+    // the platform's timestamp convention — never raw UTC, which is 3h
+    // behind Nairobi).
     if (timeStr.includes('T')) {
       const date = new Date(timeStr);
       if (isNaN(date.getTime())) return null;
-      return date.toISOString().slice(11, 19);
+      return new Date(date.getTime() + KENYA_OFFSET_MS).toISOString().slice(11, 19);
     }
     // If time is already in HH:MM:SS format, return as is
     if (/^\d{2}:\d{2}:\d{2}$/.test(timeStr)) {
@@ -187,8 +207,11 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
     const releaseId = generateDatedCheckoutId();
     Logger.info(`[RELEASE] Generated release ID: ${releaseId} for tenant: ${tenantSlug}`);
 
-    // Get current datetime in MySQL format
-    const currentDateTime = formatDateTimeForMySQL(new Date());
+    // Get current datetime in KENYA wall time (platform convention — the old
+    // UTC value made created_at and the deceased register's dispatch_date
+    // fallback "yesterday" for anything recorded between 00:00 and 02:59
+    // Nairobi time).
+    const currentDateTime = formatDateTimeForMySQL(kenyaNow());
 
     // Process signatures through centralized upload service
     // This uploads signatures to /opt/storage/uploads/{tenant}/signatures/ instead of storing inline

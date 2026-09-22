@@ -622,7 +622,13 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
       if (typeof target === 'string') {
         io.to(target).emit(eventName, payload);
       } else if (Array.isArray(target)) {
-        target.forEach((room: string) => io.to(room).emit(eventName, payload));
+        // Broadcast to the room array in ONE pass. io.in([...rooms]) unions the
+        // sockets of all listed rooms, so a socket that belongs to several of
+        // them (e.g. a branch user's socket sits in its branch room AND the
+        // parent org room) receives the event exactly once. The previous
+        // per-room forEach emitted a separate packet per room and every user
+        // in more than one targeted room got the SAME notification twice.
+        io.in(target).emit(eventName, payload);
       } else {
         throw new AppError('Target must be a string or array of strings', 400);
       }
@@ -634,14 +640,22 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
         .filter((s: any): s is string => typeof s === 'string' && /^[a-z0-9-]+$/.test(s))
         .map((s: string) => `tenant_${s}`);
       if (branchRooms.length === 0) throw new AppError('No valid branch slugs provided', 400);
-      branchRooms.forEach((room) => io.to(room).emit(eventName, payload));
+      // ONE union broadcast (not one packet per room) — see the comment on the
+      // target-array branch above for why per-room loops duplicate deliveries.
+      io.in(branchRooms).emit(eventName, payload);
       console.log(`[SocketIO] Emitted ${eventName} to branch rooms [${branchRooms.join(', ')}]`);
     } else if (tenantSlug === 'system' || tenantSlug === 'all') {
       io.emit(eventName, payload);
       console.log(`📢 Broadcasted ${eventName} to all clients`);
     } else {
       const rooms = resolveOrgRooms(tenantSlug);
-      rooms.forEach((room) => io.to(room).emit(eventName, payload));
+      // ONE union broadcast (not one packet per room). resolveOrgRooms returns
+      // the tenant room + parent + sibling branch rooms, and join-tenant puts
+      // branch sockets in BOTH their branch room and the parent org room — so
+      // the previous per-room forEach made those sockets receive every
+      // notification twice (admissions, hearse bookings, store dispatch, …).
+      // io.in([...rooms]) delivers at most one copy per socket.
+      io.in(rooms).emit(eventName, payload);
       console.log(`[SocketIO] Emitted ${eventName} to [${rooms.join(', ')}]`);
     }
 
