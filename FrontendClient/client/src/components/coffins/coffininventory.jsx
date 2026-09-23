@@ -605,68 +605,136 @@ const styles = {
   drawerHeaderH2: { fontSize: 18, fontWeight: 700, margin: 0 },
   drawerBody: { flex: 1, overflowY: 'auto', padding: 24, background: S.bg },
 
-  // Booking sidebar (New Reservation)
+  // ── Side panel chrome (New Reservation + Register Coffin) ──────────────────
+  // Matches the deceased Charge Settings / Scanner Bridge sidebars: dark-teal
+  // gradient header, white scrollable body, pinned footer.
   bkOverlay: {
     position: 'fixed',
     inset: 0,
-    background: 'rgba(15,23,42,0.5)',
-    backdropFilter: 'blur(4px)',
+    background: 'rgba(10,10,10,0.38)',
+    backdropFilter: 'blur(2px)',
+    WebkitBackdropFilter: 'blur(2px)',
     zIndex: 199,
     opacity: 0,
     pointerEvents: 'none',
-    transition: 'opacity 0.3s',
+    transition: 'opacity 0.2s ease-out',
   },
   bkOverlayOpen: { opacity: 1, pointerEvents: 'auto' },
   bkSidebar: {
     position: 'fixed',
     top: 0,
     right: 0,
+    bottom: 0,
     height: '100vh',
     width: '100%',
-    maxWidth: 480,
+    maxWidth: 520,
     background: '#fff',
-    boxShadow: '-8px 0 30px rgba(0,0,0,0.1)',
+    borderLeft: `1px solid ${S.border}`,
+    boxShadow: '-18px 0 44px -18px rgba(10,10,10,0.35)',
     transform: 'translateX(100%)',
-    transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+    transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
     zIndex: 200,
     display: 'flex',
     flexDirection: 'column',
+    overflow: 'hidden',
   },
   bkSidebarOpen: { transform: 'translateX(0)' },
   bkHeader: {
-    padding: '20px 24px',
-    borderBottom: `1px solid ${S.border}`,
     display: 'flex',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    background: '#fff',
+    gap: 12,
+    padding: '18px 24px',
+    flexShrink: 0,
+    background: 'linear-gradient(135deg, #0f3040 0%, #163f52 100%)',
+    borderBottom: '1px solid #0b2936',
+    boxShadow: '0 8px 18px rgba(15,48,64,0.16)',
   },
   bkHeaderH2: {
-    fontSize: 18,
+    fontFamily: "'Merriweather', Georgia, serif",
+    fontSize: 17,
     fontWeight: 700,
+    color: '#fff',
     margin: 0,
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   bkHeaderIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    background: S.primaryLight,
-    color: S.primary,
+    width: 42,
+    height: 42,
+    borderRadius: 8,
+    background: 'rgba(255,255,255,0.12)',
+    border: '1px solid rgba(255,255,255,0.18)',
+    color: '#fff',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
+    flex: '0 0 auto',
+    fontSize: 17,
+  },
+  bkHeaderSub: {
+    display: 'block',
+    margin: '4px 0 0 52px',
+    color: 'rgba(255,255,255,0.72)',
+    font: "11px 'Source Sans 3', -apple-system, sans-serif",
+    letterSpacing: '0.04em',
+  },
+  bkClose: {
+    width: 30,
+    height: 30,
+    borderRadius: '50%',
+    border: '1px solid rgba(255,255,255,0.28)',
+    background: 'rgba(255,255,255,0.08)',
+    color: '#fff',
+    cursor: 'pointer',
+    display: 'grid',
+    placeItems: 'center',
+    flex: '0 0 auto',
+    fontSize: 16,
+    lineHeight: 1,
+  },
+  // The <form> wrapper is a flex column so bkBody can scroll on its own while
+  // the header/footer stay pinned to the top and bottom of the panel.
+  bkForm: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
   },
   bkBody: {
     flex: 1,
+    minHeight: 0,
     overflowY: 'auto',
-    padding: 24,
-    background: S.bg,
+    WebkitOverflowScrolling: 'touch',
+    padding: '20px 24px',
+    background: '#fff',
     display: 'flex',
     flexDirection: 'column',
-    gap: 16,
+  },
+  bkSectionHead: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: '0.16em',
+    textTransform: 'uppercase',
+    color: S.textMuted,
+  },
+  bkSectionRule: { flex: 1, height: 1, background: S.borderLight },
+  bkFile: {
+    width: '100%',
+    padding: '10px 12px',
+    border: `1px dashed ${S.border}`,
+    borderRadius: 8,
+    background: '#f7f7f5',
+    fontSize: 13,
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+    boxSizing: 'border-box',
   },
   bkField: { display: 'grid', gap: 6 },
   bkInput: {
@@ -682,12 +750,37 @@ const styles = {
     boxSizing: 'border-box',
   },
   bkFooter: {
-    padding: '16px 24px',
-    borderTop: `1px solid ${S.border}`,
+    padding: '14px 24px',
+    borderTop: `1px solid ${S.borderLight}`,
     display: 'flex',
     justifyContent: 'flex-end',
-    gap: 12,
+    gap: 8,
+    flexShrink: 0,
     background: '#fff',
+  },
+  bkFooterBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minWidth: 116,
+    padding: '12px 18px',
+    borderRadius: 8,
+    fontSize: 13.5,
+    fontWeight: 700,
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+    transition: S.transition,
+  },
+  bkFooterGhost: {
+    background: '#fff',
+    border: `1px solid ${S.border}`,
+    color: '#1a1a1a',
+  },
+  bkFooterPrimary: {
+    background: '#0a0a0a',
+    border: 'none',
+    color: '#fff',
   },
 
   // Detail drawer
@@ -2589,24 +2682,46 @@ const CoffinDashboard = () => {
 
 
 
-      {/* Add Coffin Modal */}
+      {/* Register Coffin Sidebar — same beautiful chrome as New Reservation */}
       <div
         style={{
-          ...styles.moOverlay,
-          ...(modal.open && modal.type === 'coffin' ? styles.moOpen : {}),
+          ...styles.bkOverlay,
+          ...(modal.open && modal.type === 'coffin' ? styles.bkOverlayOpen : {}),
         }}
         onClick={() => setModal({ open: false, type: '', data: {} })}
+      ></div>
+      <div
+        style={{
+          ...styles.bkSidebar,
+          ...(modal.open && modal.type === 'coffin' ? styles.bkSidebarOpen : {}),
+        }}
       >
-        <div style={styles.md} onClick={(e) => e.stopPropagation()}>
-          <div style={styles.mh}>
-            <h2 style={styles.mh2}>Add New Coffin</h2>
-            <button style={styles.mx} onClick={() => setModal({ open: false, type: '', data: {} })}>
-              &times;
-            </button>
+        <div style={styles.bkHeader}>
+          <div style={{ minWidth: 0 }}>
+            <h2 style={styles.bkHeaderH2}>
+              <span style={styles.bkHeaderIcon}>
+                <i className="fa-solid fa-box-open"></i>
+              </span>
+              Register Coffin
+            </h2>
+            <span style={styles.bkHeaderSub}>Add a new coffin to this branch's inventory</span>
           </div>
-          <form onSubmit={handleCreateCoffin}>
-            <div style={styles.mb}>
-              <div style={styles.fr}>
+          <button
+            style={styles.bkClose}
+            onClick={() => setModal({ open: false, type: '', data: {} })}
+            title="Close"
+          >
+            &times;
+          </button>
+        </div>
+
+        <form onSubmit={handleCreateCoffin} style={styles.bkForm}>
+            <div style={styles.bkBody}>
+              <div style={styles.bkSectionHead}>
+                <span>Coffin details</span>
+                <span style={styles.bkSectionRule} />
+              </div>
+              <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
                 <div style={styles.fg}>
                   <label style={styles.fl}>Name *</label>
                   <input
@@ -2619,7 +2734,6 @@ const CoffinDashboard = () => {
                     placeholder="Mahogany Heritage"
                   />
                 </div>
-                <div style={styles.fg}></div>
               </div>
               <div style={styles.fr}>
                 <div style={styles.fg}>
@@ -2673,6 +2787,10 @@ const CoffinDashboard = () => {
                   />
                 </div>
               </div>
+              <div style={styles.bkSectionHead}>
+                <span>Media &amp; notes</span>
+                <span style={styles.bkSectionRule} />
+              </div>
               <div style={styles.fg}>
                 <label style={styles.fl}>Images</label>
                 <input
@@ -2683,7 +2801,7 @@ const CoffinDashboard = () => {
                     const files = Array.from(e.target.files);
                     setModal({ ...modal, data: { ...modal.data, images: files } });
                   }}
-                  style={{ width: '100%', padding: '8px 0' }}
+                  style={styles.bkFile}
                 />
                 <div style={{ fontSize: 12, color: S.textMuted, marginTop: 4 }}>
                   You can select multiple images (max 10)
@@ -2701,24 +2819,24 @@ const CoffinDashboard = () => {
                 />
               </div>
             </div>
-            <div style={styles.mf}>
+
+            <div style={styles.bkFooter}>
               <button
                 type="button"
-                style={{ ...styles.btn, ...styles.btnG }}
+                style={{ ...styles.bkFooterBtn, ...styles.bkFooterGhost }}
                 onClick={() => setModal({ open: false, type: '', data: {} })}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                style={{ ...styles.btn, ...styles.btnP }}
+                style={{ ...styles.bkFooterBtn, ...styles.bkFooterPrimary }}
                 disabled={submitLoading}
               >
                 {submitLoading ? 'Saving...' : 'Save Coffin'}
               </button>
             </div>
-          </form>
-        </div>
+        </form>
       </div>
 
       {/* Stock Adjustment Modal */}
@@ -2834,20 +2952,32 @@ const CoffinDashboard = () => {
         }}
       >
         <div style={styles.bkHeader}>
-          <h2 style={styles.bkHeaderH2}>
-            <span style={styles.bkHeaderIcon}>
-              <i className="fa-solid fa-calendar-plus"></i>
-            </span>
-            New Reservation
-          </h2>
-          <button style={styles.mx} onClick={() => setModal({ open: false, type: '', data: {} })}>
+          <div style={{ minWidth: 0 }}>
+            <h2 style={styles.bkHeaderH2}>
+              <span style={styles.bkHeaderIcon}>
+                <i className="fa-solid fa-calendar-plus"></i>
+              </span>
+              New Reservation
+            </h2>
+            <span style={styles.bkHeaderSub}>Reserve a coffin and lock the service date</span>
+          </div>
+          <button
+            style={styles.bkClose}
+            onClick={() => setModal({ open: false, type: '', data: {} })}
+            title="Close"
+          >
             &times;
           </button>
         </div>
 
-        <form onSubmit={handleCreateBooking}>
+        <form onSubmit={handleCreateBooking} style={styles.bkForm}>
           <div style={styles.bkBody}>
             <div style={{ display: 'grid', gap: 16 }}>
+              <div style={styles.bkSectionHead}>
+                <span>Schedule</span>
+                <span style={styles.bkSectionRule} />
+              </div>
+
               {/* Service Date + Time */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 14 }}>
                 <div>
@@ -2873,6 +3003,11 @@ const CoffinDashboard = () => {
                     }
                   />
                 </div>
+              </div>
+
+              <div style={styles.bkSectionHead}>
+                <span>Client</span>
+                <span style={styles.bkSectionRule} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -2903,6 +3038,11 @@ const CoffinDashboard = () => {
                     placeholder="0712-345-678"
                   />
                 </div>
+              </div>
+
+              <div style={styles.bkSectionHead}>
+                <span>Booking details</span>
+                <span style={styles.bkSectionRule} />
               </div>
 
               <div>
@@ -3000,14 +3140,14 @@ const CoffinDashboard = () => {
           <div style={styles.bkFooter}>
             <button
               type="button"
-              style={{ ...styles.btn, ...styles.btnG }}
+              style={{ ...styles.bkFooterBtn, ...styles.bkFooterGhost }}
               onClick={() => setModal({ open: false, type: '', data: {} })}
             >
               Cancel
             </button>
             <button
               type="submit"
-              style={{ ...styles.btn, ...styles.btnP }}
+              style={{ ...styles.bkFooterBtn, ...styles.bkFooterPrimary }}
               disabled={submitLoading}
             >
               {submitLoading ? 'Saving...' : 'Create Reservation'}

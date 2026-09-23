@@ -6,10 +6,7 @@ import styled, { keyframes, createGlobalStyle } from "styled-components";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useTenantStore } from "../../modules/seo/useTenantStore";
 
-/* ──────────────────────────────────────────────────────────────
-   Montezuma Funeral Home — Reception Portal
-   Single-file component · Bootstrap grid + styled-components
-   ────────────────────────────────────────────────────────────── */
+
 
 const BODY = "'Saira', system-ui, sans-serif"
 const HEAD = "'Fraunces', Georgia, serif"
@@ -132,7 +129,12 @@ const pulse = keyframes`
 /* ── Global font import ────────────────────────────────────── */
 const GlobalFonts = createGlobalStyle`
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&family=Saira:wght@400;500;600;700&display=swap');
-  body { background: #050507; }
+  body {
+    margin: 0;
+    background: #050507;
+    font-family: ${BODY};
+    color: #e8e8eb;
+  }
 `
 
 /* ── Styled components ─────────────────────────────────────── */
@@ -187,6 +189,7 @@ const TopBar = styled.div`
 `
 
 const BackBtn = styled.button`
+  font-family: ${BODY};
   display: flex;
   align-items: center;
   gap: 8px;
@@ -228,6 +231,7 @@ const Name = styled.div`
 `
 
 const Tag = styled.div`
+  font-family: ${BODY};
   font-size: 9px;
   letter-spacing: 4px;
   text-transform: uppercase;
@@ -297,7 +301,7 @@ const CardBtn = styled.button`
   background: transparent;
   border: 0;
   width: 100%;
-  font-family: inherit;
+  font-family: ${BODY};
   cursor: pointer;
   display: block;
   animation: ${rise} 0.7s ease both;
@@ -341,6 +345,7 @@ const Corner = styled.div`
 `
 
 const Continue = styled.div`
+  font-family: ${BODY};
   display: flex;
   align-items: center;
   gap: 8px;
@@ -514,10 +519,7 @@ export default function App() {
                 fontWeight: 600,
               }}
             >
-              <span style={{ display: "inline-flex", width: 14, height: 14 }}>
-                <SparklesIcon size={14} color="currentColor" sw={3.4} />
-              </span>
-              <span>4 Available</span>
+
             </div>
           </SvcHead>
 

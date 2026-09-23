@@ -6,13 +6,17 @@ import {
   Printer, X, Loader2, CheckCircle, AlertTriangle, FileText, RefreshCw,
 } from '../../utils/icons/icons';
 
-// ── palette (matches deceased theme) ─────────────────────────────────────────
+// ── palette — mirrors the deceased Charge Settings side panel ────────────────
 const C = {
   black: '#0a0a0a', dark: '#1a1a1a', gray: '#777777', border: '#c8c8c8',
   borderLight: '#e0e0e0', bgField: '#f7f7f5', success: '#059669', successBg: '#ecfdf5',
   warning: '#d97706', warningBg: '#fef3c7', danger: '#dc2626', dangerBg: '#fef2f2',
   info: '#2563eb', infoBg: '#eff6ff',
+  headFrom: '#0f3040', headTo: '#163f52', headLine: '#0b2936',
 };
+
+const FONT_SANS = "'Source Sans 3', -apple-system, sans-serif";
+const FONT_SERIF = "'Merriweather', Georgia, serif";
 
 const spin = keyframes`from { transform: rotate(0deg); } to { transform: rotate(360deg); }`;
 const SpinWrap = styled.span`
@@ -21,54 +25,75 @@ const SpinWrap = styled.span`
 `;
 const popIn = keyframes`from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); }`;
 
+const slideIn = keyframes`from { transform: translateX(100%); } to { transform: translateX(0); }`;
+const fadeIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
+
+// ── panel chrome — identical to the deceased Charge Settings sidebar ─────────
 const Overlay = styled.div`
-  position: fixed; inset: 0; z-index: 120;
+  position: fixed;
+  inset: 0;
+  z-index: 90;
   background: rgba(10, 10, 10, 0.38);
-  display: block;
-  animation: ${keyframes`from { opacity: 0; } to { opacity: 1; }`} 0.18s ease-out;
+  animation: ${fadeIn} 0.18s ease-out;
 `;
 
-const Panel = styled.div`
+const Panel = styled.aside`
   position: fixed;
   top: 0;
   right: 0;
   bottom: 0;
   width: min(520px, 100vw);
   height: 100vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
   background: #ffffff;
   border-left: 1px solid ${C.border};
   box-shadow: -18px 0 44px -18px rgba(10, 10, 10, 0.35);
-  animation: ${keyframes`from { transform: translateX(100%); } to { transform: translateX(0); }`} 0.2s ease-out;
-  padding: 0;
-
-  @media (max-width: 560px) {
-    padding: 22px 18px;
-  }
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: ${slideIn} 0.2s ease-out;
 `;
 
-const Head = styled.div`
+const Head = styled.header`
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  gap: 12px;
   padding: 18px 24px;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: linear-gradient(135deg, #0f3040 0%, #163f52 100%);
-  border-bottom: 1px solid #0b2936;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, ${C.headFrom} 0%, ${C.headTo} 100%);
+  border-bottom: 1px solid ${C.headLine};
   box-shadow: 0 8px 18px rgba(15, 48, 64, 0.16);
-  h3 { font-family: 'Merriweather', Georgia, serif; font-size: 17px; font-weight: 700; color: #fff; margin: 0; display: flex; align-items: center; gap: 10px; }
-  h3 svg { flex: 0 0 auto; }
+`;
+
+const HeadIcon = styled.span`
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+`;
+
+const HeadTitle = styled.h2`
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: ${FONT_SERIF};
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
 `;
 
 const PanelSubtitle = styled.span`
   display: block;
   margin: 4px 0 0 52px;
   color: rgba(255, 255, 255, 0.72);
-  font: 11px 'Source Sans 3', sans-serif;
+  font: 11px ${FONT_SANS};
   letter-spacing: 0.04em;
 `;
 
@@ -77,6 +102,8 @@ const PanelBody = styled.div`
   overflow-y: auto;
   padding: 20px 24px;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: ${C.border} transparent;
 
   @media (max-width: 560px) {
     padding: 18px;
@@ -84,9 +111,59 @@ const PanelBody = styled.div`
 `;
 
 const CloseBtn = styled.button`
-  width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.08); color: #fff; cursor: pointer; display: grid; place-items: center;
-  &:hover { background: rgba(255, 255, 255, 0.18); border-color: #fff; }
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+
+  &:hover:not(:disabled) { background: rgba(255, 255, 255, 0.18); border-color: #fff; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+`;
+
+const PanelFoot = styled.footer`
+  padding: 14px 24px;
+  border-top: 1px solid ${C.borderLight};
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  background: #ffffff;
+`;
+
+const Btn = styled.button`
+  flex: 1;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font: 700 13.5px ${FONT_SANS};
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out;
+
+  &:disabled { opacity: 0.55; cursor: wait; }
+`;
+
+const GhostBtn = styled(Btn)`
+  background: #ffffff;
+  border: 1px solid ${C.border};
+  color: ${C.dark};
+
+  &:hover:not(:disabled) { border-color: ${C.black}; color: ${C.black}; }
+`;
+
+const PrimaryBtn = styled(Btn)`
+  background: ${C.black};
+  color: #ffffff;
+  border: none;
+
+  &:hover:not(:disabled) { background: ${C.dark}; }
 `;
 
 const StatusBox = styled.div`
@@ -104,8 +181,8 @@ const ProgressBar = styled.div`
   > div { height: 100%; background: ${C.black}; width: ${p => p.$w}%; transition: width 0.3s ease; }
 `;
 
-const ScannerIcon = () => (
-  <svg width="42" height="42" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+const ScannerIcon = ({ size = 22 }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
     <path d="M12 22 L52 22 C54 22 56 24 56 26 L56 50 C56 52 54 54 52 54 L12 54 C10 54 8 52 8 50 L8 26 C8 24 10 22 12 22 Z" fill="#334155" />
     <rect x="14" y="22" width="36" height="7" fill="#0f172a" />
     <path d="M8 46 L56 46 L56 50 C56 52 54 54 52 54 L12 54 C10 54 8 52 8 50 Z" fill="#1e293b" />
@@ -241,27 +318,59 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
     </div>
   );
 
-  const primaryBtn = {
-    background: C.black, color: '#fff', border: 'none', borderRadius: 8,
-    padding: '12px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-    display: 'inline-flex', alignItems: 'center', gap: 8,
-    fontFamily: "'Source Sans 3', sans-serif",
-  };
-  const ghostBtn = {
-    background: '#fff', color: C.dark, border: `1px solid ${C.border}`,
-    borderRadius: 8, padding: '10px 16px', fontSize: 13.5, fontWeight: 600,
-    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
-    fontFamily: "'Source Sans 3', sans-serif",
-  };
-
   const busy = phase === 'scanning' || phase === 'uploading' || phase === 'probe';
+
+  // Footer actions — ghost + black primary, exactly like the Charge Settings panel
+  let footActions = null;
+  if (phase === 'ready') {
+    footActions = (
+      <>
+        <GhostBtn type="button" onClick={onClose}>Cancel</GhostBtn>
+        <PrimaryBtn type="button" onClick={startScan}>
+          <Printer size={15} /> Scan Document
+        </PrimaryBtn>
+      </>
+    );
+  } else if (phase === 'unavailable') {
+    footActions = (
+      <>
+        <GhostBtn type="button" onClick={onClose}>Close</GhostBtn>
+        <PrimaryBtn type="button" onClick={probe}>
+          <RefreshCw size={15} /> Check Again
+        </PrimaryBtn>
+      </>
+    );
+  } else if (phase === 'success') {
+    footActions = (
+      <>
+        <GhostBtn type="button" onClick={resetForAnother}>
+          <Printer size={15} /> Scan another
+        </GhostBtn>
+        <PrimaryBtn type="button" onClick={done}>
+          <CheckCircle size={16} /> Done
+        </PrimaryBtn>
+      </>
+    );
+  } else if (phase === 'error') {
+    footActions = (
+      <>
+        <GhostBtn type="button" onClick={onClose}>Close</GhostBtn>
+        <PrimaryBtn type="button" onClick={resetForAnother}>
+          <RefreshCw size={15} /> Try Again
+        </PrimaryBtn>
+      </>
+    );
+  }
 
   return (
     <Overlay onClick={busy ? undefined : onClose}>
       <Panel onClick={(e) => e.stopPropagation()}>
         <Head>
           <div>
-            <h3><ScannerIcon /> Scan Document</h3>
+            <HeadTitle>
+              <HeadIcon><ScannerIcon size={22} /></HeadIcon>
+              Scan Document
+            </HeadTitle>
             <PanelSubtitle>Capture and attach documents to this deceased profile</PanelSubtitle>
           </div>
           <CloseBtn onClick={onClose} disabled={busy} title="Close">
@@ -289,11 +398,6 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
               uploaded straight to this deceased person's documents.
             </div>
             {metaFields}
-            <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-              <button style={{ ...primaryBtn, flex: 1 }} onClick={startScan}>
-                <Printer size={16} /> Scan Document
-              </button>
-            </div>
           </>
         )}
 
@@ -315,11 +419,6 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
               </a>.
             </div>
             {metaFields}
-            <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-              <button style={{ ...primaryBtn, flex: 1 }} onClick={probe}>
-                <RefreshCw size={15} /> Check Again
-              </button>
-            </div>
           </>
         )}
 
@@ -350,14 +449,6 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
                 {' '}· uploaded to this profile's documents.
               </span>
             </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              <button style={ghostBtn} onClick={resetForAnother}>
-                <Printer size={15} /> Scan another
-              </button>
-              <button style={{ ...primaryBtn, flex: 1 }} onClick={done}>
-                <CheckCircle size={16} /> Done
-              </button>
-            </div>
           </>
         )}
 
@@ -367,14 +458,11 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
               <AlertTriangle size={16} />
               {message || 'Scan failed. Please try again.'}
             </StatusBox>
-            <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-              <button style={{ ...primaryBtn, flex: 1 }} onClick={resetForAnother}>
-                <RefreshCw size={15} /> Try Again
-              </button>
-            </div>
           </>
         )}
         </PanelBody>
+
+        {footActions && <PanelFoot>{footActions}</PanelFoot>}
       </Panel>
     </Overlay>
   );

@@ -1,28 +1,39 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+
+import { Flower2, MapPin, User, Calendar, Clock, ChevronLeft, ChevronRight, X, Check, Truck, Home, Package, AlertTriangle } from '../../utils/icons/icons';
+import { toDateKey, todayKey, parseDate as parseUtilDate } from '../../utils/dates/parseDates';
 import { getBranchSlug, getBranchId, getBranches, getTenantId } from '../../utils/globalAuth';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ReusableCalendar from '../../utils/calender/calender';
 import { useSocket } from '../../utils/context/socketContext'
 import api from '../../api/axios'
-import { Flower2, MapPin, User, Calendar, Clock, ChevronLeft, ChevronRight, X, Check, Truck, Home, Package, AlertTriangle } from '../../utils/icons/icons';
-import { toDateKey, todayKey, parseDate as parseUtilDate } from '../../utils/dates/parseDates';
+
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+
+
+
 
 // Flower orders have exactly TWO statuses — nothing else.
 const STATUS_FLOW = ['booked', 'completed'];
 
 const STATUS_LABELS = {
+
   booked: 'Booked',
   completed: 'Completed',
-  // Older rows may still carry these — they simply display as Booked
   pending: 'Booked',
   sourced: 'Booked',
   preparing: 'Booked',
   confirmed: 'Booked',
   transit: 'Booked'
+
 };
+
+
 // Normalise ANY historical status onto the two-value flow
+
+
 const normStatus = s => {
   const v = String(s || '').toLowerCase();
   if (v === 'completed') return 'completed';
@@ -607,45 +618,45 @@ const FlowerBookingsNew = () => {
 
   const renderToolbar = () => {
     const d = calDate;
-        return (
+    return (
       <>
         <style dangerouslySetInnerHTML={{ __html: FLX_RESPONSIVE }} />
         <div className="flx-toolbar" style={styles.toolbar}>
-        <div className="flx-nav" style={styles.nav}>
-          <div style={styles.title}>
-            <button style={styles.arrowBtn} onClick={() => calNav(-1)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+          <div className="flx-nav" style={styles.nav}>
+            <div style={styles.title}>
+              <button style={styles.arrowBtn} onClick={() => calNav(-1)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+              </button>
+              {MONTHS[d.getMonth()]} {d.getFullYear()}
+              <button style={styles.arrowBtn} onClick={() => calNav(1)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+              </button>
+            </div>
+            <button style={styles.todayBtn} onClick={calToday}>Today</button>
+          </div>
+          <div className="flx-toggle" style={styles.viewToggle}>
+            <button style={styles.viewBtn(view === 'list')} onClick={() => setView('list')}>List</button>
+            <button style={styles.viewBtn(view === 'calendar')} onClick={() => setView('calendar')}>Calendar</button>
+            <button style={styles.viewBtn(view === 'samples')} onClick={() => setView('samples')}>Samples</button>
+          </div>
+          <div className="flx-actions" style={{ display: 'flex', gap: '8px' }}>
+            <button
+              style={{
+                ...styles.placeBookingBtn,
+                background: '#475A43',
+                boxShadow: 'none'
+              }}
+              onClick={() => setShowCreateModal(true)}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              Create Arrangement
             </button>
-            {MONTHS[d.getMonth()]} {d.getFullYear()}
-            <button style={styles.arrowBtn} onClick={() => calNav(1)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+            <button style={styles.placeBookingBtn} onClick={() => openNewBookingForm('')}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              Place Booking
             </button>
           </div>
-          <button style={styles.todayBtn} onClick={calToday}>Today</button>
         </div>
-        <div className="flx-toggle" style={styles.viewToggle}>
-          <button style={styles.viewBtn(view === 'list')} onClick={() => setView('list')}>List</button>
-          <button style={styles.viewBtn(view === 'calendar')} onClick={() => setView('calendar')}>Calendar</button>
-          <button style={styles.viewBtn(view === 'samples')} onClick={() => setView('samples')}>Samples</button>
-        </div>
-        <div className="flx-actions" style={{ display: 'flex', gap: '8px' }}>
-          <button
-            style={{
-              ...styles.placeBookingBtn,
-              background: '#475A43',
-              boxShadow: 'none'
-            }}
-            onClick={() => setShowCreateModal(true)}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-            Create Arrangement
-          </button>
-          <button style={styles.placeBookingBtn} onClick={() => openNewBookingForm('')}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-            Place Booking
-          </button>
-        </div>
-            </div>
       </>
     );
   };
@@ -939,7 +950,7 @@ const FlowerBookingsNew = () => {
             </button>
           </div>
         </div>
-                <div className="flx-cal-weekdays" style={styles.calWeekdays}>
+        <div className="flx-cal-weekdays" style={styles.calWeekdays}>
           {WEEKDAYS.map(w => <div key={w} style={styles.calWeekday}>{w}</div>)}
         </div>
         <div className="flx-cal-days" style={styles.calDays}>
@@ -1455,7 +1466,7 @@ const FlowerBookingsNew = () => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#F5F4F1' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#FFFFFF' }}>
         <div style={{ color: '#2F4F3E', fontSize: '14px', fontWeight: 500 }}>Loading flower bookings...</div>
       </div>
     );
@@ -1893,7 +1904,7 @@ const FlowerBookingsNew = () => {
 const styles = {
   container: {
     minHeight: '100vh',
-    background: '#F5F4F1',
+    background: '#FFFFFF',
     fontFamily: "'DM Sans', system-ui, sans-serif",
     color: '#1C1A17',
     position: 'relative',
@@ -1902,7 +1913,7 @@ const styles = {
     position: 'sticky',
     top: 0,
     zIndex: 50,
-    background: 'rgba(245, 244, 241, 0.92)',
+    background: 'rgba(255, 255, 255, 0.92)',
     backdropFilter: 'blur(16px)',
     padding: '10px 14px',
     borderBottom: '1px solid #EAE7E2',
@@ -2402,7 +2413,7 @@ const styles = {
   detailContainer: {
     position: 'fixed',
     inset: 0,
-    background: '#F5F4F1',
+    background: '#FFFFFF',
     zIndex: 1000,
     overflowY: 'auto',
   },
