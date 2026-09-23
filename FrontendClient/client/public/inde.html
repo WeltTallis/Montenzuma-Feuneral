@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>Hawthorne &amp; Sons — Operations Register</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --paper: #f3efe5;
+            --paper2: #f7f4ec;
+            --ink: #211d17;
+            --ink2: #5d554a;
+            --hair: rgba(33, 29, 23, .16);
+            --hair2: rgba(33, 29, 23, .38);
+            --ox: #7c2b23;
+            --moss: #4d5f42;
+            --och: #9a6a1e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        html {
+            color-scheme: light
+        }
+
+        body {
+            background: var(--paper);
+            color: var(--ink);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            line-height: 1.55;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased
+        }
+
+        /* faint paper grain */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            pointer-events: none;
+            opacity: .55;
+            mix-blend-mode: multiply;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E")
+        }
+
+        ::selection {
+            background: var(--ink);
+            color: var(--paper)
+        }
+
+        button {
+            font: inherit;
+            color: inherit
+        }
+
+        /* ---------- frame & rail ---------- */
+        .frame {
+            display: grid;
+            grid-template-columns: 56px minmax(0, 1fr);
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: 100vh
+        }
+
+        .rail {
+            border-right: 1px solid var(--hair);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 0
+        }
+
+        .rail-mark {
+            width: 10px;
+            height: 10px;
+            background: var(--ox)
+        }
+
+        .rail .vtext {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            font-size: 9.5px;
+            letter-spacing: .34em;
+            text-transform: uppercase;
+            color: var(--ink2)
+        }
+
+        /* ---------- masthead ---------- */
+        .masthead {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 24px;
+            padding: 30px 36px 22px;
+            flex-wrap: wrap
+        }
+
+        .kicker {
+            font-size: 9.5px;
+            letter-spacing: .28em;
+            text-transform: uppercase;
+            color: var(--ink2);
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        .kicker::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            background: var(--ox);
+            flex: none
+        }
+
+        h1 {
+            font-family: 'Fraunces', serif;
+            font-optical-sizing: auto;
+            font-weight: 560;
+            font-size: clamp(27px, 3.4vw, 38px);
+            letter-spacing: -.01em;
+            line-height: 1.05;
+            margin-top: 10px
+        }
+
+        h1 .amp {
+            font-style: italic;
+            font-weight: 400;
+            color: var(--ox)
+        }
+
+        .sub {
+            font-family: 'Fraunces', serif;
+            font-style: italic;
+            font-size: 14px;
+            color: var(--ink2);
+            margin-top: 7px
+        }
+
+        .mast-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap
+        }
+
+        .stamp {
+            font-size: 8.5px;
+            letter-spacing: .26em;
+            text-transform: uppercase;
+            color: var(--ox);
+            border: 1px solid var(--ox);
+            padding: 5px 9px;
+            transform: rotate(-3.5deg);
+            opacity: .75;
+            white-space: nowrap
+        }
+
+        .care-num {
+            text-align: right
+        }
+
+        .care-num b {
+            font-family: 'Fraunces', serif;
+            font-weight: 500;
+            font-size: 32px;
+            line-height: 1;
+            display: block
+        }
+
+        .care-num span {
+            display: block;
+            font-size: 9px;
+            letter-spacing: .22em;
+            text-transform: uppercase;
+            color: var(--ink2);
+            margin-top: 5px
+        }
+
+        .v-div {
+            width: 1px;
+            height: 38px;
+            background: var(--hair2)
+        }
+
+        .today-block {
+            text-align: right
+        }
+
+        .tb-day {
+            font-family: 'Fraunces', serif;
+            font-style: italic;
+            font-size: 15px;
+            display: block
+        }
+
+        .tb-date {
+            font-size: 9.5px;
+            letter-spacing: .2em;
+            text-transform: uppercase;
+            color: var(--ink2);
+            display: block;
+            margin-top: 4px
+        }
+
+        .rule-double {
+            height: 7px;
+            border-top: 2px solid var(--ink);
+            border-bottom: 1px solid var(--ink);
+            margin: 0 36px
+        }
+
+        /* ---------- buttons ---------- */
+        .btn {
+            appearance: none;
+            border: 1px solid var(--ink);
+            background: var(--ink);
+            color: var(--paper);
+            font-size: 10.5px;
+            letter-spacing: .16em;
+            text-transform: uppercase;
+            padding: 11px 18px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            transition: background .15s, transform .05s
+        }
+
+        .btn:hover {
+            background: #000
+        }
+
+        .btn:active {
+            transform: translateY(1px)
+        }
+
+        .btn.ghost {
+            background: transparent;
+            color: var(--ink)
+        }
+
+        .btn.ghost:hover {
+            background: var(--ink);
+            color: var(--paper)
+        }
+
+        .btn.ox {
+            background: var(--ox);
+            border-color: var(--ox)
+        }
+
+        .btn.ox:hover {
+            background: #5f1f19
+        }
+
+        .btn.sm {
+            padding: 7px 12px;
+            font-size: 9px;
+            letter-spacing: .14em
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--hair2);
+            background: transparent;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            transition: background .15s, color .15s, border-color .15s
+        }
+
+        .icon-btn:hover {
+            background: var(--ink);
+            border-color: var(--ink);
+            color: var(--paper)
+        }
+
+        .linklike {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 10px;
+            letter-spacing: .16em;
+            text-transform: uppercase;
+            color: var(--ink2);
+            text-decoration: underline;
+            text-underline-offset: 3px
+        }
+
+        .linklike:hover {
+            color: var(--ink)
+        }
+
+        .btn:focus-visible,
+        .icon-btn:focus-visible,
+        .filter:focus-visible,
+        .cell:focus-visible,
+        .linklike:focus-visible {
+            outline: 2px solid var(--ink);
+            outline-offset: 2px
+        }
+
+        /* ---------- toolbar ---------- */
+        .toolbar {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 24px 36px 16px;
+            flex-wrap: wrap
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap
+        }
+
+        .month-title {
+            font-family: 'Fraunces', serif;
+            font-weight: 500;
+            font-size: 26px;
+            letter-spacing: -.01em;
+            min-width: 190px;
+            text-align: center
+        }
+
+        .month-title .yr {
+            font-size: 15px;
+            font-style: italic;
+            color: var(--ink2);
+            margin-left: 6px
+        }
+
+        .filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap
+        }
+
+        .filter {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--hair2);
+            background: transparent;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 9.5px;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            transition: opacity .15s, border-color .15s
+        }
+
+        .filter:hover {
+            border-color: var(--ink)
+        }
+
+        .filter .sw {
+            width: 9px;
+            height: 9px;
+            background: var(--c);
+            flex: none
+        }
+
+        .filter b {
+            font-weight: 600
+        }
+
+        .filter.off {
+            opacity: .35
+        }
+
+        .filter.off .sw {
+            background: transparent;
+            box-shadow: inset 0 0 0 1.5px var(--c)
+        }
+
+        /* ---------- calendar ---------- */
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 372px
+        }
+
+        .cal-side {
+            min-width: 0;
+            padding-bottom: 6px
+        }
+
+        .cal-wrap {
+            margin: 0 36px 10px;
+            border-top: 1px solid var(--hair);
+            border-right: 1px solid var(--hair);
+            border-left: 6px double var(--ox);
+            background: var(--paper2)
+        }
+
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr)
+        }
+
+        .dow {
+            padding: 10px 12px;
+            font-size: 9px;
+            letter-spacing: .24em;
+            text-transform: uppercase;
+            color: var(--ink2);
+            border-right: 1px solid var(--hair);
+            border-bottom: 1px solid var(--hair2)
+        }
+
+        .dow:nth-child(7n) {
+            border-right: none
+        }
+
+        .cell {
+            min-height: 108px;
+            padding: 8px 9px 8px 12px;
+            border-right: 1px solid var(--hair);
+            border-bottom: 1px solid var(--hair);
+            cursor: pointer;
+            position: relative;
+            transition: background .12s;
+            animation: rise .4s both;
+            animation-delay: calc(var(--i)*6ms)
+        }
+
+        .cell:nth-child(7n) {
+            border-right: none
+        }
+
+        .cell:hover {
+            background: rgba(33, 29, 23, .035)
+        }
+
+        .cell.sel {
+            background: rgba(33, 29, 23, .055)
+        }
+
+        .cell.out .num {
+            opacity: .3
+        }
+
+        .cell.out .evs {
+            opacity: .45
+        }
+
+        .num {
+            font-family: 'Fraunces', serif;
+            font-size: 14px;
+            font-weight: 500;
+            display: inline-grid;
+            place-items: center;
+            min-width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            line-height: 1
+        }
+
+        .cell.today .num {
+            box-shadow: inset 0 0 0 1.5px var(--ink)
+        }
+
+        .cell.sel .num {
+            background: var(--ink);
+            color: var(--paper);
+            box-shadow: none
+        }
+
+        .evs {
+            margin-top: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0
+        }
+
+        .ev {
+            border-left: 3px solid var(--c);
+            padding-left: 6px;
+            font-size: 9.5px;
+            letter-spacing: .02em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .ev:hover {
+            text-decoration: underline
+        }
+
+        .more {
+            font-size: 9px;
+            font-style: italic;
+            color: var(--ink2);
+            padding-left: 9px
+        }
+
+        .footnote {
+            font-family: 'Fraunces', serif;
+            font-style: italic;
+            font-size: 12px;
+            color: var(--ink2);
+            margin: 12px 38px 0
+        }
+
+        /* ---------- day panel ---------- */
+        .panel {
+            border-left: 1px solid var(--hair2)
+        }
+
+        .panel-inner {
+            position: sticky;
+            top: 0;
+            max-height: 100vh;
+            overflow-y: auto;
+            padding: 26px 28px 44px 26px
+        }
+
+        .panel-inner::-webkit-scrollbar {
+            width: 6px
+        }
+
+        .panel-inner::-webkit-scrollbar-thumb {
+            background: var(--hair2)
+        }
+
+        .sec-label {
+            font-size: 9px;
+            letter-spacing: .26em;
+            text-transform: uppercase;
+            color: var(--ink2);
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 14px
+        }
+
+        .sec-label .rn {
+            font-family: 'Fraunces', serif;
+            font-style: italic;
+            font-size: 12px;
+            color: var(--ox);
+            letter-spacing: 0
+        }
+
+        .sec-label .pl {
+            margin-left: auto;
+            color: var(--ox)
+        }
+
+        .day-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px
+        }
+
+        .day-head h2 {
+            font-family: 'Fraunces', serif;
+            font-weight: 560;
+            font-size: 24px;
+            letter-spacing: -.01em
+        }
+
+        .day-head .count {
+            font-size: 9px;
+            letter-spacing: .16em;
+            text-transform: uppercase;
+            color: var(--ink2);
+            text-align: right
+        }
+
+        .day-sub {
+            font-family: 'Fraunces', serif;
+            font-style: italic;
+            font-size: 13px;
+            color: var(--ink2);
+            margin: 2px 0 16px
+        }
+
+        .entry {
+            border-top: 1px solid var(--hair);
+            animation: rise .4s both
+        }
+
+        .entry:last-of-type {
+            border-bottom: 1px solid var(--hair)
+        }
+
+        .ehead {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 13px 2px;
+            cursor: pointer;
+            user-select: none
+        }
+
+        .etime {
+            font-size: 11px;
+            font-weight: 600;
+            min-width: 42px;
+            padding-top: 3px
+        }
+
+        .emain {
+            flex: 1;
+            min-width: 0
+        }
+
+        .ename {
+            font-family: 'Fraunces', serif;
+            font-weight: 500;
+            font-size: 15.5px;
+            line-height: 1.25
+        }
+
+        .emeta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 5px;
+            font-size: 9.5px;
+            color: var(--ink2)
+        }
+
+        .tag,
+        .stat {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 8.5px;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: var(--ink)
+        }
+
+        .tag i,
+        .stat i {
+            width: 7px;
+            height: 7px;
+            background: var(--c);
+            display: inline-block;
+            flex: none
+        }
+
+        .echev {
+            color: var(--ink2);
+            flex: none;
+            margin-top: 5px;
+            transition: transform .2s
+        }
+
+        .entry.open .echev {
+            transform: rotate(180deg)
+        }
+
+        .ebody {
+            display: none;
+            padding: 2px 2px 16px 54px
+        }
+
+        .entry.open .ebody {
+            display: block;
+            animation: fadeDown .25s both
+        }
+
+        .dl {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            row-gap: 8px;
+            font-size: 11.5px
+        }
+
+        .dl dt {
+            font-size: 8.5px;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: var(--ink2);
+            padding-top: 3px
+        }
+
+        .dl dd {
+            margin: 0
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 15px
+        }
+
+        .quiet {
+            font-family: 'Fraunces', serif;
+            font-style: italic;
+            font-size: 12.5px;
+            color: var(--ink2);
+            margin-top: 12px
+        }
+
+        .empty {
+            font-family: 'Fraunces', serif;
+            font-style: italic;
+            font-size: 13.5px;
+            color: var(--ink2);
+            padding: 14px 0
+        }
+
+        /* ---------- pending authorizations ---------- */
+        .pending {
+            margin-top: 32px;
+            border-top: 2px solid var(--ink);
+            padding-top: 16px
+        }
+
+        .pref {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--hair);
+            animation: rise .4s both
+        }
+
+        .pref-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px
+        }
+
+        .pref-name {
+            font-family: 'Fraunces', serif;
+            font-weight: 500;
+            font-size: 14.5px
+        }
+
+        .pref-date {
+            font-size: 9px;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: var(--ink2);
+            white-space: nowrap
+        }
+
+        .pref-bot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            flex-wrap: wrap
+        }
+
+        .pref-by {
+            font-size: 10px;
+            color: var(--ink2)
+        }
+
+        .pref-actions {
+            display: flex;
+            gap: 6px
+        }
+
+        .morelink {
+            font-size: 9.5px;
+            font-style: italic;
+            color: var(--ink2);
+            padding-top: 10px
+        }
+
+        /* ---------- colophon ---------- */
+        .colophon {
+            margin: 26px 36px 30px;
+            padding-top: 14px;
+            border-top: 1px solid var(--hair2);
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 9px;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: var(--ink2);
+            flex-wrap: wrap
+        }
+
+        /* ---------- modal ---------- */
+        .modal-root {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: grid;
+            place-items: center;
+            padding: 16px
+        }
+
+        .modal-root[hidden] {
+            display: none
+        }
+
+        .scrim {
+            position: absolute;
+            inset: 0;
+            background: rgba(24, 20, 14, .45)
+        }
+
+        .modal {
+            position: relative;
+            width: min(560px, 100%);
+            max-height: 92vh;
+            overflow-y: auto;
+            background: var(--paper);
+            border: 1px solid var(--ink);
+            box-shadow: 0 24px 60px rgba(20, 16, 10, .35);
+            animation: pop .28s both
+        }
+
+        .modal .rule-double {
+            margin: 0
+        }
+
+        .mclose {
+            position: absolute;
+            top: 18px;
+            right: 16px
+        }
+
+        .mhead {
+            padding: 24px 60px 0 26px
+        }
+
+        .mhead h3 {
+            font-family: 'Fraunces', serif;
+            font-weight: 560;
+            font-size: 22px;
+            margin-top: 8px
+        }
+
+        .mref {
+            font-size: 10px;
+            letter-spacing: .16em;
+            text-transform: uppercase;
+            color: var(--ox);
+            margin-top: 6px
+        }
+
+        #entryForm {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            padding: 20px 26px 26px
+        }
+
+        .frow.two {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px
+        }
+
+        .field label {
+            font-size: 8.5px;
+            letter-spacing: .2em;
+            text-transform: uppercase;
+            color: var(--ink2)
+        }
+
+        .field input,
+        .field select,
+        .field textarea {
+            width: 100%;
+            font: inherit;
+            font-size: 13px;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--hair2);
+            border-radius: 0;
+            padding: 7px 2px;
+            color: var(--ink)
+        }
+
+        .field select {
+            cursor: pointer
+        }
+
+        .field input:focus,
+        .field select:focus,
+        .field textarea:focus {
+            outline: none;
+            border-bottom-color: var(--ink)
+        }
+
+        .field.err input {
+            border-bottom-color: var(--ox)
+        }
+
+        .err-msg {
+            color: var(--ox);
+            font-size: 10px
+        }
+
+        .types {
+            display: flex;
+            gap: 8px
+        }
+
+        .type-opt {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--hair2);
+            padding: 9px 10px;
+            cursor: pointer;
+            font-size: 9.5px;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            transition: border-color .15s, background .15s
+        }
+
+        .type-opt input {
+            position: absolute;
+            opacity: 0
+        }
+
+        .type-opt .sw {
+            width: 9px;
+            height: 9px;
+            background: var(--c);
+            flex: none
+        }
+
+        .type-opt:hover {
+            border-color: var(--ink)
+        }
+
+        .type-opt.checked {
+            border-color: var(--ink);
+            background: rgba(33, 29, 23, .05)
+        }
+
+        .mfoot {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding-top: 6px
+        }
+
+        /* ---------- toasts ---------- */
+        .toasts {
+            position: fixed;
+            right: 22px;
+            bottom: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 80
+        }
+
+        .toast {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            background: var(--paper);
+            border: 1px solid var(--ink);
+            border-left: 4px solid var(--ink);
+            padding: 12px 16px;
+            font-size: 11.5px;
+            max-width: 340px;
+            box-shadow: 0 10px 26px rgba(20, 16, 10, .25);
+            animation: toastIn .3s both
+        }
+
+        .toast i {
+            width: 8px;
+            height: 8px;
+            background: var(--c);
+            margin-top: 5px;
+            flex: none
+        }
+
+        .toast.leaving {
+            animation: toastOut .3s both
+        }
+
+        /* ---------- keyframes ---------- */
+        @keyframes rise {
+            from {
+                opacity: 0;
+                transform: translateY(5px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        @keyframes fadeDown {
+            from {
+                opacity: 0;
+                transform: translateY(-4px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        @keyframes pop {
+            from {
+                opacity: 0;
+                transform: translateY(14px) scale(.985)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        @keyframes toastOut {
+            to {
+                opacity: 0;
+                transform: translateY(6px)
+            }
+        }
+
+        @media (prefers-reduced-motion:reduce) {
+            * {
+                animation: none !important;
+                transition: none !important
+            }
+        }
+
+        /* ---------- responsive ---------- */
+        @media (max-width:1080px) {
+            .frame {
+                grid-template-columns: 1fr
+            }
+
+            .rail {
+                display: none
+            }
+
+            .layout {
+                grid-template-columns: 1fr
+            }
+
+            .panel {
+                border-left: none;
+                border-top: 2px solid var(--ink)
+            }
+
+            .panel-inner {
+                position: static;
+                max-height: none;
+                overflow: visible
+            }
+
+            .cal-wrap {
+                margin: 0 22px 10px
+            }
+
+            .toolbar,
+            .masthead {
+                padding-left: 22px;
+                padding-right: 22px
+            }
+
+            .rule-double {
+                margin: 0 22px
+            }
+
+            .footnote {
+                margin: 12px 24px 0
+            }
+
+            .colophon {
+                margin: 22px 22px 28px
+            }
+        }
+
+        @media (max-width:640px) {
+
+            .stamp,
+            .v-div {
+                display: none
+            }
+
+            .cell {
+                min-height: 86px;
+                padding: 6px 6px 6px 9px
+            }
+
+            .ev {
+                font-size: 8.5px
+            }
+
+            .frow.two {
+                grid-template-columns: 1fr
+            }
+
+            .month-title {
+                min-width: 0
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="frame">
+
+        <aside class="rail">
+            <span class="rail-mark"></span>
+            <span class="vtext">Hawthorne &amp; Sons · Funeral Home · Est. 1897</span>
+        </aside>
+
+        <div class="main">
+
+            <header class="masthead">
+                <div class="mast-left">
+                    <p class="kicker">Operations Register · Day Book</p>
+                    <h1>Hawthorne <span class="amp">&amp;</span> Sons</h1>
+                    <p class="sub">Family funeral home — intake, release &amp; postmortem ledger</p>
+                </div>
+                <div class="mast-right">
+                    <span class="stamp">Confidential · Registry</span>
+                    <div class="care-num"><b id="careCount">0</b><span>In our care</span></div>
+                    <div class="v-div"></div>
+                    <div class="today-block">
+                        <span class="tb-day" id="todayDay">—</span>
+                        <span class="tb-date" id="todayDate">—</span>
+                    </div>
+                    <button class="btn" id="btnNew">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="square">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        Log entry
+                    </button>
+                </div>
+            </header>
+
+            <div class="rule-double"></div>
+
+            <div class="layout">
+                <section class="cal-side">
+                    <div class="toolbar">
+                        <div class="nav">
+                            <button class="icon-btn" id="prevM" aria-label="Previous month">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="square">
+                                    <path d="M15 6l-6 6 6 6" />
+                                </svg>
+                            </button>
+                            <h2 class="month-title" id="monthTitle">—</h2>
+                            <button class="icon-btn" id="nextM" aria-label="Next month">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="square">
+                                    <path d="M9 6l6 6-6 6" />
+                                </svg>
+                            </button>
+                            <button class="linklike" id="btnToday">Today</button>
+                        </div>
+                        <div class="filters" id="filters"></div>
+                    </div>
+
+                    <div class="cal-wrap">
+                        <div class="cal-grid" id="calGrid"></div>
+                    </div>
+
+                    <p class="footnote">All times local, 24-hour notation. The double rule in the margin follows the
+                        practice of the house day-book.</p>
+                </section>
+
+                <aside class="panel">
+                    <div class="panel-inner">
+                        <p class="sec-label"><span class="rn">I.</span> Day ledger</p>
+                        <div class="day-head">
+                            <h2 id="dayTitle">—</h2>
+                            <span class="count" id="dayCount"></span>
+                        </div>
+                        <p class="day-sub" id="daySub"></p>
+                        <div id="dayList"></div>
+
+                        <div class="pending">
+                            <p class="sec-label"><span class="rn">II.</span> Awaiting authorization <span class="pl"
+                                    id="pendCount"></span></p>
+                            <div id="pendList"></div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <footer class="colophon">
+                <span>Hawthorne &amp; Sons — Operations Register · Ref. H&amp;S/OPS</span>
+                <span>Duty keeper M. Okonkwo · Desk ext. 214 · Register closes 20:00</span>
+            </footer>
+
+        </div>
+    </div>
+
+    <!-- modal: new entry -->
+    <div class="modal-root" id="modalRoot" hidden>
+        <div class="scrim" data-close></div>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+            <div class="rule-double"></div>
+            <button class="icon-btn mclose" data-close aria-label="Close">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="square">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+            </button>
+            <div class="mhead">
+                <p class="kicker">New entry — day book</p>
+                <h3 id="mTitle">Record a register entry</h3>
+                <p class="mref" id="mRef">Case № —</p>
+            </div>
+            <form id="entryForm" novalidate>
+                <div class="types" id="typeSel">
+                    <label class="type-opt" data-t="intake" style="--c:var(--ox)"><input type="radio" name="etype"
+                            value="intake" checked><span class="sw"></span>Intake</label>
+                    <label class="type-opt" data-t="release" style="--c:var(--moss)"><input type="radio" name="etype"
+                            value="release"><span class="sw"></span>Release</label>
+                    <label class="type-opt" data-t="pm" style="--c:var(--och)"><input type="radio" name="etype"
+                            value="pm"><span class="sw"></span>Postmortem</label>
+                </div>
+                <div class="frow two">
+                    <div class="field"><label for="inDate">Date</label><input type="date" id="inDate"></div>
+                    <div class="field"><label for="inTime">Time</label><input type="time" id="inTime" value="09:00">
+                    </div>
+                </div>
+                <div class="field" id="fName">
+                    <label for="inName">Name of the deceased</label>
+                    <input id="inName" autocomplete="off" placeholder="Full name">
+                    <p class="err-msg" id="nameErr" hidden>Please record the full name.</p>
+                </div>
+                <div class="field"><label for="inNok">Next of kin</label><input id="inNok" autocomplete="off"
+                        placeholder="e.g. R. Ashworth (daughter)"></div>
+                <div class="frow two">
+                    <div class="field"><label for="inLoc">Location</label><select id="inLoc"></select></div>
+                    <div class="field"><label for="inStaff">Attending staff</label><select id="inStaff"></select></div>
+                </div>
+                <div class="field"><label for="inNotes">Notes</label><textarea id="inNotes" rows="2"></textarea></div>
+                <div class="mfoot">
+                    <button type="button" class="btn ghost" data-close>Cancel</button>
+                    <button type="submit" class="btn">Record entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="toasts" id="toasts"></div>
+
+    <script>
+        /* ================= utilities ================= */
+        const $ = (s, el = document) => el.querySelector(s);
+        const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+        const pad = n => String(n).padStart(2, '0');
+        const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const fromISO = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+        const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const WEEKFULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+        const TYPES = {
+            intake: { label: 'Intake', plural: 'Intakes', color: 'var(--ox)' },
+            release: { label: 'Release', plural: 'Releases', color: 'var(--moss)' },
+            pm: { label: 'Postmortem', plural: 'PM requests', color: 'var(--och)' }
+        };
+        const STATUS_COLOR = { 'In care': 'var(--ox)', 'Prepared': 'var(--ox)', 'Scheduled': 'var(--moss)', 'Completed': 'var(--moss)', 'Awaiting authorization': 'var(--och)', 'Authorized': 'var(--och)', 'Returned': 'var(--ink2)' };
+        const CHEV = '<svg class="echev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"><path d="M6 9l6 6 6-6"/></svg>';
+
+        /* ================= dummy data ================= */
+        const rnd = mulberry32(1897);
+        const pick = a => a[(rnd() * a.length) | 0];
+        const NAMES = ['Margaret E. Ashworth', 'Edward J. Bellamy', 'Clara Voss', 'Harold J. Winslow', 'Iris Fairbairn', 'Thomas P. Grady', 'Eleanor Pike', 'Samuel Okafor', 'Beatrice Holloway', 'Arthur Pemberton', 'Nora Lindqvist', 'Cecil B. Barrow', 'Edith M. Marlowe', 'Rupert Kane', 'Florence Adeyemi', 'Walter Sloane', 'Agnes Whitfield', 'Douglas Merrick', 'Sylvia Cranfield', 'Jonah Reyes', 'Prudence Ellery', 'Martin Duval', 'Rosalind Hartley', 'Frederick Nwosu', 'Lillian Prescot', 'Hattie Bloom', 'Victor Sandoval', 'Constance Wray', 'Albert Finch'];
+        const STAFF = ['M. Okonkwo', 'A. Blackwood', 'J. Halloran', 'S. Ferrante', 'R. McTavish', 'D. Whitfield'];
+        const CORONERS = ['Dr. L. Vane', 'Dr. P. Rossiter', 'Dr. H. Ellison', 'District Coroner'];
+        const RELS = ['daughter', 'son', 'wife', 'husband', 'niece', 'brother', 'sister', 'grandson'];
+        const KIN_FIRST = ['R.', 'P.', 'J.', 'A.', 'M.', 'E.', 'T.', 'S.', 'C.', 'W.'];
+        const LOCS = {
+            intake: ['Reception Bay 1', 'Reception Bay 2', 'Prep Room 1', 'Prep Room 2', 'Prep Room 3'],
+            release: ['Chapel A', 'Chapel B', 'West Door', 'Family Lounge'],
+            pm: ['Mortuary Suite', 'Examination Room 1', 'Examination Room 2']
+        };
+        const NOTES = {
+            intake: ['Family requested an evening viewing.', 'Personal effects logged and sealed.', 'Transfer received from county hospital.', 'Documents verified with next of kin.', 'Resting in cooled bay; dress fitting Thursday.', 'Floral tributes received at reception.'],
+            release: ['Service in main chapel followed by cremation.', 'Burial at Fernhill Cemetery, plot 88.', 'Direct transfer — no service booked.', 'Family limousine arranged.', 'Musical tributes by family arrangement.'],
+            pm: ['Coroner request — cause pending toxicology.', 'Requested under section 12 inquiry.', 'Hospital request following surgical review.', 'Histology samples required before release.', 'Second examination requested by family counsel.']
+        };
+
+        let caseNo = 1100 + ((rnd() * 40) | 0);
+        let idc = 0;
+        const entries = [];
+        const today = new Date();
+        const tISO = iso(today);
+
+        function timeFor(type) {
+            const r = { intake: [6, 11], release: [10, 16], pm: [9, 17] }[type];
+            return `${pad(r[0] + ((rnd() * (r[1] - r[0] + 1)) | 0))}:${pad(pick([0, 15, 30, 45]))}`;
+        }
+        function makeEntry(date, type, f = {}) {
+            const name = f.name || pick(NAMES);
+            const surname = name.split(' ').pop();
+            const e = {
+                id: 'e' + (++idc), ref: ++caseNo, date, type,
+                time: f.time || timeFor(type),
+                name, surname,
+                nok: f.nok !== undefined ? f.nok : `${pick(KIN_FIRST)} ${surname} (${pick(RELS)})`,
+                loc: f.loc || pick(LOCS[type]),
+                staff: f.staff || pick(STAFF),
+                status: f.status || { intake: rnd() < .6 ? 'In care' : 'Prepared', release: rnd() < .7 ? 'Scheduled' : 'Completed', pm: rnd() < .55 ? 'Awaiting authorization' : 'Authorized' }[type],
+                notes: f.notes || pick(NOTES[type])
+            };
+            if (type === 'pm') e.requestedBy = f.requestedBy || pick(CORONERS);
+            return e;
+        }
+        function pickType(dateISO) {
+            const t = rnd();
+            if (dateISO < tISO) return t < .5 ? 'intake' : t < .8 ? 'release' : 'pm'; // past days: more intakes
+            return t < .22 ? 'intake' : t < .62 ? 'release' : 'pm';                   // future: more scheduled releases/PMs
+        }
+        function genMonth(y, m, density) {
+            const days = new Date(y, m + 1, 0).getDate();
+            for (let d = 1; d <= days; d++) {
+                const key = `${y}-${pad(m + 1)}-${pad(d)}`;
+                if (key === tISO) continue;
+                const r = rnd();
+                const n = r < .28 ? 0 : r < .62 ? 1 : r < .86 ? 2 : 3;
+                for (let i = 0; i < n; i++) {
+                    if (rnd() > density) continue;
+                    entries.push(makeEntry(key, pickType(key)));
+                }
+            }
+        }
+        function sortEntries() { entries.sort((a, b) => a.date === b.date ? a.time.localeCompare(b.time) : a.date.localeCompare(b.date)); }
+
+        /* curated entries for today so the day ledger reads well on load */
+        entries.push(
+            makeEntry(tISO, 'intake', { time: '06:40', name: 'Margaret E. Ashworth', status: 'In care', loc: 'Reception Bay 1', staff: 'M. Okonkwo', nok: 'R. Ashworth (daughter)', notes: 'Family viewing requested for 18:00. White gloves per family wish.' }),
+            makeEntry(tISO, 'intake', { time: '09:15', name: 'Harold J. Winslow', status: 'Prepared', loc: 'Prep Room 2', staff: 'A. Blackwood', nok: 'E. Winslow (wife)', notes: 'Dress fitting complete; chapel booking confirmed for Friday.' }),
+            makeEntry(tISO, 'release', { time: '13:00', name: 'Edith M. Marlowe', status: 'Scheduled', loc: 'Chapel A', staff: 'J. Halloran', nok: 'P. Marlowe (son)', notes: 'Service at 13:00, burial at Fernhill afterwards. Limousine ordered.' }),
+            makeEntry(tISO, 'pm', { time: '15:30', name: 'Rupert C. Kane', status: 'Awaiting authorization', loc: 'Mortuary Suite', staff: 'S. Ferrante', requestedBy: 'Dr. P. Rossiter', nok: 'H. Kane (brother)', notes: 'Cause pending toxicology; family informed of the hold.' })
+        );
+        genMonth(today.getFullYear(), today.getMonth() - 1, .55);
+        genMonth(today.getFullYear(), today.getMonth(), 1);
+        genMonth(today.getFullYear(), today.getMonth() + 1, .55);
+        sortEntries();
+
+        /* make sure the pending queue has content */
+        let pend = entries.filter(e => e.type === 'pm' && e.status === 'Awaiting authorization');
+        if (pend.length < 3) entries.filter(e => e.type === 'pm' && e.status === 'Authorized').slice(0, 3 - pend.length).forEach(e => e.status = 'Awaiting authorization');
+
+        /* ================= state ================= */
+        const state = { y: today.getFullYear(), m: today.getMonth(), sel: tISO, filters: { intake: true, release: true, pm: true }, open: null };
+        const pmToday = entries.find(e => e.date === tISO && e.type === 'pm');
+        if (pmToday) state.open = pmToday.id;
+
+        const visibleEntries = key => entries
+            .filter(e => e.date === key && state.filters[e.type])
+            .sort((a, b) => a.time.localeCompare(b.time));
+
+        /* ================= render: toolbar ================= */
+        function renderToolbar() {
+            $('#monthTitle').innerHTML = `${MONTHS[state.m]} <span class="yr">${state.y}</span>`;
+            Object.keys(TYPES).forEach(k => {
+                const n = entries.filter(e => { const d = fromISO(e.date); return d.getFullYear() === state.y && d.getMonth() === state.m && e.type === k; }).length;
+                $(`[data-count="${k}"]`).textContent = n;
+            });
+        }
+        function renderCare() {
+            $('#careCount').textContent = entries.filter(e => e.type === 'intake' && (e.status === 'In care' || e.status === 'Prepared')).length;
+        }
+
+        /* ================= render: calendar ================= */
+        function renderCalendar() {
+            const first = new Date(state.y, state.m, 1);
+            const start = new Date(state.y, state.m, 1 - ((first.getDay() + 6) % 7)); // Monday-first
+            let html = DOW.map(d => `<div class="dow">${d}</div>`).join('');
+            for (let i = 0; i < 42; i++) {
+                const dt = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+                const key = iso(dt);
+                const out = dt.getMonth() !== state.m;
+                const all = visibleEntries(key);
+                const evs = all.slice(0, 3);
+                const cls = ['cell', out ? 'out' : '', key === state.sel ? 'sel' : '', key === tISO ? 'today' : ''].join(' ');
+                html += `<div class="${cls}" role="button" tabindex="0" data-date="${key}" style="--i:${i}" aria-label="${key}"><span class="num">${dt.getDate()}</span>`;
+                if (evs.length) {
+                    html += `<div class="evs">` + evs.map(e =>
+                        `<span class="ev" style="--c:${TYPES[e.type].color}" title="${e.time} · Case ${e.ref} — ${esc(e.surname)}">${esc(e.surname)}</span>`
+                    ).join('');
+                    if (all.length > 3) html += `<span class="more">+${all.length - 3} further</span>`;
+                    html += `</div>`;
+                }
+                html += `</div>`;
+            }
+            $('#calGrid').innerHTML = html;
+        }
+        function selectDay(key) {
+            state.sel = key; state.open = null;
+            const d = fromISO(key);
+            if (d.getMonth() !== state.m || d.getFullYear() !== state.y) {
+                state.y = d.getFullYear(); state.m = d.getMonth();
+                renderCalendar(); renderToolbar();
+            } else {
+                $$('#calGrid .cell').forEach(c => c.classList.toggle('sel', c.dataset.date === key));
+            }
+            renderPanel();
+        }
+
+        /* ================= render: day ledger ================= */
+        function actionsHTML(e) {
+            const a = [];
+            if (e.type === 'intake' && e.status === 'In care') a.push(`<button class="btn sm" data-act="prepare" data-id="${e.id}">Mark prepared</button>`);
+            if (e.type === 'release' && e.status === 'Scheduled') a.push(`<button class="btn sm" data-act="complete" data-id="${e.id}">Confirm release completed</button>`);
+            if (e.type === 'pm' && e.status === 'Awaiting authorization') a.push(`<button class="btn sm ox" data-act="authorize" data-id="${e.id}">Authorize</button><button class="btn sm ghost" data-act="return" data-id="${e.id}">Return</button>`);
+            if (!a.length) {
+                const line = { 'Prepared': 'Prepared — awaiting service schedule.', 'Completed': 'Register closed for this case.', 'Authorized': 'Examination scheduled — coroner notified.', 'Returned': 'Returned to coroner for further information.' }[e.status];
+                if (line) a.push(`<p class="quiet">${line}</p>`);
+            }
+            return a.length ? `<div class="actions">${a.join('')}</div>` : '';
+        }
+        function entryHTML(e, i) {
+            const T = TYPES[e.type], sc = STATUS_COLOR[e.status] || 'var(--ink2)';
+            return `<article class="entry ${state.open === e.id ? 'open' : ''}" data-id="${e.id}" style="animation-delay:${i * 45}ms">
+    <div class="ehead" data-toggle="${e.id}">
+      <span class="etime">${e.time}</span>
+      <div class="emain">
+        <div class="ename">${esc(e.name)}</div>
+        <div class="emeta">
+          <span class="tag" style="--c:${T.color}"><i></i>${T.label}</span>
+          <span>Case ${e.ref}</span>
+          <span class="stat" style="--c:${sc}"><i></i>${e.status}</span>
+        </div>
+      </div>
+      ${CHEV}
+    </div>
+    <div class="ebody">
+      <dl class="dl">
+        <dt>Next of kin</dt><dd>${esc(e.nok || '—')}</dd>
+        ${e.type === 'pm' ? `<dt>Requested by</dt><dd>${esc(e.requestedBy || '—')}</dd>` : ''}
+        <dt>Location</dt><dd>${esc(e.loc)}</dd>
+        <dt>Attending</dt><dd>${esc(e.staff)}</dd>
+        <dt>Status</dt><dd><span class="stat" style="--c:${sc}"><i></i>${e.status}</span></dd>
+        <dt>Notes</dt><dd>${esc(e.notes)}</dd>
+      </dl>
+      ${actionsHTML(e)}
+    </div>
+  </article>`;
+        }
+        function renderPanel() {
+            const d = fromISO(state.sel);
+            const list = visibleEntries(state.sel);
+            $('#dayTitle').textContent = `${WEEKFULL[(d.getDay() + 6) % 7]} ${d.getDate()}`;
+            $('#daySub').textContent = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+            $('#dayCount').textContent = list.length ? `${list.length} entr${list.length === 1 ? 'y' : 'ies'} recorded` : 'no entries';
+            $('#dayList').innerHTML = list.length
+                ? list.map(entryHTML).join('')
+                : `<div class="empty">Nothing recorded for this date.</div><button class="btn ghost sm" data-newentry>Record an entry</button>`;
+        }
+
+        /* ================= render: pending queue ================= */
+        function renderPending() {
+            const list = entries.filter(e => e.type === 'pm' && e.status === 'Awaiting authorization');
+            $('#pendCount').textContent = `${list.length} open`;
+            $('#pendList').innerHTML = list.length ? list.slice(0, 5).map((e, i) => {
+                const d = fromISO(e.date);
+                return `<div class="pref" style="animation-delay:${i * 40}ms">
+      <div class="pref-top"><span class="pref-name">Case ${e.ref} — ${esc(e.surname)}</span><span class="pref-date">${DOW[(d.getDay() + 6) % 7]} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} · ${e.time}</span></div>
+      <div class="pref-bot">
+        <span class="pref-by">Requested by ${esc(e.requestedBy || 'coroner')}</span>
+        <span class="pref-actions">
+          <button class="btn sm ox" data-act="authorize" data-id="${e.id}">Authorize</button>
+          <button class="btn sm ghost" data-act="return" data-id="${e.id}">Return</button>
+        </span>
+      </div>
+    </div>`;
+            }).join('') + (list.length > 5 ? `<p class="morelink">+ ${list.length - 5} further in the register</p>` : '')
+                : `<p class="empty">Register clear — no requests awaiting authorization.</p>`;
+        }
+
+        /* ================= actions & toasts ================= */
+        function toast(msg, color) {
+            const el = document.createElement('div');
+            el.className = 'toast';
+            el.innerHTML = `<i style="--c:${color || 'var(--ink)'}"></i><span>${msg}</span>`;
+            $('#toasts').append(el);
+            setTimeout(() => { el.classList.add('leaving'); setTimeout(() => el.remove(), 300); }, 3400);
+        }
+        function doAction(act, id) {
+            const e = entries.find(x => x.id === id); if (!e) return;
+            const map = {
+                prepare: ['Prepared', `Case ${e.ref} marked prepared — ${e.staff} notified.`, 'var(--ox)'],
+                complete: ['Completed', `Release of case ${e.ref} recorded as completed.`, 'var(--moss)'],
+                authorize: ['Authorized', `Postmortem for case ${e.ref} authorized — ${e.requestedBy || 'coroner'} notified.`, 'var(--och)'],
+                'return': ['Returned', `Case ${e.ref} returned to ${e.requestedBy || 'coroner'} for further information.`, 'var(--ink2)']
+            };
+            e.status = map[act][0];
+            renderPanel(); renderPending();
+            toast(map[act][1], map[act][2]);
+        }
+
+        /* ================= modal ================= */
+        const modalRoot = $('#modalRoot');
+        let modalType = 'intake';
+        function setType(t) {
+            modalType = t;
+            $$('.type-opt').forEach(l => l.classList.toggle('checked', l.dataset.t === t));
+            $('#inLoc').innerHTML = LOCS[t].map(l => `<option>${l}</option>`).join('');
+        }
+        function openModal(dateISO) {
+            modalRoot.hidden = false;
+            document.body.style.overflow = 'hidden';
+            $('#inDate').value = dateISO || tISO;
+            $('#inTime').value = '09:00';
+            $('#inName').value = ''; $('#inNok').value = ''; $('#inNotes').value = '';
+            $('#fName').classList.remove('err'); $('#nameErr').hidden = true;
+            setType('intake');
+            $('#mRef').textContent = `Case № ${caseNo + 1}`;
+            setTimeout(() => $('#inName').focus(), 60);
+        }
+        function closeModal() { modalRoot.hidden = true; document.body.style.overflow = ''; }
+        $('#typeSel').addEventListener('change', e => setType(e.target.value));
+        $('#inName').addEventListener('input', () => { $('#fName').classList.remove('err'); $('#nameErr').hidden = true; });
+        $('#entryForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const name = $('#inName').value.trim();
+            if (!name) { $('#fName').classList.add('err'); $('#nameErr').hidden = false; $('#inName').focus(); return; }
+            const date = $('#inDate').value || state.sel;
+            const e2 = makeEntry(date, modalType, {
+                time: $('#inTime').value || '09:00',
+                name,
+                nok: $('#inNok').value.trim() || undefined,
+                loc: $('#inLoc').value,
+                staff: $('#inStaff').value,
+                notes: $('#inNotes').value.trim() || 'No further notes recorded.',
+                status: { intake: 'In care', release: 'Scheduled', pm: 'Awaiting authorization' }[modalType]
+            });
+            entries.push(e2); sortEntries();
+            const d = fromISO(date);
+            state.y = d.getFullYear(); state.m = d.getMonth(); state.sel = date; state.open = e2.id;
+            closeModal(); renderAll();
+            toast(`Entry recorded — case ${e2.ref}, ${TYPES[modalType].label.toLowerCase()}.`, TYPES[modalType].color);
+        });
+
+        /* ================= global events ================= */
+        $('#calGrid').addEventListener('click', e => { const c = e.target.closest('.cell'); if (c) selectDay(c.dataset.date); });
+        $('#calGrid').addEventListener('keydown', e => {
+            if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('cell')) { e.preventDefault(); selectDay(e.target.dataset.date); }
+        });
+        $('#prevM').addEventListener('click', () => shiftMonth(-1));
+        $('#nextM').addEventListener('click', () => shiftMonth(1));
+        $('#btnToday').addEventListener('click', () => { state.y = today.getFullYear(); state.m = today.getMonth(); state.sel = tISO; state.open = null; renderAll(); });
+        $('#btnNew').addEventListener('click', () => openModal(state.sel));
+        function shiftMonth(d) { state.m += d; if (state.m < 0) { state.m = 11; state.y--; } if (state.m > 11) { state.m = 0; state.y++; } renderCalendar(); renderToolbar(); }
+
+        $('#filters').addEventListener('click', e => {
+            const b = e.target.closest('.filter'); if (!b) return;
+            const k = b.dataset.type;
+            state.filters[k] = !state.filters[k];
+            b.classList.toggle('off', !state.filters[k]);
+            b.setAttribute('aria-pressed', state.filters[k]);
+            renderCalendar(); renderPanel();
+        });
+
+        document.addEventListener('click', e => {
+            if (e.target.closest('[data-close]')) { closeModal(); return; }
+            const act = e.target.closest('[data-act]');
+            if (act) { doAction(act.dataset.act, act.dataset.id); return; }
+            const tog = e.target.closest('[data-toggle]');
+            if (tog) {
+                const id = tog.dataset.toggle;
+                const willOpen = state.open !== id;
+                state.open = willOpen ? id : null;
+                tog.closest('.entry').classList.toggle('open', willOpen);
+                return;
+            }
+            if (e.target.closest('[data-newentry]')) openModal(state.sel);
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !modalRoot.hidden) closeModal();
+            if (modalRoot.hidden && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
+                if (e.key === 'ArrowLeft') shiftMonth(-1);
+                if (e.key === 'ArrowRight') shiftMonth(1);
+            }
+        });
+
+        /* ================= init ================= */
+        $('#filters').innerHTML = Object.entries(TYPES).map(([k, t]) =>
+            `<button class="filter" data-type="${k}" aria-pressed="true"><span class="sw" style="--c:${t.color}"></span>${t.plural} <b data-count="${k}">0</b></button>`
+        ).join('');
+        $('#inStaff').innerHTML = STAFF.map(s => `<option>${s}</option>`).join('');
+        $('#todayDay').textContent = WEEKFULL[(today.getDay() + 6) % 7];
+        $('#todayDate').textContent = `${today.getDate()} ${MONTHS[today.getMonth()]} ${today.getFullYear()}`;
+
+        function renderAll() { renderToolbar(); renderCalendar(); renderPanel(); renderPending(); renderCare(); }
+        renderAll();
+    </script>
+</body>
+
+</html>

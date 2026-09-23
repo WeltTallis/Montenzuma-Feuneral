@@ -334,7 +334,7 @@ export default function ReservationDashboard(props) {
     '.cb-nav-pill.on .cb-nav-badge{background:' + ACC + '}',
     '.cb-nav-select{height:30px;padding:0 10px;border:1px solid ' + BRD + ';border-radius:7px;background:' + CARD + ';color:' + TX + ';font-size:11px;font-weight:700;font-family:' + FONT + ';cursor:pointer;min-width:140px;outline:none}',
     '.cb-nav-select:hover{border-color:' + ACC + '}',
-    '.cb-alt-host{flex:1;min-height:0;overflow-y:auto;background:' + CARD + '}',
+    '.cb-alt-host{flex:1;min-height:0;overflow-y:auto;background:transparent}',
 
     /* Colored stat cards */
     '.cb-sr{display:flex;align-items:stretch;flex-shrink:0;overflow-x:auto}',

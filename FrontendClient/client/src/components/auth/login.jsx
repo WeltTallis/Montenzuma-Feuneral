@@ -167,7 +167,7 @@ export default function LoginPage() {
         
         *{margin:0;padding:0;box-sizing:border-box}
         html{scroll-behavior:smooth}
-        body{font-family:'Inter',sans-serif;color:${C.gray};background:${C.bone2};-webkit-font-smoothing:antialiased}
+        body{font-family:'Inter',sans-serif;color:${C.gray};background:${C.white};-webkit-font-smoothing:antialiased}
         h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-0.01em;color:${C.ink}}
         
         .page-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; background: ${C.white}; }
@@ -235,6 +235,7 @@ export default function LoginPage() {
         .input-wrapper.error { border-color: ${C.red}; }
         .input-wrapper:focus-within { border-color: ${C.brass}; background: ${C.white}; box-shadow: 0 0 0 3px rgba(139,115,85,0.12); }
         .form-input { width: 100%; padding: 0.85rem 1rem; background: transparent; border: none; border-radius: 8px; font-size: 0.9rem; color: ${C.ink}; font-family: 'Inter', sans-serif; outline: none; }
+        .form-input:focus, .form-input:focus-visible { outline: none; box-shadow: none; border-color: transparent; }
         .form-input::placeholder { color: ${C.gray}; }
         .input-icon-btn { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: ${C.gray}; padding: 0.5rem; display: flex; align-items: center; justify-content: center; transition: color 0.2s; }
         .input-icon-btn:hover { color: ${C.ink}; }

@@ -622,6 +622,9 @@ export const createOrder = async (req: Request, res: Response) => {
       client_phone: ((req as any).body?.client_phone || '').toString().trim() || null,
       service_time: ((req as any).body?.service_time || '').toString().trim() || null,
       paid: !!((req as any).body?.paid),
+      // Reservation note typed in the "New Reservation" sidebar — must be
+      // persisted or the detail sidebar has nothing to show after refresh.
+      notes: ((req as any).body?.notes || '').toString().trim() || null,
       service_date: service_date || null,
       tenant_id: rTenantId,
       branch_id: rBranchId
@@ -709,6 +712,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
              paid,
              DATE_FORMAT(COALESCE(service_date, DATE(created_at)), '%Y-%m-%d') AS service_date,
              service_time,
+             notes,
              created_at
       FROM coffin_bookings cb
       WHERE cb.tenant_slug = ?${branchClause}
@@ -822,6 +826,7 @@ export const getOrderById = async (req: Request, res: Response) => {
              paid,
              DATE_FORMAT(COALESCE(service_date, DATE(created_at)), '%Y-%m-%d') AS service_date,
              service_time,
+             notes,
              created_at, updated_at
       FROM coffin_bookings
       WHERE order_id = ? AND tenant_slug = ?

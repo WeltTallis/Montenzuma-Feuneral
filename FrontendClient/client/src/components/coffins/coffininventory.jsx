@@ -336,7 +336,7 @@ const styles = {
 
   // Tables
   tw: {
-    background: '#fff',
+    background: 'transparent',
     border: `1px solid ${S.border}`,
     borderRadius: 16,
     overflow: 'hidden',
@@ -350,7 +350,7 @@ const styles = {
     alignItems: 'center',
     gap: 16,
     flexWrap: 'wrap',
-    background: '#fff',
+    background: 'transparent',
   },
   sbox: {
     display: 'flex',
@@ -376,7 +376,7 @@ const styles = {
     padding: '8px 14px',
     borderRadius: 8,
     border: `1px solid ${S.border}`,
-    background: '#fff',
+    background: 'transparent',
     color: S.textMuted,
     fontSize: 13,
     fontWeight: 600,
@@ -394,7 +394,7 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
     color: S.textMuted,
-    background: S.bg,
+    background: 'transparent',
     fontWeight: 700,
     borderBottom: `1px solid ${S.border}`,
     whiteSpace: 'nowrap',
@@ -438,7 +438,7 @@ const styles = {
     justifyContent: 'center',
     borderRadius: 8,
     border: `1px solid ${S.border}`,
-    background: '#fff',
+    background: 'transparent',
     color: S.textMuted,
     cursor: 'pointer',
     transition: S.transition,
@@ -2587,7 +2587,7 @@ const CoffinDashboard = () => {
         .inline-tag.tag-ar { background: #e0e7ff; color: ${S.primaryDark}; }
         .inline-tag.tag-tr { background: ${S.warningLight}; color: ${S.warning}; }
         .inline-tag.tag-de { background: ${S.successLight}; color: ${S.success}; }
-        tr:hover td { background: #f8fafc; }
+        tr:hover td { background: #f1f5f9; }
       `}</style>
 
       <ToastContainer position="top-center" autoClose={3000} />

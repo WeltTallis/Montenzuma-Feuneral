@@ -1,93 +1,290 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
+import styled, { createGlobalStyle, keyframes } from 'styled-components';
+import { ShieldCheck, Search, AlertCircle, Loader, Phone, Lock, EyeOff, Clock } from 'lucide-react';
 import api from '../../api/axios';
 import { getTenantHeaders } from '../../api/endpoints';
-import { ShieldCheck, Search, AlertCircle, Loader } from 'lucide-react';
 
+// ─── Google Fonts ────────────────────────────────────────────
+const GlobalStyles = createGlobalStyle`
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800&family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+`;
+
+// ─── Design tokens (new palette) ────────────────────────────
+const C = {
+  paper: '#f3efe5',
+  paper2: '#f7f4ec',
+  paper3: '#fdfbf5',
+  ink: '#211d17',
+  ink2: '#5d554a',
+  hair: 'rgba(33, 29, 23, .16)',
+  hair2: 'rgba(33, 29, 23, .38)',
+  ox: '#7c2b23',
+  moss: '#4d5f42',
+  mossDeep: '#2f3d28',
+  och: '#9a6a1e',
+  ease: 'cubic-bezier(.32, .72, .24, 1)',
+};
+
+// ─── Animations ──────────────────────────────────────────────
+const spin = keyframes`to{transform:rotate(360deg)}`;
+const shake = keyframes`0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}`;
+const fadeIn = keyframes`from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}`;
+
+// ─── Page Wrapper (full width, background matches card) ────
 const PageWrapper = styled.div`
   min-height: 100vh;
-  background: #ffffff;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  color: #0a0a0a;
-  padding: 4rem 1.5rem;
+  background: ${C.paper3};  /* background matches card */
+  font-family: 'Saira', sans-serif;
+  color: ${C.ink};
+  padding: 0;               /* no padding — full width */
   display: flex;
-  justify-content: center;
-  align-items: center;
-`;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow: hidden;
 
-const ContentBox = styled.div`
-  width: 100%;
-  max-width: 500px;
-  text-align: center;
-`;
-
-const IconBlock = styled.div`
-  margin-bottom: 2rem;
-  
-  svg {
-    color: #0a0a0a;
+  /* Watermark behind content */
+  &::before {
+    content: 'VERIFIED';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-25deg);
+    font-family: 'Fraunces', serif;
+    font-size: 14rem;
+    font-weight: 900;
+    color: rgba(77, 95, 66, .035);
+    white-space: nowrap;
+    pointer-events: none;
+    letter-spacing: .05em;
+    z-index: 0;
   }
 `;
 
+// ─── Top accent strip (thin moss line, no thick bars) ──────
+const TopRule = styled.div`
+  width: 100%;
+  height: 1px;
+  background: ${C.mossDeep};
+  position: relative;
+  z-index: 2;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 1px;
+    background: ${C.och};
+  }
+`;
+
+// ─── Sheet (full width, no radius) ─────────────────────────
+const Sheet = styled.div`
+  width: 100%;
+  background: transparent;  /* card same as page bg — seamless */
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  animation: ${fadeIn} .55s ${C.ease} both;
+`;
+
+const SheetInner = styled.div`
+  width: 100%;
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 56px 24px 48px;
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  @media (min-height: 700px) {
+    padding-top: 72px;
+    padding-bottom: 64px;
+  }
+`;
+
+// ─── Seal ──────────────────────────────────────────────────
+const Seal = styled.div`
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 24px;
+  border: 2px solid ${C.mossDeep};
+  border-radius: 50%;
+  background: ${C.paper2};
+  display: grid;
+  place-items: center;
+  color: ${C.mossDeep};
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid rgba(77, 95, 66, .35);
+    border-radius: 50%;
+  }
+
+  svg {
+    width: 32px;
+    height: 32px;
+    color: ${C.mossDeep};
+  }
+`;
+
+const SealStamp = styled.div`
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 32px;
+  height: 32px;
+  background: ${C.ox};
+  color: ${C.paper};
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid ${C.paper3};
+  transform: rotate(12deg);
+`;
+
+// ─── Eyebrow ───────────────────────────────────────────────
+const Eyebrow = styled.div`
+  text-align: center;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .3em;
+  color: ${C.och};
+  font-weight: 700;
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 1;
+
+  &::before, &::after {
+    content: '';
+    display: inline-block;
+    width: 32px;
+    height: 1px;
+    background: ${C.och};
+    vertical-align: middle;
+    margin: 0 12px;
+    opacity: .5;
+  }
+`;
+
+// ─── Title & Subtitle ───────────────────────────────────────
 const Title = styled.h1`
-  font-family: 'Merriweather', Georgia, serif;
-  font-size: 2rem;
-  font-weight: 900;
-  margin: 0 0 0.5rem 0;
-  letter-spacing: -0.02em;
+  font-family: 'Fraunces', serif;
+  font-size: 2.2rem;
+  font-weight: 600;
+  margin: 0 0 12px;
+  letter-spacing: -.01em;
+  color: ${C.ink};
+  text-align: center;
+  line-height: 1.15;
+
+  .accent {
+    color: ${C.mossDeep};
+    font-style: italic;
+  }
 `;
 
 const Subtitle = styled.p`
-  color: #666666;
-  font-size: 0.9rem;
-  margin: 0 0 2rem 0;
-  line-height: 1.5;
+  color: ${C.ink2};
+  font-family: 'Fraunces', serif;
+  font-size: .95rem;
+  margin: 0 auto 32px;
+  line-height: 1.65;
+  text-align: center;
+  max-width: 40ch;
+  font-style: italic;
 `;
 
+// ─── Toggle Group ──────────────────────────────────────────
 const ToggleGroup = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  border-bottom: 2px solid #f0f0f0;
+  gap: 0;
+  margin-bottom: 24px;
+  border-bottom: 1px solid ${C.hair};
 `;
 
 const ToggleBtn = styled.button`
   background: none;
   border: none;
-  padding: 0.75rem 0.5rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: ${props => props.$active ? '#0a0a0a' : '#999'};
+  padding: 14px 8px;
+  font-family: 'Saira', sans-serif;
+  font-size: .78rem;
+  font-weight: 700;
+  color: ${p => p.$active ? C.ink : C.ink2};
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.375rem;
-  border-bottom: 2px solid ${props => props.$active ? '#0a0a0a' : 'transparent'};
-  margin-bottom: -2px;
-  transition: all 0.2s ease;
+  gap: 8px;
+  border-bottom: 2px solid ${p => p.$active ? C.mossDeep : 'transparent'};
+  margin-bottom: -1px;
+  transition: all .2s ${C.ease};
+  text-transform: uppercase;
+  letter-spacing: .08em;
 
   svg {
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
+    color: ${p => p.$active ? C.mossDeep : C.ink2};
+    transition: color .2s ${C.ease};
+  }
+
+  &:hover {
+    color: ${C.ink};
+    svg { color: ${C.och}; }
+  }
+
+  @media (max-width: 480px) {
+    font-size: .68rem;
+    padding: 12px 4px;
+    gap: 4px;
+    span { display: ${p => p.$active ? 'inline' : 'none'}; }
   }
 `;
 
+// ─── Input Group ───────────────────────────────────────────
 const InputGroup = styled.div`
   text-align: left;
-  margin-bottom: 1rem;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
 `;
 
 const Label = styled.label`
-  display: block;
-  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #555;
-  margin-bottom: 0.5rem;
+  letter-spacing: .15em;
+  color: ${C.moss};
+  margin-bottom: 10px;
+`;
+
+const LabelIcon = styled.span`
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  background: rgba(154, 106, 30, .10);
+  color: ${C.och};
+  font-size: 10px;
 `;
 
 const InputWrapper = styled.div`
@@ -95,77 +292,171 @@ const InputWrapper = styled.div`
   display: flex;
   align-items: center;
 
-  svg {
+  > svg {
     position: absolute;
-    left: 0.875rem;
-    color: #999;
+    left: 16px;
+    color: ${C.ink2};
     pointer-events: none;
+    width: 16px;
+    height: 16px;
   }
 
   input {
     width: 100%;
-    padding: 0.875rem 1rem 0.875rem 2.5rem;
-    border: 1px solid #e0e0e0;
-    background: #ffffff;
-    border-radius: 4px;
-    font-size: 1rem;
+    padding: 16px 16px 16px 46px;
+    border: 1px solid ${C.hair};
+    background: ${C.paper2};
+    font-family: 'Saira', sans-serif;
+    font-size: 15px;
+    color: ${C.ink};
     outline: none;
-    transition: border-color 0.2s;
+    transition: all .2s ${C.ease};
+    border-radius: 0;
 
+    &::placeholder { color: #a7a294; }
     &:focus {
-      border-color: #0a0a0a;
+      background: #fff;
+      border-color: ${C.moss};
+      box-shadow: 0 0 0 4px rgba(77, 95, 66, .12);
+    }
+    &.error {
+      border-color: ${C.ox};
+      background: rgba(124, 43, 35, .04);
+      animation: ${shake} .4s ease;
+    }
+    &:disabled {
+      opacity: .6;
+      cursor: not-allowed;
     }
   }
 `;
 
+// ─── Error Box ─────────────────────────────────────────────
+const ErrorBox = styled.div`
+  background: rgba(124, 43, 35, .08);
+  border: 1px solid rgba(124, 43, 35, .25);
+  border-left: 4px solid ${C.ox};
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #5a1f1a;
+  margin-top: 16px;
+  text-align: left;
+  line-height: 1.5;
+  border-radius: 0;
+
+  svg {
+    flex-shrink: 0;
+    color: ${C.ox};
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+  }
+`;
+
+// ─── Action Button ────────────────────────────────────────
 const ActionButton = styled.button`
-  background: #0a0a0a;
-  color: white;
-  border: none;
-  padding: 0.875rem;
-  border-radius: 4px;
-  font-size: 0.9rem;
+  background: ${C.ox};
+  color: ${C.paper};
+  border: 1px solid ${C.ox};
+  padding: 16px;
+  font-family: 'Saira', sans-serif;
+  font-size: .82rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: .14em;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  transition: background 0.2s;
+  gap: 10px;
+  transition: all .2s ${C.ease};
   width: 100%;
-  margin-top: 1rem;
+  margin-top: 20px;
+  border-radius: 0;
+  box-shadow: 0 6px 16px -4px rgba(124, 43, 35, .35);
 
-  &:hover {
-    background: #333;
+  &:hover:not(:disabled) {
+    background: #6a241e;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px -4px rgba(124, 43, 35, .45);
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+    color: rgba(243, 239, 229, .9);
   }
 
   &:disabled {
-    background: #999;
+    background: ${C.ink2};
+    border-color: ${C.ink2};
     cursor: not-allowed;
+    box-shadow: none;
+    opacity: .7;
   }
 `;
 
-const ErrorBox = styled.div`
-  background: #fff0f0;
-  border: 1px solid #ffcccc;
-  border-left: 4px solid #e74c3c;
-  padding: 1rem;
-  border-radius: 4px;
+const Spinner = styled.div`
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(243, 239, 229, .35);
+  border-top-color: ${C.paper};
+  animation: ${spin} .7s linear infinite;
+  display: inline-block;
+`;
+
+// ─── Trust Footer ──────────────────────────────────────────
+const TrustFooter = styled.div`
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px dashed ${C.hair};
+  text-align: center;
+  position: relative;
+  z-index: 1;
+`;
+
+const TrustRow = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+`;
+
+const TrustItem = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 0.875rem;
-  color: #c0392b;
-  margin-top: 1rem;
-  text-align: left;
+  gap: 6px;
+  font-size: 11px;
+  color: ${C.ink2};
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: .12em;
 
   svg {
-    flex-shrink: 0;
+    width: 11px;
+    height: 11px;
+    color: ${C.moss};
   }
 `;
 
+const TrustTagline = styled.p`
+  margin-top: 16px;
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: .82rem;
+  color: ${C.ink2};
+  line-height: 1.5;
+  max-width: 38ch;
+  margin-left: auto;
+  margin-right: auto;
+`;
+
+// ─── Component ──────────────────────────────────────────────
 const PostmortemVerifyPage = () => {
   const navigate = useNavigate();
   const [searchType, setSearchType] = useState('phone');
@@ -211,16 +502,13 @@ const PostmortemVerifyPage = () => {
 
       if (response.data?.success && response.data?.data) {
         const { deceased, postmortem } = response.data.data;
-        
-        // Create session and navigate to results page
+
         const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const tenantSlug = 'montenzuma-monalisa-feuneral-home-nairobi';
-        
-        // Store data in sessionStorage for persistence across page refreshes
+        const slugLocal = 'montenzuma-monalisa-feuneral-home-nairobi';
+
         const sessionData = {
           deceased: {
             ...deceased,
-            // Ensure signature fields are explicitly preserved
             signature: deceased?.signature || null,
             pathologist_signature: deceased?.pathologist_signature || null
           },
@@ -234,9 +522,8 @@ const PostmortemVerifyPage = () => {
           pathologist_signature: sessionData.deceased.pathologist_signature
         });
         sessionStorage.setItem(`postmortem_session_${sessionId}`, JSON.stringify(sessionData));
-        
-        // Navigate to results page with session ID in URL
-        navigate(`/tenant/${tenantSlug}/postmortem/results/${sessionId}`, {
+
+        navigate(`/tenant/${slugLocal}/postmortem/results/${sessionId}`, {
           state: sessionData
         });
       } else {
@@ -258,88 +545,119 @@ const PostmortemVerifyPage = () => {
   };
 
   return (
-    <PageWrapper>
-      <ContentBox>
-        <IconBlock>
-          <ShieldCheck size={48} />
-        </IconBlock>
+    <>
+      <GlobalStyles />
+      <PageWrapper>
+        <TopRule />
 
-        <Title>Identity Verification</Title>
-        <Subtitle>
-          Enter your details to verify your identity and access the postmortem report
-        </Subtitle>
+        <Sheet>
+          <SheetInner>
 
-        <ToggleGroup>
-          <ToggleBtn 
-            $active={searchType === 'phone'} 
-            onClick={() => handleToggle('phone')}
-          >
-            <Search size={14} /> Phone
-          </ToggleBtn>
-          <ToggleBtn 
-            $active={searchType === 'id'} 
-            onClick={() => handleToggle('id')}
-          >
-            <ShieldCheck size={14} /> ID Number
-          </ToggleBtn>
-          <ToggleBtn 
-            $active={searchType === 'deceased_id'} 
-            onClick={() => handleToggle('deceased_id')}
-          >
-            <AlertCircle size={14} /> Deceased ID
-          </ToggleBtn>
-        </ToggleGroup>
+            {/* ─── Seal ─── */}
+            <Seal>
+              <ShieldCheck size={32} />
+              <SealStamp>★</SealStamp>
+            </Seal>
 
-        <form onSubmit={handleVerify}>
-          <InputGroup>
-            <Label>
-              {searchType === 'phone' ? 'Phone Number' : 
-               searchType === 'id' ? 'ID Number' : 'Deceased ID'}
-            </Label>
-            <InputWrapper>
-              {searchType === 'phone' && <Search size={18} />}
-              {searchType === 'id' && <ShieldCheck size={18} />}
-              {searchType === 'deceased_id' && <AlertCircle size={18} />}
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => {
-                  setInputValue(e.target.value);
-                  setError('');
-                }}
-                placeholder={
-                  searchType === 'phone' ? '0712345678' : 
-                  searchType === 'id' ? '12345678' : 'MON-PET-XXXXXX-XXXXXX'
-                }
-                required
-                disabled={loading}
-              />
-            </InputWrapper>
-          </InputGroup>
+            <Eyebrow>Confidential Access</Eyebrow>
 
-          {error && (
-            <ErrorBox>
-              <AlertCircle size={18} />
-              <span>{error}</span>
-            </ErrorBox>
-          )}
+            <Title>Identity <span className="accent">Verification</span></Title>
+            <Subtitle>
+              Enter your details to verify your identity and securely access the postmortem report.
+            </Subtitle>
 
-          <ActionButton type="submit" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                Verifying...
-              </>
-            ) : (
-              <>
-                <ShieldCheck size={18} />
-                Verify Identity
-              </>
-            )}
-          </ActionButton>
-        </form>
-      </ContentBox>
-    </PageWrapper>
+            {/* ─── Toggle Group ─── */}
+            <ToggleGroup>
+              <ToggleBtn
+                $active={searchType === 'phone'}
+                onClick={() => handleToggle('phone')}
+              >
+                <Search size={13} /> <span>Phone</span>
+              </ToggleBtn>
+              <ToggleBtn
+                $active={searchType === 'id'}
+                onClick={() => handleToggle('id')}
+              >
+                <ShieldCheck size={13} /> <span>ID Number</span>
+              </ToggleBtn>
+              <ToggleBtn
+                $active={searchType === 'deceased_id'}
+                onClick={() => handleToggle('deceased_id')}
+              >
+                <AlertCircle size={13} /> <span>Deceased ID</span>
+              </ToggleBtn>
+            </ToggleGroup>
+
+            {/* ─── Form ─── */}
+            <form onSubmit={handleVerify}>
+              <InputGroup>
+                <Label htmlFor="verifyInput">
+                  <LabelIcon><i className="fas fa-hashtag"></i></LabelIcon>
+                  {searchType === 'phone' ? 'Phone Number' :
+                    searchType === 'id' ? 'ID Number' : 'Deceased ID'}
+                </Label>
+                <InputWrapper>
+                  {searchType === 'phone' && <Search size={16} />}
+                  {searchType === 'id' && <ShieldCheck size={16} />}
+                  {searchType === 'deceased_id' && <AlertCircle size={16} />}
+                  <input
+                    id="verifyInput"
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => {
+                      setInputValue(e.target.value);
+                      setError('');
+                    }}
+                    placeholder={
+                      searchType === 'phone' ? '0712345678' :
+                        searchType === 'id' ? '12345678' : 'MON-PET-XXXXXX-XXXXXX'
+                    }
+                    className={error ? 'error' : ''}
+                    required
+                    disabled={loading}
+                    autoFocus
+                  />
+                </InputWrapper>
+              </InputGroup>
+
+              {error && (
+                <ErrorBox>
+                  <AlertCircle size={16} />
+                  <span>{error}</span>
+                </ErrorBox>
+              )}
+
+              <ActionButton type="submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Spinner />
+                    Verifying…
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck size={14} />
+                    Verify Identity
+                  </>
+                )}
+              </ActionButton>
+            </form>
+
+            {/* ─── Trust Footer ─── */}
+            <TrustFooter>
+              <TrustRow>
+                <TrustItem><Lock size={11} /> Encrypted</TrustItem>
+                <TrustItem><EyeOff size={11} /> Private</TrustItem>
+                <TrustItem><Clock size={11} /> Session-Bound</TrustItem>
+              </TrustRow>
+              <TrustTagline>
+                Your information is used solely for verification and is never stored beyond this session.
+              </TrustTagline>
+            </TrustFooter>
+
+          </SheetInner>
+        </Sheet>
+      </PageWrapper>
+    </>
   );
 };
 

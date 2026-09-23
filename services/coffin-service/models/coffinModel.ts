@@ -279,8 +279,8 @@ class CoffinModel {
       : null;
 
     const sql = `
-      INSERT INTO coffin_bookings (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size, quantity, booked_by, booked_for, client_phone, service_date, service_time, paid, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
+      INSERT INTO coffin_bookings (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size, quantity, booked_by, booked_for, client_phone, service_date, service_time, paid, notes, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
     `;
 
     const result: any = await coffinQuery(sql, [
@@ -293,7 +293,8 @@ class CoffinModel {
       data.client_phone?.trim() || null,
       serviceDate,
       data.service_time ? String(data.service_time).slice(0, 5) : null,
-      data.paid ? 1 : 0
+      data.paid ? 1 : 0,
+      (data.notes != null && String(data.notes).trim() !== '') ? String(data.notes).trim() : null
     ]);
 
     return {

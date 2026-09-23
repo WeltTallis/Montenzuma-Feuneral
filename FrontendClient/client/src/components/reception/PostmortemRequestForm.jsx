@@ -1,34 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import { QRCodeSVG } from 'qrcode.react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import env from '../../utils/config/env';
 
 // ─── Google Fonts ────────────────────────────────────────────
 const GlobalStyles = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800&family=Fraunces:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
   @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
 `;
 
-// ─── Design tokens ────────────────────────────────────────────
+// ─── Design tokens (new palette) ────────────────────────────
 const C = {
-    ink: '#141A17',   /* Deep Charcoal Green for text */
-    pine: '#1E3A32',   /* Rich Pine Green for active/hover */
-    moss: '#3A5A50',   /* Muted Moss Green for labels */
-    brass: '#A68A4D',   /* Muted Brass/Gold for accents */
-    brassSoft: '#F4EFE1',   /* Very soft warm cream */
-    cream: '#F9F8F4',   /* Linen white for card background */
-    paper: '#FFFFFF',
-    line: '#E5E1D4',   /* Soft warm border color */
-    lineSoft: '#EFECE3',
-    muted: '#7A756A',   /* Warm grey for muted text */
-    text: '#2C3330',
+    paper: '#f3efe5',
+    paper2: '#f7f4ec',
+    ink: '#211d17',
+    ink2: '#5d554a',
+    hair: 'rgba(33, 29, 23, .16)',
+    hair2: 'rgba(33, 29, 23, .38)',
+    ox: '#7c2b23',
+    moss: '#4d5f42',
+    och: '#9a6a1e',
     ease: 'cubic-bezier(.32, .72, .24, 1)',
-    success: '#1A6641',
-    successBg: '#EAF5EE',
-    error: '#9b2335',   /* Requested color for primary action */
-    errorBg: '#FBF1F1',
 };
 
 const BASE_URL = env.FULL_API_URL;
@@ -41,24 +35,23 @@ const shake = keyframes`0%,100%{transform:translateX(0)}20%{transform:translateX
 // ─── Layout ────────────────────────────────────────────────────
 const Shell = styled.div`
     font-family: 'Saira', sans-serif;
-    background: radial-gradient(circle at top center, #F2F0EA 0%, #EAE7DE 100%);
-    color: ${C.text};
+    background: radial-gradient(circle at top center, #efe9da 0%, #e6e0d0 100%);
+    color: ${C.ink};
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     -webkit-font-smoothing: antialiased;
-    padding: 0px 0px;
+    padding: 0;
 `;
 
 const Card = styled.div`
     max-width: 860px;
     width: 100%;
-    background: ${C.cream};
-
+    background: ${C.paper2};
     overflow: hidden;
-
     animation: ${fadeIn} 0.5s ${C.ease} both;
+    border-radius: 0;
 
     @media (max-width: 600px) {
         margin: 0;
@@ -67,36 +60,58 @@ const Card = styled.div`
     }
 `;
 
-// ─── Condolence Banner ──────────────────────────────────────────
+// ─── Condolence Banner (no bottom border) ──────────────────────
 const Banner = styled.div`
-    background: ${C.pine};
-    padding: 20px 40px;
+    background: linear-gradient(180deg, #1c1812 0%, #2a2520 100%);
+    padding: 22px 40px;
     text-align: center;
-    border-bottom: 4px solid ${C.brass};
+    position: relative;
+    overflow: hidden;
+    /* bottom border removed */
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(circle at 20% 50%, rgba(154, 106, 30, .08), transparent 50%),
+            radial-gradient(circle at 80% 50%, rgba(124, 43, 35, .10), transparent 50%);
+        pointer-events: none;
+    }
 
     p {
-        font-family: 'Saira', sans-serif;
-        font-size: 16px;
-        color: rgba(255, 255, 255, 0.95);
-        font-weight: 300;
+        position: relative;
+        font-family: 'Fraunces', serif;
+        font-size: 17px;
+        color: rgba(243, 239, 229, .94);
+        font-weight: 400;
         font-style: italic;
-        line-height: 1.5;
+        line-height: 1.55;
         letter-spacing: 0.01em;
         margin: 0;
     }
 
-    @media (max-width: 600px) { padding: 16px 20px; }
+    .ornament {
+        display: inline-block;
+        margin: 0 14px;
+        color: ${C.och};
+        opacity: .6;
+        font-size: 12px;
+        vertical-align: middle;
+    }
+
+    @media (max-width: 600px) { padding: 18px 20px; }
 `;
 
 // ─── Document Header (QR + timestamp) ──────────────────────────
 const DocHeader = styled.header`
     background: ${C.paper};
-    padding: 32px 40px;
+    padding: 30px 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 24px;
-    border-bottom: 1px solid ${C.lineSoft};
+    border-bottom: 1px solid ${C.hair};
 
     @media (max-width: 600px) {
         flex-direction: column;
@@ -106,249 +121,532 @@ const DocHeader = styled.header`
     }
 `;
 
-const HeaderLeft = styled.div`display:flex;flex-direction:column;gap:16px;`;
+const HeaderLeft = styled.div`display:flex;flex-direction:column;gap:14px;`;
+
 const ReqIdBadge = styled.div`
     font-family: 'Saira', sans-serif;
-    font-size: 20px; font-weight: 600; color: ${C.ink};
-    letter-spacing: -.01em; display:flex; align-items:center; gap:12px;
-    i { color: ${C.brass}; font-size: 16px; }
-`;
-const Timestamps = styled.div`display:flex; gap:20px; @media (max-width: 600px){ justify-content:center; }`;
-const MetaItem = styled.div`
-    font-size: 13px; color: ${C.muted}; display:flex; align-items:center; gap:8px;
-    i { color: ${C.brass}; font-size: 12px; }
-    span { font-weight: 600; color: ${C.text}; font-variant-numeric: tabular-nums; }
+    font-size: 19px;
+    font-weight: 600;
+    color: ${C.ink};
+    letter-spacing: -.01em;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    i {
+        color: ${C.och};
+        font-size: 14px;
+        width: 28px;
+        height: 28px;
+        background: rgba(154, 106, 30, .10);
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+    }
 `;
 
-const QrWrapper = styled.div`display:flex;flex-direction:column;align-items:center;gap:10px;`;
-const QrBox = styled.div`
-    width: 110px; height: 110px; padding: 8px;
-    border: 1px solid ${C.line}; border-radius: 12px;
-    background: ${C.paper}; display:flex; align-items:center; justify-content:center;
-    box-shadow: 0 6px 16px rgba(20, 26, 23, 0.06);
+const Timestamps = styled.div`
+    display: flex;
+    gap: 22px;
+    flex-wrap: wrap;
+    @media (max-width: 600px) { justify-content: center; }
 `;
+
+const MetaItem = styled.div`
+    font-size: 13px;
+    color: ${C.ink2};
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    i { color: ${C.och}; font-size: 11px; }
+    span {
+        font-weight: 600;
+        color: ${C.ink};
+        font-variant-numeric: tabular-nums;
+    }
+`;
+
+const QrWrapper = styled.div`display:flex;flex-direction:column;align-items:center;gap:8px;`;
+
+const QrBox = styled.div`
+    width: 108px;
+    height: 108px;
+    padding: 8px;
+    border: 1px solid ${C.hair2};
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(33, 29, 23, .08);
+`;
+
 const QrLabel = styled.span`
-    font-size: 10px; text-transform: uppercase; letter-spacing: .18em;
-    color: ${C.moss}; font-weight: 700;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .22em;
+    color: ${C.moss};
+    font-weight: 700;
 `;
 
 // ─── Title ──────────────────────────────────────────────────────
 const TitleSection = styled.div`
     padding: 36px 40px 24px;
     text-align: center;
-    background: ${C.cream};
+    background: ${C.paper2};
 
-    h1 { font-family: 'Saira', sans-serif; font-size: 28px; font-weight: 700; color: ${C.ink}; margin: 0 0 8px; letter-spacing: -.02em; }
-    p  { font-size: 14px; color: ${C.muted}; font-style: italic; margin: 0; }
+    h1 {
+        font-family: 'Fraunces', serif;
+        font-size: 30px;
+        font-weight: 600;
+        color: ${C.ink};
+        margin: 0 0 8px;
+        letter-spacing: -.01em;
 
-    @media (max-width: 600px) { padding: 24px 20px; }
+        .accent {
+            color: ${C.ox};
+            font-style: italic;
+        }
+    }
+    p {
+        font-family: 'Fraunces', serif;
+        font-size: 14px;
+        color: ${C.ink2};
+        font-style: italic;
+        margin: 0;
+    }
+
+    @media (max-width: 600px) {
+        padding: 24px 20px;
+        h1 { font-size: 24px; }
+    }
 `;
 
 // ─── Step indicator ─────────────────────────────────────────────
 const Steps = styled.div`
-    display: flex; align-items: center; justify-content: center;
-    gap: 0; padding: 0 40px 32px; background: ${C.cream};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 0 40px 32px;
+    background: ${C.paper2};
 `;
 
 const Step = styled.div`
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
-    color: ${p => p.$active ? C.ink : p.$done ? C.brass : C.muted};
-    position: relative; z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: ${p => p.$active ? C.ink : p.$done ? C.moss : C.ink2};
+    position: relative;
+    z-index: 1;
 `;
 
 const StepNum = styled.div`
-    width: 32px; height: 32px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 700;
-    background: ${p => p.$active ? C.ink : p.$done ? C.brass : C.paper};
-    color: ${p => (p.$active || p.$done) ? '#fff' : C.muted};
-    border: 3px solid ${p => p.$active || p.$done ? C.cream : C.lineSoft};
-    box-shadow: ${p => p.$active ? '0 4px 10px rgba(20, 26, 23, 0.15)' : p.$done ? '0 4px 10px rgba(166, 138, 77, 0.3)' : 'none'};
-    transition: all 0.3s ease;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    font-weight: 700;
+    background: ${p => p.$active ? C.ink : p.$done ? C.moss : C.paper};
+    color: ${p => (p.$active || p.$done) ? '#f3efe5' : C.ink2};
+    box-shadow: ${p => p.$active
+        ? `0 0 0 1px ${C.ink}, 0 6px 14px rgba(33, 29, 23, .25)`
+        : p.$done
+            ? `0 0 0 1px ${C.moss}, 0 4px 12px rgba(77, 95, 66, .3)`
+            : `0 0 0 1px ${C.hair}`};
+    transition: all 0.35s ${C.ease};
 `;
 
 const StepLine = styled.div`
-    flex: 1; height: 2px; background: ${p => p.$done ? C.brass : C.line};
-    margin: 0 -12px 20px; max-width: 100px; border-radius: 2px;
+    flex: 1;
+    height: 2px;
+    background: ${C.hair};
+    margin: 0 -10px 22px;
+    max-width: 80px;
+    position: relative;
+    overflow: hidden;
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: ${C.moss};
+        transform: scaleX(${p => p.$done ? 1 : 0});
+        transform-origin: left;
+        transition: transform .5s ${C.ease};
+    }
 `;
 
 // ─── Form body ──────────────────────────────────────────────────
 const Body = styled.div`
     padding: 32px 40px;
     background: ${C.paper};
-    border-top: 1px solid ${C.lineSoft};
+    border-top: 1px solid ${C.hair};
 
     @media (max-width: 600px) { padding: 24px 20px; }
 `;
 
 const FormGroup = styled.div`
-    display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 24px;
+    &:last-child { margin-bottom: 0; }
 `;
 
 const Label = styled.label`
-    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
-    font-weight: 700; color: ${C.moss}; display: flex; align-items: center; gap: 8px;
-    i { color: ${C.brass}; font-size: 11px; }
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: ${C.moss};
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    i {
+        color: ${C.och};
+        font-size: 11px;
+        width: 18px;
+        height: 18px;
+        background: rgba(154, 106, 30, .10);
+        display: grid;
+        place-items: center;
+    }
 `;
 
 const Input = styled.input`
-    background: #FBFAF6; border: 1px solid ${p => p.$error ? C.error : C.line};
-    border-radius: 10px; padding: 15px 16px;
-    font-family: 'Saira', sans-serif; font-size: 15px; color: ${C.ink};
-    transition: all .2s ${C.ease}; outline: none; width: 100%; box-sizing: border-box;
+    background: ${C.paper2};
+    border: 1px solid ${p => p.$error ? C.ox : C.hair};
+    padding: 14px 16px;
+    font-family: 'Saira', sans-serif;
+    font-size: 15px;
+    color: ${C.ink};
+    transition: all .2s ${C.ease};
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
     animation: ${p => p.$shake ? shake : 'none'} .4s ease;
 
     &::placeholder { color: #a7a294; }
-    &:focus { background: ${C.paper}; border-color: ${C.moss}; box-shadow: 0 0 0 4px rgba(58, 90, 80, 0.1); }
+    &:focus {
+        background: #fff;
+        border-color: ${C.moss};
+        box-shadow: 0 0 0 4px rgba(77, 95, 66, .12);
+    }
 `;
 
 const Select = styled.select`
-    background: #FBFAF6; border: 1px solid ${C.line}; border-radius: 10px;
-    padding: 15px 16px; font-family: 'Saira', sans-serif; font-size: 15px;
-    color: ${C.ink}; outline: none; width: 100%; box-sizing: border-box;
-    cursor: pointer; transition: all .2s ${C.ease};
+    background: ${C.paper2};
+    border: 1px solid ${C.hair};
+    padding: 14px 16px;
+    font-family: 'Saira', sans-serif;
+    font-size: 15px;
+    color: ${C.ink};
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: all .2s ${C.ease};
 
-    &:focus { background: ${C.paper}; border-color: ${C.moss}; box-shadow: 0 0 0 4px rgba(58, 90, 80, 0.1); }
+    &:focus {
+        background: #fff;
+        border-color: ${C.moss};
+        box-shadow: 0 0 0 4px rgba(77, 95, 66, .12);
+    }
 `;
 
 const Textarea = styled.textarea`
-    background: #FBFAF6; border: 1px solid ${C.line}; border-radius: 10px;
-    padding: 15px 16px; font-family: 'Saira', sans-serif; font-size: 15px;
-    color: ${C.ink}; transition: all .2s ${C.ease}; outline: none;
-    width: 100%; box-sizing: border-box; resize: vertical; min-height: 120px; line-height: 1.6;
+    background: ${C.paper2};
+    border: 1px solid ${C.hair};
+    padding: 14px 16px;
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    color: ${C.ink};
+    transition: all .2s ${C.ease};
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 130px;
+    line-height: 1.6;
 
     &::placeholder { color: #a7a294; }
-    &:focus { background: ${C.paper}; border-color: ${C.moss}; box-shadow: 0 0 0 4px rgba(58, 90, 80, 0.1); }
+    &:focus {
+        background: #fff;
+        border-color: ${C.moss};
+        box-shadow: 0 0 0 4px rgba(77, 95, 66, .12);
+    }
 `;
 
 // ─── Alert boxes ────────────────────────────────────────────────
 const Alert = styled.div`
-    padding: 16px 20px; border-radius: 12px; font-size: 14px; margin-bottom: 24px;
-    display: flex; align-items: flex-start; gap: 12px;
-    background: ${p => p.$type === 'success' ? C.successBg : p.$type === 'error' ? C.errorBg : '#F2F5F2'};
-    color:       ${p => p.$type === 'success' ? C.success : p.$type === 'error' ? C.error : C.pine};
-    border: 1px solid ${p => p.$type === 'success' ? '#C5DfCf' : p.$type === 'error' ? '#E6C8C8' : '#D9E2DC'};
+    padding: 16px 20px;
+    font-size: 14px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    line-height: 1.55;
+    background: ${p => p.$type === 'success'
+        ? 'rgba(77, 95, 66, .10)'
+        : p.$type === 'error'
+            ? 'rgba(124, 43, 35, .08)'
+            : 'rgba(154, 106, 30, .10)'};
+    color: ${p => p.$type === 'success'
+        ? '#2a3825'
+        : p.$type === 'error'
+            ? '#5a1f1a'
+            : '#5a3f12'};
+    border: 1px solid ${p => p.$type === 'success'
+        ? 'rgba(77, 95, 66, .30)'
+        : p.$type === 'error'
+            ? 'rgba(124, 43, 35, .30)'
+            : 'rgba(154, 106, 30, .25)'};
 
-    i { flex-shrink: 0; margin-top: 1px; }
+    i { flex-shrink: 0; margin-top: 2px; color: inherit; }
+    i.fa-info-circle, i.fa-check-circle { color: ${p => p.$type === 'success' ? C.moss : p.$type === 'error' ? C.ox : C.och}; }
+    i.fa-exclamation-triangle { color: ${C.ox}; }
     strong { font-weight: 700; }
 `;
 
 // ─── Found case card ─────────────────────────────────────────────
 const CaseCard = styled.div`
-    background: #F4F8F6; border: 1px solid #DCE5E0; border-radius: 12px;
-    padding: 20px; margin-bottom: 24px; animation: ${fadeIn} .3s ease both;
+    background: ${C.paper2};
+    border: 1px solid ${C.hair};
+    border-left: 3px solid ${C.moss};
+    padding: 4px 20px;
+    margin-bottom: 24px;
+    animation: ${fadeIn} .3s ease both;
+`;
+
+const CaseTitle = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 0 10px;
+    border-bottom: 1px solid ${C.hair};
+    margin-bottom: 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-weight: 700;
+    color: ${C.moss};
+
+    i { color: ${C.moss}; }
 `;
 
 const CaseRow = styled.div`
-    display: flex; justify-content: space-between; font-size: 14px;
-    padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.05);
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    padding: 10px 0;
+    border-bottom: 1px dashed ${C.hair};
     &:last-child { border-bottom: none; }
-    span:first-child { color: ${C.muted}; font-weight: 500; }
-    span:last-child  { color: ${C.ink};   font-weight: 600; }
+    span:first-child { color: ${C.ink2}; font-weight: 500; }
+    span:last-child  { color: ${C.ink};   font-weight: 600; font-variant-numeric: tabular-nums; }
 `;
 
 // ─── Buttons ────────────────────────────────────────────────────
 const FormFooter = styled.div`
-    border-top: 1px solid ${C.lineSoft}; padding: 24px 40px;
-    background: #FBFAF6; display: flex; justify-content: flex-end; gap: 12px;
+    border-top: 1px solid ${C.hair};
+    padding: 22px 40px;
+    background: ${C.paper2};
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
 
     @media (max-width: 600px) {
-        padding: 16px 20px; flex-direction: column-reverse;
+        padding: 16px 20px;
+        flex-direction: column-reverse;
         button { width: 100%; justify-content: center; }
     }
 `;
 
 const Btn = styled.button`
-    padding: 14px 28px; border-radius: 10px;
-    font-family: 'Saira', sans-serif; font-size: 14px; font-weight: 600;
-    cursor: pointer; transition: all .2s ${C.ease};
-    display: inline-flex; align-items: center; gap: 8px;
-    border: 1px solid transparent; text-transform: uppercase; letter-spacing: .05em;
+    padding: 13px 26px;
+    font-family: 'Saira', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s ${C.ease};
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid transparent;
+    text-transform: uppercase;
+    letter-spacing: .08em;
 
-    &:disabled { opacity: .6; cursor: not-allowed; transform: none !important; }
+    &:disabled { opacity: .65; cursor: not-allowed; transform: none !important; }
 
     ${p => p.$ghost && `
-        background: ${C.paper}; border-color: ${C.line}; color: ${C.muted};
-        &:hover:not(:disabled) { border-color: ${C.moss}; color: ${C.pine}; }
+        background: transparent;
+        border-color: ${C.hair2};
+        color: ${C.ink2};
+        &:hover:not(:disabled) {
+            border-color: ${C.ink2};
+            color: ${C.ink};
+            background: ${C.paper};
+        }
     `}
 
-    /* Updated to requested #9b2335 color */
     ${p => p.$primary && `
-        background: #9b2335; color: #fff;
-        box-shadow: 0 6px 16px rgba(155, 35, 53, 0.25);
-        &:hover:not(:disabled) { background: #801c2b; transform: translateY(-1px); box-shadow: 0 8px 20px rgba(155, 35, 53, 0.3); }
-        i { color: rgba(255,255,255,0.9); }
+        background: ${C.ox};
+        color: #f3efe5;
+        box-shadow: 0 6px 16px -4px rgba(124, 43, 35, .45);
+        &:hover:not(:disabled) {
+            background: #6a241e;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px -4px rgba(124, 43, 35, .55);
+        }
+        i { color: rgba(243, 239, 229, .85); }
+    `}
+
+    ${p => p.$done && `
+        background: ${C.moss};
+        color: #f3efe5;
+        box-shadow: 0 6px 16px -4px rgba(77, 95, 66, .45);
+        &:hover:not(:disabled) {
+            background: #3e4d35;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px -4px rgba(77, 95, 66, .55);
+        }
+        i { color: rgba(243, 239, 229, .85); }
     `}
 `;
 
 const Spinner = styled.div`
-    width: 16px; height: 16px; border-radius: 50%;
-    border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
-    animation: ${spin} .8s linear infinite; flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(243, 239, 229, .35);
+    border-top-color: #f3efe5;
+    animation: ${spin} .7s linear infinite;
+    flex-shrink: 0;
 `;
 
-// ─── Woodland Elegance Footer ─────────────────────────────────────
+// ─── Woodland Elegance Footer (no top border) ───────────────────
 const ElegantFooter = styled.footer`
-    position: relative; width: 100%; overflow: hidden;
-    background: #141A17; color: #E9EBDD; text-align: center;
-    padding: 64px 20px 0; border-top: none; box-sizing: border-box;
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: #1a1611;
+    color: #f3efe5;
+    text-align: center;
+    padding: 64px 20px 0;
+    /* top border removed */
+    box-sizing: border-box;
 
     &::before, &::after {
-        content: ''; position: absolute; left: 50%; transform: translateX(-50%);
-        border-radius: 50%; pointer-events: none;
+        content: '';
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 50%;
+        pointer-events: none;
     }
-    &::before { bottom: -260px; width: 520px; height: 520px; border: 1.5px solid rgba(233,235,221,.10); }
-    &::after { bottom: -320px; width: 680px; height: 680px; border: 1px solid rgba(233,235,221,.06); }
+    &::before { bottom: -240px; width: 480px; height: 480px; border: 1.5px solid rgba(243, 239, 229, .08); }
+    &::after  { bottom: -300px; width: 640px; height: 640px; border: 1px   solid rgba(243, 239, 229, .05); }
 
     @media (max-width: 560px) { padding: 44px 20px 0; }
 `;
 
 const LeafMark = styled.div`
-    width: 48px; height: 48px; margin: 0 auto 20px; border-radius: 50%;
-    background: rgba(255,255,255,.05); border: 1px solid rgba(233,235,221,.15);
-    display: grid; place-items: center;
+    width: 50px;
+    height: 50px;
+    margin: 0 auto 22px;
+    border-radius: 50%;
+    background: rgba(243, 239, 229, .04);
+    border: 1px solid rgba(154, 106, 30, .35);
+    display: grid;
+    place-items: center;
+    position: relative;
+    z-index: 1;
 `;
 
 const FooterTagline = styled.p`
-    font-family: 'Saira', sans-serif; font-style: italic; font-weight: 300;
-    font-size: 1.3rem; line-height: 1.5; color: rgba(233,235,221,.85);
-    max-width: 44ch; margin: 0 auto;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 1.35rem;
+    line-height: 1.55;
+    color: rgba(243, 239, 229, .88);
+    max-width: 44ch;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
 `;
 
 const FooterValues = styled.div`
-    display: flex; align-items: center; justify-content: center;
-    gap: 16px; margin: 32px auto 0; max-width: 420px;
-    &::before, &::after { content: ''; flex: 1; height: 1px; background: rgba(233,235,221,.16); }
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin: 32px auto 0;
+    max-width: 420px;
+    position: relative;
+    z-index: 1;
+
+    &::before, &::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: rgba(243, 239, 229, .15);
+    }
 `;
 
 const FooterValueLabel = styled.span`
-    font-family: 'Saira', sans-serif; font-weight: 700; font-size: .64rem;
-    letter-spacing: .26em; text-transform: uppercase; color: rgba(205,209,191,.65);
+    font-family: 'Saira', sans-serif;
+    font-weight: 700;
+    font-size: .66rem;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: rgba(243, 239, 229, .65);
 `;
 
 const FooterValueDot = styled.b`
-    font-family: 'Saira', sans-serif; font-weight: 600; font-size: 1rem; color: rgba(205,209,191,.85);
+    font-family: 'Saira', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    color: ${C.och};
 `;
 
 const FooterBar = styled.div`
-    margin-top: 48px; border-top: 1px solid rgba(233,235,221,.12);
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 10px; flex-wrap: wrap; padding: 20px 32px;
-    font-family: 'Saira', sans-serif; font-weight: 500; font-size: .76rem;
-    color: rgba(233,235,221,.45);
+    margin-top: 48px;
+    border-top: 1px solid rgba(243, 239, 229, .10);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 22px 32px;
+    font-family: 'Saira', sans-serif;
+    font-weight: 500;
+    font-size: .76rem;
+    color: rgba(243, 239, 229, .5);
+    position: relative;
+    z-index: 1;
 
     @media (max-width: 560px) {
-        flex-direction: column; gap: 6px; padding: 16px 20px; text-align: center;
+        flex-direction: column;
+        gap: 6px;
+        padding: 16px 20px;
+        text-align: center;
     }
 `;
 
 // ─── Component ──────────────────────────────────────────────────
 export default function PostmortemRequestForm() {
     const { slug } = useParams();
-    // Resolve tenant slug from multiple sources, in priority order.
-    // The backend rejects 'system_shared' for postmortem requests (autopsyControl.ts:31),
-    // so we try harder to find a real tenant slug before falling back.
+    const navigate = useNavigate();
+
     const tenantSlug =
         slug ||
         (typeof localStorage !== 'undefined' && localStorage.getItem('tenantSlug')) ||
@@ -363,20 +661,17 @@ export default function PostmortemRequestForm() {
     const [currentDate, setCurrentDate] = useState('');
     const [currentTime, setCurrentTime] = useState('');
 
-    // Step 1 state — lookup
     const [identifier, setIdentifier] = useState('');
     const [lookupError, setLookupError] = useState('');
     const [isSearching, setIsSearching] = useState(false);
-    const [foundCase, setFoundCase] = useState(null); // null = not found yet
+    const [foundCase, setFoundCase] = useState(null);
     const [shakeId, setShakeId] = useState(false);
-    const [searchType, setSearchType] = useState('phone'); // phone, id_number, admission_number
+    const [searchType, setSearchType] = useState('phone');
 
-    // Step 2 state — request form
     const [form, setForm] = useState({ reason: '', requested_by: '', priority: 'normal' });
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [submitResult, setSubmitResult] = useState(null); // {ok, msg}
+    const [submitResult, setSubmitResult] = useState(null);
 
-    // Timestamp ticker
     useEffect(() => {
         const tick = () => {
             const now = new Date();
@@ -388,7 +683,6 @@ export default function PostmortemRequestForm() {
         return () => clearInterval(id);
     }, []);
 
-    // ── Step 1: Lookup ───────────────────────────────────────────
     const handleLookup = async (e) => {
         e.preventDefault();
         const q = identifier.trim();
@@ -398,20 +692,12 @@ export default function PostmortemRequestForm() {
         setLookupError('');
         setFoundCase(null);
 
-        // Build search params based on selected search type
         const params = new URLSearchParams();
-        if (searchType === 'phone') {
-            params.set('phone', q);
-        } else if (searchType === 'id_number') {
-            params.set('id_number', q);
-        } else if (searchType === 'admission_number') {
-            params.set('admission_number', q);
-        }
+        if (searchType === 'phone') params.set('phone', q);
+        else if (searchType === 'id_number') params.set('id_number', q);
+        else if (searchType === 'admission_number') params.set('admission_number', q);
 
         try {
-            // Use /deceased/public/postmortem/search (gateway routes /deceased → deceased-service,
-            // and the deceased-service registers both /public/postmortem/search and
-            // /deceased/public/postmortem/search for gateway compatibility).
             const res = await axios.get(`${BASE_URL}/deceased/public/postmortem/search?${params.toString()}`, {
                 headers: { 'x-tenant-slug': tenantSlug },
             });
@@ -443,8 +729,6 @@ export default function PostmortemRequestForm() {
         }
     };
 
-
-    // ── Step 2: Submit request ───────────────────────────────────
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!form.reason || !form.requested_by) {
@@ -460,9 +744,6 @@ export default function PostmortemRequestForm() {
         setSubmitResult(null);
 
         try {
-            // POST to the public route (no Bearer token needed).
-            // Use /deceased/public/postmortem/request — the gateway routes /deceased →
-            // deceased-service, which has router.post('/deceased/public/postmortem/request', requestPostmortem).
             const res = await axios.post(
                 `${BASE_URL}/deceased/public/postmortem/request`,
                 {
@@ -470,7 +751,7 @@ export default function PostmortemRequestForm() {
                     reason: form.reason,
                     requested_by: form.requested_by,
                     priority: form.priority,
-                    source: 'family_reception', // tag so staff know it came from the portal
+                    source: 'family_reception',
                 },
                 { headers: { 'x-tenant-slug': tenantSlug } }
             );
@@ -489,7 +770,6 @@ export default function PostmortemRequestForm() {
             let msg;
             if (errData?.message) {
                 msg = errData.message;
-                // Provide a friendlier message for known error patterns
                 if (errData.message.includes('Valid tenant required') || errData.message.includes('tenant')) {
                     msg = 'Unable to process this request for the current tenant. Please contact the system administrator.';
                 }
@@ -500,6 +780,14 @@ export default function PostmortemRequestForm() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleDone = () => {
+        setFoundCase(null);
+        setIdentifier('');
+        setSubmitResult(null);
+        setForm({ reason: '', requested_by: '', priority: 'normal' });
+        navigate('/receptionist');
     };
 
     const step1Done = !!foundCase;
@@ -513,7 +801,11 @@ export default function PostmortemRequestForm() {
 
                     {/* ── Condolence Banner ── */}
                     <Banner>
-                        <p>We are deeply sorry for your loss. Please accept our heartfelt condolences.</p>
+                        <p>
+                            <span className="ornament">❦</span>
+                            We are deeply sorry for your loss. Please accept our heartfelt condolences.
+                            <span className="ornament">❦</span>
+                        </p>
                     </Banner>
 
                     {/* ── Document Header ── */}
@@ -531,7 +823,7 @@ export default function PostmortemRequestForm() {
                             <QrBox>
                                 <QRCodeSVG
                                     value={verifyUrl}
-                                    size={90}
+                                    size={92}
                                     level="H"
                                     includeMargin={false}
                                     bgColor="#FFFFFF"
@@ -544,24 +836,30 @@ export default function PostmortemRequestForm() {
 
                     {/* ── Title ── */}
                     <TitleSection>
-                        <h1>Postmortem Examination Request</h1>
+                        <h1>Postmortem <span className="accent">Examination</span> Request</h1>
                         <p>Complete all fields accurately to authorize the procedure.</p>
                     </TitleSection>
 
                     {/* ─── Step indicator ─── */}
                     <Steps>
                         <Step $active={!step1Done} $done={step1Done}>
-                            <StepNum $active={!step1Done} $done={step1Done}>{step1Done ? '✓' : '1'}</StepNum>
+                            <StepNum $active={!step1Done} $done={step1Done}>
+                                {step1Done ? <i className="fas fa-check" /> : '1'}
+                            </StepNum>
                             Find Case
                         </Step>
                         <StepLine $done={step1Done} />
                         <Step $active={step1Done && !step2Done} $done={step2Done}>
-                            <StepNum $active={step1Done && !step2Done} $done={step2Done}>{step2Done ? '✓' : '2'}</StepNum>
+                            <StepNum $active={step1Done && !step2Done} $done={step2Done}>
+                                {step2Done ? <i className="fas fa-check" /> : '2'}
+                            </StepNum>
                             Submit Request
                         </Step>
                         <StepLine $done={step2Done} />
                         <Step $active={false} $done={step2Done}>
-                            <StepNum $done={step2Done}>{step2Done ? '✓' : '3'}</StepNum>
+                            <StepNum $done={step2Done}>
+                                {step2Done ? <i className="fas fa-check" /> : '3'}
+                            </StepNum>
                             Confirmed
                         </Step>
                     </Steps>
@@ -604,7 +902,8 @@ export default function PostmortemRequestForm() {
 
                                 <FormGroup style={{ marginBottom: 0 }}>
                                     <Label htmlFor="identifier">
-                                        <i className="fas fa-search" /> {searchType === 'phone' ? 'Phone Number' : searchType === 'id_number' ? 'ID Number' : 'Admission Number'}
+                                        <i className="fas fa-search" />
+                                        {searchType === 'phone' ? 'Phone Number' : searchType === 'id_number' ? 'ID Number' : 'Admission Number'}
                                     </Label>
                                     <Input
                                         id="identifier"
@@ -640,8 +939,10 @@ export default function PostmortemRequestForm() {
                                     <div>Case found. Please review the details below and complete your request.</div>
                                 </Alert>
 
-                                {/* Found case summary */}
                                 <CaseCard>
+                                    <CaseTitle>
+                                        <i className="fas fa-user-tag" /> Deceased Record
+                                    </CaseTitle>
                                     <CaseRow>
                                         <span>Full Name</span>
                                         <span>{foundCase.full_name || '—'}</span>
@@ -676,7 +977,6 @@ export default function PostmortemRequestForm() {
                                     )}
                                 </CaseCard>
 
-                                {/* Hidden — deceased_id is used in submit */}
                                 <FormGroup>
                                     <Label htmlFor="requested_by">
                                         <i className="fas fa-user-shield" /> Requesting Authority / Your Name
@@ -750,8 +1050,16 @@ export default function PostmortemRequestForm() {
                                 </Alert>
                             </Body>
                             <FormFooter>
-                                <Btn $primary onClick={() => { setFoundCase(null); setIdentifier(''); setSubmitResult(null); }}>
+                                <Btn type="button" $ghost onClick={() => {
+                                    setFoundCase(null);
+                                    setIdentifier('');
+                                    setSubmitResult(null);
+                                    setForm({ reason: '', requested_by: '', priority: 'normal' });
+                                }}>
                                     <i className="fas fa-plus" /> New Request
+                                </Btn>
+                                <Btn type="button" $done onClick={handleDone}>
+                                    <i className="fas fa-check-double" /> Done
                                 </Btn>
                             </FormFooter>
                         </>
@@ -760,7 +1068,8 @@ export default function PostmortemRequestForm() {
                     {/* ── Woodland Elegance Footer ── */}
                     <ElegantFooter>
                         <LeafMark>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#EDE9DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
+                            <svg viewBox="0 0 24 24" fill="none" stroke={C.och} strokeWidth="1.5"
+                                strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
                                 <path d="M4 20C4 10.5 10.5 4 20 4c0 9.5-6.5 16-16 16Z" />
                                 <path d="M4 20c4-6.5 8.5-10 13-12.5" />
                             </svg>
