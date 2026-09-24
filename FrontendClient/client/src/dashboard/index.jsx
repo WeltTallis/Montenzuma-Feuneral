@@ -453,7 +453,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   return (
     <div className={`rpd${dark ? " dark" : ""}`}>
       {/* ── toolbar ─────────────────────────────────────────────────── */}
-      <header className="tbar">
+      <header className={`tbar${isAnalyticsPeriod ? " ref-mode" : ""}`}>
         <div className="tb-left">
           <div className="nvp">
             {NAV.map((n) => {
@@ -591,13 +591,11 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               calY={calY}
               view={view}
               selDate={selDate}
-              dayTab={dayTab}
               now={now}
               today={today}
               onOpenModal={openModal}
               onOpenCase={openCase}
               onPickDay={(key) => { setView("day"); setSelDate(key); setClickedDay(null); setDayTab("all"); setTodayMode(false); }}
-              onDayTabChange={setDayTab}
             />
           ) : section === "command" ? (
             <OperationsView

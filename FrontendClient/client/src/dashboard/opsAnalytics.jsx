@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { CountUp, InsightText, tipProps } from "./opsBits";
 import { Ic } from "./opsIcons";
 import { fmtK, parseKey, shortDate } from "./opsData";
-import SchedulerView from "./opsScheduler";
+import { AnalyticsSchedule } from "./opsScheduler";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Analytics — KPI grid, the hand-built SVG charts and the insights card.
@@ -345,24 +345,24 @@ function ACard({ title, right, note, children, span }) {
   );
 }
 
-function PeriodAnalytics({ people, view, selDate, dayTab, now, today, onOpenCase, onPickDay, onDayTabChange }) {
+function PeriodAnalytics({ people, view, selDate, now, today, onOpenCase, onPickDay }) {
   return (
-    <SchedulerView
+    <AnalyticsSchedule
       searched={people}
-      state={{ view, selDate, dayTab: dayTab || "all", filters: [] }}
+      filters={[]}
+      view={view}
+      selDate={selDate}
       now={now}
       today={today}
       onOpenCase={onOpenCase}
       onPickDay={onPickDay}
-      onDayTabChange={onDayTabChange}
-      reference
     />
   );
 }
 
 export function AnalyticsView({
-  calc, people, branch, calY, view = "month", selDate, dayTab, now, today,
-  onOpenModal, onOpenCase, onPickDay, onDayTabChange,
+  calc, people, branch, calY, view = "month", selDate, now, today,
+  onOpenModal, onOpenCase, onPickDay,
 }) {
   if (view === "day" || view === "week") {
     return (
@@ -370,12 +370,10 @@ export function AnalyticsView({
         people={people || []}
         view={view}
         selDate={selDate || today}
-        dayTab={dayTab}
         now={now}
         today={today}
         onOpenCase={onOpenCase}
         onPickDay={onPickDay}
-        onDayTabChange={onDayTabChange}
       />
     );
   }
