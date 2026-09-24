@@ -1,16 +1,13 @@
 import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../shared/dbConfig';
-import { renderStampOnPDFKit } from '../../../packages/shared-stamps/dist/index';
-import Logger from '../../../packages/shared-logger/src/index';
-// Same tracking helper the /postmortem-requests endpoints use, so a request
-// submitted from the public portal lands in the SAME table the deceased
-// profile reads its "Postmortem Requests" list from.
 import { ensurePostmortemRequestsTable } from './postmortemRequestControl';
+import Logger from '../../../packages/shared-logger/src/index';
 import { Request, Response } from 'express';
 import { DateTime } from 'luxon';
-import PDFDocument from 'pdfkit';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
+import puppeteer from 'puppeteer';
+import https from 'https';
 
 interface TenantRequest extends Request {
     tenantSlug?: string;
@@ -30,6 +27,310 @@ const formatFacilityName = (tenantSlug: string): string => {
         .join(' ');
 };
 
+// ─── PDF HELPERS ──────────────────────────────────────────────
+function fmtLong(iso: string | null | undefined): string {
+    if (!iso) return 'N/A';
+    try {
+        return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch {
+        return 'N/A';
+    }
+}
+
+function fmtShort(iso: string | null | undefined): string {
+    if (!iso) return 'N/A';
+    try {
+        return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+        return 'N/A';
+    }
+}
+
+function esc(s: string | null | undefined): string {
+    if (s == null) return 'N/A';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// ── Realistic Code-128-style barcode with guard bars + quiet zones ──
+function generateBarcodeBars(): string {
+    const p: [number, boolean][] = [
+        [8,false],[3,true],[1,false],[1,true],[1,false],[3,true],[2,false],
+        [1,true],[2,false],[3,true],[1,false],[2,true],[2,false],
+        [1,true],[3,false],[2,true],[1,false],[3,true],[1,false],
+        [2,true],[1,false],[1,true],[3,false],[3,true],[2,false],
+        [1,true],[2,false],[2,true],[1,false],[3,true],[3,false],
+        [2,true],[1,false],[1,true],[2,false],[3,true],[1,false],
+        [1,true],[3,false],[3,true],[1,false],[2,true],[2,false],
+        [3,true],[1,false],[1,true],[2,false],[2,true],[3,false],
+        [1,true],[1,false],[3,true],[2,false],[2,true],[1,false],
+        [3,true],[2,false],[1,true],[3,false],[2,true],[1,false],
+        [1,true],[2,false],[3,true],[1,false],[2,true],[3,false],
+        [2,false],[3,true],[1,false],[1,true],[1,false],[3,true],[8,false],
+    ];
+    let html = '';
+    for (let i = 0; i < p.length; i++) {
+        const w = Math.max(1, p[i][0]);
+        if (p[i][1]) {
+            html += '<div style="width:' + w + 'px;background:#1a1a1a;height:100%;flex-shrink:0;"></div>';
+        } else {
+            html += '<div style="width:' + w + 'px;height:100%;flex-shrink:0;"></div>';
+        }
+    }
+    return html;
+}
+
+function fetchLogoBase64(url: string): Promise<string | null> {
+    return new Promise((resolve) => {
+        const req = https.get(url, { timeout: 8000 }, (res) => {
+            if (res.statusCode !== 200) { resolve(null); return; }
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk: Buffer) => chunks.push(chunk));
+            res.on('end', () => {
+                const buffer = Buffer.concat(chunks);
+                resolve('data:image/png;base64,' + buffer.toString('base64'));
+            });
+        });
+        req.on('error', () => resolve(null));
+        req.on('timeout', () => { req.destroy(); resolve(null); });
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HTML TEMPLATE — height:297mm + overflow:hidden = GUARANTEED 1 page
+// flex pushes bottom section to bottom, filling the page
+// ═══════════════════════════════════════════════════════════════
+function buildReportHtml(p: {
+    tenantName: string;
+    tenantAddress: string;
+    tenantPhone: string;
+    tenantEmail: string;
+    deceasedFullName: string;
+    deceasedAdmission: string;
+    deceasedDateOfDeath: string;
+    deceasedAge: string | number;
+    deceasedGender: string;
+    examDate: string;
+    pathologistName: string;
+    pathologistCredentials: string;
+    pathologistLicense: string;
+    mannerOfDeath: string;
+    immediateCause: string;
+    underlyingCause: string;
+    examinationSummary: string;
+    kinName: string;
+    kinRelationship: string;
+    kinPhone: string;
+    verifiedDate: string;
+    issuedDate: string;
+    logoBase64: string | null;
+    signatureBase64: string | null;
+}): string {
+
+    const logoHtml = p.logoBase64
+        ? '<img src="' + p.logoBase64 + '" alt="Logo" style="height:50px;width:auto;max-width:115px;object-fit:contain;" />'
+        : '';
+
+    let pathSig: string;
+    if (p.signatureBase64) {
+        pathSig = '<img src="' + p.signatureBase64 + '" alt="Signature" style="max-width:100%;max-height:32px;object-fit:contain;" />';
+    } else {
+        const shortName = (p.pathologistName || 'Pathologist')
+            .replace(/^Dr\.\s*/i, '').split(' ').slice(0, 2).join(' ');
+        pathSig = esc(shortName);
+    }
+
+    const barcodeBars = generateBarcodeBars();
+
+    return '<!DOCTYPE html>\n'
+        + '<html lang="en">\n<head>\n<meta charset="UTF-8">\n<style>\n'
+        + '@page { size: A4; margin: 0; }\n'
+        + '* { box-sizing: border-box; margin: 0; padding: 0; }\n'
+        + 'html, body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; color: #3a3530; background: #fbfaf7; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-size: 15px; }\n'
+        + '.sheet { width: 210mm; height: 297mm; overflow: hidden; display: flex; flex-direction: column; background: #fbfaf7; position: relative; }\n'
+        + '.sheet-inner { padding: 28px 40px 0; position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; }\n'
+        + '.top-rule { width: 100%; height: 1px; background: #1a1a1a; position: relative; opacity: 0.8; }\n'
+        + '.top-rule::after { content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 100px; height: 1px; background: #a8906a; opacity: 0.7; }\n'
+        + '.top-ornament { text-align: center; margin: 6px 0 7px; color: #a8906a; font-size: 0.68rem; opacity: 0.35; letter-spacing: 0.8em; }\n'
+        + '.letterhead { display: flex; flex-direction: column; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #e8e0d4; position: relative; z-index: 1; }\n'
+        + '.home-name { width: 100%; }\n'
+        + '.home-name h2 { font-family: "Segoe UI", sans-serif; margin: 0; font-size: 1.38rem; font-weight: 700; color: #1a1a1a; letter-spacing: 0.04em; line-height: 1.15; text-transform: uppercase; }\n'
+        + '.letterhead-row { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }\n'
+        + '.logo-left { display: flex; align-items: center; gap: 14px; }\n'
+        + '.logo { flex-shrink: 0; display: flex; align-items: center; justify-content: center; }\n'
+        + '.logo-text .address { font-size: 0.66rem; color: #8a7d6e; font-style: normal; font-family: Consolas, "Courier New", monospace; line-height: 1.45; letter-spacing: 0.02em; font-weight: 600; }\n'
+        + '.letterhead-right { text-align: right; font-family: Consolas, "Courier New", monospace; font-size: 0.68rem; }\n'
+        + '.ref-label { font-family: "Segoe UI", sans-serif; font-size: 0.54rem; text-transform: uppercase; letter-spacing: 0.22em; color: #1a1a1a; margin-bottom: 4px; font-weight: 700; }\n'
+        + '.ref-number { font-family: Georgia, serif; font-size: 1.05rem; font-weight: 700; color: #1a1a1a; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }\n'
+        + '.ref-date { margin-top: 5px; color: #8a7d6e; font-size: 0.64rem; font-weight: 600; }\n'
+        + '.intro-block { margin: 18px 0 20px; position: relative; z-index: 1; padding-left: 15px; border-left: 3px solid #7c2b23; }\n'
+        + '.intro-block .dear { font-family: Georgia, serif; font-size: 1rem; font-weight: 700; color: #3a3530; margin-bottom: 7px; }\n'
+        + '.intro-block .body-text { font-family: Georgia, serif; font-size: 0.92rem; line-height: 1.6; color: #3a3530; font-weight: 700; max-width: 95%; }\n'
+        + '.intro-block .body-text .name { font-style: italic; font-weight: 700; color: #7c2b23; }\n'
+        + '.data-heading { display: flex; align-items: center; gap: 9px; font-family: "Segoe UI", sans-serif; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.18em; font-weight: 700; color: #3a3530; margin-bottom: 11px; }\n'
+        + '.data-heading::after { content: ""; flex: 1; height: 1px; background: linear-gradient(to right, #a8906a, transparent); opacity: 0.5; }\n'
+        + '.data-heading .icon-chip { width: 20px; height: 20px; background: rgba(168,144,106,0.08); display: flex; align-items: center; justify-content: center; color: #a8906a; font-size: 8px; flex-shrink: 0; border: 1px solid rgba(168,144,106,0.18); border-radius: 50%; }\n'
+        + '.dual-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 0 30px; margin-bottom: 18px; position: relative; z-index: 1; page-break-inside: avoid; }\n'
+        + '.data-section { position: relative; z-index: 1; page-break-inside: avoid; }\n'
+        + '.dual-sections .info-grid { display: grid; grid-template-columns: 1fr; gap: 7px; }\n'
+        + '.info-grid.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 32px; }\n'
+        + '.info-row { display: flex; flex-direction: column; gap: 2px; padding-bottom: 7px; border-bottom: 1px dotted #ddd4c6; }\n'
+        + '.info-row.full { grid-column: 1 / -1; }\n'
+        + '.info-row label { font-family: "Segoe UI", sans-serif; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.12em; color: #6b6157; font-weight: 700; }\n'
+        + '.info-row span { font-family: Georgia, serif; font-size: 0.96rem; color: #3a3530; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.01em; line-height: 1.28; }\n'
+        + '.summary-box { margin: 14px 0; padding: 14px 18px; background: #f6f2ea; border-left: 4px solid #7c2b23; position: relative; page-break-inside: avoid; border-radius: 0 4px 4px 0; }\n'
+        + '.summary-box::after { content: ""; position: absolute; top: 0; right: 0; width: 24px; height: 24px; border-top: 1px solid #a8906a; border-right: 1px solid #a8906a; opacity: 0.25; border-radius: 0 4px 0 0; }\n'
+        + '.summary-box::before { content: "\\2767"; font-family: Georgia, serif; font-size: 1.2rem; color: #a8906a; position: absolute; top: 8px; right: 14px; opacity: 0.4; }\n'
+        + '.summary-box strong { display: block; margin-bottom: 6px; font-family: Georgia, serif; font-size: 0.96rem; color: #3a3530; font-weight: 700; }\n'
+        + '.summary-box p { margin: 0; font-family: Georgia, serif; font-size: 0.84rem; line-height: 1.6; color: #3a3530; font-weight: 600; }\n'
+        + '.bottom-section { background: #ffffff; padding: 22px 40px 20px; position: relative; z-index: 1; border-top: 1px solid #e8e0d4; page-break-inside: avoid; margin-top: auto; }\n'
+        + '.signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; position: relative; z-index: 1; page-break-inside: avoid; align-items: start; }\n'
+        + '.signatures::before { content: ""; position: absolute; top: -12px; left: 0; right: 0; height: 1px; background: linear-gradient(to right, transparent, #a8906a, transparent); opacity: 0.4; }\n'
+        + '.sig-block { display: flex; flex-direction: column; min-width: 0; }\n'
+        + '.sig-script { font-family: "Brush Script MT", "Lucida Handwriting", cursive; font-size: 1.95rem; color: #3a3530; line-height: 1; margin-bottom: 4px; min-height: 35px; font-weight: 400; word-break: break-word; }\n'
+        + '.sig-line { border-top: 1px solid #1a1a1a; padding-top: 4px; margin-bottom: 5px; opacity: 0.5; }\n'
+        + '.sig-name { font-family: Georgia, serif; font-weight: 700; font-size: 0.88rem; color: #3a3530; letter-spacing: 0.02em; }\n'
+        + '.sig-title { font-family: Georgia, serif; font-size: 0.74rem; color: #6b6157; margin-top: 2px; font-style: italic; font-weight: 600; }\n'
+        + '.sig-meta { margin-top: 4px; font-family: Consolas, "Courier New", monospace; font-size: 0.6rem; color: #8a7d6e; line-height: 1.5; letter-spacing: 0.02em; font-weight: 600; }\n'
+        + '.barcode-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }\n'
+        + '.barcode { display: flex; align-items: flex-start; gap: 0; height: 42px; padding: 2px 4px; background: #fff; border: 1px solid #e8e0d4; max-width: 100%; overflow: hidden; }\n'
+        + '.barcode-text { font-family: Consolas, "Courier New", monospace; font-size: 0.68rem; font-weight: 700; color: #1a1a1a; letter-spacing: 0.15em; text-align: left; padding-left: 4px; }\n'
+        + '.family-contact { margin-top: 10px; padding-top: 7px; border-top: 1px dotted #ddd4c6; width: 100%; max-width: 100%; overflow: hidden; }\n'
+        + '.family-contact .fc-heading { font-family: "Segoe UI", sans-serif; font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.18em; color: #6b6157; font-weight: 700; margin-bottom: 5px; }\n'
+        + '.family-contact .fc-grid { display: grid; grid-template-columns: 1fr; gap: 1px; }\n'
+        + '.family-contact .fc-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 2px 0; min-width: 0; }\n'
+        + '.family-contact .fc-row .fc-label { font-family: "Segoe UI", sans-serif; font-size: 0.54rem; text-transform: uppercase; letter-spacing: 0.1em; color: #6b6157; font-weight: 700; flex-shrink: 0; white-space: nowrap; }\n'
+        + '.family-contact .fc-row .fc-value { font-family: Georgia, serif; font-size: 0.76rem; color: #3a3530; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n'
+        + '.bottom-ornament { text-align: center; margin-top: 18px; padding-top: 13px; border-top: 1px solid #e8e0d4; position: relative; z-index: 1; }\n'
+        + '.bottom-ornament .closing { font-family: Georgia, serif; font-size: 0.84rem; font-style: italic; color: #8a7d6e; font-weight: 700; letter-spacing: 0.02em; }\n'
+        + '.bottom-ornament .closing .leaf { color: #a8906a; opacity: 0.5; margin: 0 8px; }\n'
+        + '</style>\n</head>\n<body>\n'
+        + '<div class="sheet">\n'
+        + '  <div class="sheet-inner">\n'
+        + '    <div class="top-rule"></div>\n'
+        + '    <div class="top-ornament">&#10087;</div>\n'
+        + '    <header class="letterhead">\n'
+        + '      <div class="home-name"><h2>' + esc(p.tenantName) + '</h2></div>\n'
+        + '      <div class="letterhead-row">\n'
+        + '        <div class="logo-left">\n'
+        + '          <div class="logo">' + logoHtml + '</div>\n'
+        + '          <div class="logo-text"><address class="address">' + esc(p.tenantAddress) + (p.tenantPhone ? '<br>Tel: ' + esc(p.tenantPhone) : '') + (p.tenantEmail ? ' &middot; ' + esc(p.tenantEmail) : '') + '</address></div>\n'
+        + '        </div>\n'
+        + '        <div class="letterhead-right">\n'
+        + '          <div class="ref-label">Case Reference</div>\n'
+        + '          <div class="ref-number">' + esc(p.deceasedAdmission) + '</div>\n'
+        + '          <div class="ref-date">Issued: ' + p.issuedDate + '</div>\n'
+        + '        </div>\n'
+        + '      </div>\n'
+        + '    </header>\n'
+        + '    <div class="intro-block">\n'
+        + '      <div class="dear">Dear Family,</div>\n'
+        + '      <div class="body-text">Please find enclosed the postmortem examination report for <span class="name">' + esc(p.deceasedFullName) + '</span>. This document has been prepared with care by the attending pathologist and verified by our records team.</div>\n'
+        + '    </div>\n'
+        + '    <div class="dual-sections">\n'
+        + '      <section class="data-section">\n'
+        + '        <div class="data-heading"><span class="icon-chip">&#10087;</span>About Your Loved One</div>\n'
+        + '        <div class="info-grid">\n'
+        + '          <div class="info-row"><label>Full Name</label><span>' + esc(p.deceasedFullName) + '</span></div>\n'
+        + '          <div class="info-row"><label>Date of Passing</label><span>' + p.deceasedDateOfDeath + '</span></div>\n'
+        + '          <div class="info-row"><label>Age &amp; Gender</label><span>' + (p.deceasedAge || 'N/A') + ' Years &middot; ' + esc(p.deceasedGender) + '</span></div>\n'
+        + '        </div>\n'
+        + '      </section>\n'
+        + '      <section class="data-section">\n'
+        + '        <div class="data-heading"><span class="icon-chip">&#10087;</span>Requesting Authority</div>\n'
+        + '        <div class="info-grid">\n'
+        + '          <div class="info-row"><label>Name</label><span>' + esc(p.kinName) + '</span></div>\n'
+        + '          <div class="info-row"><label>Role</label><span>' + esc(p.kinRelationship) + '</span></div>\n'
+        + '          <div class="info-row"><label>Telephone</label><span>' + esc(p.kinPhone) + '</span></div>\n'
+        + '        </div>\n'
+        + '      </section>\n'
+        + '    </div>\n'
+        + '    <section class="data-section">\n'
+        + '      <div class="data-heading"><span class="icon-chip">&#10087;</span>Examination Report</div>\n'
+        + '      <div class="info-grid two-col">\n'
+        + '        <div class="info-row"><label>Date of Examination</label><span>' + p.examDate + '</span></div>\n'
+        + '        <div class="info-row"><label>Attending Pathologist</label><span>' + esc(p.pathologistName) + '</span></div>\n'
+        + '        <div class="info-row"><label>Manner of Passing</label><span>' + esc(p.mannerOfDeath) + '</span></div>\n'
+        + '        <div class="info-row"><label>Immediate Cause</label><span>' + esc(p.immediateCause) + '</span></div>\n'
+        + '        <div class="info-row full"><label>Underlying Cause</label><span>' + esc(p.underlyingCause) + '</span></div>\n'
+        + '      </div>\n'
+        + (p.examinationSummary ? '      <div class="summary-box"><strong>Examination Summary</strong><p>' + esc(p.examinationSummary) + '</p></div>\n' : '')
+        + '    </section>\n'
+        + '  </div>\n'
+        + '  <div class="bottom-section">\n'
+        + '    <section class="signatures">\n'
+        + '      <div class="sig-block">\n'
+        + '        <div class="sig-script">' + pathSig + '</div>\n'
+        + '        <div class="sig-line"></div>\n'
+        + '        <div class="sig-name">' + esc(p.pathologistName || 'Attending Pathologist') + '</div>\n'
+        + '        <div class="sig-title">' + esc(p.pathologistCredentials || 'Pathologist') + '</div>\n'
+        + '        <div class="sig-meta">' + (p.pathologistLicense ? 'License: ' + esc(p.pathologistLicense) + '<br>' : '') + 'Signed: ' + p.examDate + '</div>\n'
+        + '      </div>\n'
+        + '      <div class="barcode-wrap">\n'
+        + '        <div class="barcode">' + barcodeBars + '</div>\n'
+        + '        <div class="barcode-text">' + esc(p.deceasedAdmission) + '</div>\n'
+        + '        <div class="family-contact">\n'
+        + '          <div class="fc-heading">Next of Kin</div>\n'
+        + '          <div class="fc-grid">\n'
+        + '            <div class="fc-row"><span class="fc-label">Name</span><span class="fc-value">' + esc(p.kinName) + '</span></div>\n'
+        + '            <div class="fc-row"><span class="fc-label">Relationship</span><span class="fc-value">' + esc(p.kinRelationship) + '</span></div>\n'
+        + '            <div class="fc-row"><span class="fc-label">Telephone</span><span class="fc-value">' + esc(p.kinPhone) + '</span></div>\n'
+        + '            <div class="fc-row"><span class="fc-label">Verified</span><span class="fc-value">' + p.verifiedDate + '</span></div>\n'
+        + '          </div>\n'
+        + '        </div>\n'
+        + '      </div>\n'
+        + '    </section>\n'
+        + '    <div class="bottom-ornament"><div class="closing"><span class="leaf">&#10087;</span>With our deepest sympathies<span class="leaf">&#10087;</span></div></div>\n'
+        + '  </div>\n'
+        + '</div>\n'
+        + '</body>\n</html>';
+}
+
+// ─── INK-BLUE SIGNATURE NORMALIZATION (unchanged) ─────────────
+async function toInkBlueBuffer(buffer: Buffer): Promise<Buffer> {
+    const { data, info } = await sharp(buffer)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+    const INK_BLUE = { r: 15, g: 51, b: 231 };
+    const normalized = Buffer.alloc(data.length);
+    for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i + 3] / 255;
+        const luminance = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
+        const ink = alpha * Math.min(1, Math.pow(1 - luminance, 0.45) * 1.13);
+        normalized[i] = INK_BLUE.r;
+        normalized[i + 1] = INK_BLUE.g;
+        normalized[i + 2] = INK_BLUE.b;
+        normalized[i + 3] = Math.round(Math.min(1, Math.max(0, ink)) * 255);
+    }
+
+    return sharp(normalized, { raw: { width: info.width, height: info.height, channels: 4 } })
+        .png({ compressionLevel: 9, palette: false })
+        .toBuffer();
+}
+
+async function normalizeSignatureToInkBlue(signatureDataUrl: string): Promise<string> {
+    if (!signatureDataUrl || !signatureDataUrl.startsWith('data:image')) {
+        return signatureDataUrl;
+    }
+    try {
+        const base64Data = signatureDataUrl.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        const inkBuffer = await toInkBlueBuffer(buffer);
+        return `data:image/png;base64,${inkBuffer.toString('base64')}`;
+    } catch (error: any) {
+        Logger.warn(`[POSTMORTEM] Failed to normalize signature to ink blue: ${error.message}`);
+        return signatureDataUrl;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT: requestPostmortem (unchanged)
+// ═══════════════════════════════════════════════════════════════
 export const requestPostmortem = async (req: TenantRequest, res: Response): Promise<Response> => {
     const tenantSlug = req.headers['x-slug'] as string || req.headers['x-tenant-slug'] as string || req.tenantSlug;
     if (!tenantSlug || tenantSlug === 'system_shared') {
@@ -58,13 +359,6 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
             await safeTenantExecute(dbName, insertQuery, [deceased_id, requested_by, now, reason, reason, now, now]);
         }
 
-        // ── Mirror the request into the tracked postmortem_requests table ─────
-        // The public portal (family / reception form) posts here, but this
-        // controller historically only wrote the official `postmortem` row. The
-        // deceased profile renders its "Postmortem Requests" list from
-        // `postmortem_requests`, so without this mirror a request submitted from
-        // the portal never appeared on the deceased profile. Kept identical to
-        // createPostmortemRequest so both entry points behave the same way.
         let trackingRequestId: number | null = null;
         try {
             await ensurePostmortemRequestsTable(dbName);
@@ -83,12 +377,9 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
             `, [deceased_id, requestRef, requested_by, requesting_authority || null, reason, trackingNotes, requested_by, now, now]);
             trackingRequestId = tracked?.insertId ?? null;
         } catch (trackErr: any) {
-            // Never fail a public request just because the tracking row failed.
             Logger.warn({ message: 'Failed to mirror postmortem request into postmortem_requests', error: trackErr?.message });
         }
 
-        // Sync the deceased record: the body is now awaiting postmortem examination
-        // (same behaviour as createPostmortemRequest / the "Initiate Request" flow).
         try {
             await safeTenantExecute(dbName, `UPDATE deceased SET body_status = 'Postmortem Requested', updated_at = ? WHERE deceased_id = ?`, [now, deceased_id]);
         } catch (statusErr: any) {
@@ -98,71 +389,43 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
         try {
             const axios = require('axios');
             const configuredUrl = process.env.SOCKETIO_SERVICE_URL || '';
-            const candidateUrls = [
-                configuredUrl,
-                'http://localhost:5018',
-                'http://127.0.0.1:5018',
-            ].filter(Boolean);
+            const candidateUrls = [configuredUrl, 'http://localhost:5018', 'http://127.0.0.1:5018'].filter(Boolean);
 
             const emitPayload = {
                 tenantSlug,
                 data: {
                     id: `postmortem-request-${deceased_id}-${Date.now()}`,
-                    deceasedId: deceased_id,
-                    requestId: requestId,
-                    requestedBy: requested_by,
-                    reason: reason,
-                    title: 'Postmortem Requested',
-                    message: `Postmortem examination requested for deceased ${deceased_id}`,
-                    type: 'postmortem_requested',
-                    priority: 'high',
+                    deceasedId: deceased_id, requestId, requestedBy: requested_by, reason,
+                    title: 'Postmortem Requested', message: `Postmortem examination requested for deceased ${deceased_id}`,
+                    type: 'postmortem_requested', priority: 'high',
                     fullContent: `Request ID: ${requestId}\nDeceased ID: ${deceased_id}\nRequested By: ${requested_by}\nReason: ${reason}\nDate: ${now}`,
                 }
             };
 
-            let emitted = false;
             for (const socketioServiceUrl of candidateUrls) {
                 try {
                     await axios.post(`${socketioServiceUrl}/emit/postmortem-requested`, emitPayload, { timeout: 3000 });
-                    emitted = true;
-                    Logger.info({ message: `Emitted postmortem-requested for ${deceased_id} via ${socketioServiceUrl}` });
                     break;
                 } catch (urlError: any) {
                     Logger.warn({ message: `SocketIO URL failed: ${socketioServiceUrl}`, error: urlError.message });
                 }
             }
 
-            // The notification bell listens for 'notification:postmortem-request-created'
-            // (same event createPostmortemRequest emits) — without it a request sent
-            // from the public portal never appeared in the mortuary team's bell.
             const trackingPayload = {
                 tenantSlug,
                 data: {
                     id: trackingRequestId ? `pmr-${trackingRequestId}` : `postmortem-request-${deceased_id}-${Date.now()}`,
-                    requestId: trackingRequestId ? String(trackingRequestId) : '',
-                    deceasedId: deceased_id,
-                    requestedBy: requested_by,
-                    requestingAuthority: requesting_authority || '',
-                    reason,
-                    title: 'Postmortem Request Received',
-                    message: `Postmortem request submitted by ${requested_by}`,
-                    type: 'postmortem_request',
-                    priority: 'high',
-                    fullContent: [
-                        `Deceased ID: ${deceased_id}`,
-                        `Requested By: ${requested_by}`,
-                        requesting_authority ? `Requesting Authority: ${requesting_authority}` : null,
-                        `Reason: ${reason}`,
-                        typeof source === 'string' && source ? `Source: ${source}` : null,
-                        `Date: ${now}`,
-                    ].filter(Boolean).join('\n'),
+                    requestId: trackingRequestId ? String(trackingRequestId) : '', deceasedId: deceased_id,
+                    requestedBy: requested_by, requestingAuthority: requesting_authority || '', reason,
+                    title: 'Postmortem Request Received', message: `Postmortem request submitted by ${requested_by}`,
+                    type: 'postmortem_request', priority: 'high',
+                    fullContent: [`Deceased ID: ${deceased_id}`, `Requested By: ${requested_by}`, requesting_authority ? `Requesting Authority: ${requesting_authority}` : null, `Reason: ${reason}`, typeof source === 'string' && source ? `Source: ${source}` : null, `Date: ${now}`].filter(Boolean).join('\n'),
                 },
             };
 
             for (const socketioServiceUrl of candidateUrls) {
                 try {
                     await axios.post(`${socketioServiceUrl}/emit/postmortem-request-created`, trackingPayload, { timeout: 3000 });
-                    Logger.info({ message: `Emitted postmortem-request-created for ${deceased_id} via ${socketioServiceUrl}` });
                     break;
                 } catch (urlError: any) {
                     Logger.warn({ message: `SocketIO URL failed for postmortem-request-created: ${socketioServiceUrl}`, error: urlError.message });
@@ -173,8 +436,7 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
         }
 
         return res.status(201).json({
-            success: true,
-            message: "Postmortem request submitted successfully",
+            success: true, message: "Postmortem request submitted successfully",
             data: { requestId, deceased_id, status: 'pending' }
         });
 
@@ -184,57 +446,9 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
     }
 };
 
-/**
- * Force a signature image buffer into pure INK-BLUE ink (#0f33e7) on a
- * transparent background. The client canvas draws with penColor #0f33e7, but
- * anti-aliased edge pixels and PNG encoding can shift the colour after
- * processing. Rebuilding the pixels guarantees every stored/rendered signature
- * is always pure ink blue — identical to the other signature pipelines
- * (bodyRelease, deceased-service).
- */
-async function toInkBlueBuffer(buffer: Buffer): Promise<Buffer> {
-    const { data, info } = await sharp(buffer)
-        .ensureAlpha()
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-
-    const INK_BLUE = { r: 15, g: 51, b: 231 }; // #0f33e7 — matches the signature pad penColor
-    const normalized = Buffer.alloc(data.length);
-    for (let i = 0; i < data.length; i += 4) {
-        const alpha = data[i + 3] / 255;
-        const luminance = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
-        const ink = alpha * Math.min(1, Math.pow(1 - luminance, 0.45) * 1.13);
-        normalized[i] = INK_BLUE.r;
-        normalized[i + 1] = INK_BLUE.g;
-        normalized[i + 2] = INK_BLUE.b;
-        normalized[i + 3] = Math.round(Math.min(1, Math.max(0, ink)) * 255);
-    }
-
-    return sharp(normalized, { raw: { width: info.width, height: info.height, channels: 4 } })
-        .png({ compressionLevel: 9, palette: false })
-        .toBuffer();
-}
-
-/**
- * Normalize a base64 data-URL signature to pure ink blue and return a fresh
- * base64 data URL. Used before persisting the signature so the stored value
- * is always ink blue.
- */
-async function normalizeSignatureToInkBlue(signatureDataUrl: string): Promise<string> {
-    if (!signatureDataUrl || !signatureDataUrl.startsWith('data:image')) {
-        return signatureDataUrl;
-    }
-    try {
-        const base64Data = signatureDataUrl.replace(/^data:image\/\w+;base64,/, '');
-        const buffer = Buffer.from(base64Data, 'base64');
-        const inkBuffer = await toInkBlueBuffer(buffer);
-        return `data:image/png;base64,${inkBuffer.toString('base64')}`;
-    } catch (error: any) {
-        Logger.warn(`[POSTMORTEM] Failed to normalize signature to ink blue: ${error.message}`);
-        return signatureDataUrl;
-    }
-}
-
+// ═══════════════════════════════════════════════════════════════
+// EXPORT: savePostmortem (unchanged)
+// ═══════════════════════════════════════════════════════════════
 export const savePostmortem = async (req: TenantRequest, res: Response): Promise<Response> => {
     const tenantSlug = req.headers['x-slug'] as string || req.headers['x-tenant-slug'] as string || req.tenantSlug;
 
@@ -255,14 +469,8 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
         const dbName = await resolveDatabase(tenantSlug);
         if (!dbName) return res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
 
-        // ─── INK-BLUE NORMALIZATION ──────────────────────────────────────
-        // Normalize the signature to pure ink blue (#0f33e7) before storing,
-        // so it always renders as ink blue in the generated PDF — matching the
-        // canvas stroke colour and the other signature pipelines.
         const rawSignature = (req.body as any).signature_base64;
-        const signature_base64 = rawSignature
-            ? await normalizeSignatureToInkBlue(rawSignature)
-            : null;
+        const signature_base64 = rawSignature ? await normalizeSignatureToInkBlue(rawSignature) : null;
 
         const existingQuery = 'SELECT id FROM postmortem WHERE deceased_id = ?';
         const existing = await safeTenantQuery(dbName, existingQuery, [deceased_id]);
@@ -276,8 +484,7 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                     contributing_conditions = ?, manner_of_death = ?, requesting_authority = ?, findings = ?, head_findings = ?,
                     chest_findings = ?, abdomen_findings = ?, extremities_findings = ?, toxicology_findings = ?, custom_findings = ?,
                     signature = ?, staff_username = ?, mortuary_name = ?, updated_at = ?
-                WHERE deceased_id = ?
-            `;
+                WHERE deceased_id = ?`;
 
             await safeTenantExecute(dbName, updateQuery, [
                 pathologist_name, external_pathologist_name, external_pathologist_mobile, external_pathologist_id,
@@ -286,8 +493,7 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                 typeof findings === 'string' ? findings : JSON.stringify(findings),
                 head_findings || null, chest_findings || null, abdomen_findings || null, extremities_findings || null,
                 toxicology_findings || null, custom_findings || null, signature_base64,
-                staff_username || null, mortuary_name || null, now, deceased_id
-            ]);
+                staff_username || null, mortuary_name || null, now, deceased_id]);
 
             emitPostmortemUpdate(tenantSlug, deceased_id, { status: 'completed', pathologist_name, cause_of_death, manner_of_death, completed_at: now });
 
@@ -296,14 +502,13 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                 try {
                     const nRows: any[] = (await safeTenantQuery(dbName, 'SELECT full_name FROM deceased WHERE deceased_id = ?', [deceased_id])) || [];
                     deceasedName = nRows[0]?.full_name || '';
-                } catch { /* name optional */ }
+                } catch { }
 
                 const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
                 const axios = require('axios');
                 const who = deceasedName || deceased_id;
                 await axios.post(`${socketioServiceUrl}/emit/postmortem-results-ready`, {
-                    tenantSlug,
-                    data: {
+                    tenantSlug, data: {
                         id: `postmortem-results-${deceased_id}-${Date.now()}`, deceasedId: deceased_id, deceasedName,
                         pathologistName: pathologist_name || 'N/A', causeOfDeath: cause_of_death || 'Pending',
                         mannerOfDeath: manner_of_death || 'Undetermined', title: 'Postmortem Results Available',
@@ -323,8 +528,7 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                     examination_summary, cause_of_death, immediate_cause_of_death, underlying_cause_of_death, contributing_conditions,
                     manner_of_death, requesting_authority, findings, head_findings, chest_findings, abdomen_findings, extremities_findings,
                     toxicology_findings, custom_findings, staff_username, mortuary_name, signature, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
             const result = await safeTenantExecute(dbName, insertQuery, [
                 deceased_id, pathologist_name, external_pathologist_name, external_pathologist_mobile, external_pathologist_id,
@@ -333,8 +537,7 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                 typeof findings === 'string' ? findings : JSON.stringify(findings),
                 head_findings || null, chest_findings || null, abdomen_findings || null, extremities_findings || null,
                 toxicology_findings || null, custom_findings || null, staff_username || null, mortuary_name || null,
-                signature_base64, now, now
-            ]);
+                signature_base64, now, now]);
 
             emitPostmortemUpdate(tenantSlug, deceased_id, { status: 'completed', pathologist_name, cause_of_death, manner_of_death, completed_at: now });
 
@@ -343,14 +546,13 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                 try {
                     const nRows: any[] = (await safeTenantQuery(dbName, 'SELECT full_name FROM deceased WHERE deceased_id = ?', [deceased_id])) || [];
                     deceasedName = nRows[0]?.full_name || '';
-                } catch { /* name optional */ }
+                } catch { }
 
                 const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
                 const axios = require('axios');
                 const who = deceasedName || deceased_id;
                 await axios.post(`${socketioServiceUrl}/emit/postmortem-results-ready`, {
-                    tenantSlug,
-                    data: {
+                    tenantSlug, data: {
                         id: `postmortem-results-${deceased_id}-${Date.now()}`, deceasedId: deceased_id, deceasedName,
                         pathologistName: pathologist_name || 'N/A', causeOfDeath: cause_of_death || 'Pending',
                         mannerOfDeath: manner_of_death || 'Undetermined', title: 'Postmortem Results Available',
@@ -404,7 +606,7 @@ const emitPostmortemUpdate = async (tenantSlug: string, deceasedId: string, data
                 if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
                     try {
                         await axios.post(`http://localhost:5018/emit/postmortem-completed`, notificationPayload, { timeout: 5000, headers: { 'Content-Type': 'application/json' } });
-                    } catch (fallbackError) { /* Ignore fallback error */ }
+                    } catch (fallbackError) { }
                 }
             }
         }
@@ -430,15 +632,14 @@ export const getPostmortemByDeceasedId = async (req: TenantRequest, res: Respons
                 manner_of_death, requesting_authority, findings, head_findings, chest_findings, abdomen_findings, extremities_findings,
                 toxicology_findings, custom_findings, signature, report_pdf_url, created_at, updated_at,
                 requested_by, requested_at
-            FROM postmortem WHERE deceased_id = ?
-        `;
+            FROM postmortem WHERE deceased_id = ?`;
 
         const records = await safeTenantQuery(dbName, selectQuery, [deceased_id]);
         if (!records || (records as any[]).length === 0) return res.status(404).json({ success: false, message: 'Postmortem record not found' });
 
         const postmortem = (records as any[])[0];
         if (postmortem.findings && typeof postmortem.findings === 'string') {
-            try { postmortem.findings = JSON.parse(postmortem.findings); } catch (e) { /* Keep as is */ }
+            try { postmortem.findings = JSON.parse(postmortem.findings); } catch (e) { }
         }
 
         return res.status(200).json({ success: true, message: 'Postmortem record fetched successfully', data: postmortem });
@@ -463,8 +664,7 @@ export const updatePostmortem = async (req: TenantRequest, res: Response): Promi
             'pathologist_name', 'external_pathologist_name', 'external_pathologist_mobile', 'external_pathologist_id',
             'examination_summary', 'cause_of_death', 'immediate_cause_of_death', 'underlying_cause_of_death',
             'contributing_conditions', 'manner_of_death', 'requesting_authority', 'findings', 'report_pdf_url',
-            'signature'
-        ];
+            'signature'];
 
         const fields: string[] = [];
         const values: any[] = [];
@@ -472,9 +672,6 @@ export const updatePostmortem = async (req: TenantRequest, res: Response): Promi
         for (const field of allowedFields) {
             if (updates[field] !== undefined) {
                 fields.push(`${field} = ?`);
-                // Signatures are normalised to pure ink-blue (#0f33e7) so the stored value
-                // always renders consistently in UI + PDF — same as the other pipelines.
-
                 const value = field === 'findings' && typeof updates[field] === 'object'
                     ? JSON.stringify(updates[field])
                     : field === 'signature' && typeof updates[field] === 'string' && updates[field].startsWith('data:image')
@@ -500,9 +697,9 @@ export const updatePostmortem = async (req: TenantRequest, res: Response): Promi
     }
 };
 
-/**
- * Generate postmortem PDF - Sleek 3-Column Design with Dynamic One-Page Fit
- */
+// ═══════════════════════════════════════════════════════════════
+// EXPORT: generatePostmortemPDF — Puppeteer, GUARANTEED 1 page
+// ═══════════════════════════════════════════════════════════════
 export const generatePostmortemPDF = async (req: TenantRequest, res: Response): Promise<void> => {
     const tenantSlug = req.headers['x-slug'] as string || req.headers['x-tenant-slug'] as string || req.tenantSlug;
     const { deceased_id } = req.params;
@@ -512,6 +709,8 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         return;
     }
 
+    let browser: puppeteer.Browser | null = null;
+
     try {
         const dbName = await resolveDatabase(tenantSlug);
         if (!dbName) {
@@ -519,325 +718,213 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
             return;
         }
 
+        // ── 1. QUERY POSTMORTEM ──
         const postmortemQuery = `
-            SELECT immediate_cause_of_death, underlying_cause_of_death, contributing_conditions, manner_of_death, 
-                   examination_summary, external_pathologist_name, pathologist_name, external_pathologist_id, cause_of_death,
-                   head_findings, chest_findings, abdomen_findings, extremities_findings, toxicology_findings
-            FROM postmortem WHERE deceased_id = ?
-        `;
-        const postmortemResults = await safeTenantQuery(dbName, postmortemQuery, [deceased_id]);
-        if (!postmortemResults || (postmortemResults as any[]).length === 0) {
+            SELECT id, deceased_id, status, pathologist_name, external_pathologist_name,
+                   external_pathologist_mobile, external_pathologist_id,
+                   examination_summary, cause_of_death, immediate_cause_of_death,
+                   underlying_cause_of_death, contributing_conditions,
+                   manner_of_death, requesting_authority, signature,
+                   created_at, updated_at
+            FROM postmortem WHERE deceased_id = ?`;
+        const pmResults = await safeTenantQuery(dbName, postmortemQuery, [deceased_id]);
+        if (!pmResults || (pmResults as any[]).length === 0) {
             res.status(404).json({ success: false, message: 'Postmortem record not found' });
             return;
         }
+        const postmortem = (pmResults as any[])[0];
 
-        const postmortem = (postmortemResults as any[])[0];
-
+        // ── 2. QUERY DECEASED ──
         const deceasedQuery = `
-            SELECT full_name, date_of_death, signature, admission_number, date_of_birth, age, gender, place_of_death, national_id
-            FROM deceased WHERE deceased_id = ?
-        `;
-        const deceasedResults = await safeTenantQuery(dbName, deceasedQuery, [deceased_id]);
-        const deceased = deceasedResults && (deceasedResults as any[]).length > 0 ? (deceasedResults as any[])[0] : null;
+            SELECT full_name, date_of_death, signature, admission_number,
+                   date_of_birth, age, gender, place_of_death, national_id
+            FROM deceased WHERE deceased_id = ?`;
+        const decResults = await safeTenantQuery(dbName, deceasedQuery, [deceased_id]);
+        const deceased = decResults && (decResults as any[]).length > 0 ? (decResults as any[])[0] : null;
 
-        const nextOfKinQuery = `SELECT full_name, relationship, contact FROM next_of_kin WHERE deceased_id = ? AND is_primary = 1 AND is_deleted = 0 LIMIT 1`;
-        const nextOfKinResults = await safeTenantQuery(dbName, nextOfKinQuery, [deceased_id]);
-        const nextOfKin = nextOfKinResults && (nextOfKinResults as any[]).length > 0 ? (nextOfKinResults as any[])[0] : null;
+        // ── 3. QUERY NEXT OF KIN ──
+        const kinQuery = `SELECT full_name, relationship, contact FROM next_of_kin WHERE deceased_id = ? AND is_primary = 1 AND is_deleted = 0 LIMIT 1`;
+        const kinResults = await safeTenantQuery(dbName, kinQuery, [deceased_id]);
+        const nextOfKin = kinResults && (kinResults as any[]).length > 0 ? (kinResults as any[])[0] : null;
 
+        // ── 4. EXTRACT VALUES ──
         const facilityName = formatFacilityName(tenantSlug);
-        const reportDate = DateTime.now().setZone('Africa/Nairobi').toFormat('yyyy-MM-dd');
-        const reportRef = `ME-${deceased_id}-${DateTime.now().toFormat('yyyyMMdd')}`;
-        const fullTimestamp = DateTime.now().setZone('Africa/Nairobi').toFormat('yyyy-MM-dd hh:mm:ss a');
-
-        const examinerName = postmortem.external_pathologist_name || postmortem.pathologist_name || 'Not specified';
-        const examinerTitle = postmortem.external_pathologist_id ? 'M.D., Forensic Pathologist' : 'Medical Examiner';
-
         const fullName = deceased?.full_name || 'Unknown';
-        const admissionNumber = deceased?.admission_number || 'N/A';
-        const dateOfBirth = deceased?.date_of_birth ? new Date(deceased.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+        const admissionNumber = deceased?.admission_number || deceased_id;
+        const dateOfDeath = fmtLong(deceased?.date_of_death);
         const age = deceased?.age || 'N/A';
         const gender = deceased?.gender || 'N/A';
-        const dateOfDeath = deceased?.date_of_death ? new Date(deceased.date_of_death).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
-        const placeOfDeath = deceased?.place_of_death || 'N/A';
-        const nationalId = deceased?.national_id || 'N/A';
-        const kinName = nextOfKin?.full_name || 'N/A';
+
+        const pathologistName = postmortem.external_pathologist_name || postmortem.pathologist_name || 'Attending Pathologist';
+        const pathologistLicense = postmortem.external_pathologist_id || '';
+        const pathologistCredentials = pathologistLicense ? 'MBChB, MMed (Pathology)' : 'Pathologist';
+        const examDate = fmtLong(postmortem.updated_at || postmortem.created_at);
+        const mannerOfDeath = postmortem.manner_of_death || 'N/A';
+        const immediateCause = postmortem.immediate_cause_of_death || postmortem.cause_of_death || 'N/A';
+        const underlyingCause = postmortem.underlying_cause_of_death || 'N/A';
+        const examinationSummary = postmortem.examination_summary || '';
+
+        const kinName = nextOfKin?.full_name || deceased?.full_name || 'N/A';
         const kinRelationship = nextOfKin?.relationship || 'N/A';
+        const kinPhone = nextOfKin?.contact || 'N/A';
 
-        // Combine all available findings/narratives into one text block
-        let narrativeText = '';
-        if (postmortem.examination_summary) narrativeText += `${postmortem.examination_summary}\n\n`;
-        if (postmortem.head_findings) narrativeText += `Head Findings:\n${postmortem.head_findings}\n\n`;
-        if (postmortem.chest_findings) narrativeText += `Chest Findings:\n${postmortem.chest_findings}\n\n`;
-        if (postmortem.abdomen_findings) narrativeText += `Abdomen Findings:\n${postmortem.abdomen_findings}\n\n`;
-        if (postmortem.extremities_findings) narrativeText += `Extremities Findings:\n${postmortem.extremities_findings}\n\n`;
-        if (postmortem.toxicology_findings) narrativeText += `Toxicology Findings:\n${postmortem.toxicology_findings}\n\n`;
-        narrativeText = narrativeText.trim();
+        const issuedDate = fmtLong(new Date().toISOString());
+        const verifiedDate = fmtShort(new Date().toISOString());
+        const reportRef = `PM-${deceased_id}-${DateTime.now().setZone('Africa/Nairobi').toFormat('yyyyMMdd')}`;
+        const fullTimestamp = DateTime.now().setZone('Africa/Nairobi').toFormat('yyyy-MM-dd hh:mm:ss a');
 
-        let signatureBuffer: Buffer | null = null;
-        // Embed the EXAMINER's signature captured on the postmortem form
-        // (postmortem.signature, saved from signature_base64). The deceased's
-        // own signature is the next-of-kin ADMISSION signature — only a fallback.
+        // ── 5. LOAD SIGNATURE ──
+        let signatureBase64: string | null = null;
         const signaturePath =
             postmortem?.signature ||
             postmortem?.pathologist_signature ||
             deceased?.pathologist_signature ||
             deceased?.signature;
+
         if (signaturePath && typeof signaturePath === 'string') {
             try {
+                let sigBuffer: Buffer | null = null;
                 if (signaturePath.startsWith('data:image')) {
                     const base64Data = signaturePath.split(',')[1];
-                    signatureBuffer = Buffer.from(base64Data, 'base64');
-                } else if (signaturePath.startsWith('/uploads/')) {
-                    // Read directly from the ONE shared uploads folder
-                    // (/opt/storage/uploads) — there is no separate uploads-service.
-                    const uploadsBase = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
-                    const relativePath = signaturePath.replace(/^\/uploads\//, '');
-                    const fsPath = path.join(uploadsBase, relativePath);
-                    if (fs.existsSync(fsPath)) signatureBuffer = fs.readFileSync(fsPath);
+                    sigBuffer = Buffer.from(base64Data, 'base64');
                 } else if (signaturePath.startsWith('http')) {
                     const axios = require('axios');
                     const response = await axios.get(signaturePath, { responseType: 'arraybuffer', timeout: 10000 });
-                    signatureBuffer = Buffer.from(response.data);
+                    sigBuffer = Buffer.from(response.data);
                 } else {
-                    const relativePath = signaturePath.replace(/^\/uploads\//, '');
                     const uploadsBase = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+                    const relativePath = signaturePath.replace(/^\/uploads\//, '');
                     const fsPath = path.join(uploadsBase, relativePath);
-                    if (fs.existsSync(fsPath)) signatureBuffer = fs.readFileSync(fsPath);
+                    if (fs.existsSync(fsPath)) sigBuffer = fs.readFileSync(fsPath);
+                }
+                if (sigBuffer) {
+                    try {
+                        const inkBuffer = await toInkBlueBuffer(sigBuffer);
+                        signatureBase64 = 'data:image/png;base64,' + inkBuffer.toString('base64');
+                    } catch {
+                        signatureBase64 = 'data:image/png;base64,' + sigBuffer.toString('base64');
+                    }
                 }
             } catch (sigError) {
-                console.warn(`[PDF] Failed to load signature:`, sigError);
+                console.warn('[PDF] Failed to load signature:', sigError);
             }
         }
 
-        const doc = new PDFDocument({
-            size: 'LETTER',
-            margin: 0,
-            info: { Title: 'Official Autopsy Report', Author: facilityName, Subject: 'Autopsy Report' }
+        // ── 6. FETCH LOGO ──
+        const logoUrl = process.env.FUNERAL_HOME_LOGO_URL || 'https://lf.services/wp-content/uploads/2024/09/LFS-Logo2-e1725725010766.png';
+        const logoBase64 = await fetchLogoBase64(logoUrl);
+
+        // ── 7. BUILD HTML ──
+        const html = buildReportHtml({
+            tenantName: facilityName,
+            tenantAddress: 'Nairobi, Kenya',
+            tenantPhone: '',
+            tenantEmail: '',
+            deceasedFullName: fullName,
+            deceasedAdmission: admissionNumber,
+            deceasedDateOfDeath: dateOfDeath,
+            deceasedAge: age,
+            deceasedGender: gender,
+            examDate,
+            pathologistName,
+            pathologistCredentials,
+            pathologistLicense,
+            mannerOfDeath,
+            immediateCause,
+            underlyingCause,
+            examinationSummary,
+            kinName,
+            kinRelationship,
+            kinPhone,
+            verifiedDate,
+            issuedDate,
+            logoBase64,
+            signatureBase64,
         });
 
+        // ── 8. GENERATE PDF WITH PUPPETEER ──
+        browser = await puppeteer.launch({
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--font-render-hinting=none'],
+        });
+
+        const page = await browser.newPage();
+
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+            const url = req.url();
+            if (url.startsWith('data:') || url.startsWith('about:') || url.startsWith('file:')) {
+                req.continue();
+            } else {
+                req.abort();
+            }
+        });
+
+        await page.setViewport({ width: 794, height: 1123, deviceScaleFactor: 2 });
+
+        await page.setContent(html, {
+            waitUntil: 'domcontentloaded',
+            timeout: 15000,
+        });
+
+        await new Promise(r => setTimeout(r, 500));
+
+        // ── 9. GENERATE PDF — preferCSSPageSize respects our @page rule ──
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' },
+            preferCSSPageSize: true,
+        });
+
+        // ── 10. SEND RESPONSE ──
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="autopsy-${deceased_id}.pdf"`);
-        doc.pipe(res);
+        res.setHeader('Content-Disposition', `inline; filename="postmortem-${deceased_id}.pdf"`);
+        res.send(pdfBuffer);
 
-        // ─── LAYOUT CONSTANTS ──
-        const PAGE_WIDTH = doc.page.width;   // 612
-        const PAGE_HEIGHT = doc.page.height; // 792
-        const MARGIN = 40;
-        const CONTENT_WIDTH = PAGE_WIDTH - (MARGIN * 2); // 532
-
-        // ─── HELPER FUNCTIONS ───
-        // Unified palette: ink text, slate muted labels, brand-teal accents.
-        const INK = '#111827';
-        const MUTED = '#6B7280';
-        const BRAND = '#0F3040';
-        const HAIRLINE = '#E5E7EB';
-
-        const drawDataField = (label: string, value: string, x: number, y: number, width: number, isLarge: boolean = false) => {
-            doc.fillColor(MUTED).font('Helvetica-Bold').fontSize(6.5).text(String(label).toUpperCase(), x, y, { width: width, characterSpacing: 0.5 });
-            doc.fillColor(INK).font(isLarge ? 'Times-Bold' : 'Helvetica-Bold').fontSize(isLarge ? 11.5 : 9).text(value || 'N/A', x, y + 10, { width: width });
-        };
-
-        const drawSectionHead = (num: string, title: string, yPos: number) => {
-            // Sleek section label: brand accent tick + spaced caps + hairline rule.
-            doc.rect(MARGIN, yPos + 2, 3, 11).fillColor(BRAND).fill();
-            doc.fillColor(BRAND).font('Helvetica-Bold').fontSize(8.5)
-                .text(`${num}   ${String(title).toUpperCase()}`, MARGIN + 10, yPos, { characterSpacing: 1.2 });
-            doc.moveTo(MARGIN, yPos + 17).lineTo(PAGE_WIDTH - MARGIN, yPos + 17)
-                .strokeColor(HAIRLINE).lineWidth(0.75).stroke();
-            return yPos + 27;
-        };
-
-        // ─── 1. SUBTLE WATERMARK ───
-        doc.save();
-        doc.translate(PAGE_WIDTH / 2, PAGE_HEIGHT / 2);
-        doc.rotate(-32);
-        doc.fillOpacity(0.03).fillColor(BRAND).font('Helvetica-Bold').fontSize(64)
-            .text('OFFICIAL RECORD', -240, -30, { align: 'center', width: 480 });
-        doc.restore();
-
-        // ─── 2. CLEAN CENTERED LETTERHEAD (no top bar, no barcode) ───
-        let y = 36;
-        doc.fillColor(INK).font('Times-Bold').fontSize(16).text(facilityName, MARGIN, y, { width: CONTENT_WIDTH, align: 'center' });
-        doc.fillColor(MUTED).font('Helvetica').fontSize(7.5)
-            .text('Forensic & Mortuary Services  ·  Nairobi, Kenya', MARGIN, y + 21, { width: CONTENT_WIDTH, align: 'center' });
-
-        y += 40;
-        doc.fillColor(BRAND).font('Helvetica-Bold').fontSize(12).text('AUTOPSY REPORT', MARGIN, y, { width: CONTENT_WIDTH, align: 'center', characterSpacing: 3 });
-        y += 18;
-        doc.fillColor(MUTED).font('Courier').fontSize(7)
-            .text(`File ID ${reportRef}   ·   Issued ${reportDate}`, MARGIN, y, { width: CONTENT_WIDTH, align: 'center' });
-
-        y += 14;
-        doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).strokeColor(HAIRLINE).lineWidth(1).stroke();
-        y += 16;
-
-        // ─── 3. SECTION 01: DECEDENT INFORMATION ───
-        y = drawSectionHead('01', 'DECEDENT INFORMATION', y);
-
-        const colW = CONTENT_WIDTH / 3;
-        drawDataField('Full Name', fullName, MARGIN, y, colW, true);
-        drawDataField('Admission Number', admissionNumber, MARGIN + colW, y, colW);
-        drawDataField('Age', `${age} Years`, MARGIN + colW * 2, y, colW);
-        y += 28;
-        drawDataField('Gender', gender, MARGIN, y, colW);
-        drawDataField('Date of Birth', dateOfBirth, MARGIN + colW, y, colW);
-        drawDataField('Date of Death', dateOfDeath, MARGIN + colW * 2, y, colW);
-        y += 28;
-        drawDataField('Place of Death', placeOfDeath, MARGIN, y, colW);
-        drawDataField('National ID', nationalId, MARGIN + colW, y, colW);
-        drawDataField('Next of Kin', kinName, MARGIN + colW * 2, y, colW);
-        y += 28;
-        drawDataField('Relationship', kinRelationship, MARGIN, y, colW);
-        y += 30;
-
-        // ─── 4. SECTION 02: OFFICIAL DETERMINATION OF DEATH (conditional) ───
-        const hasDeterminationData = postmortem.immediate_cause_of_death || postmortem.underlying_cause_of_death || postmortem.contributing_conditions;
-
-        if (hasDeterminationData) {
-            y = drawSectionHead('02', 'OFFICIAL DETERMINATION OF DEATH', y);
-
-            const causeBlockHeight = 96;
-            doc.rect(MARGIN, y + 2, 3, causeBlockHeight - 12).fillColor(BRAND).fill();
-            const textX = MARGIN + 15;
-
-            drawDataField('Immediate Cause of Death', postmortem.immediate_cause_of_death || 'N/A', textX, y, CONTENT_WIDTH - 30, true);
-            doc.fillColor(MUTED).font('Helvetica-Oblique').fontSize(7).text('Due to (or as a consequence of):', textX, y + 33);
-            drawDataField('Underlying Cause of Death', postmortem.underlying_cause_of_death || 'N/A', textX, y + 46, CONTENT_WIDTH - 30, true);
-            drawDataField('Contributing Conditions', postmortem.contributing_conditions || 'None identified', textX, y + 78, CONTENT_WIDTH - 30);
-
-            // Manner of Death badge
-            y += causeBlockHeight + 6;
-            drawDataField('Manner of Death', '', MARGIN, y, 120);
-            const mannerOfDeath = postmortem.manner_of_death || 'Natural';
-            doc.roundedRect(MARGIN, y + 12, 110, 18, 4).fillColor('#E8EEF0').fill();
-            doc.fillColor(BRAND).font('Helvetica-Bold').fontSize(9).text(mannerOfDeath.toUpperCase(), MARGIN, y + 18, { width: 110, align: 'center', characterSpacing: 1 });
-            y += 40;
-        }
-
-        // ─── 5. SECTION 03: PATHOLOGIST STATEMENT (conditional, auto-fit) ───
-        if (narrativeText) {
-            y = drawSectionHead('03', 'PATHOLOGIST STATEMENT & EXAMINATION FINDINGS', y);
-
-            const SIG_SECTION_Y = 560; // Y reserved for the certification block
-            let availableHeight = SIG_SECTION_Y - y - 8;
-            if (availableHeight < 50) availableHeight = 50;
-
-            let nFont = 9.5;
-            doc.font('Times-Roman').fontSize(nFont);
-            let nHeight = doc.heightOfString(narrativeText, { width: CONTENT_WIDTH, lineGap: 2.5 });
-
-            while (nHeight > availableHeight && nFont > 6) {
-                nFont -= 0.5;
-                doc.font('Times-Roman').fontSize(nFont);
-                nHeight = doc.heightOfString(narrativeText, { width: CONTENT_WIDTH, lineGap: 2.5 });
-            }
-
-            doc.fillColor(INK).font('Times-Roman').fontSize(nFont)
-                .text(narrativeText, MARGIN, y, { width: CONTENT_WIDTH, lineGap: 2.5, height: availableHeight, ellipsis: true });
-            y += nHeight + 8;
-        }
-
-        // ─── 6. SECTION 04: VERIFICATION & CERTIFICATION ───
-        // Anchor the certification block so it never collides with the footer.
-        y = Math.max(y, 560);
-        y = drawSectionHead('04', 'VERIFICATION & CERTIFICATION', y);
-
-        const sigBoxY = y + 8;
-        const sigBoxHeight = 44;
-        const sigWidth = 250;
-
-        doc.fillColor(MUTED).font('Helvetica-Bold').fontSize(6.5).text('CERTIFIED BY - FORENSIC PATHOLOGIST', MARGIN, sigBoxY, { characterSpacing: 0.5 });
-
-        const sigImgY = sigBoxY + 12;
-        if (signatureBuffer) {
-            try {
-                // Force ink-blue so the signature always renders as pure #0f33e7.
-                const inkSigBuffer = await toInkBlueBuffer(signatureBuffer);
-                doc.image(inkSigBuffer, MARGIN, sigImgY, { fit: [210, 34] });
-            } catch (err) {
-                doc.fillColor('#0f33e7').font('Times-Italic').fontSize(17).text(examinerName, MARGIN, sigImgY, { width: sigWidth });
-            }
-        } else {
-            doc.fillColor('#0f33e7').font('Times-Italic').fontSize(17).text(examinerName, MARGIN, sigImgY, { width: sigWidth });
-        }
-
-        const sigLineY = sigBoxY + sigBoxHeight;
-        doc.moveTo(MARGIN, sigLineY).lineTo(MARGIN + sigWidth, sigLineY).strokeColor(INK).lineWidth(0.9).stroke();
-        doc.fillColor(MUTED).font('Helvetica-Bold').fontSize(6.5).text('NAME & CREDENTIALS', MARGIN, sigLineY + 5, { characterSpacing: 0.5 });
-        doc.fillColor(INK).font('Helvetica-Bold').fontSize(9).text(`${examinerName}, ${examinerTitle}`, MARGIN, sigLineY + 16);
-
-        // Official stamp (right side, aligned with the signature block)
-        const stampRadius = 38;
-        const stampX = PAGE_WIDTH - MARGIN - 70;
-        const stampY = sigLineY - 15;
-
-        try {
-            renderStampOnPDFKit(doc, {
-                stampName: 'Medical Examiner',
-                funeralHomeName: facilityName,
-                bottomText: 'OFFICIAL RECORD',
-                centerLabel: 'CERTIFIED',
-                subtitle: 'Medical Examiner',
-                date: new Date(),
-                style: 'medical-examiner',
-                ring: { outerColor: '#0f33e7', innerColor: '#0f33e7', innerOffset: 8 },
-                outerText: { color: '#0f33e7', fontSize: 8, letterSpacing: 1 },
-                bottomTextStyle: { color: '#0f33e7', fontSize: 5, letterSpacing: 1 },
-                centerLabelStyle: { color: '#0f33e7', fontSize: 9, letterSpacing: 1 },
-            }, {
-                x: stampX,
-                y: stampY,
-                radius: stampRadius,
-                rotation: -12,
-                drawName: true,
-                name: examinerName,
-                color: '#0f33e7',
-            });
-        } catch (stampErr) {
-            console.error('[PDF] Stamp rendering failed', stampErr);
-        }
-
-        // ─── 7. SLIM FOOTER (no barcode, no heavy bars) ───
-        const footerLineY = 742;
-        doc.moveTo(MARGIN, footerLineY).lineTo(PAGE_WIDTH - MARGIN, footerLineY).strokeColor(HAIRLINE).lineWidth(0.75).stroke();
-        doc.fillColor(MUTED).font('Helvetica').fontSize(7)
-            .text(`Generated ${reportDate} at ${fullTimestamp}  ·  RestPoint Mortuary Management System`, MARGIN, footerLineY + 8);
-        doc.fillColor(MUTED).font('Courier').fontSize(7).text(`File ID: ${reportRef}`, MARGIN, footerLineY + 19);
-
-        // Thin brand accent at the very bottom edge
-        doc.rect(0, PAGE_HEIGHT - 3, PAGE_WIDTH, 3).fillColor(BRAND).fill();
-
-        doc.end();
-
-        // ─── SOCKET EMIT LOGIC ──
+        // ── 11. SOCKET EMIT ──
         try {
             const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
             const axios = require('axios');
             const notificationPayload = {
                 tenantSlug,
                 data: {
-                    id: `autopsy-pdf-${deceased_id}-${Date.now()}`, deceasedId: deceased_id, deceasedName: fullName, reportRef: reportRef,
-                    title: 'Autopsy PDF Generated', message: `Autopsy report PDF has been generated for ${fullName} (${deceased_id})`,
-                    type: 'autopsy_pdf_generated', priority: 'high',
-                    fullContent: `Autopsy Report PDF Generated\nDeceased ID: ${deceased_id}\nName: ${fullName}\nReport Reference: ${reportRef}\nPathologist: ${examinerName}\nCause of Death: ${postmortem.cause_of_death || 'Pending'}\nGenerated: ${fullTimestamp}`,
+                    id: `postmortem-pdf-${deceased_id}-${Date.now()}`,
+                    deceasedId: deceased_id,
+                    deceasedName: fullName,
+                    reportRef,
+                    title: 'Postmortem PDF Generated',
+                    message: `Postmortem report PDF has been generated for ${fullName} (${deceased_id})`,
+                    type: 'postmortem_pdf_generated',
+                    priority: 'high',
+                    fullContent: `Postmortem Report PDF Generated\nDeceased ID: ${deceased_id}\nName: ${fullName}\nReport Reference: ${reportRef}\nPathologist: ${pathologistName}\nCause of Death: ${immediateCause}\nManner of Death: ${mannerOfDeath}\nGenerated: ${fullTimestamp}`,
                     data: {
-                        deceased_id: deceased_id, deceased_name: fullName, report_ref: reportRef, pathologist: examinerName,
-                        cause_of_death: postmortem.cause_of_death, manner_of_death: postmortem.manner_of_death, generated_at: fullTimestamp
+                        deceased_id: deceased_id,
+                        deceased_name: fullName,
+                        report_ref: reportRef,
+                        pathologist: pathologistName,
+                        cause_of_death: immediateCause,
+                        manner_of_death: mannerOfDeath,
+                        generated_at: fullTimestamp,
                     },
                     timestamp: new Date().toISOString(),
-                    expiresAt: Date.now() + (2 * 60 * 60 * 1000)
-                }
+                    expiresAt: Date.now() + (2 * 60 * 60 * 1000),
+                },
             };
 
-            await axios.post(`${socketioServiceUrl}/emit/autopsy-pdf-generated`, notificationPayload, { timeout: 5000, headers: { 'Content-Type': 'application/json' } });
+            await axios.post(`${socketioServiceUrl}/emit/postmortem-pdf-generated`, notificationPayload, { timeout: 5000, headers: { 'Content-Type': 'application/json' } });
         } catch (emitError: any) {
-            console.warn("[PDF] Failed to emit pdf generated event", emitError.message);
+            console.warn('[PDF] Failed to emit pdf generated event', emitError.message);
         }
 
     } catch (error: any) {
         console.error('Error in generatePostmortemPDF:', error);
         if (!res.headersSent) {
             res.status(500).json({ success: false, message: 'Internal Server Error' });
+        }
+    } finally {
+        if (browser) {
+            await browser.close();
         }
     }
 };

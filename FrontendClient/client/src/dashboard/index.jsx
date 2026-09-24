@@ -1,348 +1,545 @@
-import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { MODULES, DASH_NAV } from "./config";
-import ModuleDashboard from "./ModuleDashboard";
-import DashboardNav from "./DashboardNav";
-import CoffinInventoryDashboard from "../components/coffins/coffininventory";
+import "./dashboard.css";
 
-/* ─── Design tokens (matches workshop palette) ─────────────────── */
-const T = {
-  bg: "#F4F6F8",
-  surface: "#FFFFFF",
-  surfaceAlt: "#F8FAFC",
-  border: "rgba(15,23,42,0.08)",
-  borderSubtle: "rgba(15,23,42,0.04)",
-  text: "#0F172A",
-  textSec: "#64748B",
-  textMuted: "#475569",
-  accent: "#6366f1",
-  accentBg: "rgba(99,102,241,0.14)",
-  accentBorder: "rgba(99,102,241,0.3)",
-  shadow: "0 1px 0 rgba(15,23,42,0.05), 0 8px 32px rgba(15,23,42,0.08)",
-  font: "'DM Sans','Inter',system-ui,sans-serif",
-};
+import { fetchAllBranchDeceased } from "../api/dashboardDataApi";
+import { fetchReleasesFeed, fetchPostmortemsFeed } from "../api/dashboardFeedApi";
 
-/* ─── Activity log feed ─────────────────────────────────────────── */
-const SAMPLE_ACTIVITY = [
-  { id: 1, msg: "New hearse booking received", time: "Just now", dot: "#6366f1" },
-  { id: 2, msg: "Booking #RP-318 status → In Transit", time: "3m ago", dot: "#f59e0b" },
-  { id: 3, msg: "Deceased intake completed", time: "9m ago", dot: "#34d399" },
-  { id: 4, msg: "Coffin order #CF-441 dispatched", time: "18m ago", dot: "#fb923c" },
-  { id: 5, msg: "Booking #RP-284 cancelled", time: "30m ago", dot: "#64748b" },
-  { id: 6, msg: "New flower booking received", time: "42m ago", dot: "#f472b6" },
+import {
+  DOWM, MO, TYPE_C, baseList, buildCases, calcStats, eventsOf, fmtK, isReleased,
+  matchPill, nowClock, pad, pillsFor, searchMatch, todayKey,
+} from "./opsData";
+import { TipBox, tipProps, useTooltip } from "./opsBits";
+import { Ic } from "./opsIcons";
+import { OperationsView, RegisterView } from "./opsViews";
+import { AnalyticsView, Donut } from "./opsAnalytics";
+import { CaseDrawer, ModalHost } from "./opsPanels";
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Operations dashboard — the single shell.
+
+   Toolbar (sections · search · branch · view · theme)
+     ├─ sidebar  calendar + status pills + at-a-glance analytics
+     └─ main     Operations · Intake Register · Releases · Postmortems ·
+                 Analytics, plus the drill-down modal and the case drawer
+
+   Data comes from the real feeds: the multi-branch deceased register, the
+   body-release feed and the postmortem-request feed.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const NAV = [
+  { id: "command", label: "Operations", icon: "cal" },
+  { id: "intake", label: "Intake Register", icon: "bed" },
+  { id: "release", label: "Releases & Transfers", icon: "heart" },
+  { id: "pm", label: "Postmortem Requests", icon: "vial" },
+  { id: "analytics", label: "Analytics", icon: "grid" },
 ];
 
-function ActivityDrawer({ mod, onClose }) {
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 400 }}>
-      {/* Backdrop */}
+const VIEWS = [
+  { id: "day", label: "Day" },
+  { id: "week", label: "Week" },
+  { id: "month", label: "Month" },
+];
+
+const DARK_KEY = "rpd-ops-dark";
+
+/* ── data ───────────────────────────────────────────────────────────────── */
+
+/** Pulls the three feeds and merges them into the dashboard's case list. */
+function useCaseData() {
+  const [cases, setCases] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async (force = false) => {
+    setLoading(true);
+    try {
+      const [deceased, releases, postmortems] = await Promise.all([
+        fetchAllBranchDeceased(force).catch(() => []),
+        fetchReleasesFeed().catch(() => []),
+        fetchPostmortemsFeed().catch(() => []),
+      ]);
+      setCases(buildCases(
+        Array.isArray(deceased) ? deceased : [],
+        Array.isArray(releases) ? releases : [],
+        Array.isArray(postmortems) ? postmortems : []
+      ));
+    } catch (e) {
+      console.warn("[Operations dashboard] feed load failed:", e?.message);
+      setCases([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+  return { cases, loading, reload: load };
+}
+
+/* ── sidebar ────────────────────────────────────────────────────────────── */
+
+function Sidebar({
+  calc, scoped, section, filters, onTogglePill, onOpenModal,
+  calY, calM, onMonthNav, calendarDots, selDay, today, onPickDay,
+}) {
+  const dim = new Date(calY, calM + 1, 0).getDate();
+  const firstDow = (new Date(calY, calM, 1).getDay() + 6) % 7;
+  const prevDim = new Date(calY, calM, 0).getDate();
+
+  const cells = [];
+  DOWM.forEach((d) => cells.push(<div className="smc-dow" key={`dow-${d}`}>{d}</div>));
+  for (let i = firstDow - 1; i >= 0; i -= 1) {
+    cells.push(<div className="smc-day other" key={`p${i}`}>{prevDim - i}</div>);
+  }
+  for (let dn = 1; dn <= dim; dn += 1) {
+    const key = `${calY}-${pad(calM + 1)}-${pad(dn)}`;
+    const types = calendarDots[key] || [];
+    let cls = "smc-day";
+    if (key === today) cls += " today";
+    if (key === selDay) cls += " sel";
+    cells.push(
       <div
-        onClick={onClose}
-        style={{
-          position: "absolute", inset: 0,
-          background: "rgba(0,0,0,0.6)",
-          backdropFilter: "blur(3px)",
-        }}
-      />
-      {/* Panel */}
-      <aside style={{
-        position: "absolute", insetBlock: 0, right: 0,
-        width: 320, maxWidth: "90vw",
-        display: "flex", flexDirection: "column",
-        background: "#FFFFFF",
-        borderLeft: `1px solid ${T.border}`,
-        boxShadow: "-20px 0 60px rgba(15,23,42,0.10)",
-      }}>
-        {/* Header */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "16px 20px",
-          borderBottom: `1px solid ${T.border}`,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{
-              width: 30, height: 30, borderRadius: 8,
-              background: T.accentBg, border: `1px solid ${T.accentBorder}`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 14,
-            }}>⚡</div>
-            <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Activity Monitor</span>
-          </div>
-          <button onClick={onClose} style={{
-            background: "transparent", border: "none", cursor: "pointer",
-            color: T.textSec, fontSize: 18, padding: "4px 6px",
-            borderRadius: 6,
-          }}>✕</button>
-        </div>
-        {/* Live indicator */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 8,
-          padding: "10px 20px", borderBottom: `1px solid ${T.borderSubtle}`,
-          background: "rgba(52,211,153,0.04)",
-        }}>
-          <span style={{
-            width: 8, height: 8, borderRadius: "50%",
-            background: "#34d399",
-            boxShadow: "0 0 8px rgba(52,211,153,0.7)",
-            animation: "pulse 2s infinite",
-          }} />
-          <span style={{ fontSize: 11, color: "#34d399", fontWeight: 600 }}>
-            Live • Monitoring {mod?.label || "All Modules"}
-          </span>
-        </div>
-        {/* Events */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
-          {SAMPLE_ACTIVITY.map(ev => (
-            <div key={ev.id} style={{
-              display: "flex", gap: 12,
-              padding: "12px 14px", marginBottom: 8,
-              borderRadius: 12,
-              background: "rgba(255,255,255,0.025)",
-              border: `1px solid ${T.borderSubtle}`,
-              cursor: "pointer",
-              transition: "background 0.15s ease",
-            }}>
-              <span style={{
-                width: 8, height: 8, borderRadius: "50%",
-                background: ev.dot, flexShrink: 0, marginTop: 4,
-                boxShadow: `0 0 8px ${ev.dot}70`,
-              }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, color: "#334155", lineHeight: 1.4 }}>{ev.msg}</div>
-                <div style={{ fontSize: 10, color: T.textMuted, marginTop: 4 }}>🕐 {ev.time}</div>
-              </div>
-            </div>
+        className={cls}
+        key={key}
+        onClick={() => onPickDay(key)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter") onPickDay(key); }}
+      >
+        {dn}
+        <span className="smc-dots">
+          {types.slice(0, 3).map((t) => (
+            <span className="smc-dot" key={t} style={{ background: TYPE_C[t] }} />
           ))}
+        </span>
+      </div>
+    );
+  }
+  const trail = (7 - ((firstDow + dim) % 7)) % 7;
+  for (let t = 1; t <= trail; t += 1) {
+    cells.push(<div className="smc-day other" key={`t${t}`}>{t}</div>);
+  }
+
+  const base = baseList(section, scoped);
+  const segs = [
+    { k: "in-care", c: "var(--blue)", v: calc.care.inCare, l: "In Care" },
+    { k: "pm-req", c: "var(--orange)", v: calc.care.pmReq, l: "PM Requested" },
+    { k: "pm-done", c: "var(--plum)", v: calc.care.pmDone, l: "PM Done" },
+    { k: "released", c: "var(--teal)", v: calc.care.released, l: "Released" },
+  ];
+  const bMax = Math.max(...calc.bmix.map((b) => b.n), 1);
+
+  return (
+    <>
+      <div className="smc">
+        <div className="smc-h">
+          <span className="smc-t">{MO[calM]} {calY}</span>
+          <div className="smc-nav">
+            <button onClick={() => onMonthNav(-1)} aria-label="Previous month"><Ic n="chevL" s={12} /></button>
+            <button onClick={() => onMonthNav(1)} aria-label="Next month"><Ic n="chevR" s={12} /></button>
+          </div>
         </div>
-        <div style={{ padding: "12px 16px", borderTop: `1px solid ${T.borderSubtle}` }}>
-          <button style={{
-            width: "100%", padding: "10px",
-            borderRadius: 10, border: `1px solid ${T.accentBorder}`,
-            background: T.accentBg, color: "#6366f1",
-            fontSize: 12, fontWeight: 600, cursor: "pointer",
-          }}>
-            View Full Activity Log →
-          </button>
+        <div className="smc-g">{cells}</div>
+      </div>
+
+      <div className="sfilters">
+        {pillsFor(section).map(([key, label, color]) => {
+          const n = base.filter((p) => matchPill(p, section, key)).length;
+          const on = filters.includes(key);
+          return (
+            <div
+              className={`fc${on ? " on" : ""}`}
+              key={key}
+              onClick={() => onTogglePill(key)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter") onTogglePill(key); }}
+            >
+              <span className="fc-dot" style={{ background: color }} />{label}
+              <span className="fc-ct">{n}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="san">
+        <div className="san-t"><Ic n="grid" s={11} /> Analytics</div>
+
+        <div className="san-card">
+          <div className="san-t" style={{ marginBottom: 9 }}>Status Breakdown</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
+            <Donut segs={segs} size={104} stroke={16} onOpenModal={onOpenModal} />
+            <div className="san-leg" style={{ flex: 1 }}>
+              {segs.map((s) => {
+                const pct = Math.round((s.v / (calc.total || 1)) * 100);
+                return (
+                  <div
+                    className="san-lr"
+                    key={s.k}
+                    onClick={() => onOpenModal(`status:${s.k}`)}
+                    {...tipProps(s.l, `${s.v} cases · ${pct}%`, "Click for the case list")}
+                  >
+                    <span className="san-ld" style={{ background: s.c }} />
+                    <span className="san-ll">{s.l}</span>
+                    <span className="san-lv">{s.v}</span>
+                    <span className="san-lp">{pct}%</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
-      </aside>
-    </div>
+
+        <div className="san-card">
+          <div className="san-t" style={{ marginBottom: 9 }}>Load by Branch</div>
+          {calc.bmix.length ? calc.bmix.map((b, i) => (
+            <div
+              className="hb"
+              key={b.b}
+              onClick={() => onOpenModal(`branch:${b.b}`)}
+              {...tipProps(b.b, `${b.n} cases`, "Click for the branch breakdown")}
+            >
+              <span className="hl">{b.b}</span>
+              <div className="ht">
+                <div
+                  className="hf"
+                  style={{
+                    width: `${Math.max(3, (b.n / bMax) * 100)}%`,
+                    background: "var(--acc)",
+                    animationDelay: `${i * 0.08}s`,
+                  }}
+                />
+              </div>
+              <span className="hn">{b.n}</span>
+            </div>
+          )) : <div className="bigsub">No branch data.</div>}
+        </div>
+
+        <div className="san-card">
+          <div className="san-t" style={{ marginBottom: 6 }}>Storage Accrual</div>
+          <div className="bigpct">{fmtK(calc.accrual)}</div>
+          <div className="bigsub">Holding fees · {calc.inCare} bodies in care</div>
+        </div>
+      </div>
+    </>
   );
 }
 
-/* ─── Main Dashboard Shell ─────────────────────────────────────── */
-export default function Dashboard({ tenantSlug = "", tenantData }) {
+/* ── shell ──────────────────────────────────────────────────────────────── */
 
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("deceased");
-  const [navOpen, setNavOpen] = useState(false);
-  const [activityOpen, setActivityOpen] = useState(false);
-  const mod = MODULES.find((m) => m.id === activeTab);
+export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
+  const { cases, loading, reload } = useCaseData();
 
-  const go = (path) => {
-    setNavOpen(false);
-    navigate(`/tenant/${tenantSlug}/${path}`);
+  const [section, setSection] = useState("command");
+  const [view, setView] = useState("month");
+  const [selDate, setSelDate] = useState(todayKey());
+  const [calY, setCalY] = useState(new Date().getFullYear());
+  const [calM, setCalM] = useState(new Date().getMonth());
+  const [clickedDay, setClickedDay] = useState(null);
+  const [todayMode, setTodayMode] = useState(false);
+  const [filters, setFilters] = useState([]);
+  const [branch, setBranch] = useState("");
+  const [search, setSearch] = useState("");
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem(DARK_KEY) === "1"; } catch { return false; }
+  });
+  const [modal, setModal] = useState(null);
+  const [drawer, setDrawer] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [sorts, setSorts] = useState({
+    intake: { f: "date", d: 1 },
+    release: { f: "date", d: 1 },
+    pm: { f: "date", d: 1 },
+  });
+  const [toast, setToast] = useState("");
+  const [now, setNow] = useState(nowClock());
+
+  const tooltip = useTooltip();
+  const today = todayKey();
+
+  /* ── derived data ─────────────────────────────────────────────────────── */
+  const branchOptions = useMemo(() => {
+    const out = [];
+    cases.forEach((c) => { if (c.branch && !out.includes(c.branch)) out.push(c.branch); });
+    return out;
+  }, [cases]);
+
+  const scoped = useMemo(
+    () => (branch ? cases.filter((c) => c.branch === branch) : cases),
+    [cases, branch]
+  );
+  const searched = useMemo(() => scoped.filter((c) => searchMatch(c, search)), [scoped, search]);
+  const calc = useMemo(() => calcStats(scoped, searched, calM, calY), [scoped, searched, calM, calY]);
+
+  /* calendar dots — branch-scoped, one dot per event type per day */
+  const calendarDots = useMemo(() => {
+    const map = {};
+    eventsOf(scoped).forEach((e) => {
+      if (!e.date) return;
+      if (!map[e.date]) map[e.date] = [];
+      if (!map[e.date].includes(e.t)) map[e.date].push(e.t);
+    });
+    return map;
+  }, [scoped]);
+
+  const drawerCase = useMemo(
+    () => (drawer ? cases.find((c) => c.adm === drawer.adm) || null : null),
+    [drawer, cases]
+  );
+
+  /* ── effects ──────────────────────────────────────────────────────────── */
+  useEffect(() => {
+    try { localStorage.setItem(DARK_KEY, dark ? "1" : "0"); } catch { /* storage blocked */ }
+  }, [dark]);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(nowClock()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const id = setTimeout(() => setToast(""), 2200);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") { setModal(null); setDrawer(null); }
+      if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
+        e.preventDefault();
+        document.getElementById("rpd-search")?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  /* ── handlers ─────────────────────────────────────────────────────────── */
+  const openCase = useCallback((adm, ctx) => setDrawer({ adm, ctx: ctx || "intake" }), []);
+  const openModal = useCallback((key) => setModal(key), []);
+
+  const pickDay = useCallback((key) => {
+    setClickedDay((prev) => (prev === key ? null : key));
+    setSelDate(key);
+    setTodayMode(false);
+  }, []);
+
+  const onMonthNav = (dir) => {
+    let m = calM + dir;
+    let y = calY;
+    if (m < 0) { m = 11; y -= 1; }
+    if (m > 11) { m = 0; y += 1; }
+    setCalM(m);
+    setCalY(y);
   };
 
+  const goToday = () => {
+    setTodayMode(true);
+    setSection("command");
+    setSelDate(today);
+    setClickedDay(null);
+    setView("month");
+    setCalY(Number(today.slice(0, 4)));
+    setCalM(Number(today.slice(5, 7)) - 1);
+  };
+
+  const togglePill = (key) =>
+    setFilters((prev) => (prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]));
+
+  const onSort = (field) =>
+    setSorts((prev) => {
+      const s = prev[section] || { f: "date", d: 1 };
+      return { ...prev, [section]: s.f === field ? { f: field, d: s.d * -1 } : { f: field, d: 1 } };
+    });
+
+  const doRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    await reload(true);
+    setRefreshing(false);
+    setToast("Refreshed");
+  };
+
+  const onNav = (id) => {
+    setSection(id);
+    setFilters([]);
+    setTodayMode(false);
+  };
+
+  const setV = (id) => {
+    setView(id);
+    setTodayMode(false);
+  };
+
+  /* badge counts mirror the reference's toolbar pill badges */
+  const badges = {
+    intake: cases.filter((c) => !isReleased(c) && c.admDate && c.admDate <= today).length,
+    release: cases.filter(isReleased).length,
+    pm: cases.filter((c) => c.pm).length,
+  };
+
+  const avatarText = initials(tenantData?.name || tenantData?.tenant_name || tenantSlug || "RestPoint");
+  const showCalendarControls = section === "command";
+
   return (
-    <div style={{
-      display: "flex", flexDirection: "column",
-      height: "100vh", overflow: "hidden",
-      background: T.bg,
-      color: T.text,
-      fontFamily: T.font,
-    }}>
-
-      {/* ── Top Navigation (standalone) ─── */}
-      <DashboardNav
-        tabs={MODULES}
-        active={activeTab}
-        onSelect={setActiveTab}
-        badge={3}
-      />
-
-      <div style={{ height: 0 }} />
-
-      {/* ── Module content ─ */}
-
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        {/* Coffin tab: render the standalone ReservationDashboard (self-fetches
-            orders/inventory) INSTEAD of the generic ModuleDashboard content. */}
-        {mod && (
-          activeTab === "coffin"
-            ? (
-              <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-                <CoffinInventoryDashboard />
-              </div>
-            )
-            : <ModuleDashboard key={activeTab} mod={mod} />
-        )}
-
-      </div>
-
-      {/* ── Navigation Drawer ──────────────────────────────────── */}
-      {navOpen && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300 }}>
-          <div
-            onClick={() => setNavOpen(false)}
-            style={{
-              position: "absolute", inset: 0,
-              background: "rgba(0,0,0,0.7)",
-              backdropFilter: "blur(4px)",
-            }}
-          />
-          <aside style={{
-            position: "absolute", insetBlock: 0, left: 0,
-            width: 280, maxWidth: "85vw",
-            display: "flex", flexDirection: "column",
-            background: "#050a14",
-            borderRight: `1px solid ${T.border}`,
-            boxShadow: "20px 0 60px rgba(15,23,42,0.10)",
-            overflowY: "auto",
-          }}>
-            {/* Logo header */}
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "16px 16px",
-              borderBottom: `1px solid ${T.border}`,
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: 10,
-                  background: "linear-gradient(135deg, rgba(99,102,241,0.65), rgba(59,130,246,0.2))",
-                  border: "1px solid rgba(129,140,248,0.3)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 14,
-                }}>⚡</div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>RestPoint</div>
-                  <div style={{ fontSize: 9, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>Operations Suite</div>
-                </div>
-              </div>
-              <button onClick={() => setNavOpen(false)} style={{
-                background: "transparent", border: "none", cursor: "pointer",
-                color: T.textSec, fontSize: 18, padding: "4px 6px", borderRadius: 6,
-              }}>✕</button>
-            </div>
-
-            {/* Module grid */}
-            <div style={{ padding: "12px 14px", borderBottom: `1px solid ${T.borderSubtle}` }}>
-              <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: T.textMuted, marginBottom: 10, paddingLeft: 4 }}>
-                Modules
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                {MODULES.map(m => {
-                  const Icon = m.icon;
-                  const active = activeTab === m.id;
-                  return (
-                    <button key={m.id}
-                      onClick={() => { setActiveTab(m.id); setNavOpen(false); }}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        padding: "10px 12px", borderRadius: 12,
-                        border: active ? `1px solid ${m.accent}28` : "1px solid transparent",
-                        background: active
-                          ? `linear-gradient(135deg, ${m.accent}20 0%, ${m.accent}08 100%)`
-                          : "rgba(255,255,255,0.025)",
-                        cursor: "pointer", textAlign: "left",
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      <div style={{
-                        width: 26, height: 26, borderRadius: 8,
-                        background: `${m.accent}18`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        flexShrink: 0,
-                      }}>
-                        <Icon size={12} color={m.accent} />
-                      </div>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: active ? "#fff" : "#64748B" }}>
-                        {m.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Nav links */}
-            <nav style={{ flex: 1, padding: "12px 10px" }}>
-              {DASH_NAV.map(group => (
-                <div key={group.section} style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: T.textMuted, padding: "6px 8px" }}>
-                    {group.section}
-                  </div>
-                  {group.items.map(it => (
-                    <button key={it.path} onClick={() => go(it.path)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 10,
-                        width: "100%", padding: "8px 10px",
-                        borderRadius: 10, border: "none",
-                        background: "transparent", cursor: "pointer",
-                        color: "#64748B", fontSize: 12, fontWeight: 500,
-                        textAlign: "left", transition: "all 0.12s ease",
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(15,23,42,0.05)"; e.currentTarget.style.color = "#0F172A"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#64748B"; }}
-                    >
-                      <span style={{
-                        width: 24, height: 24, borderRadius: 7,
-                        background: "rgba(99,102,241,0.1)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 10, fontWeight: 700, color: "#6366f1", flexShrink: 0,
-                      }}>{it.i}</span>
-                      {it.label}
-                      <span style={{ marginLeft: "auto", color: "#334155", fontSize: 12 }}>›</span>
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </nav>
-
-            {/* Footer */}
-            <div style={{ padding: "12px 10px", borderTop: `1px solid ${T.borderSubtle}` }}>
-              {[{ i: "⚙", label: "Settings", path: "settings" }, { i: "?", label: "Support", path: "support" }].map(it => (
-                <button key={it.path} onClick={() => go(it.path)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    width: "100%", padding: "8px 10px",
-                    borderRadius: 10, border: "none",
-                    background: "transparent", cursor: "pointer",
-                    color: T.textMuted, fontSize: 12, fontWeight: 500, textAlign: "left",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(15,23,42,0.04)"; e.currentTarget.style.color = "#64748B"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.textMuted; }}
+    <div className={`rpd${dark ? " dark" : ""}`}>
+      {/* ── toolbar ─────────────────────────────────────────────────── */}
+      <header className="tbar">
+        <div className="tb-left">
+          <div className="nvp">
+            {NAV.map((n) => {
+              const b = badges[n.id];
+              return (
+                <button
+                  key={n.id}
+                  className={section === n.id ? "on" : ""}
+                  onClick={() => onNav(n.id)}
                 >
-                  <span style={{ fontSize: 14 }}>{it.i}</span>
-                  {it.label}
+                  <Ic n={n.icon} s={13} />{n.label}
+                  {b > 0 ? <span className="nvb">{b}</span> : null}
                 </button>
-              ))}
-            </div>
-          </aside>
+              );
+            })}
+          </div>
         </div>
 
-      )}
+        <div className="tb-right">
+          <div className="searchbox">
+            <Ic n="search" s={13} />
+            <input
+              id="rpd-search"
+              type="text"
+              placeholder="Search…"
+              autoComplete="off"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search ? (
+              <button className="clearx" onClick={() => setSearch("")} aria-label="Clear search">
+                <Ic n="x" s={12} />
+              </button>
+            ) : null}
+          </div>
 
-      {/* ── Activity Drawer ─── */}
-      {activityOpen && (
+          <div className="selwrap">
+            <select
+              aria-label="Branch"
+              value={branch}
+              onChange={(e) => { setBranch(e.target.value); setFilters([]); }}
+            >
+              <option value="">All Branches ({cases.length})</option>
+              {branchOptions.map((b) => (
+                <option key={b} value={b}>
+                  {b} ({cases.filter((c) => c.branch === b).length})
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <ActivityDrawer mod={mod} onClose={() => setActivityOpen(false)} />
+          <div className="divider" />
 
-      )}
+          {showCalendarControls ? (
+            <>
+              <button className="tb-btn today-hot" onClick={goToday}>Today</button>
+              <div className="views">
+                {VIEWS.map((v) => (
+                  <button
+                    key={v.id}
+                    className={view === v.id ? "on" : ""}
+                    onClick={() => setV(v.id)}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.12); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.22); }
-        button:focus { outline: none; }
-        button:focus-visible { outline: 2px solid rgba(99,102,241,0.5); outline-offset: 2px; }
-        .rp-event-chip { transition: transform .1s ease, opacity .1s ease; }
-        .rp-event-chip:hover { transform: translateY(-1px); opacity: 0.85; }
-      `}</style>
+          <button
+            className="tb-btn sq"
+            title="Toggle theme"
+            onClick={() => setDark((d) => !d)}
+          >
+            <Ic n={dark ? "sun" : "moon"} s={14} />
+          </button>
+
+          <button className="tb-btn sq" title="Refresh" onClick={doRefresh}>
+            <span className={refreshing ? "spin" : ""}><Ic n="sync" s={13} /></span>
+          </button>
+
+          <div className="avatar">{avatarText}</div>
+        </div>
+      </header>
+
+      {/* ── sidebar + main ──────────────────────────────────────────── */}
+      <div className="shell">
+        {section !== "analytics" ? (
+          <aside className="side">
+            <Sidebar
+              calc={calc}
+              scoped={scoped}
+              section={section}
+              filters={filters}
+              onTogglePill={togglePill}
+              onOpenModal={openModal}
+              calY={calY}
+              calM={calM}
+              onMonthNav={onMonthNav}
+              calendarDots={calendarDots}
+              selDay={clickedDay}
+              today={today}
+              onPickDay={pickDay}
+            />
+          </aside>
+        ) : null}
+
+        <main className="mains">
+          {loading && !cases.length ? (
+            <div className="empty" style={{ padding: 90 }}>
+              <span className="spin" style={{ color: "var(--acc)" }}><Ic n="sync" s={22} /></span>
+              <span style={{ fontSize: 12 }}>Loading operations…</span>
+            </div>
+          ) : section === "analytics" ? (
+            <AnalyticsView calc={calc} branch={branch} calY={calY} onOpenModal={openModal} />
+          ) : section === "command" ? (
+            <OperationsView
+              searched={searched}
+              calc={calc}
+              state={{ view, selDate, clickedDay, todayMode, filters, calM, calY }}
+              now={now}
+              today={today}
+              onOpenCase={openCase}
+              onClearDay={() => setClickedDay(null)}
+              onPickDay={(key) => { setView("day"); setSelDate(key); setTodayMode(false); }}
+            />
+          ) : (
+            <RegisterView
+              section={section}
+              people={scoped}
+              searched={searched}
+              filters={filters}
+              sort={sorts[section]}
+              onSort={onSort}
+              onOpenCase={openCase}
+            />
+          )}
+        </main>
+      </div>
+
+      {/* ── overlays ────────────────────────────────────────────────── */}
+      <ModalHost
+        modalKey={modal}
+        people={searched}
+        calc={calc}
+        onClose={() => setModal(null)}
+        onOpenCase={(adm) => { setModal(null); openCase(adm, "intake"); }}
+        onOpenModal={openModal}
+      />
+
+      <CaseDrawer record={drawerCase} ctx={drawer?.ctx} onClose={() => setDrawer(null)} />
+
+      <div className={`te${toast ? " show" : ""}`}>{toast}</div>
+      <TipBox tip={tooltip} />
     </div>
   );
 }
