@@ -183,16 +183,16 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
     <>
       <div className={`sch${reference ? ` reference ${isWeek ? "week" : "day"}` : ""}`} aria-label={`${isWeek ? "Weekly" : "Daily"} operations schedule`}>
         <div className="sch-top">
-            <div>
-              <div className="pl">{periodTitle}</div>
-              <div className="ps">{periodSubtitle}</div>
-            </div>
-            <div className="sch-meta">
-              <span className="ci" style={{ color: "var(--blue)" }}><i></i>Intake</span>
-              <span className="ci" style={{ color: "var(--orange)" }}><i></i>Postmortem</span>
-              <span className="ci" style={{ color: "var(--green)" }}><i></i>Release</span>
-            </div>
+          <div>
+            <div className="pl">{periodTitle}</div>
+            <div className="ps">{periodSubtitle}</div>
           </div>
+          <div className="sch-meta">
+            <span className="ci" style={{ color: "var(--blue)" }}><i></i>Intake</span>
+            <span className="ci" style={{ color: "var(--orange)" }}><i></i>Postmortem</span>
+            <span className="ci" style={{ color: "var(--green)" }}><i></i>Release</span>
+          </div>
+        </div>
 
         <div className="sch-ad" style={{ gridTemplateColumns: columns }}>
           <div className="adt">{reference ? "All Day" : "Scheduled"}</div>

@@ -1,7 +1,7 @@
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import RouteOptimizer from '../../hearse/RouteOptimizer';
 import React, { useState } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import bwipjs from '@bwip-js/browser';
 
 // ─── Colors defined locally (no dependency on ./theme) ───
@@ -149,23 +149,23 @@ const Btn = styled.button`
     min-width: calc(50% - 5px);
   }
 
-  ${(p) => p.$primary && `
+  ${(p) => p.$primary && css`
     background: ${COLORS.charges}; color: #fff; border-color: ${COLORS.charges};
     &:hover { background: #001f50; }
   `}
 
-  ${(p) => p.$danger && `
+  ${(p) => p.$danger && css`
     background: ${COLORS.danger}; color: #fff; border-color: ${COLORS.danger};
     box-shadow: 0 2px 8px rgba(220,38,38,0.2);
     &:hover { background: ${COLORS.dangerDark}; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(220,38,38,0.3); }
   `}
 
-  ${(p) => p.$route && `
+  ${(p) => p.$route && css`
     background: ${COLORS.route}; color: #fff; border-color: ${COLORS.route};
     &:hover { background: #4a0b33; }
   `}
 
-  ${(p) => p.$scanner && `
+  ${(p) => p.$scanner && css`
     background: ${COLORS.scanner}; color: #fff; border-color: ${COLORS.scanner};
     &::after {
       content: '';
@@ -181,7 +181,7 @@ const Btn = styled.button`
     }
   `}
 
-  ${(p) => p.$scanning && `
+  ${(p) => p.$scanning && css`
     &::after { animation-play-state: running; }
   `}
 `;
