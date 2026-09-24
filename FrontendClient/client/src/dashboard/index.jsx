@@ -419,7 +419,6 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   };
 
   const avatarText = initials(tenantData?.name || tenantData?.tenant_name || tenantSlug || "RestPoint");
-  const showCalendarControls = section === "command";
 
   return (
     <div className={`rpd${dark ? " dark" : ""}`}>
@@ -478,26 +477,22 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
           <div className="divider" />
 
-          {showCalendarControls ? (
-            <>
-              <button className="tb-btn today-hot" onClick={goToday}>Today</button>
-              <div className="navpair" aria-label="Change schedule period">
-                <button className="tb-btn sq" onClick={() => stepPeriod(-1)} title="Previous period" aria-label="Previous period">‹</button>
-                <button className="tb-btn sq" onClick={() => stepPeriod(1)} title="Next period" aria-label="Next period">›</button>
-              </div>
-              <div className="views">
-                {VIEWS.map((v) => (
-                  <button
-                    key={v.id}
-                    className={view === v.id ? "on" : ""}
-                    onClick={() => setV(v.id)}
-                  >
-                    {v.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : null}
+          <button className="tb-btn today-hot" onClick={goToday}>Today</button>
+          <div className="navpair" aria-label="Change schedule period">
+            <button className="tb-btn sq" onClick={() => stepPeriod(-1)} title="Previous period" aria-label="Previous period">‹</button>
+            <button className="tb-btn sq" onClick={() => stepPeriod(1)} title="Next period" aria-label="Next period">›</button>
+          </div>
+          <div className="views">
+            {VIEWS.map((v) => (
+              <button
+                key={v.id}
+                className={view === v.id ? "on" : ""}
+                onClick={() => setV(v.id)}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
 
           <button
             className="tb-btn sq"
@@ -546,7 +541,21 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               <span style={{ fontSize: 12 }}>Loading operations…</span>
             </div>
           ) : section === "analytics" ? (
-            <AnalyticsView calc={calc} branch={branch} calY={calY} onOpenModal={openModal} />
+            <AnalyticsView
+              calc={calc}
+              people={searched}
+              branch={branch}
+              calY={calY}
+              view={view}
+              selDate={selDate}
+              dayTab={dayTab}
+              now={now}
+              today={today}
+              onOpenModal={openModal}
+              onOpenCase={openCase}
+              onPickDay={(key) => { setView("day"); setSelDate(key); setClickedDay(null); setDayTab("all"); setTodayMode(false); }}
+              onDayTabChange={setDayTab}
+            />
           ) : section === "command" ? (
             <OperationsView
               searched={searched}

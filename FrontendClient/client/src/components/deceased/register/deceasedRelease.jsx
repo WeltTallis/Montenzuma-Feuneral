@@ -1214,6 +1214,7 @@ const DeceasedReleaseForm = () => {
   const sigPadRef1 = useRef(null);
   const searchTimer = useRef(null);
   const lastSearchedRef = useRef('');
+  const releaseTimeEditedRef = useRef(false);
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -1262,10 +1263,17 @@ const DeceasedReleaseForm = () => {
   };
 
   const getCurrentTime = () => {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
+    // The database stores Kenya wall time. Use the facility timezone explicitly
+    // instead of relying on the browser's local timezone.
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Africa/Nairobi',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(new Date());
+    const value = (type) => parts.find((part) => part.type === type)?.value || '00';
+    const hour = value('hour') === '24' ? '00' : value('hour');
+    return `${hour}:${value('minute')}`;
   };
 
   // Get dynamic greeting based on current hour
@@ -1311,9 +1319,10 @@ const DeceasedReleaseForm = () => {
     // family's own car) — recorded with the release for the official record.
     plate_number: '',
     terms_accepted: false,
-    // Kept for API compatibility — the body-release schema still expects this
-    // boolean, but the "all charges paid" checkbox was removed from the form.
-    everything_paid: false,
+    // Payment clearance is part of the release handover workflow. The old
+    // checkbox was removed, but the API/database field remains; keep the stored
+    // release record affirmative so the profile no longer says "not marked".
+    everything_paid: true,
     signature: '',
     verified_by: getLoggedInUserEmail(),
   };
@@ -1321,6 +1330,7 @@ const DeceasedReleaseForm = () => {
   const [formData, setFormData] = useState(initialFormData);
 
   useEffect(() => {
+    releaseTimeEditedRef.current = false;
     setFormData(prev => ({
       ...prev,
       time_received: getCurrentTime(),
@@ -1386,6 +1396,7 @@ const DeceasedReleaseForm = () => {
         const result = await response.json();
         if (response.ok && result.data) {
           fillDeceasedIntoForm(result.data);
+          releaseTimeEditedRef.current = false;
           setFormData(prev => ({
             ...prev,
             release_date: todayKey(),
@@ -1434,6 +1445,7 @@ const DeceasedReleaseForm = () => {
       ...prev,
       [name]: type === 'checkbox' ? checked : processedValue,
     }));
+    if (name === 'release_time') releaseTimeEditedRef.current = true;
 
     if (name === 'admission_number') {
       setIsFound(false);
@@ -1487,6 +1499,7 @@ const DeceasedReleaseForm = () => {
 
     const foundAdmissionNumber = String(deceased.admission_number || '').trim().toUpperCase();
     lastSearchedRef.current = foundAdmissionNumber;
+    releaseTimeEditedRef.current = false;
 
     // Next of kin on the record — kept separate from the officer who physically
     // releases the body (the "Released By" field in the sign-off section).
@@ -1576,6 +1589,7 @@ const DeceasedReleaseForm = () => {
     // Date admitted is no longer captured on the release form — it arrives with
     // the searched record and is only used for the "days in our care" badge.
     if (!formData.release_date) newErrors.release_date = 'Release date is required';
+    if (!formData.release_time) newErrors.release_time = 'Release time is required';
     if (!formData.released_by.trim()) newErrors.released_by = 'Released by is required';
     if (!formData.next_kin.trim()) newErrors.next_kin = 'Next of kin is required';
     if (!formData.id_number.trim()) newErrors.id_number = 'ID number is required';
@@ -1616,13 +1630,16 @@ const DeceasedReleaseForm = () => {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken();
       const signatureData = sigPadRef1.current?.toDataURL();
-      const freshTime = getCurrentTime();
+      const releaseTime = releaseTimeEditedRef.current
+        ? String(formData.release_time || '').trim()
+        : getCurrentTime();
 
       const payload = {
         ...formData,
         admission_number: String(formData.admission_number || '').toUpperCase(),
-        time_received: freshTime,
-        release_time: freshTime,
+        // The officer's selected release time is the record of the handover.
+        // An untouched field is refreshed at submit; an edited field is kept.
+        release_time: releaseTime,
         age: formData.age ? parseInt(formData.age, 10) : null,
         // Body status is a database value only — it is never surfaced in the
         // release form UI.
@@ -1673,13 +1690,14 @@ const DeceasedReleaseForm = () => {
       });
       setShowSuccess(true);
 
+      releaseTimeEditedRef.current = false;
       setFormData({
         ...initialFormData,
         verified_by: getLoggedInUserEmail(),
         time_received: getCurrentTime(),
         release_time: getCurrentTime(),
         date_admitted: '',
-        release_date: new Date().toISOString().split('T')[0],
+        release_date: todayKey(),
       });
       sigPadRef1.current?.clear();
       setErrors({});
@@ -1699,13 +1717,14 @@ const DeceasedReleaseForm = () => {
   };
 
   const handleClear = () => {
+    releaseTimeEditedRef.current = false;
     setFormData({
       ...initialFormData,
       verified_by: getLoggedInUserEmail(),
       time_received: getCurrentTime(),
       release_time: getCurrentTime(),
       date_admitted: '',
-      release_date: new Date().toISOString().split('T')[0],
+      release_date: todayKey(),
     });
     setErrors({});
     setMessage({ type: '', text: '' });
@@ -2152,7 +2171,7 @@ const DeceasedReleaseForm = () => {
                     {errors.release_date && <ErrorMessage>{errors.release_date}</ErrorMessage>}
                   </Col>
                   <Col>
-                    <Label>Release Time</Label>
+                    <Label>Release Time <span style={{ color: COLORS.red }}>*</span></Label>
                     <InputFieldWrapper>
                       <InputLg
                         type="time"
@@ -2166,6 +2185,7 @@ const DeceasedReleaseForm = () => {
                         </TickIconWrapper>
                       )}
                     </InputFieldWrapper>
+                    {errors.release_time && <ErrorMessage>{errors.release_time}</ErrorMessage>}
                   </Col>
                   <Col>
                     <Label>Mode of Transport</Label>

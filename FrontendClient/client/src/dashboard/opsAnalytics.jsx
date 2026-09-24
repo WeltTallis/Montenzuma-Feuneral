@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { CountUp, InsightText, tipProps } from "./opsBits";
 import { Ic } from "./opsIcons";
-import { fmtK, shortDate } from "./opsData";
+import {
+  DOWF, MO, addDays, eventsOf, fmtK, parseKey, pmCompleted, shortDate, weekStartOf,
+} from "./opsData";
+import SchedulerView from "./opsScheduler";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Analytics — KPI grid, the hand-built SVG charts and the insights card.
@@ -144,9 +147,14 @@ function Last7Bars({ last7, today, onOpenModal }) {
 
 /* ── KPI card ───────────────────────────────────────────────────────────── */
 
-function Kpi({ label, value, raw, suffix, sub, def, tip, modalKey, onOpenModal }) {
+function Kpi({ label, value, raw, suffix, sub, def, tip = [], modalKey, onOpenModal, tone = "" }) {
+  const clickable = Boolean(modalKey && onOpenModal);
   return (
-    <div className="kpi" {...tipProps(tip[0], tip[1], tip[2])} onClick={() => onOpenModal(modalKey)}>
+    <div
+      className={`kpi${tone ? ` kpi-${tone}` : ""}`}
+      {...tipProps(tip[0], tip[1], tip[2])}
+      onClick={clickable ? () => onOpenModal(modalKey) : undefined}
+    >
       <div className="lbl">{label}</div>
       <div className="big">
         {raw !== undefined ? raw : <><CountUp value={value} />{suffix}</>}
@@ -339,7 +347,130 @@ function ACard({ title, right, note, children, span }) {
   );
 }
 
-export function AnalyticsView({ calc, branch, calY, onOpenModal }) {
+function periodDays(view, selDate) {
+  if (view === "week") {
+    const start = weekStartOf(selDate);
+    return Array.from({ length: 7 }, (_, index) => addDays(start, index));
+  }
+  return [selDate];
+}
+
+function periodSummary(people, view, selDate) {
+  const days = periodDays(view, selDate);
+  const daySet = new Set(days);
+  const events = eventsOf(people).filter((event) => daySet.has(event.date));
+  const counts = { intake: 0, release: 0, pm: 0 };
+  events.forEach((event) => { counts[event.t] += 1; });
+  const pmEvents = events.filter((event) => event.t === "pm");
+  const pmDone = pmEvents.filter((event) => pmCompleted(event.p)).length;
+  return {
+    days,
+    events,
+    counts,
+    pmDone,
+    pmRate: pmEvents.length ? Math.round((pmDone / pmEvents.length) * 100) : 0,
+  };
+}
+
+function PeriodKpis({ people, view, selDate }) {
+  const summary = periodSummary(people, view, selDate);
+  const isWeek = view === "week";
+  return (
+    <div className="period-kpis">
+      <Kpi
+        tone="brand"
+        label="Total Events"
+        value={summary.events.length}
+        sub={isWeek ? "events this week" : "events today"}
+        def="All operations recorded in the selected period."
+        tip={["Total Events", `${summary.events.length}`, "Selected period total"]}
+      />
+      <Kpi
+        tone="blue"
+        label="Intakes"
+        value={summary.counts.intake}
+        sub="bodies received"
+        def="Admissions in the selected period."
+        tip={["Intakes", `${summary.counts.intake}`, "Selected period total"]}
+      />
+      <Kpi
+        tone="green"
+        label="Releases"
+        value={summary.counts.release}
+        sub="handovers"
+        def="Completed releases in the selected period."
+        tip={["Releases", `${summary.counts.release}`, "Selected period total"]}
+      />
+      <Kpi
+        tone="orange"
+        label="Postmortems"
+        value={summary.counts.pm}
+        sub="examinations"
+        def="Postmortem operations in the selected period."
+        tip={["Postmortems", `${summary.counts.pm}`, "Selected period total"]}
+      />
+      <Kpi
+        tone="plum"
+        label="PM Completion"
+        value={summary.pmRate}
+        suffix="%"
+        sub={`${summary.pmDone} of ${summary.events.filter((event) => event.t === "pm").length} completed`}
+        def="Completed examinations as a share of postmortem operations in this period."
+        tip={["PM Completion", `${summary.pmRate}%`, "Selected period"]}
+      />
+    </div>
+  );
+}
+
+function PeriodAnalytics({ people, view, selDate, dayTab, now, today, onOpenCase, onPickDay, onDayTabChange }) {
+  const summary = periodSummary(people, view, selDate);
+  const date = parseKey(selDate);
+  const periodLabel = view === "week"
+    ? `${MO[parseKey(summary.days[0]).getMonth()]} ${parseKey(summary.days[0]).getDate()} – ${MO[parseKey(summary.days[6]).getMonth()]} ${parseKey(summary.days[6]).getDate()}, ${parseKey(summary.days[6]).getFullYear()}`
+    : `${DOWF[date.getDay()]}, ${MO[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+  return (
+    <>
+      <div className="period-analytics-head">
+        <div>
+          <div className="period-analytics-title">{view === "week" ? "Weekly Operations Analytics" : "Daily Operations Analytics"}</div>
+          <div className="period-analytics-sub">{periodLabel} · live schedule and period totals</div>
+        </div>
+        <div className="period-event-count"><b>{summary.events.length}</b> events {view === "week" ? "this week" : "today"}</div>
+      </div>
+      <PeriodKpis people={people} view={view} selDate={selDate} />
+      <SchedulerView
+        searched={people}
+        state={{ view, selDate, dayTab: dayTab || "all", filters: [] }}
+        now={now}
+        today={today}
+        onOpenCase={onOpenCase}
+        onPickDay={onPickDay}
+        onDayTabChange={onDayTabChange}
+      />
+    </>
+  );
+}
+
+export function AnalyticsView({
+  calc, people, branch, calY, view = "month", selDate, dayTab, now, today,
+  onOpenModal, onOpenCase, onPickDay, onDayTabChange,
+}) {
+  if (view === "day" || view === "week") {
+    return (
+      <PeriodAnalytics
+        people={people || []}
+        view={view}
+        selDate={selDate || today}
+        dayTab={dayTab}
+        now={now}
+        today={today}
+        onOpenCase={onOpenCase}
+        onPickDay={onPickDay}
+        onDayTabChange={onDayTabChange}
+      />
+    );
+  }
+
   const donutSegs = [
     { k: "in-care", c: "var(--blue)", v: calc.care.inCare, l: "In Care" },
     { k: "pm-req", c: "var(--orange)", v: calc.care.pmReq, l: "PM Requested" },
@@ -370,6 +501,7 @@ export function AnalyticsView({ calc, branch, calY, onOpenModal }) {
 
       <div className="kgrid">
         <Kpi
+          tone="brand"
           label="Total Cases Handled"
           value={calc.total}
           sub="admissions this period"
@@ -379,6 +511,7 @@ export function AnalyticsView({ calc, branch, calY, onOpenModal }) {
           onOpenModal={onOpenModal}
         />
         <Kpi
+          tone="blue"
           label="Currently in Care"
           value={calc.inCare}
           sub={`${calc.care.pmReq + calc.care.pmDone} tied to postmortem`}
@@ -388,6 +521,7 @@ export function AnalyticsView({ calc, branch, calY, onOpenModal }) {
           onOpenModal={onOpenModal}
         />
         <Kpi
+          tone="plum"
           label="Median Turnaround"
           value={calc.medianStay}
           suffix=" d"
@@ -398,6 +532,7 @@ export function AnalyticsView({ calc, branch, calY, onOpenModal }) {
           onOpenModal={onOpenModal}
         />
         <Kpi
+          tone="orange"
           label="PM Completion"
           value={calc.pmRate}
           suffix="%"
@@ -408,6 +543,7 @@ export function AnalyticsView({ calc, branch, calY, onOpenModal }) {
           onOpenModal={onOpenModal}
         />
         <Kpi
+          tone="green"
           label="Storage Accrual"
           raw={fmtK(calc.accrual)}
           sub="holding fees to date"

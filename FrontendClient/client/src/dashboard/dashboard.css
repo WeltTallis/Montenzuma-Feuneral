@@ -58,10 +58,11 @@
 .rpd .spin{animation:rpdSpin 1s linear infinite;display:inline-flex}
 
 /* ── toolbar ── */
-.rpd .tbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:flex-start;padding:8px 16px;background:var(--card);border-bottom:1px solid var(--brd);box-shadow:var(--shs);gap:8px;height:52px;min-height:52px;white-space:nowrap;overflow-x:auto;overflow-y:visible;flex-wrap:nowrap;scrollbar-width:none}
+.rpd .tbar{position:sticky;top:0;z-index:50;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;padding:8px 16px;background:var(--card);border-bottom:1px solid var(--brd);box-shadow:var(--shs);gap:8px;height:52px;min-height:52px;max-height:52px;white-space:nowrap;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;scrollbar-width:none}
 .rpd .tbar::-webkit-scrollbar{display:none}
-.rpd .tb-left,.rpd .tb-right{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
-.rpd .tb-right{margin-left:auto}
+.rpd .tbar>.tb-left,.rpd .tbar>.tb-right{display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:nowrap;min-width:max-content;height:34px;min-height:0}
+.rpd .tbar>.tb-right{margin-left:auto}
+.rpd .tbar .searchbox,.rpd .tbar .selwrap,.rpd .tbar .views,.rpd .tbar .navpair,.rpd .tbar .tb-btn,.rpd .tbar .avatar{flex-shrink:0}
 .rpd .nvp{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--brd);border-radius:9px;background:var(--bg);flex-shrink:0}
 .rpd .nvp button{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:7px;color:var(--tx3);font-size:12px;font-weight:600;transition:.15s;white-space:nowrap}
 .rpd .nvp button:hover{color:var(--tx)}
@@ -324,6 +325,31 @@
 .rpd .insight:last-child{border-bottom:none}
 .rpd .insight .idot{width:8px;height:8px;border-radius:3px;margin-top:6px;flex-shrink:0}
 .rpd .insight b{color:var(--tx)}
+
+/* ── period analytics + KPI tones ── */
+.rpd .kpi-brand{background:var(--brand);border-color:var(--brand);color:#fff}
+.rpd .kpi-blue{background:var(--blue);border-color:var(--blue);color:#fff}
+.rpd .kpi-orange{background:var(--orange);border-color:var(--orange);color:#fff}
+.rpd .kpi-plum{background:var(--plum);border-color:var(--plum);color:#fff}
+.rpd .kpi-green{background:var(--green);border-color:var(--green);color:#fff}
+.rpd .kpi-brand:hover{border-color:var(--brandl);filter:brightness(1.06)}
+.rpd .kpi-blue:hover{border-color:var(--blue);filter:brightness(1.08)}
+.rpd .kpi-orange:hover{border-color:var(--orange);filter:brightness(1.06)}
+.rpd .kpi-plum:hover{border-color:var(--plum);filter:brightness(1.08)}
+.rpd .kpi-green:hover{border-color:var(--green);filter:brightness(1.06)}
+.rpd .kpi-brand .lbl,.rpd .kpi-blue .lbl,.rpd .kpi-orange .lbl,.rpd .kpi-plum .lbl,.rpd .kpi-green .lbl{color:rgba(255,255,255,.78)}
+.rpd .kpi-brand .sub,.rpd .kpi-blue .sub,.rpd .kpi-orange .sub,.rpd .kpi-plum .sub,.rpd .kpi-green .sub{color:rgba(255,255,255,.72)}
+.rpd .kpi-brand .def,.rpd .kpi-blue .def,.rpd .kpi-orange .def,.rpd .kpi-plum .def,.rpd .kpi-green .def{color:rgba(255,255,255,.82);border-top-color:rgba(255,255,255,.22)}
+.rpd .period-analytics-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 22px 4px;flex-wrap:wrap}
+.rpd .period-analytics-title{font-size:19px;font-weight:800;letter-spacing:-.25px}
+.rpd .period-analytics-sub{font-size:11px;color:var(--tx3);font-weight:500;margin-top:2px}
+.rpd .period-event-count{font:600 11px var(--mono);color:var(--tx3);display:flex;align-items:center;gap:5px}
+.rpd .period-event-count b{font-size:17px;color:var(--pink);font-weight:800}
+.rpd .period-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:16px 22px 0}
+.rpd .period-kpis .kpi{cursor:default;min-width:0}
+.rpd .period-kpis + .sch{margin-top:14px}
+@media(max-width:1100px){.rpd .period-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.rpd .period-kpis{grid-template-columns:repeat(2,minmax(0,1fr));padding-left:10px;padding-right:10px}.rpd .period-analytics-head{padding-left:10px;padding-right:10px}}
 
 /* ── tooltip / modal / drawer / toast ── */
 .rpd .tip{position:fixed;z-index:300;background:var(--tx);color:var(--card);font-size:11.5px;font-weight:600;padding:8px 11px;border-radius:8px;max-width:290px;pointer-events:none;box-shadow:var(--shl);display:none;line-height:1.5}

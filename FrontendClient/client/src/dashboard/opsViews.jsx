@@ -1,7 +1,7 @@
 import {
   BANDS, DOWF, DOWM, MO, MOS, TYPE_C, TYPE_L, TYPE_SOLID, careCfg,
   bandOf, fmtDate, matchPill, parseKey, shortDate, weekStartOf, addDays,
-  EVENT_VERB, periodRange, applyFilters, baseList, sortRegisters,
+  EVENT_VERB, eventsOf, periodRange, applyFilters, baseList, sortRegisters,
 } from "./opsData";
 import { Avatar, CountUp, StatusChip } from "./opsBits";
 import { Ic } from "./opsIcons";
@@ -46,12 +46,7 @@ function StatStrip({ items }) {
  * Returns the row models plus the completed / upcoming tallies.
  */
 function timelineFor(searched, today, now) {
-  const evs = [];
-  searched.forEach((p) => {
-    if (p.admDate === today) evs.push({ t: "intake", time: p.admTime || "00:00", p });
-    if (p.pm && p.pm.reqDate === today) evs.push({ t: "pm", time: p.pm.reqTime || "09:00", p });
-    if (p.release && p.release.date === today) evs.push({ t: "release", time: p.release.time || "09:00", p });
-  });
+  const evs = eventsOf(searched).filter((event) => event.date === today);
   evs.push({ t: "now", time: now, p: null });
   evs.sort((a, b) => a.time.localeCompare(b.time));
 
@@ -196,12 +191,7 @@ function QuadRow({ ev, onOpenCase }) {
 /** "Today" — live operations across all branches. */
 function TodayQuad({ searched, calc, today, now, onOpenCase }) {
   const tl = timelineFor(searched, today, now);
-  const evs = [];
-  searched.forEach((p) => {
-    if (p.admDate === today) evs.push({ t: "intake", time: p.admTime || "00:00", p });
-    if (p.pm && p.pm.reqDate === today) evs.push({ t: "pm", time: p.pm.reqTime || "09:00", p });
-    if (p.release && p.release.date === today) evs.push({ t: "release", time: p.release.time || "09:00", p });
-  });
+  const evs = eventsOf(searched).filter((event) => event.date === today);
   const byTime = (a, b) => a.time.localeCompare(b.time);
   const intakes = evs.filter((e) => e.t === "intake").sort(byTime);
   const rels = evs.filter((e) => e.t === "release").sort(byTime);

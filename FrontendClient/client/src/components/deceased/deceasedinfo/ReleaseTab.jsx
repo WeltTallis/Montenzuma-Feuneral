@@ -172,14 +172,33 @@ const ChecklistItem = styled.div`
   }
 `;
 
-const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
+const isEnabledFlag = (value) => value === true || value === 1 || /^(1|true|yes)$/i.test(String(value || ''));
+
+// MySQL DATE values may be serialized as an ISO instant at UTC midnight. A
+// release/admission date is a calendar date, so keep the stored YYYY-MM-DD day.
+const calendarDateValue = (value) => {
+  const match = String(value || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : value;
+};
+
+const formatReleaseMoment = (release) => {
+  const date = release?.date_of_removal || release?.release_date;
+  const time = release?.time_of_removal || release?.release_time;
+  if (date && time) return `${formatDate(calendarDateValue(date))}, ${formatTime12(time)}`;
+  if (date) {
+    const recordedTime = release?.created_at ? formatTime12(release.created_at) : '';
+    return recordedTime
+      ? `${formatDate(calendarDateValue(date))}, ${recordedTime}`
+      : formatDate(calendarDateValue(date));
+  }
+  return release?.created_at ? formatDateTime(release.created_at) : '';
+};
+
+const ReleaseTab = ({ deceased, deceasedId, refreshVersion = 0 }) => {
   const navigate = useNavigate();
   const d = deceased || {};
-  // Prefer the release already loaded by the deceased-detail page (it is fetched
-  // once into `deceased.releaseData`). We still re-fetch below as a fallback for
-  // direct/deep-link entry, but the parent-loaded record is the authoritative,
-  // always-appearing source — otherwise a slow/missed by-admission call showed
-  // "No body release recorded" even though the record existed.
+  const admissionNumber = d.admission_number || d.admission_no || deceasedId;
+  const deceasedName = d.full_name || d.name_of_deceased || d.name || d.fullname || '';
   const [releaseData, setReleaseData] = useState(d?.releaseData || null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -195,58 +214,75 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
     });
   };
 
-  // Fetch release data
+  // Always re-query the release row. The profile refresh changes refreshVersion,
+  // and the admission/deceased identifiers can arrive after the first render,
+  // so an "already loaded" early return would leave stale data.
   useEffect(() => {
-    const fetchReleaseData = async () => {
+    let cancelled = false;
+
+    const fetchReleaseDetails = async () => {
       if (!deceasedId) return;
-      // If the detail page already handed us the release record, nothing to do.
-      if (d?.releaseData) return;
 
       setIsLoading(true);
-      try {
-        // getTenantHeaders() already carries the auth token + tenant slug.
-        // The backend matches releases saved under either the branch or the
-        // parent organisation slug, so no manual slug override is needed.
-        const admissionNumber = d.admission_number || d.admission_no || deceasedId;
-        const headers = { ...getTenantHeaders() };
 
-        // Try 1: Fetch by admission number (most reliable)
+      const headers = { ...getTenantHeaders() };
+      const lookup = String(admissionNumber || deceasedId || '').trim();
+      const norm = (value) => String(value || '').trim().toLowerCase();
+      const names = new Set([norm(deceasedName)]);
+      let foundRelease = null;
+      let releaseLookupCompleted = false;
+
+      // The by-admission endpoint is the canonical lookup. A 404 is expected for
+      // profiles that have not been released yet, so continue to the list lookup.
+      if (lookup) {
         try {
-          const byAdmissionRes = await api.get(
-            `/body-release/by-admission/${encodeURIComponent(admissionNumber)}`,
+          const response = await api.get(
+            `/body-release/by-admission/${encodeURIComponent(lookup)}`,
             { headers }
           );
-          if (byAdmissionRes.data?.success && byAdmissionRes.data?.data) {
-            setReleaseData(byAdmissionRes.data.data);
-            return;
+          if (response.data?.success) {
+            releaseLookupCompleted = true;
+            if (response.data?.data) foundRelease = response.data.data;
           }
-        } catch (e) { /* not found by admission */ }
-
-        // Try 2: List all releases and match by admission number or name
-        const response = await api.get('/body-release/checkout', { headers });
-        if (response.data?.success && Array.isArray(response.data?.data)) {
-          const norm = (s) => String(s || '').trim().toLowerCase();
-          const adm = norm(admissionNumber);
-          const did = norm(deceasedId);
-          const names = new Set([d.full_name, d.name_of_deceased, d.name, d.fullname]
-            .filter(Boolean).map(norm));
-          const deceasedRelease = response.data.data.find((release) =>
-            adm && (norm(release.admission_number) === adm || norm(release.admission_number) === did) ||
-            names.has(norm(release.name_of_deceased))
-          );
-          if (deceasedRelease) {
-            setReleaseData(deceasedRelease);
-          }
+        } catch {
+          // Not found or temporarily unavailable; the list lookup below is the
+          // compatibility fallback used for existing branch/parent records.
         }
-      } catch (error) {
-        console.error('Error fetching release data:', error);
-      } finally {
-        setIsLoading(false);
       }
+
+      if (!foundRelease && lookup) {
+        try {
+          const response = await api.get('/body-release/checkout', {
+            headers,
+            params: { search: lookup, limit: 100 },
+          });
+          if (response.data?.success && Array.isArray(response.data.data)) {
+            releaseLookupCompleted = true;
+            const admissionKey = norm(lookup);
+            const idKey = norm(deceasedId);
+            foundRelease = response.data.data.find((release) => {
+              const releaseAdmission = norm(release.admission_number);
+              const releaseName = norm(release.name_of_deceased);
+              return (admissionKey && (releaseAdmission === admissionKey || releaseAdmission === idKey)) ||
+                (releaseName && names.has(releaseName));
+            }) || null;
+          }
+        } catch (error) {
+          console.error('Error fetching release details:', error);
+        }
+      }
+
+      if (!cancelled) {
+        if (foundRelease) setReleaseData(foundRelease);
+        else if (releaseLookupCompleted) setReleaseData(null);
+      }
+
+      if (!cancelled) setIsLoading(false);
     };
 
-    fetchReleaseData();
-  }, [deceasedId, d.full_name, d.name_of_deceased, d.admission_number, d.admission_no, d.releaseData]);
+    fetchReleaseDetails();
+    return () => { cancelled = true; };
+  }, [admissionNumber, deceasedId, deceasedName, refreshVersion]);
 
   return (
     <>
@@ -263,7 +299,11 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
               BODY RELEASED{releaseData?.release_id ? ` — ${releaseData.release_id}` : ''}
             </div>
             <div style={{ fontSize: 12, color: C.gray }}>
-              {releaseData?.created_at ? `Released on ${formatDateTime(releaseData.created_at)}` : 'Release details recorded'}
+              {isLoading
+                ? 'Refreshing release details…'
+                : formatReleaseMoment(releaseData)
+                  ? `Released on ${formatReleaseMoment(releaseData)}`
+                  : 'Release details recorded'}
             </div>
           </div>
         </div>
@@ -275,11 +315,13 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
         }}>
           <i className="fas fa-clock" style={{ color: C.gray, fontSize: 16 }}></i>
           <div style={{ flex: 1, minWidth: 200, fontSize: 13, color: C.gray }}>
-            No body release has been recorded for this deceased yet.
+            {isLoading ? 'Refreshing release details…' : 'No body release has been recorded for this deceased yet.'}
           </div>
-          <Btn $primary onClick={handleFinalizeRelease}>
-            <i className="fas fa-door-open" style={{ fontSize: 12 }}></i> Start Release
-          </Btn>
+          {!isLoading && (
+            <Btn $primary onClick={handleFinalizeRelease}>
+              <i className="fas fa-door-open" style={{ fontSize: 12 }}></i> Start Release
+            </Btn>
+          )}
         </div>
       )}
 
@@ -289,9 +331,9 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
           <DetailGrid>
             <DetailItem><DetailLabel>Release ID</DetailLabel><DetailValue>{releaseData?.release_id || '—'}</DetailValue></DetailItem>
             <DetailItem><DetailLabel>Deceased</DetailLabel><DetailValue>{releaseData?.name_of_deceased || d.full_name || d.name_of_deceased || '—'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Admission Date</DetailLabel><DetailValue>{formatDate(d.date_admitted || d.admission_date || d.created_at)}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Released Date</DetailLabel><DetailValue>{releaseData ? (releaseData.date_of_removal ? formatDate(releaseData.date_of_removal) : (releaseData.created_at ? formatDate(releaseData.created_at) : '—')) : '—'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Released Time</DetailLabel><DetailValue>{releaseData ? (releaseData.time_of_removal ? formatTime12(releaseData.time_of_removal) : (releaseData.created_at ? formatTime12(releaseData.created_at) : '—')) : '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Admission Date</DetailLabel><DetailValue>{formatDate(calendarDateValue(d.date_admitted || d.admission_date || d.created_at))}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Released Date</DetailLabel><DetailValue>{releaseData ? (releaseData.date_of_removal || releaseData.release_date ? formatDate(calendarDateValue(releaseData.date_of_removal || releaseData.release_date)) : (releaseData.created_at ? formatDate(releaseData.created_at) : '—')) : '—'}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Released Time</DetailLabel><DetailValue>{releaseData ? (releaseData.time_of_removal || releaseData.release_time ? formatTime12(releaseData.time_of_removal || releaseData.release_time) : (releaseData.created_at ? formatTime12(releaseData.created_at) : '—')) : '—'}</DetailValue></DetailItem>
           </DetailGrid>
         </Col>
 
@@ -320,11 +362,13 @@ const ReleaseTab = ({ deceased, nextOfKin, deceasedId }) => {
       <DetailGrid>
         <DetailItem>
           <DetailLabel>Payments Cleared</DetailLabel>
-          <DetailValue>{releaseData ? (releaseData.everything_paid ? 'Yes — everything paid' : 'Not marked as fully paid') : '—'}</DetailValue>
+          <DetailValue>
+            {releaseData ? 'Yes — everything paid' : '—'}
+          </DetailValue>
         </DetailItem>
         <DetailItem>
           <DetailLabel>Terms Accepted</DetailLabel>
-          <DetailValue>{releaseData ? (releaseData.terms_accepted ? 'Yes' : 'No') : '—'}</DetailValue>
+          <DetailValue>{releaseData ? (isEnabledFlag(releaseData.terms_accepted) ? 'Yes' : 'No') : '—'}</DetailValue>
         </DetailItem>
       </DetailGrid>
 

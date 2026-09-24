@@ -1,4 +1,6 @@
 // Shared theme for deceased management components
+import { parseDate } from '../../../utils/dates/parseDates';
+
 export const C = {
   // ── Core neutrals ─────────────────────────────
   black: '#111827',      // Darker, solid black
@@ -30,14 +32,16 @@ export const C = {
 
 export const formatDate = (dt) => {
   if (!dt) return '—';
-  return new Date(dt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const parsed = parseDate(dt);
+  if (!parsed) return '—';
+  return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 // Exact date AND time, e.g. "Sep 15, 2026, 2:45 PM"
 export const formatDateTime = (dt) => {
   if (!dt) return '—';
-  const parsed = new Date(dt);
-  if (isNaN(parsed.getTime())) return '—';
+  const parsed = parseDate(dt);
+  if (!parsed) return '—';
   const date = parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const time = parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   return `${date}, ${time}`;
@@ -55,8 +59,8 @@ export const formatTime12 = (t) => {
     h = h % 12 || 12;
     return `${h}:${min} ${ampm}`;
   }
-  const parsed = new Date(s);
-  if (!isNaN(parsed.getTime())) {
+  const parsed = parseDate(s);
+  if (parsed) {
     return parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   }
   return s;
@@ -69,8 +73,8 @@ export const getInitials = (name) => {
 
 export const getDaysInMorgue = (admittedDate) => {
   if (!admittedDate) return 0;
-  const parsed = new Date(admittedDate);
-  if (isNaN(parsed.getTime())) return 0;
+  const parsed = parseDate(admittedDate);
+  if (!parsed) return 0;
   // Compare calendar dates (ignoring clock time) so a body admitted today
   // counts as day 0 — never -1 from timezone/hour offsets.
   const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();

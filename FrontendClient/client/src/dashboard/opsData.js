@@ -158,7 +158,8 @@ const pmCompletedSignal = (r) => {
   return (
     r?.postmortem_completed === true ||
     r?.postmortem_completed === 1 ||
-    pm?.status === "completed" ||
+    /^(completed|complete|done)$/i.test(String(pm?.status || "")) ||
+    Boolean(pm?.completed_at || pm?.completion_date) ||
     /done|complete/i.test(String(r?.postmortem_report || ""))
   );
 };
@@ -172,19 +173,22 @@ const admTimeOf = (r) => timeOf(r?.time_key || r?.time_admitted || r?.adm_time |
 
 const pmFromRequest = (q) => {
   if (!q) return null;
-  const raw = String(q?.exam_status || q?.status || "").toLowerCase();
-  const state = /complete|done|report/.test(raw) || q?.exam_completed_at
+  const requestStatus = String(q?.status || "").toLowerCase();
+  const examStatus = String(q?.exam_status || q?.examStatus || "").toLowerCase();
+  const statusText = `${examStatus} ${requestStatus}`;
+  const state = /complete|done|report/.test(statusText) || q?.exam_completed_at || q?.completed_at
     ? "completed"
-    : /progress|exam|acknowledge|sent/.test(raw)
+    : /progress|pending|exam|acknowledge|sent/.test(statusText)
       ? "in-progress"
       : "requested";
   return {
-    reqDate: keyOf(q?.created_at || q?.requested_at || q?.scheduled_date),
-    reqTime: timeOf(q?.created_at || q?.scheduled_time) || "09:00",
+    reqDate: keyOf(q?.created_at || q?.requested_at || q?.scheduled_date || q?.request_date),
+    reqTime: timeOf(q?.scheduled_time || q?.requested_time || q?.created_at || q?.requested_at) || "09:00",
     authority: q?.requesting_authority || q?.requested_by || q?.reason || "—",
     state,
-    doneDate: keyOf(q?.exam_completed_at),
-    pathologist: q?.pathologist || q?.requested_by || "—",
+    doneDate: keyOf(q?.exam_completed_at || q?.completed_at || q?.completion_date),
+    doneTime: timeOf(q?.exam_completed_at || q?.completed_at || q?.completion_date),
+    pathologist: q?.pathologist || q?.exam_pathologist || q?.pathologist_name || q?.requested_by || "—",
     ref: q?.request_ref || q?.id || "",
     raw: q,
   };
@@ -192,13 +196,15 @@ const pmFromRequest = (q) => {
 
 const pmFromRegister = (r) => {
   if (!pmRequestedSignal(r)) return null;
+  const completed = pmCompletedSignal(r);
   return {
     reqDate: keyOf(r?.postmortem?.requested_at || r?.postmortem_date || r?.date_admitted || r?.created_at),
-    reqTime: "09:00",
+    reqTime: timeOf(r?.postmortem?.requested_time || r?.postmortem?.requested_at || r?.created_at) || "09:00",
     authority: r?.postmortem?.requesting_authority || "—",
-    state: pmCompletedSignal(r) ? "completed" : "requested",
-    doneDate: pmCompletedSignal(r) ? keyOf(r?.postmortem?.completed_at || r?.postmortem_date) : null,
-    pathologist: r?.postmortem?.pathologist || "—",
+    state: completed ? "completed" : "requested",
+    doneDate: completed ? keyOf(r?.postmortem?.completed_at || r?.postmortem_date) : null,
+    doneTime: completed ? timeOf(r?.postmortem?.completed_at || r?.postmortem_date) : "",
+    pathologist: r?.postmortem?.pathologist || r?.postmortem?.pathologist_name || "—",
     ref: "",
     raw: r?.postmortem || null,
   };
@@ -329,7 +335,7 @@ export function buildCases(deceasedRows = [], releaseRows = [], pmRows = []) {
   });
 
   pmRows.forEach((q) => {
-    const adm = String(q?.admission_number || q?.admission_no || "");
+    const adm = String(q?.admission_number || q?.admission_no || q?.deceased_id || "");
     if (!adm) return;
     const pm = pmFromRequest(q);
     const existing = byAdm.get(adm);
@@ -370,12 +376,26 @@ export function buildCases(deceasedRows = [], releaseRows = [], pmRows = []) {
   return order.map((k) => byAdm.get(k)).filter((c) => c && (c.adm || c.name !== "Unknown"));
 }
 
+/** True when a case has a completed postmortem, including legacy/raw API shapes. */
+export const pmCompleted = (p) => {
+  const pm = p?.pm;
+  if (!pm) return false;
+  const rawStatus = [
+    pm.raw?.exam_status,
+    pm.raw?.status,
+    pm.raw?.postmortem?.status,
+  ].filter(Boolean).join(" ");
+  return pm.state === "completed"
+    || Boolean(pm.doneDate)
+    || /(^|\b)(completed|complete|done)(\b|$)/i.test(rawStatus);
+};
+
 /* ── derived case state ─────────────────────────────────────────────────── */
 
 /** in-care · pm-req · pm-done · released · transferred */
 export function careOf(p) {
   if (p.release && p.release.status === "completed") return p.release.transfer ? "transferred" : "released";
-  if (p.pm) return p.pm.state === "completed" ? "pm-done" : "pm-req";
+  if (p.pm) return pmCompleted(p) ? "pm-done" : "pm-req";
   return "in-care";
 }
 export const isReleased = (p) => {
@@ -462,12 +482,29 @@ export function applyFilters(list, section, filters) {
 }
 
 /* ── events ─────────────────────────────────────────────────────────────── */
+/** The date on which a postmortem operation should appear. Completed exams
+ * belong on their completion date; open requests remain on their request date. */
+export function pmEventOf(p) {
+  if (!p?.pm) return null;
+  const completed = p.pm.state === "completed" && p.pm.doneDate;
+  const date = completed ? p.pm.doneDate : p.pm.reqDate;
+  if (!date) return null;
+  return {
+    p,
+    t: "pm",
+    time: (completed ? p.pm.doneTime : p.pm.reqTime) || "09:00",
+    date,
+    completed: Boolean(completed),
+  };
+}
+
 /** Every operation (intake · release · postmortem) across a case list. */
 export function eventsOf(people) {
   const evs = [];
   people.forEach((p) => {
     if (p.admDate) evs.push({ p, t: "intake", time: p.admTime || "00:00", date: p.admDate });
-    if (p.pm && p.pm.reqDate) evs.push({ p, t: "pm", time: p.pm.reqTime || "09:00", date: p.pm.reqDate });
+    const pmEvent = pmEventOf(p);
+    if (pmEvent) evs.push(pmEvent);
     if (p.release && p.release.date) {
       evs.push({ p, t: "release", time: p.release.time || "09:00", date: p.release.date });
     }
@@ -579,7 +616,7 @@ export function calcStats(scoped, searched, calM, calY) {
 
   /* postmortem workload */
   const pmAll = searched.filter((p) => p.pm);
-  const pmDone = pmAll.filter((p) => p.pm.state === "completed").length;
+  const pmDone = pmAll.filter(pmCompleted).length;
   const pmRate = pmAll.length ? Math.round((pmDone / pmAll.length) * 100) : 0;
 
   /* load by branch (derived from the data, busiest first) */

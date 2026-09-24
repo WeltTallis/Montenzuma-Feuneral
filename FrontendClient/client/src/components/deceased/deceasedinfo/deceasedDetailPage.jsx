@@ -212,6 +212,7 @@ const DeceasedDetailPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [deceased, setDeceased] = useState(null);
   const [postmortem, setPostmortem] = useState(null);
   const [nextOfKin, setNextOfKin] = useState(null);
@@ -383,9 +384,27 @@ const DeceasedDetailPage = () => {
         } : prev);
       }
 
-      // 7) Release data
-      if (relRes.status === 'fulfilled' && relRes.value?.data?.data) {
-        setDeceased(prev => prev ? { ...prev, releaseData: relRes.value.data.data } : prev);
+      // 7) Release data. The route id is often the public deceased_id, while
+      // body_releases is keyed by admission_number; use the admission number
+      // from the freshly loaded profile as the authoritative fallback.
+      let releaseData = relRes.status === 'fulfilled' && relRes.value?.data?.data
+        ? relRes.value.data.data
+        : null;
+      if (!releaseData && admissionNo) {
+        try {
+          const admissionReleaseRes = await axios.get(
+            `${env.FULL_API_URL}/body-release/by-admission/${encodeURIComponent(admissionNo)}`,
+            { headers }
+          );
+          if (admissionReleaseRes.data?.success && admissionReleaseRes.data?.data) {
+            releaseData = admissionReleaseRes.data.data;
+          }
+        } catch {
+          // A missing release is a valid state for an in-care profile.
+        }
+      }
+      if (releaseData) {
+        setDeceased(prev => prev ? { ...prev, releaseData } : prev);
       }
 
       // 8) Postmortem requests
@@ -402,6 +421,13 @@ const DeceasedDetailPage = () => {
         payments: billRes.status === 'fulfilled' ? (billRes.value?.data?.data?.payments || []) : [],
         requests: pmReqRes.status === 'fulfilled' ? (pmReqRes.value?.data?.data || []) : [],
       });
+
+      // Bump the tab-level version after a forced profile fetch. ReleaseTab owns
+      // a separate release lookup, so it must be told to discard any previous
+      // result as well as the parent cache.
+      if (forceRefresh && mounted.current) {
+        setRefreshVersion(version => version + 1);
+      }
 
       return true;
     } catch (err) {
@@ -486,7 +512,7 @@ const DeceasedDetailPage = () => {
               </TabPane>
 
               <TabPane $active={activeTab === 'release'}>
-                <ReleaseTab deceased={deceased} nextOfKin={nextOfKin} deceasedId={deceasedId} />
+                <ReleaseTab deceased={deceased} deceasedId={deceasedId} refreshVersion={refreshVersion} />
               </TabPane>
 
               <TabPane $active={activeTab === 'docs'}>
