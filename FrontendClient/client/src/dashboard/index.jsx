@@ -6,7 +6,7 @@ import { fetchAllBranchDeceased } from "../api/dashboardDataApi";
 import { fetchReleasesFeed, fetchPostmortemsFeed } from "../api/dashboardFeedApi";
 
 import {
-  DOWM, MO, TYPE_C, baseList, buildCases, calcStats, eventsOf, fmtK, isReleased,
+  DOWM, MO, TYPE_C, baseList, buildCases, calcStats, eventsOf, fmtK, initials, isReleased,
   matchPill, nowClock, pad, pillsFor, searchMatch, todayKey,
 } from "./opsData";
 import { TipBox, tipProps, useTooltip } from "./opsBits";

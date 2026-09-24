@@ -681,7 +681,7 @@ const CoffinDetails = () => {
         <PageContainer>
             {/* Breadcrumb */}
             <BreadcrumbNav>
-                <Link to="/dashboard"><Home size={14} /> Dashboard</Link>
+                <Link to={`/tenant/${tenantSlug}/dashboard`}><Home size={14} /> Dashboard</Link>
                 <span className="separator">/</span>
                 <Link to={`/tenant/${tenantSlug}/coffins`} style={{ color: Colors.brass, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <Package size={14} /> Coffin Inventory

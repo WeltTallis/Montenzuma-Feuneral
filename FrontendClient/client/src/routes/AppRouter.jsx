@@ -649,7 +649,7 @@ const SystemAdminRoute = () => {
 
   // Only allow systemadmin role (checks AuthContext user AND persisted storage)
   if (user?.role !== 'systemadmin' && !isAdminUser()) {
-    return <Navigate to={`/tenant/${tenantSlug}/dashboard`} replace />;
+    return <Navigate to={`/tenant/${tenantSlug}/deceased`} replace />;
   }
 
   // Render the system admin dashboard
@@ -678,7 +678,7 @@ const TenantRootRedirect = ({ slug }) => {
   if (getStoredUserRole() === 'driver') {
     return <Navigate to={`/tenant/${slug}/driver-portal`} replace />;
   }
-  return <Navigate to="all-deceased" replace />;
+  return <Navigate to="deceased" replace />;
 };
 
 /* /tenant/:slug/deceased          → deceased LIST
@@ -763,28 +763,32 @@ const DashboardRedirect = () => {
       return;
     }
 
-    if (from && from !== '/login' && from !== '/') { navigate(`/tenant/${finalSlug}${from}`, { replace: true }); } else { navigate(`/tenant/${finalSlug}/dashboard`, { replace: true }); }
+    // Default landing after login / app entry is ALWAYS the deceased
+    // register — never the dashboard. Resume a deep link only when the
+    // router handed us a specific `from` destination.
+    if (from && from !== '/login' && from !== '/') { navigate(`/tenant/${finalSlug}${from}`, { replace: true }); } else { navigate(`/tenant/${finalSlug}/deceased`, { replace: true }); }
   }, [navigate, location]);
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#6B7280' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ width: '40px', height: '40px', border: '3px solid #E5E7EB', borderTop: '3px solid #C9A84C', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
-        <p>Loading dashboard...</p>
+        <p>Loading deceased records...</p>
       </div>
     </div>
   );
 };
 
-// Root entry point: send logged-in users straight to their workspace and
-// everyone else (including users who just logged out) straight to the login
-// page — no extra "Log in" click needed.
+// Root entry point: send logged-in users straight to the deceased register
+// and everyone else (including users who just logged out) straight to the
+// login page — no extra "Log in" click needed.
 const RootRedirect = () => {
   const navigate = useNavigate();
   useEffect(() => {
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (token && token !== 'undefined' && token !== 'null') {
-      // DashboardRedirect resolves tenant/branch/role and lands the user
-      // on the right dashboard (system-admin, driver portal, or tenant).
+      // DashboardRedirect resolves tenant/branch/role and lands the user on
+      // /deceased (system-admin console and driver portal keep their own
+      // role-specific homes) — never on the dashboard.
       navigate('/dashboard', { replace: true });
     } else {
       navigate('/login', { replace: true });
