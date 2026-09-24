@@ -82,13 +82,15 @@ function layoutLanes(events) {
   return result;
 }
 
-export default function SchedulerView({ searched, state, now, today, onOpenCase, onPickDay, onDayTabChange }) {
+export default function SchedulerView({ searched, state, now, today, onOpenCase, onPickDay, onDayTabChange, reference = false }) {
   const scrollRef = useRef(null);
   const isWeek = state.view === "week";
   const days = isWeek
     ? Array.from({ length: 7 }, (_, index) => addDays(weekStartOf(state.selDate), index))
     : [state.selDate];
-  const columns = `60px repeat(${days.length}, minmax(0, 1fr))`;
+  const columns = reference
+    ? (isWeek ? "64px repeat(7, minmax(110px, 1fr))" : "64px minmax(0, 1fr)")
+    : `60px repeat(${days.length}, minmax(0, 1fr))`;
   const allEvents = eventsOf(searched).filter((event) => passes(event.p, state.filters));
   const eventsByDay = Object.fromEntries(days.map((day) => [day, allEvents.filter((event) => event.date === day)]));
   const counts = { intake: 0, release: 0, pm: 0 };
@@ -150,7 +152,7 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
       : event.t === "intake"
         ? event.p.branch
         : event.p.pm?.authority;
-    const title = `${event.p.name} · ${TYPE_L[event.t]}`;
+    const title = `${event.p.name} — ${TYPE_L[event.t]}`;
     const detail = `${event.time}–${timeText(end)} · ${event.p.adm} · ${location || "—"}`;
     return (
       <div
@@ -179,8 +181,9 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
 
   return (
     <>
-      <div className="sch">
-        <div className="sch-top">
+      <div className={`sch${reference ? " reference" : ""}`}>
+        {reference ? null : (
+          <div className="sch-top">
           <div>
             <div className="pl">{periodTitle}</div>
             <div className="ps">{periodSubtitle}</div>
