@@ -122,7 +122,7 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
 
   const futureItemsFor = (day) => searched.filter((record) => passes(record, state.filters) && (
     (record.admDate === day && record.admDate > today)
-    || (record.release?.date === day && record.release.status === "scheduled")
+    || (record.release && record.release.date === day && record.release.status === "scheduled")
   ));
   const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => START_HOUR + index);
   const dayTab = state.dayTab || "all";
@@ -148,10 +148,10 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
     height = Math.min(height - 2, gridHeight - top);
     const width = 100 / lanes;
     const location = event.t === "release"
-      ? event.p.release?.dest
+      ? event.p.release ? event.p.release.dest : null
       : event.t === "intake"
         ? event.p.branch
-        : event.p.pm?.authority;
+        : event.p.pm ? event.p.pm.authority : null;
     const title = `${event.p.name} — ${TYPE_L[event.t]}`;
     const detail = `${event.time}–${timeText(end)} · ${event.p.adm} · ${location || "—"}`;
     return (
@@ -184,32 +184,29 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
       <div className={`sch${reference ? " reference" : ""}`}>
         {reference ? null : (
           <div className="sch-top">
-          <div>
-            <div className="pl">{periodTitle}</div>
-            <div className="ps">{periodSubtitle}</div>
+            <div>
+              <div className="pl">{periodTitle}</div>
+              <div className="ps">{periodSubtitle}</div>
+            </div>
+            <div className="sch-meta">
+              <span className="ci" style={{ color: "var(--blue)" }}><i></i>Intake</span>
+              <span className="ci" style={{ color: "var(--orange)" }}><i></i>Postmortem</span>
+              <span className="ci" style={{ color: "var(--green)" }}><i></i>Release</span>
+            </div>
           </div>
-          <div className="sch-meta">
-            <span className="ci" style={{ color: "var(--blue)" }}><i />Intake</span>
-            <span className="ci" style={{ color: "var(--orange)" }}><i />Postmortem</span>
-            <span className="ci" style={{ color: "var(--green)" }}><i />Release</span>
-          </div>
-        </div>
+        )}
 
         <div className="sch-ad" style={{ gridTemplateColumns: columns }}>
-          <div className="adt">Scheduled</div>
+          <div className="adt">{reference ? "All Day" : "Scheduled"}</div>
           {days.map((day) => (
             <div className="adc" key={`all-day-${day}`}>
               {futureItemsFor(day).map((record) => {
                 const isIntake = record.admDate === day;
-                const time = isIntake ? record.admTime : record.release?.time;
+                const time = isIntake ? record.admTime : (record.release ? record.release.time : "");
                 return (
                   <span
-                    className="adchip"
+                    className={`adchip ${isIntake ? "adi" : "adr"}`}
                     key={`${record.adm}-${isIntake ? "arrival" : "handover"}`}
-                    style={{
-                      background: isIntake ? "var(--blue-bg)" : "var(--green-bg)",
-                      color: isIntake ? "var(--blue)" : "var(--green)",
-                    }}
                     onClick={() => onOpenCase(record.adm, isIntake ? "intake" : "release")}
                     role="button"
                     tabIndex={0}
@@ -231,15 +228,24 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
             const date = parseKey(day);
             return (
               <div
-                className={`sch-dhc${day === today ? " today" : ""}`}
+                className={`sch-dhc${day === today ? " today" : ""}${!isWeek ? " day-mode" : ""}`}
                 key={`header-${day}`}
                 onClick={isWeek ? () => onPickDay(day) : undefined}
                 role={isWeek ? "button" : undefined}
                 tabIndex={isWeek ? 0 : undefined}
                 onKeyDown={isWeek ? (event) => { if (event.key === "Enter") onPickDay(day); } : undefined}
               >
-                <div className="dh-n">{["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][date.getDay()]}</div>
-                <div className="dh-d">{date.getDate()}</div>
+                {isWeek ? (
+                  <>
+                    <div className="dh-n">{["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][date.getDay()]}</div>
+                    <div className="dh-d">{date.getDate()}</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="dh-n">{DOWF[date.getDay()]}</div>
+                    <div className="dh-d">{date.getDate()} {MO[date.getMonth()].slice(0, 3)}</div>
+                  </>
+                )}
               </div>
             );
           })}
@@ -279,7 +285,7 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
         </div>
       </div>
 
-      {!isWeek ? (
+      {!isWeek && !reference ? (
         <div className="dtabs">
           {DAY_TABS.map(([key, label, color]) => (
             <button
@@ -287,22 +293,23 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
               key={key}
               onClick={() => onDayTabChange(key)}
             >
-              <i style={{ background: color }} />{label}
+              <i style={{ background: color }}></i>{label}
               <span className="dn2">{dayCounts[key]}</span>
             </button>
           ))}
         </div>
       ) : null}
 
-      <div className="wksum">
-        <span style={{ color: "var(--tx)", fontWeight: 700 }}>{isWeek ? "Week totals" : "Day totals"}</span>
-        <span className="ci"><i style={{ background: "var(--blue)" }} />Intakes <b>{counts.intake}</b></span>
-        <span className="ci"><i style={{ background: "var(--green)" }} />Releases <b>{counts.release}</b></span>
-        <span className="ci"><i style={{ background: "var(--orange)" }} />Postmortems <b>{counts.pm}</b></span>
-        <span className="ci">Total <b>{total}</b></span>
-        {isWeek ? <span style={{ marginLeft: "auto" }}>Today’s column is tinted — the red line marks {now}</span> : null}
-      </div>
+      {!reference ? (
+        <div className="wksum">
+          <span style={{ color: "var(--tx)", fontWeight: 700 }}>{isWeek ? "Week totals" : "Day totals"}</span>
+          <span className="ci"><i style={{ background: "var(--blue)" }}></i>Intakes <b>{counts.intake}</b></span>
+          <span className="ci"><i style={{ background: "var(--green)" }}></i>Releases <b>{counts.release}</b></span>
+          <span className="ci"><i style={{ background: "var(--orange)" }}></i>Postmortems <b>{counts.pm}</b></span>
+          <span className="ci">Total <b>{total}</b></span>
+          {isWeek ? <span style={{ marginLeft: "auto" }}>Today's column is tinted — the red line marks {now}</span> : null}
+        </div>
+      ) : null}
     </>
   );
 }
-

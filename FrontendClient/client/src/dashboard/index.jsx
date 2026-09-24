@@ -42,6 +42,25 @@ const VIEWS = [
 ];
 
 const DARK_KEY = "rpd-ops-dark";
+const FULL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/** Human-readable period heading used by the Analytics Day/Week toolbar. */
+function schedulePeriod(view, selDate) {
+  const [year, month, date] = selDate.split("-").map(Number);
+  const start = new Date(year, month - 1, date);
+  if (view === "week") start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  const end = new Date(start);
+  if (view === "week") end.setDate(start.getDate() + 6);
+
+  const startKey = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
+  const title = view === "week"
+    ? (start.getMonth() === end.getMonth()
+      ? `${MO[start.getMonth()]} ${start.getDate()}–${end.getDate()}`
+      : `${MO[start.getMonth()].slice(0, 3)} ${start.getDate()} – ${MO[end.getMonth()].slice(0, 3)} ${end.getDate()}`)
+    : `${FULL_DAYS[start.getDay()]}, ${MO[start.getMonth()]} ${start.getDate()}`;
+
+  return { title, year: end.getFullYear(), startKey };
+}
 
 /* ── data ───────────────────────────────────────────────────────────────── */
 
@@ -358,11 +377,10 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
   const goToday = () => {
     setTodayMode(false);
-    setSection("command");
     setSelDate(today);
     setClickedDay(null);
     setDayTab("all");
-    setView("day");
+    if (section !== "analytics") setView("day");
     setCalY(Number(today.slice(0, 4)));
     setCalM(Number(today.slice(5, 7)) - 1);
   };
@@ -419,6 +437,16 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   };
 
   const avatarText = initials(tenantData?.name || tenantData?.tenant_name || tenantSlug || "RestPoint");
+  const isAnalyticsPeriod = section === "analytics" && (view === "day" || view === "week");
+  const analyticsPeriod = schedulePeriod(view, selDate);
+  const analyticsPeriodEventCount = useMemo(() => {
+    if (!isAnalyticsPeriod) return 0;
+    const dayKeys = view === "week"
+      ? Array.from({ length: 7 }, (_, index) => addDays(analyticsPeriod.startKey, index))
+      : [analyticsPeriod.startKey];
+    const daySet = new Set(dayKeys);
+    return eventsOf(searched).filter((event) => daySet.has(event.date)).length;
+  }, [analyticsPeriod.startKey, isAnalyticsPeriod, searched, view]);
 
   return (
     <div className={`rpd${dark ? " dark" : ""}`}>
@@ -477,11 +505,24 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
           <div className="divider" />
 
+          {isAnalyticsPeriod ? (
+            <div className="tb-period" aria-live="polite">
+              <b>{analyticsPeriod.title}</b>
+              <span>{analyticsPeriod.year}</span>
+            </div>
+          ) : null}
+
           <button className="tb-btn today-hot" onClick={goToday}>Today</button>
           <div className="navpair" aria-label="Change schedule period">
             <button className="tb-btn sq" onClick={() => stepPeriod(-1)} title="Previous period" aria-label="Previous period">‹</button>
             <button className="tb-btn sq" onClick={() => stepPeriod(1)} title="Next period" aria-label="Next period">›</button>
           </div>
+          {isAnalyticsPeriod ? (
+            <div className="tb-period-count">
+              <b>{analyticsPeriodEventCount}</b>
+              <span>{analyticsPeriodEventCount === 1 ? "event" : "events"} {view === "week" ? "this week" : "today"}</span>
+            </div>
+          ) : null}
           <div className="views">
             {VIEWS.map((v) => (
               <button
