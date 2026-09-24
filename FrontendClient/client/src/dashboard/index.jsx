@@ -6,7 +6,7 @@ import { fetchAllBranchDeceased } from "../api/dashboardDataApi";
 import { fetchReleasesFeed, fetchPostmortemsFeed } from "../api/dashboardFeedApi";
 
 import {
-  DOWM, MO, TYPE_C, addDays, baseList, buildCases, calcStats, eventsOf, fmtK, initials, isReleased,
+  DOWF, DOWM, MO, TYPE_C, addDays, baseList, buildCases, calcStats, eventsOf, fmtK, initials, isReleased,
   matchPill, nowClock, pad, pillsFor, searchMatch, todayKey,
 } from "./opsData";
 import { TipBox, tipProps, useTooltip } from "./opsBits";
@@ -42,7 +42,6 @@ const VIEWS = [
 ];
 
 const DARK_KEY = "rpd-ops-dark";
-const FULL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 /** Human-readable period heading used by the Analytics Day/Week toolbar. */
 function schedulePeriod(view, selDate) {
@@ -57,7 +56,7 @@ function schedulePeriod(view, selDate) {
     ? (start.getMonth() === end.getMonth()
       ? `${MO[start.getMonth()]} ${start.getDate()}–${end.getDate()}`
       : `${MO[start.getMonth()].slice(0, 3)} ${start.getDate()} – ${MO[end.getMonth()].slice(0, 3)} ${end.getDate()}`)
-    : `${FULL_DAYS[start.getDay()]}, ${MO[start.getMonth()]} ${start.getDate()}`;
+    : `${DOWF[start.getDay()]}, ${MO[start.getMonth()]} ${start.getDate()}`;
 
   return { title, year: end.getFullYear(), startKey };
 }
@@ -380,7 +379,10 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     setSelDate(today);
     setClickedDay(null);
     setDayTab("all");
-    if (section !== "analytics") setView("day");
+    if (section !== "analytics") {
+      setSection("command");
+      setView("day");
+    }
     setCalY(Number(today.slice(0, 4)));
     setCalM(Number(today.slice(5, 7)) - 1);
   };
@@ -505,18 +507,17 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
           <div className="divider" />
 
+          <button className="tb-btn today-hot" onClick={goToday}>Today</button>
+          <div className="navpair" aria-label="Change schedule period">
+            <button className="tb-btn sq" onClick={() => stepPeriod(-1)} title="Previous period" aria-label="Previous period">‹</button>
+            <button className="tb-btn sq" onClick={() => stepPeriod(1)} title="Next period" aria-label="Next period">›</button>
+          </div>
           {isAnalyticsPeriod ? (
             <div className="tb-period" aria-live="polite">
               <b>{analyticsPeriod.title}</b>
               <span>{analyticsPeriod.year}</span>
             </div>
           ) : null}
-
-          <button className="tb-btn today-hot" onClick={goToday}>Today</button>
-          <div className="navpair" aria-label="Change schedule period">
-            <button className="tb-btn sq" onClick={() => stepPeriod(-1)} title="Previous period" aria-label="Previous period">‹</button>
-            <button className="tb-btn sq" onClick={() => stepPeriod(1)} title="Next period" aria-label="Next period">›</button>
-          </div>
           {isAnalyticsPeriod ? (
             <div className="tb-period-count">
               <b>{analyticsPeriodEventCount}</b>
@@ -529,6 +530,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
                 key={v.id}
                 className={view === v.id ? "on" : ""}
                 onClick={() => setV(v.id)}
+                aria-pressed={view === v.id}
               >
                 {v.label}
               </button>
@@ -575,7 +577,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
           </aside>
         ) : null}
 
-        <main className="mains">
+        <main className={`mains${isAnalyticsPeriod ? " analytics-period" : ""}`}>
           {loading && !cases.length ? (
             <div className="empty" style={{ padding: 90 }}>
               <span className="spin" style={{ color: "var(--acc)" }}><Ic n="sync" s={22} /></span>

@@ -8,7 +8,7 @@
    • .rpd.dark       → dark theme (replaces the reference's body.dark)
    • animation names → rpd-prefixed to avoid clashing with other modules
    ══════════════════════════════════════════════════════════════════════════ */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap&family=Fraunces:ital,wght@0,500;0,600;0,700;1,500&display=swap');
 
 .rpd,.rpd *,.rpd *::before,.rpd *::after{margin:0;padding:0;box-sizing:border-box}
 .rpd{
@@ -24,7 +24,8 @@
   --suc:var(--green);--dng:var(--pink);--dngl:var(--pinkl);
   --teal:var(--green);--teal-bg:var(--green-bg);
   --shs:0 1px 2px rgba(0,0,0,.05);--shl:0 10px 15px rgba(0,0,0,.08);--shxl:0 20px 25px rgba(0,0,0,.12);
-  --sans:'Inter',-apple-system,sans-serif;--mono:'IBM Plex Mono',ui-monospace,monospace;
+  --sans:'Inter',-apple-system,sans-serif;--mono:'IBM Plex Mono',ui-monospace,monospace;--serif:'Fraunces',Georgia,serif;
+  --schIntake:#00296B;--schPm:#E36414;--schRelease:#132A13;
   height:100vh;overflow-y:auto;overflow-x:hidden;
   background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:14px;line-height:1.5;
   -webkit-font-smoothing:antialiased;transition:background .25s,color .25s;
@@ -395,6 +396,67 @@
 .rpd .te{position:fixed;bottom:24px;right:24px;padding:11px 18px;background:var(--tx);color:var(--card);border-radius:10px;box-shadow:var(--shxl);font-size:12px;font-weight:600;z-index:2000;opacity:0;pointer-events:none;transform:translateY(10px);transition:.25s}
 .rpd .te.show{opacity:1;transform:none}
 
+/* Analytics Day/Week — faithful operations-schedule reference treatment. */
+.rpd .tb-period{display:flex;flex-direction:column;gap:1px;min-width:180px;line-height:1.1;padding:0 4px}
+.rpd .tb-period b{font:600 18px/1.1 var(--serif);color:var(--tx);letter-spacing:-.01em;white-space:nowrap}
+.rpd .tb-period span{font-size:10px;font-weight:500;color:var(--tx3)}
+.rpd .tb-period-count{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--tx3);white-space:nowrap}
+.rpd .tb-period-count b{font:700 16px var(--serif);color:var(--pink)}
+.rpd .mains.analytics-period{height:calc(100vh - 52px);padding-bottom:0;display:flex;overflow:hidden}
+.rpd .sch.reference{width:100%;height:100%;margin:0;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;background:var(--sect);overflow-x:auto;overflow-y:hidden}
+.rpd .sch.reference.week .sch-ad,.rpd .sch.reference.week .sch-dh,.rpd .sch.reference.week .sch-scroll{min-width:834px}
+.rpd .sch.reference .sch-top{display:none}
+.rpd .sch.reference .sch-ad{flex-shrink:0;background:var(--card);border-bottom:1px solid var(--brd);min-height:34px}
+.rpd .sch.reference .sch-ad .adt{justify-content:flex-end;padding:8px 10px;color:var(--tx4);font-size:9px;letter-spacing:.12em;border-right-color:var(--brd)}
+.rpd .sch.reference .sch-ad .adc{padding:4px;border-right-color:var(--brdl);min-height:34px;gap:2px}
+.rpd .sch.reference .adchip{padding:3px 10px;font-size:11px;font-weight:600;color:#fff;border-radius:3px}
+.rpd .sch.reference .adchip.adi{background:var(--schIntake)}
+.rpd .sch.reference .adchip.adr{background:var(--schRelease)}
+.rpd .sch.reference .sch-dh{flex-shrink:0;background:var(--card);border-bottom:1px solid var(--brd)}
+.rpd .sch.reference .sch-corner{border-right-color:var(--brd)}
+.rpd .sch.reference .sch-dhc{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 10px;border-right-color:var(--brdl);background:var(--card)}
+.rpd .sch.reference .sch-dhc:hover{background:var(--field)}
+.rpd .sch.reference .sch-dhc .dh-n{font-size:10px;letter-spacing:.14em;color:var(--tx3);margin:0}
+.rpd .sch.reference .sch-dhc .dh-d{font:600 18px/1 var(--serif);color:var(--tx);width:30px;height:30px;display:grid;place-items:center;border-radius:50%}
+.rpd .sch.reference .sch-dhc.today .dh-d{width:30px;height:30px;line-height:normal;background:var(--pink);color:#fff;box-shadow:0 2px 8px rgba(221,45,74,.3)}
+.rpd .sch.reference .sch-dhc.today .dh-n{color:var(--pink);font-weight:700}
+.rpd .sch.reference .sch-dhc.day-mode{align-items:flex-start;gap:3px;padding:8px 10px 8px 14px}
+.rpd .sch.reference .sch-dhc.day-mode .dh-d{width:auto;height:auto;font-size:20px;place-items:initial}
+.rpd .sch.reference .sch-dhc.day-mode.today .dh-d{width:auto;height:auto;padding:6px 11px;line-height:1;border-radius:22px;box-shadow:none}
+.rpd .sch.reference .sch-scroll{flex:1;min-height:0;max-height:none;overflow:auto;background:var(--sect)}
+.rpd .sch.reference .sch-grid{min-height:100%}
+.rpd .sch.reference .sch-times{position:sticky;left:0;z-index:6;background:var(--card);border-right-color:var(--brd)}
+.rpd .sch.reference .sch-slot{padding:0 10px 0 0}
+.rpd .sch.reference .sch-slot span{top:-7px;background:var(--card);padding:1px 4px;border-radius:3px;color:var(--tx4)}
+.rpd .sch.reference .sch-col{background:var(--card)}
+.rpd .sch.reference .sch-col.today{background:rgba(221,45,74,.015)}
+.rpd .sch.reference .sch-hc:hover{background:rgba(0,0,0,.012)}
+.rpd .sch.reference .evc{left:3px;right:3px;border-radius:4px;padding:5px 8px;color:#fff;box-shadow:none;transition:all .2s cubic-bezier(.32,.72,.24,1)}
+.rpd .sch.reference .evc:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.rpd .sch.reference .evi{background:var(--schIntake);border-left:0;color:#fff}
+.rpd .sch.reference .evp{background:var(--schPm);border-left:0;color:#fff}
+.rpd .sch.reference .evr{background:var(--schRelease);border-left:0;color:#fff}
+.rpd .sch.reference .evc.done{opacity:.75}
+.rpd .sch.reference .evc .et{font:500 9px var(--mono);opacity:.8;margin-bottom:1px}
+.rpd .sch.reference .evc .en{font-size:12px;line-height:1.15;margin-bottom:1px}
+.rpd .sch.reference .evc .el{font-size:10px;font-weight:500;opacity:.75}
+.rpd .sch.reference .evc.compact{padding:3px 8px;gap:6px}
+.rpd .sch.reference .evc.compact .en{font-size:11px;margin:0;flex:1;min-width:0}
+.rpd .sch.reference .nowline{background:var(--pink)}
+.rpd .sch.reference .nowline::before{left:-1px;top:-4px;box-shadow:0 0 0 3px rgba(221,45,74,.2)}
+.rpd .sch.reference .sch-empty{top:40%;font:italic 500 12px var(--serif);font-weight:500}
+.rpd.dark .sch.reference .sch-col.today{background:rgba(240,125,143,.018)}
+@media(max-width:1100px){.rpd .tb-period{min-width:150px}.rpd .tb-period b{font-size:16px}.rpd .tb-period-count{display:none}}
+@media(max-width:768px){
+  .rpd .mains.analytics-period{height:calc(100vh - 52px)}
+  .rpd .sch.reference.week .sch-ad,.rpd .sch.reference.week .sch-dh,.rpd .sch.reference.week .sch-scroll{min-width:573px}
+  .rpd .sch.reference.week .sch-ad,.rpd .sch.reference.week .sch-dh,.rpd .sch.reference.week .sch-grid{grid-template-columns:48px repeat(7,minmax(75px,1fr))!important}
+  .rpd .sch.reference.week .sch-grid{min-width:573px}
+  .rpd .sch.reference.week .sch-slot{padding-right:6px}
+  .rpd .sch.reference .evc .en{font-size:10px}
+  .rpd .sch.reference .evc .el{display:none}
+}
+
 /* ═══ reference time-grid scheduler ═══ */
 .rpd .sch{margin:14px 22px 0;background:var(--card);border:1px solid var(--brd);border-radius:12px;box-shadow:var(--shs);overflow:hidden}
 .rpd .sch-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px;border-bottom:1px solid var(--brdl);flex-wrap:wrap}
@@ -408,7 +470,9 @@
 .rpd .sch-ad .adt{padding:6px 10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700;border-right:1px solid var(--brdl);display:flex;align-items:center}
 .rpd .sch-ad .adc{display:flex;flex-direction:column;gap:3px;padding:5px 7px;border-right:1px solid var(--brdl);min-height:30px;min-width:0}
 .rpd .sch-ad .adc:last-child{border-right:none}
-.rpd .adchip{display:block;padding:2px 9px;font-size:10px;font-weight:700;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.rpd .adchip{display:block;padding:3px 10px;font-size:10px;font-weight:700;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.rpd .adchip.adi{background:var(--blue-bg);color:var(--blue)}
+.rpd .adchip.adr{background:var(--green-bg);color:var(--green)}
 .rpd .sch-dh{display:grid;border-bottom:1px solid var(--brd);background:var(--sect)}
 .rpd .sch-corner{border-right:1px solid var(--brdl)}
 .rpd .sch-dhc{padding:9px 10px;text-align:center;border-right:1px solid var(--brdl);cursor:pointer;transition:background .15s;min-width:0}

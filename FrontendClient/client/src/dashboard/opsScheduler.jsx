@@ -157,7 +157,7 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
     return (
       <div
         key={eventKey(event)}
-        className={`evc ${eventClass(event.t)}${height < 36 ? " compact" : ""}`}
+        className={`evc ${eventClass(event.t)}${(event.t === "pm" && event.completed) || (event.t === "release" && event.p.release?.status === "completed") ? " done" : ""}${height < 36 ? " compact" : ""}`}
         style={{
           top: `${top}px`,
           height: `${Math.max(20, height)}px`,
@@ -173,7 +173,7 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
         }}
       >
         <div className="et">{event.time} – {timeText(end)}</div>
-        <div className="en">{event.p.name}</div>
+        <div className="en">{reference ? title : event.p.name}</div>
         {height >= 36 ? <div className="el">{location || "—"}</div> : null}
       </div>
     );
@@ -181,9 +181,8 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
 
   return (
     <>
-      <div className={`sch${reference ? " reference" : ""}`}>
-        {reference ? null : (
-          <div className="sch-top">
+      <div className={`sch${reference ? ` reference ${isWeek ? "week" : "day"}` : ""}`} aria-label={`${isWeek ? "Weekly" : "Daily"} operations schedule`}>
+        <div className="sch-top">
             <div>
               <div className="pl">{periodTitle}</div>
               <div className="ps">{periodSubtitle}</div>
@@ -194,7 +193,6 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
               <span className="ci" style={{ color: "var(--green)" }}><i></i>Release</span>
             </div>
           </div>
-        )}
 
         <div className="sch-ad" style={{ gridTemplateColumns: columns }}>
           <div className="adt">{reference ? "All Day" : "Scheduled"}</div>

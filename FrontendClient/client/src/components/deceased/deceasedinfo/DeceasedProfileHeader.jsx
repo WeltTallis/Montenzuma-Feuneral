@@ -3,7 +3,24 @@ import RouteOptimizer from '../../hearse/RouteOptimizer';
 import React, { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import bwipjs from '@bwip-js/browser';
-import { C } from './theme';
+
+// ─── Colors defined locally (no dependency on ./theme) ───
+const COLORS = {
+  black: '#0a0a0a',
+  dark: '#1a1a1a',
+  mid: '#444444',
+  gray: '#777777',
+  border: '#e0e0e0',
+  borderLight: '#efefef',
+  bgField: '#f7f7f5',
+  white: '#ffffff',
+  danger: '#dc2626',
+  dangerDark: '#b91c1c',
+  route: '#5F0F40',
+  refresh: '#d97706',
+  scanner: '#0F3040',
+  charges: '#00296B',
+};
 
 // ─── Animations ───
 const scanMove = keyframes`
@@ -27,7 +44,7 @@ const HeaderBar = styled.div`
   padding: 0 12px;
 
   &::-webkit-scrollbar { height: 4px; }
-  &::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 2px; }
+  &::-webkit-scrollbar-thumb { background: ${COLORS.border}; border-radius: 2px; }
 
   @media (max-width: 640px) {
     flex-wrap: wrap;
@@ -35,7 +52,7 @@ const HeaderBar = styled.div`
   }
 `;
 
-// ─── Barcode (no border, no admission number, just deceased ID) ───
+// ─── Barcode ───
 const BarcodeSection = styled.div`
   display: flex;
   flex-direction: column;
@@ -55,7 +72,7 @@ const BarcodeId = styled.span`
   font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: 10px;
   font-weight: 700;
-  color: ${C.black};
+  color: ${COLORS.black};
   white-space: nowrap;
   letter-spacing: 0.04em;
   text-align: center;
@@ -89,7 +106,7 @@ const Barcode = ({ value }) => {
 const Divider = styled.div`
   width: 1px;
   height: 56px;
-  background: ${C.border};
+  background: ${COLORS.border};
   flex-shrink: 0;
 
   @media (max-width: 640px) { display: none; }
@@ -101,7 +118,7 @@ const Spacer = styled.div`
   @media (max-width: 640px) { display: none; }
 `;
 
-// ─── Base button (all equal padding/size) ───
+// ─── Base button ───
 const Btn = styled.button`
   display: inline-flex;
   align-items: center;
@@ -116,14 +133,14 @@ const Btn = styled.button`
   transition: all 0.15s ease;
   white-space: nowrap;
   flex-shrink: 0;
-  border: 1px solid ${C.border};
-  background: ${C.white || '#ffffff'};
-  color: ${C.dark};
+  border: 1px solid ${COLORS.border};
+  background: ${COLORS.white};
+  color: ${COLORS.dark};
   position: relative;
   overflow: hidden;
   min-height: 44px;
 
-  &:hover { background: ${C.bgField}; border-color: ${C.gray}; }
+  &:hover { background: ${COLORS.bgField}; border-color: ${COLORS.gray}; }
 
   svg { width: 16px; height: 16px; flex-shrink: 0; }
 
@@ -132,24 +149,24 @@ const Btn = styled.button`
     min-width: calc(50% - 5px);
   }
 
-  ${p => p.$primary && `
-    background: #00296B; color: #fff; border-color: #00296B;
+  ${(p) => p.$primary && `
+    background: ${COLORS.charges}; color: #fff; border-color: ${COLORS.charges};
     &:hover { background: #001f50; }
   `}
 
-  ${p => p.$danger && `
-    background: #dc2626; color: #fff; border-color: #dc2626;
+  ${(p) => p.$danger && `
+    background: ${COLORS.danger}; color: #fff; border-color: ${COLORS.danger};
     box-shadow: 0 2px 8px rgba(220,38,38,0.2);
-    &:hover { background: #b91c1c; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(220,38,38,0.3); }
+    &:hover { background: ${COLORS.dangerDark}; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(220,38,38,0.3); }
   `}
 
-  ${p => p.$route && `
-    background: #5F0F40; color: #fff; border-color: #5F0F40;
+  ${(p) => p.$route && `
+    background: ${COLORS.route}; color: #fff; border-color: ${COLORS.route};
     &:hover { background: #4a0b33; }
   `}
 
-  ${p => p.$scanner && `
-    background: #0F3040; color: #fff; border-color: #0F3040;
+  ${(p) => p.$scanner && `
+    background: ${COLORS.scanner}; color: #fff; border-color: ${COLORS.scanner};
     &::after {
       content: '';
       position: absolute;
@@ -164,12 +181,12 @@ const Btn = styled.button`
     }
   `}
 
-  ${p => p.$scanning && `
+  ${(p) => p.$scanning && `
     &::after { animation-play-state: running; }
   `}
 `;
 
-// ─── Refresh (amber bg, white text) ───
+// ─── Refresh ───
 const RefreshBtn = styled.button`
   display: inline-flex;
   align-items: center;
@@ -184,8 +201,8 @@ const RefreshBtn = styled.button`
   transition: all 0.15s ease;
   white-space: nowrap;
   flex-shrink: 0;
-  border: 1px solid #d97706;
-  background: #d97706;
+  border: 1px solid ${COLORS.refresh};
+  background: ${COLORS.refresh};
   color: #ffffff;
   min-height: 44px;
   position: relative;
@@ -203,7 +220,7 @@ const RefreshBtn = styled.button`
   }
 `;
 
-// ─── Back to List (white bg, red text) ───
+// ─── Back to List ───
 const BackBtn = styled.button`
   display: inline-flex;
   align-items: center;
@@ -218,12 +235,12 @@ const BackBtn = styled.button`
   transition: all 0.15s ease;
   white-space: nowrap;
   flex-shrink: 0;
-  border: 1px solid #dc2626;
+  border: 1px solid ${COLORS.danger};
   background: #ffffff;
-  color: #dc2626;
+  color: ${COLORS.danger};
   min-height: 44px;
 
-  &:hover { background: #fef2f2; border-color: #dc2626; }
+  &:hover { background: #fef2f2; border-color: ${COLORS.danger}; }
 
   svg { width: 16px; height: 16px; flex-shrink: 0; }
 
@@ -268,7 +285,7 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
       {showRouteOptimizer && <RouteOptimizer onClose={() => setShowRouteOptimizer(false)} />}
 
       <HeaderBar>
-        {/* Barcode — no border, no admission number, just deceased ID */}
+        {/* Barcode */}
         <BarcodeSection>
           <BarcodeFrame>
             <Barcode value={admissionNo !== '—' ? admissionNo : 'AWAITING-ID'} />
@@ -279,7 +296,7 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
         <Divider />
         <Spacer />
 
-        {/* Refresh — amber bg, white text */}
+        {/* Refresh */}
         <RefreshBtn
           type="button"
           onClick={onRefresh}
@@ -311,7 +328,7 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
           Route
         </Btn>
 
-        {/* Scanner — #0F3040 */}
+        {/* Scanner */}
         <Btn $scanner $scanning={scanning} onClick={handleScan} title="Scan a document and upload to this profile">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 7V5a2 2 0 0 1 2-2h2" />
@@ -324,7 +341,7 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
           Scanner
         </Btn>
 
-        {/* Charges — #00296B */}
+        {/* Charges */}
         {onChargeSettingsClick && (
           <Btn $primary onClick={onChargeSettingsClick}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
