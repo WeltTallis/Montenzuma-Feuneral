@@ -6,7 +6,7 @@ import { fetchAllBranchDeceased } from "../api/dashboardDataApi";
 import { fetchReleasesFeed, fetchPostmortemsFeed } from "../api/dashboardFeedApi";
 
 import {
-  DOWM, MO, TYPE_C, baseList, buildCases, calcStats, eventsOf, fmtK, initials, isReleased,
+  DOWM, MO, TYPE_C, addDays, baseList, buildCases, calcStats, eventsOf, fmtK, initials, isReleased,
   matchPill, nowClock, pad, pillsFor, searchMatch, todayKey,
 } from "./opsData";
 import { TipBox, tipProps, useTooltip } from "./opsBits";
@@ -79,7 +79,7 @@ function useCaseData() {
 
 function Sidebar({
   calc, scoped, section, filters, onTogglePill, onOpenModal,
-  calY, calM, onMonthNav, calendarDots, selDay, today, onPickDay,
+  calY, calM, onMonthNav, calendarDots, selDay, today, onPickDay, view, onViewChange,
 }) {
   const dim = new Date(calY, calM + 1, 0).getDate();
   const firstDow = (new Date(calY, calM, 1).getDay() + 6) % 7;
@@ -132,11 +132,29 @@ function Sidebar({
     <>
       <div className="smc">
         <div className="smc-h">
-          <span className="smc-t">{MO[calM]} {calY}</span>
+          <div>
+            <span className="smc-t">{MO[calM]} {calY}</span>
+            <span className="smc-sub">Select a day to open the schedule</span>
+          </div>
           <div className="smc-nav">
             <button onClick={() => onMonthNav(-1)} aria-label="Previous month"><Ic n="chevL" s={12} /></button>
             <button onClick={() => onMonthNav(1)} aria-label="Next month"><Ic n="chevR" s={12} /></button>
           </div>
+        </div>
+        <div className="smc-views">
+          {[
+            ["day", "Day"],
+            ["week", "Week"],
+            ["month", "Month"],
+          ].map(([key, label]) => (
+            <button
+              className={view === key ? "on" : ""}
+              key={key}
+              onClick={() => onViewChange(key)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         <div className="smc-g">{cells}</div>
       </div>
@@ -236,6 +254,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   const [calM, setCalM] = useState(new Date().getMonth());
   const [clickedDay, setClickedDay] = useState(null);
   const [todayMode, setTodayMode] = useState(false);
+  const [dayTab, setDayTab] = useState("all");
   const [filters, setFilters] = useState([]);
   const [branch, setBranch] = useState("");
   const [search, setSearch] = useState("");
@@ -319,8 +338,9 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   const openModal = useCallback((key) => setModal(key), []);
 
   const pickDay = useCallback((key) => {
-    setClickedDay((prev) => (prev === key ? null : key));
+    setClickedDay(key);
     setSelDate(key);
+    setDayTab("all");
     setTodayMode(false);
   }, []);
 
@@ -331,14 +351,18 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     if (m > 11) { m = 0; y += 1; }
     setCalM(m);
     setCalY(y);
+    setSelDate(`${y}-${pad(m + 1)}-01`);
+    setClickedDay(null);
+    setDayTab("all");
   };
 
   const goToday = () => {
-    setTodayMode(true);
+    setTodayMode(false);
     setSection("command");
     setSelDate(today);
     setClickedDay(null);
-    setView("month");
+    setDayTab("all");
+    setView("day");
     setCalY(Number(today.slice(0, 4)));
     setCalM(Number(today.slice(5, 7)) - 1);
   };
@@ -368,6 +392,22 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
   const setV = (id) => {
     setView(id);
+    setClickedDay(null);
+    setDayTab("all");
+    setTodayMode(false);
+  };
+
+  const stepPeriod = (dir) => {
+    if (view === "month") {
+      onMonthNav(dir);
+      return;
+    }
+    const next = addDays(selDate, (view === "week" ? 7 : 1) * dir);
+    setSelDate(next);
+    setCalY(Number(next.slice(0, 4)));
+    setCalM(Number(next.slice(5, 7)) - 1);
+    setClickedDay(null);
+    setDayTab("all");
     setTodayMode(false);
   };
 
@@ -441,6 +481,10 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
           {showCalendarControls ? (
             <>
               <button className="tb-btn today-hot" onClick={goToday}>Today</button>
+              <div className="navpair" aria-label="Change schedule period">
+                <button className="tb-btn sq" onClick={() => stepPeriod(-1)} title="Previous period" aria-label="Previous period">‹</button>
+                <button className="tb-btn sq" onClick={() => stepPeriod(1)} title="Next period" aria-label="Next period">›</button>
+              </div>
               <div className="views">
                 {VIEWS.map((v) => (
                   <button
@@ -486,9 +530,11 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               calM={calM}
               onMonthNav={onMonthNav}
               calendarDots={calendarDots}
-              selDay={clickedDay}
+              selDay={selDate}
               today={today}
               onPickDay={pickDay}
+              view={view}
+              onViewChange={setV}
             />
           </aside>
         ) : null}
@@ -505,12 +551,13 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
             <OperationsView
               searched={searched}
               calc={calc}
-              state={{ view, selDate, clickedDay, todayMode, filters, calM, calY }}
+              state={{ view, selDate, clickedDay, todayMode, filters, calM, calY, dayTab }}
               now={now}
               today={today}
               onOpenCase={openCase}
               onClearDay={() => setClickedDay(null)}
-              onPickDay={(key) => { setView("day"); setSelDate(key); setTodayMode(false); }}
+              onPickDay={(key) => { setView("day"); setSelDate(key); setClickedDay(null); setDayTab("all"); setTodayMode(false); }}
+              onDayTabChange={setDayTab}
             />
           ) : (
             <RegisterView

@@ -5,9 +5,10 @@ import {
 } from "./opsData";
 import { Avatar, CountUp, StatusChip } from "./opsBits";
 import { Ic } from "./opsIcons";
+import SchedulerView from "./opsScheduler";
 
 /* ══════════════════════════════════════════════════════════════════════════
-   Operations views — the Today quad, the weekly grid, the banded day view,
+   Operations views — the reference time-grid scheduler, the Today quad,
    the month table and the three registers.
    ══════════════════════════════════════════════════════════════════════════ */
 
@@ -570,34 +571,22 @@ function MonthTable({ searched, calc, state, now, today, onOpenCase }) {
 /* ── operations section router ──────────────────────────────────────────── */
 
 /** Picks the right operations layout for the current view state. */
-export function OperationsView({ searched, calc, state, now, today, onOpenCase, onClearDay, onPickDay }) {
+export function OperationsView({ searched, calc, state, now, today, onOpenCase, onClearDay, onPickDay, onDayTabChange }) {
+  if (state.view === "day" || state.view === "week") {
+    return (
+      <SchedulerView
+        searched={searched}
+        state={state}
+        now={now}
+        today={today}
+        onOpenCase={onOpenCase}
+        onPickDay={onPickDay}
+        onDayTabChange={onDayTabChange}
+      />
+    );
+  }
   if (state.todayMode) {
     return <TodayQuad searched={searched} calc={calc} today={today} now={now} onOpenCase={onOpenCase} />;
-  }
-  if (state.view === "week" && !state.clickedDay) {
-    return (
-      <WeekColumns
-        searched={searched}
-        selDate={state.selDate}
-        today={today}
-        filters={state.filters}
-        onPickDay={onPickDay}
-        onOpenCase={onOpenCase}
-      />
-    );
-  }
-  const target = state.clickedDay || (state.view === "day" ? state.selDate : null);
-  if (target) {
-    return (
-      <BandedDay
-        date={target}
-        searched={searched}
-        filters={state.filters}
-        today={today}
-        onOpenCase={onOpenCase}
-        onClearDay={onClearDay}
-      />
-    );
   }
   return (
     <MonthTable

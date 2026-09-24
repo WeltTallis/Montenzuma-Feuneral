@@ -38,7 +38,7 @@ const slideInRight = keyframes`
   to   { opacity: 1; transform: translateX(0); }
 `;
 
-// ─── Color Variables ────────────────────────────────────────────────
+//  Color Variables
 const C = {
   black: '#0a0a0a',
   dark: '#1a1a1a',
@@ -82,7 +82,7 @@ const C = {
   accent: '#DD2D4A',
 };
 
-// ─── Status Configuration ───────────────────────────────────────────
+//  Status Configuration   
 /* Every status renders as a flat glossy status button: sharp corners, white
    label, white LED dot and a diagonal light sweep (matches the approved
    status-button design). `filter` keeps the toolbar dropdown working even
@@ -119,6 +119,8 @@ const getStatusInfo = (statusStr) => {
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+
+    
 
   const aliases = {
     // Under Care / In care
