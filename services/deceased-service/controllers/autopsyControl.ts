@@ -6,7 +6,11 @@ import { DateTime } from 'luxon';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
-import puppeteer from 'puppeteer';
+// NOTE: puppeteer v23+ is ESM-only ("type": "module") while this service compiles to
+// CommonJS, so it must be loaded with a dynamic import() (see `loadPuppeteer` below).
+// Type-only imports are erased at compile time and therefore stay CJS-safe; the
+// `resolution-mode` attribute tells TS this is an ESM-only module referenced from CJS.
+import type { Browser } from 'puppeteer' with { 'resolution-mode': 'import' };
 import https from 'https';
 
 interface TenantRequest extends Request {
@@ -698,6 +702,24 @@ export const updatePostmortem = async (req: TenantRequest, res: Response): Promi
 };
 
 // ═══════════════════════════════════════════════════════════════
+// PUPPETEER LOADER
+// puppeteer v23+ is published as ESM-only, so it cannot be `require`d
+// from this CommonJS service. It is loaded once through a dynamic
+// import() (same pattern as xlsx-populate in exportExcelController.ts).
+// ═══════════════════════════════════════════════════════════════
+type PuppeteerNodeModule = typeof import('puppeteer', { with: { 'resolution-mode': 'import' } })['default'];
+
+let puppeteerModulePromise: Promise<PuppeteerNodeModule> | null = null;
+
+const loadPuppeteer = async (): Promise<PuppeteerNodeModule> => {
+    if (!puppeteerModulePromise) {
+        puppeteerModulePromise = import('puppeteer')
+            .then((mod: any) => (mod.default || mod) as PuppeteerNodeModule);
+    }
+    return puppeteerModulePromise;
+};
+
+// ═══════════════════════════════════════════════════════════════
 // EXPORT: generatePostmortemPDF — Puppeteer, GUARANTEED 1 page
 // ═══════════════════════════════════════════════════════════════
 export const generatePostmortemPDF = async (req: TenantRequest, res: Response): Promise<void> => {
@@ -709,7 +731,7 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         return;
     }
 
-    let browser: puppeteer.Browser | null = null;
+    let browser: Browser | null = null;
 
     try {
         const dbName = await resolveDatabase(tenantSlug);
@@ -843,8 +865,10 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         });
 
         // ── 8. GENERATE PDF WITH PUPPETEER ──
+        const puppeteer = await loadPuppeteer();
         browser = await puppeteer.launch({
-            headless: 'new',
+            // v25 accepts `boolean | 'shell'` only — `true` = new headless mode
+            headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--font-render-hinting=none'],
         });
 
