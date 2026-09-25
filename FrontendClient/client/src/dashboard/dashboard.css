@@ -25,8 +25,7 @@
   --teal:var(--green);--teal-bg:var(--green-bg);
   --shs:0 1px 2px rgba(0,0,0,.05);--shl:0 10px 15px rgba(0,0,0,.08);--shxl:0 20px 25px rgba(0,0,0,.12);
   --sans:'Inter',-apple-system,sans-serif;--mono:'IBM Plex Mono',ui-monospace,monospace;--serif:'Fraunces',Georgia,serif;
-  --stPending:#d97706;--stBooked:#00296B;--stScheduled:#E36414;--stInProgress:#0c0b0f;
-  --stCompleted:#5F0F40;--stDelivered:#132A13;--stCancelled:#DD2D4A;--stMaintenance:#03071E;
+  --schIntake:#00296B;--schPm:#E36414;--schRelease:#132A13;
   height:100vh;overflow-y:auto;overflow-x:hidden;
   background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:14px;line-height:1.5;
   -webkit-font-smoothing:antialiased;transition:background .25s,color .25s;
@@ -397,110 +396,68 @@
 .rpd .te{position:fixed;bottom:24px;right:24px;padding:11px 18px;background:var(--tx);color:var(--card);border-radius:10px;box-shadow:var(--shxl);font-size:12px;font-weight:600;z-index:2000;opacity:0;pointer-events:none;transform:translateY(10px);transition:.25s}
 .rpd .te.show{opacity:1;transform:none}
 
-/* ══════════════════════════════════════════════════════════════════════════
-   Analytics · Day / Week — a 1:1 port of the "Operations Schedule" reference.
-   Toolbar first (Today · arrows · period · count · Day/Week), then the
-   schedule surface: All-Day strip → day headers → hour grid.
-   ══════════════════════════════════════════════════════════════════════════ */
-
-/* period heading + event counter, exactly like the reference's top bar */
+/* Analytics Day/Week — faithful operations-schedule reference treatment. */
 .rpd .tb-period{display:flex;flex-direction:column;gap:1px;min-width:180px;line-height:1.1;padding:0 4px}
-.rpd .tb-period b{font:600 20px/1.1 var(--serif);color:var(--tx);letter-spacing:-.01em;white-space:nowrap}
-.rpd .tb-period span{font-size:11px;font-weight:500;color:var(--tx3)}
-.rpd .tb-period-count{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--tx3);white-space:nowrap}
+.rpd .tb-period b{font:600 18px/1.1 var(--serif);color:var(--tx);letter-spacing:-.01em;white-space:nowrap}
+.rpd .tb-period span{font-size:10px;font-weight:500;color:var(--tx3)}
+.rpd .tb-period-count{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--tx3);white-space:nowrap}
 .rpd .tb-period-count b{font:700 16px var(--serif);color:var(--pink)}
-
-/* the toolbar's controls, restyled to the reference's metrics */
-.rpd .tbar.ref-mode .tb-btn{height:34px;border-radius:4px;font-size:13px;font-weight:600;letter-spacing:.02em}
-.rpd .tbar.ref-mode .tb-btn.today-hot{padding:0 20px;background:var(--tx);border-color:var(--tx);color:var(--card)}
-.rpd .tbar.ref-mode .tb-btn.today-hot:hover{background:var(--tx);border-color:var(--tx);color:var(--card);transform:translateY(-1px);box-shadow:0 4px 12px rgba(10,10,10,.15)}
-.rpd .tbar.ref-mode .navpair{gap:6px}
-.rpd .tbar.ref-mode .navpair .tb-btn.sq{width:34px;height:34px;font-size:14px;color:var(--tx2)}
-.rpd .tbar.ref-mode .navpair .tb-btn.sq:hover{background:var(--tx);border-color:var(--tx);color:var(--card)}
-.rpd .tbar.ref-mode .views{background:var(--field);border-color:transparent;border-radius:6px;padding:3px;gap:2px}
-.rpd .tbar.ref-mode .views button{padding:7px 20px;border-radius:4px;font-size:13px;font-weight:600;color:var(--tx3)}
-.rpd .tbar.ref-mode .views button.on{background:var(--card);color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,.08)}
-
 .rpd .mains.analytics-period{height:calc(100vh - 52px);padding-bottom:0;display:flex;overflow:hidden}
-/* ── surface ────────────────────────────────────────────────────────────── */
-.rpd .as{display:flex;flex-direction:column;flex:1;min-width:0;height:100%;background:var(--sect);overflow-x:auto;overflow-y:hidden}
-.rpd .as.week .as-allday,.rpd .as.week .as-headers,.rpd .as.week .as-scroll{min-width:834px}
-
-/* all-day strip */
-.rpd .as-allday{display:grid;border-bottom:1px solid var(--brd);background:var(--card);flex-shrink:0}
-.rpd .as-adlabel{padding:8px 10px;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--tx4);font-weight:600;border-right:1px solid var(--brd);display:flex;align-items:center;justify-content:flex-end}
-.rpd .as-adcell{padding:2px 4px;border-right:1px solid var(--brdl);min-height:26px;display:flex;flex-direction:column;justify-content:center;gap:2px}
-.rpd .as-adcell:last-child{border-right:none}
-.rpd .as-chip{padding:3px 10px;font-size:11px;font-weight:600;color:#fff;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.rpd .as-chip-in{background:var(--stBooked)}
-.rpd .as-chip-out{background:var(--stDelivered)}
-
-/* day headers */
-.rpd .as-headers{display:grid;border-bottom:1px solid var(--brd);background:var(--card);flex-shrink:0}
-.rpd .as-corner{border-right:1px solid var(--brd)}
-.rpd .as-day{padding:8px 10px;text-align:center;border-right:1px solid var(--brdl);display:flex;flex-direction:column;align-items:center;gap:3px;transition:background .2s cubic-bezier(.32,.72,.24,1)}
-.rpd .as-day:last-child{border-right:none}
-.rpd .as-day:hover{background:var(--field)}
-.rpd .as-day-name{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--tx3);font-weight:600}
-.rpd .as-day-num{font:600 18px/1 var(--serif);color:var(--tx);width:30px;height:30px;display:grid;place-items:center;border-radius:50%;transition:all .2s cubic-bezier(.32,.72,.24,1)}
-.rpd .as-day.is-today .as-day-num{background:var(--pink);color:#fff;box-shadow:0 2px 8px rgba(221,45,74,.3)}
-.rpd .as-day.is-today .as-day-name{color:var(--pink);font-weight:700}
-.rpd .as-day.day-mode{align-items:flex-start;text-align:left;padding-left:14px}
-.rpd .as-day.day-mode .as-day-num{width:auto;height:auto}
-.rpd .as-day.day-mode.is-today .as-day-num{padding:6px 11px;line-height:1;border-radius:22px;box-shadow:none}
-/* hour grid */
-.rpd .as-scroll{flex:1;min-height:0;overflow:auto;background:var(--sect)}
-.rpd .as-grid{display:grid;position:relative;min-height:100%}
-.rpd .as-times{position:sticky;left:0;z-index:6;background:var(--card);border-right:1px solid var(--brd)}
-.rpd .as-slot{height:56px;padding:0 10px 0 0;text-align:right;border-bottom:1px solid var(--brdl);position:relative}
-.rpd .as-slot span{font:500 10px var(--mono);color:var(--tx4);position:relative;top:-7px;display:inline-block;background:var(--card);padding:1px 4px;border-radius:3px}
-.rpd .as-col{border-right:1px solid var(--brdl);position:relative;min-width:0}
-.rpd .as-col:last-child{border-right:none}
-.rpd .as-col.is-today{background:rgba(221,45,74,.015)}
-.rpd .as-hour{height:56px;border-bottom:1px solid var(--brdl);position:relative;transition:background .15s}
-.rpd .as-hour:hover{background:rgba(0,0,0,.012)}
-.rpd .as-hour::after{content:'';position:absolute;top:28px;left:0;right:0;border-top:1px dashed var(--brdl);opacity:.6}
-
-/* event cards — solid status colour, white text (same representation) */
-.rpd .as-event{position:absolute;border-radius:4px;padding:5px 8px;overflow:hidden;cursor:pointer;color:#fff;z-index:10;transition:all .2s cubic-bezier(.32,.72,.24,1)}
-.rpd .as-event:hover{z-index:15;box-shadow:0 4px 16px rgba(0,0,0,.2);transform:translateY(-1px)}
-.rpd .as-event .as-t{font:500 9px var(--mono);opacity:.8;margin-bottom:1px;letter-spacing:.02em}
-.rpd .as-event .as-n{font-size:12px;font-weight:700;line-height:1.15;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rpd .as-event .as-l{font-size:10px;font-weight:500;opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rpd .as-event.compact{display:flex;align-items:center;gap:6px;padding:3px 8px}
-.rpd .as-event.compact .as-t{margin:0;flex-shrink:0}
-.rpd .as-event.compact .as-n{margin:0;flex:1;min-width:0;font-size:11px}
-.rpd .as-event.compact .as-l{display:none}
-.rpd .as-st-pending{background:var(--stPending)}
-.rpd .as-st-booked{background:var(--stBooked)}
-.rpd .as-st-scheduled{background:var(--stScheduled)}
-.rpd .as-st-inprogress{background:var(--stInProgress)}
-.rpd .as-st-completed{background:var(--stCompleted);opacity:.75}
-.rpd .as-st-delivered{background:var(--stDelivered)}
-.rpd .as-st-cancelled{background:var(--stCancelled);opacity:.5;text-decoration:line-through}
-.rpd .as-st-maintenance{background:var(--stMaintenance)}
-
-/* now indicator + empty state */
-.rpd .as-now{position:absolute;left:0;right:0;height:2px;background:var(--pink);z-index:20;pointer-events:none}
-.rpd .as-now::before{content:'';position:absolute;left:-1px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--pink);box-shadow:0 0 0 3px rgba(221,45,74,.2)}
-.rpd .as-empty{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font:italic 500 12px var(--serif);color:var(--tx4);pointer-events:none;white-space:nowrap}
-.rpd.dark .as-col.is-today{background:rgba(240,125,143,.018)}
-
-/* ── responsive ── */
-@media(max-width:1100px){.rpd .tb-period{min-width:150px}.rpd .tb-period b{font-size:17px}.rpd .tb-period-count{display:none}}
+.rpd .sch.reference{width:100%;height:100%;margin:0;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;background:var(--sect);overflow-x:auto;overflow-y:hidden}
+.rpd .sch.reference.week .sch-ad,.rpd .sch.reference.week .sch-dh,.rpd .sch.reference.week .sch-scroll{min-width:834px}
+.rpd .sch.reference .sch-top{display:none}
+.rpd .sch.reference .sch-ad{flex-shrink:0;background:var(--card);border-bottom:1px solid var(--brd);min-height:34px}
+.rpd .sch.reference .sch-ad .adt{justify-content:flex-end;padding:8px 10px;color:var(--tx4);font-size:9px;letter-spacing:.12em;border-right-color:var(--brd)}
+.rpd .sch.reference .sch-ad .adc{padding:4px;border-right-color:var(--brdl);min-height:34px;gap:2px}
+.rpd .sch.reference .adchip{padding:3px 10px;font-size:11px;font-weight:600;color:#fff;border-radius:3px}
+.rpd .sch.reference .adchip.adi{background:var(--schIntake)}
+.rpd .sch.reference .adchip.adr{background:var(--schRelease)}
+.rpd .sch.reference .sch-dh{flex-shrink:0;background:var(--card);border-bottom:1px solid var(--brd)}
+.rpd .sch.reference .sch-corner{border-right-color:var(--brd)}
+.rpd .sch.reference .sch-dhc{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 10px;border-right-color:var(--brdl);background:var(--card)}
+.rpd .sch.reference .sch-dhc:hover{background:var(--field)}
+.rpd .sch.reference .sch-dhc .dh-n{font-size:10px;letter-spacing:.14em;color:var(--tx3);margin:0}
+.rpd .sch.reference .sch-dhc .dh-d{font:600 18px/1 var(--serif);color:var(--tx);width:30px;height:30px;display:grid;place-items:center;border-radius:50%}
+.rpd .sch.reference .sch-dhc.today .dh-d{width:30px;height:30px;line-height:normal;background:var(--pink);color:#fff;box-shadow:0 2px 8px rgba(221,45,74,.3)}
+.rpd .sch.reference .sch-dhc.today .dh-n{color:var(--pink);font-weight:700}
+.rpd .sch.reference .sch-dhc.day-mode{align-items:flex-start;gap:3px;padding:8px 10px 8px 14px}
+.rpd .sch.reference .sch-dhc.day-mode .dh-d{width:auto;height:auto;font-size:20px;place-items:initial}
+.rpd .sch.reference .sch-dhc.day-mode.today .dh-d{width:auto;height:auto;padding:6px 11px;line-height:1;border-radius:22px;box-shadow:none}
+.rpd .sch.reference .sch-scroll{flex:1;min-height:0;max-height:none;overflow:auto;background:var(--sect)}
+.rpd .sch.reference .sch-grid{min-height:100%}
+.rpd .sch.reference .sch-times{position:sticky;left:0;z-index:6;background:var(--card);border-right-color:var(--brd)}
+.rpd .sch.reference .sch-slot{padding:0 10px 0 0}
+.rpd .sch.reference .sch-slot span{top:-7px;background:var(--card);padding:1px 4px;border-radius:3px;color:var(--tx4)}
+.rpd .sch.reference .sch-col{background:var(--card)}
+.rpd .sch.reference .sch-col.today{background:rgba(221,45,74,.015)}
+.rpd .sch.reference .sch-hc:hover{background:rgba(0,0,0,.012)}
+.rpd .sch.reference .evc{left:3px;right:3px;border-radius:4px;padding:5px 8px;color:#fff;box-shadow:none;transition:all .2s cubic-bezier(.32,.72,.24,1)}
+.rpd .sch.reference .evc:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.rpd .sch.reference .evi{background:var(--schIntake);border-left:0;color:#fff}
+.rpd .sch.reference .evp{background:var(--schPm);border-left:0;color:#fff}
+.rpd .sch.reference .evr{background:var(--schRelease);border-left:0;color:#fff}
+.rpd .sch.reference .evc.done{opacity:.75}
+.rpd .sch.reference .evc .et{font:500 9px var(--mono);opacity:.8;margin-bottom:1px}
+.rpd .sch.reference .evc .en{font-size:12px;line-height:1.15;margin-bottom:1px}
+.rpd .sch.reference .evc .el{font-size:10px;font-weight:500;opacity:.75}
+.rpd .sch.reference .evc.compact{padding:3px 8px;gap:6px}
+.rpd .sch.reference .evc.compact .en{font-size:11px;margin:0;flex:1;min-width:0}
+.rpd .sch.reference .nowline{background:var(--pink)}
+.rpd .sch.reference .nowline::before{left:-1px;top:-4px;box-shadow:0 0 0 3px rgba(221,45,74,.2)}
+.rpd .sch.reference .sch-empty{top:40%;font:italic 500 12px var(--serif);font-weight:500}
+.rpd.dark .sch.reference .sch-col.today{background:rgba(240,125,143,.018)}
+@media(max-width:1100px){.rpd .tb-period{min-width:150px}.rpd .tb-period b{font-size:16px}.rpd .tb-period-count{display:none}}
 @media(max-width:768px){
   .rpd .mains.analytics-period{height:calc(100vh - 52px)}
-  .rpd .as.week .as-allday,.rpd .as.week .as-headers,.rpd .as.week .as-scroll{min-width:573px}
-  .rpd .as.week .as-allday,.rpd .as.week .as-headers,.rpd .as.week .as-grid{grid-template-columns:48px repeat(7,minmax(75px,1fr))!important}
-  .rpd .as.day .as-allday,.rpd .as.day .as-headers,.rpd .as.day .as-grid{grid-template-columns:48px minmax(0,1fr)!important}
-  .rpd .as-slot{padding-right:6px}
-  .rpd .as-slot span{font-size:9px}
-  .rpd .as-day-name{font-size:9px}
-  .rpd .as-day-num{font-size:15px;width:26px;height:26px}
-  .rpd .as-event .as-n{font-size:10px}
-  .rpd .as-event .as-l{display:none}
+  .rpd .sch.reference.week .sch-ad,.rpd .sch.reference.week .sch-dh,.rpd .sch.reference.week .sch-scroll{min-width:573px}
+  .rpd .sch.reference.week .sch-ad,.rpd .sch.reference.week .sch-dh,.rpd .sch.reference.week .sch-grid{grid-template-columns:48px repeat(7,minmax(75px,1fr))!important}
+  .rpd .sch.reference.week .sch-grid{min-width:573px}
+  .rpd .sch.reference.week .sch-slot{padding-right:6px}
+  .rpd .sch.reference .evc .en{font-size:10px}
+  .rpd .sch.reference .evc .el{display:none}
 }
-/* ═══ operations (board) time-grid scheduler — Operations section ═══ */
+
+/* ═══ reference time-grid scheduler ═══ */
 .rpd .sch{margin:14px 22px 0;background:var(--card);border:1px solid var(--brd);border-radius:12px;box-shadow:var(--shs);overflow:hidden}
 .rpd .sch-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px;border-bottom:1px solid var(--brdl);flex-wrap:wrap}
 .rpd .sch-top .pl{font-size:15px;font-weight:800;letter-spacing:-.2px}
@@ -564,3 +521,114 @@
 .rpd .wksum .ci{display:inline-flex;align-items:center;gap:6px}
 .rpd .wksum .ci i{width:8px;height:8px;border-radius:3px}
 @media(max-width:700px){.rpd .sch{margin-left:10px;margin-right:10px}.rpd .sch-scroll{overflow-x:auto}.rpd .sch-grid{min-width:700px}.rpd .dtabs,.rpd .wksum{margin-left:10px;margin-right:10px}}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Operations · Day / Week board — a 1:1 port of the "Operations Schedule"
+   design the team signed off on (the view the sidebar calendar's Day / Week
+   buttons open). Every size, colour and space below is copied from that
+   reference; the palette is tokenised so the dark theme keeps working.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* the main area becomes a full-height column; the board owns the space */
+.rpd .mains.schedule-mode{height:calc(100vh - 52px);padding-bottom:0;display:flex;flex-direction:column;overflow:hidden}
+
+/* toolbar: Today · ‹ › · period · count · Day|Week — same metrics as the design */
+.rpd .tbar.sched-mode .tb-btn{height:34px;border-radius:4px;font-size:13px;font-weight:600;letter-spacing:.02em}
+.rpd .tbar.sched-mode .tb-btn.today-hot{padding:0 20px;background:var(--tx);border-color:var(--tx);color:var(--card)}
+.rpd .tbar.sched-mode .tb-btn.today-hot:hover{background:var(--tx);border-color:var(--tx);color:var(--card);transform:translateY(-1px);box-shadow:0 4px 12px rgba(10,10,10,.15)}
+.rpd .tbar.sched-mode .navpair{gap:6px}
+.rpd .tbar.sched-mode .navpair .tb-btn.sq{width:34px;height:34px;font-size:14px;color:var(--tx2)}
+.rpd .tbar.sched-mode .navpair .tb-btn.sq:hover{background:var(--tx);border-color:var(--tx);color:var(--card)}
+.rpd .tbar.sched-mode .views{background:var(--field);border-color:transparent;border-radius:6px;padding:3px;gap:2px}
+.rpd .tbar.sched-mode .views button{padding:7px 20px;border-radius:4px;font-size:13px;font-weight:600;color:var(--tx3)}
+.rpd .tbar.sched-mode .views button.on{background:var(--card);color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.rpd .tbar.sched-mode .tb-period b{font-size:20px}
+.rpd .tbar.sched-mode .tb-period span{font-size:11px}
+.rpd .tbar.sched-mode .tb-period-count{font-size:12px}
+.rpd .tbar.sched-mode .tb-period-count b{font-size:16px}
+
+/* board surface */
+.rpd .bd{--stPending:#d97706;--stBooked:#00296B;--stScheduled:#E36414;--stInProgress:#0c0b0f;
+  --stCompleted:#5F0F40;--stDelivered:#132A13;--stCancelled:#DD2D4A;--stMaintenance:#03071E;
+  display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;background:var(--sect);overflow-x:auto;overflow-y:hidden}
+.rpd .bd.week .bd-allday,.rpd .bd.week .bd-headers,.rpd .bd.week .bd-scroll{min-width:834px}
+
+/* ── all-day bar ── */
+.rpd .bd-allday{display:grid;border-bottom:1px solid var(--brd);background:var(--card);flex-shrink:0}
+.rpd .bd-adlabel{padding:8px 10px;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--tx4);font-weight:600;border-right:1px solid var(--brd);display:flex;align-items:center;justify-content:flex-end}
+.rpd .bd-adcell{padding:2px 4px;border-right:1px solid var(--brdl);min-height:26px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.rpd .bd-adcell:last-child{border-right:none}
+.rpd .bd-chip{padding:3px 10px;font-size:11px;font-weight:600;color:#fff;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.rpd .bd-chip-in{background:var(--stBooked)}
+.rpd .bd-chip-out{background:var(--stDelivered)}
+
+/* ── day headers ── */
+.rpd .bd-headers{display:grid;border-bottom:1px solid var(--brd);background:var(--card);flex-shrink:0}
+.rpd .bd-corner{border-right:1px solid var(--brd)}
+.rpd .bd-day{padding:8px 10px;text-align:center;border-right:1px solid var(--brdl);display:flex;flex-direction:column;align-items:center;gap:3px;transition:background .2s cubic-bezier(.32,.72,.24,1)}
+.rpd .bd-day:last-child{border-right:none}
+.rpd .bd-day:hover{background:var(--field)}
+.rpd .bd-day-name{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--tx3);font-weight:600}
+.rpd .bd-day-num{font:600 18px/1 var(--serif);color:var(--tx);width:30px;height:30px;display:grid;place-items:center;border-radius:50%;transition:all .2s cubic-bezier(.32,.72,.24,1)}
+.rpd .bd-day.is-today .bd-day-num{background:var(--pink);color:#fff;box-shadow:0 2px 8px rgba(221,45,74,.3)}
+.rpd .bd-day.is-today .bd-day-name{color:var(--pink);font-weight:700}
+.rpd .bd-day.day-mode{align-items:flex-start;text-align:left;padding-left:14px}
+.rpd .bd-day.day-mode .bd-day-num{width:auto;height:auto}
+.rpd .bd-day.day-mode.is-today .bd-day-num{padding:6px 11px;line-height:1;border-radius:22px;box-shadow:none}
+
+
+/* ── hour grid ── */
+/* horizontal scrolling belongs to .bd so the headers + grid always stay
+   aligned; the time column then stays pinned (sticky against .bd). */
+.rpd .bd-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:clip;background:var(--sect)}
+.rpd .bd-grid{display:grid;position:relative;min-height:100%}
+.rpd .bd-times{position:sticky;left:0;z-index:6;background:var(--card);border-right:1px solid var(--brd)}
+.rpd .bd-slot{height:56px;padding:0 10px 0 0;text-align:right;border-bottom:1px solid var(--brdl);position:relative}
+.rpd .bd-slot span{font:500 10px var(--mono);color:var(--tx4);position:relative;top:-7px;display:inline-block;background:var(--card);padding:1px 4px;border-radius:3px}
+.rpd .bd-col{border-right:1px solid var(--brdl);position:relative;min-width:0}
+.rpd .bd-col:last-child{border-right:none}
+.rpd .bd-col.is-today{background:rgba(221,45,74,.015)}
+.rpd .bd-hour{height:56px;border-bottom:1px solid var(--brdl);position:relative;transition:background .15s}
+.rpd .bd-hour:hover{background:rgba(0,0,0,.012)}
+.rpd .bd-hour::after{content:'';position:absolute;top:28px;left:0;right:0;border-top:1px dashed var(--brdl);opacity:.6}
+
+/* ── event cards: solid status colour, white text ── */
+.rpd .bd-event{position:absolute;border-radius:4px;padding:5px 8px;overflow:hidden;cursor:pointer;color:#fff;z-index:10;transition:all .2s cubic-bezier(.32,.72,.24,1)}
+.rpd .bd-event:hover{z-index:15;box-shadow:0 4px 16px rgba(0,0,0,.2);transform:translateY(-1px)}
+.rpd .bd-event .bd-t{font:500 9px var(--mono);opacity:.8;margin-bottom:1px;letter-spacing:.02em}
+.rpd .bd-event .bd-n{font-size:12px;font-weight:700;line-height:1.15;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rpd .bd-event .bd-l{font-size:10px;font-weight:500;opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rpd .bd-event.compact{display:flex;align-items:center;gap:6px;padding:3px 8px}
+.rpd .bd-event.compact .bd-t{margin:0;flex-shrink:0}
+.rpd .bd-event.compact .bd-n{margin:0;flex:1;min-width:0;font-size:11px}
+.rpd .bd-event.compact .bd-l{display:none}
+.rpd .bd-event.done{opacity:.75}
+.rpd .bd-st-pending{background:var(--stPending)}
+.rpd .bd-st-booked{background:var(--stBooked)}
+.rpd .bd-st-scheduled{background:var(--stScheduled)}
+.rpd .bd-st-inprogress{background:var(--stInProgress)}
+.rpd .bd-st-completed{background:var(--stCompleted)}
+.rpd .bd-st-delivered{background:var(--stDelivered)}
+.rpd .bd-st-cancelled{background:var(--stCancelled);opacity:.5;text-decoration:line-through}
+.rpd .bd-st-maintenance{background:var(--stMaintenance)}
+
+/* ── now indicator + empty state ── */
+.rpd .bd-now{position:absolute;left:0;right:0;height:2px;background:var(--pink);z-index:20;pointer-events:none}
+.rpd .bd-now::before{content:'';position:absolute;left:-1px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--pink);box-shadow:0 0 0 3px rgba(221,45,74,.2)}
+.rpd .bd-empty{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font:italic 500 12px var(--serif);color:var(--tx4);pointer-events:none;white-space:nowrap}
+.rpd.dark .bd-col.is-today{background:rgba(240,125,143,.018)}
+
+/* ── responsive (the design's own breakpoints) ── */
+.rpd .mains.schedule-mode .dtabs{margin:10px 22px 14px}
+@media(max-width:768px){
+  .rpd .bd.week .bd-allday,.rpd .bd.week .bd-headers,.rpd .bd.week .bd-scroll{min-width:573px}
+  .rpd .bd.week .bd-allday,.rpd .bd.week .bd-headers,.rpd .bd.week .bd-grid{grid-template-columns:48px repeat(7,minmax(75px,1fr))!important}
+  .rpd .bd.day .bd-allday,.rpd .bd.day .bd-headers,.rpd .bd.day .bd-grid{grid-template-columns:48px minmax(0,1fr)!important}
+  .rpd .bd-slot{padding-right:6px}
+  .rpd .bd-slot span{font-size:9px}
+  .rpd .bd-day-name{font-size:9px}
+  .rpd .bd-day-num{font-size:15px;width:26px;height:26px}
+  .rpd .bd-event .bd-n{font-size:10px}
+  .rpd .bd-event .bd-l{display:none}
+}
+

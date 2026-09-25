@@ -5,7 +5,7 @@ import {
 } from "./opsData";
 import { Avatar, CountUp, StatusChip } from "./opsBits";
 import { Ic } from "./opsIcons";
-import SchedulerView from "./opsScheduler";
+import BoardSchedule from "./opsBoard";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Operations views — the reference time-grid scheduler, the Today quad,
@@ -564,14 +564,17 @@ function MonthTable({ searched, calc, state, now, today, onOpenCase }) {
 export function OperationsView({ searched, calc, state, now, today, onOpenCase, onClearDay, onPickDay, onDayTabChange }) {
   if (state.view === "day" || state.view === "week") {
     return (
-      <SchedulerView
+      <BoardSchedule
         searched={searched}
-        state={state}
+        filters={state.filters || []}
+        view={state.view}
+        selDate={state.selDate}
         now={now}
         today={today}
+        dayTab={state.dayTab || "all"}
+        onDayTabChange={onDayTabChange}
         onOpenCase={onOpenCase}
         onPickDay={onPickDay}
-        onDayTabChange={onDayTabChange}
       />
     );
   }

@@ -440,20 +440,23 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
   const avatarText = initials(tenantData?.name || tenantData?.tenant_name || tenantSlug || "RestPoint");
   const isAnalyticsPeriod = section === "analytics" && (view === "day" || view === "week");
+  /* The Operations section's own Day / Week schedule — what the sidebar
+     calendar's buttons open. Gets the same period heading + event counter. */
+  const isBoardPeriod = section === "command" && (view === "day" || view === "week");
   const analyticsPeriod = schedulePeriod(view, selDate);
   const analyticsPeriodEventCount = useMemo(() => {
-    if (!isAnalyticsPeriod) return 0;
+    if (!isAnalyticsPeriod && !isBoardPeriod) return 0;
     const dayKeys = view === "week"
       ? Array.from({ length: 7 }, (_, index) => addDays(analyticsPeriod.startKey, index))
       : [analyticsPeriod.startKey];
     const daySet = new Set(dayKeys);
     return eventsOf(searched).filter((event) => daySet.has(event.date)).length;
-  }, [analyticsPeriod.startKey, isAnalyticsPeriod, searched, view]);
+  }, [analyticsPeriod.startKey, isAnalyticsPeriod, isBoardPeriod, searched, view]);
 
   return (
     <div className={`rpd${dark ? " dark" : ""}`}>
       {/* ── toolbar ─────────────────────────────────────────────────── */}
-      <header className={`tbar${isAnalyticsPeriod ? " ref-mode" : ""}`}>
+      <header className={`tbar${isBoardPeriod ? " sched-mode" : ""}`}>
         <div className="tb-left">
           <div className="nvp">
             {NAV.map((n) => {
@@ -512,13 +515,13 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
             <button className="tb-btn sq" onClick={() => stepPeriod(-1)} title="Previous period" aria-label="Previous period">‹</button>
             <button className="tb-btn sq" onClick={() => stepPeriod(1)} title="Next period" aria-label="Next period">›</button>
           </div>
-          {isAnalyticsPeriod ? (
+          {isAnalyticsPeriod || isBoardPeriod ? (
             <div className="tb-period" aria-live="polite">
               <b>{analyticsPeriod.title}</b>
               <span>{analyticsPeriod.year}</span>
             </div>
           ) : null}
-          {isAnalyticsPeriod ? (
+          {isAnalyticsPeriod || isBoardPeriod ? (
             <div className="tb-period-count">
               <b>{analyticsPeriodEventCount}</b>
               <span>{analyticsPeriodEventCount === 1 ? "event" : "events"} {view === "week" ? "this week" : "today"}</span>
@@ -577,7 +580,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
           </aside>
         ) : null}
 
-        <main className={`mains${isAnalyticsPeriod ? " analytics-period" : ""}`}>
+        <main className={`mains${isAnalyticsPeriod ? " analytics-period" : ""}${isBoardPeriod ? " schedule-mode" : ""}`}>
           {loading && !cases.length ? (
             <div className="empty" style={{ padding: 90 }}>
               <span className="spin" style={{ color: "var(--acc)" }}><Ic n="sync" s={22} /></span>
@@ -591,11 +594,13 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               calY={calY}
               view={view}
               selDate={selDate}
+              dayTab={dayTab}
               now={now}
               today={today}
               onOpenModal={openModal}
               onOpenCase={openCase}
               onPickDay={(key) => { setView("day"); setSelDate(key); setClickedDay(null); setDayTab("all"); setTodayMode(false); }}
+              onDayTabChange={setDayTab}
             />
           ) : section === "command" ? (
             <OperationsView

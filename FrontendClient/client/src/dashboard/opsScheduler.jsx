@@ -10,10 +10,11 @@ import {
   weekStartOf,
 } from "./opsData";
 
-const START_HOUR = 6;
-const END_HOUR = 21;
-const HOUR_HEIGHT = 56;
-const DURATIONS = { intake: 90, pm: 120, release: 90 };
+/* Shared by the Analytics scheduler and the Operations day/week board. */
+export const START_HOUR = 6;
+export const END_HOUR = 21;
+export const HOUR_HEIGHT = 56;
+export const DURATIONS = { intake: 90, pm: 120, release: 90 };
 const DAY_TABS = [
   ["all", "All Events", "var(--brand)"],
   ["intake", "Intake", "var(--blue)"],
@@ -21,23 +22,23 @@ const DAY_TABS = [
   ["pm", "Postmortems", "var(--orange)"],
 ];
 
-const timeMinutes = (value, fallback = 9 * 60) => {
+export const timeMinutes = (value, fallback = 9 * 60) => {
   const match = String(value || "").match(/^(\d{1,2}):(\d{2})$/);
   if (!match) return fallback;
   return Math.min(23 * 60 + 59, Math.max(0, Number(match[1]) * 60 + Number(match[2])));
 };
 
-const timeText = (minutes) => {
+export const timeText = (minutes) => {
   const value = Math.max(0, Math.min(23 * 59, minutes));
   return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
 };
 
-const eventKey = (event) => `${event.date}-${event.t}-${event.p.adm}-${event.time}`;
+export const eventKey = (event) => `${event.date}-${event.t}-${event.p.adm}-${event.time}`;
 const eventClass = (type) => (type === "intake" ? "evi" : type === "pm" ? "evp" : "evr");
 const passes = (record, filters) => !filters.length || filters.some((key) => matchPill(record, "command", key));
 
 /** Pack intersecting events into stable side-by-side lanes. */
-function layoutLanes(events) {
+export function layoutLanes(events) {
   const sorted = events.slice().sort((a, b) => {
     const byTime = timeMinutes(a.time) - timeMinutes(b.time);
     return byTime || a.t.localeCompare(b.t) || eventKey(a).localeCompare(eventKey(b));
@@ -82,13 +83,15 @@ function layoutLanes(events) {
   return result;
 }
 
-export default function SchedulerView({ searched, state, now, today, onOpenCase, onPickDay, onDayTabChange }) {
+export default function SchedulerView({ searched, state, now, today, onOpenCase, onPickDay, onDayTabChange, reference = false }) {
   const scrollRef = useRef(null);
   const isWeek = state.view === "week";
   const days = isWeek
     ? Array.from({ length: 7 }, (_, index) => addDays(weekStartOf(state.selDate), index))
     : [state.selDate];
-  const columns = `60px repeat(${days.length}, minmax(0, 1fr))`;
+  const columns = reference
+    ? (isWeek ? "64px repeat(7, minmax(110px, 1fr))" : "64px minmax(0, 1fr)")
+    : `60px repeat(${days.length}, minmax(0, 1fr))`;
   const allEvents = eventsOf(searched).filter((event) => passes(event.p, state.filters));
   const eventsByDay = Object.fromEntries(days.map((day) => [day, allEvents.filter((event) => event.date === day)]));
   const counts = { intake: 0, release: 0, pm: 0 };
@@ -171,7 +174,7 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
         }}
       >
         <div className="et">{event.time} – {timeText(end)}</div>
-        <div className="en">{event.p.name}</div>
+        <div className="en">{reference ? title : event.p.name}</div>
         {height >= 36 ? <div className="el">{location || "—"}</div> : null}
       </div>
     );
@@ -179,7 +182,7 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
 
   return (
     <>
-      <div className="sch" aria-label={`${isWeek ? "Weekly" : "Daily"} operations schedule`}>
+      <div className={`sch${reference ? ` reference ${isWeek ? "week" : "day"}` : ""}`} aria-label={`${isWeek ? "Weekly" : "Daily"} operations schedule`}>
         <div className="sch-top">
           <div>
             <div className="pl">{periodTitle}</div>
@@ -193,7 +196,7 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
         </div>
 
         <div className="sch-ad" style={{ gridTemplateColumns: columns }}>
-          <div className="adt">Scheduled</div>
+          <div className="adt">{reference ? "All Day" : "Scheduled"}</div>
           {days.map((day) => (
             <div className="adc" key={`all-day-${day}`}>
               {futureItemsFor(day).map((record) => {
@@ -281,7 +284,7 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
         </div>
       </div>
 
-      {!isWeek ? (
+      {!isWeek && !reference ? (
         <div className="dtabs">
           {DAY_TABS.map(([key, label, color]) => (
             <button
@@ -296,193 +299,16 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
         </div>
       ) : null}
 
-      <div className="wksum">
-        <span style={{ color: "var(--tx)", fontWeight: 700 }}>{isWeek ? "Week totals" : "Day totals"}</span>
-        <span className="ci"><i style={{ background: "var(--blue)" }}></i>Intakes <b>{counts.intake}</b></span>
-        <span className="ci"><i style={{ background: "var(--green)" }}></i>Releases <b>{counts.release}</b></span>
-        <span className="ci"><i style={{ background: "var(--orange)" }}></i>Postmortems <b>{counts.pm}</b></span>
-        <span className="ci">Total <b>{total}</b></span>
-        {isWeek ? <span style={{ marginLeft: "auto" }}>Today's column is tinted — the red line marks {now}</span> : null}
-      </div>
+      {!reference ? (
+        <div className="wksum">
+          <span style={{ color: "var(--tx)", fontWeight: 700 }}>{isWeek ? "Week totals" : "Day totals"}</span>
+          <span className="ci"><i style={{ background: "var(--blue)" }}></i>Intakes <b>{counts.intake}</b></span>
+          <span className="ci"><i style={{ background: "var(--green)" }}></i>Releases <b>{counts.release}</b></span>
+          <span className="ci"><i style={{ background: "var(--orange)" }}></i>Postmortems <b>{counts.pm}</b></span>
+          <span className="ci">Total <b>{total}</b></span>
+          {isWeek ? <span style={{ marginLeft: "auto" }}>Today's column is tinted — the red line marks {now}</span> : null}
+        </div>
+      ) : null}
     </>
   );
 }
-
-/* ══════════════════════════════════════════════════════════════════════════
-   Analytics · Day / Week — 1:1 port of the "Operations Schedule" reference.
-
-   Anatomy copied from that design, in order:
-     All-Day strip  →  day headers  →  scrolling hour grid
-   with solid status-coloured event cards, the serif today badge, the live
-   now-line and the italic empty state. The data is the dashboard's own
-   operation feed (intake · postmortem · release) so both surfaces agree.
-   ══════════════════════════════════════════════════════════════════════════ */
-
-/** Status tint for a card — the reference's status palette, keyed to our types. */
-const statusClass = (event) => {
-  if (event.t === "pm") return event.completed ? "as-st-completed" : "as-st-scheduled";
-  if (event.t === "release") return "as-st-delivered";
-  return "as-st-booked";
-};
-
-export function AnalyticsSchedule({
-  searched = [],
-  filters = [],
-  view = "week",
-  selDate,
-  now,
-  today,
-  onOpenCase,
-  onPickDay,
-}) {
-  const scrollRef = useRef(null);
-  const isWeek = view === "week";
-  const days = isWeek
-    ? Array.from({ length: 7 }, (_, index) => addDays(weekStartOf(selDate), index))
-    : [selDate];
-  const columns = isWeek ? "64px repeat(7, minmax(110px, 1fr))" : "64px minmax(0, 1fr)";
-  const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => START_HOUR + index);
-  const gridHeight = hours.length * HOUR_HEIGHT;
-  const timeLabel = (hour) => (hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`);
-  const allEvents = eventsOf(searched).filter((event) => passes(event.p, filters));
-  const eventsByDay = Object.fromEntries(
-    days.map((day) => [day, allEvents.filter((event) => event.date === day)])
-  );
-
-  /* The strip carries what has no clock time: future arrivals and the
-     scheduled family handovers. */
-  const stripItemsFor = (day) => searched.filter((record) => passes(record, filters) && (
-    (record.admDate === day && record.admDate > today)
-    || (record.release && record.release.date === day && record.release.status === "scheduled")
-  ));
-
-  useEffect(() => {
-    const node = scrollRef.current;
-    if (!node || !days.includes(today)) return undefined;
-    const frame = requestAnimationFrame(() => {
-      const top = ((timeMinutes(now) - START_HOUR * 60) * HOUR_HEIGHT) / 60;
-      node.scrollTop = Math.max(0, top - node.clientHeight / 3);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [view, selDate]);
-
-  const renderCard = ({ event, lane, lanes }) => {
-    const start = timeMinutes(event.time);
-    const end = start + DURATIONS[event.t];
-    let top = ((start - START_HOUR * 60) * HOUR_HEIGHT) / 60;
-    let height = ((end - start) * HOUR_HEIGHT) / 60;
-    if (top < 0) { height += top; top = 0; }
-    if (top >= gridHeight || height <= 0) return null;
-    height = Math.min(height - 2, gridHeight - top);
-    const width = 100 / lanes;
-    const compact = height < 38;
-    const location = event.t === "release"
-      ? event.p.release ? event.p.release.dest : null
-      : event.t === "intake"
-        ? event.p.branch
-        : event.p.pm ? event.p.pm.authority : null;
-    const title = `${event.p.name} — ${TYPE_L[event.t]}`;
-    return (
-      <div
-        key={eventKey(event)}
-        className={`as-event ${statusClass(event)}${compact ? " compact" : ""}`}
-        style={{
-          top: `${top}px`,
-          height: `${Math.max(20, height)}px`,
-          left: `calc(${lane * width}% + 3px)`,
-          width: `calc(${width}% - 6px)`,
-        }}
-        title={`${title}\n${event.time}–${timeText(end)} · ${event.p.adm} · ${location || "—"}`}
-        onClick={() => onOpenCase(event.p.adm, event.t)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(keyEvent) => {
-          if (keyEvent.key === "Enter" || keyEvent.key === " ") onOpenCase(event.p.adm, event.t);
-        }}
-      >
-        <div className="as-t">{event.time}–{timeText(end)}</div>
-        <div className="as-n">{title}</div>
-        {!compact ? <div className="as-l">{location || "—"}</div> : null}
-      </div>
-    );
-  };
-
-  return (
-    <div className={`as ${isWeek ? "week" : "day"}`} aria-label={`${isWeek ? "Weekly" : "Daily"} operations schedule`}>
-      <div className="as-allday" style={{ gridTemplateColumns: columns }}>
-        <div className="as-adlabel">All Day</div>
-        {days.map((day) => (
-          <div className="as-adcell" key={`allday-${day}`}>
-            {stripItemsFor(day).map((record) => {
-              const isIntake = record.admDate === day;
-              const time = isIntake ? record.admTime : (record.release ? record.release.time : "");
-              return (
-                <span
-                  className={`as-chip ${isIntake ? "as-chip-in" : "as-chip-out"}`}
-                  key={`${record.adm}-${isIntake ? "arrival" : "handover"}`}
-                  onClick={() => onOpenCase(record.adm, isIntake ? "intake" : "release")}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(keyEvent) => {
-                    if (keyEvent.key === "Enter") onOpenCase(record.adm, isIntake ? "intake" : "release");
-                  }}
-                >
-                  {isIntake ? "Arrival" : "Handover"} · {record.name.split(" ")[0]} {time || ""}
-                </span>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      <div className="as-headers" style={{ gridTemplateColumns: columns }}>
-        <div className="as-corner" />
-        {days.map((day) => {
-          const date = parseKey(day);
-          return (
-            <div
-              className={`as-day${day === today ? " is-today" : ""}${isWeek ? "" : " day-mode"}`}
-              key={`head-${day}`}
-              onClick={isWeek ? () => onPickDay(day) : undefined}
-              role={isWeek ? "button" : undefined}
-              tabIndex={isWeek ? 0 : undefined}
-              onKeyDown={isWeek ? (keyEvent) => { if (keyEvent.key === "Enter") onPickDay(day); } : undefined}
-            >
-              <div className="as-day-name">{isWeek ? DOWF[date.getDay()].slice(0, 3) : DOWF[date.getDay()]}</div>
-              <div className="as-day-num">
-                {isWeek ? date.getDate() : `${date.getDate()} ${MO[date.getMonth()].slice(0, 3)}`}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="as-scroll" ref={scrollRef}>
-        <div className="as-grid" style={{ gridTemplateColumns: columns }}>
-          <div className="as-times">
-            {hours.map((hour) => (
-              <div className="as-slot" key={`slot-${hour}`}><span>{timeLabel(hour)}</span></div>
-            ))}
-          </div>
-          {days.map((day) => {
-            const dayEvents = eventsByDay[day] || [];
-            return (
-              <div className={`as-col${day === today ? " is-today" : ""}`} key={`col-${day}`}>
-                {hours.map((hour) => <div className="as-hour" key={`cell-${day}-${hour}`} />)}
-                {!dayEvents.length ? <div className="as-empty">No events scheduled</div> : null}
-                {layoutLanes(dayEvents).map(renderCard)}
-                {day === today ? (() => {
-                  const nowTop = ((timeMinutes(now) - START_HOUR * 60) * HOUR_HEIGHT) / 60;
-                  return nowTop >= 0 && nowTop <= gridHeight
-                    ? <div className="as-now" style={{ top: `${nowTop}px` }} />
-                    : null;
-                })() : null}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
