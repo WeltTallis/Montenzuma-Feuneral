@@ -38,7 +38,7 @@ const eventClass = (type) => (type === "intake" ? "evi" : type === "pm" ? "evp" 
 const passes = (record, filters) => !filters.length || filters.some((key) => matchPill(record, "command", key));
 
 /** Pack intersecting events into stable side-by-side lanes. */
-export function layoutLanes(events) {
+function layoutLanes(events) {
   const sorted = events.slice().sort((a, b) => {
     const byTime = timeMinutes(a.time) - timeMinutes(b.time);
     return byTime || a.t.localeCompare(b.t) || eventKey(a).localeCompare(eventKey(b));

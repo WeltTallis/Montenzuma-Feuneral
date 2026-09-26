@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import "./dashboard.css";
 
@@ -332,6 +332,20 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     const id = setInterval(() => setNow(nowClock()), 30000);
     return () => clearInterval(id);
   }, []);
+
+  /* Keep the schedule on *today* when the dashboard is left open across
+     midnight: if the day changes and the view was sitting on yesterday's
+     "today", roll the selection (and the sidebar calendar) forward. */
+  const lastToday = useRef(today);
+  useEffect(() => {
+    if (lastToday.current === today) return;
+    const wasOnToday = selDate === lastToday.current;
+    lastToday.current = today;
+    if (!wasOnToday) return;
+    setSelDate(today);
+    setCalY(Number(today.slice(0, 4)));
+    setCalM(Number(today.slice(5, 7)) - 1);
+  }, [today, selDate]);
 
   useEffect(() => {
     if (!toast) return undefined;

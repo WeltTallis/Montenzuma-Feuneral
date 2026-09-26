@@ -6,10 +6,6 @@ import { DateTime } from 'luxon';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
-// NOTE: puppeteer v23+ is ESM-only ("type": "module") while this service compiles to
-// CommonJS, so it must be loaded with a dynamic import() (see `loadPuppeteer` below).
-// Type-only imports are erased at compile time and therefore stay CJS-safe; the
-// `resolution-mode` attribute tells TS this is an ESM-only module referenced from CJS.
 import type { Browser } from 'puppeteer' with { 'resolution-mode': 'import' };
 import https from 'https';
 

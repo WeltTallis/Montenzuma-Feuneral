@@ -372,6 +372,47 @@
 .rpd .ccl{font-size:8.5px;font-weight:700;color:var(--tx4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
 .rpd .ccv{font-size:13px;font-weight:600;word-break:break-word}
 .rpd .ccv.hl{font-size:16px;font-weight:800}
+.rpd .cpanel.cp-comprehensive{width:560px}
+.rpd .cph-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rpd .cph-actions{display:flex;align-items:center;gap:8px}
+.rpd .cph-ext-link{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--blue, #2563eb);text-decoration:none;padding:5px 9px;background:rgba(37,99,235,.08);border-radius:6px;transition:.15s}
+.rpd .cph-ext-link:hover{background:rgba(37,99,235,.15);text-decoration:none}
+.rpd .cp-chip{font:600 10.5px var(--sans);color:var(--tx3);background:var(--bg);border:1px solid var(--brdl);padding:2px 7px;border-radius:12px}
+
+.rpd .cp-hero{padding:14px 22px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid var(--brdl)}
+.rpd .cp-hero-main{min-width:0;flex:1}
+.rpd .cp-hero-main .cname{margin-bottom:2px}
+.rpd .cp-hero-main .ccode{margin:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rpd .cp-hero-main .dot-sep{color:var(--tx4);opacity:.6}
+.rpd .cp-hero-main .cp-stay{color:var(--tx2);font-weight:600}
+
+.rpd .cp-badge-storage{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.25);color:#0284c7;border-radius:8px;font-size:11px;font-weight:700;flex-shrink:0}
+.rpd.dark .cp-badge-storage{background:rgba(14,165,233,.15);color:#38bdf8}
+.rpd .cp-badge-icon{font-size:12px}
+
+.rpd .cp-tabs{display:flex;align-items:center;gap:2px;padding:8px 22px 0;border-bottom:1px solid var(--brd);background:var(--card);overflow-x:auto}
+.rpd .cp-tab{padding:8px 12px;font-size:11.5px;font-weight:700;color:var(--tx3);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:.15s}
+.rpd .cp-tab:hover{color:var(--tx1)}
+.rpd .cp-tab.active{color:var(--blue, #2563eb);border-bottom-color:var(--blue, #2563eb)}
+
+.rpd .cp-tab-content{padding:16px 22px 24px}
+.rpd .cp-pane{display:flex;flex-direction:column;gap:14px}
+.rpd .cp-sect{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;padding-bottom:4px;border-bottom:1px solid var(--brdl)}
+.rpd .cp-sect:first-child{margin-top:0}
+.rpd .cp-sect-title{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
+.rpd .cp-sect-act{font-size:11px}
+.rpd .cp-badge-state{display:inline-block;padding:2px 8px;border-radius:10px;color:#fff;font-size:10px;font-weight:700;letter-spacing:.02em}
+
+.rpd .ccl-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px}
+.rpd .cctag{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 4px;border-radius:4px;border:1px solid var(--brdl);color:var(--tx4)}
+.rpd .ccsub{font-size:10px;color:var(--tx3);margin-top:3px}
+.rpd .ccard.is-nil{opacity:.75}
+
+.rpd .cp-nok-card{padding:10px 12px;border:1px dashed var(--brd);border-radius:10px;background:var(--card)}
+.rpd .cp-nok-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.rpd .cp-nok-role{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2)}
+.rpd .cp-nok-rel{font-size:11px;font-weight:600;color:var(--tx3);background:var(--bg);padding:2px 7px;border-radius:10px}
+
 .rpd .mscrim{position:fixed;inset:0;z-index:150;background:rgba(17,24,39,.5);animation:rpdOvIn .15s ease}
 .rpd .mmodal{position:fixed;z-index:155;top:50%;left:50%;transform:translate(-50%,-48%);width:min(640px,94vw);max-height:86vh;background:var(--card);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shxl);animation:rpdMpop .2s ease}
 .rpd .mhead2{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:15px 20px;border-bottom:1px solid var(--brd)}

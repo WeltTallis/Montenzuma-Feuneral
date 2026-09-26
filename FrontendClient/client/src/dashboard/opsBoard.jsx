@@ -3,7 +3,7 @@ import {
   DOWF, MO, TYPE_L, addDays, eventsOf, matchPill, parseKey, weekStartOf,
 } from "./opsData";
 import {
-  DURATIONS, END_HOUR, HOUR_HEIGHT, START_HOUR, eventKey, layoutLanes, timeMinutes, timeText,
+  DURATIONS, END_HOUR, HOUR_HEIGHT, START_HOUR, eventKey, timeMinutes, timeText,
 } from "./opsScheduler";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -13,8 +13,10 @@ import {
    Anatomy, top to bottom:
      All-Day strip  →  day headers  →  scrolling hour grid
    Solid status-coloured event cards with white text, the serif "today" badge,
-   the live now-line and the italic empty state. The Day view adds the
-   type tabs (Intake · Releases · Postmortems) under the board.
+   the live now-line and the italic empty state. Inside a day the cards always
+   run **downwards** — busier days push each card below the previous one, so
+   nothing is ever hidden behind anything else (even at identical start times).
+   The Day view adds the type tabs (Intake · Releases · Postmortems) below.
    ══════════════════════════════════════════════════════════════════════════ */
 
 const DAY_TABS = [
@@ -33,6 +35,46 @@ const statusClass = (event) => {
   if (event.t === "release") return "bd-st-delivered";
   return "bd-st-booked";
 };
+
+/** Time order for one day (start time, then type, then admission number). */
+const byTime = (a, b) => {
+  const diff = timeMinutes(a.time) - timeMinutes(b.time);
+  return diff || a.t.localeCompare(b.t) || eventKey(a).localeCompare(eventKey(b));
+};
+
+/**
+ * Lay a day's operations out **downwards**, in time order.
+ *
+ * Several operations can start at the same moment (three collections at 09:00,
+ * say). Instead of squeezing them side by side — which leaves cards too narrow
+ * to read — each one drops below the previous, so every event keeps the full
+ * column width and nothing is ever covered up. When a day is so busy that the
+ * list would run past the last row, every card is shrunk by the same factor so
+ * the whole day still fits on screen.
+ */
+function stackDown(events, gridHeight) {
+  const sorted = events.slice().sort(byTime);
+  if (!sorted.length) return [];
+
+  const topOf = (event) => Math.max(0, ((timeMinutes(event.time) - START_HOUR * 60) * HOUR_HEIGHT) / 60);
+  const tallOf = (event) => (DURATIONS[event.t] * HOUR_HEIGHT) / 60;
+  const GAP = 3;
+  const MIN_H = 22;
+  const start = topOf(sorted[0]);
+
+  let natural = 0;
+  sorted.forEach((event, index) => { natural += tallOf(event) + (index ? GAP : 0); });
+  const room = Math.max(0, gridHeight - start);
+  const fit = natural > room && natural > 0 ? room / natural : 1;
+
+  let cursor = start;
+  return sorted.map((event) => {
+    const height = Math.max(MIN_H, tallOf(event) * fit - GAP);
+    const top = Math.min(Math.max(cursor, topOf(event)), gridHeight - MIN_H);
+    cursor = top + height + GAP;
+    return { event, top, height: Math.max(MIN_H, Math.min(height, gridHeight - top)) };
+  });
+}
 
 export default function BoardSchedule({
   searched = [],
@@ -83,15 +125,8 @@ export default function BoardSchedule({
   }, [view, selDate]);
 
 
-  const renderCard = ({ event, lane, lanes }) => {
-    const start = timeMinutes(event.time);
-    const end = start + DURATIONS[event.t];
-    let top = ((start - START_HOUR * 60) * HOUR_HEIGHT) / 60;
-    let height = ((end - start) * HOUR_HEIGHT) / 60;
-    if (top < 0) { height += top; top = 0; }
-    if (top >= gridHeight || height <= 0) return null;
-    height = Math.min(height - 2, gridHeight - top);
-    const width = 100 / lanes;
+  const renderCard = ({ event, top, height }) => {
+    const end = timeMinutes(event.time) + DURATIONS[event.t];
     const compact = height < 38;
     const location = event.t === "release"
       ? event.p.release ? event.p.release.dest : null
@@ -107,9 +142,9 @@ export default function BoardSchedule({
         className={`bd-event ${statusClass(event)}${done ? " done" : ""}${compact ? " compact" : ""}`}
         style={{
           top: `${top}px`,
-          height: `${Math.max(20, height)}px`,
-          left: `calc(${lane * width}% + 3px)`,
-          width: `calc(${width}% - 6px)`,
+          height: `${height}px`,
+          left: "3px",
+          right: "3px",
         }}
         title={`${title}\n${event.time}–${timeText(end)} · ${event.p.adm} · ${location || "—"}`}
         onClick={() => onOpenCase(event.p.adm, event.t)}
@@ -191,7 +226,7 @@ export default function BoardSchedule({
                 <div className={`bd-col${day === today ? " is-today" : ""}`} key={`col-${day}`}>
                   {hours.map((hour) => <div className="bd-hour" key={`cell-${day}-${hour}`} />)}
                   {!dayEvents.length ? <div className="bd-empty">No events scheduled</div> : null}
-                  {layoutLanes(dayEvents).map(renderCard)}
+                  {stackDown(dayEvents, gridHeight).map(renderCard)}
                   {day === today ? (() => {
                     const nowTop = ((timeMinutes(now) - START_HOUR * 60) * HOUR_HEIGHT) / 60;
                     return nowTop >= 0 && nowTop <= gridHeight

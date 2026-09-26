@@ -8,7 +8,7 @@ import { useTenantStore } from "../../modules/seo/useTenantStore";
 
 
 
-const BODY = "'Saira', system-ui, sans-serif"
+const BODY = "'Fraunces', Georgia, serif"
 const HEAD = "'Fraunces', Georgia, serif"
 
 /* ── Inline icon set ───────────────────────────────────────── */

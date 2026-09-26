@@ -29,12 +29,13 @@ const MortuaryBillingSoftware = lazy(() => import('../modules/seo/MortuaryBillin
 const PricingPage = lazy(() => import('../modules/seo/PricingPage'));
 
 // Blog and Resource Pages
-const BlogIndex = lazy(() => import('../modules/blog/BlogIndex'));
+
 const BereavementManagementGuide = lazy(() => import('../modules/blog/BereavementManagementGuide'));
+const ArchitectureOfBlooms = lazy(() => import('../modules/blog/Journals/ArchitectureOfBlooms'));
 const MemberContributionsGuide = lazy(() => import('../modules/blog/MemberContributionsGuide'));
 const FuneralWelfareGuide = lazy(() => import('../modules/blog/FuneralWelfareGuide'));
 const FutureDeathCareGuide = lazy(() => import('../modules/blog/FutureDeathCareGuide'));
-const ArchitectureOfBlooms = lazy(() => import('../modules/blog/Journals/ArchitectureOfBlooms'));
+const BlogIndex = lazy(() => import('../modules/blog/BlogIndex'));
 
 // Comparison Pages
 const BestChurchSoftwareKenya = lazy(() => import('../modules/compare/BestChurchSoftwareKenya'));
@@ -51,73 +52,75 @@ const GlossaryPage = lazy(() => import('../modules/resources/GlossaryPage'));
 const LogsPage = lazy(() => import('../modules/resources/LogsPage'));
 
 // Location Pages
+const AdminSupportDashboard = lazy(() => import('../components/support/AdminSupportDashboard'));
+const DataMigrationPolicy = lazy(() => import('../modules/pages/DataMigrationPolicy'));
 const LocationPage = lazy(() => import('../modules/locations/LocationPage'));
 const PrivacyPolicy = lazy(() => import('../modules/pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('../modules/pages/TermsOfService'));
 const AccountDeletion = lazy(() => import('../modules/pages/AccountDeletion'));
-const DataMigrationPolicy = lazy(() => import('../modules/pages/DataMigrationPolicy'));
+
 const SecurityPolicy = lazy(() => import('../modules/pages/securityPolicy'));
 const SLAPolicy = lazy(() => import('../modules/pages/slaPolicy'));
 const ReleasePolicy = lazy(() => import('../modules/pages/releasePolicy'));
 const CookiesPolicy = lazy(() => import('../modules/pages/CookiesPolicy'));
 const SupportPage = lazy(() => import('../components/support/SupportPage'));
-const AdminSupportDashboard = lazy(() => import('../components/support/AdminSupportDashboard'));
-const WhyUsPage = lazy(() => import('../modules/pages/WhyUsPage'));
-const AboutPage = lazy(() => import('../modules/pages/AboutPage'));
-const ContactPage = lazy(() => import('../modules/pages/ContactPage'));
-const WeltTallisAbout = lazy(() => import('../modules/about/WeltTallisAbout'));
-const LoginPage = lazy(() => import('../components/auth/login'));
-const PortalLoginPage = lazy(() => import('../components/auth/PortalLogin'));
-const ReceptionPortal = lazy(() => import('../components/reception/ReceptionPortal'));
+
+const PostmortemRequestForm = lazy(() => import('../components/reception/PostmortemRequestForm'));
 const PostmortemResults = lazy(() => import('../components/reception/PostmortemResults'));
 const PostmortemQRPage = lazy(() => import('../components/reception/PostmortemQRPage'));
-const PostmortemRequestForm = lazy(() => import('../components/reception/PostmortemRequestForm'));
-const PostmortemPortal = lazy(() => import('../components/deceased/postmortem/postmortem-portal'));
-import PostmortemVerifyPage from '../components/reception/PostmortemVerifyPage';
-import PostmortemResultsPage from '../components/reception/PostmortemResultsPage';
-const ForgotPassword = lazy(() => import('../components/auth/ForgotPassword'));
-const ChangePassword = lazy(() => import('../components/auth/changePassword'));
+const ReceptionPortal = lazy(() => import('../components/reception/ReceptionPortal'));
+const WeltTallisAbout = lazy(() => import('../modules/about/WeltTallisAbout'));
+const PortalLoginPage = lazy(() => import('../components/auth/PortalLogin'));
+const ContactPage = lazy(() => import('../modules/pages/ContactPage'));
+const WhyUsPage = lazy(() => import('../modules/pages/WhyUsPage'));
+const AboutPage = lazy(() => import('../modules/pages/AboutPage'));
+const LoginPage = lazy(() => import('../components/auth/login'));
+
+
+const FinancialDetailsPage = lazy(() => import('../components/deceased/financialDetails/FinancialDetailsPage'));
+const DeceasedInfoSection = lazy(() => import('../components/deceased/deceasedProfile/deceasedInfoSection'));
+const PostmortemFormPage = lazy(() => import('../components/deceased/deceasedProfile/PostmortemFormPage'));
+const DeceasedDetails = lazy(() => import('../components/deceased/deceasedProfile/deceasedDetailPage'));
+const DeceasedRegistrationForm = lazy(() => import('../components/deceased/register/deceasedIntake'));
+
+const CoffinInventoryDashboard = lazy(() => import('../components/coffins/coffininventory'));
+const ReleaseFormPage = lazy(() => import('../components/deceased/register/deceasedRelease'));
+const DeceasedList = lazy(() => import('../components/deceased/allDeceased/listDeceased'));
+const CoffinRequests = lazy(() => import('../components/analysis/coffinRequests'));
+const CoffinInventory = lazy(() => import('../components/coffins/coffininventory'));
 const InvoiceManager = lazy(() => import('../components/invoices/invoicemanager'));
 const DocumentsPage = lazy(() => import('../components/documents/documentspage'));
-const StoreDashboard = lazy(() => import('../modules/store'));
-const DeceasedRegistrationForm = lazy(() => import('../components/deceased/register/deceasedIntake'));
 const RegisterCoffin = lazy(() => import('../components/coffins/registerCoffin'));
-const CoffinInventory = lazy(() => import('../components/coffins/coffininventory'));
-const CoffinInventoryDashboard = lazy(() => import('../components/coffins/coffininventory'));
 const CoffinDetails = lazy(() => import('../components/coffins/coffinDetails'));
-const CoffinRequests = lazy(() => import('../components/analysis/coffinRequests'));
-const DeceasedList = lazy(() => import('../components/deceased/allDeceased/listDeceased'));
-const NotFound = lazy(() => import('../components/layout/notFound'));
-const DeceasedDetails = lazy(() => import('../components/deceased/deceasedinfo/deceasedDetailPage'));
-const FinancialDetailsPage = lazy(() => import('../components/deceased/financialDetails/FinancialDetailsPage'));
+import PostmortemResultsPage from '../components/reception/PostmortemResultsPage';
+import PostmortemVerifyPage from '../components/reception/PostmortemVerifyPage';
+const ForgotPassword = lazy(() => import('../components/auth/ForgotPassword'));
+const ChangePassword = lazy(() => import('../components/auth/changePassword'));
 const DashboardPage = lazy(() => import('../components/pages/DashboardPage'));
-const DeceasedInfoSection = lazy(() => import('../components/deceased/deceasedInfoSection'));
-
 const SettingsPage = lazy(() => import('../components/settings/SettingsPage'));
-const ReleaseFormPage = lazy(() => import('../components/deceased/register/deceasedRelease'));
-const PostmortemFormPage = lazy(() => import('../components/deceased/deceasedinfo/PostmortemFormPage'));
-const UserManagement = lazy(() => import('../components/modals/users'));
+const NotFound = lazy(() => import('../components/layout/notFound'));
+const StoreDashboard = lazy(() => import('../modules/store'));
 
 // Landing-page live previews — real modules rendered inside sandboxed iframes
 // by the bento grid on the marketing site (modules/landing/imageCard.jsx)
-const LivePreviewHost = lazy(() => import('../components/common/LivePreviewHost'));
+const ChemicalInventoryAnalytics = lazy(() => import('../components/chemicals/chemicalAnalytics'));
+const ReleaseFormPreview = lazy(() => import('../components/deceased/register/deceasedRelease'));
+const WorkshopDashboard = lazy(() => import('../components/workshop/pages/WorkshopDashboard'));
 const BodyIntakePreview = lazy(() => import('../components/deceased/register/deceasedIntake'));
 const FlowerBookingsPreview = lazy(() => import('../components/florists/FlowerBookingsNew'));
-const ReleaseFormPreview = lazy(() => import('../components/deceased/register/deceasedRelease'));
 const ReceptionPortalPreview = lazy(() => import('../components/reception/ReceptionPortal'));
+const ChemicalManagementDashboard = lazy(() => import('../components/chemicals/chemicals'));
 const PublicMemorialPage = lazy(() => import('../components/memorial/PublicMemorialPage'));
+const LivePreviewHost = lazy(() => import('../components/common/LivePreviewHost'));
 const ScannerSetupGuide = lazy(() => import('../modules/landing/scannerBridge'));
 
-
-const ChemicalManagementDashboard = lazy(() => import('../components/chemicals/chemicals'));
-const ChemicalInventoryAnalytics = lazy(() => import('../components/chemicals/chemicalAnalytics'));
-const WorkshopDashboard = lazy(() => import('../components/workshop/pages/WorkshopDashboard'));
 // Flower Booking System
-const FlowerBookings = lazy(() => import('../components/florists/FlowerBookingsNew'));
-const FlowerBookingForm = lazy(() => import('../components/florists/Samples'));
 const FlowerOrderDetail = lazy(() => import('../components/florists/FlowerOrderDetail'));
-const FlowerSamples = lazy(() => import('../components/florists/Samples'));
+const FlowerBookings = lazy(() => import('../components/florists/FlowerBookingsNew'));
 const RequestDetail = lazy(() => import('../components/analysis/RequestDetail'));
+const FlowerBookingForm = lazy(() => import('../components/florists/Samples'));
+const FlowerSamples = lazy(() => import('../components/florists/Samples'));
+
 
 const HearseBookings = lazy(() => import('../components/hearse/hearseBookings'));
 const DriverPortal = lazy(() => import('../components/Driver/DriverPortal'));
@@ -551,10 +554,7 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           <Layout tenantData={tenantData} tenantSlug={slug}><PublicMemorialPage /></Layout>
         } />
 
-        {/* User Management - All authenticated users */}
-        <Route path="users" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}><UserManagement /></Layout>
-        } />
+  
 
         {/* Flower Booking - All authenticated users */}
         <Route path="flowers" element={

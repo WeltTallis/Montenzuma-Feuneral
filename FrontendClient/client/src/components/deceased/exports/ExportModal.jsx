@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 
 
-import { Loader2 } from '../../utils/icons/icons'
+import { Loader2 } from '../../../utils/icons/icons'
 
 
 

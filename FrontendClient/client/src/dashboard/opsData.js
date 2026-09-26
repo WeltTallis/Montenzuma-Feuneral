@@ -29,22 +29,43 @@ const STORAGE_FEE_PER_DAY = 500;
 /* ── date helpers ───────────────────────────────────────────────────────── */
 export const pad = (n) => (String(n).length < 2 ? `0${n}` : String(n));
 
+/* A string carrying a clock time is a stored *instant* (usually a UTC
+   timestamp), so it must be read on the viewer's clock — a case registered at
+   00:30 EAT is stored as 21:30Z the previous day and still belongs to today.
+   A bare `YYYY-MM-DD` is already a calendar date: use it exactly as written. */
+const CLOCK = /\d{1,2}:\d{2}/;
+/* DATE columns are commonly serialised as midnight UTC ("2026-09-24T00:00:00.000Z").
+   Those carry no time of day, so they are read as the written calendar date. */
+const MIDNIGHT_UTC = /^\d{4}-\d{2}-\d{2}T00:00:00(?:\.0+)?Z$/;
+const keyOfDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
 /** Anything date-ish → local `YYYY-MM-DD` (no timezone shift), else null. */
 function keyOf(v) {
   if (v == null || v === "") return null;
   if (typeof v === "string") {
-    const m = v.trim().match(/^(\d{4}-\d{2}-\d{2})/);
-    if (m) return m[1];
+    const s = v.trim();
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) {
+      if (!CLOCK.test(s) || MIDNIGHT_UTC.test(s)) return m[1];
+      const d = new Date(s);
+      return Number.isNaN(d.getTime()) ? m[1] : keyOfDate(d);
+    }
   }
   const d = v instanceof Date ? v : new Date(v);
   if (Number.isNaN(d.getTime())) return null;
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return keyOfDate(d);
 }
 
-/** Anything time-ish → `HH:MM`, else "". */
+/** Anything time-ish → local `HH:MM`, else "". */
 function timeOf(v) {
-  const s = String(v ?? "");
-  if (!/\d{1,2}:\d{2}/.test(s)) return "";
+  const s = String(v ?? "").trim();
+  if (!CLOCK.test(s) || MIDNIGHT_UTC.test(s)) return "";
+  /* "07:30" (or "07:30:00") is a wall-clock time — keep it as written.
+     "2026-09-24T21:30:00.000Z" is an instant — show it on the viewer's clock. */
+  if (!/^\d{1,2}:\d{2}/.test(s)) {
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
   const m = s.match(/(\d{1,2}):(\d{2})/);
   if (!m) return "";
   return `${pad(Math.min(23, Number(m[1])))}:${m[2]}`;
@@ -190,6 +211,18 @@ const pmFromRequest = (q) => {
     doneTime: timeOf(q?.exam_completed_at || q?.completed_at || q?.completion_date),
     pathologist: q?.pathologist || q?.exam_pathologist || q?.pathologist_name || q?.requested_by || "—",
     ref: q?.request_ref || q?.id || "",
+    /* extra detail the profile shows on its postmortem tab */
+    requestedBy: or(q?.requested_by || q?.initiated_by, "—"),
+    reason: or(q?.reason, "—"),
+    notes: q?.notes || "",
+    reqStatus: or(q?.status, ""),
+    sentAt: q?.sent_at || "",
+    cancelledAt: q?.cancelled_at || "",
+    examStatus: or(q?.exam_status, ""),
+    completedAt: q?.exam_completed_at || q?.completed_at || q?.completion_date || "",
+    summary: q?.examination_summary || q?.summary || "",
+    report: q?.postmortem_report || "",
+    findings: q?.findings || q?.postmortem_findings || null,
     raw: q,
   };
 };
@@ -206,6 +239,18 @@ const pmFromRegister = (r) => {
     doneTime: completed ? timeOf(r?.postmortem?.completed_at || r?.postmortem_date) : "",
     pathologist: r?.postmortem?.pathologist || r?.postmortem?.pathologist_name || "—",
     ref: "",
+    /* extra detail carried by the register's own postmortem block */
+    requestedBy: or(r?.postmortem?.requested_by, "—"),
+    reason: or(r?.postmortem?.reason || r?.cause_of_death, "—"),
+    notes: r?.postmortem?.notes || "",
+    reqStatus: or(r?.postmortem?.status, ""),
+    sentAt: r?.postmortem?.sent_at || "",
+    cancelledAt: r?.postmortem?.cancelled_at || "",
+    examStatus: or(r?.postmortem?.status, ""),
+    completedAt: r?.postmortem?.completed_at || "",
+    summary: r?.postmortem?.examination_summary || r?.postmortem_report || "",
+    report: r?.postmortem_report || "",
+    findings: r?.postmortem?.findings || null,
     raw: r?.postmortem || null,
   };
 };
@@ -222,6 +267,22 @@ const releaseFromFeed = (q) => {
     receiver: q?.received_by || q?.next_kin || "—",
     status: date && date > todayKey() ? "scheduled" : "completed",
     transfer: /transfer|inter-branch/i.test(String(dest)),
+    /* everything the release tab / body_releases row carries */
+    id: or(q?.release_id, ""),
+    permit: or(q?.permit_number, ""),
+    plate: or(q?.plate_number, ""),
+    receiverId: or(q?.id_number, ""),
+    receiverPhone: or(q?.tell_number || q?.phone_number, ""),
+    receiverRel: or(q?.relationship, ""),
+    staff: or(q?.staff_name || q?.released_by, ""),
+    witness: or(q?.witness_name, ""),
+    items: q?.items_returned || "",
+    notes: q?.notes || "",
+    paid: bool(q?.everything_paid),
+    terms: bool(q?.terms_accepted),
+    signature: q?.signature || "",
+    staffSignature: q?.staff_signature || "",
+    recordedAt: q?.created_at || "",
     raw: q,
   };
 };
@@ -231,15 +292,87 @@ const releaseFromRegister = (r) => {
   const date = keyOf(r?.dispatch_date || r?.release_date || r?.date_released);
   return {
     date,
-    time: "—",
+    time: timeOf(r?.dispatch_time) || "—",
     dest: r?.final_destination || r?.destination || "—",
-    mode: "—",
+    mode: or(r?.mode_of_transport, "—"),
     receiver: r?.next_kin || r?.contact_person || "—",
     status: date && date > todayKey() ? "scheduled" : "completed",
     transfer: /transfer|inter-branch/i.test(String(r?.final_destination || "")),
+    id: "",
+    permit: or(r?.permit_number, ""),
+    plate: "",
+    receiverId: or(r?.id_number || r?.national_id, ""),
+    receiverPhone: or(r?.tell_number || r?.phone_number, ""),
+    receiverRel: or(r?.relationship, ""),
+    staff: or(r?.staff_name, ""),
+    witness: "",
+    items: "",
+    notes: "",
+    paid: bool(r?.everything_paid),
+    terms: bool(r?.terms_accepted),
+    signature: r?.signature || "",
+    staffSignature: "",
+    recordedAt: "",
     raw: r,
   };
 };
+
+/* ── comprehensive case detail (the side panel renders these blocks) ────── */
+
+/** Clean label value — dashes for missing/null-ish data. */
+const or = (v, dash = "—") => {
+  const s = String(v ?? "").trim();
+  return s && s !== "null" && s !== "undefined" ? s : dash;
+};
+/** Any truthy-flag shape the feeds use for booleans. */
+const bool = (v) => v === true || v === 1 || /^(1|yes|true|accepted|paid|cleared)$/i.test(String(v ?? ""));
+/** Money text, or null when there is nothing to show. */
+const money = (v, cur) => {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return `${cur || "KES"} ${n.toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
+};
+const chargesOf = (r) => {
+  const cur = or(r?.currency || r?.charge_currency, "KES");
+  return {
+    currency: cur,
+    total: money(r?.total_mortuary_charge, cur),
+    extra: money(r?.extra_charges_amount, cur),
+    perDay: money(r?.per_day_charge, cur),
+    perHour: money(r?.per_hour_charge, cur),
+  };
+};
+
+/** Every intake/admission field the deceased register holds for a case. */
+const intakeOf = (r) => ({
+  deceasedId: or(r?.deceased_id, ""),
+  idType: or(r?.id_type, ""),
+  idNo: or(r?.national_id || r?.id_number, ""),
+  age: Number.isFinite(Number(r?.age)) && r?.age !== null && r?.age !== "" ? Number(r.age) : null,
+  county: or(r?.county, ""),
+  physician: or(r?.physician, ""),
+  marks: or(r?.identifying_marks, ""),
+  location: or(r?.location, ""),
+  bodyStatus: or(r?.body_status || r?.body_condition, "In Morgue"),
+  chamber: or(r?.chamber_assigned, ""),
+  storage: or(r?.storage_type, ""),
+  verifiedBy: or(r?.verified_by, ""),
+  admissionStatus: or(r?.admission_status, ""),
+  releaseStatus: or(r?.release_status, ""),
+  email: or(r?.email, ""),
+  phone: or(r?.phone_number, ""),
+  altPhone: or(r?.alternative_phone, ""),
+  signature: r?.signature || "",
+  registeredAt: keyOf(r?.date_registered || r?.created_at),
+  createdBy: or(r?.created_by, ""),
+  dispatchDate: keyOf(r?.dispatch_date),
+  dispatchTime: timeOf(r?.dispatch_time),
+  dispatchedTo: or(r?.dispatched_to, ""),
+  burialType: or(r?.burial_type, ""),
+  coffinStatus: or(r?.coffin_status, ""),
+  nokCount: Number(r?.next_of_kin_count || 0) || null,
+  charges: chargesOf(r),
+});
 
 /** One deceased-register row → a dashboard case. */
 function mapDeceased(r) {
@@ -265,8 +398,13 @@ function mapDeceased(r) {
       name: r?.next_kin || r?.contact_person || r?.kin_name || "—",
       rel: r?.relationship || r?.kin_relationship || "—",
       phone: r?.kin_telephone || r?.kin_phone || r?.phone_number || "—",
+      altPhone: r?.alternative_phone || r?.kin_alt_phone || "—",
+      email: r?.email || r?.kin_email || "—",
+      address: r?.address || r?.kin_address || "—",
       id: r?.kin_id_number || r?.national_id || "—",
+      signature: r?.signature || "",
     },
+    intake: intakeOf(r),
     notes: r?.notes || r?.remarks || "",
     raw: r,
   };
