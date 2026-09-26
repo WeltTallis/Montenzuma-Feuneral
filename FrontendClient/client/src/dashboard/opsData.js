@@ -360,7 +360,10 @@ const intakeOf = (r) => ({
   admissionStatus: or(r?.admission_status, ""),
   releaseStatus: or(r?.release_status, ""),
   email: or(r?.email, ""),
-  phone: or(r?.phone_number, ""),
+  // A register row may carry phone_number while the Body Intake form posts
+  // tel_number (and body_releases spells it tell_number). Accept every variant
+  // so the dashboard panel shows whichever the branch actually recorded.
+  phone: or(r?.phone_number || r?.tel_number || r?.tell_number, ""),
   altPhone: or(r?.alternative_phone, ""),
   signature: r?.signature || "",
   registeredAt: keyOf(r?.date_registered || r?.created_at),
@@ -464,6 +467,16 @@ export function buildCases(deceasedRows = [], releaseRows = [], pmRows = []) {
 
   deceasedRows.forEach((r) => put(admNoOf(r), mapDeceased(r)));
 
+  /* Register cases keyed by deceased_id. A postmortem request only carries a
+     deceased_id, so without this index a request could not find the case whose
+     admission number differs from its deceased_id. */
+  const byDeceasedId = new Map();
+  deceasedRows.forEach((r) => {
+    const did = String(r?.deceased_id ?? "").trim();
+    const c = did ? byAdm.get(admNoOf(r)) : null;
+    if (did && c) byDeceasedId.set(did, c);
+  });
+
   releaseRows.forEach((q, i) => {
     const adm = String(q?.admission_number || q?.admission_no || "");
     const rel = releaseFromFeed(q);
@@ -473,10 +486,17 @@ export function buildCases(deceasedRows = [], releaseRows = [], pmRows = []) {
   });
 
   pmRows.forEach((q) => {
-    const adm = String(q?.admission_number || q?.admission_no || q?.deceased_id || "");
+    // The postmortem feed's own key is deceased_id. The API now joins the
+    // deceased table, so a row also carries the real admission_number — prefer
+    // it, otherwise the request would only match on deceased_id.
+    const adm = String(
+      q?.admission_number || q?.admission_no || q?.deceased_admission_number || q?.deceased_id || ""
+    );
     if (!adm) return;
     const pm = pmFromRequest(q);
-    const existing = byAdm.get(adm);
+    // Match the register case by admission number, then by deceased_id.
+    const existing = byAdm.get(adm)
+      || (q?.deceased_id ? byDeceasedId.get(String(q.deceased_id).trim()) : null);
     if (existing) {
       existing.pm = pm;
       return;
@@ -484,9 +504,9 @@ export function buildCases(deceasedRows = [], releaseRows = [], pmRows = []) {
     const created = put(adm, {
       adm,
       name: nameOf(q),
-      sex: "",
+      sex: q?.deceased_gender || "",
       dob: null,
-      dod: keyOf(q?.date_of_death),
+      dod: keyOf(q?.deceased_date_of_death || q?.date_of_death),
       branch: branchOf(q),
       admDate: keyOf(q?.date_admitted),
       admTime: "00:00",

@@ -159,9 +159,14 @@ export const getPostmortemRequests = async (req: TenantRequest, res: Response): 
                 pr.*,
                 p.status           AS exam_status,
                 p.completed_at     AS exam_completed_at,
-                p.pathologist_name AS exam_pathologist
+                p.pathologist_name AS exam_pathologist,
+                d.full_name        AS deceased_name,
+                d.admission_number AS deceased_admission_number,
+                d.gender           AS deceased_gender,
+                d.date_of_death    AS deceased_date_of_death
             FROM postmortem_requests pr
-            LEFT JOIN postmortem p ON p.deceased_id = pr.deceased_id`;
+            LEFT JOIN postmortem p ON p.deceased_id = pr.deceased_id
+            LEFT JOIN deceased d ON d.deceased_id = pr.deceased_id`;
         const where: string[] = [];
         const params: any[] = [];
         if (deceased_id) { where.push('pr.deceased_id = ?'); params.push(deceased_id); }

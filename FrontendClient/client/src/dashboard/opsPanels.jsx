@@ -394,6 +394,13 @@ function DrawerSection({ title, action }) {
 
 const EMPTY = (msg) => <div className="empty" style={{ padding: 24, textAlign: "center" }}>{msg}</div>;
 const fDate = (d) => (d ? fmtDate(d) : "—");
+/** A raw API/form date that may be a full timestamp or a free-text date. */
+const fRawDate = (v) => {
+  const s = String(v ?? "").trim();
+  if (!s) return "—";
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? fmtDate(m[1]) : s;
+};
 const fDateTime = (d, t) => (d ? `${fmtDate(d)}${t ? ` · ${t}` : ""}` : "—");
 const fBool = (b, y = "Yes", n = "No") => (b === true ? y : b === false ? n : "—");
 
@@ -430,6 +437,13 @@ function IntakePane({ p }) {
         <Card l="Verified By" v={it.verifiedBy} />
       </div>
 
+      <DrawerSection title="Permit & Identification" />
+      <div className="cgrid">
+        <Card l="Burial Permit Number" v={p.permit} mono />
+        <Card l="National ID" v={it.idNo} mono />
+        <Card l="ID Type" v={it.idType} />
+      </div>
+
       <DrawerSection title="Deceased Details" />
       <div className="cgrid">
         <Card l="Full Name" v={p.name} hl />
@@ -437,13 +451,11 @@ function IntakePane({ p }) {
         <Card l="Date of Birth" v={fDate(p.dob)} />
         <Card l="Date of Death" v={fDate(p.dod)} />
         <Card l="Age at Death" v={it.age != null ? `${it.age} years` : ""} />
-        <Card l="National ID" v={it.idNo} mono />
-        <Card l="ID Type" v={it.idType} />
         <Card l="County" v={it.county} />
+        <Card l="Location" v={it.location} />
         <Card l="Place of Death" v={p.place} />
         <Card l="Cause of Death" v={p.cause} hl />
         <Card l="Certifying Physician" v={it.physician} />
-        <Card l="Location" v={it.location} />
       </div>
 
       <DrawerSection title="Condition &amp; Storage" />
@@ -461,7 +473,7 @@ function IntakePane({ p }) {
       <div className="cgrid">
         <Card l="Next of Kin" v={nok.name} hl />
         <Card l="Relationship" v={nok.rel} />
-        <Card l="Phone Number" v={nok.phone} mono />
+        <Card l="Phone Number" v={nok.phone && nok.phone !== "—" ? nok.phone : it.phone} mono />
         <Card l="Alternate Phone" v={nok.altPhone || it.altPhone} mono />
         <Card l="Email" v={nok.email || it.email} />
         <Card l="Physical Address" v={nok.address} />
@@ -548,6 +560,9 @@ function PostmortemPane({ p, pm }) {
  */
 function ReleasePane({ p, rel }) {
   if (!rel) return EMPTY("No body release has been recorded for this case yet.");
+  // The release feed is `SELECT *`, so the raw row still carries every field the
+  // Body Release form captured. Read the deceased-identity fields from there.
+  const rw = rel.raw || {};
   return (
     <div className="cp-pane">
       <DrawerSection
@@ -569,18 +584,31 @@ function ReleasePane({ p, rel }) {
         <Card l="Burial Permit Number" v={rel.permit} mono />
       </div>
 
+      <DrawerSection title="Deceased Record (captured on the release form)" />
+      <div className="cgrid">
+        <Card l="Full Name" v={rw.full_name || rw.name_of_deceased} hl />
+        <Card l="Admission Number" v={rw.admission_number || p.adm} mono />
+        <Card l="Gender" v={rw.gender} />
+        <Card l="Age" v={rw.age != null && rw.age !== "" ? `${rw.age} years` : ""} />
+        <Card l="Date of Death" v={fRawDate(rw.date_of_death)} />
+        <Card l="Cause of Death" v={rw.cause_of_death} />
+        <Card l="Place of Death" v={rw.place_of_death} />
+        <Card l="Burial Permit Number" v={rw.permit_number} mono />
+      </div>
+
       <DrawerSection title="Recipient & Authorized Collector" />
       <div className="cgrid">
+        <Card l="Next of Kin (as recorded)" v={rw.next_kin} />
         <Card l="Received By (Authorized Collector)" v={rel.receiver} hl />
         <Card l="Recipient National ID" v={rel.receiverId} mono />
         <Card l="Recipient Phone Number" v={rel.receiverPhone} mono />
-        <Card l="Relationship to Deceased" v={rel.receiverRel || p.nok?.rel} />
+        <Card l="Relationship to Deceased" v={rel.receiverRel || rw.relationship || p.nok?.rel} />
         <Card l="Witness" v={rel.witness} />
       </div>
 
       <DrawerSection title="Clearance & Handover" />
       <div className="cgrid">
-        <Card l="Releasing Staff" v={rel.staff} />
+        <Card l="Released By" v={rel.staff} />
         <Card l="Financial Clearance" v={rel.paid ? "Cleared (Paid in full)" : "Pending Clearance"} hl />
         <Card l="Terms Accepted" v={fBool(rel.terms)} />
         <Card l="Items Returned" v={rel.items} />

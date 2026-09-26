@@ -14,8 +14,14 @@ import { getBranches, getBranchSlug, getTenantSlug, getParentTenantSlug } from "
        server.ts:  app.use('/', postmortemRequestRoutes)
        routes:     router.get('/postmortem-requests', getPostmortemRequests)
        gateway:    '/deceased' prefix (same convention as DECEASED.*)
-       shape:      postmortem_requests rows (deceased_name,
-                   admission_number, status, scheduled_date …)
+       shape:      postmortem_requests rows (deceased_id, request_ref,
+                   requested_by, requesting_authority, reason, notes, status,
+                   sent_at, cancelled_at, created_at) + exam_status / exam_completed_at
+                   / exam_pathologist (LEFT JOIN postmortem) + deceased_name /
+                   deceased_admission_number / deceased_gender / deceased_date_of_death
+                   (LEFT JOIN deceased). That deceased JOIN is what supplies the Deceased
+                   name — postmortem_requests has no name column of its own, so without
+                   it every request rendered as "Unknown".
    ───────────────────────────────────────────────────────────── */
 
 const RELEASES_URL = "/body-release/checkout";

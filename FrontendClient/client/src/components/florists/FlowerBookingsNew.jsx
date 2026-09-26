@@ -216,15 +216,24 @@ const FLX_RESPONSIVE = `
   .flx-actions { width: 100% !important; }
   .flx-actions > button { flex: 1 1 100% !important; white-space: normal !important; }
 
-  /* Horizontal date strip: scrollable rail, shrink day-cells */
-  .flx-strip { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; scrollbar-width: none !important; }
+  /* Horizontal date strip: contained scroll rail.
+     The chips MUST stay shrinkable — pinning min-width + flex-shrink:0 here
+     forced 45 × 56px (~2500px) of content and is what made the page scroll
+     sideways on phones. Mirrors the listDeceased rail's flex: 1 0 36px rule. */
+  .flx-strip {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
   .flx-strip::-webkit-scrollbar { display: none !important; }
-  .flx-strip > button { min-width: 56px !important; flex-shrink: 0 !important; }
+  .flx-strip > button { flex: 1 0 34px !important; min-width: 0 !important; padding-left: 2px !important; padding-right: 2px !important; }
 
   /* Full calendar: 7-col grid is too tight → stack as 3-cols so labels+events read */
   .flx-cal-weekdays { grid-template-columns: repeat(3, 1fr) !important; }
-  .flx-cal-days { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
-  .flx-cal-day { min-height: 70px !important; }
+  .flx-cal-days { grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }
+  .flx-cal-day { min-height: 70px !important; min-width: 0 !important; padding: 6px !important; }
 }
 `;
 
@@ -1556,11 +1565,18 @@ const FlowerBookingsNew = () => {
         @media (max-width: 1023px) {
           .flx-split { display: block; }
           .flx-rail { display: none !important; }
+          /* Constrain the rail to the viewport and clip its own overflow so the
+             document never scrolls sideways. The chips (flex: 1 0 38px,
+             min-width: 0) shrink to fit; JS scrolls to the selected day. */
           .flx-strip {
-            display: flex; gap: 8px; overflow-x: auto;
+            display: flex; gap: 4px;
+            width: 100%; max-width: 100%; min-width: 0;
+            box-sizing: border-box;
+            overflow-x: auto; overflow-y: hidden;
+            overscroll-behavior-x: contain;
+            -webkit-overflow-scrolling: touch;
             padding: 2px 2px 14px; margin-bottom: 8px;
             scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
           }
           .flx-strip::-webkit-scrollbar { display: none; }
         }
@@ -1908,6 +1924,13 @@ const styles = {
     fontFamily: "'DM Sans', system-ui, sans-serif",
     color: '#1C1A17',
     position: 'relative',
+    // Page-level guard: the date rail and the 7-col month grid are both wider
+    // than a phone, so clip at the page instead of letting the document scroll
+    // sideways. Mirrors listDeceased.jsx, which sets `body { overflow-x: hidden }`.
+    width: '100%',
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    overflowX: 'hidden',
   },
   toolbar: {
     position: 'sticky',
@@ -2150,7 +2173,7 @@ const styles = {
   },
   calWeekdays: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(7, 1fr)',
+    gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
     gap: '8px',
     marginBottom: '12px',
   },
@@ -2164,17 +2187,25 @@ const styles = {
   },
   calDays: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(7, 1fr)',
+    // minmax(0, 1fr) instead of 1fr: a bare `1fr` is really `minmax(auto, 1fr)`,
+    // whose auto minimum refuses to shrink below the cell's min-content width —
+    // that is what pushed the 7-column month grid past the viewport on tablets.
+    gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
     gap: '8px',
+    width: '100%',
+    maxWidth: '100%',
+    boxSizing: 'border-box',
   },
   calDay: {
     minHeight: '110px',
+    minWidth: '0',
     borderRadius: '12px',
     padding: '8px',
     cursor: 'pointer',
     position: 'relative',
     display: 'flex',
     flexDirection: 'column',
+    overflow: 'hidden',
     transition: 'all .2s ease',
   },
   calDayNum: {
@@ -2762,9 +2793,13 @@ const styles = {
     background: '#2F4F3E',
   },
   stripDay: {
-    flex: '0 0 auto',
-    minWidth: '54px',
-    padding: '10px 10px 12px',
+    // `1 0 38px` — chips may grow from a 38px basis but MUST be allowed to
+    // shrink, so the rail fits the viewport at any width instead of forcing a
+    // 45 × 54px (~2400px) horizontal scroll. This is the listDeceased rail's
+    // `flex: '1 0 36px'` pattern; minWidth is 0 (not 54px) so shrinking works.
+    flex: '1 0 38px',
+    minWidth: '0',
+    padding: '10px 4px 12px',
     borderRadius: 0,
     border: '1px solid #EAE7E2',
     background: '#fff',
@@ -2776,6 +2811,7 @@ const styles = {
     gap: '3px',
     color: '#574F47',
     transition: 'all .15s ease',
+    overflow: 'hidden',
   },
   backPill: {
     display: 'inline-flex',
