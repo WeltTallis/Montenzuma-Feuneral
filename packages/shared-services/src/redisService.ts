@@ -255,7 +255,7 @@ export async function getRedisClient(): Promise<RedisClient | null> {
           try {
             await dead.quit();
           } catch {
-            try { dead.destroy(); } catch { /* already gone */ }
+            try { await dead.disconnect(); } catch { /* already gone */ }
           }
         }
 
@@ -324,7 +324,7 @@ export async function getRedisClient(): Promise<RedisClient | null> {
             Logger.warn(`[Redis] Connection attempt failed for ${label}: ${error.message}`);
             // Abandon this socket: node-redis would otherwise keep reconnecting to
             // an unreachable server in the background forever.
-            try { c.destroy(); } catch { /* ignore */ }
+            try { await c.disconnect(); } catch { /* ignore */ }
           }
         }
 
