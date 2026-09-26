@@ -873,20 +873,16 @@ const HearseBookings = () => {
     return btns;
   };
 
-  if (loading) {
-    return (
-      <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <RefreshCw size={32} color={COLORS.primary} className="animate-spin" />
-      </Container>
-    );
-  }
-
-  const branchOptions = branches.length > 0 ? branches : [];
-
   /* The booking feed reports a generic branch_name ("Main"), so it cannot be
      shown directly. Resolve the real name from the live branch list first —
      that is authoritative and works for any tenant, unlike the hardcoded
-     slug→name map in viewerShared — then fall back to the slug resolver. */
+     slug→name map in viewerShared — then fall back to the slug resolver.
+
+     NOTE: this must stay ABOVE the `if (loading)` early return below. A hook
+     that only runs on the non-loading render is a hooks-order violation and
+     crashes the page with React error #310 ("Rendered more hooks than during
+     the previous render"). */
+  const branchOptions = branches.length > 0 ? branches : [];
   const branchNameByKey = useMemo(() => {
     const m = new Map();
     branchOptions.forEach((br) => {
@@ -909,6 +905,14 @@ const HearseBookings = () => {
     }
     return resolveBranchName(b);
   };
+
+  if (loading) {
+    return (
+      <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <RefreshCw size={32} color={COLORS.primary} className="animate-spin" />
+      </Container>
+    );
+  }
 
   return (
     <Container>

@@ -1,4 +1,95 @@
-# RestPoint Monitoring Stack
+# Monitoring — Rest Point OS Infrastructure Monitor
+
+## What this is
+
+A single, self-contained infrastructure dashboard for the RestPoint platform.
+It is served **inside the React app** at:
+
+```
+/tenant/:slug/monitoring
+```
+
+Component: `FrontendClient/client/src/monitoring/RestPointOsMonitor.jsx`
+Styles: `FrontendClient/client/src/monitoring/monitor.css`
+
+## What was removed
+
+The previous monitoring stack has been deleted in full. It required 11 extra
+containers and 4 Docker volumes to produce a page whose numbers were, in the
+end, mostly hard-coded:
+
+| Removed | What it was |
+|---|---|
+| `grafana/` | Dashboards + Prometheus datasource provisioning |
+| `prometheus/` | Scrape config and `restpoint-alerts.yml` |
+| `loki/` | Log store |
+| `promtail/` | Log shipper |
+| `blackbox-exporter/` | Blackbox HTTP prober |
+| `load-testing/` | k6 scripts + Grafana k6 dashboards |
+| `init-uptime-kuma.js` | Uptime-kuma monitor seeding |
+| `docker-compose.yml` | The 11-service monitoring stack |
+| `index.html` | The standalone page (now ported into the React app) |
+
+Nothing in the root `docker-compose*.yml` or `nginx.conf` referenced any of it,
+so removal is self-contained.
+
+## Where the data comes from
+
+Everything is measured live by the API gateway. There is **no** synthetic or
+placeholder data on the screen.
+
+**Endpoint:** `GET /monitoring` → `services/api-gateway/monitoring.js`
+
+| Card | Real source |
+|---|---|
+| Services Online / System Service Status | Live HTTP probe of every entry in the gateway's `SERVICE_URLS`, with latency and the real failure code |
+| API Requests | Request counter in gateway middleware (`res.on('finish')`) |
+| Cache Hit Rate / Cache Performance | Redis `INFO stats` → `keyspace_hits` / `keyspace_misses` |
+| BullMQ Workers | Queue depth read from the `bull:<queue>:*` keys — queue names are **discovered** by scanning, so new queues appear automatically |
+| Jobs Failed | BullMQ `failed` set cardinality |
+| Memory (RSS) | `process.memoryUsage()` + host `os` totals |
+| Live Request Log | 200-entry ring buffer of recent requests (timestamp, method, path, service, status, ms) |
+| Service Traffic Trends | 60-sample rolling series, sampled every 15s |
+| Rate Limit Hits | Real 429 counter from the same middleware |
+| Critical Alerts | **Derived** from the above — services down, 5xx, 429s, high latency, failed/backlogged jobs, Redis unreachable |
+
+### Cards re-pointed rather than faked
+
+The old page had a **Slow Query Tracker** and a **DB Fetches** tile. Nothing in
+the platform exposes slow-query telemetry, so rather than invent numbers:
+
+- *Slow Query Tracker* → **Service Latency** (measured by the real probes)
+- *DB Fetches* → removed; the cache tile now shows **Total** lookups
+
+## Resilience
+
+A previous health-check implementation caused a full production outage
+("fetch failed" for every service). This one is defensive by design:
+
+- Probes use plain global `fetch` with `AbortSignal.timeout` (3s) and bounded
+  concurrency (8), so a dead host cannot stall the endpoint.
+- **Any** HTTP response — even a 404 or 502 from the app — counts as UP. Only a
+  network-level failure (refused / timeout / DNS) counts as DOWN.
+- Redis is `lazyConnect`, and on failure the module backs off for 30s and
+  reports `available: false` with a reason. The dashboard renders `—` for those
+  cards instead of the request failing.
+- The series sampler is `unref()`'d and wrapped in try/catch, so it can never
+  hold the process open or throw.
+- `GET /monitoring` always answers HTTP 200; a degraded subsystem is reported
+  *inside* the payload.
+
+Tunables: `MONITOR_PROBE_TIMEOUT_MS` (default 3000).
+
+## Access
+
+The endpoint needs no auth token — it is infrastructure telemetry, not tenant
+data, and the response contains service names and latency only. It is served
+from the gateway **root** (`https://host/monitoring`), not under
+`/api/v1/restpoint`, so the dashboard bypasses the axios instance.
+
+If you need it locked down, put it behind the gateway's auth middleware or an
+nginx location rule; nothing else has to change.
+
 
 Complete monitoring solution for the RestPoint funeral home management system using modern open-source tools.
 

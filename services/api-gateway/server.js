@@ -32,6 +32,9 @@ const hpp = require('hpp');
 const dns = require('dns');
 const http = require('http');
 const fs = require('fs');
+// Real infrastructure monitoring (replaces the removed Grafana/Prometheus/Loki
+// stack). Exposes GET /monitoring and records per-request metrics.
+const { metricsMiddleware, buildReport, startSeriesTimer } = require('./monitoring');
 // Using Node's built-in global fetch (no explicit require needed, no
 // version-mismatch risk from a transitively-hoisted undici copy). A prior
 // version of this file used a manually constructed undici Agent/dispatcher
@@ -369,6 +372,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Record every API request for the /monitoring dashboard. Mounted BEFORE the
+// proxy so the measured latency is the real upstream round-trip, not just the
+// time to hand off. It only listens to `res.finish` and never blocks.
+app.use(metricsMiddleware);
+
 // ─── Service health gating: REMOVED ─────────────────────────────────────
 // There is no background health-check loop anymore (see the block near the
 // top of this file) and no per-request availability gate either. The
@@ -686,15 +694,38 @@ app.use('/api/v1/restpoint', checkServiceAvailability, (req, res, next) => {
 // HEALTH & DEBUG (must be before 404 handler)
 // =============================================================================
 
+// GET /monitoring — live infrastructure report for the Rest Point OS dashboard.
+// Probes every routed service, reads Redis cache + BullMQ queue depth, and
+// returns the in-process request metrics. Always answers 200: a degraded
+// subsystem (e.g. Redis down) is reported inside the payload rather than as a
+// failure here, so the dashboard can render the rest of the data.
+app.get('/monitoring', async (req, res) => {
+  try {
+    const report = await buildReport(SERVICE_URLS, { name: APP_NAME, version: APP_VERSION });
+    res.status(200).json({ success: true, data: report });
+  } catch (err) {
+    Logger.error(`[/monitoring] ${err.message}`);
+    res.status(200).json({
+      success: false,
+      message: 'Monitoring report failed',
+      detail: err.message,
+      generatedAt: new Date().toISOString(),
+    });
+  }
+});
+
+// Keep a background sample running so the trend chart has history even when
+// nobody is watching the dashboard.
+startSeriesTimer(() => SERVICE_URLS);
+
 app.get('/health', (req, res) => {
-  // Static self-report. The gateway does NOT probe backend services anymore
-  // (health monitoring removed — see the block near the top of this file),
-  // so there are no per-service health claims here. The routing table below
-  // shows the RESOLVED target URL for every service, which is how you debug
-  // "wrong URL" misconfigurations (loopback-in-container, Docker-hostname-on-
-  // host) that used to fake an "all services down" outage. Always 200: the
-  // Docker HEALTHCHECK, nginx, blackbox-exporter and `make health` only need
-  // to know THIS process is alive and serving.
+  // Static self-report. The gateway does NOT probe backend services on this
+  // endpoint — the real per-service probe lives at GET /monitoring. The
+  // routing table below shows the RESOLVED target URL for every service, which
+  // is how you debug "wrong URL" misconfigurations (loopback-in-container,
+  // Docker-hostname-on-host) that used to fake an "all services down" outage.
+  // Always 200: the Docker HEALTHCHECK and `make health` only need to know THIS
+  // process is alive and serving.
   const routingTable = {};
   Object.keys(SERVICE_URLS).forEach(serviceName => {
     routingTable[serviceName] = { url: SERVICE_URLS[serviceName] };

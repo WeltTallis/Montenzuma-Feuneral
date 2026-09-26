@@ -97,6 +97,7 @@ import PostmortemVerifyPage from '../components/reception/PostmortemVerifyPage';
 const ForgotPassword = lazy(() => import('../components/auth/ForgotPassword'));
 const ChangePassword = lazy(() => import('../components/auth/changePassword'));
 const DashboardPage = lazy(() => import('../components/pages/DashboardPage'));
+const RestPointOsMonitor = lazy(() => import('../monitoring/RestPointOsMonitor'));
 const SettingsPage = lazy(() => import('../components/settings/SettingsPage'));
 const NotFound = lazy(() => import('../components/layout/notFound'));
 const StoreDashboard = lazy(() => import('../modules/store'));
@@ -445,6 +446,13 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
         <Route path="scanner" element={
           <Suspense fallback={<RouteLoadingFallback />}>
             <ScannerSetupGuide />
+          </Suspense>
+        } />
+
+        {/* Infrastructure Monitor — real gateway / Redis / BullMQ telemetry */}
+        <Route path="monitoring" element={
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <RestPointOsMonitor />
           </Suspense>
         } />
 
