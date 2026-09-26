@@ -348,6 +348,24 @@ app.get('/health', (req: Request, res: Response) => {
         timestamp: new Date().toISOString()
     });
 });
+// Redis diagnostics — "is the hearse cache actually working?" in one call.
+// Reports UP/DISCONNECTED plus round-trip latency. Returns 200 on UP, 503 if down.
+app.get('/health/redis', async (req: Request, res: Response) => {
+    try {
+        const { redisHealth } = require('@montezuma/shared-services');
+        const redis = await redisHealth();
+        return res.status(redis.status === 'UP' ? 200 : 503).json({
+            service: 'hearse-service',
+            redis,
+        });
+    } catch (e: any) {
+        return res.status(503).json({
+            service: 'hearse-service',
+            redis: { status: 'ERROR', error: e.message },
+        });
+    }
+});
+
 
 // Root endpoint
 app.get('/', (req: Request, res: Response) => {

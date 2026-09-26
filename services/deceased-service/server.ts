@@ -14,9 +14,16 @@ const PORT = parseInt(process.env.PORT || '5003', 10);
 
 // ─── Tenant identifier allowlists 
 const TENANT_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
-// Registered tenant database names are the platform's own generated identifiers
-// (e.g. `tenant_acme_home`, `restpoint_acme`). Anything else is refused.
-const TENANT_DB_NAME_RE = /^(tenant|restpoint)_[a-z0-9][a-z0-9_]{0,55}$/;
+// Registered tenant database names are named after the tenant slug by the
+// tenant-service (`generateSlug(tenant_name)`, i.e. HYPHENATED:
+// `monezuma-monalisa-feuneral-home`, branch DBs `...-nairobi`), while the
+// legacy/bootstrap path used `restpoint_*` / `tenant_*` with underscores.
+// The old `^(tenant|restpoint)_[a-z0-9][a-z0-9_]{0,55}$` therefore REJECTED every
+// tenant provisioned by the current onboarding flow, so the resolver could
+// succeed and the request still died with
+//   403 {"success":false,"message":"Tenant not found or not active"}.
+// Accept both shapes, and refuse the platform's own system schemas.
+const TENANT_DB_NAME_RE = /^(?!information_schema$|mysql$|performance_schema$|sys$|tenant_tracking$)[a-z0-9][a-z0-9_-]{0,62}$/;
 
 // CORS Configuration — explicit allowlist, never `origin: true` (audit 2.7).
 // `origin: true` echoes the caller's Origin and pairs it with
@@ -71,6 +78,30 @@ app.get('/', (req: Request, res: Response) => {
     });
 });
 
+// Redis diagnostics — is the cache actually reachable from THIS container?
+// Returns the live client state (UP/DISCONNECTED/DOWN) plus the latency, so
+// "the cache is not working" can be answered with one curl instead of guessing.
+// The process log carries the same proof on connect:
+//   [Redis]  Connected (redis://***@restpoint_redis:6379)
+//   [Redis]  SETEX/GET self-test passed — caching is ACTIVE
+app.get('/health/redis', async (req: Request, res: Response) => {
+    try {
+        // Relative require: the shared package is shipped into the image and the
+        // other modules of this service import it the same way.
+        const { redisHealth } = require('../../packages/shared-services/dist/redisService');
+        const redis = await redisHealth();
+        return res.status(redis.status === 'UP' ? 200 : 503).json({
+            service: 'deceased-service',
+            redis
+        });
+    } catch (error: any) {
+        return res.status(500).json({
+            service: 'deceased-service',
+            redis: { status: 'ERROR', error: error?.message || String(error) }
+        });
+    }
+});
+
 // Middleware
 app.use(helmet({
     contentSecurityPolicy: false,
@@ -81,11 +112,21 @@ app.use(helmet({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Duplicate headers arrive from Node as an array — always take the first
+// element rather than letting "[ 'a', 'b' ]" flow through as a string.
+const firstHeader = (value: unknown): string | undefined => {
+    if (Array.isArray(value)) return value.length > 0 ? String(value[0]) : undefined;
+    return value === undefined || value === null ? undefined : String(value);
+};
+
 // Tenant Middleware
 app.use(async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const tenantSlug = req.headers['x-tenant-slug'] as string | undefined;
-        const branchId = req.headers['x-branch-id'] as string | undefined;
+        // `x-slug` is the legacy spelling every other service still accepts
+        // (coffin/hearse/shared dbConfig), so honour it here too — otherwise a
+        // caller that only sends `x-slug` gets a blanket 403.
+        const tenantSlug = firstHeader(req.headers['x-tenant-slug']) || firstHeader(req.headers['x-slug']);
+        const branchId = firstHeader(req.headers['x-branch-id']);
 
         (req as any).tenantSlug = tenantSlug;
         (req as any).branchId = branchId;
@@ -160,6 +201,12 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
         }
 
         if (!resolvedDbName) {
+            // Actionable 403: the resolver has already logged WHICH columns were
+            // searched and which slugs exist nearby, so add the request context.
+            console.warn(
+                `[DECEASED] 403 ${req.method} ${req.path} — no tenant database resolved for slug ` +
+                `"${tenantSlug || '(missing x-tenant-slug header)'}"`
+            );
             return res.status(403).json({
                 success: false,
                 message: 'Tenant not found or not active'

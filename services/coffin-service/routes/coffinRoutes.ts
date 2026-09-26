@@ -91,6 +91,13 @@ router.post('/stock-requests/:id/:action', coffinController.updateStockRequestAc
 
 router.get('/health', coffinController.healthCheck);
 
+// Redis diagnostics — "is the coffin cache actually working?" in one call.
+// The cache only ever produces hits when the shared Redis client is genuinely
+// connected (see getRedisClient()'s SETEX/GET self-test in the package log):
+//   [Redis] Connected (redis://***@restpoint_redis:6379)
+//   [Redis] SETEX/GET self-test passed — caching is ACTIVE
+router.get('/health/redis', coffinController.redisHealthCheck);
+
 // ============================================================
 // GET coffin by ID - registered LAST among the GET routes so the
 // catch-all :id does not hijack single-segment endpoints such as

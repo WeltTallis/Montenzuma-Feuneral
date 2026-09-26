@@ -1427,3 +1427,27 @@ export const healthCheck = async (req: Request, res: Response) => {
     timestamp: new Date().toISOString()
   });
 };
+
+/**
+ * GET /coffins/health/redis — is the Redis cache reachable from THIS container?
+ *
+ * Inventory reads are cached under `service:coffin-service:tenant:<slug>:*`
+ * (see getAllCoffins). When the shared client cannot connect, serviceGet()
+ * returns null and the endpoint silently serves from MySQL on every request,
+ * which looks exactly like "Redis is not working". This reports the live state.
+ */
+export const redisHealthCheck = async (req: Request, res: Response) => {
+  try {
+    const { redisHealth } = require('@montezuma/shared-services');
+    const redis = await redisHealth();
+    return res.status(redis.status === 'UP' ? 200 : 503).json({
+      service: SERVICE_NAME,
+      redis
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      service: SERVICE_NAME,
+      redis: { status: 'ERROR', error: error?.message || String(error) }
+    });
+  }
+};

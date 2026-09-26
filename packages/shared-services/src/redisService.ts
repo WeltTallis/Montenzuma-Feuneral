@@ -11,10 +11,35 @@ type RedisClient = RedisClientType<RedisModules, RedisFunctions, RedisScripts>;
 const REDIS_AUTH_SEGMENT = process.env.REDIS_PASSWORD
   ? `:${encodeURIComponent(process.env.REDIS_PASSWORD)}@`
   : '';
-const DEFAULT_REDIS_URL = process.env.REDIS_URL
-  || (process.env.REDIS_HOST
-    ? `redis://${REDIS_AUTH_SEGMENT}${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`
-    : 'redis://redis:6379');
+
+/**
+ * Candidate connection URLs, in priority order:
+ *   1. REDIS_URL (explicit — wins over everything)
+ *   2. REDIS_HOST / REDIS_PORT / REDIS_PASSWORD (what docker-compose injects)
+ *   3. `redis://redis:6379` (the historical default)
+ *
+ * Resolved LAZILY (on the first connect attempt) so a service that calls
+ * dotenv.config() after its imports still sees the values, and so one stale
+ * `REDIS_URL` (e.g. pointing at the compose SERVICE name `redis` while the real
+ * container is `restpoint_redis`) cannot disable caching for the whole process
+ * — the next candidate is tried instead.
+ */
+function getRedisUrlCandidates(): string[] {
+  const urls: string[] = [];
+  if (process.env.REDIS_URL) urls.push(process.env.REDIS_URL);
+  if (process.env.REDIS_HOST) {
+    urls.push(
+      `redis://${REDIS_AUTH_SEGMENT}${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`
+    );
+  }
+  urls.push('redis://redis:6379');
+  return Array.from(new Set(urls));
+}
+
+/** Never log the password embedded in a redis:// URL. */
+function sanitizeRedisUrl(url: string): string {
+  return String(url).replace(/:\/\/[^@/]*@/, '://***@');
+}
 
 // ─── Service Configurations
 
@@ -181,59 +206,135 @@ let lastConnectAttempt = 0;
 // WITHOUT this back-off, a short Redis blip at startup would permanently disable
 // caching for the whole process lifetime (previous `connectionAttempted` flag).
 const RETRY_AFTER_MS = 5_000;
+// …and this long once EVERY candidate failed (Redis genuinely down). The dial
+// attempts are bounded below, so a longer window keeps the cost of an outage to
+// at most one request per window instead of one per request.
+const RETRY_AFTER_FAILURE_MS = 30_000;
+
+// Hard ceiling for ONE connect attempt (connect + PING + write/read probe).
+// node-redis keeps reconnecting according to `reconnectStrategy` (which never
+// gives up, by design, for an ESTABLISHED connection), so an unreachable host
+// would otherwise leave `connect()` pending FOREVER — and because every cached
+// read awaits this promise, the requesting endpoint would hang instead of
+// falling back to MySQL.
+const CONNECT_ATTEMPT_TIMEOUT_MS = 3_000;
+const SOCKET_CONNECT_TIMEOUT_MS = 2_500;
+
+let retryAfterMs = RETRY_AFTER_MS;
+
+/** `promise` must settle within `ms`, otherwise reject (the timer is cleared either way). */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<T>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    if (typeof timer.unref === 'function') timer.unref();
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
 
 export async function getRedisClient(): Promise<RedisClient | null> {
   if (client && isConnected) return client;
 
   const now = Date.now();
-  if (now - lastConnectAttempt < RETRY_AFTER_MS) return null;
+  if (now - lastConnectAttempt < retryAfterMs) return null;
 
   // Only ever run ONE connect attempt at a time — concurrent callers share it.
   if (!connecting) {
     lastConnectAttempt = now;
     connecting = (async (): Promise<RedisClient | null> => {
       try {
-        const c = createClient({
-          url: DEFAULT_REDIS_URL,
-          socket: {
-            reconnectStrategy: (retries: number) => Math.min(retries * 50, 2000),
-            connectTimeout: 3000,
-          },
-        });
-
-        c.on('connect', () => {
-          Logger.info('[Redis]  Connected');
-        });
-
-        c.on('error', (err) => {
-          if (isConnected) {
-            Logger.error(`[Redis]  Error: ${err.message}`);
+        // Drop a dead/half-open client first: node-redis keeps reconnecting in
+        // the background, so leaving it installed would leak a connection (and
+        // the reconnect loop) on every retry cycle.
+        if (client) {
+          const dead = client;
+          client = null;
+          isConnected = false;
+          try {
+            await dead.quit();
+          } catch {
+            try { dead.destroy(); } catch { /* already gone */ }
           }
-          isConnected = false;
-        });
-
-        c.on('end', () => {
-          Logger.info('[Redis]  Connection closed');
-          isConnected = false;
-        });
-
-        await c.connect();
-
-        // AUTH probe — the redis:// URL must embed the password. If the server
-        // requires a password (requirepass) and the URL lacks it, every command
-        // (GET/SET) fails with NOAUTH and the cache silently never works while the
-        // app keeps hitting the database. Fail the connect attempt NOW so the
-        // error surfaces in the logs instead of NOAUTH-ing on every request.
-        const pong = await c.ping();
-        if (pong !== 'PONG') {
-          throw new Error(`Redis AUTH/ping failed (got: ${String(pong).slice(0, 40)})`);
         }
 
-        client = c;
-        isConnected = true;
-        return c;
+        const candidates = getRedisUrlCandidates();
+        let lastError: any = null;
+
+        for (const url of candidates) {
+          const label = sanitizeRedisUrl(url);
+          const c = createClient({
+            url,
+            socket: {
+              reconnectStrategy: (retries: number) => Math.min(retries * 50, 2000),
+              connectTimeout: SOCKET_CONNECT_TIMEOUT_MS,
+            },
+          });
+
+          c.on('connect', () => {
+            Logger.info(`[Redis]  Socket connected (${label})`);
+          });
+
+          c.on('error', (err) => {
+            if (isConnected) {
+              Logger.error(`[Redis]  Error: ${err.message}`);
+            }
+            isConnected = false;
+          });
+
+          c.on('end', () => {
+            Logger.info('[Redis]  Connection closed');
+            isConnected = false;
+          });
+
+          try {
+            // Bounded: connect + AUTH ping + a real write/read probe. A bare TCP
+            // connect is NOT proof that caching works (a missing password used to
+            // pass it and then NOAUTH on every SET/GET), and the probe also gives
+            // the operator one unambiguous line in `docker logs`.
+            await withTimeout(
+              (async () => {
+                await c.connect();
+
+                const pong = await c.ping();
+                if (pong !== 'PONG') {
+                  throw new Error(`Redis AUTH/ping failed (got: ${String(pong).slice(0, 40)})`);
+                }
+
+                const probeKey = serviceKey('__selftest__', '__selftest__', 'ping');
+                await c.setEx(probeKey, 30, String(Date.now()));
+                const probe = await c.get(probeKey);
+                await c.del(probeKey);
+                if (!probe) {
+                  throw new Error('Redis self-test write/read failed');
+                }
+              })(),
+              CONNECT_ATTEMPT_TIMEOUT_MS,
+              `Redis connect (${label})`
+            );
+
+            Logger.info(`[Redis]  SETEX/GET self-test passed on ${label} — caching is ACTIVE`);
+            client = c;
+            isConnected = true;
+            retryAfterMs = RETRY_AFTER_MS;
+            return c;
+          } catch (error: any) {
+            lastError = error;
+            Logger.warn(`[Redis] Connection attempt failed for ${label}: ${error.message}`);
+            // Abandon this socket: node-redis would otherwise keep reconnecting to
+            // an unreachable server in the background forever.
+            try { c.destroy(); } catch { /* ignore */ }
+          }
+        }
+
+        throw lastError || new Error('no Redis connection candidate succeeded');
       } catch (error: any) {
-        Logger.warn(`[Redis] Connection failed (will retry in ${RETRY_AFTER_MS / 1000}s): ${error.message}`);
+        retryAfterMs = RETRY_AFTER_FAILURE_MS;
+        Logger.warn(
+          `[Redis] Connection failed (will retry in ${retryAfterMs / 1000}s): ${error.message}. ` +
+          `Caching is OFF until then — check REDIS_URL / REDIS_HOST / REDIS_PASSWORD / REDIS_PORT.`
+        );
         client = null;
         isConnected = false;
         return null;
