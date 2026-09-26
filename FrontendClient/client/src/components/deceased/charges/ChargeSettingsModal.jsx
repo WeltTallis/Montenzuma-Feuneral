@@ -3,11 +3,11 @@ import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import {
   DollarSign, Save, ArrowLeft, Tag, Clock, Calendar, RefreshCw,
   X, Check, FlaskConical, CreditCard, FileText, Settings
-} from '../../utils/icons/icons';
+} from '../../../utils/icons/icons';
 import { toast } from 'react-toastify';
-import api from '../../api/axios';
-import { ENDPOINTS } from '../../api/endpoints';
-import env from '../../utils/config/env';
+import api from '../../../api/axios';
+import { ENDPOINTS } from '../../../api/endpoints';
+import env from '../../../utils/config/env';
 
 // Base API URL (kept for parity with the standalone page)
 const BASE_API = env.API_URL || 'https://restpoint.co.ke/api/v1/restpoint';
