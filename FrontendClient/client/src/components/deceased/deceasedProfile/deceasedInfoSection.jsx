@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import styled, { keyframes } from 'styled-components';
+import 'react-toastify/dist/ReactToastify.css';
 
-import THEME from '../../../utils/colors/theme'
+
 import { toDateKey } from '../../../utils/dates/parseDates';
 import { ENDPOINTS } from '../../../api/endpoints';
+import THEME from '../../../utils/colors/theme'
 import api from '../../../api/axios';
 
 // Icons (previously used without being imported, which threw
