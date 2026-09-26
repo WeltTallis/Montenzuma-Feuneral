@@ -401,6 +401,24 @@ const fRawDate = (v) => {
   const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
   return m ? fmtDate(m[1]) : s;
 };
+
+/**
+ * First genuinely-populated value across several sources.
+ *
+ * The same fact can live in more than one place — the deceased register row
+ * (p.raw / p.intake) and the body_releases row (rel.raw). The two forms fill
+ * in different subsets, so a field the release operator left blank is often
+ * already recorded against the case itself. Reading a single source leaves
+ * tiles looking empty even though the data exists.
+ */
+const first = (...vals) => {
+  for (const v of vals) {
+    if (v == null) continue;
+    const s = String(v).trim();
+    if (s && s !== "—" && s !== "null" && s !== "undefined") return v;
+  }
+  return "";
+};
 const fDateTime = (d, t) => (d ? `${fmtDate(d)}${t ? ` · ${t}` : ""}` : "—");
 const fBool = (b, y = "Yes", n = "No") => (b === true ? y : b === false ? n : "—");
 
@@ -421,6 +439,9 @@ function IntakePane({ p }) {
   const it = p.intake || {};
   const ch = it.charges || {};
   const nok = p.nok || {};
+  // The register row is `SELECT *`, so it is the fallback source for anything
+  // the normalised map does not carry.
+  const raw = p.raw || {};
 
   return (
     <div className="cp-pane">
@@ -432,16 +453,19 @@ function IntakePane({ p }) {
         <Card l="Receiving Officer / Staff" v={p.officer} />
         <Card l="Received From" v={p.receivedFrom} hl />
         <Card l="Register Date" v={fDate(it.registeredAt)} />
-        <Card l="Registered By" v={it.createdBy} />
-        <Card l="Admission Status" v={it.admissionStatus} />
-        <Card l="Verified By" v={it.verifiedBy} />
+        <Card l="Registered By" v={first(it.createdBy, raw.created_by)} />
+        <Card l="Case Status" v={first(it.admissionStatus, raw.status)} />
+        <Card l="Dispatch Date" v={fRawDate(raw.dispatch_date)} />
+        <Card l="Burial Location" v={first(raw.burial_location)} />
       </div>
 
-      <DrawerSection title="Permit & Identification" />
+      <DrawerSection title="Permit &amp; Contact" />
       <div className="cgrid">
         <Card l="Burial Permit Number" v={p.permit} mono />
         <Card l="National ID" v={it.idNo} mono />
-        <Card l="ID Type" v={it.idType} />
+        <Card l="Phone Number" v={first(it.phone, nok.phone)} mono />
+        <Card l="Alternate Phone" v={first(nok.altPhone, it.altPhone)} mono />
+        <Card l="Email" v={first(nok.email, it.email)} />
       </div>
 
       <DrawerSection title="Deceased Details" />
@@ -451,39 +475,28 @@ function IntakePane({ p }) {
         <Card l="Date of Birth" v={fDate(p.dob)} />
         <Card l="Date of Death" v={fDate(p.dod)} />
         <Card l="Age at Death" v={it.age != null ? `${it.age} years` : ""} />
-        <Card l="County" v={it.county} />
-        <Card l="Location" v={it.location} />
         <Card l="Place of Death" v={p.place} />
         <Card l="Cause of Death" v={p.cause} hl />
-        <Card l="Certifying Physician" v={it.physician} />
+        <Card l="Deceased ID" v={it.deceasedId} mono />
       </div>
 
-      <DrawerSection title="Condition &amp; Storage" />
+      <DrawerSection title="Body Status" />
       <div className="cgrid">
         <Card l="Body Status" v={it.bodyStatus} hl />
-        <Card l="Identifying Marks" v={it.marks} />
         <Card l="Preservation" v={p.prepared ? "Embalmed / Prepared" : "Not yet prepared"} />
-        <Card l="Storage Type" v={it.storage} />
-        <Card l="Chamber / Cold Room" v={it.chamber} mono />
-        <Card l="Burial Type" v={it.burialType} />
-        <Card l="Coffin Status" v={it.coffinStatus} />
+        <Card l="Signature Captured" v={fBool(Boolean(first(raw.signature)))} />
       </div>
 
-      <DrawerSection title="Next of Kin &amp; Contact" />
+      <DrawerSection title="Next of Kin" />
       <div className="cgrid">
         <Card l="Next of Kin" v={nok.name} hl />
         <Card l="Relationship" v={nok.rel} />
-        <Card l="Phone Number" v={nok.phone && nok.phone !== "—" ? nok.phone : it.phone} mono />
-        <Card l="Alternate Phone" v={nok.altPhone || it.altPhone} mono />
-        <Card l="Email" v={nok.email || it.email} />
-        <Card l="Physical Address" v={nok.address} />
+        <Card l="Phone Number" v={first(nok.phone, it.phone)} mono />
+        <Card l="Additional Contacts" v={it.nokCount != null ? `${it.nokCount}` : ""} />
       </div>
 
       <DrawerSection title="Charges" />
       <div className="cgrid">
-        <Card l="Currency" v={ch.currency} />
-        <Card l="Daily Rate" v={ch.perDay} mono />
-        <Card l="Hourly Rate" v={ch.perHour} mono />
         <Card l="Total Mortuary Charge" v={ch.total} hl />
         <Card l="Extra Charges" v={ch.extra} mono />
       </div>
@@ -584,36 +597,36 @@ function ReleasePane({ p, rel }) {
         <Card l="Burial Permit Number" v={rel.permit} mono />
       </div>
 
-      <DrawerSection title="Deceased Record (captured on the release form)" />
+      <DrawerSection title="Deceased Record" />
       <div className="cgrid">
-        <Card l="Full Name" v={rw.full_name || rw.name_of_deceased} hl />
-        <Card l="Admission Number" v={rw.admission_number || p.adm} mono />
-        <Card l="Gender" v={rw.gender} />
-        <Card l="Age" v={rw.age != null && rw.age !== "" ? `${rw.age} years` : ""} />
-        <Card l="Date of Death" v={fRawDate(rw.date_of_death)} />
-        <Card l="Cause of Death" v={rw.cause_of_death} />
-        <Card l="Place of Death" v={rw.place_of_death} />
-        <Card l="Burial Permit Number" v={rw.permit_number} mono />
+        <Card l="Full Name" v={first(rw.full_name, rw.name_of_deceased, p.name)} hl />
+        <Card l="Admission Number" v={first(rw.admission_number, p.adm)} mono />
+        <Card l="Gender" v={first(rw.gender, p.sex)} />
+        <Card l="Age" v={(() => { const a = first(rw.age, p.intake?.age, p.age); return a === "" ? "" : `${a} years`; })()} />
+        <Card l="Date of Death" v={fRawDate(first(p.dod, rw.date_of_death))} />
+        <Card l="Cause of Death" v={first(p.cause, rw.cause_of_death)} />
+        <Card l="Place of Death" v={first(p.place, rw.place_of_death)} />
+        <Card l="Burial Permit Number" v={first(rw.permit_number, rel.permit, p.permit)} mono />
       </div>
 
-      <DrawerSection title="Recipient & Authorized Collector" />
+      <DrawerSection title="Recipient &amp; Authorized Collector" />
       <div className="cgrid">
-        <Card l="Next of Kin (as recorded)" v={rw.next_kin} />
-        <Card l="Received By (Authorized Collector)" v={rel.receiver} hl />
-        <Card l="Recipient National ID" v={rel.receiverId} mono />
-        <Card l="Recipient Phone Number" v={rel.receiverPhone} mono />
-        <Card l="Relationship to Deceased" v={rel.receiverRel || rw.relationship || p.nok?.rel} />
+        <Card l="Next of Kin (as recorded)" v={first(rw.next_kin, p.nok?.name)} />
+        <Card l="Received By (Authorized Collector)" v={first(rel.receiver, rw.received_by, rw.released_by)} hl />
+        <Card l="Recipient National ID" v={first(rel.receiverId, rw.id_number, p.nok?.id)} mono />
+        <Card l="Recipient Phone Number" v={first(rel.receiverPhone, rw.tell_number, rw.tel_number, p.nok?.phone)} mono />
+        <Card l="Relationship to Deceased" v={first(rel.receiverRel, rw.relationship, p.nok?.rel)} />
         <Card l="Witness" v={rel.witness} />
       </div>
 
-      <DrawerSection title="Clearance & Handover" />
+      <DrawerSection title="Clearance &amp; Handover" />
       <div className="cgrid">
-        <Card l="Released By" v={rel.staff} />
+        <Card l="Released By" v={first(rel.staff, rw.released_by, p.officer)} />
         <Card l="Financial Clearance" v={rel.paid ? "Cleared (Paid in full)" : "Pending Clearance"} hl />
         <Card l="Terms Accepted" v={fBool(rel.terms)} />
         <Card l="Items Returned" v={rel.items} />
         <Card l="Handover Notes" v={rel.notes} />
-        <Card l="Recorded At" v={rel.recordedAt} mono />
+        <Card l="Recorded At" v={first(rel.recordedAt, p.raw?.created_at)} mono />
       </div>
     </div>
   );

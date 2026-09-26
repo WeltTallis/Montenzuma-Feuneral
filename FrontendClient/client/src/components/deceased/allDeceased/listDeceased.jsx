@@ -43,16 +43,20 @@ const C = {
   accent: '#DD2D4A',
 };
 
+/* Status wording + colours now match the Operations dashboard exactly
+   (dashboard/opsData.js CARE and the --blue/--orange/--plum/--green/--gray
+   custom properties in dashboard.css). The `filter` values are untouched so
+   the existing status filtering keeps working. */
 const STATUS_CONFIG = {
-  'under care': { label: 'Under Care', color: '#ffffff', bg: C.stInProgress, filter: 'under care' },
-  admitted: { label: 'Admitted', color: '#ffffff', bg: C.stBooked, filter: 'admitted' },
-  postmortem: { label: 'Postmortem Requested', color: '#ffffff', bg: C.stScheduled, filter: 'under care' },
-  pending: { label: 'Pending', color: '#ffffff', bg: C.stPending, filter: 'under care' },
-  released: { label: 'Released', color: '#ffffff', bg: C.stDelivered, filter: 'released' },
-  completed: { label: 'Completed', color: '#ffffff', bg: C.stCompleted, filter: 'completed' },
-  cancelled: { label: 'Cancelled', color: '#ffffff', bg: C.stCancelled, filter: 'other' },
-  maintenance: { label: 'Maintenance', color: '#ffffff', bg: C.stMaintenance, filter: 'other' },
-  default: { label: 'Under Care', color: '#ffffff', bg: C.stInProgress, filter: 'under care' },
+  'under care': { label: 'In Care', c: C.cBlue, filter: 'under care' },
+  admitted: { label: 'In Care', c: C.cBlue, filter: 'admitted' },
+  postmortem: { label: 'PM Requested', c: C.cOrange, filter: 'under care' },
+  pending: { label: 'Scheduled', c: C.gray, filter: 'under care' },
+  released: { label: 'Released', c: C.success, filter: 'released' },
+  completed: { label: 'PM Done', c: C.cPurple, filter: 'completed' },
+  cancelled: { label: 'Cancelled', c: C.gray, filter: 'other' },
+  maintenance: { label: 'Maintenance', c: C.gray, filter: 'other' },
+  default: { label: 'In Care', c: C.cBlue, filter: 'under care' },
 };
 
 const getStatusInfo = (statusStr) => {
@@ -279,15 +283,18 @@ const AvatarSm = styled.div`
   font-weight: 700; font-size: 14px; flex-shrink: 0;
   background: ${p => p.$female ? C.cPurple : C.black};
 `;
+/* Status display — mirrors the Operations dashboard's status chip
+   (dashboard/opsBits.jsx `StatusChip` + the `.rpd .st` rules in dashboard.css):
+   a small solid dot followed by the label in the state colour. Replaces the
+   old filled StatusBadge block so both screens read identically. */
 const StatusBadge = styled.span`
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 8px 14px; border: none; border-radius: 0;
-  font-size: 12px; font-weight: 700; text-transform: capitalize; white-space: nowrap;
-  background-color: ${p => p.$bg};
-  background-image: linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.15) 100%);
-  color: ${p => p.$color}; transition: filter 0.2s ease;
-  &:hover { filter: brightness(1.1); }
-  &::before { content: ''; width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.8); }
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+  color: ${p => p.$c};
+  &::before {
+    content: ''; width: 7px; height: 7px; border-radius: 50%;
+    flex: 0 0 auto; background: ${p => p.$c};
+  }
 `;
 const EmptyRow = styled.td`text-align: center; padding: 40px; color: ${C.gray};`;
 const LoadingState = styled.div`
@@ -735,7 +742,7 @@ const DeceasedListPage = () => {
                       <td>{adm}</td>
                       <td>{formatDate(admitted)}</td>
                       <td>{days} days</td>
-                      <td><StatusBadge $bg={statusInfo.bg} $color={statusInfo.color}>{statusInfo.label}</StatusBadge></td>
+                      <td><StatusBadge $c={statusInfo.c}>{statusInfo.label}</StatusBadge></td>
                       <td><Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn></td>
                     </tr>
                   );
@@ -761,7 +768,7 @@ const DeceasedListPage = () => {
                 <MobileCard key={id} onClick={() => openProfile(id)}>
                   <MobileCardHeader>
                     <MobileCardNameWrap><AvatarSm $female={isFemale}>{getInitials(name)}</AvatarSm><div><div>{name}</div><div>{sex ? `${sex}, ` : ''}{r.age || '—'} yrs</div></div></MobileCardNameWrap>
-                    <StatusBadge $bg={statusInfo.bg} $color={statusInfo.color}>{statusInfo.label}</StatusBadge>
+                    <StatusBadge $c={statusInfo.c}>{statusInfo.label}</StatusBadge>
                   </MobileCardHeader>
                   <MobileCardDetails>
                     <div><span>Admission No.</span><strong>{adm}</strong></div>

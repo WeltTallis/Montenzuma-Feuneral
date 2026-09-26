@@ -30,11 +30,25 @@ export const C = {
   pendingBg: '#f9fafb',
 };
 
+/**
+ * Every timestamp the backend hands us is KENYA wall time (Africa/Nairobi,
+ * UTC+3, no DST) — see the header of utils/dates/parseDates.js and
+ * bodyRelease.controller.ts, which writes `created_at` via kenyaNow().
+ *
+ * parseDate() rebuilds those naive "YYYY-MM-DD HH:mm:ss" strings as local
+ * components, so the renderer MUST pin the same zone. Without `timeZone`,
+ * toLocale*String falls back to the BROWSER's zone: a device set to UTC rendered
+ * a 13:24 EAT handover as "10:24 AM" — three hours early. This is why the
+ * release timeline looked wrong while the intake form (which only ever shows a
+ * calendar date) looked right: a date is stable across zones, a time is not.
+ */
+const TZ = 'Africa/Nairobi';
+
 export const formatDate = (dt) => {
   if (!dt) return '—';
   const parsed = parseDate(dt);
   if (!parsed) return '—';
-  return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return parsed.toLocaleDateString('en-US', { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 // Exact date AND time, e.g. "Sep 15, 2026, 2:45 PM"
@@ -42,8 +56,8 @@ export const formatDateTime = (dt) => {
   if (!dt) return '—';
   const parsed = parseDate(dt);
   if (!parsed) return '—';
-  const date = parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const time = parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const date = parsed.toLocaleDateString('en-US', { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' });
+  const time = parsed.toLocaleTimeString('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit', hour12: true });
   return `${date}, ${time}`;
 };
 
@@ -61,7 +75,7 @@ export const formatTime12 = (t) => {
   }
   const parsed = parseDate(s);
   if (parsed) {
-    return parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return parsed.toLocaleTimeString('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit', hour12: true });
   }
   return s;
 };
