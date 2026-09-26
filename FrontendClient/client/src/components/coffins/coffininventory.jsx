@@ -1965,32 +1965,42 @@ const CoffinDashboard = () => {
           const stockBg = stock > 2 ? S.successLight : stock > 0 ? S.warningLight : S.dangerLight;
           const stockLabel = stock > 2 ? 'Available' : stock > 0 ? 'Low Stock' : 'Out of Stock';
 
+          // Resolve the owning branch from the live branch list first — the row
+          // may only carry a generic branch_name.
+          const br = branches.find((x) => x && (x.id == c.branch_id || x.branch_id == c.branch_id
+            || x.branch_slug === c.branch_slug || x.slug === c.branch_slug));
+          const branchLabel = br?.name || br?.branch_name || c.branch_name || c.branch_slug || 'Unknown';
+
+          // One soft chip per attribute instead of a "|"-separated run-on line.
+          const meta = [
+            `<span style="display:inline-flex; align-items:center; gap:5px;"><i class="fa-solid fa-building" style="font-size:10px; opacity:0.7;"></i>${branchLabel}</span>`,
+            `<span style="display:inline-flex; align-items:center; gap:5px; font-weight:600; color:${S.text};"><i class="fa-solid fa-tag" style="font-size:10px; opacity:0.7;"></i>${formatKES(c.price)}</span>`,
+            c.size ? `<span style="display:inline-flex; align-items:center; gap:5px;"><i class="fa-solid fa-ruler" style="font-size:10px; opacity:0.7;"></i>${c.size}</span>` : '',
+            c.color ? `<span style="display:inline-flex; align-items:center; gap:5px;"><i class="fa-solid fa-palette" style="font-size:10px; opacity:0.7;"></i>${c.color}</span>` : '',
+          ].filter(Boolean).join('');
+
           return `
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:16px; border:1px solid ${S.border}; border-radius:12px; background:#fff; transition:all 0.2s; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
-            <div style="display:flex; gap:16px; align-items:center;">
-              <div style="width:48px; height:48px; background:${S.primaryLight}; border-radius:12px; display:flex; align-items:center; justify-content:center; color:${S.primary}; font-weight:800; font-size:18px; flex-shrink:0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; padding:14px 16px; border:1px solid ${S.border}; border-radius:10px; background:#fff; transition:all 0.2s;">
+            <div style="display:flex; gap:14px; align-items:center; min-width:0;">
+              <div style="width:40px; height:40px; background:${S.primaryLight}; border-radius:10px; display:flex; align-items:center; justify-content:center; color:${S.primary}; font-weight:800; font-size:16px; flex-shrink:0;">
                 ${c.name?.charAt(0) || '?'}
               </div>
-              <div>
-                <div style="font-weight:700; color:${S.text}; font-size:15px; margin-bottom:4px;">${c.name}</div>
-                <div style="font-size:13px; color:${S.textMuted}; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  <span style="display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-building" style="font-size:11px;"></i> ${branches.find((b) => b.id == c.branch_id)?.name || c.branch_name || 'Unknown'}</span>
-                  <span style="color:${S.border};">|</span>
-                  <span style="font-weight:600; color:${S.text};">${formatKES(c.price)}</span>
-                  ${c.color ? `<span style="color:${S.border};">|</span><span><i class="fa-solid fa-palette" style="font-size:11px;"></i> Color: ${c.color}</span>` : ''}
-                  ${c.size ? `<span style="color:${S.border};">|</span><span><i class="fa-solid fa-ruler" style="font-size:11px;"></i> Size: ${c.size}</span>` : ''}
+              <div style="min-width:0;">
+                <div style="font-weight:600; color:${S.text}; font-size:14px; margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.name}</div>
+                <div style="font-size:12px; color:${S.textMuted}; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  ${meta}
                 </div>
               </div>
             </div>
-            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
-              <span style="display:inline-flex; align-items:center; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; background:${stockBg}; color:${stockColor};">
+            <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+              <span style="display:inline-flex; align-items:center; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; background:${stockBg}; color:${stockColor}; white-space:nowrap;">
                 ${stock} ${stockLabel}
               </span>
               ${stock > 0
-              ? `<button class="drawer-btn btn-p btn-sm" style="width:auto; padding:8px 14px;" onclick="window.__reserveInterBranch('${c.coffin_id || c.id}')">
+              ? `<button class="drawer-btn btn-p btn-sm" style="width:auto; padding:8px 14px; white-space:nowrap;" onclick="window.__reserveInterBranch('${c.coffin_id || c.id}')">
                   <i class="fa-solid fa-paper-plane"></i> Request
                 </button>`
-              : `<span style="font-size:12px; color:${S.textMuted}; font-weight:600;">Unavailable</span>`
+              : `<span style="font-size:12px; color:${S.textMuted}; font-weight:600; white-space:nowrap;">Unavailable</span>`
             }
             </div>
           </div>

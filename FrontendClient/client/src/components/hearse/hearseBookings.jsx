@@ -883,6 +883,33 @@ const HearseBookings = () => {
 
   const branchOptions = branches.length > 0 ? branches : [];
 
+  /* The booking feed reports a generic branch_name ("Main"), so it cannot be
+     shown directly. Resolve the real name from the live branch list first —
+     that is authoritative and works for any tenant, unlike the hardcoded
+     slug→name map in viewerShared — then fall back to the slug resolver. */
+  const branchNameByKey = useMemo(() => {
+    const m = new Map();
+    branchOptions.forEach((br) => {
+      const nm = br?.branch_name || br?.name || br?.branch_slug || '';
+      if (!nm) return;
+      [br?.branch_id, br?.branch_slug, br?.id, br?.slug].forEach((k) => {
+        if (k != null && k !== '') m.set(String(k).toLowerCase(), nm);
+      });
+    });
+    return m;
+  }, [branchOptions]);
+
+  const branchLabel = (b) => {
+    if (!b) return 'Unknown';
+    const keys = [b.branch_id, b.branch_slug, b.branch, b.booking_branch_slug, b.hearse_branch_id];
+    for (const k of keys) {
+      if (k == null || k === '') continue;
+      const hit = branchNameByKey.get(String(k).toLowerCase());
+      if (hit) return hit;
+    }
+    return resolveBranchName(b);
+  };
+
   return (
     <Container>
       <MainContent>
@@ -1003,7 +1030,7 @@ const HearseBookings = () => {
                               <div style={{ fontSize: '0.78rem' }}>{b.hearse_name || 'N/A'}</div>
                               {b.plate_number && <div style={{ fontSize: '0.68rem', color: COLORS.textMuted }}>{b.plate_number}</div>}
                             </TableCell>
-                            <TableCell><div style={{ fontSize: '0.78rem' }}>{b.branch_name || 'N/A'}</div></TableCell>
+                            <TableCell><div style={{ fontSize: '0.78rem' }}>{branchLabel(b)}</div></TableCell>
                             <TableCell><div style={{ fontSize: '0.78rem' }}>{fmtBookingDates(b)}</div></TableCell>
                             <TableCell>
                               <StatusBadge $status={b.status}>{STATUS_CONFIG[b.status]?.label || b.status}</StatusBadge>
@@ -1178,7 +1205,7 @@ const HearseBookings = () => {
                   <DetailLabel>Branch</DetailLabel>
                   <DetailValue style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {(() => {
-                      const name = resolveBranchName(selectedBooking);
+                      const name = branchLabel(selectedBooking);
                       const multiDay = isMultiDay(selectedBooking);
                       const color = multiDay ? getMultiDayColor(selectedBooking) : null;
                       return (

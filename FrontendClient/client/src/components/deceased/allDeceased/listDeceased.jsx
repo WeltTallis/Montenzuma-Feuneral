@@ -844,7 +844,7 @@ const DeceasedListPage = () => {
             </NotifyCard>
           </NotifyOverlay>
         )}
-      </AppContainer>it 
+      </AppContainer>
     </>
   );
 };
