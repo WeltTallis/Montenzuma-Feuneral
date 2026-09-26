@@ -14,7 +14,7 @@ import api from '../../../api/axios';
 // "ReferenceError: User is not defined" during module evaluation and took
 // down the entire production bundle -> "Cannot read properties of undefined
 // (reading 'default')" from React.lazy).
-import { User, CalendarDays, Edit, X, Save, Info, RefreshCw } from '../../utils/icons/icons';
+import { User, CalendarDays, Edit, X, Save, Info, RefreshCw } from '../../../utils/icons/icons';
 
 // Animations
 const fadeIn = keyframes`

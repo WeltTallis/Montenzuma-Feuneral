@@ -1650,12 +1650,17 @@ const DocumentsPage = () => {
   };
 
   const handleDelete = async (documentId, documentName) => {
-    const confirmed = await confirmWithWarning(
-      `Delete "${documentName}"?`,
-      'This action cannot be undone. All data will be permanently removed.',
-      Swal
-    );
-    if (confirmed) {
+    const result = await Swal.fire({
+      title: `Delete "${documentName}"?`,
+      text: 'This action cannot be undone. All data will be permanently removed.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete it!'
+    });
+
+    if (result.isConfirmed) {
       try {
         setIsDeleting(true);
         

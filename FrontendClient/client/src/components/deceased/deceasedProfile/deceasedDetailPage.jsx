@@ -6,7 +6,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 // Import your existing sub-components
 import ScanDocumentModal from '../../scanner/ScanDocumentModal';
 import DeceasedProfileHeader from './DeceasedProfileHeader';
-import ChargeSettingsModal from '../ChargeSettingsModal';
+import ChargeSettingsModal from '../charges/ChargeSettingsModal';
 import DeceasedSidebar from './DeceasedSidebar';
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
