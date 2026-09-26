@@ -240,10 +240,32 @@ export const getAllCoffins = async (req: Request, res: Response) => {
     const effectiveBranchSlug = String(branchSlug || headerBranchSlug || '');
     const effectiveBranchId = branchId || headerBranchId || null;
 
-    if (effectiveBranchSlug) {
+    // ─── CACHE — read on EVERY path ────────────────────────────────────────
+    // The frontend ALWAYS sends x-branch-id / x-branch-slug for multi-branch
+    // tenants, and both branch-specific paths below used to `return` BEFORE
+    // reaching the cache lookup at the bottom of this function. The result:
+    // `service:coffin-service:*` keys were never written, so the Inventory
+    // page never produced a cache hit — the Redis "hit rate" only ever showed
+    // BullMQ/notification traffic. One entry per tenant + branch (the tenant is
+    // already part of the Redis key namespace) and create/update/delete wipe
+    // the whole namespace through clearCoffinCache(), so this stays correct.
+    const cacheKey = effectiveBranchId ? `branchCoffins_${effectiveBranchId}` : 'allCoffins';
+
+    const noStore = () => {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
+    };
+
+    const cachedCoffins: any = await getCached(tenantSlug, cacheKey);
+    if (cachedCoffins) {
+      logger.info({ msg: 'Coffins served from Redis', tenantSlug, cacheKey, count: cachedCoffins.length });
+      if (effectiveBranchSlug || effectiveBranchId) noStore();
+      return res.status(200).json({ success: true, data: cachedCoffins, count: cachedCoffins.length });
+    }
+
+    if (effectiveBranchSlug) {
+      noStore();
 
       // All coffin inventory lives in ONE central coffin DB, scoped by tenant slug.
       // A branch slug (x-branch-slug) narrows to the current branch whenever a branch
@@ -272,6 +294,8 @@ export const getAllCoffins = async (req: Request, res: Response) => {
 
       const coffins = rows.map(row => CoffinModel.mapRow(row));
 
+      await setCached(tenantSlug, cacheKey, coffins);
+
       return res.status(200).json({ success: true, data: coffins, count: coffins.length });
     }
 
@@ -290,32 +314,18 @@ export const getAllCoffins = async (req: Request, res: Response) => {
 
       const coffins = rows.map(row => CoffinModel.mapRow(row));
 
+      await setCached(tenantSlug, cacheKey, coffins);
+
       return res.status(200).json({ success: true, data: coffins, count: coffins.length });
     }
 
-    // Default = MY branch's inventory first (multi-branch tenants send x-branch-id).
-    // Single-branch / no branch context = the whole tenant inventory (tenant_slug).
-    const cacheKey = effectiveBranchId ? `branchCoffins_${effectiveBranchId}` : 'allCoffins';
-    let coffins: any = await getCached(tenantSlug, cacheKey);
+    // No branch context at all (single-branch tenants + the dashboard):
+    // whole tenant inventory, already mapped (name, price, stock, ...).
+    // Branch-aware requests were served above — with the cache — so this is
+    // the only path that still needs a DB round trip here.
+    const coffins: any[] = await CoffinModel.getAll(tenantSlug, tenantParam);
 
-    if (!coffins) {
-      if (effectiveBranchId) {
-        const sql = `
-          SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
-            GROUP_CONCAT(ci.image_url) as image_urls
-          FROM coffins c
-          LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
-          WHERE ${tenantClause} AND (c.branch_id = ? OR c.branch_id IS NULL) AND c.is_deleted = FALSE
-          GROUP BY c.coffin_id
-          ORDER BY c.created_at DESC
-        `;
-        const rows: any[] = await coffinQuery(sql, [...tenantParams, String(effectiveBranchId)]);
-        coffins = rows.map(row => CoffinModel.mapRow(row));
-      } else {
-        coffins = await CoffinModel.getAll(tenantSlug, tenantParam); // already mapped (name, price, stock, ...)
-      }
-      await setCached(tenantSlug, cacheKey, coffins);
-    }
+    await setCached(tenantSlug, cacheKey, coffins);
 
     return res.status(200).json({ success: true, data: coffins, count: coffins.length });
   } catch (error: any) {

@@ -4,6 +4,7 @@ import { logger } from '@montezuma/shared-logger';
 import {
   DeceasedAnalyticsData, DeceasedAnalyticsQuery
 } from '../types/analytics.types';
+import { FilterBuilder, sanitizeDate, monthsBackFromTimeRange } from '../utils/sqlFilters';
 
 // Helper to format date for display
 const formatDisplayDate = (dateStr: string): string => {
@@ -86,10 +87,18 @@ export const getDeceasedAnalytics = async (req: any, res: any): Promise<void> =>
     (logger as any).info(`[${requestId}] Fetching deceased analytics for tenant: ${tenantSlug}, branch: ${branchId}`);
 
     // Calculate date range based on timeRange
-    const monthsBack = query.timeRange === '3m' ? 3 : query.timeRange === '6m' ? 6 : 12;
-    const dateFilter = query.startDate && query.endDate
-      ? `AND date_admitted BETWEEN '${query.startDate}' AND '${query.endDate}'`
-      : `AND date_admitted >= DATE_SUB(NOW(), INTERVAL ${monthsBack} MONTH)`;
+    // SECURITY (audit 2.4): startDate/endDate used to be interpolated directly
+    // into the SQL text as `BETWEEN '${query.startDate}' AND '${query.endDate}'`.
+    // They are now validated to a real calendar date and BOUND through `?`.
+    // monthsBack is an integer chosen from a closed set, and is bound too, so
+    // nothing derived from the request ever reaches the statement as text.
+    const monthsBack = monthsBackFromTimeRange(query.timeRange, { '3m': 3, '6m': 6, '12m': 12 });
+    const startDate = sanitizeDate(query.startDate);
+    const endDate = sanitizeDate(query.endDate);
+
+    const dateFilter = (startDate && endDate)
+      ? new FilterBuilder().between('date_admitted', startDate, endDate).build()
+      : new FilterBuilder().withinLastMonths('date_admitted', monthsBack).build();
 
     // Fetch ALL deceased records (full list) with a gracefu fallback if the postmortem table is missing.
     const fetchAllRecords = async (): Promise<any[]> => {
@@ -163,8 +172,8 @@ export const getDeceasedAnalytics = async (req: any, res: any): Promise<void> =>
           COUNT(CASE WHEN admission_status IN ('admitted', 'embalmed') THEN 1 END) as in_morgue,
           COUNT(CASE WHEN release_status = 'pending' AND admission_status != 'released' THEN 1 END) as pending_autopsy
         FROM deceased
-        WHERE tenant_slug = ? AND is_deleted = FALSE ${dateFilter}
-      `, [tenantSlug]),
+        WHERE tenant_slug = ? AND is_deleted = FALSE ${dateFilter.sql}
+      `, [tenantSlug, ...dateFilter.params]),
 
       // 2. Status distribution
       safeTenantQuery(dbName, `
@@ -172,22 +181,28 @@ export const getDeceasedAnalytics = async (req: any, res: any): Promise<void> =>
           COALESCE(admission_status, 'Unknown') as status,
           COUNT(*) as count
         FROM deceased
-        WHERE tenant_slug = ? AND is_deleted = FALSE ${dateFilter}
+        WHERE tenant_slug = ? AND is_deleted = FALSE ${dateFilter.sql}
         GROUP BY admission_status
         ORDER BY count DESC
-      `, [tenantSlug]),
+      `, [tenantSlug, ...dateFilter.params]),
 
       // 3. Monthly trends
+      // SECURITY (audit 2.4): `${monthsBack}` was interpolated into the SQL text.
+      // It is now bound through a placeholder. This query also carried a
+      // pre-existing typo — the WHERE clause referenced a non-existent column
+      // `tenant_smitted` instead of `date_admitted`, so the "monthly trends"
+      // chart silently threw ER_BAD_FIELD_ERROR and fell through to [] on every
+      // request. Corrected here.
       safeTenantQuery(dbName, `
         SELECT 
           DATE_FORMAT(date_admitted, '%b %Y') as month,
           COUNT(*) as count
         FROM deceased
-        WHERE tenant_smitted >= DATE_SUB(NOW(), INTERVAL ${monthsBack} MONTH)
+        WHERE date_admitted >= DATE_SUB(NOW(), INTERVAL ? MONTH)
           AND tenant_slug = ? AND is_deleted = FALSE
         GROUP BY DATE_FORMAT(date_admitted, '%Y-%m'), DATE_FORMAT(date_admitted, '%b %Y')
         ORDER BY DATE_FORMAT(date_admitted, '%Y-%m') ASC
-      `, [tenantSlug]),
+      `, [monthsBack, tenantSlug]),
 
       // 4. Gender distribution
       safeTenantQuery(dbName, `
@@ -195,10 +210,10 @@ export const getDeceasedAnalytics = async (req: any, res: any): Promise<void> =>
           COALESCE(gender, 'Unknown') as gender,
           COUNT(*) as count
         FROM deceased
-        WHERE tenant_slug = ? AND is_deleted = FALSE ${dateFilter}
+        WHERE tenant_slug = ? AND is_deleted = FALSE ${dateFilter.sql}
         GROUP BY gender
         ORDER BY count DESC
-      `, [tenantSlug]),
+      `, [tenantSlug, ...dateFilter.params]),
 
       // 5. Postmortem tracking (if postmortem table exists)
       safeTenantQuery(dbName, `
@@ -207,8 +222,8 @@ export const getDeceasedAnalytics = async (req: any, res: any): Promise<void> =>
           COUNT(CASE WHEN postmortem_completed = 1 THEN 1 END) as completed,
           COUNT(CASE WHEN postmortem_requested = 0 OR postmortem_requested IS NULL THEN 1 END) as not_requested
         FROM deceased
-        WHERE tenant_slug = ? AND is_deleted = FALSE ${dateFilter}
-      `, [tenantSlug]).catch(() => ({ pending: 0, completed: 0, not_requested: 0 })),
+        WHERE tenant_slug = ? AND is_deleted = FALSE ${dateFilter.sql}
+      `, [tenantSlug, ...dateFilter.params]).catch(() => ({ pending: 0, completed: 0, not_requested: 0 })),
 
       // 6. Stay duration (for bodies currently in morgue)
       safeTenantQuery(dbName, `

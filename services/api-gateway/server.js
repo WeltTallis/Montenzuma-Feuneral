@@ -32,6 +32,9 @@ const hpp = require('hpp');
 const dns = require('dns');
 const http = require('http');
 const fs = require('fs');
+// SECURITY (audit 2.2): the single chokepoint that establishes a request's
+// tenant identity from verified JWT claims before it is proxied onward.
+const { applyTenantIdentity } = require('./tenantIdentity');
 // Real infrastructure monitoring (replaces the removed Grafana/Prometheus/Loki
 // stack). Exposes GET /monitoring and records per-request metrics.
 const { metricsMiddleware, buildReport, startSeriesTimer } = require('./monitoring');
@@ -505,11 +508,12 @@ for (const [routeKey, targetUrl] of Object.entries(SERVICE_ROUTES)) {
       on: {
         proxyReq: (proxyReq, req, res) => {
           if (req.headers.authorization) proxyReq.setHeader('Authorization', req.headers.authorization);
-          if (req.headers['x-tenant-slug']) proxyReq.setHeader('x-tenant-slug', req.headers['x-tenant-slug']);
-          if (req.headers['x-tenant-id']) proxyReq.setHeader('x-tenant-id', req.headers['x-tenant-id']);
-          if (req.headers['x-user-id']) proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
-          if (req.headers['x-branch-slug']) proxyReq.setHeader('x-branch-slug', req.headers['x-branch-slug']);
-          if (req.headers['x-branch-id']) proxyReq.setHeader('x-branch-id', req.headers['x-branch-id']);
+          // SECURITY (audit 2.2): tenant identity is established HERE, from the
+          // verified JWT claims. The previous code forwarded the client's own
+          // x-tenant-slug / x-tenant-id / x-user-id verbatim, which — because
+          // this platform is database-per-tenant — let any authenticated user
+          // read and mutate ANY other tenant's data by changing one header.
+          applyTenantIdentity(proxyReq, req, Logger);
           // fixRequestBody re-streams the body that express.json() parsed.
           // For multipart/form-data (file uploads) we intentionally skipped the
           // body parser above so the raw stream is still intact — calling
@@ -557,11 +561,8 @@ for (const [routeKey, targetUrl] of Object.entries(SERVICE_ROUTES)) {
                 on: {
                   proxyReq: (proxyReq, req, res) => {
                     if (req.headers.authorization) proxyReq.setHeader('Authorization', req.headers.authorization);
-                    if (req.headers['x-tenant-slug']) proxyReq.setHeader('x-tenant-slug', req.headers['x-tenant-slug']);
-                    if (req.headers['x-tenant-id']) proxyReq.setHeader('x-tenant-id', req.headers['x-tenant-id']);
-                    if (req.headers['x-user-id']) proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
-                    if (req.headers['x-branch-slug']) proxyReq.setHeader('x-branch-slug', req.headers['x-branch-slug']);
-                    if (req.headers['x-branch-id']) proxyReq.setHeader('x-branch-id', req.headers['x-branch-id']);
+                    // Same tenant-identity enforcement as the primary route (see above).
+                    applyTenantIdentity(proxyReq, req, Logger);
                     try { 
                       if (!isMultipart(req)) fixRequestBody(proxyReq, req); 
                     } catch (e) { /* ignore */ }

@@ -8,12 +8,15 @@ import {
 
 // ── palette — mirrors the deceased Charge Settings side panel ────────────────
 const C = {
+
   black: '#0a0a0a', dark: '#1a1a1a', gray: '#777777', border: '#c8c8c8',
   borderLight: '#e0e0e0', bgField: '#f7f7f5', success: '#059669', successBg: '#ecfdf5',
   warning: '#d97706', warningBg: '#fef3c7', danger: '#dc2626', dangerBg: '#fef2f2',
   info: '#2563eb', infoBg: '#eff6ff',
   headFrom: '#0f3040', headTo: '#163f52', headLine: '#0b2936',
+
 };
+
 
 const FONT_SANS = "'Source Sans 3', -apple-system, sans-serif";
 const FONT_SERIF = "'Merriweather', Georgia, serif";
@@ -379,87 +382,87 @@ const ScanDocumentModal = ({ deceasedId, deceasedName = '', onClose, onScanned }
         </Head>
 
         <PanelBody>
-        {phase === 'probe' && (
-          <StatusBox $kind="info">
-            <SpinWrap><Loader2 size={16} /></SpinWrap>
-            Checking for the local Scanner Bridge…
-          </StatusBox>
-        )}
-
-        {phase === 'ready' && (
-          <>
-            <StatusBox $kind="info">
-              <Printer size={16} />
-              {scannerName}{bridgeUrl ? ` — ${bridgeUrl.replace(/^wss?:\/\//, '')}` : ''}.
-            </StatusBox>
-            <div style={{ background: C.bgField, border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: '12px 14px', marginTop: 10, fontSize: 13, color: C.dark }}>
-              Place the document(s) face-up in the scanner tray, then press
-              <strong> Scan Document</strong>. The pages are scanned to a PDF and
-              uploaded straight to this deceased person's documents.
-            </div>
-            {metaFields}
-          </>
-        )}
-
-        {phase === 'unavailable' && (
-          <>
-            <StatusBox $kind="warning">
-              <AlertTriangle size={16} />
-              Scanner Bridge not found on this computer.
-            </StatusBox>
-            <div style={{ background: C.bgField, border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: '12px 14px', marginTop: 10, fontSize: 13, color: C.dark }}>
-              <strong>Install Scanner Bridge</strong> to scan straight from Restpoint
-              (no HP software or scanner buttons needed). Download the app at
-              <a href="/downloads/windows/Restpoint-Scanner-Bridge-Installer.exe" download>
-                Download the Scanner Bridge installer
-              </a>{' '}and run it once on this computer. Node.js is not required.
-              <br />
-              <a href="/downloads/macbook/Restpoint-Scanner-Bridge.pkg" download>
-                MacBook users: download the macOS package
-              </a>.
-            </div>
-            {metaFields}
-          </>
-        )}
-
-        {(phase === 'scanning' || phase === 'uploading') && (
-          <>
+          {phase === 'probe' && (
             <StatusBox $kind="info">
               <SpinWrap><Loader2 size={16} /></SpinWrap>
-              {message}
+              Checking for the local Scanner Bridge…
             </StatusBox>
-            <ProgressBar $w={progress}><div /></ProgressBar>
-            <div style={{ fontSize: 12, color: C.gray, textAlign: 'center' }}>
-              {phase === 'scanning' ? 'Holding the scanner… pages are being digitised.' : 'Sending the PDF to the documents service…'}
-            </div>
-          </>
-        )}
+          )}
 
-        {phase === 'success' && (
-          <>
-            <StatusBox $kind="success">
-              <CheckCircle size={16} />
-              {message || 'Document scanned and uploaded successfully!'}
-            </StatusBox>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, fontSize: 13, color: C.dark, background: C.bgField, border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: '12px 14px' }}>
-              <FileText size={15} />
-              <span>
-                <strong>{document?.original_name || document?.name || documentName || 'Scanned document'}</strong>
-                {document?.file_size ? ` · ${Math.max(1, Math.round(document.file_size / 1024))} KB` : ''}
-                {' '}· uploaded to this profile's documents.
-              </span>
-            </div>
-          </>
-        )}
+          {phase === 'ready' && (
+            <>
+              <StatusBox $kind="info">
+                <Printer size={16} />
+                {scannerName}{bridgeUrl ? ` — ${bridgeUrl.replace(/^wss?:\/\//, '')}` : ''}.
+              </StatusBox>
+              <div style={{ background: C.bgField, border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: '12px 14px', marginTop: 10, fontSize: 13, color: C.dark }}>
+                Place the document(s) face-up in the scanner tray, then press
+                <strong> Scan Document</strong>. The pages are scanned to a PDF and
+                uploaded straight to this deceased person's documents.
+              </div>
+              {metaFields}
+            </>
+          )}
 
-        {phase === 'error' && (
-          <>
-            <StatusBox $kind="error">
-              <AlertTriangle size={16} />
-              {message || 'Scan failed. Please try again.'}
-            </StatusBox>
-          </>
-        )}
+          {phase === 'unavailable' && (
+            <>
+              <StatusBox $kind="warning">
+                <AlertTriangle size={16} />
+                Scanner Bridge not found on this computer.
+              </StatusBox>
+              <div style={{ background: C.bgField, border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: '12px 14px', marginTop: 10, fontSize: 13, color: C.dark }}>
+                <strong>Install Scanner Bridge</strong> to scan straight from Restpoint
+                (no HP software or scanner buttons needed). Download the app at
+                <a href="/downloads/windows/Restpoint-Scanner-Bridge-Installer.exe" download>
+                  Download the Scanner Bridge installer
+                </a>{' '}and run it once on this computer. Node.js is not required.
+                <br />
+                <a href="/downloads/macbook/Restpoint-Scanner-Bridge.pkg" download>
+                  MacBook users: download the macOS package
+                </a>.
+              </div>
+              {metaFields}
+            </>
+          )}
+
+          {(phase === 'scanning' || phase === 'uploading') && (
+            <>
+              <StatusBox $kind="info">
+                <SpinWrap><Loader2 size={16} /></SpinWrap>
+                {message}
+              </StatusBox>
+              <ProgressBar $w={progress}><div /></ProgressBar>
+              <div style={{ fontSize: 12, color: C.gray, textAlign: 'center' }}>
+                {phase === 'scanning' ? 'Holding the scanner… pages are being digitised.' : 'Sending the PDF to the documents service…'}
+              </div>
+            </>
+          )}
+
+          {phase === 'success' && (
+            <>
+              <StatusBox $kind="success">
+                <CheckCircle size={16} />
+                {message || 'Document scanned and uploaded successfully!'}
+              </StatusBox>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12, fontSize: 13, color: C.dark, background: C.bgField, border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: '12px 14px' }}>
+                <FileText size={15} />
+                <span>
+                  <strong>{document?.original_name || document?.name || documentName || 'Scanned document'}</strong>
+                  {document?.file_size ? ` · ${Math.max(1, Math.round(document.file_size / 1024))} KB` : ''}
+                  {' '}· uploaded to this profile's documents.
+                </span>
+              </div>
+            </>
+          )}
+
+          {phase === 'error' && (
+            <>
+              <StatusBox $kind="error">
+                <AlertTriangle size={16} />
+                {message || 'Scan failed. Please try again.'}
+              </StatusBox>
+            </>
+          )}
         </PanelBody>
 
         {footActions && <PanelFoot>{footActions}</PanelFoot>}

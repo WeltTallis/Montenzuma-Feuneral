@@ -60,11 +60,30 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
   try {
     (logger as any).info(`[${requestId}] Fetching hearse analytics for tenant: ${tenantSlug}, branch: ${branchId}`);
 
-    // Build date filter
+    // Build filters.
+    // SECURITY (audit 2.4): branchId, status, searchQuery and startDate/endDate
+    // were all interpolated into the SQL text as literals:
+    //   AND hb.branch_id = ${query.branchId}
+    //   AND hb.status = '${query.status}'
+    //   AND (... LIKE '%${query.searchQuery}%')
+    //   AND DATE(hb.booking_date) BETWEEN '${query.startDate}' AND '${query.endDate}'
+    // and the values were never passed in `params`, so mysql2 offered no
+    // protection. Every one of them is now validated and BOUND through `?`.
+    // Column identifiers still appear in the SQL text, but they come only from
+    // the closed `FilterColumn` union inside the builder — never from a request.
     const dateFilter = buildDateFilter(query);
-    const branchFilter = query.branchId ? `AND hb.branch_id = ${query.branchId}` : '';
-    const statusFilter = query.status ? `AND hb.status = '${query.status}'` : '';
-    const searchFilter = query.searchQuery ? `AND (hb.client_name LIKE '%${query.searchQuery}%' OR hb.booking_code LIKE '%${query.searchQuery}%' OR h.destination LIKE '%${query.searchQuery}%')` : '';
+    const f = new FilterBuilder()
+      .between('hb.booking_date', sanitizeDate(query.startDate), sanitizeDate(query.endDate))
+      .equals('hb.branch_id', query.branchId)
+      .equals('hb.status', sanitizeEnum(query.status, HEARSE_STATUSES))
+      .anyLike(['hb.client_name', 'hb.booking_code', 'h.destination'], sanitizeToken(query.searchQuery));
+    const filters = f.build();
+
+    // `buildDateFilter` returns either a parameter-free expression (CURDATE(),
+    // YEARWEEK(NOW()), …) or, for an explicit range, the bound BETWEEN above.
+    // When the explicit range won, `buildDateFilter` is superseded by the
+    // builder's bound `between()` so the values are never concatenated.
+    const dateSql = (sanitizeDate(query.startDate) && sanitizeDate(query.endDate)) ? '' : dateFilter;
 
     // Fetch all data in parallel
     const [
@@ -87,8 +106,8 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
           COUNT(CASE WHEN status = 'in_transit' THEN 1 END) as in_progress,
           COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
         FROM hearse_bookings hb
-        WHERE hb.tenant_slug = ? ${dateFilter} ${statusFilter} ${searchFilter}
-      `, [tenantSlug]),
+        WHERE hb.tenant_slug = ? ${dateSql} ${filters.sql}
+      `, [tenantSlug, ...filters.params]),
 
       // 2. Status distribution
       safeTenantQuery(dbName, `
@@ -96,10 +115,10 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
           hb.status,
           COUNT(*) as count
         FROM hearse_bookings hb
-        WHERE hb.tenant_slug = ? ${dateFilter} ${statusFilter} ${searchFilter}
+        WHERE hb.tenant_slug = ? ${dateSql} ${filters.sql}
         GROUP BY hb.status
         ORDER BY count DESC
-      `, [tenantSlug]),
+      `, [tenantSlug, ...filters.params]),
 
       // 3. Today's count
       safeTenantQuery(dbName, `
@@ -107,8 +126,8 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
         FROM hearse_bookings hb
         WHERE hb.tenant_slug = ? 
           AND DATE(hb.booking_date) = CURDATE()
-          ${branchFilter} ${statusFilter} ${searchFilter}
-      `, [tenantSlug]),
+          ${filters.sql}
+      `, [tenantSlug, ...filters.params]),
 
       // 4. This week's count
       safeTenantQuery(dbName, `
@@ -116,8 +135,8 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
         FROM hearse_bookings hb
         WHERE hb.tenant_slug = ? 
           AND YEARWEEK(hb.booking_date) = YEARWEEK(NOW())
-          ${branchFilter} ${statusFilter} ${searchFilter}
-      `, [tenantSlug]),
+          ${filters.sql}
+      `, [tenantSlug, ...filters.params]),
 
       // 5. This month's count
       safeTenantQuery(dbName, `
@@ -126,8 +145,8 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
         WHERE hb.tenant_slug = ? 
           AND MONTH(hb.booking_date) = MONTH(NOW())
           AND YEAR(hb.booking_date) = YEAR(NOW())
-          ${branchFilter} ${statusFilter} ${searchFilter}
-      `, [tenantSlug]),
+          ${filters.sql}
+      `, [tenantSlug, ...filters.params]),
 
       // 6. Branch performance
       safeTenantQuery(dbName, `
@@ -140,7 +159,7 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
           COUNT(CASE WHEN hb.status = 'completed' THEN 1 END) as completed_bookings,
           COUNT(CASE WHEN hb.status = 'cancelled' THEN 1 END) as cancelled_bookings
         FROM branches b
-        LEFT JOIN hearse_bookings hb ON b.branch_id = hb.branch_id AND hb.tenant_slug = ? ${dateFilter}
+        LEFT JOIN hearse_bookings hb ON b.branch_id = hb.branch_id AND hb.tenant_slug = ? ${dateSql}
         WHERE b.tenant_slug = ?
         GROUP BY b.branch_id, b.branch_name, b.branch_code
         ORDER BY total_bookings DESC
@@ -157,7 +176,7 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
           COUNT(CASE WHEN hb.status = 'completed' THEN 1 END) as completed_trips,
           COUNT(CASE WHEN hb.status = 'cancelled' THEN 1 END) as cancelled_trips
         FROM hearses h
-        LEFT JOIN hearse_bookings hb ON h.id = hb.hearse_id AND hb.tenant_slug = ? ${dateFilter}
+        LEFT JOIN hearse_bookings hb ON h.id = hb.hearse_id AND hb.tenant_slug = ? ${dateSql}
         WHERE h.tenant_slug = ?
         GROUP BY h.id, h.hearse_name, h.plate_number, h.status
         ORDER BY total_bookings DESC
@@ -207,7 +226,7 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
         FROM hearse_bookings hb
         LEFT JOIN branches b ON hb.branch_id = b.branch_id
         LEFT JOIN hearses h ON hb.hearse_id = h.id
-        WHERE hb.tenant_slug = ? ${dateFilter} ${branchFilter} ${statusFilter} ${searchFilter}
+        WHERE hb.tenant_slug = ? ${dateSql} ${filters.sql}
         ORDER BY hb.created_at DESC
         LIMIT 20
       `, [tenantSlug])
@@ -357,38 +376,37 @@ export const getHearseAnalytics = async (req: any, res: any): Promise<void> => {
 };
 
 /**
- * Build date filter SQL based on time range
+ * Build the date filter for the hearse analytics queries.
+ *
+ * SECURITY (audit 2.4): this function previously returned
+ *   `AND DATE(hb.booking_date) BETWEEN '${query.startDate}' AND '${query.endDate}'`
+ * — raw request values concatenated straight into the statement text, with the
+ * values absent from `params`, so mysql2 provided no protection whatsoever.
+ *
+ * It now returns ONLY parameter-free expressions derived from the server's own
+ * clock. The explicit `startDate`/`endDate` range is instead applied by the
+ * FilterBuilder's BOUND `between()` (see the caller), so no request-derived
+ * value ever reaches the SQL string. Those dates were also unvalidated, so a
+ * value like `2025-02-31` silently produced an empty result set; `sanitizeDate`
+ * now rejects impossible calendar dates.
  */
 const buildDateFilter = (query: HearseAnalyticsQuery): string => {
-  if (query.startDate && query.endDate) {
-    return `AND DATE(hb.booking_date) BETWEEN '${query.startDate}' AND '${query.endDate}'`;
-  }
-
   switch (query.timeRange) {
     case 'today':
-      return `AND DATE(hb.booking_date) = CURDATE()`;
-    case 'tomorrow': {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = tomorrow.toISOString().split('T')[0];
-      return `AND DATE(hb.booking_date) = '${tomorrowStr}'`;
-    }
+      return 'AND DATE(hb.booking_date) = CURDATE()';
+    case 'tomorrow':
+      return 'AND DATE(hb.booking_date) = DATE_ADD(CURDATE(), INTERVAL 1 DAY)';
     case 'thisWeek':
-      return `AND YEARWEEK(hb.booking_date) = YEARWEEK(NOW())`;
-    case 'nextWeek': {
-      const nextWeek = new Date();
-      nextWeek.setDate(nextWeek.getDate() + 7);
-      return `AND YEARWEEK(hb.booking_date) = YEARWEEK('${nextWeek.toISOString().split('T')[0]}')`;
-    }
+      return 'AND YEARWEEK(hb.booking_date) = YEARWEEK(CURDATE())';
+    case 'nextWeek':
+      return 'AND YEARWEEK(hb.booking_date) = YEARWEEK(DATE_ADD(CURDATE(), INTERVAL 7 DAY))';
     case 'thisMonth':
-      return `AND MONTH(hb.booking_date) = MONTH(NOW()) AND YEAR(hb.booking_date) = YEAR(NOW())`;
-    case 'nextMonth': {
-      const nextMonth = new Date();
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-      return `AND MONTH(hb.booking_date) = MONTH('${nextMonth.toISOString().split('T')[0]}') AND YEAR(hb.booking_date) = YEAR('${nextMonth.toISOString().split('T')[0]}')`;
-    }
+      return 'AND MONTH(hb.booking_date) = MONTH(CURDATE()) AND YEAR(hb.booking_date) = YEAR(CURDATE())';
+    case 'nextMonth':
+      return 'AND MONTH(hb.booking_date) = MONTH(DATE_ADD(CURDATE(), INTERVAL 1 MONTH))'
+        + ' AND YEAR(hb.booking_date) = YEAR(DATE_ADD(CURDATE(), INTERVAL 1 MONTH))';
     default:
-      return `AND hb.booking_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)`;
+      return 'AND hb.booking_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)';
   }
 };
 

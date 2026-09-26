@@ -17,6 +17,12 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Security middleware (shared CommonJS). Required AFTER dotenv.config() rather
+// than via a hoisted `import` so the module is evaluated once the environment
+// is populated.
+// @ts-ignore - authMiddleware is CommonJS JavaScript, not TypeScript
+const { requireSystemAdmin } = require('../app-global/middlewares/authMiddleware');
+
 // Start provision worker if enabled
 if (process.env.START_PROVISION_WORKER !== 'false') {
   try {
@@ -931,7 +937,9 @@ app.use('/onboarding', onboardingRoutes);
 // ============================================
 // SYSTEM ADMIN ROUTES
 // ============================================
-app.use('/system-admin', systemAdminRoutes);
+// SECURITY: previously mounted with no authentication at all, exposing tenant
+// enumeration and suspend/stop/subscription mutation to anonymous callers.
+app.use('/system-admin', requireSystemAdmin, systemAdminRoutes);
 
 // ============================================
 // BLOG ENGAGEMENT (Restpoint Journal - views / likes / comments)

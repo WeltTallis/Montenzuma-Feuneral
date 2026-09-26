@@ -87,7 +87,7 @@ export const getFlowerBookingAnalytics = async (req: any, res: any): Promise<voi
           COUNT(CASE WHEN priority = 'High' THEN 1 END) as high_priority,
           SUM(amount) as total_revenue
         FROM flower_bookings fb
-        WHERE fb.tenant_slug = ? ${dateFilter} ${statusFilter} ${priorityFilter} ${searchFilter}
+        WHERE fb.tenant_slug = ? ${dateSql} ${filters.sql} ${priorityFilter} ${filters.sql}
       `, [tenantSlug]),
 
       // 2. All bookings
@@ -110,7 +110,7 @@ export const getFlowerBookingAnalytics = async (req: any, res: any): Promise<voi
           fb.created_at,
           fb.updated_at
         FROM flower_bookings fb
-        WHERE fb.tenant_slug = ? ${dateFilter} ${statusFilter} ${priorityFilter} ${searchFilter}
+        WHERE fb.tenant_slug = ? ${dateSql} ${filters.sql} ${priorityFilter} ${filters.sql}
         ORDER BY fb.delivery_date ASC, fb.delivery_time ASC
       `, [tenantSlug]),
 

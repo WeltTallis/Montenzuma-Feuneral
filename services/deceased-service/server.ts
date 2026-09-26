@@ -1,23 +1,45 @@
 import express, { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
+import { Server as SocketIOServer } from 'socket.io';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import cors from 'cors';
 import http from 'http';
 import path from 'path';
-import { Server as SocketIOServer } from 'socket.io';
+
 
 dotenv.config();
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '5003', 10);
 
-// CORS Configuration
+// ─── Tenant identifier allowlists (audit 2.3) ───────────────────────────────
+// Applied BEFORE a value is ever used as a database name or cache key, so a
+// crafted header cannot reach INFORMATION_SCHEMA, `mysql`, or another tenant's
+// schema. Every slug the platform issues is lowercase-kebab.
+const TENANT_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
+// Registered tenant database names are the platform's own generated identifiers
+// (e.g. `tenant_acme_home`, `restpoint_acme`). Anything else is refused.
+const TENANT_DB_NAME_RE = /^(tenant|restpoint)_[a-z0-9][a-z0-9_]{0,55}$/;
+
+// CORS Configuration — explicit allowlist, never `origin: true` (audit 2.7).
+// `origin: true` echoes the caller's Origin and pairs it with
+// `Access-Control-Allow-Credentials: true`, which turns every service into a
+// credentialed cross-origin resource for any website a logged-in user visits —
+// and because each service is also published on its own host port, that bypasses
+// the gateway's (correct) CORS entirely.
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
+    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
     : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'];
 
+const corsOriginGuard = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Same-origin, curl, server-to-server: no Origin header at all.
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`CORS origin rejected: ${origin}`));
+};
+
 app.use(cors({
-    origin: true,
+    origin: corsOriginGuard,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
     allowedHeaders: [
@@ -27,6 +49,9 @@ app.use(cors({
         'x-tenant-slug',
         'x-tenant-id',
         'x-user-id',
+        'x-branch-id',
+        'x-branch-slug',
+        'x-internal-secret',
         'Origin',
         'X-Requested-With',
         'Accept'
@@ -58,6 +83,8 @@ app.use(helmet({
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false
 }));
+
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -85,34 +112,47 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
             return next();
         }
 
-        let resolvedDbName = null;
+        let resolvedDbName: string | null = null;
 
+        // SECURITY + RESILIENCE (audit findings 2.3 and 1.1)
+        // ------------------------------------------------------------------
+        // This block used to create a BRAND NEW mysql2 pool for every single HTTP
+        // request, using the raw `x-tenant-slug` header as the database name, run
+        // `SELECT 1` against it, and then tear it down. That was wrong twice over:
+        //
+        //  (a) SECURITY — the slug was never checked against tenant_tracking.tenants,
+        //      so any value naming an existing MariaDB schema was accepted as
+        //      "the tenant": `information_schema`, `mysql`, `performance_schema`, or
+        //      simply another tenant's db_name. With the wildcard grants in
+        //      init-db.sql that is a direct path to reading any schema on the
+        //      server, including tenant_tracking.tenants.jwt_secret.
+        //
+        //  (b) RESILIENCE — two full TCP + auth handshakes per request against a
+        //      server capped at max_connections=500. The first burst of traffic
+        //      exhausted the server and took every other service down with it.
+        //
+        // Resolution is now ONE parameterised, circuit-broken, cached lookup
+        // against the tenant allowlist, and pools are created once and reused via
+        // the shared pool cache. Zero new connections per request.
         try {
-            const testPool = require('mysql2/promise').createPool({
-                host: process.env.DB_HOST || '127.0.0.1',
-                port: parseInt(process.env.DB_PORT || '3306'),
-                user: process.env.DB_USER || 'restpoint_user',
-                password: process.env.DB_PASSWORD,
-                database: tenantSlug,
-                waitForConnections: true,
-                connectionLimit: 2,
-                queueLimit: 0,
-            });
-            const [result] = await testPool.query('SELECT 1');
-            if (result) {
-                resolvedDbName = tenantSlug;
+            if (!TENANT_SLUG_RE.test(tenantSlug)) {
+                throw new Error(`Malformed tenant slug rejected: ${JSON.stringify(tenantSlug)}`);
             }
-            await testPool.end().catch(() => { });
-        } catch (dbErr) {
-            // Silent fail for health checks
-        }
+            const { lookupTenantDatabase } = require('../../shared/dbConfig');
+            // Only ever returns a db_name that is registered against an ACTIVE
+            // tenant row — never an arbitrary schema name.
+            resolvedDbName = await lookupTenantDatabase(tenantSlug);
 
-        if (!resolvedDbName) {
-            try {
-                const { resolveDatabase } = require('../../shared/dbConfig');
-                resolvedDbName = await resolveDatabase(tenantSlug);
-            } catch (e) {
-                // Silent fail for health checks
+            // Defence in depth: even if a compromised/malformed row somehow
+            // yielded a non-conforming database name, refuse to use it.
+            if (resolvedDbName && !TENANT_DB_NAME_RE.test(resolvedDbName)) {
+                console.error(`[DECEASED] Refusing non-conforming tenant db name: ${resolvedDbName}`);
+                resolvedDbName = null;
+            }
+        } catch (dbErr: any) {
+            // Log but do not 500 — a health check must still be able to report.
+            if (req.path !== '/health') {
+                console.error('[DECEASED] Tenant database resolution failed:', dbErr?.message || dbErr);
             }
         }
 

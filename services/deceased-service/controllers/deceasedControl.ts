@@ -69,7 +69,7 @@ export const getAllDeceased = async (
         const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);
 
         if (cached) {
-            Logger.info({ message: "Deceased records served from Redis" });
+            Logger.info({ message: `[Cache] Deceased list served from Redis`, tenantSlug, cacheKey });
             return res.status(200).json({
                 success: true,
                 source: "cache",
@@ -127,14 +127,17 @@ export const getAllDeceased = async (
             }
         };
 
-        // SAVE TO REDIS with shorter TTL for faster updates
-        // Reduced from 300 (5 min) to 60 (1 minute) seconds for more responsive updates
+        // SAVE TO REDIS — 5 minutes, not 60s. The old 60s TTL expired before a
+        // user could revisit the page (navigating list → profile → back), so
+        // the cache looked "broken". Correctness is guaranteed by the write
+        // paths (register/update/delete/status/charge-settings) which call
+        // clearServiceCache() and wipe every list/detail key for the tenant.
         await redisService.serviceSet(
             'deceased-service',
             tenantSlug,
             cacheKey,
             responseData,
-            60 // 1 minute TTL - faster propagation of new records
+            300 // 5 minutes TTL — invalidated on every write
         );
 
         return res.status(200).json(responseData);

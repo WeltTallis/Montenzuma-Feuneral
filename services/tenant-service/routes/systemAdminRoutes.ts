@@ -1,11 +1,22 @@
 import { Router } from 'express';
 import { SystemAdminController } from '../controllers/systemAdminController';
 
+// @ts-ignore - authMiddleware is CommonJS JavaScript, not TypeScript
+const { requireSystemAdmin } = require('../../app-global/middlewares/authMiddleware');
+
 const router = Router();
 const controller = new SystemAdminController();
 
 // ─── System Admin Routes ────────────────────────────────────────────
-// These routes are for the system administrator to manage all tenants
+// These routes are for the system administrator to manage all tenants.
+//
+// SECURITY: this router is mounted with NO other authentication, which meant
+// `GET /system-admin/tenants` returned every tenant's db_name/email/phone to an
+// anonymous caller and `POST /system-admin/tenants/:id/suspend` could take a
+// paying customer's production platform offline. The guard is applied BOTH
+// here and at the mount site in server.ts, so the routes can never be
+// re-exposed by a future re-mount.
+router.use(requireSystemAdmin);
 
 // Dashboard stats
 router.get('/dashboard', controller.getDashboardStats.bind(controller));

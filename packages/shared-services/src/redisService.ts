@@ -28,7 +28,7 @@ const DEFAULT_REDIS_URL = process.env.REDIS_URL
     ? `redis://${REDIS_AUTH_SEGMENT}${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`
     : 'redis://redis:6379');
 
-// ─── Service Configuration ──────────────────────────────────────────────
+// ─── Service Configurations
 
 export interface ServiceConfig {
   name: string;              // Service name (e.g., 'deceased-service', 'auth-service')
@@ -38,7 +38,7 @@ export interface ServiceConfig {
   balanceTTL: number;        // Balance cache TTL in seconds
 }
 
-// ─── Notification Types ──────────────────────────────────────────────────
+// ─── Notification Types 
 
 export enum NotificationType {
   ALERT = 'alert',
@@ -100,6 +100,33 @@ const DEFAULT_SERVICE_CONFIG: Omit<ServiceConfig, 'name'> = {
   balanceTTL: 300,           // 5 minutes
 };
 
+// Unregistered services fall back to these. They are ENV-TUNABLE because a
+// single tenant page can legitimately be several megabytes (the deceased list
+// caches whole rows, incl. long TEXT columns). With the old hard-coded
+// 10MB/8MB budget, checkAndBalance() evicted the tenant's ENTIRE cache —
+// including the entry that had just been written — so no key ever survived
+// long enough to be read, i.e. the cache produced zero hits while the log only
+// showed "cache miss" style DB reads.
+const DEFAULT_MAX_MEMORY_MB = Number(process.env.REDIS_SERVICE_MAX_MEMORY_MB) > 0
+  ? Number(process.env.REDIS_SERVICE_MAX_MEMORY_MB)
+  : 10;
+const DEFAULT_SOFT_LIMIT_MB = Number(process.env.REDIS_SERVICE_SOFT_LIMIT_MB) > 0
+  ? Number(process.env.REDIS_SERVICE_SOFT_LIMIT_MB)
+  : Math.max(1, Math.round(DEFAULT_MAX_MEMORY_MB * 0.8));
+
+// A single cached value above this size is refused (see serviceSet). Caching a
+// multi-megabyte JSON blob costs more than it saves and is what pushed tenants
+// over the budget below. Tune with REDIS_MAX_CACHE_VALUE_KB (default 5MB).
+const MAX_CACHE_VALUE_BYTES = (Number(process.env.REDIS_MAX_CACHE_VALUE_KB) > 0
+  ? Number(process.env.REDIS_MAX_CACHE_VALUE_KB)
+  : 5120) * 1024;
+
+// checkAndBalance() SCANs every key of a service+tenant and calls MEMORY USAGE
+// on each one. Running that after EVERY serviceSet doubled the cost of each
+// cached write; throttle it per service+tenant instead.
+const BALANCE_INTERVAL_MS = 30_000;
+const lastBalanceRun = new Map<string, number>();
+
 // Service config registry
 const serviceConfigs = new Map<string, ServiceConfig>();
 
@@ -144,11 +171,12 @@ export function getServiceConfig(serviceName: string): ServiceConfig {
   const config = serviceConfigs.get(serviceName);
   if (config) return config;
 
-  // Return default config if service not registered
+  // Return default config if service not registered (env-tunable — see
+  // DEFAULT_MAX_MEMORY_MB above).
   return {
     name: serviceName,
-    maxMemoryMB: 10,
-    softLimitMB: 8,
+    maxMemoryMB: DEFAULT_MAX_MEMORY_MB,
+    softLimitMB: DEFAULT_SOFT_LIMIT_MB,
     notificationTTL: 86400,
     balanceTTL: 300,
   };
@@ -259,6 +287,22 @@ export async function serviceSet(
 
     const fullKey = serviceKey(serviceName, tenantSlug, key);
     const serialized = typeof value === 'object' ? JSON.stringify(value) : String(value);
+
+    // Refuse to cache an oversized payload. With the per-tenant budget in
+    // checkAndBalance(), one huge entry (e.g. a page of deceased rows whose
+    // `signature TEXT` column still holds base64 blobs) used to delete every
+    // key of that tenant — including this one — immediately after writing it,
+    // so the cache never served a hit and the counter looked "broken".
+    const bytes = Buffer.byteLength(serialized, 'utf8');
+    if (bytes > MAX_CACHE_VALUE_BYTES) {
+      Logger.warn(
+        `[Redis] serviceSet skipped ${fullKey}: value is ${Math.round(bytes / 1024)}KB ` +
+        `(limit REDIS_MAX_CACHE_VALUE_KB=${Math.round(MAX_CACHE_VALUE_BYTES / 1024)}KB). ` +
+        `Cache this response in a smaller shape or raise the limit.`
+      );
+      return false;
+    }
+
     await r.setEx(fullKey, ttlSeconds, serialized);
 
     // Check memory usage after set
@@ -388,6 +432,17 @@ export async function checkAndBalance(
   try {
     const r = await getRedisClient();
     if (!r) return { balanced: false, removed: 0, freedMB: 0, reason: 'none' };
+
+    // Throttle — this walks every key of the service+tenant and calls
+    // MEMORY USAGE on each one. Doing it after every single set was the main
+    // cost of the cache and the reason entries vanished right after being
+    // written whenever a tenant sat at the limit.
+    const throttleKey = `${serviceName}:${tenantSlug}`;
+    const now = Date.now();
+    if (now - (lastBalanceRun.get(throttleKey) || 0) < BALANCE_INTERVAL_MS) {
+      return { balanced: false, removed: 0, freedMB: 0, reason: 'none' };
+    }
+    lastBalanceRun.set(throttleKey, now);
 
     const memory = await getServiceMemoryUsage(serviceName, tenantSlug);
     const config = getServiceConfig(serviceName);
