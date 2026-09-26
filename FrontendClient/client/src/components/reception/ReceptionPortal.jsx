@@ -8,8 +8,14 @@ import { useTenantStore } from "../../modules/seo/useTenantStore";
 
 
 
-const BODY = "'Fraunces', Georgia, serif"
+/* Font family stack — matches the Body Intake form (deceasedIntake):
+   Saira for body/UI copy, Fraunces reserved for display headings, and
+   JetBrains Mono for data/identifiers. Saira was previously imported via the
+   GlobalFonts @import but never referenced, because BODY was set to Fraunces,
+   so every label and paragraph on this page rendered in the display serif. */
+const BODY = "'Saira', sans-serif"
 const HEAD = "'Fraunces', Georgia, serif"
+const MONO = "'JetBrains Mono', monospace"
 
 /* ── Inline icon set ───────────────────────────────────────── */
 function Icon({ size = 14, sw = 2.25, color = "currentColor", children }) {
@@ -457,6 +463,7 @@ export default function App() {
                 <Dot />
                 <span
                   style={{
+                    fontFamily: MONO,
                     fontSize: 9,
                     letterSpacing: 2,
                     textTransform: "uppercase",

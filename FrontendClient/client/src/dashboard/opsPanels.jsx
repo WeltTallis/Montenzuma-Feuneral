@@ -1,6 +1,5 @@
-import { useState, useMemo } from "react";
 import {
-  CARE, TYPE_L, ageAt, ageBucketOf, ageFor, careCfg, careOf, daysInCare, fmtDate,
+  CARE, TYPE_L, ageBucketOf, ageFor, careCfg, careOf, daysInCare, fmtDate,
   isReleased, statusMeta, todayKey, MO,
 } from "./opsData";
 import { Avatar } from "./opsBits";
@@ -360,7 +359,7 @@ export function ModalHost({ modalKey, people, calc, onClose, onOpenCase, onOpenM
   );
 }
 
-/* ── case-file drawer (comprehensive multi-tab profile) ─────────────────── */
+/* ── case-file drawer (single contextual pane) ──────────────────────────── */
 
 /** A labelled value tile inside the drawer. */
 function Card({ l, v, hl, mono, sub, tag, tagCol }) {
@@ -383,7 +382,7 @@ function Card({ l, v, hl, mono, sub, tag, tagCol }) {
   );
 }
 
-/** Section heading inside a tab. */
+/** Section heading inside a pane. */
 function DrawerSection({ title, action }) {
   return (
     <div className="cp-sect">
@@ -400,83 +399,22 @@ const fBool = (b, y = "Yes", n = "No") => (b === true ? y : b === false ? n : "�
 
 /* ── Sub-components for Comprehensive Case Drawer ─────────────────────── */
 
-function OverviewPane({ p, age, nokList }) {
-  return (
-    <div className="cp-pane">
-      <DrawerSection title="Identity & Demographics" />
-      <div className="cgrid">
-        <Card l="Full Name" v={p.name} hl />
-        <Card l="Admission Number" v={p.adm} mono />
-        <Card l="Tag / Tag Number" v={p.tagNumber || p.adm} mono />
-        <Card l="Gender" v={p.gender} />
-        <Card l="Date of Birth" v={fDate(p.dob)} />
-        <Card l="Date of Death" v={fDate(p.dod)} />
-        <Card l="Time of Death" v={p.tod} mono />
-        <Card l="Age at Death" v={age != null ? `${age} years` : (p.age ? `${p.age} years` : "—")} />
-        <Card l="National / ID Number" v={p.idNumber} mono />
-        <Card l="Marital Status" v={p.maritalStatus} />
-        <Card l="Nationality" v={p.nationality} />
-        <Card l="Religion / Faith" v={p.religion} />
-      </div>
-
-      <DrawerSection title="Passing & Circumstances" />
-      <div className="cgrid">
-        <Card l="Place of Death" v={p.place} hl />
-        <Card l="Cause of Death" v={p.cause} hl />
-        <Card l="Death Type / Manner" v={p.deathType} />
-        <Card l="Burial Permit Number" v={p.permit} mono />
-        <Card l="Body Condition at Intake" v={p.bodyCondition || (p.prepared ? "Prepared / Embalmed" : "Intact")} />
-        <Card l="Preservation Method" v={p.preservationMethod || (p.prepared ? "Embalmed" : "Refrigerated")} />
-      </div>
-
-      <DrawerSection title="Storage & Physical Location" />
-      <div className="cgrid">
-        <Card l="Assigned Unit / Cold Room" v={p.storageLocation || p.coldRoom || (p.fridgeId ? `Unit ${p.fridgeId}` : "—")} hl />
-        <Card l="Shelf / Tray" v={p.shelfNumber ? `Shelf ${p.shelfNumber}` : "—"} mono />
-        <Card l="Storage Type" v={p.storageType || "Cold Storage"} />
-        <Card l="Status" v={p.isReleased ? "Released / Discharged" : "In Storage"} />
-      </div>
-
-      {p.belongingsSummary || (p.belongings && p.belongings.length > 0) ? (
-        <>
-          <DrawerSection title="Personal Belongings / Inventory" />
-          <div className="cgrid">
-            <Card
-              l="Inventory Summary"
-              v={p.belongingsSummary || `${p.belongings?.length || 0} item(s) logged`}
-              hl
-            />
-          </div>
-        </>
-      ) : null}
-
-      <DrawerSection title="Next of Kin & Family Contacts" />
-      {nokList.length > 0 ? (
-        nokList.map((k, idx) => (
-          <div key={idx} className="cp-nok-card">
-            <div className="cp-nok-head">
-              <span className="cp-nok-role">{k.tag || "Contact"}</span>
-              {k.rel ? <span className="cp-nok-rel">{k.rel}</span> : null}
-            </div>
-            <div className="cgrid">
-              <Card l="Contact Name" v={k.name} hl />
-              <Card l="Relationship" v={k.rel} />
-              <Card l="Phone Number" v={k.phone} mono />
-              <Card l="Alternate Phone" v={k.alternatePhone} mono />
-              <Card l="National ID" v={k.id || k.idNumber} mono />
-              <Card l="Email" v={k.email} />
-              <Card l="Physical Address" v={k.address} hl />
-            </div>
-          </div>
-        ))
-      ) : (
-        EMPTY("No next of kin recorded for this case.")
-      )}
-    </div>
-  );
-}
-
+/**
+ * Intake & Admission pane.
+ *
+ * Reads the NORMALISED case shape produced by buildCases()/mapDeceased() in
+ * opsData — not raw API keys. The deceased-register detail block lives on
+ * `p.intake` (built by intakeOf()); charges are nested under `p.intake.charges`
+ * and are already formatted strings, or null when nothing is recorded.
+ *
+ * `p.intake` is absent on cases that exist only in the release/postmortem
+ * feeds, hence the empty-object fallback.
+ */
 function IntakePane({ p }) {
+  const it = p.intake || {};
+  const ch = it.charges || {};
+  const nok = p.nok || {};
+
   return (
     <div className="cp-pane">
       <DrawerSection title="Intake & Admission" />
@@ -486,45 +424,70 @@ function IntakePane({ p }) {
         <Card l="Receiving Branch" v={p.branch} />
         <Card l="Receiving Officer / Staff" v={p.officer} />
         <Card l="Received From" v={p.receivedFrom} hl />
-        <Card l="Brought In By" v={p.broughtInBy || p.receivedFrom} />
-        <Card l="Driver / Collector Name" v={p.driverName} />
-        <Card l="Vehicle Registration" v={p.vehicleReg} mono />
-        <Card l="Body Source / Origin" v={p.bodySource || p.place} />
-        <Card l="Tag Number" v={p.tagNumber || p.adm} mono />
+        <Card l="Register Date" v={fDate(it.registeredAt)} />
+        <Card l="Registered By" v={it.createdBy} />
+        <Card l="Admission Status" v={it.admissionStatus} />
+        <Card l="Verified By" v={it.verifiedBy} />
       </div>
 
-      <DrawerSection title="Documentation & Permits" />
+      <DrawerSection title="Deceased Details" />
       <div className="cgrid">
-        <Card l="Burial Permit Number" v={p.permit} mono />
-        <Card l="Permit Issued By" v={p.permitIssuedBy} />
-        <Card l="Permit Issue Date" v={fDate(p.permitIssueDate)} />
-        <Card l="Police Station / OB Number" v={p.policeObNumber} mono />
-        <Card l="Death Certificate No." v={p.deathCertNumber} mono />
-        <Card l="Certifying Doctor / Facility" v={p.certifyingDoctor} />
+        <Card l="Full Name" v={p.name} hl />
+        <Card l="Gender" v={p.sex} />
+        <Card l="Date of Birth" v={fDate(p.dob)} />
+        <Card l="Date of Death" v={fDate(p.dod)} />
+        <Card l="Age at Death" v={it.age != null ? `${it.age} years` : ""} />
+        <Card l="National ID" v={it.idNo} mono />
+        <Card l="ID Type" v={it.idType} />
+        <Card l="County" v={it.county} />
+        <Card l="Place of Death" v={p.place} />
+        <Card l="Cause of Death" v={p.cause} hl />
+        <Card l="Certifying Physician" v={it.physician} />
+        <Card l="Location" v={it.location} />
       </div>
 
-      <DrawerSection title="Clinical Intake Assessment" />
+      <DrawerSection title="Condition &amp; Storage" />
       <div className="cgrid">
-        <Card l="Body Condition" v={p.bodyCondition || (p.prepared ? "Prepared" : "Intact")} />
-        <Card l="Visible Marks / Trauma" v={p.visibleMarks || "None reported"} hl />
-        <Card l="Infectious / Hazard Precautions" v={p.hazardPrecautions || "Standard precautions"} />
-        <Card l="Weight / Est. Weight" v={p.weight ? `${p.weight} kg` : "—"} mono />
-        <Card l="Embalming Required" v={fBool(p.embalmingRequired)} />
-        <Card l="Embalming Status" v={p.prepared ? "Completed" : "Not yet prepared"} />
+        <Card l="Body Status" v={it.bodyStatus} hl />
+        <Card l="Identifying Marks" v={it.marks} />
+        <Card l="Preservation" v={p.prepared ? "Embalmed / Prepared" : "Not yet prepared"} />
+        <Card l="Storage Type" v={it.storage} />
+        <Card l="Chamber / Cold Room" v={it.chamber} mono />
+        <Card l="Burial Type" v={it.burialType} />
+        <Card l="Coffin Status" v={it.coffinStatus} />
       </div>
 
-      <DrawerSection title="Financial & Billing Intake" />
+      <DrawerSection title="Next of Kin &amp; Contact" />
       <div className="cgrid">
-        <Card l="Billing Plan / Package" v={p.billingPlan || "Standard Daily Rate"} />
-        <Card l="Daily Rate (KES)" v={p.dailyRate ? p.dailyRate.toLocaleString() : "—"} mono />
-        <Card l="Deposit Paid (KES)" v={p.depositPaid ? p.depositPaid.toLocaleString() : "—"} mono />
-        <Card l="Payer Name" v={p.payerName || p.nok?.name} />
+        <Card l="Next of Kin" v={nok.name} hl />
+        <Card l="Relationship" v={nok.rel} />
+        <Card l="Phone Number" v={nok.phone} mono />
+        <Card l="Alternate Phone" v={nok.altPhone || it.altPhone} mono />
+        <Card l="Email" v={nok.email || it.email} />
+        <Card l="Physical Address" v={nok.address} />
+      </div>
+
+      <DrawerSection title="Charges" />
+      <div className="cgrid">
+        <Card l="Currency" v={ch.currency} />
+        <Card l="Daily Rate" v={ch.perDay} mono />
+        <Card l="Hourly Rate" v={ch.perHour} mono />
+        <Card l="Total Mortuary Charge" v={ch.total} hl />
+        <Card l="Extra Charges" v={ch.extra} mono />
       </div>
     </div>
   );
 }
 
 
+/**
+ * Postmortem pane.
+ *
+ * `pm` is the normalised request object from pmFromRequest()/pmFromRegister().
+ * Only fields that object actually produces are rendered — reqDate/doneDate are
+ * already YYYY-MM-DD keys (safe for fDate), while sentAt/completedAt are raw
+ * API timestamps and are shown verbatim rather than run through the date parser.
+ */
 function PostmortemPane({ p, pm }) {
   if (!pm) return EMPTY("No postmortem request is on file for this case.");
   return (
@@ -539,46 +502,50 @@ function PostmortemPane({ p, pm }) {
       />
       <div className="cgrid">
         <Card l="Status" v={PM_LABEL[pm.state] || pm.state} hl />
-        <Card l="Request Reference No." v={pm.requestNumber || pm.id} mono />
+        <Card l="Request Reference No." v={pm.ref} mono />
         <Card l="Date Requested" v={fDate(pm.reqDate)} />
         <Card l="Scheduled Time" v={pm.reqTime} mono />
         <Card l="Completed On" v={fDateTime(pm.doneDate, pm.doneTime)} />
-        <Card l="Requesting Authority" v={pm.authority || pm.type} hl />
-        <Card l="Authority Type" v={pm.type || "Family Request"} />
-        <Card l="Case File / OB Number" v={pm.caseNumber || pm.policeCaseNo || p.policeObNumber} mono />
+        <Card l="Requesting Authority" v={pm.authority} hl />
+        <Card l="Requested By" v={pm.requestedBy} />
+        <Card l="Request Status" v={pm.reqStatus} />
+        <Card l="Examination Status" v={pm.examStatus} />
+        <Card l="Reason / Request Note" v={pm.reason} />
       </div>
 
       <DrawerSection title="Medical & Pathology Personnel" />
       <div className="cgrid">
         <Card l="Lead Pathologist" v={pm.pathologist} hl />
-        <Card l="Pathologist Reg. / License No." v={pm.pathologistLicense} mono />
-        <Card l="Assisting Technician" v={pm.technician || p.officer} />
-        <Card l="Attending Investigating Officer" v={pm.investigatingOfficer} />
-        <Card l="Family Representative Present" v={pm.familyRep || p.nok?.name} />
+        <Card l="Attending Officer" v={p.officer} />
+        <Card l="Case File / Admission No." v={p.adm} mono />
       </div>
 
       <DrawerSection title="Findings & Pathological Observations" />
       <div className="cgrid">
         <Card l="Preliminary / Stated Cause" v={p.cause} hl />
-        <Card l="Final Cause of Death" v={pm.finalCause || pm.findings || "Pending autopsy report"} hl />
-        <Card l="External Examination Notes" v={pm.externalNotes || "Logged in clinical file"} />
-        <Card l="Internal Examination Notes" v={pm.internalNotes || "Logged in clinical file"} />
-        <Card l="Specimens Collected" v={pm.specimens || (pm.toxicologyRequested ? "Toxicology / Histology" : "None")} />
-        <Card l="Toxicology Requested" v={fBool(pm.toxicologyRequested)} />
-        <Card l="Histology Requested" v={fBool(pm.histologyRequested)} />
+        <Card l="Findings" v={pm.findings} hl />
+        <Card l="Examination Summary" v={pm.summary} />
+        <Card l="Postmortem Report" v={pm.report} />
+        <Card l="Clinical Notes" v={pm.notes} />
       </div>
 
-      <DrawerSection title="Sign-off & Report Filing" />
+      <DrawerSection title="Timeline" />
       <div className="cgrid">
-        <Card l="Report Signed By" v={pm.signedBy || pm.pathologist} />
-        <Card l="Report Signed Date" v={fDate(pm.signedDate || pm.doneDate)} />
-        <Card l="Form D10 Issued" v={fBool(pm.formD10Issued)} />
-        <Card l="Burial Clearance Granted" v={fBool(pm.clearanceGranted, "Granted", "Withheld")} hl />
+        <Card l="Sent" v={pm.sentAt} mono />
+        <Card l="Completed At" v={pm.completedAt} mono />
+        <Card l="Cancelled At" v={pm.cancelledAt} mono />
       </div>
     </div>
   );
 }
 
+/**
+ * Release pane.
+ *
+ * `rel` is the normalised release object from releaseFromFeed()/releaseFromRegister().
+ * `rel.date` is already a YYYY-MM-DD key (safe for fDate); `recordedAt` is a raw
+ * API timestamp and is shown verbatim.
+ */
 function ReleasePane({ p, rel }) {
   if (!rel) return EMPTY("No body release has been recorded for this case yet.");
   return (
@@ -594,32 +561,31 @@ function ReleasePane({ p, rel }) {
       <div className="cgrid">
         <Card l="Release Status" v={rel.status === "completed" ? "Completed / Discharged" : "Scheduled"} hl />
         <Card l="Release Date & Time" v={fDateTime(rel.date, rel.time)} hl />
-        <Card l="Release Reference No." v={rel.releaseNumber || rel.id} mono />
+        <Card l="Release Reference No." v={rel.id} mono />
         <Card l="Destination Cemetery / Facility" v={rel.dest} hl />
-        <Card l="Destination County / Town" v={rel.destCounty || rel.destTown} />
         <Card l="Mode of Transport" v={rel.mode} />
-        <Card l="Hearse / Vehicle Reg." v={rel.vehicleReg || rel.hearseNumber} mono />
-        <Card l="Driver / Carrier Name" v={rel.driverName} />
+        <Card l="Hearse / Plate Number" v={rel.plate} mono />
+        <Card l="Inter-branch Transfer" v={fBool(rel.transfer)} />
+        <Card l="Burial Permit Number" v={rel.permit} mono />
       </div>
 
       <DrawerSection title="Recipient & Authorized Collector" />
       <div className="cgrid">
-        <Card l="Received By (Authorized Collector)" v={rel.receiver || rel.collectorName} hl />
-        <Card l="Recipient National ID" v={rel.receiverId || rel.collectorId} mono />
-        <Card l="Recipient Phone Number" v={rel.receiverPhone || rel.collectorPhone} mono />
+        <Card l="Received By (Authorized Collector)" v={rel.receiver} hl />
+        <Card l="Recipient National ID" v={rel.receiverId} mono />
+        <Card l="Recipient Phone Number" v={rel.receiverPhone} mono />
         <Card l="Relationship to Deceased" v={rel.receiverRel || p.nok?.rel} />
-        <Card l="Authority / Authorization Letter" v={rel.authLetter || "Family Authorization on file"} />
+        <Card l="Witness" v={rel.witness} />
       </div>
 
-      <DrawerSection title="Discharge Clearance & Handover" />
+      <DrawerSection title="Clearance & Handover" />
       <div className="cgrid">
-        <Card l="Releasing Mortuary Officer" v={rel.officer || rel.releasingOfficer} />
-        <Card l="Inter-branch Transfer" v={fBool(rel.transfer)} />
-        <Card l="Transfer To Branch" v={rel.targetBranch || "N/A"} />
-        <Card l="Financial Clearance Status" v={rel.billingCleared ? "Cleared (Paid in full)" : (rel.invoiceStatus || "Pending Clearance")} hl />
-        <Card l="Burial Permit Handed Over" v={fBool(rel.permitHandedOver ?? true)} />
-        <Card l="Belongings Handed Over" v={fBool(rel.belongingsHandedOver ?? true)} />
-        <Card l="Gate Pass Number" v={rel.gatePassNumber} mono />
+        <Card l="Releasing Staff" v={rel.staff} />
+        <Card l="Financial Clearance" v={rel.paid ? "Cleared (Paid in full)" : "Pending Clearance"} hl />
+        <Card l="Terms Accepted" v={fBool(rel.terms)} />
+        <Card l="Items Returned" v={rel.items} />
+        <Card l="Handover Notes" v={rel.notes} />
+        <Card l="Recorded At" v={rel.recordedAt} mono />
       </div>
     </div>
   );
@@ -627,14 +593,16 @@ function ReleasePane({ p, rel }) {
 
 /**
  * Right-hand case file drawer.
- * Comprehensive multi-tab profile mirroring the Deceased profile:
- *  - Overview (Demographics, admission, storage/fridge, belongings, condition, NOK)
- *  - Intake (Full admission & transfer trail, collection, transport, docs, fees)
- *  - Postmortem (Request details, authority, doctor, findings, specimens, toxicology, sign-off)
- *  - Release (Release status, clearance, recipient, destination, transport, permits)
  *
- * `ctx` ("intake" | "release" | "pm") pre-selects the most relevant tab,
- * but all tabs remain accessible so the operator can inspect any detail.
+ * Shows exactly ONE pane — the one that matches the context the case was
+ * opened from. There is no tab bar and no Overview pane:
+ *   ctx "pm"      -> Postmortem only
+ *   ctx "release" -> Release only
+ *   anything else -> Intake & Admission only
+ *
+ * The removed Overview information (demographics, next of kin, belongings,
+ * storage) is still reachable via the "Full Profile" button in the header,
+ * which opens the complete deceased record in a new tab.
  */
 export function CaseDrawer({ record, ctx, onClose }) {
   if (!record) return null;
@@ -642,8 +610,8 @@ export function CaseDrawer({ record, ctx, onClose }) {
   const rel = p.release;
   const pm = p.pm;
 
-  const initialTab = ctx === "release" ? "release" : ctx === "pm" ? "pm" : ctx === "intake" ? "intake" : "overview";
-  const [tab, setTab] = useState(initialTab);
+  // The drawer is opened from a specific place, so show only that workflow.
+  const pane = ctx === "pm" ? "pm" : ctx === "release" ? "release" : "intake";
 
   let statusLbl = "Active in Care";
   let pulseCol = "var(--blue)";
@@ -659,7 +627,6 @@ export function CaseDrawer({ record, ctx, onClose }) {
     pulseCol = "var(--teal, #0d9488)";
   }
 
-  const age = ageAt(p.dob, p.dod);
   const stay = p.admDate && p.admDate > todayKey() ? "Scheduled Admission" : `${daysInCare(p) ?? 0} days in care`;
 
   const tenantSlug = (typeof window !== "undefined" && (
@@ -669,17 +636,6 @@ export function CaseDrawer({ record, ctx, onClose }) {
     ""
   )) || "";
   const profileUrl = p.id && tenantSlug ? `/tenant/${tenantSlug}/deceased/${p.id}` : null;
-
-  const nokList = useMemo(() => {
-    const list = [];
-    if (p.nok && (p.nok.name || p.nok.phone)) {
-      list.push({ ...p.nok, tag: "Primary Next of Kin" });
-    }
-    if (p.secondaryNok && (p.secondaryNok.name || p.secondaryNok.phone)) {
-      list.push({ ...p.secondaryNok, tag: "Secondary Contact" });
-    }
-    return list;
-  }, [p.nok, p.secondaryNok]);
 
   return (
     <>
@@ -692,7 +648,7 @@ export function CaseDrawer({ record, ctx, onClose }) {
               <span className="cph-pulse" style={{ background: pulseCol }} />
               {statusLbl}
             </span>
-            {p.gender ? <span className="cp-chip">{p.gender}</span> : null}
+            {p.sex ? <span className="cp-chip">{p.sex}</span> : null}
             {p.branch ? <span className="cp-chip">{p.branch}</span> : null}
           </div>
           <div className="cph-actions">
@@ -719,7 +675,7 @@ export function CaseDrawer({ record, ctx, onClose }) {
           <div className="cp-hero-main">
             <div className="cname">{p.name || "Unnamed Case"}</div>
             <div className="ccode">
-              <span className="mono">{p.adm || p.tagNumber || "—"}</span>
+              <span className="mono">{p.adm || "—"}</span>
               <span className="dot-sep">·</span>
               <span>{p.branch || "Main"}</span>
               <span className="dot-sep">·</span>
@@ -736,44 +692,11 @@ export function CaseDrawer({ record, ctx, onClose }) {
           ) : null}
         </div>
 
-        {/* Tabs */}
-        <div className="cp-tabs">
-          <button
-            type="button"
-            className={`cp-tab${tab === "overview" ? " active" : ""}`}
-            onClick={() => setTab("overview")}
-          >
-            Overview
-          </button>
-          <button
-            type="button"
-            className={`cp-tab${tab === "intake" ? " active" : ""}`}
-            onClick={() => setTab("intake")}
-          >
-            Intake & Admission
-          </button>
-          <button
-            type="button"
-            className={`cp-tab${tab === "pm" ? " active" : ""}`}
-            onClick={() => setTab("pm")}
-          >
-            Postmortem {pm ? `(${PM_LABEL[pm.state] || "1"})` : ""}
-          </button>
-          <button
-            type="button"
-            className={`cp-tab${tab === "release" ? " active" : ""}`}
-            onClick={() => setTab("release")}
-          >
-            Release {rel ? (rel.status === "completed" ? "✓" : "•") : ""}
-          </button>
-        </div>
-
-        {/* Tab Body */}
+        {/* Body — one pane only, chosen by the context the drawer was opened from */}
         <div className="cpb cp-tab-content">
-          {tab === "overview" && <OverviewPane p={p} age={age} nokList={nokList} />}
-          {tab === "intake" && <IntakePane p={p} />}
-          {tab === "pm" && <PostmortemPane p={p} pm={pm} />}
-          {tab === "release" && <ReleasePane p={p} rel={rel} />}
+          {pane === "intake" && <IntakePane p={p} />}
+          {pane === "pm" && <PostmortemPane p={p} pm={pm} />}
+          {pane === "release" && <ReleasePane p={p} rel={rel} />}
         </div>
       </aside>
     </>
