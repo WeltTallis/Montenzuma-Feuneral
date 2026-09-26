@@ -224,15 +224,18 @@ const getRootPool = async () => {
 };
 exports.getRootPool = getRootPool;
 // ─── Tenant Lookup with Circuit Breaker ──────────────────────────────────────
-const lookupTenantDatabase = async (tenantSlug) => {
+const lookupTenantDatabase = async (tenantSlug, options = {}) => {
+    const requireActive = options.requireActive !== false;
     return rootPoolBreaker.call(async () => {
         const pool = await (0, exports.getRootPool)();
-        const [rows] = await pool.query('SELECT db_name FROM tenant_tracking.tenants WHERE tenant_slug = ? AND status = "active" LIMIT 1', [tenantSlug]);
+        const [rows] = await pool.query(requireActive
+            ? 'SELECT db_name FROM tenant_tracking.tenants WHERE tenant_slug = ? AND status = "active" LIMIT 1'
+            : 'SELECT db_name FROM tenant_tracking.tenants WHERE tenant_slug = ? LIMIT 1', [tenantSlug]);
         const result = rows;
         if (result.length > 0 && result[0].db_name) {
             return result[0].db_name;
         }
-        LOGGER.warn('No active database found for tenant', { tenantSlug });
+        LOGGER.warn(requireActive ? 'No active database found for tenant' : 'No database found for tenant', { tenantSlug });
         return null;
     }, () => null);
 };

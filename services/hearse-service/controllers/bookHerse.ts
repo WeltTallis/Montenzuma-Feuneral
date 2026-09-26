@@ -18,6 +18,7 @@ import {
     HearseDayAvailabilityDto,
     HearseMultiDateAvailabilityResponseDto
 } from '../models/hearseBookingDto';
+import { hearseCacheGet, hearseCacheSet, invalidateHearseCache, BOOKING_CACHE_TTL } from '../utilities/hearseCache';
 
 // Types
 interface HearseBooking {
@@ -434,6 +435,10 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
                     console.warn('Failed to emit booking notification:', emitError.message);
                 }
 
+                // The booking list, availability and fleet views are all derived from
+                // hearse_bookings, so a new booking must drop the tenant's cache.
+                await invalidateHearseCache(req);
+
                 res.status(201).json({
                     status: 'success',
                     message: 'Hearse booking created successfully and hearse status updated.',
@@ -514,6 +519,10 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
                 console.warn('Failed to emit booking notification:', emitError.message);
             }
 
+            // The booking list, availability and fleet views are all derived from
+            // hearse_bookings, so a new booking must drop the tenant's cache.
+            await invalidateHearseCache(req);
+
                                     res.status(201).json({
                 status: 'success',
                 message: 'Hearse booking created successfully.',
@@ -566,6 +575,30 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
             params.push(status);
         }
 
+        // ─── REDIS CACHE ─────────────────────────────────────────────────────
+        // This endpoint had no cache at all, so the Hearse Bookings page hit
+        // MySQL on every render. The cache key must include BOTH the status
+        // filter and the tenant scope (the namespace already carries the scope,
+        // so only the filter belongs in the key).
+        const statusFilter = status && status !== 'all' ? String(status) : 'all';
+        const cacheKey = `bookings:list:status:${statusFilter}`;
+
+        // Same scope rule on read and write: an unscoped request queries the whole
+        // shared operations DB, so it must neither read from nor write to cache.
+        const cacheScopeSafe = tenantId != null || tenantSlugScope != null;
+
+        if (cacheScopeSafe) {
+            const cached = await hearseCacheGet<any>(req, cacheKey);
+            if (cached) {
+                res.status(200).json({
+                    ...cached,
+                    source: 'cache',
+                    total: cached.bookings?.length ?? 0
+                });
+                return;
+            }
+        }
+
         const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
         const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, hb.service_charge, hb.branch_slug AS booking_branch_slug, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS hearse_branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id ${whereSQL} ORDER BY hb.created_at DESC`;
 
@@ -578,7 +611,15 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
                 tenantId ? [tenantId] : []);
         } catch (e) { /* branches lookup optional */ }
 
-        res.status(200).json({ status: 'success', total: bookings.length, bookings, branches: allBranches });
+        const payload = { status: 'success', total: bookings.length, bookings, branches: allBranches };
+
+        // Same scope rule as the read above: an unscoped response must not be
+        // written to cache either.
+        if (cacheScopeSafe) {
+            await hearseCacheSet(req, cacheKey, payload, BOOKING_CACHE_TTL);
+        }
+
+        res.status(200).json({ ...payload, source: 'database' });
     } catch (error) {
         res.status(500).json({ status: 'error', message: 'Failed to fetch hearse bookings.' });
     }
@@ -616,6 +657,8 @@ export const assignDriverToBooking = asyncHandler(async (req: Request, res: Resp
         }
 
         await safeQuery('UPDATE hearses SET driver_id = ?, updated_at = ? WHERE id = ?', [driver_id, getKenyaTimeISO(), booking.hearse_id]);
+
+        await invalidateHearseCache(req);
 
         res.status(200).json({ status: 'success', message: `Driver ${driverName} assigned successfully to the hearse.`, booking_id, driver_id, driver_name: driverName });
     } catch (error) {
@@ -703,6 +746,9 @@ export const updateBookingStatus = asyncHandler(async (req: Request, res: Respon
             // Non-critical
         }
 
+        // The booking list (and the fleet rows joined into it) just changed.
+        await invalidateHearseCache(req);
+
         res.status(200).json({ status: 'success', message: `Booking status updated to '${status}'.`, booking_id, booking: updatedBooking });
     } catch (error) {
         res.status(500).json({ status: 'error', message: 'Failed to update booking status.' });
@@ -777,6 +823,8 @@ export const postponeHearseBooking = asyncHandler(async (req: Request, res: Resp
         } catch (emitError) {
             // Non-critical
         }
+
+        await invalidateHearseCache(req);
 
         res.status(200).json({ status: 'success', message: 'Booking postponed successfully.', data: { booking_id, new_departure_time, reason, status: 'pending' } });
     } catch (error) {

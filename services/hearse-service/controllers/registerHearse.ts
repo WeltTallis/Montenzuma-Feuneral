@@ -4,6 +4,7 @@ import multer, { FileFilterCallback } from 'multer';
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import { getHearsePool } from '../database';
+import { hearseCacheGet, hearseCacheSet, invalidateHearseCache, FLEET_CACHE_TTL } from '../utilities/hearseCache';
 import { getKenyaTimeISO, getKenyaDate } from '@montezuma/shared-utils';
 
 // Hearse images live in the ONE shared uploads folder (/opt/storage/uploads in
@@ -31,9 +32,14 @@ const upload = multer({ storage });
 /**
  * Register a new hearse
  */
+
+
 export const registerHearse = asyncHandler(async (req: Request, res: Response) => {
+
     try {
+
         const dbName = (req as any).tenant?.db_name;
+        
         if (!dbName) {
             res.status(400).json({ success: false, message: 'Tenant database not found' });
             return;
@@ -80,19 +86,32 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
                     resolvedBranchCode = branch_code;
                 }
             } catch (e) { /* lookup failed - keep provided values */ }
+
         } else if (assignedBranchId) {
+
             try {
+
                 const [branchRows] = await pool.query('SELECT branch_code, branch_name FROM branches WHERE branch_id = ? AND is_active = TRUE', [assignedBranchId]);
+
                 const branchRow = branchRows[0];
+
                 if (branchRow) {
+
                     resolvedBranchCode = branchRow.branch_code || `BRANCH-${assignedBranchId}`;
+
                 } else {
+
                     resolvedBranchCode = resolvedBranchCode || `BRANCH-${assignedBranchId}`;
+
                 }
             } catch (e) {
+
                 resolvedBranchCode = resolvedBranchCode || (assignedBranchId ? `BRANCH-${assignedBranchId}` : 'MAIN');
+
             }
+
         }
+
         const branchNameValue = assignedBranchId ? `Branch ${assignedBranchId}` : 'Main Branch';
         const branchCodeValue = resolvedBranchCode || (assignedBranchId ? `BRANCH-${assignedBranchId}` : 'MAIN');
         const [countResult] = await pool.query('SELECT COUNT(*) as count FROM hearses');
@@ -108,12 +127,14 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
         const placeholders = insertValues.map(() => '?').join(', ');
         const escapedFields = insertFields.map(f => `\`${f}\``).join(', ');
         const query = `INSERT INTO hearses (${escapedFields}) VALUES (${placeholders})`;
-
+        
         const [result] = await pool.query(query, insertValues) as any;
-
+        
         // Emit real-time update via Socket.IO
         const io = req.app.get('io');
+
         if (io) {
+
             const newHearse = {
                 id: result.insertId, hearse_code, hearse_name: hearse_name || null, plate_number: plate_number.trim(),
                 model: model || null, capacity: capacity || 8, status: status || 'available',
@@ -121,8 +142,11 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
                 branch_code: branchCodeValue, tenant_id: tenantId, tenant_slug: tenantSlug,
                 image, created_at: now, updated_at: now
             };
+
             io.emit('hearse_registered', { type: 'HEARSE_REGISTERED', hearse: newHearse, timestamp: now, message: `New hearse registered: ${hearse_name || plate_number}` });
         }
+
+        await invalidateHearseCache(req);
 
         res.status(201).json({
             success: true, message: 'Hearse registered successfully.',
@@ -233,6 +257,8 @@ export const updateHearse = asyncHandler(async (req: Request, res: Response) => 
             }
         }
 
+        await invalidateHearseCache(req);
+
         res.json({ success: true, message: 'Hearse updated successfully.' });
         return;
     } catch (error) {
@@ -259,6 +285,7 @@ export const deleteHearse = asyncHandler(async (req: Request, res: Response) => 
         }
 
         await pool.query('DELETE FROM hearses WHERE id = ?', [id]);
+        await invalidateHearseCache(req);
         res.json({ success: true, message: 'Hearse deleted successfully.' });
         return;
     } catch (error) {
@@ -285,6 +312,23 @@ export const getAllHearses = asyncHandler(async (req: Request, res: Response) =>
         };
         const tenantId = headerOf('x-tenant-id') || (req.query as any)?.tenant_id || (req as any).tenant?.id || (req as any).tenant?.tenant_id || null;
 
+        // ─── REDIS CACHE ─────────────────────────────────────────────────────
+        // The fleet page is a pure tenant-scoped read, so it is the safest thing
+        // in this service to cache (nothing to join, no date math). Only cache
+        // when x-tenant-id is actually present: without it the SQL below runs
+        // UNSCOPED against the shared operations DB and must not be memoised.
+        const cacheKey = 'fleet:list';
+        if (tenantId != null) {
+            const cached = await hearseCacheGet<any>(req, cacheKey);
+            if (cached) {
+                res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+                res.set('Pragma', 'no-cache');
+                res.set('Expires', '0');
+                res.json({ success: true, count: cached.hearses?.length ?? 0, hearses: cached.hearses, source: 'cache' });
+                return;
+            }
+        }
+
         let sql = `SELECT h.*, h.branch_name, h.branch_code, h.image FROM hearses h`;
         const params: any[] = [];
         if (tenantId) {
@@ -294,10 +338,15 @@ export const getAllHearses = asyncHandler(async (req: Request, res: Response) =>
         sql += ` ORDER BY h.created_at DESC`;
 
         const [hearses] = await pool.query(sql, params) as any;
+
+        if (tenantId != null) {
+            await hearseCacheSet(req, cacheKey, { hearses }, FLEET_CACHE_TTL);
+        }
+
         res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.set('Pragma', 'no-cache');
         res.set('Expires', '0');
-        res.json({ success: true, count: hearses.length, hearses });
+        res.json({ success: true, count: hearses.length, hearses, source: 'database' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error while fetching hearses.', error: (error as Error).message });
     }

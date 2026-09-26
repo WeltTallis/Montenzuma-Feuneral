@@ -1,14 +1,6 @@
 /**
  * @file packages/shared-services/src/redisService.ts
  * CENTRALIZED: Redis Service with per-service memory limits
- * 
- * Features:
- * - Per-service memory limits (10MB per service)
- * - Automatic balancing when service exceeds limit
- * - Universal notification system
- * - Redis-backed real-time notifications via Socket.IO
- * - Auto-expiration with configurable TTL
- * - Cross-tenant notification routing
  */
 
 import { createClient, RedisClientType, RedisModules, RedisFunctions, RedisScripts } from 'redis';
@@ -16,10 +8,6 @@ import Logger from '../../shared-logger/dist/index';
 
 type RedisClient = RedisClientType<RedisModules, RedisFunctions, RedisScripts>;
 
-// NOTE: the previous expression (`process.env.REDIS_URL || process.env.REDIS_HOST
-// ? ... : ...`) had an operator-precedence bug — REDIS_URL was only used as a
-// boolean and the URL was always rebuilt from REDIS_HOST/REDIS_PORT WITHOUT the
-// password, so every command failed with NOAUTH against the requirepass server.
 const REDIS_AUTH_SEGMENT = process.env.REDIS_PASSWORD
   ? `:${encodeURIComponent(process.env.REDIS_PASSWORD)}@`
   : '';

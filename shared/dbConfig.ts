@@ -220,19 +220,41 @@ export const getRootPool = async (): Promise<mysql.Pool> => {
 
 // ─── Tenant Lookup with Circuit Breaker ──────────────────────────────────────
 
-export const lookupTenantDatabase = async (tenantSlug: string): Promise<string | null> => {
-        return rootPoolBreaker.call(
+/**
+ * Resolve a tenant slug → database name through the tenant allowlist.
+ *
+ * SECURITY: the slug is ALWAYS matched against tenant_tracking.tenants, so an
+ * arbitrary schema name (information_schema, mysql, another tenant's db_name,
+ * …) can never be used as "the tenant".
+ *
+ * `requireActive` defaults to TRUE (unchanged behaviour for every caller).
+ * Pass `{ requireActive: false }` when the DATA must still be readable while the
+ * tenant row is not `status = "active"` (suspended / trial / pending) — e.g. the
+ * deceased-service, where a suspended funeral home must keep access to its
+ * mortuary records. The slug↔db_name allowlist check is kept in both modes.
+ */
+export const lookupTenantDatabase = async (
+  tenantSlug: string,
+  options: { requireActive?: boolean } = {}
+): Promise<string | null> => {
+  const requireActive = options.requireActive !== false;
+  return rootPoolBreaker.call(
     async () => {
       const pool = await getRootPool();
       const [rows] = await pool.query(
-        'SELECT db_name FROM tenant_tracking.tenants WHERE tenant_slug = ? AND status = "active" LIMIT 1',
+        requireActive
+          ? 'SELECT db_name FROM tenant_tracking.tenants WHERE tenant_slug = ? AND status = "active" LIMIT 1'
+          : 'SELECT db_name FROM tenant_tracking.tenants WHERE tenant_slug = ? LIMIT 1',
         [tenantSlug]
       );
       const result = rows as any[];
       if (result.length > 0 && result[0].db_name) {
         return result[0].db_name;
       }
-      LOGGER.warn('No active database found for tenant', { tenantSlug });
+      LOGGER.warn(
+        requireActive ? 'No active database found for tenant' : 'No database found for tenant',
+        { tenantSlug }
+      );
       return null;
     },
     () => null

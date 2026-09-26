@@ -1,16 +1,19 @@
-﻿import { Request, Response } from 'express';
-import axios from 'axios';
-import CoffinModel from '../models/coffinModel.js';
-import { coffinQuery } from '../db.js';
+﻿
+
+import { centralizedUploadService } from '@montezuma/shared-services/dist/centralizedUploadService';
 import { serviceGet, serviceSet, serviceDel, clearServiceCache } from '@montezuma/shared-services';
 import { publishTask } from '@montezuma/shared-services';
-import { centralizedUploadService } from '@montezuma/shared-services/dist/centralizedUploadService';
+import CoffinModel from '../models/coffinModel.js';
 import logger from '@montezuma/shared-logger';
+import { Request, Response } from 'express';
+import { coffinQuery } from '../db.js';
+import axios from 'axios';
+
 
 const SERVICE_NAME = 'coffin-service';
 const CACHE_TTL = 300; // 5 minutes
 
-// ─── Notification Emission via Socket.IO service ────────────────────────
+// ─── Notification Emission via Socket.IO service 
 const SOCKETIO_SERVICE_URL =
   process.env.SOCKETIO_SERVICE_URL ||
   process.env.SOCKETIO_URL ||

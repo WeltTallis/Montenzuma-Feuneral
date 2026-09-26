@@ -12,10 +12,7 @@ dotenv.config();
 const app = express();
 const PORT = parseInt(process.env.PORT || '5003', 10);
 
-// ─── Tenant identifier allowlists (audit 2.3) ───────────────────────────────
-// Applied BEFORE a value is ever used as a database name or cache key, so a
-// crafted header cannot reach INFORMATION_SCHEMA, `mysql`, or another tenant's
-// schema. Every slug the platform issues is lowercase-kebab.
+// ─── Tenant identifier allowlists 
 const TENANT_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
 // Registered tenant database names are the platform's own generated identifiers
 // (e.g. `tenant_acme_home`, `restpoint_acme`). Anything else is refused.
@@ -23,10 +20,6 @@ const TENANT_DB_NAME_RE = /^(tenant|restpoint)_[a-z0-9][a-z0-9_]{0,55}$/;
 
 // CORS Configuration — explicit allowlist, never `origin: true` (audit 2.7).
 // `origin: true` echoes the caller's Origin and pairs it with
-// `Access-Control-Allow-Credentials: true`, which turns every service into a
-// credentialed cross-origin resource for any website a logged-in user visits —
-// and because each service is also published on its own host port, that bypasses
-// the gateway's (correct) CORS entirely.
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
     : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'];
@@ -139,9 +132,19 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
                 throw new Error(`Malformed tenant slug rejected: ${JSON.stringify(tenantSlug)}`);
             }
             const { lookupTenantDatabase } = require('../../shared/dbConfig');
-            // Only ever returns a db_name that is registered against an ACTIVE
-            // tenant row — never an arbitrary schema name.
-            resolvedDbName = await lookupTenantDatabase(tenantSlug);
+            // Resolve the slug through the tenant ALLOWLIST (tenant_tracking.tenants),
+            // so an arbitrary schema name can never be used as "the tenant".
+            //
+            // TENANT STATUS IS DELIBERATELY *NOT* ENFORCED FOR THIS SERVICE.
+            // The active-only lookup used to return null for any tenant whose row
+            // is not `status = "active"` (suspended / trial / pending / expired
+            // subscription), so the whole Deceased module answered
+            //   403 {"success":false,"message":"Tenant not found or not active"}
+            // even though its data was intact. We now fall back to a lookup that
+            // drops ONLY the status filter — the slug↔db_name allowlist check and
+            // the db-name validation below still run in both attempts.
+            resolvedDbName = await lookupTenantDatabase(tenantSlug)
+                || await lookupTenantDatabase(tenantSlug, { requireActive: false });
 
             // Defence in depth: even if a compromised/malformed row somehow
             // yielded a non-conforming database name, refuse to use it.

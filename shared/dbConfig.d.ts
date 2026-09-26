@@ -5,7 +5,10 @@
  */
 import * as mysql from 'mysql2/promise';
 export declare const getRootPool: () => Promise<mysql.Pool>;
-export declare const lookupTenantDatabase: (tenantSlug: string) => Promise<string | null>;
+export declare const lookupTenantDatabase: (
+  tenantSlug: string,
+  options?: { requireActive?: boolean }
+) => Promise<string | null>;
 export declare const resolveDatabase: (slug: string) => Promise<string | null>;
 export declare const getTenantDB: (tenantDbName: string) => Promise<mysql.Pool>;
 export declare const getTenantDBBySlug: (tenantSlug: string) => Promise<mysql.Pool | null>;
@@ -36,7 +39,10 @@ export declare const healthCheck: () => Promise<{
 }>;
 declare const _default: {
   getRootPool: () => Promise<mysql.Pool>;
-  lookupTenantDatabase: (tenantSlug: string) => Promise<string | null>;
+  lookupTenantDatabase: (
+    tenantSlug: string,
+    options?: { requireActive?: boolean }
+  ) => Promise<string | null>;
   resolveDatabase: (slug: string) => Promise<string | null>;
   getTenantDB: (tenantDbName: string) => Promise<mysql.Pool>;
   getTenantDBBySlug: (tenantSlug: string) => Promise<mysql.Pool | null>;

@@ -1,6 +1,6 @@
 import { getKenyaTimeISO, getKenyaDate } from '../../../packages/shared-utils/dist/timestamps';
-import redisService from '../../../packages/shared-services/dist/redisService';
 import { safeTenantQuery, safeTenantExecute, resolveDatabase } from '../../../shared/dbConfig';
+import redisService from '../../../packages/shared-services/dist/redisService';
 import Logger from '../../../packages/shared-logger/src/index';
 import generateUniqueDeceasedId from '../utils/deceasedId';
 import { Request, Response } from 'express';
@@ -105,15 +105,36 @@ export const getAllDeceased = async (
         const countResult = await safeTenantQuery(dbName, countQuery, params);
         const total = Number((countResult as any)[0]?.total || 0);
 
-        const query = `
-            SELECT *
+        // The list intentionally does NOT ship the raw `signature` column value.
+        // `deceased.signature` is a TEXT column that older rows filled with inline
+        // `data:image/png;base64,...` blobs (newer registrations store a path via
+        // the centralized upload service, and autopsyControl re-normalizes to
+        // base64). A single 50-row page therefore serialized to megabytes, which
+        // tripped the MAX_CACHE_VALUE_BYTES guard in serviceSet() — the write was
+        // REFUSED, so the key was never created and every list request fell
+        // through to MySQL (the symptom: no `service:*` keys in Redis at all).
+        //
+        // Inline images collapse to a short "[inline-image:N]" marker, which keeps
+        // the field TRUTHY so consumers still treat the row as "documented" (e.g.
+        // dashboardDataApi's `!r?.permit_number && !r?.signature` alert filter)
+        // while the cached payload stays small. Real stored paths pass through
+        // untouched. The single-record detail endpoint (getDeceasedById) still
+        // returns the untouched value, so the profile view renders the signature.
+        const listQuery = `
+            SELECT *,
+                CASE
+                    WHEN signature IS NULL OR signature = '' THEN NULL
+                    WHEN signature LIKE 'data:%'
+                        THEN CONCAT('[inline-image:', CHAR_LENGTH(signature), ']')
+                    ELSE signature
+                END AS signature
             FROM deceased
             ${whereClause}
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?
         `;
 
-        const records = await safeTenantQuery(dbName, query, [...params, limitNumber, offset]);
+        const records = await safeTenantQuery(dbName, listQuery, [...params, limitNumber, offset]);
 
         const responseData = {
             success: true,
