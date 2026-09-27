@@ -349,6 +349,22 @@ function dk(y, m, d) { return `${y}-${String(m + 1).padStart(2, '0')}-${String(d
 const DOWS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const MOS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+/* Day-cell dots — same orange / blue / green palette the Operations dashboard
+   mini-calendar uses (dashboard/opsData.js TYPE_C:
+   intake → blue, release → green, postmortem → orange). Mapped from the
+   STATUS_CONFIG labels defined above so the strip agrees with the status
+   badges in the table. */
+const EVENT_DOT_COLORS = {
+  'In Care': '#2563EB',        // blue   — intake / still in care
+  'Scheduled': '#2563EB',      // blue   — in care, appointment pending
+  'Released': '#10B981',       // green  — release
+  'PM Requested': '#F59E0B',   // orange — postmortem
+  'PM Done': '#F59E0B',        // orange — postmortem
+  'Cancelled': '#9CA3AF',      // gray
+  'Maintenance': '#9CA3AF',    // gray
+};
+const EVENT_DOT_FALLBACK = '#2563EB';
+
 function HorizontalCalendar({ eventsData = [], selectedDate, onDateSelect }) {
   const [viewStart, setViewStart] = useState(() => toMonday(new Date()));
   const stripRef = useRef(null);
@@ -358,8 +374,12 @@ function HorizontalCalendar({ eventsData = [], selectedDate, onDateSelect }) {
     const map = {};
     eventsData.forEach((ev) => {
       const date = new Date(ev.date);
+      if (isNaN(date.getTime())) return;
       const key = dk(date.getFullYear(), date.getMonth(), date.getDate());
-      map[key] = (map[key] || 0) + 1;
+      if (!map[key]) map[key] = { count: 0, colors: [] };
+      map[key].count += 1;
+      const color = ev.color || EVENT_DOT_FALLBACK;
+      if (!map[key].colors.includes(color)) map[key].colors.push(color);
     });
     return map;
   }, [eventsData]);
@@ -371,7 +391,8 @@ function HorizontalCalendar({ eventsData = [], selectedDate, onDateSelect }) {
     for (let i = 0; i < 30; i++) {
       const d = addDays(viewStart, i);
       const key = dk(d.getFullYear(), d.getMonth(), d.getDate());
-      arr.push({ date: d, key, dayName: DOWS[(d.getDay() + 6) % 7], dayNum: d.getDate(), count: eventCounts[key] || 0, isToday: key === todayKey, isSelected: selectedDate != null && key === dk(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()) });
+      const dayEvents = eventCounts[key];
+      arr.push({ date: d, key, dayName: DOWS[(d.getDay() + 6) % 7], dayNum: d.getDate(), count: dayEvents ? dayEvents.count : 0, colors: dayEvents ? dayEvents.colors : [], isToday: key === todayKey, isSelected: selectedDate != null && key === dk(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()) });
     }
     return arr;
   }, [viewStart, eventCounts, todayKey, selectedDate]);
@@ -420,7 +441,17 @@ function HorizontalCalendar({ eventsData = [], selectedDate, onDateSelect }) {
             <button key={day.key} id={`dc-${day.key}`} onClick={() => pickDate(day.date)} style={{ flex: '1 0 36px', padding: '4px 2px 3px', borderRadius: 7, border, background: bg, textAlign: 'center', cursor: 'pointer', transition: 'all 0.15s ease', outline: 'none', position: 'relative', minWidth: 30 }}>
               <div style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: dayNameColor, marginBottom: 1, opacity: isSelected ? 1 : 0.7 }}>{day.dayName}</div>
               <div style={{ fontSize: '14px', fontWeight: isSelected ? 700 : 600, color: textColor, lineHeight: 1.2 }}>{day.dayNum}</div>
-              {day.count > 0 && (<div style={{ display: 'inline-block', marginTop: 1, fontSize: '7px', fontWeight: 700, padding: '0px 4px', borderRadius: 3, background: badgeBg, color: badgeColor, lineHeight: 1.5 }}>{day.count}</div>)}
+              {day.count > 0 && (
+                <div
+                  title={`${day.count} event${day.count > 1 ? 's' : ''} · ${day.colors.join(' · ')}`}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, marginTop: 1, maxWidth: '100%' }}
+                >
+                  {day.colors.slice(0, 3).map((c) => (
+                    <span key={c} style={{ width: 5, height: 5, borderRadius: '50%', background: c, flexShrink: 0 }} />
+                  ))}
+                  <span style={{ display: 'inline-block', fontSize: '7px', fontWeight: 700, padding: '0px 3px', borderRadius: 3, background: badgeBg, color: badgeColor, lineHeight: 1.5 }}>{day.count}</span>
+                </div>
+              )}
             </button>
           );
         })}
@@ -629,7 +660,15 @@ const DeceasedListPage = () => {
       if (!admitted) return null;
       const date = new Date(admitted);
       if (isNaN(date.getTime())) return null;
-      return { date: date, title: r.full_name || r.name || 'Deceased' };
+      // Colour the day-cell dot from the record's status — orange / blue /
+      // green exactly like the Operations dashboard calendar.
+      const statusInfo = getStatusInfo(r.body_status || r.admission_status || r.release_status || r.status || 'active');
+      return {
+        date: date,
+        title: r.full_name || r.name || 'Deceased',
+        status: statusInfo.label,
+        color: EVENT_DOT_COLORS[statusInfo.label] || EVENT_DOT_FALLBACK,
+      };
     }).filter(Boolean);
   }, [yearRecords]);
 

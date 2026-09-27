@@ -216,19 +216,19 @@ const FLX_RESPONSIVE = `
   .flx-actions { width: 100% !important; }
   .flx-actions > button { flex: 1 1 100% !important; white-space: normal !important; }
 
-  /* Horizontal date strip: contained scroll rail.
-     The chips MUST stay shrinkable — pinning min-width + flex-shrink:0 here
-     forced 45 × 56px (~2500px) of content and is what made the page scroll
-     sideways on phones. Mirrors the listDeceased rail's flex: 1 0 36px rule. */
+
+     
   .flx-strip {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
     scrollbar-width: none !important;
     width: 100% !important;
     max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
   }
   .flx-strip::-webkit-scrollbar { display: none !important; }
-  .flx-strip > button { flex: 1 0 34px !important; min-width: 0 !important; padding-left: 2px !important; padding-right: 2px !important; }
+  .flx-strip > button { flex: 1 1 0 !important; min-width: 0 !important; padding-left: 2px !important; padding-right: 2px !important; }
 
   /* Full calendar: 7-col grid is too tight → stack as 3-cols so labels+events read */
   .flx-cal-weekdays { grid-template-columns: repeat(3, 1fr) !important; }
@@ -278,6 +278,10 @@ const FlowerBookingsNew = () => {
   const placingRef = useRef(false);
   // Auto-scrolls the mobile date strip so today's chip is in view
   const stripRef = useRef(null);
+  // Day-chips that fit the rail's width — measured on mount/resize so the
+  // horizontal calendar never overflows the phone screen (default = 7, the
+  // same fallback listDeceased's rail uses before measuring).
+  const [stripCount, setStripCount] = useState(7);
 
   const loadArrangements = useCallback(async () => {
     try {
@@ -358,15 +362,37 @@ const FlowerBookingsNew = () => {
     loadBookings();
   }, [loadBookings, loadArrangements]);
 
-  // Auto-scroll the mobile date strip so today's chip is centred in view
+  // Auto-scroll the mobile date strip so today's chip is in view.
+  // The rail is clipped (overflow-x: hidden) and always starts at today, so
+  // we scroll the rail ITSELF — never scrollIntoView, which would drag the
+  // whole page sideways on a phone.
   useEffect(() => {
     if (view !== 'list') return;
     const t = setTimeout(() => {
-      const el = stripRef.current?.querySelector('[data-today="1"]');
-      if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      const rail = stripRef.current;
+      if (rail && rail.scrollLeft !== 0) rail.scrollTo({ left: 0, behavior: 'smooth' });
     }, 80);
     return () => clearTimeout(t);
   }, [view, calDate]);
+
+  // How many day-chips actually fit in the rail. Measured (not guessed) so the
+  // strip is always exactly one screen wide — phones, tablets and desktop.
+  useEffect(() => {
+    if (view !== 'list') return undefined;
+    const el = stripRef.current;
+    if (!el) return undefined;
+    const measure = () => {
+      const w = el.clientWidth;
+      if (!w) return;                       // rail hidden (desktop) — keep default
+      const fit = Math.floor(w / 46);       // ~46px per chip keeps the label readable
+      setStripCount(Math.max(3, Math.min(fit, 45)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener('resize', measure);
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+  }, [view]);
 
   // The API returns the expected date in `date` (older rows may carry it as
   // `delivery_date`, sometimes as a full DATETIME) — always normalise to a
@@ -821,8 +847,19 @@ const FlowerBookingsNew = () => {
     // Today's key comes from the central date utility (no UTC shift)
     const todayStr = todayKey();
     return (
-      <div className="flx-strip" ref={stripRef}>
-        {strip.map(day => {
+      <div
+        className="flx-strip"
+        ref={stripRef}
+        style={{
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box',
+          overflowX: 'hidden',
+          overflowY: 'hidden',
+        }}
+      >
+        {strip.slice(0, stripCount).map(day => {
           const ds = fmtDateStr(day);
           const cnt = evCountByDate[ds] || 0;
           const sel = selectedDate === ds;
@@ -1565,19 +1602,16 @@ const FlowerBookingsNew = () => {
         @media (max-width: 1023px) {
           .flx-split { display: block; }
           .flx-rail { display: none !important; }
-          /* Constrain the rail to the viewport and clip its own overflow so the
-             document never scrolls sideways. The chips (flex: 1 0 38px,
-             min-width: 0) shrink to fit; JS scrolls to the selected day. */
+      
           .flx-strip {
             display: flex; gap: 4px;
             width: 100%; max-width: 100%; min-width: 0;
             box-sizing: border-box;
-            overflow-x: auto; overflow-y: hidden;
-            overscroll-behavior-x: contain;
-            -webkit-overflow-scrolling: touch;
+            overflow-x: hidden; overflow-y: hidden;
             padding: 2px 2px 14px; margin-bottom: 8px;
             scrollbar-width: none;
           }
+          .flx-strip > button { flex: 1 1 0; min-width: 0; }
           .flx-strip::-webkit-scrollbar { display: none; }
         }
       `}</style>
@@ -2793,12 +2827,13 @@ const styles = {
     background: '#2F4F3E',
   },
   stripDay: {
-    // `1 0 38px` — chips may grow from a 38px basis but MUST be allowed to
-    // shrink, so the rail fits the viewport at any width instead of forcing a
-    // 45 × 54px (~2400px) horizontal scroll. This is the listDeceased rail's
-    // `flex: '1 0 36px'` pattern; minWidth is 0 (not 54px) so shrinking works.
-    flex: '1 0 38px',
+    // `1 1 0` — the rail only renders the chips that fit (stripCount) AND
+    // every chip may shrink from a 0 basis, so the row is always exactly the
+    // rail's width. `1 0 …` (no shrink) is what overflowed phones: 45 chips ×
+    // 38px ≈ 1900px of unshrinkable content.
+    flex: '1 1 0',
     minWidth: '0',
+    boxSizing: 'border-box',
     padding: '10px 4px 12px',
     borderRadius: 0,
     border: '1px solid #EAE7E2',
