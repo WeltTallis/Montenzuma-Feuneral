@@ -4,21 +4,15 @@ import asyncHandler from 'express-async-handler';
 import axios from 'axios';
 import { Request, Response } from 'express';
 import {
-    validateRequestedDates,
-    normalizeBookingDates,
-    extractRowDates,
-    computeDateConflicts,
-    toDateKey,
-    attemptHearseReservation
+    validateRequestedDates, normalizeBookingDates,
+    extractRowDates, computeDateConflicts,
+    toDateKey, attemptHearseReservation
 } from '../utilities/hearseAvailability';
 import {
-    hearseStatusBadge,
-    HearseAvailabilityItemDto,
-    HearseBookingRequestDto,
-    HearseDayAvailabilityDto,
-    HearseMultiDateAvailabilityResponseDto
+    hearseStatusBadge, HearseAvailabilityItemDto, HearseBookingRequestDto,
+    HearseDayAvailabilityDto, HearseMultiDateAvailabilityResponseDto
 } from '../models/hearseBookingDto';
-import { hearseCacheGet, hearseCacheSet, invalidateHearseCache, BOOKING_CACHE_TTL } from '../utilities/hearseCache';
+import { hearseCacheGet, hearseCacheSet, invalidateHearseCache, BOOKING_CACHE_TTL, FLEET_CACHE_TTL } from '../utilities/hearseCache';
 
 // Types
 interface HearseBooking {
@@ -837,13 +831,28 @@ export const postponeHearseBooking = asyncHandler(async (req: Request, res: Resp
  */
 export const getAllDrivers = asyncHandler(async (req: Request, res: Response) => {
     try {
+        // ─── REDIS CACHE ─────────────────────────────────────────────────────
+        // The dashboard calls /all-drivers on every load and the drivers table
+        // changes rarely (no CRUD endpoints in this service). Same tenant-scoped
+        // namespace as every other hearse read, so invalidateHearseCache() on
+        // booking/hearse writes drops this key too; FLEET_CACHE_TTL bounds
+        // staleness for the rows that only change via direct DB edits.
+        const cacheKey = 'drivers:list';
+        const cachedDrivers = await hearseCacheGet<any>(req, cacheKey);
+        if (cachedDrivers) {
+            res.status(200).json({ ...cachedDrivers, source: 'cache' });
+            return;
+        }
+
         let drivers: any[] = [];
         try {
             drivers = await safeQuery(`SELECT id AS driver_id, driver_name, driver_phone, license_number, status, created_at FROM drivers ORDER BY driver_name ASC`, []);
         } catch (driverErr) {
             drivers = [];
         }
-        res.status(200).json({ status: 'success', total: drivers.length, drivers });
+        const payload = { status: 'success', total: drivers.length, drivers };
+        await hearseCacheSet(req, cacheKey, payload, FLEET_CACHE_TTL);
+        res.status(200).json({ ...payload, source: 'database' });
     } catch (error) {
         res.status(500).json({ status: 'error', message: 'Failed to fetch drivers.' });
     }

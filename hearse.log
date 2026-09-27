@@ -1,0 +1,1224 @@
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0
+[FileStorage] WARNING: Could not create base uploads directory /opt/storage/uploads: EACCES: permission denied, mkdir '/opt/storage/uploads'. Uploads may fail. If running in Docker, ensure the volume is mounted with proper ownership (chown -R nodejs:nodejs).
+[UPLOAD] Could not pre-create base uploads dir: EACCES: permission denied, mkdir '/opt/storage/uploads'
+node:fs:1410
+  const result = binding.mkdir(
+                         ^
+
+Error: EACCES: permission denied, mkdir '/opt/storage/uploads/hearses'
+    at Object.mkdirSync (node:fs:1410:26)
+    at asyncHandler (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:16:8)
+    at Object.<anonymous> (/usr/src/app/services/hearse-service/controllers/registerHearse.ts:402:2)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/usr/local/lib/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'mkdir',
+  path: '/opt/storage/uploads/hearses'
+}
+
+Node.js v24.21.0

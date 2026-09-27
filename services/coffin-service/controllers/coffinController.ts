@@ -365,6 +365,20 @@ export const getAllCoffinsAllBranches = async (req: Request, res: Response) => {
       : 'c.tenant_slug = ?';
     const params: any[] = tenantParam ? [String(parentSlug), tenantParam] : [String(parentSlug)];
 
+    // ── REDIS CACHE ─────────────────────────────────────────────────────
+    // The inventory page hits THIS endpoint on every load (the /coffins
+    // fallbacks are already cached — this one was not). The namespace must be
+    // the same tenant slug clearCoffinCache() wipes on every coffin/order write,
+    // so create/update/delete invalidate this key automatically. The key carries
+    // parent_slug + tenant id because the SQL below filters on both.
+    const cacheTenantSlug = (req as any).tenantSlug || String(parentSlug);
+    const cacheKey = `allBranches:${parentSlug}:${tenantParam || 'none'}`;
+    const cachedPayload: any = await getCached(cacheTenantSlug, cacheKey);
+    if (cachedPayload) {
+      logger.info({ msg: 'All-branch coffins served from Redis', tenantSlug: cacheTenantSlug, cacheKey, count: cachedPayload.count });
+      return res.status(200).json(cachedPayload);
+    }
+
     const rows: any[] = await coffinQuery(`
       SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
@@ -384,12 +398,15 @@ export const getAllCoffinsAllBranches = async (req: Request, res: Response) => {
       branch_name: String(parentSlug)
     }));
 
-    return res.status(200).json({
+    const payload = {
       success: true,
       data: allCoffins,
       count: allCoffins.length,
       branches: 1
-    });
+    };
+    await setCached(cacheTenantSlug, cacheKey, payload);
+
+    return res.status(200).json(payload);
   } catch (error: any) {
     logger.error({ msg: 'Get all branch coffins error', parentSlug, error: error.message });
     return res.status(500).json({ success: false, message: error.message });
@@ -708,6 +725,19 @@ export const getAllOrders = async (req: Request, res: Response) => {
     null;
 
   try {
+    // ── REDIS CACHE ─────────────────────────────────────────────────────
+    // The reservations dashboard polls this on every render; it was hitting
+    // MySQL each time. The key carries the branch scope because the SQL below
+    // filters on it. The namespace is the same tenant slug clearCoffinCache()
+    // wipes, so createOrder/updateOrderStatus (and the stock-request paths that
+    // synthesize transfer rows) invalidate this key.
+    const cacheKey = `orders:list:branch:${branchId || 'all'}`;
+    const cachedOrders: any = await getCached(tenantSlug, cacheKey);
+    if (cachedOrders) {
+      logger.info({ msg: 'Orders served from Redis', tenantSlug, cacheKey, count: cachedOrders.length });
+      return res.status(200).json({ success: true, data: cachedOrders, count: cachedOrders.length });
+    }
+
     const params: any[] = [tenantSlug];
     let branchClause = '';
     if (branchId) {
@@ -809,6 +839,8 @@ export const getAllOrders = async (req: Request, res: Response) => {
     } catch (transferErr: any) {
       logger.warn({ msg: 'Could not synthesize pending transfer reservations', tenantSlug, error: transferErr?.message });
     }
+
+    await setCached(tenantSlug, cacheKey, orders);
 
     return res.status(200).json({ success: true, data: orders, count: orders.length });
   } catch (error: any) {
@@ -1149,6 +1181,10 @@ export const createStockRequest = async (req: Request, res: Response) => {
       image_url: imageUrl
     });
 
+    // getAllOrders() synthesizes pending transfer reservations FROM
+    // stock_requests, so a new request must drop the cached orders list.
+    await clearCoffinCache(tenantSlug);
+
     logger.info({ msg: 'Stock request created', tenantSlug, requestId: result.request_id });
 
     // Notify the destination branch that a transfer/stock request was created.
@@ -1297,6 +1333,10 @@ export const updateStockRequestStatus = async (req: Request, res: Response) => {
     const sql = `UPDATE stock_requests SET status = ?, updated_at = NOW() WHERE request_id = ? AND (tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%'))`;
     await coffinQuery(sql, [status, id, orgSlug, orgSlug]);
 
+    // Pending transfer reservations in getAllOrders() are derived from
+    // stock_requests — a status change must drop the cached orders list.
+    await clearCoffinCache(tenantSlug);
+
     logger.info({ msg: 'Stock request status updated', tenantSlug, requestId: id, status });
 
     return res.status(200).json({ success: true, message: `Stock request ${status} successfully` });
@@ -1360,6 +1400,11 @@ export const updateStockRequestAction = async (req: Request, res: Response) => {
 
     const sql = `UPDATE stock_requests SET status = ? WHERE request_id = ? AND (tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%'))`;
     await coffinQuery(sql, [status, id, orgSlug, orgSlug]);
+
+    // Pending transfer reservations in getAllOrders() are derived from
+    // stock_requests — an action (approve/reject/delivered) must drop the
+    // cached orders list so the synthesized rows refresh immediately.
+    await clearCoffinCache(tenantSlug);
 
     logger.info({ msg: 'Stock request action applied', tenantSlug, requestId: id, action, status });
 

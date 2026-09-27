@@ -4,6 +4,7 @@ import React, { useEffect, useState, Suspense, lazy } from 'react';
 
 const NotificationBell = lazy(() => import('../components/notifications/NotificationBell'))
 const FooterComponent = lazy(() => import('../components/layout/globalFooter'))
+import { shouldShowNotificationBell } from '../components/notifications/bellVisibility';
 import { useTenantStore } from '../modules/seo/useTenantStore';
 import ModernSidebar from '../components/layout/ModernSidebar';
 import { useAuth } from '../utils/context/AuthContext';
@@ -419,15 +420,13 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
   // Always use DashboardLayout with sidebar for all users
   const Layout = DashboardLayout;
 
-  // Hide the notification bell on public-facing client forms (receptionist,
-  // deceased registration and release form pages).
-  const isClientPage =
-    location.pathname.includes('/receptionist') ||
-    location.pathname.includes('/deceased/register') ||
-    location.pathname.includes('/release-form') ||
-    location.pathname.includes('/flower-samples') ||
-    location.pathname.includes('/flowers/new');
-  const showNotificationBell = !isClientPage;
+  // Hide the notification bell on the standalone / public-facing screens where
+  // the floating overlay would cover page content or simply isn't wanted:
+  // body intake form, body release form, drivers portal, the dashboard (and
+  // its analytics twin), the reception portal and the flower screens.
+  // The matcher strips /tenant/:slug first, so a tenant slug that happens to
+  // be called "dashboard" can never hide the bell by accident.
+  const showNotificationBell = shouldShowNotificationBell(location.pathname);
 
   return (
     <>
@@ -435,11 +434,14 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
       <Routes>
         <Route path="/" element={<TenantRootRedirect slug={slug} />} />
 
-        {/* Dashboard - Standalone full-screen (no global sidebar); nav via top header drawer */}
+        {/* Dashboard — wrapped in DashboardLayout so the global ModernSidebar
+            side panel is visible here, exactly like every other tenant page. */}
         <Route path="dashboard" element={
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <DashboardRoleGate tenantSlug={slug} tenantData={tenantData} />
-          </Suspense>
+          <Layout tenantData={tenantData} tenantSlug={slug}>
+            <Suspense fallback={<RouteLoadingFallback />}>
+              <DashboardRoleGate tenantSlug={slug} tenantData={tenantData} />
+            </Suspense>
+          </Layout>
         } />
 
         {/* Scanner Setup Guide - Public page */}

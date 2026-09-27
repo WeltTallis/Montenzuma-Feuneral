@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useSocket } from '../../utils/context/socketContext';
 import notify from '../../utils/notify';
 import {
@@ -9,6 +10,7 @@ import {
   Box
 } from '../../utils/icons/icons';
 import './NotificationBell.css';
+import { shouldShowNotificationBell } from './bellVisibility';
 
 const MAX_NOTIFICATIONS = 50;
 const NOTIFICATION_DEBOUNCE_MS = 100;
@@ -242,6 +244,7 @@ const NotificationBell = () => {
   const dropdownRef = useRef(null);
   const audioContextRef = useRef(null);
   const { socket } = useSocket();
+  const location = useLocation();
 
   // Performance: Debounce rapid notifications to prevent excessive re-renders
   const pendingNotificationsRef = useRef([]);
@@ -766,6 +769,11 @@ const NotificationBell = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Belt-and-braces: never draw the overlay on a bell-free screen (body intake
+  // form, body release form, drivers portal, dashboard, ...) even if this
+  // component is mounted by something other than AppRouter's route gate.
+  if (!shouldShowNotificationBell(location.pathname)) return null;
 
   return (
     <>
