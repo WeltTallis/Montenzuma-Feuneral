@@ -8,6 +8,7 @@ import { shouldShowNotificationBell } from '../components/notifications/bellVisi
 import { useTenantStore } from '../modules/seo/useTenantStore';
 import ModernSidebar from '../components/layout/ModernSidebar';
 import { useAuth } from '../utils/context/AuthContext';
+import { hasSession, getTenantSlug } from '../utils/globalAuth';
 import Loader from '../components/loader/loader';
 import { tenantApi } from '../api/tenant.api';
 
@@ -171,14 +172,12 @@ const ProtectedRoute = ({ children }) => {
     return <Loader text="Validating session" color="#0e3345" />;
   }
 
-  if (!user || !user.isAuthenticated) {
-    // Preserve tenantSlug so we don't redirect to 'default'
-    const slug = localStorage.getItem('tenantSlug');
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    localStorage.removeItem('tenantId');
-    // Restore tenantSlug after clearing
-    if (slug) localStorage.setItem('tenantSlug', slug);
+  // A live access token is enough to enter the app. The AuthContext may not
+  // have hydrated the user object yet (fresh tab, storage event still in
+  // flight), and this guard used to WIPE authToken/user from storage whenever
+  // `user` was missing — permanently signing genuinely logged-in clients out
+  // and bouncing them to /login on every navigation.
+  if (!user && !hasSession()) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
   return children;
@@ -266,7 +265,7 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
 const TenantResolver = () => {
   const { slug } = useParams();
   const { setTenantData, setLoading, error, setError, tenantData } = useTenantStore();
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
   const navigate = useNavigate();
   const location = useLocation();
   const cacheKey = `tenant_cache_${slug}`;
@@ -391,8 +390,17 @@ const TenantResolver = () => {
       } catch (err) {
         if (!cancelled) {
           console.error('Tenant fetch error:', err);
-          setError('Tenant not found: ' + err.message);
-          navigate('/login', { replace: true });
+          const status = err?.response?.status;
+          if (status === 401 || status === 403) {
+            // The session really is dead — only now is /login the right answer.
+            setError('Your session has expired. Please log in again.');
+            navigate('/login', { replace: true });
+          } else {
+            // A network blip, timeout or 5xx must NEVER sign a user out.
+            // Keep rendering the app (the tenant store simply stays empty)
+            // instead of dumping a signed-in client on the login screen.
+            setError('Could not load tenant details: ' + (err.message || 'network error'));
+          }
         }
       }
     };
@@ -400,7 +408,7 @@ const TenantResolver = () => {
     return () => { cancelled = true; };
   }, [slug, resolvedSlug, setTenantData, setError, token, navigate, cacheKey]);
 
-  if (!token || token === 'undefined' || token === 'null') {
+  if (!hasSession()) {
     return <Navigate to="/login" replace />;
   }
   return <TenantDashboardRoutes tenantData={tenantData || {}} tenantSlug={resolvedSlug} />;
@@ -759,8 +767,31 @@ const DashboardRedirect = () => {
     let finalSlug = (urlSlug && urlSlug !== 'default' && urlSlug !== 'dashboard') ? urlSlug : (storedTenantSlug || userTenantSlug || '');
 
     if (!finalSlug || finalSlug === 'dashboard' || finalSlug === 'default' || finalSlug === 'login') {
+      // Full recovery chain: parentTenantSlug key → stored `user` blob → JWT
+      // claims (getTenantSlug). Single-branch ("normal") clients whose login
+      // response carried no branch info used to fail this check and get
+      // dumped on /login even though they were perfectly signed in.
+      finalSlug = getTenantSlug();
+    }
+
+    if (!finalSlug || finalSlug === 'dashboard' || finalSlug === 'default' || finalSlug === 'login') {
+      if (hasSession()) {
+        // We ARE signed in, but nothing (storage or token) can say which
+        // tenant this session belongs to. Clear the unusable session once
+        // instead of ping-ponging between /dashboard and /login forever.
+        ['authToken', 'token', 'refreshToken', 'user', 'tenantId', 'branchId'].forEach((k) => {
+          localStorage.removeItem(k);
+          sessionStorage.removeItem(k);
+        });
+      }
       navigate('/login', { replace: true });
       return;
+    }
+
+    // Heal storage so API headers and later navigations reuse the same slug.
+    const currentStored = localStorage.getItem('tenantSlug');
+    if (!currentStored || currentStored === 'undefined' || currentStored === 'null' || currentStored === 'dashboard' || currentStored === 'default') {
+      localStorage.setItem('tenantSlug', finalSlug);
     }
 
     if (user?.role === 'systemadmin' || isAdminUser()) {
@@ -788,23 +819,15 @@ const DashboardRedirect = () => {
   );
 };
 
-// Root entry point: send logged-in users straight to the deceased register
-// and everyone else (including users who just logged out) straight to the
-// login page — no extra "Log in" click needed.
+// Root entry point: signed-in users go straight into the app (the deceased
+// register), everyone else gets the real HOME page instead of a login wall —
+// the landing page (and its Scanner download link at /scanner) used to be
+// unreachable because `/` always redirected to /login.
 const RootRedirect = () => {
-  const navigate = useNavigate();
-  useEffect(() => {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-    if (token && token !== 'undefined' && token !== 'null') {
-      // DashboardRedirect resolves tenant/branch/role and lands the user on
-      // /deceased (system-admin console and driver portal keep their own
-      // role-specific homes) — never on the dashboard.
-      navigate('/dashboard', { replace: true });
-    } else {
-      navigate('/login', { replace: true });
-    }
-  }, [navigate]);
-  return <RouteLoadingFallback />;
+  if (hasSession()) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <LandingPage />;
 };
 
 const AppRouter = () => (

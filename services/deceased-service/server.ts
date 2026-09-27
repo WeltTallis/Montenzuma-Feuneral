@@ -14,15 +14,7 @@ const PORT = parseInt(process.env.PORT || '5003', 10);
 
 // ─── Tenant identifier allowlists 
 const TENANT_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
-// Registered tenant database names are named after the tenant slug by the
-// tenant-service (`generateSlug(tenant_name)`, i.e. HYPHENATED:
-// `monezuma-monalisa-feuneral-home`, branch DBs `...-nairobi`), while the
-// legacy/bootstrap path used `restpoint_*` / `tenant_*` with underscores.
-// The old `^(tenant|restpoint)_[a-z0-9][a-z0-9_]{0,55}$` therefore REJECTED every
-// tenant provisioned by the current onboarding flow, so the resolver could
-// succeed and the request still died with
-//   403 {"success":false,"message":"Tenant not found or not active"}.
-// Accept both shapes, and refuse the platform's own system schemas.
+
 const TENANT_DB_NAME_RE = /^(?!information_schema$|mysql$|performance_schema$|sys$|tenant_tracking$)[a-z0-9][a-z0-9_-]{0,62}$/;
 
 // CORS Configuration — explicit allowlist, never `origin: true` (audit 2.7).

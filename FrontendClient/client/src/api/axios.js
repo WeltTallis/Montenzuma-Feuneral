@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ENDPOINTS } from './endpoints';
 import env from '../utils/config/env';
-import { getUserId, getAuthToken, getTenantSlug, getBranchSlug, getBranchId } from '../utils/globalAuth';
+import { getUserId, getAuthToken, getTenantSlug, getBranchSlug, getBranchId, isAppPath } from '../utils/globalAuth';
 import { reportFailure, reportSuccess } from './connectionStatus';
 
 // Alias for backwards compatibility
@@ -168,6 +168,10 @@ const forceLogout = (message = 'Your session has expired. Please log in again.')
     // (see components/common/LivePreviewHost.jsx). Never hijack those frames to
     // /login — let the module render its own empty state instead.
     if (sessionStorage.getItem('rpPreviewMode') === '1') return;
+    // Only routes that actually require a session may bounce the browser to
+    // /login. A background 401 on a public page (home, /scanner, /blog, ...)
+    // used to hijack visitors right in the middle of browsing.
+    if (!isAppPath()) return;
     window.location.href = '/login';
   }
 };

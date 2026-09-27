@@ -3,6 +3,42 @@
  */
 
 /**
+ * Decode the JWT payload WITHOUT verifying the signature.
+ * This is only ever used as a client-side recovery hint (which tenant/role does
+ * this token belong to?) — the server still validates every token itself.
+ * Returns null when there is no token or it cannot be parsed.
+ */
+export const decodeTokenClaims = (token = null) => {
+  const raw = token || getAuthToken();
+  if (!raw || raw === 'undefined' || raw === 'null') return null;
+  try {
+    const payload = raw.split('.')[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    // decodeURIComponent trick keeps non-ASCII claims (tenant names) intact.
+    const json = decodeURIComponent(
+      atob(padded)
+        .split('')
+        .map((c) => `%${`00${c.charCodeAt(0).toString(16)}`.slice(-2)}`)
+        .join('')
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+};
+
+/** True when `value` looks like a real tenant slug (never a placeholder). */
+const isUsableSlug = (value) =>
+  !!value &&
+  value !== 'default' &&
+  value !== 'dashboard' &&
+  value !== 'login' &&
+  value !== 'undefined' &&
+  value !== 'null';
+
+/**
  * Get the current tenant slug from localStorage
  * NO 'default' fallback - must always return the real tenant slug
  * Falls back to parentTenantSlug since backend stores the real slug there
@@ -10,23 +46,56 @@
 export const getTenantSlug = () => {
   // Priority: 1) tenantSlug key, 2) tenant_slug key, 3) parentTenantSlug key, 4) user object
   const direct = localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug');
-  if (direct && direct !== 'default' && direct !== 'dashboard' && direct !== 'undefined' && direct !== 'null') {
+  if (isUsableSlug(direct)) {
     return direct;
   }
-  
+
   const parent = localStorage.getItem('parentTenantSlug');
-  if (parent && parent !== 'default' && parent !== 'dashboard' && parent !== 'undefined' && parent !== 'null') {
+  if (isUsableSlug(parent)) {
     return parent;
   }
-  
+
   try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
     // tenantSlug is the effective scope (branch for branch users); only fall back to
     // parentTenantSlug when no branch/effective slug exists (e.g. legacy data).
-    return user.tenantSlug || user.tenant_slug || user.branchDbName || user.branchSlug || user.tenant?.slug || user.parentTenantSlug || '';
+    const fromUser = user.tenantSlug || user.tenant_slug || user.branchDbName || user.branchSlug || user.tenant?.slug || user.parentTenantSlug || '';
+    if (isUsableSlug(fromUser)) return fromUser;
   } catch {
-    return '';
+    // Ignore parsing errors
   }
+
+  // Last resort: the access token itself carries the parent tenant slug
+  // (auth-service `generateTokens`). This rescues sessions whose `user` blob
+  // was cleared but whose token is still valid — without it those users were
+  // bounced to /login forever because no slug could be found.
+  const claims = decodeTokenClaims();
+  const fromClaims = claims?.parentTenantSlug || claims?.tenantSlug || '';
+  if (isUsableSlug(fromClaims)) return fromClaims;
+
+  return '';
+};
+
+/** True when a usable access token exists (in either storage). */
+export const hasSession = () => {
+  const token = getAuthToken();
+  return !!token && token !== 'undefined' && token !== 'null';
+};
+
+/**
+ * True for routes that require an authenticated session
+ * (i.e. the only places a 401 is allowed to bounce the browser to /login).
+ * Public pages — the landing page, /scanner, /blog, /pricing, ... — must
+ * never be hijacked by a background 401.
+ */
+export const isAppPath = (pathname = typeof window !== 'undefined' ? window.location.pathname : '/') => {
+  const path = pathname || '/';
+  return (
+    path.startsWith('/tenant/') ||
+    path.startsWith('/dashboard') ||
+    path.startsWith('/system-admin') ||
+    path.startsWith('/monitoring')
+  );
 };
 
 /**

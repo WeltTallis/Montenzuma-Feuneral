@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ArrowRight, ShieldCheck, CheckCircle, AlertCircle } from '../../utils/icons/icons';
 import { useAuth } from '../../utils/context/AuthContext';
+import { getTenantSlug } from '../../utils/globalAuth';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import LoginColors from '../../utils/colors/index'
@@ -41,27 +42,42 @@ export default function LoginPage() {
   const [successName, setSuccessName] = useState('');
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const hasValidToken = !!token && token !== 'undefined' && token !== 'null';
+
     // Resume with the user's COMPLETE branch slug (`<org-slug>-<branch-name>`,
     // e.g. `...-nairobi` for Main / `...-machakos` for Machakos) so every
     // navigation URL carries the exact branch scope. Falls back to the
-    // parent tenant slug for users without a branch.
+    // parent tenant slug for users without a branch, then to the JWT claims.
     let slug = null;
     let storedUser = {};
     try {
-      storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      storedUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
       slug = storedUser.branchSlug || null;
     } catch { /* ignore */ }
     slug = slug || localStorage.getItem('tenantSlug');
-    if (token && token !== 'undefined' && token !== 'null' && slug && slug !== 'default' && slug !== 'dashboard') {
+    if (!slug || slug === 'default' || slug === 'dashboard' || slug === 'undefined' || slug === 'null') {
+      slug = getTenantSlug();
+    }
+    const slugOk = !!slug && slug !== 'default' && slug !== 'dashboard' && slug !== 'undefined' && slug !== 'null';
+
+    if (hasValidToken) {
+      // Someone who logged in before must land back INSIDE the app — they used
+      // to get stranded on this form whenever no slug was stored.
       // Drivers ONLY ever land on the driver portal dashboard.
       const dest = storedUser.role === 'driver' ? 'driver-portal' : 'deceased';
-      navigate(`/tenant/${slug}/${dest}`);
-    } else if (!token || token === 'undefined' || token === 'null') {
+      if (slugOk) {
+        navigate(`/tenant/${slug}/${dest}`);
+      } else {
+        // The token is fine but nothing says which tenant it belongs to:
+        // /dashboard runs its recovery path (and clears a truly dead session).
+        navigate('/dashboard');
+      }
+    } else {
+      // Clear any stale user object so a previous tenant's identity
+      // can never leak into this session.
       localStorage.removeItem('authToken');
       localStorage.removeItem('tenantSlug');
-      // Also clear any stale user object so a previous tenant's identity
-      // can never leak into this session.
       localStorage.removeItem('user');
       sessionStorage.removeItem('user');
     }

@@ -1,5 +1,5 @@
 import React,{ createContext, useContext, useEffect, useCallback, useState } from 'react';
-import { storeBranchContext, clearBranchContext } from '../../utils/globalAuth';
+import { storeBranchContext, clearBranchContext, decodeTokenClaims } from '../../utils/globalAuth';
 import api from '../../api/client';
 
 
@@ -12,8 +12,9 @@ const AuthContext = createContext(null);
 const restoreUserFromStorage = () => {
   const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
   const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
+  const tokenValid = !!token && token !== 'undefined' && token !== 'null';
 
-  if (token && token !== 'undefined' && token !== 'null' && userData) {
+  if (tokenValid && userData) {
     try {
       const parsedUser = JSON.parse(userData);
       return {
@@ -22,9 +23,35 @@ const restoreUserFromStorage = () => {
         ...parsedUser,
       };
     } catch (error) {
-      // Invalid stored data
+      // Invalid stored data — fall through to the token-claims recovery below
     }
   }
+
+  // The token is alive but the persisted user blob is missing/corrupt (older
+  // build, partial logout, blocked storage, ...). Rebuild a minimal identity
+  // from the JWT claims instead of declaring the session dead — otherwise
+  // ProtectedRoute used to sign these users straight back out to /login on
+  // every single page load.
+  if (tokenValid) {
+    const claims = decodeTokenClaims(token) || {};
+    return {
+      token,
+      isAuthenticated: true,
+      userId: claims.userId || localStorage.getItem('userId') || sessionStorage.getItem('userId') || null,
+      tenantId: claims.tenantId || localStorage.getItem('tenantId') || null,
+      tenantSlug: claims.parentTenantSlug || claims.tenantSlug || localStorage.getItem('tenantSlug') || '',
+      parentTenantSlug: claims.parentTenantSlug || localStorage.getItem('parentTenantSlug') || '',
+      branchSlug: claims.branchSlug || null,
+      branchDbName: claims.branchDbName || null,
+      dbName: claims.dbName || null,
+      branchId: claims.branchId || null,
+      role: claims.role || null,
+      username: claims.email || 'User',
+      fullName: claims.email || 'User',
+      recoveredFromToken: true,
+    };
+  }
+
   return null;
 };
 
@@ -47,16 +74,39 @@ export const AuthProvider = ({ children }) => {
     // This ensures AuthContext stays in sync when login happens outside this context
     const handleStorageChange = (event) => {
       if (event.key === 'authToken' || event.key === 'user' || event.key === null) {
-        const restored = restoreUserFromStorage();
-        if (restored) {
-          setUser(restored);
+        const next = restoreUserFromStorage();
+        if (next) {
+          setUser(next);
         } else {
           setUser(null);
         }
       }
     };
+
+    // Same-tab logins never fire the `storage` event, and the axios layer can
+    // end a session without a page reload — listen for those signals too so a
+    // signed-in user is never left holding a stale (or cleared) identity.
+    const handleAuthEvent = (event) => {
+      if (event?.detail?.type === 'logout') {
+        setUser(null);
+        return;
+      }
+      const next = restoreUserFromStorage();
+      if (next) setUser(next);
+    };
+    const handleAuthStateChange = () => {
+      const next = restoreUserFromStorage();
+      if (next) setUser(next);
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('auth-event', handleAuthEvent);
+    window.addEventListener('auth-state-changed', handleAuthStateChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-event', handleAuthEvent);
+      window.removeEventListener('auth-state-changed', handleAuthStateChange);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useCallback(async (credentials) => {

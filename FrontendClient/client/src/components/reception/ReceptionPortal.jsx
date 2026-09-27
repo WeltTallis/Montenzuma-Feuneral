@@ -426,8 +426,8 @@ export default function App() {
           <div style={{ position: "absolute", inset: 0 }}>
             <HeroImg src="/portal.webp" alt="Reception portal" />
           </div>
-          <Scrim $g="linear-gradient(to right, rgba(14,14,25,0.95) 0%, rgba(5,5,7,0.85) 15%, rgba(5,5,7,0.4) 90%)" />
-          <Scrim $g="linear-gradient(to top, rgba(5,5,7,1) 0%, rgba(5,5,7,0) 25%)" />
+          <Scrim $g="linear-gradient(to right, rgba(14,14,25,0.95) 0%, rgba(5,5,7,0.85) 1%, rgba(5,5,7,0.4) 10%)" />
+          <Scrim $g="linear-gradient(to top, rgba(5,5,7,1) 0%, rgba(5,5,7,0) 15%)" />
           <Scrim $g="linear-gradient(135deg, rgba(0,217,255,0.08) 0%, transparent 10%)" />
 
           <TopBar>
@@ -506,12 +506,12 @@ export default function App() {
               >
                 Services
               </div>
-              <h3 style={{ 
+              <h3 style={{
                 fontFamily: BODY, // Applied Saira
-                fontSize: 28, 
-                color: "#00d9ff", 
-                fontWeight: 600, 
-                margin: 0 
+                fontSize: 28,
+                color: "#00d9ff",
+                fontWeight: 600,
+                margin: 0
               }}>
                 Select a Service to Begin
               </h3>
@@ -583,12 +583,12 @@ export default function App() {
                       >
                         <c.Icon size={26} sw={1.85} color={c.accent} />
                       </div>
-                      <div style={{ 
+                      <div style={{
                         fontFamily: BODY, // Applied Saira
-                        fontSize: 28, 
-                        color: c.accent, 
-                        fontWeight: 700, 
-                        opacity: 0.6 
+                        fontSize: 28,
+                        color: c.accent,
+                        fontWeight: 700,
+                        opacity: 0.6
                       }}>
                         {c.num}
                       </div>
@@ -610,12 +610,12 @@ export default function App() {
                       >
                         {c.title}
                       </div>
-                      <div style={{ 
+                      <div style={{
                         fontFamily: BODY, // Applied Saira
-                        fontSize: 13.5, 
-                        color: "#a89a88", 
-                        fontWeight: 300, 
-                        lineHeight: 1.7 
+                        fontSize: 13.5,
+                        color: "#a89a88",
+                        fontWeight: 300,
+                        lineHeight: 1.7
                       }}>
                         {c.sub}
                       </div>
@@ -623,13 +623,13 @@ export default function App() {
 
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24, paddingTop: 8, position: "relative", zIndex: 1 }}>
                       <Continue $accent={c.accent}>
-                        <span style={{ 
+                        <span style={{
                           fontFamily: BODY, // Applied Saira
-                          fontSize: 12, 
-                          letterSpacing: 2.5, 
-                          textTransform: "uppercase", 
-                          fontWeight: 500, 
-                          opacity: 0.9 
+                          fontSize: 12,
+                          letterSpacing: 2.5,
+                          textTransform: "uppercase",
+                          fontWeight: 500,
+                          opacity: 0.9
                         }}>
                           Continue
                         </span>
@@ -650,23 +650,23 @@ export default function App() {
       {showOverlay && (
         <Overlay>
           <Spinner />
-          <div style={{ 
+          <div style={{
             fontFamily: BODY, // Applied Saira
-            fontSize: 24, 
-            fontWeight: 600, 
-            color: "#e8e8eb", 
-            letterSpacing: "-0.2px", 
-            marginBottom: 12 
+            fontSize: 24,
+            fontWeight: 600,
+            color: "#e8e8eb",
+            letterSpacing: "-0.2px",
+            marginBottom: 12
           }}>
             {selectedService}
           </div>
-          <div style={{ 
+          <div style={{
             fontFamily: BODY, // Applied Saira
-            fontSize: 10, 
-            color: "#5a5a65", 
-            letterSpacing: 4, 
-            textTransform: "uppercase", 
-            fontWeight: 300 
+            fontSize: 10,
+            color: "#5a5a65",
+            letterSpacing: 4,
+            textTransform: "uppercase",
+            fontWeight: 300
           }}>
             Preparing your session
           </div>

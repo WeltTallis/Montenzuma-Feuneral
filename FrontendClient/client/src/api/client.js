@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ENDPOINTS } from './endpoints';
 import env from '../utils/config/env';
+import { isAppPath } from '../utils/globalAuth';
 
 // ─── Refresh Queue ──────────────────────────────────────────────────────────
 // Prevents multiple concurrent refresh attempts when multiple requests fail
@@ -171,8 +172,10 @@ api.interceptors.response.use(
           reason: 'Token refresh failed - session expired',
           error: refreshError?.message || 'Unknown error'
         });
-        // Redirect to login
-        if (typeof window !== 'undefined') {
+        // Redirect to login — but ONLY from inside the app. A failed refresh
+        // triggered by an optional call on a public page (home, /scanner, ...)
+        // must never yank a visitor off the page they asked for.
+        if (typeof window !== 'undefined' && isAppPath()) {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);
