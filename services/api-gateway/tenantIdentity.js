@@ -44,8 +44,41 @@ const jwt = require('jsonwebtoken');
 
 const PLATFORM_ROLES = new Set(['systemadmin', 'superadmin']);
 
+/**
+ * Roles that may read a branch OTHER than their own, within their own tenant.
+ *
+ * The dashboard's "Load by Branch" and the cross-branch operations view fan out
+ * one request per branch, so they must be able to name the branch they are
+ * asking for. Without this the gateway overwrote every `x-branch-db` with the
+ * caller's own branch, so all branches returned identical rows (the same count,
+ * and each record repeated once per branch).
+ *
+ * This is deliberately narrow: `staff` — the branch-limited accounts — are NOT
+ * included, so they remain pinned to their own branch exactly as before. It is
+ * also scoped to the caller's OWN tenant: the requested branch is still
+ * validated as `<tenant-slug>-<something>`, so this can never widen a request
+ * into a sibling tenant.
+ */
+const ORG_WIDE_READ_ROLES = new Set(['admin', 'manager']);
+
 // Every tenant slug the platform issues is lowercase-kebab.
 const TENANT_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
+
+/**
+ * True when `branchSlug` is a branch of `tenantSlug` — i.e. the token's own
+ * organisation. Multi-branch tenants use one database per branch named
+ * `<org-slug>-<branch>`, so a sibling branch is the parent slug plus a suffix.
+ *
+ * This is the guard that makes an org-wide read safe: it rejects any branch
+ * belonging to a DIFFERENT tenant, so widening a request can never escape the
+ * caller's own organisation.
+ */
+function belongsToTenant(branchSlug, tenantSlug) {
+  if (!branchSlug || !tenantSlug) return false;
+  if (!TENANT_SLUG_RE.test(branchSlug) || !TENANT_SLUG_RE.test(tenantSlug)) return false;
+  if (branchSlug === tenantSlug) return true;
+  return branchSlug.startsWith(`${tenantSlug}-`) && branchSlug.length > tenantSlug.length + 1;
+}
 // Branch ids are concatenated into the "<org>-<branch>" database slug downstream,
 // so allow a slightly wider alphabet but nothing that could escape that position.
 const BRANCH_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
@@ -271,6 +304,7 @@ function applyTenantIdentity(proxyReq, req, log) {
   const clientUser = firstHeader(req.headers['x-user-id']);
   const clientBranch = firstHeader(req.headers['x-branch-id']);
   const clientBranchSlug = firstHeader(req.headers['x-branch-slug']);
+  const clientBranchDb = firstHeader(req.headers['x-branch-db']);
 
   let identity;
   try {
@@ -303,12 +337,43 @@ function applyTenantIdentity(proxyReq, req, log) {
     proxyReq.setHeader('x-tenant-id', String(identity.tenantId || ''));
     proxyReq.setHeader('x-user-id', String(identity.userId || ''));
     proxyReq.setHeader('x-tenant-verified', '1');
+
     // Propagate the signed branch scope so branch-aware services can filter on it
     // instead of trusting the client's own copy of these headers.
     if (branchDb) {
-      proxyReq.setHeader('x-branch-db', branchDb);
-      if (identity.branchSlug) proxyReq.setHeader('x-branch-slug', String(identity.branchSlug));
-      if (identity.branchId) proxyReq.setHeader('x-branch-id', String(identity.branchId));
+      /* A branch user may still ask for a DIFFERENT branch, but only when their
+         role is org-wide (admin / manager) and only for a branch of THEIR OWN
+         tenant. This is what lets the dashboard's per-branch fan-out work while
+         keeping every other role pinned to its own branch.
+
+         `belongsToTenant()` rejects a branch of a sibling tenant, so this can
+         never widen the request beyond the caller's own organisation. */
+      const wantsSibling = clientBranchDb
+        && String(clientBranchDb) !== branchDb
+        && ORG_WIDE_READ_ROLES.has(String(identity.role || '').toLowerCase())
+        && belongsToTenant(String(clientBranchDb), String(identity.tenantSlug));
+
+      if (wantsSibling) {
+        proxyReq.setHeader('x-branch-db', String(clientBranchDb));
+        if (clientBranchSlug) proxyReq.setHeader('x-branch-slug', String(clientBranchSlug));
+        if (log && log.debug) {
+          log.debug(
+            `[BRANCH-SCOPE] role=${identity.role} reads sibling branch ${clientBranchDb} ` +
+            `within tenant ${identity.tenantSlug} for ${req.method} ${req.originalUrl}`
+          );
+        }
+      } else {
+        proxyReq.setHeader('x-branch-db', branchDb);
+        if (identity.branchSlug) proxyReq.setHeader('x-branch-slug', String(identity.branchSlug));
+        if (identity.branchId) proxyReq.setHeader('x-branch-id', String(identity.branchId));
+      }
+    } else {
+      /* HQ / single-branch caller: it has no branch of its own, so an explicitly
+         requested branch is the only branch in play and is safe to honour. */
+      if (clientBranchDb && TENANT_SLUG_RE.test(clientBranchDb)) {
+        proxyReq.setHeader('x-branch-db', clientBranchDb);
+        if (clientBranchSlug) proxyReq.setHeader('x-branch-slug', String(clientBranchSlug));
+      }
     }
     proxyReq.removeHeader('x-tenant-assertion');
     proxyReq.removeHeader('x-user-assertion');
