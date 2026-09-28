@@ -54,6 +54,39 @@ server {
     root  /usr/share/nginx/html;
     index index.html;
 
+    # Docker's embedded DNS. Declared so the /monitoring proxy_pass below can
+    # resolve the gateway lazily at request time via a variable. A static
+    # proxy_pass would make nginx refuse to START when the gateway container
+    # is not up yet, taking the whole SPA down with it.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
+    # Infrastructure Monitor - GET /monitoring.
+    # The dashboard polls the API gateway ROOT (/monitoring), NOT under
+    # /api/v1/restpoint. CRITICAL: without this block /monitoring falls into
+    # the SPA fallback below and returns index.html, so the dashboard throws
+    #   Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    # and every card renders blank behind a GATEWAY UNREACHABLE banner.
+    # Exact match on purpose - it must not shadow the SPA route
+    # /<slug>/monitoring, which is a different path and must stay HTML.
+    location = /monitoring {
+        set $restpoint_gateway "restpoint_api_gateway:5000";
+        proxy_pass http://$restpoint_gateway/monitoring;
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_request_buffering off;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # The report probes every routed service (3s timeout each, bounded
+        # concurrency) and reads Redis, so allow headroom.
+        proxy_connect_timeout 10s;
+        proxy_send_timeout    30s;
+        proxy_read_timeout    30s;
+    }
+
                 # SPA fallback: any route that is not a static file returns index.html
     location / {
         try_files $uri $uri/ /index.html;

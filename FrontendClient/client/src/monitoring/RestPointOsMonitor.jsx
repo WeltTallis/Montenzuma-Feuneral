@@ -142,8 +142,33 @@ export default function RestPointOsMonitor() {
     try {
       // Bypass the axios instance: /monitoring lives at the gateway ROOT, not
       // under the /api/v1/restpoint service prefix, and needs no auth token.
-      const res = await fetch(MONITOR_URL, { headers: { Accept: 'application/json' } });
-      const json = await res.json();
+      const res = await fetch(MONITOR_URL, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(REFRESH_MS * 2),
+      });
+
+      // Read the body once, as text, so a mis-routed request (nginx serving
+      // the SPA index.html for /monitoring) produces an actionable message
+      // instead of the bare "Unexpected token '<', "<!DOCTYPE "... is not
+      // valid JSON" that used to leave the whole screen blank.
+      const body = await res.text();
+
+      if (!res.ok) {
+        throw new Error(`gateway responded ${res.status} ${res.statusText || ''}`.trim());
+      }
+
+      let json;
+      try {
+        json = JSON.parse(body);
+      } catch {
+        const kind = /^\s*<(?:!doctype|html)/i.test(body) ? 'an HTML page' : 'a non-JSON response';
+        throw new Error(
+          `${MONITOR_URL} returned ${kind} instead of JSON. `
+          + 'The reverse proxy is not routing /monitoring to the API gateway '
+          + '(it is serving the SPA fallback) - fix the nginx location block.'
+        );
+      }
+
       if (json?.success && json.data) { setData(json.data); setError(null); }
       else setError(json?.message || 'Gateway returned no report');
     } catch (e) {
