@@ -57,7 +57,9 @@ function schedulePeriod(view, selDate) {
     ? (start.getMonth() === end.getMonth()
       ? `${MO[start.getMonth()]} ${start.getDate()}–${end.getDate()}`
       : `${MO[start.getMonth()].slice(0, 3)} ${start.getDate()} – ${MO[end.getMonth()].slice(0, 3)} ${end.getDate()}`)
-    : `${DOWF[start.getDay()]}, ${MO[start.getMonth()]} ${start.getDate()}`;
+    : view === "month"
+      ? MO[start.getMonth()]
+      : `${DOWF[start.getDay()]}, ${MO[start.getMonth()]} ${start.getDate()}`;
 
   return { title, year: end.getFullYear(), startKey };
 }
@@ -159,7 +161,8 @@ function useCaseData() {
 
 function Sidebar({
   calc, scoped, section, filters, onTogglePill, onOpenModal,
-  calY, calM, onMonthNav, calendarDots, selDay, today, onPickDay, view, onViewChange,
+  calY, calM, calendarDots, selDay, today, onPickDay, view, onViewChange,
+  period, eventCount, onToday, onStep,
 }) {
   const dim = new Date(calY, calM + 1, 0).getDate();
   const firstDow = (new Date(calY, calM, 1).getDay() + 6) % 7;
@@ -208,19 +211,40 @@ function Sidebar({
   ];
   const bMax = Math.max(...calc.bmix.map((b) => b.n), 1);
 
+  /* The event counter only means something once the schedule is scoped to a
+     single day or week; a whole month already has its own totals on screen. */
+  const isPeriod = view === "day" || view === "week";
+  const stepLbl = (dir) => `${dir < 0 ? "Previous" : "Next"} ${view}`;
+
   return (
     <>
       <div className="smc">
-        <div className="smc-h">
-          <div>
-            <span className="smc-t">{MO[calM]} {calY}</span>
-            <span className="smc-sub">Select a day to open the schedule</span>
-          </div>
+        {/* The schedule controls live here, at the top of the calendar. Stepping
+            the period always carries calM/calY with it, so this single ‹ › pair
+            also walks the displayed month. */}
+        <div className="smc-ctrl">
+          <button className="smc-btn hot" onClick={onToday}>Today</button>
           <div className="smc-nav">
-            <button onClick={() => onMonthNav(-1)} aria-label="Previous month"><Ic n="chevL" s={12} /></button>
-            <button onClick={() => onMonthNav(1)} aria-label="Next month"><Ic n="chevR" s={12} /></button>
+            <button onClick={() => onStep(-1)} aria-label={stepLbl(-1)} title={stepLbl(-1)}>
+              <Ic n="chevL" s={12} />
+            </button>
+            <button onClick={() => onStep(1)} aria-label={stepLbl(1)} title={stepLbl(1)}>
+              <Ic n="chevR" s={12} />
+            </button>
           </div>
+          {isPeriod ? (
+            <div className="smc-count" aria-live="polite">
+              <b>{eventCount}</b>
+              <span>{eventCount === 1 ? "event" : "events"} {view === "week" ? "this week" : "today"}</span>
+            </div>
+          ) : null}
         </div>
+
+        <div className="smc-period" aria-live="polite">
+          <b>{period.title}</b>
+          <span>{period.year}</span>
+        </div>
+
         <div className="smc-views">
           {[
             ["day", "Day"],
@@ -231,11 +255,17 @@ function Sidebar({
               className={view === key ? "on" : ""}
               key={key}
               onClick={() => onViewChange(key)}
+              aria-pressed={view === key}
             >
               {label}
             </button>
           ))}
         </div>
+
+        <div className="smc-h">
+          <span className="smc-t">{MO[calM]} {calY}</span>
+        </div>
+
         <div className="smc-g">{cells}</div>
       </div>
 
@@ -523,17 +553,20 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
      calendar's buttons open. Gets the same period heading + event counter. */
   const isBoardPeriod = section === "command" && (view === "day" || view === "week");
   const analyticsPeriod = schedulePeriod(view, selDate);
+  /* Counts the events inside the selected Day or Week. Scoped to the view, not
+     to a section: the calendar's top cluster shows this in every section, so a
+     section-based guard would have reported "0 events" for the registers. */
   const analyticsPeriodEventCount = useMemo(() => {
-    if (!isAnalyticsPeriod && !isBoardPeriod) return 0;
+    if (view !== "day" && view !== "week") return 0;
     const dayKeys = view === "week"
       ? Array.from({ length: 7 }, (_, index) => addDays(analyticsPeriod.startKey, index))
       : [analyticsPeriod.startKey];
     const daySet = new Set(dayKeys);
     return eventsOf(searched).filter((event) => daySet.has(event.date)).length;
-  }, [analyticsPeriod.startKey, isAnalyticsPeriod, isBoardPeriod, searched, view]);
+  }, [analyticsPeriod.startKey, searched, view]);
 
   return (
-    <div className={`rpd${dark ? " dark" : ""}`}>
+    <div className={`rpd${dark ? " dark" : ""}${section === "analytics" ? " no-side" : ""}`}>
       {/* ── toolbar ─────────────────────────────────────────────────── */}
       <header className={`tbar${isBoardPeriod ? " sched-mode" : ""}`}>
         <div className="tb-left">
@@ -589,34 +622,40 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
           <div className="divider" />
 
-          <button className="tb-btn today-hot" onClick={goToday}>Today</button>
-          <div className="navpair" aria-label="Change schedule period">
-            <button className="tb-btn sq" onClick={() => stepPeriod(-1)} title="Previous period" aria-label="Previous period">‹</button>
-            <button className="tb-btn sq" onClick={() => stepPeriod(1)} title="Next period" aria-label="Next period">›</button>
-          </div>
-          {isAnalyticsPeriod || isBoardPeriod ? (
-            <div className="tb-period" aria-live="polite">
-              <b>{analyticsPeriod.title}</b>
-              <span>{analyticsPeriod.year}</span>
+          {/* Fallback copy of the schedule controls. The sidebar calendar owns
+              them, so this is hidden while the calendar is on screen and only
+              surfaces when it is not (Analytics section, or a viewport too
+              narrow for the sidebar). */}
+          <div className="tb-sched">
+            <button className="tb-btn today-hot" onClick={goToday}>Today</button>
+            <div className="navpair" aria-label="Change schedule period">
+              <button className="tb-btn sq" onClick={() => stepPeriod(-1)} title="Previous period" aria-label="Previous period">‹</button>
+              <button className="tb-btn sq" onClick={() => stepPeriod(1)} title="Next period" aria-label="Next period">›</button>
             </div>
-          ) : null}
-          {isAnalyticsPeriod || isBoardPeriod ? (
-            <div className="tb-period-count">
-              <b>{analyticsPeriodEventCount}</b>
-              <span>{analyticsPeriodEventCount === 1 ? "event" : "events"} {view === "week" ? "this week" : "today"}</span>
+            {isAnalyticsPeriod || isBoardPeriod ? (
+              <div className="tb-period" aria-live="polite">
+                <b>{analyticsPeriod.title}</b>
+                <span>{analyticsPeriod.year}</span>
+              </div>
+            ) : null}
+            {isAnalyticsPeriod || isBoardPeriod ? (
+              <div className="tb-period-count">
+                <b>{analyticsPeriodEventCount}</b>
+                <span>{analyticsPeriodEventCount === 1 ? "event" : "events"} {view === "week" ? "this week" : "today"}</span>
+              </div>
+            ) : null}
+            <div className="views">
+              {VIEWS.map((v) => (
+                <button
+                  key={v.id}
+                  className={view === v.id ? "on" : ""}
+                  onClick={() => setV(v.id)}
+                  aria-pressed={view === v.id}
+                >
+                  {v.label}
+                </button>
+              ))}
             </div>
-          ) : null}
-          <div className="views">
-            {VIEWS.map((v) => (
-              <button
-                key={v.id}
-                className={view === v.id ? "on" : ""}
-                onClick={() => setV(v.id)}
-                aria-pressed={view === v.id}
-              >
-                {v.label}
-              </button>
-            ))}
           </div>
 
           <button
@@ -648,13 +687,16 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               onOpenModal={openModal}
               calY={calY}
               calM={calM}
-              onMonthNav={onMonthNav}
               calendarDots={calendarDots}
               selDay={selDate}
               today={today}
               onPickDay={pickDay}
               view={view}
               onViewChange={setV}
+              period={analyticsPeriod}
+              eventCount={analyticsPeriodEventCount}
+              onToday={goToday}
+              onStep={stepPeriod}
             />
           </aside>
         ) : null}
